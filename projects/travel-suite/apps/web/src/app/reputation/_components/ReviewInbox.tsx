@@ -22,6 +22,7 @@ import { PLATFORM_LABELS } from "@/lib/reputation/constants";
 import { toast } from "sonner";
 import { ReviewCard } from "./ReviewCard";
 import { ReviewResponsePanel } from "./ReviewResponsePanel";
+import { logError } from "@/lib/observability/logger";
 
 interface ReviewInboxProps {
   organizationName?: string;
@@ -289,7 +290,7 @@ export function ReviewInbox({ organizationName }: ReviewInboxProps) {
       setTotal(data.total ?? 0);
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
-      console.error("Error fetching reviews:", err);
+      logError("Error fetching reviews", err);
       setFetchError(err instanceof Error ? err.message : "Failed to fetch reviews");
     } finally {
       setLoading(false);
@@ -318,7 +319,7 @@ export function ReviewInbox({ organizationName }: ReviewInboxProps) {
       });
       fetchReviews();
     } catch (err) {
-      console.error("Error flagging review:", err);
+      logError("Error flagging review", err);
     }
   };
 
@@ -337,7 +338,7 @@ export function ReviewInbox({ organizationName }: ReviewInboxProps) {
       setShowAddModal(false);
       fetchReviews();
     } catch (err) {
-      console.error("Error adding review:", err);
+      logError("Error adding review", err);
     } finally {
       setSubmitting(false);
     }
@@ -392,7 +393,7 @@ export function ReviewInbox({ organizationName }: ReviewInboxProps) {
       toast.success("Review marketing asset generated");
       await fetchReviews();
     } catch (error) {
-      console.error("Error generating marketing asset:", error);
+      logError("Error generating marketing asset", error);
       toast.error(error instanceof Error ? error.message : "Failed to generate marketing asset");
     } finally {
       updateAssetBusyState(reviewId);
@@ -419,7 +420,7 @@ export function ReviewInbox({ organizationName }: ReviewInboxProps) {
       toast.success("Review asset sent to the social review queue");
       await fetchReviews();
     } catch (error) {
-      console.error("Error scheduling marketing asset:", error);
+      logError("Error scheduling marketing asset", error);
       toast.error(error instanceof Error ? error.message : "Failed to schedule marketing asset");
     } finally {
       updateAssetBusyState(reviewId);

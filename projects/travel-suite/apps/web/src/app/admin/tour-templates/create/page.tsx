@@ -10,6 +10,7 @@ import {
   INSERTED_TEMPLATE_SELECT,
 } from '@/lib/tour-templates/selects';
 import { useToast } from '@/components/ui/toast';
+import { logError } from '@/lib/observability/logger';
 import {
   MetadataForm,
   DayEditor,
@@ -250,7 +251,7 @@ export default function CreateTemplatePage() {
         .single();
 
       if (templateError) {
-        console.error('Error creating template:', templateError);
+        logError('Error creating template', templateError);
         toast({
           title: 'Failed to create template',
           description: templateError.message,
@@ -273,7 +274,7 @@ export default function CreateTemplatePage() {
           .single();
 
         if (dayError) {
-          console.error('Error creating day:', dayError);
+          logError('Error creating day', dayError);
           continue;
         }
 
@@ -297,7 +298,7 @@ export default function CreateTemplatePage() {
             .insert(activitiesData);
 
           if (activitiesError) {
-            console.error('Error creating activities:', activitiesError);
+            logError('Error creating activities', activitiesError);
           }
         }
 
@@ -316,7 +317,7 @@ export default function CreateTemplatePage() {
             });
 
           if (accommodationError) {
-            console.error('Error creating accommodation:', accommodationError);
+            logError('Error creating accommodation', accommodationError);
           }
         }
       }
@@ -328,7 +329,7 @@ export default function CreateTemplatePage() {
       });
       router.push('/admin/tour-templates');
     } catch (error) {
-      console.error('Error saving template:', error);
+      logError('Error saving template', error);
       toast({
         title: 'Failed to save template',
         description: error instanceof Error ? error.message : 'Unknown error',

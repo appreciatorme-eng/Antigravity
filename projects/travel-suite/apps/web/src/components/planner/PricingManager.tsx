@@ -5,6 +5,7 @@ import { IndianRupee, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Pricing, PricingAddOn, ItineraryResult } from '@/types/itinerary';
+import { logError } from "@/lib/observability/logger";
 
 interface AddOnCatalogItem {
     id: string;
@@ -31,7 +32,7 @@ export function PricingManager({ data, onChange }: PricingManagerProps) {
                     setDbAddOns(json.addOns);
                 }
             } catch (e) {
-                console.error(e);
+                logError("Failed to load add-ons catalog", e);
             }
         }
         load();

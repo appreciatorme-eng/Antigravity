@@ -18,6 +18,7 @@ import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { logError } from "@/lib/observability/logger";
 
 function timeAgo(dateString: string) {
     const date = new Date(dateString);
@@ -77,7 +78,7 @@ export default function MarketplaceAnalyticsPage() {
                 setStats(data);
             }
         } catch (error) {
-            console.error("Error fetching stats:", error);
+            logError("Error fetching marketplace stats", error);
         } finally {
             setLoading(false);
         }

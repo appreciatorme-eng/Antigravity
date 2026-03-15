@@ -11,6 +11,7 @@ import {
   type PaymentLinkData,
   type PaymentEvent,
 } from '@/lib/payments/link-tracker'
+import { logError } from "@/lib/observability/logger"
 
 interface PaymentTrackerProps {
   token?: string
@@ -221,7 +222,7 @@ export default function PaymentTracker({
               }).then((newLink) => {
                 setLink(newLink)
               }).catch((error) => {
-                console.error('[PaymentTracker] regenerate failed:', error)
+                logError('Payment link regeneration failed', error)
               })
             }}
             className="text-xs bg-[#00d084] hover:bg-[#00b873] text-black font-semibold px-4 py-2 rounded-xl transition-colors"

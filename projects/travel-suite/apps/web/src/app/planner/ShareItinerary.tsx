@@ -4,6 +4,7 @@
 import { useState } from "react";
 import { Send, Check, Phone } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
+import { logError } from "@/lib/observability/logger";
 
 interface ShareItineraryProps {
     tripTitle: string;
@@ -50,7 +51,7 @@ export default function ShareItinerary({ tripTitle }: ShareItineraryProps) {
                 });
             }
         } catch (e) {
-            console.error(e);
+            logError("Failed to share itinerary", e);
             toast({
                 title: "Send failed",
                 description: "Error sending message",

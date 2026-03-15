@@ -28,6 +28,7 @@ import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassBadge } from "@/components/glass/GlassBadge";
 import { useToast } from "@/components/ui/toast";
 import { motion } from "framer-motion";
+import { logError } from "@/lib/observability/logger";
 
 interface RateCardItem {
     id: string;
@@ -145,7 +146,7 @@ export default function OperatorDetailPage() {
                 setReviews(await revRes.json());
             }
         } catch (error) {
-            console.error("Error fetching detail:", error);
+            logError("Error fetching marketplace detail", error);
         } finally {
             setLoading(false);
         }
@@ -162,7 +163,7 @@ export default function OperatorDetailPage() {
                     method: "POST"
                 });
             } catch (err) {
-                console.error("Failed to record view", err);
+                logError("Failed to record view", err);
             }
         };
 

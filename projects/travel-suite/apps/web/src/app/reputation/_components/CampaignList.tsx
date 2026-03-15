@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import type { ReputationReviewCampaign, CampaignStatus } from "@/lib/reputation/types";
 import { CAMPAIGN_TYPE_LABELS } from "@/lib/reputation/constants";
+import { logError } from "@/lib/observability/logger";
 
 interface CampaignListProps {
   campaigns: ReputationReviewCampaign[];
@@ -106,7 +107,7 @@ export default function CampaignList({ campaigns, onChanged }: CampaignListProps
       }
       router.refresh();
     } catch (error) {
-      console.error("Error updating campaign status:", error);
+      logError("Error updating campaign status", error);
     }
   }, [onChanged, router]);
 

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useDemoMode } from "@/lib/demo/demo-mode-context";
+import { logError } from "@/lib/observability/logger";
 
 export interface NavCounts {
   inboxUnread: number;
@@ -58,7 +59,7 @@ export function useNavCounts() {
         ) {
           return;
         }
-        console.error("[useNavCounts] Failed to refresh navigation counts", error);
+        logError("[useNavCounts] Failed to refresh navigation counts", error);
       }
     };
 

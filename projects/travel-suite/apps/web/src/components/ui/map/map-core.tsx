@@ -16,6 +16,7 @@ import {
 } from "react";
 
 import { cn } from "@/lib/utils";
+import { logError } from "@/lib/observability/logger";
 
 import {
   isProbablyHeadless,
@@ -189,7 +190,7 @@ const Map = forwardRef<MapRef, MapProps>(function Map(
     } catch (error) {
       // Headless browsers or devices without WebGL can throw during initialization.
       // Don't crash the entire app, just render a lightweight fallback container.
-      console.error("MapLibre map initialization failed:", error);
+      logError("MapLibre map initialization failed", error);
       setInitError(error instanceof Error ? error.message : String(error));
       return;
     }

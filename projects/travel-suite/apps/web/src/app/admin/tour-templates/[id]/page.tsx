@@ -23,6 +23,7 @@ import {
   TOUR_TEMPLATE_SELECT,
 } from '@/lib/tour-templates/selects';
 import { useToast } from '@/components/ui/toast';
+import { logError } from '@/lib/observability/logger';
 
 interface TourTemplate {
   id: string;
@@ -101,7 +102,7 @@ export default function ViewTemplatePage() {
       const templateRow = templateData as unknown as TourTemplate | null;
 
       if (templateError || !templateRow) {
-        console.error('Error loading template:', templateError);
+        logError('Error loading template', templateError);
         setLoading(false);
         return;
       }
@@ -123,7 +124,7 @@ export default function ViewTemplatePage() {
       const templateDays = (daysData as unknown as TemplateDay[] | null) ?? [];
 
       if (daysError) {
-        console.error('Error loading days:', daysError);
+        logError('Error loading days', daysError);
       } else {
         setDays(templateDays);
 
@@ -173,7 +174,7 @@ export default function ViewTemplatePage() {
         }
       }
     } catch (error) {
-      console.error('Error loading template:', error);
+      logError('Error loading template', error);
     } finally {
       setLoading(false);
     }
@@ -193,7 +194,7 @@ export default function ViewTemplatePage() {
       const { error } = await supabase.from('tour_templates').delete().eq('id', templateId);
 
       if (error) {
-        console.error('Error deleting template:', error);
+        logError('Error deleting template', error);
         toast({
           title: 'Failed to delete template',
           description: error.message,

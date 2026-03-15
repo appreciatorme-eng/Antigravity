@@ -34,6 +34,7 @@ import { NeedsAttentionQueue } from "./NeedsAttentionQueue";
 import { PlannerHero } from "./PlannerHero";
 import type { ClientComment, ClientPreferences } from "@/types/feedback";
 import type { ItineraryLike, ItineraryStage } from "./planner.types";
+import { logError } from "@/lib/observability/logger";
 
 /** Shape returned by the itineraries API and consumed by PastItineraryCard */
 interface PastItineraryItem extends ItineraryLike {
@@ -108,7 +109,7 @@ export default function PlannerPage() {
                 window.scrollTo({ top: 0, behavior: "smooth" });
             }
         } catch (err) {
-            console.error("Error opening itinerary:", err);
+            logError("Error opening itinerary", err);
             toast({ title: "Load failed", description: "Something went wrong loading the itinerary.", variant: "error" });
         } finally {
             setOpeningItineraryId(null);

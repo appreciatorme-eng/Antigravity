@@ -17,6 +17,7 @@ import {
   TOUR_TEMPLATE_SELECT,
 } from '@/lib/tour-templates/selects';
 import { useToast } from '@/components/ui/toast';
+import { logError } from '@/lib/observability/logger';
 
 interface TemplateDay {
   id: string;
@@ -97,7 +98,7 @@ export default function EditTemplatePage() {
       const templateRow = template as unknown as TemplateSummary | null;
 
       if (templateError || !templateRow) {
-        console.error('Error loading template:', templateError);
+        logError('Error loading template', templateError);
         toast({
           title: 'Template not found',
           description: 'The template may have been removed or is inaccessible.',
@@ -131,7 +132,7 @@ export default function EditTemplatePage() {
       }> | null) ?? [];
 
       if (daysError) {
-        console.error('Error loading days:', daysError);
+        logError('Error loading days', daysError);
       } else if (templateDays.length > 0) {
         // Load activities and accommodations for each day
         const loadedDays = await Promise.all(
@@ -187,7 +188,7 @@ export default function EditTemplatePage() {
         setDays(loadedDays);
       }
     } catch (error) {
-      console.error('Error loading template:', error);
+      logError('Error loading template', error);
       toast({
         title: 'Failed to load template',
         description: error instanceof Error ? error.message : 'Unknown error',
@@ -232,7 +233,7 @@ export default function EditTemplatePage() {
         .eq('id', templateId);
 
       if (templateError) {
-        console.error('Error updating template:', templateError);
+        logError('Error updating template', templateError);
         toast({
           title: 'Failed to update template',
           description: templateError.message,
@@ -248,7 +249,7 @@ export default function EditTemplatePage() {
         .eq('template_id', templateId);
 
       if (deleteError) {
-        console.error('Error deleting old days:', deleteError);
+        logError('Error deleting old days', deleteError);
       }
 
       // Create new days, activities, and accommodations
@@ -265,7 +266,7 @@ export default function EditTemplatePage() {
           .single();
 
         if (dayError) {
-          console.error('Error creating day:', dayError);
+          logError('Error creating day', dayError);
           continue;
         }
 
@@ -289,7 +290,7 @@ export default function EditTemplatePage() {
             .insert(activitiesData);
 
           if (activitiesError) {
-            console.error('Error creating activities:', activitiesError);
+            logError('Error creating activities', activitiesError);
           }
         }
 
@@ -308,7 +309,7 @@ export default function EditTemplatePage() {
             });
 
           if (accommodationError) {
-            console.error('Error creating accommodation:', accommodationError);
+            logError('Error creating accommodation', accommodationError);
           }
         }
       }
@@ -320,7 +321,7 @@ export default function EditTemplatePage() {
       });
       router.push(`/admin/tour-templates/${templateId}`);
     } catch (error) {
-      console.error('Error saving template:', error);
+      logError('Error saving template', error);
       toast({
         title: 'Failed to save template',
         description: error instanceof Error ? error.message : 'Unknown error',

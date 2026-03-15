@@ -15,6 +15,7 @@ import {
     Store
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { logError } from "@/lib/observability/logger";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -80,7 +81,7 @@ export default function MarketplacePage() {
             const data = await response.json();
             setProfiles(data);
         } catch (error) {
-            console.error("Error fetching marketplace:", error);
+            logError("Error fetching marketplace", error);
         } finally {
             setLoading(false);
         }

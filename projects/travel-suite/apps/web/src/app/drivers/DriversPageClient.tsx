@@ -25,6 +25,7 @@ import { GlassSelect } from "@/components/glass/GlassInput";
 import { GlassTextarea } from "@/components/glass/GlassInput";
 import { GlassModal, GlassConfirmModal } from "@/components/glass/GlassModal";
 import { GlassTableSkeleton } from "@/components/glass/GlassSkeleton";
+import { logError } from "@/lib/observability/logger";
 
 type ExternalDriver = Database["public"]["Tables"]["external_drivers"]["Row"];
 type NewDriver = Database["public"]["Tables"]["external_drivers"]["Insert"];
@@ -170,7 +171,7 @@ export default function DriversPage() {
             const driverRows = (data as unknown as ExternalDriver[] | null) ?? [];
 
             if (error) {
-                console.error("Error fetching drivers:", error);
+                logError("Error fetching drivers", error);
                 setError("Failed to load drivers");
                 return;
             }

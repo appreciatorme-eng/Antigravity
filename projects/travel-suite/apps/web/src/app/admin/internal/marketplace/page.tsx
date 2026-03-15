@@ -13,6 +13,7 @@ import {
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
 import Link from "next/link";
+import { logError } from "@/lib/observability/logger";
 
 interface PendingVerificationRequest {
     id: string;
@@ -37,7 +38,7 @@ export default function InternalMarketplaceAdmin() {
             const data = await res.json();
             if (Array.isArray(data)) setPending(data);
         } catch (error) {
-            console.error(error);
+            logError("Failed to fetch pending verifications", error);
         } finally {
             setLoading(false);
         }
@@ -61,7 +62,7 @@ export default function InternalMarketplaceAdmin() {
             });
             void fetchPending();
         } catch (error) {
-            console.error(error);
+            logError("Failed to verify marketplace partner", error);
         }
     };
 

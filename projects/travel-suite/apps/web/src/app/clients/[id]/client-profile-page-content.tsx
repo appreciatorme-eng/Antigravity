@@ -29,6 +29,7 @@ import {
     TRIP_STATUS_COLORS,
     type TripRow,
 } from "./client-profile-shared";
+import { logError } from "@/lib/observability/logger";
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 function isAdminRole(role: string | null | undefined): role is "admin" | "super_admin" {
@@ -91,7 +92,7 @@ export async function renderClientProfilePage({
         const { data, error } = await tripsQuery;
         if (!error && data) trips = data;
     } catch (err) {
-        console.warn("Trips fetch failed:", err);
+        logError("Trips fetch failed", err);
     }
 
     // ─── Fetch itineraries linked to trips ────────────────────────────────────
@@ -113,7 +114,7 @@ export async function renderClientProfilePage({
             }
         }
     } catch (err) {
-        console.warn("Itineraries fetch failed:", err);
+        logError("Itineraries fetch failed", err);
     }
 
     // ─── Fetch proposals (partial failure OK) ─────────────────────────────────
@@ -131,7 +132,7 @@ export async function renderClientProfilePage({
         const { data, error } = await proposalsQuery;
         if (!error && data) proposals = data;
     } catch (err) {
-        console.warn("Proposals fetch failed:", err);
+        logError("Proposals fetch failed", err);
     }
 
     // ─── Derived stats ───────────────────────────────────────────────────────

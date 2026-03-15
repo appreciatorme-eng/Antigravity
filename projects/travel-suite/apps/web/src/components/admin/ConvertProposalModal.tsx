@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2, Calendar, CheckCircle } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
+import { logError } from "@/lib/observability/logger";
 
 interface ConvertProposalModalProps {
     open: boolean;
@@ -60,7 +61,7 @@ export default function ConvertProposalModal({
                 variant: "success",
             });
         } catch (error) {
-            console.error("Error converting proposal:", error);
+            logError("Error converting proposal", error);
             toast({
                 title: "Conversion failed",
                 description: error instanceof Error ? error.message : "Failed to convert proposal",

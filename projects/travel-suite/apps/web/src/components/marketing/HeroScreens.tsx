@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { SplineScene } from '@/components/marketing/SplineScene';
+import { logError } from '@/lib/observability/logger';
 import type { Application } from '@splinetool/runtime';
 
 /**
@@ -67,7 +68,7 @@ export function HeroScreens({ onSplineReady }: HeroScreensProps) {
       }
     }
 
-    try { await Promise.all(promises); } catch (e) { console.warn('Some textures failed', e); }
+    try { await Promise.all(promises); } catch (e) { logError('Some textures failed', e); }
 
     // 3. Wait for GPU to actually paint new textures
     await new Promise<void>(resolve =>

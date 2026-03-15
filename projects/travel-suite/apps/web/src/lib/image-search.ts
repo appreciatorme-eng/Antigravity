@@ -39,6 +39,9 @@ const getDeterministicFallback = (title: string) => {
 };
 
 export async function getWikiImage(query: string, titleStr: string): Promise<string> {
+    if (!query || query.trim().length === 0) {
+        return getDeterministicFallback(titleStr);
+    }
     try {
         const url = `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=1&prop=pageimages&pithumbsize=1200&format=json&origin=*`;
 

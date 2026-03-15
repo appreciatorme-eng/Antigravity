@@ -11,6 +11,7 @@ import {
   type PaymentLinkData,
 } from '@/lib/payments/link-tracker'
 import PaymentTracker from './PaymentTracker'
+import { logError } from "@/lib/observability/logger"
 
 interface PaymentLinkButtonProps {
   proposalId?: string
@@ -92,7 +93,7 @@ export default function PaymentLinkButton({
       setState('created')
       onLinkCreated?.(newLink.token)
     } catch (error) {
-      console.error('[PaymentLinkButton] create failed:', error)
+      logError('Payment link creation failed', error)
       setState('idle')
       setShareError(error instanceof Error ? error.message : 'Failed to create payment link')
     }

@@ -2,6 +2,9 @@ import { ImageResponse } from "next/og";
 import type { NextRequest } from "next/server";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 
+// This route is intentionally a direct route (not a catch-all handler) because it
+// requires the Edge runtime (`export const runtime = "edge"`) for ImageResponse.
+// Edge functions cannot be registered through the Node.js-based catch-all dispatcher.
 export const runtime = "edge";
 
 function getRequestIp(request: NextRequest): string {

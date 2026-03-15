@@ -12,6 +12,7 @@ import { GlassButton } from '@/components/glass/GlassButton'
 import { GlassCard } from '@/components/glass/GlassCard'
 import { GlassModal } from '@/components/glass/GlassModal'
 import { formatPaymentAmount } from '@/lib/payments/payment-links'
+import { logError } from "@/lib/observability/logger"
 
 declare global {
   interface Window {
@@ -210,7 +211,7 @@ export default function RazorpayModal({
               onSuccess?.(nextPaymentId)
             }
           } catch (verificationError) {
-            console.error('[RazorpayModal] verification failed:', verificationError)
+            logError('Razorpay verification failed', verificationError)
             setStatus('error')
             setError(
               verificationError instanceof Error
@@ -223,7 +224,7 @@ export default function RazorpayModal({
 
       checkout.open()
     } catch (checkoutError) {
-      console.error('[RazorpayModal] checkout launch failed:', checkoutError)
+      logError('Razorpay checkout launch failed', checkoutError)
       setStatus('error')
       setError(
         checkoutError instanceof Error

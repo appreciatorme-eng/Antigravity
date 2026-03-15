@@ -15,6 +15,7 @@ import { Copy, Check, Share2, Loader2 } from "lucide-react";
 import type { ItineraryResult } from "@/types/itinerary";
 import type { Json } from "@/lib/database.types";
 import { useToast } from "@/components/ui/toast";
+import { logError } from "@/lib/observability/logger";
 
 interface ShareTripModalProps {
     isOpen: boolean;
@@ -90,9 +91,9 @@ export default function ShareTripModal({
                                 status: "pending",
                                 destination: rawItineraryData.destination,
                             });
-                    } catch {
+                    } catch (error) {
                         // Non-critical: trip creation can fail gracefully
-                        console.warn("Trip record creation failed during share");
+                        logError("Trip record creation failed during share", error);
                     }
                 }
             }

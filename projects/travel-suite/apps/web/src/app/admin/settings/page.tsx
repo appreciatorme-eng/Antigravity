@@ -21,6 +21,7 @@ import {
   type WhatsAppProfile,
   type WorkflowRule,
 } from "./shared";
+import { logError } from "@/lib/observability/logger";
 
 export default function SettingsPage() {
   const supabase = createClient();
@@ -207,7 +208,7 @@ export default function SettingsPage() {
         setWorkflowRules(rulesPayload.rules || []);
       }
     } catch (error) {
-      console.error("Error fetching settings:", error);
+      logError("Error fetching settings", error);
     } finally {
       setLoading(false);
     }
@@ -247,7 +248,7 @@ export default function SettingsPage() {
       setTimeout(() => setShowSuccess(false), 3000);
       toast({ title: "Settings saved", description: "Organization settings were updated.", variant: "success" });
     } catch (error) {
-      console.error("Error saving settings:", error);
+      logError("Error saving settings", error);
       toast({ title: "Save failed", description: "Failed to save settings. Please try again.", variant: "error" });
     } finally {
       setSaving(false);
@@ -300,7 +301,7 @@ export default function SettingsPage() {
       setTimeout(() => setShowSuccess(false), 3000);
       toast({ title: "Workflow rules saved", description: "Lifecycle notification rules were updated.", variant: "success" });
     } catch (error) {
-      console.error("Error saving workflow rules:", error);
+      logError("Error saving workflow rules", error);
       toast({ title: "Workflow save failed", description: error instanceof Error ? error.message : "Failed to save workflow rules", variant: "error" });
     } finally {
       setRulesSaving(false);

@@ -33,6 +33,7 @@ import {
     SERVICE_REGION_OPTIONS,
     SPECIALTY_OPTIONS,
 } from "@/lib/marketplace-options";
+import { logError } from "@/lib/observability/logger";
 
 interface RateCardItem {
     id: string;
@@ -158,7 +159,7 @@ export default function MarketplaceSettingsPage() {
                 }
             }
         } catch (error) {
-            console.error("Error fetching settings:", error);
+            logError("Error fetching settings", error);
         } finally {
             setLoading(false);
         }

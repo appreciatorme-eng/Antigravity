@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { logError } from "@/lib/observability/logger";
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -85,7 +86,7 @@ export function useBroadcastAudience(): UseBroadcastAudienceResult {
             : 'WhatsApp is not connected. Reconnect the session in Settings before sending a broadcast.',
         );
       } catch (error) {
-        console.error('[inbox/broadcast] Failed to load audiences', error);
+        logError('Failed to load broadcast audiences', error);
         if (!isMounted) return;
         setAudienceError(
           error instanceof Error ? error.message : 'Unable to load WhatsApp audiences',

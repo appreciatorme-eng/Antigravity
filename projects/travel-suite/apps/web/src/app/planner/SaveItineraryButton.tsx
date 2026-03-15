@@ -8,6 +8,7 @@ import { itinerariesKeys } from "@/lib/queries/itineraries";
 import Link from "next/link";
 import type { ItineraryResult } from "@/types/itinerary";
 import type { Json } from "@/lib/database.types";
+import { logError } from "@/lib/observability/logger";
 
 interface SaveItineraryButtonProps {
     itineraryData: ItineraryResult;
@@ -108,7 +109,7 @@ export default function SaveItineraryButton({
                 .single();
 
             if (tripError) {
-                console.warn("Trip record creation failed (itinerary saved):", tripError.message);
+                logError("Trip record creation failed (itinerary saved)", tripError);
                 // Itinerary still saved — show success and refresh list
                 setSaved(true);
                 queryClient.invalidateQueries({ queryKey: itinerariesKeys.all });
@@ -129,7 +130,7 @@ export default function SaveItineraryButton({
 
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : "Failed to save";
-            console.error("Save error:", message);
+            logError("Save error", err);
             setError(message);
         } finally {
             setSaving(false);

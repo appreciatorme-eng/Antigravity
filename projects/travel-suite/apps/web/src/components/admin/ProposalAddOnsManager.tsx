@@ -18,6 +18,7 @@ import { GlassInput } from '@/components/glass/GlassInput';
 import { GlassBadge } from '@/components/glass/GlassBadge';
 import { GlassModal } from '@/components/glass/GlassModal';
 import { useToast } from '@/components/ui/toast';
+import { logError } from "@/lib/observability/logger";
 
 interface AddOn {
   id: string;
@@ -126,7 +127,7 @@ export default function ProposalAddOnsManager({
 
       setAvailableAddOns(formattedAvailable);
     } catch (error) {
-      console.error('Error loading add-ons:', error);
+      logError('Error loading add-ons', error);
     } finally {
       setLoading(false);
     }
@@ -186,7 +187,7 @@ export default function ProposalAddOnsManager({
       setModalOpen(false);
       setSearchQuery('');
     } catch (error) {
-      console.error('Error:', error);
+      logError('Proposal add-on operation failed', error);
     } finally {
       setSaving(false);
     }
@@ -215,7 +216,7 @@ export default function ProposalAddOnsManager({
       await syncProposalPrice();
       await loadData();
     } catch (error) {
-      console.error('Error:', error);
+      logError('Proposal add-on operation failed', error);
     } finally {
       setSaving(false);
     }
@@ -252,7 +253,7 @@ export default function ProposalAddOnsManager({
       await syncProposalPrice();
       await loadData();
     } catch (error) {
-      console.error('Error:', error);
+      logError('Proposal add-on operation failed', error);
     } finally {
       setSaving(false);
     }

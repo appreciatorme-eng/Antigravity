@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Package } from "lucide-react";
 import { GlassConfirmModal } from "@/components/glass/GlassModal";
 import { useToast } from "@/components/ui/toast";
+import { logError } from "@/lib/observability/logger";
 
 import type { AddOn, AddOnFormData, Stats } from "./_components/types";
 import { EMPTY_FORM_DATA, PACKAGE_TEMPLATES } from "./_components/types";
@@ -129,7 +130,7 @@ export default function AddOnsPage() {
         });
       }
     } catch (error) {
-      console.error("Error loading data:", error);
+      logError("Error loading data", error);
     } finally {
       setLoading(false);
     }
@@ -213,7 +214,7 @@ export default function AddOnsPage() {
         await loadData();
         closeModal();
       } catch (error) {
-        console.error("Error saving add-on:", error);
+        logError("Error saving add-on", error);
         toast({
           title: "Save failed",
           description:
@@ -250,7 +251,7 @@ export default function AddOnsPage() {
       setDeleteConfirmOpen(false);
       setAddOnToDelete(null);
     } catch (error) {
-      console.error("Error deleting add-on:", error);
+      logError("Error deleting add-on", error);
       toast({
         title: "Delete failed",
         description:
@@ -279,7 +280,7 @@ export default function AddOnsPage() {
 
         await loadData();
       } catch (error) {
-        console.error("Error toggling active status:", error);
+        logError("Error toggling active status", error);
         toast({
           title: "Status update failed",
           description: "Failed to update add-on status",

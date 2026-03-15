@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/toast";
 import { getPlanById } from "./plans";
 import type { CreditPackOffer, PremiumAutomationGate } from "@/lib/billing/credit-packs";
+import { logError } from "@/lib/observability/logger";
 
 export interface Subscription {
   id: string;
@@ -161,7 +162,7 @@ export function useBillingData() {
         }
       }
     } catch (error) {
-      console.error("Error loading billing data:", error);
+      logError("Error loading billing data", error);
     } finally {
       setLoading(false);
     }

@@ -11,6 +11,7 @@ import type { Activity, Day, ItineraryResult } from "@/types/itinerary";
 import { useToast } from "@/components/ui/toast";
 import Link from "next/link";
 import { formatFeatureLimitError } from "@/lib/subscriptions/feature-limit-error";
+import { logError } from "@/lib/observability/logger";
 
 interface SavedItinerary {
     id: string;
@@ -122,7 +123,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
             const payload = await response.json();
             setSavedItineraries(payload.itineraries || []);
         } catch (error) {
-            console.error("Error fetching saved itineraries:", error);
+            logError("Error fetching saved itineraries", error);
         } finally {
             setLoadingSaved(false);
         }
@@ -161,7 +162,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
                 variant: "success",
             });
         } catch (error) {
-            console.error("Error loading itinerary raw data:", error);
+            logError("Error loading itinerary raw data", error);
             toast({
                 title: "Load failed",
                 description: "Something went wrong loading the itinerary.",
@@ -237,7 +238,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
             // But we can set duration at least in the summary
 
         } catch (error) {
-            console.error("AI Generation Error:", error);
+            logError("AI generation error", error);
             toast({
                 title: "Generation failed",
                 description: error instanceof Error ? `Failed to generate: ${error.message}` : "Failed to generate itinerary. Please try again.",
@@ -263,7 +264,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
 
             setGeneratedData(data.itinerary as ItineraryResult);
         } catch (error) {
-            console.error("URL Import Error:", error);
+            logError("URL import error", error);
             toast({
                 title: "URL import failed",
                 description: error instanceof Error ? error.message : "Failed to import from URL.",
@@ -291,7 +292,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
 
             setGeneratedData(data.itinerary as ItineraryResult);
         } catch (error) {
-            console.error("PDF Import Error:", error);
+            logError("PDF import error", error);
             toast({
                 title: "PDF import failed",
                 description: error instanceof Error ? error.message : "Failed to parse PDF.",
@@ -396,7 +397,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
             onOpenChange(false);
 
         } catch (error) {
-            console.error("Error creating trip:", error);
+            logError("Error creating trip", error);
             toast({
                 title: "Trip creation failed",
                 description: error instanceof Error ? error.message : "Failed to create trip. Please try again.",

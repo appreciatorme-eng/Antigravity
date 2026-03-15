@@ -18,6 +18,7 @@ import { GlassButton } from "@/components/glass/GlassButton";
 import { useToast } from "@/components/ui/toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { useDemoMode } from "@/lib/demo/demo-mode-context";
+import { logError } from "@/lib/observability/logger";
 
 // Demo-only: realistic-looking QR payload that renders a visible code without real WA auth
 const DEMO_QR_PAYLOAD =
@@ -133,7 +134,7 @@ export function WhatsAppConnectModal({
                 if (data.qrBase64) setQrBase64(data.qrBase64);
             } catch (err) {
                 if (err instanceof DOMException && err.name === "AbortError") return;
-                console.error("Error refreshing WhatsApp QR:", err);
+                logError("Error refreshing WhatsApp QR", err);
             }
         }, 5000);
 
@@ -168,7 +169,7 @@ export function WhatsAppConnectModal({
                 }
             } catch (error) {
                 if (error instanceof DOMException && error.name === "AbortError") return;
-                console.error("Error polling WhatsApp status:", error);
+                logError("Error polling WhatsApp status", error);
             }
         }, 2000);
 

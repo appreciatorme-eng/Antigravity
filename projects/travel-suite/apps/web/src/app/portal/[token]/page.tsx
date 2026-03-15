@@ -19,6 +19,7 @@ import { PortalInstallPrompt } from '@/components/portal/PortalInstallPrompt';
 import PortalPayment from '@/components/portal/PortalPayment';
 import PortalReview from '@/components/portal/PortalReview';
 import type { PaymentLinkData } from '@/lib/payments/payment-links';
+import { logError } from '@/lib/observability/logger';
 
 interface PortalPayload {
   proposal: {
@@ -115,7 +116,7 @@ export default function PortalPage() {
           setPortal(payload.data);
         }
       } catch (loadError) {
-        console.error('[portal] Failed to load portal data', loadError);
+        logError('[portal] Failed to load portal data', loadError);
         if (isMounted) {
           setError('The trip portal could not be loaded.');
           setErrorStatus(500);
@@ -154,7 +155,7 @@ export default function PortalPage() {
         }),
       });
     } catch (reviewError) {
-      console.error('[portal] Failed to submit review', reviewError);
+      logError('[portal] Failed to submit review', reviewError);
     }
   }
 

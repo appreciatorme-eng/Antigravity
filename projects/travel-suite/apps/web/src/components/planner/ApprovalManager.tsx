@@ -22,6 +22,7 @@ import {
   requestOfflineQueueStatus,
   triggerOfflineReplay,
 } from "@/lib/pwa/offline-mutations";
+import { logError } from "@/lib/observability/logger";
 
 interface ApprovalManagerProps {
   token: string;
@@ -97,7 +98,7 @@ export function ApprovalManager({ token, clientName }: ApprovalManagerProps) {
         setWishlistItems(Array.isArray(data.wishlist_items) ? data.wishlist_items : []);
       }
     } catch (error) {
-      console.error("Failed to load share status", error);
+      logError("Failed to load share status", error);
     }
   }, [token]);
 

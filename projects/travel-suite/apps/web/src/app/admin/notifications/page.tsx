@@ -26,6 +26,7 @@ import {
     type QueueHealth,
     type WhatsAppHealthPayload,
 } from "./shared";
+import { logError } from "@/lib/observability/logger";
 
 export default function NotificationLogsPage() {
     const supabase = createClient();
@@ -106,7 +107,7 @@ export default function NotificationLogsPage() {
                 upcomingHour: Number(upcomingHourCount || 0),
             });
         } catch (error) {
-            console.error("Error fetching logs:", error);
+            logError("Error fetching logs", error);
         } finally {
             setLoading(false);
         }
@@ -131,7 +132,7 @@ export default function NotificationLogsPage() {
             }
             setWhatsAppHealth(payload);
         } catch (error) {
-            console.error("Error fetching WhatsApp health:", error);
+            logError("Error fetching WhatsApp health", error);
         } finally {
             setHealthLoading(false);
         }
@@ -163,7 +164,7 @@ export default function NotificationLogsPage() {
             setDeliveryRows(payload.rows || []);
             setDeliverySummary(payload.summary?.counts_by_status || {});
         } catch (error) {
-            console.error("Error fetching delivery tracking:", error);
+            logError("Error fetching delivery tracking", error);
         } finally {
             setDeliveryLoading(false);
         }
@@ -206,7 +207,7 @@ export default function NotificationLogsPage() {
             );
             await fetchLogs();
         } catch (error) {
-            console.error("Run queue error:", error);
+            logError("Run queue error", error);
             setActionError("Failed to run queue");
         } finally {
             setRunningQueue(false);
@@ -232,7 +233,7 @@ export default function NotificationLogsPage() {
             setActionMessage(`Moved ${payload.retried || 0} failed item(s) back to pending.`);
             await fetchLogs();
         } catch (error) {
-            console.error("Retry failed queue error:", error);
+            logError("Retry failed queue error", error);
             setActionError("Failed to retry failed queue items");
         } finally {
             setRetryingFailed(false);
@@ -261,7 +262,7 @@ export default function NotificationLogsPage() {
             await fetchLogs();
             await fetchDeliveryTracking();
         } catch (error) {
-            console.error("Schedule followups error:", error);
+            logError("Schedule followups error", error);
             setActionError("Failed to schedule follow-up notifications");
         } finally {
             setSchedulingFollowups(false);
@@ -285,7 +286,7 @@ export default function NotificationLogsPage() {
             }
             setActionMessage(`Deactivated ${payload.cleaned || 0} expired live share link(s).`);
         } catch (error) {
-            console.error("Cleanup expired shares error:", error);
+            logError("Cleanup expired shares error", error);
             setActionError("Failed to clean expired shares");
         } finally {
             setCleaningShares(false);
@@ -322,7 +323,7 @@ export default function NotificationLogsPage() {
             );
             await fetchWhatsAppHealth();
         } catch (error) {
-            console.error("Normalize driver mapping error:", error);
+            logError("Normalize driver mapping error", error);
             setActionError("Failed to normalize driver phone mapping");
         } finally {
             if (driverId) {
@@ -356,7 +357,7 @@ export default function NotificationLogsPage() {
             await fetchLogs();
             await fetchDeliveryTracking();
         } catch (error) {
-            console.error("Retry delivery error:", error);
+            logError("Retry delivery error", error);
             setActionError("Failed to retry delivery");
         } finally {
             setRetryingQueueId(null);

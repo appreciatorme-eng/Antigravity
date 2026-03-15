@@ -15,6 +15,7 @@ import { PROPOSAL_ADD_ON_SELECT } from '@/lib/business/selects';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { GlassBadge } from '@/components/glass/GlassBadge';
 import { useToast } from '@/components/ui/toast';
+import { logError } from "@/lib/observability/logger";
 
 interface ProposalAddOn {
   id: string;
@@ -84,7 +85,7 @@ export default function ProposalAddOnsSelector({
 
       setProposalAddOns(formatted);
     } catch (error) {
-      console.error('Error loading add-ons:', error);
+      logError('Error loading add-ons', error);
     } finally {
       setLoading(false);
     }
@@ -142,7 +143,7 @@ export default function ProposalAddOnsSelector({
       await syncProposalPrice();
       await loadAddOns();
     } catch (error) {
-      console.error('Error:', error);
+      logError('Proposal add-on selection failed', error);
     } finally {
       setSavingId(null);
     }

@@ -17,6 +17,7 @@ import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { logError } from "@/lib/observability/logger";
 
 interface Inquiry {
     id: string;
@@ -46,7 +47,7 @@ export default function MarketplaceInquiriesPage() {
             const data = await res.json();
             setInquiries(data);
         } catch (error) {
-            console.error("Error fetching inquiries:", error);
+            logError("Error fetching inquiries", error);
         } finally {
             setLoading(false);
         }
@@ -69,7 +70,7 @@ export default function MarketplaceInquiriesPage() {
             });
             void fetchInquiries();
         } catch (error) {
-            console.error("Error marking read:", error);
+            logError("Error marking inquiry as read", error);
         }
     };
 

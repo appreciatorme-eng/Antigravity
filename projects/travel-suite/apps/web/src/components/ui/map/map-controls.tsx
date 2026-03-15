@@ -13,6 +13,7 @@ import { createPortal } from "react-dom";
 import { X, Minus, Plus, Locate, Maximize, Loader2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { logError } from "@/lib/observability/logger";
 
 import { useMap } from "./map-core";
 
@@ -117,7 +118,7 @@ function MapControls({
           setWaitingForLocation(false);
         },
         (error) => {
-          console.error("Error getting location:", error);
+          logError("Error getting location", error);
           setWaitingForLocation(false);
         }
       );
