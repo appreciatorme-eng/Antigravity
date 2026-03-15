@@ -280,7 +280,8 @@ export function TourAssistantPresentation({
                                                                 : "\u2717 Action failed"}
                                                         </span>
                                                         {msg.actionResult.success &&
-                                                        msg.actionResult.data != null &&
+                                                        msg.actionResult.data !== null &&
+                                                        msg.actionResult.data !== undefined &&
                                                         Array.isArray(msg.actionResult.data) &&
                                                         msg.actionResult.data.length > 0 ? (
                                                             <button

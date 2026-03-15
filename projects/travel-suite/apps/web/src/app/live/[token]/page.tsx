@@ -109,9 +109,18 @@ export default function LiveLocationPage() {
                             location: {
                                 latitude,
                                 longitude,
-                                heading: row.heading == null ? null : Number(row.heading),
-                                speed: row.speed == null ? null : Number(row.speed),
-                                accuracy: row.accuracy == null ? null : Number(row.accuracy),
+                                heading:
+                                  row.heading === null || row.heading === undefined
+                                    ? null
+                                    : Number(row.heading),
+                                speed:
+                                  row.speed === null || row.speed === undefined
+                                    ? null
+                                    : Number(row.speed),
+                                accuracy:
+                                  row.accuracy === null || row.accuracy === undefined
+                                    ? null
+                                    : Number(row.accuracy),
                                 recorded_at: String(row.recorded_at || new Date().toISOString()),
                             },
                         };

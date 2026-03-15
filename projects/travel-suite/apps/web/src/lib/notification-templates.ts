@@ -58,7 +58,7 @@ export interface WhatsAppTemplateEnvelope {
 }
 
 function toStringValue(value: unknown, fallback = ""): string {
-    if (value == null) return fallback;
+    if (value === null || value === undefined) return fallback;
     return String(value);
 }
 

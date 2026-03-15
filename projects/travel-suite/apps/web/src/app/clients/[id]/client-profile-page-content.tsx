@@ -661,7 +661,7 @@ export async function renderClientProfilePage({
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2 shrink-0">
-                                                {proposal.total_price != null && (
+                                                {proposal.total_price !== null && proposal.total_price !== undefined && (
                                                     <span className="text-xs font-black text-secondary dark:text-white tabular-nums">
                                                         {formatINR(proposal.total_price)}
                                                     </span>

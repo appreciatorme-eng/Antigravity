@@ -82,8 +82,8 @@ function haversineKm(
  */
 export function estimateTravelTime(from: ActivitySlot, to: ActivitySlot): number {
   if (
-    from.lat == null || from.lng == null ||
-    to.lat == null || to.lng == null
+    from.lat === null || from.lat === undefined || from.lng === null || from.lng === undefined ||
+    to.lat === null || to.lat === undefined || to.lng === null || to.lng === undefined
   ) {
     return 20
   }

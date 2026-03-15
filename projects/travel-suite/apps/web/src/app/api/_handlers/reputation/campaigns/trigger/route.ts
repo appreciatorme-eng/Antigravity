@@ -1,16 +1,17 @@
 import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
-import {
-  REPUTATION_CAMPAIGN_SEND_SELECT,
-  REPUTATION_REVIEW_CAMPAIGN_SELECT,
-} from "@/lib/reputation/selects";
+import { REPUTATION_REVIEW_CAMPAIGN_SELECT } from "@/lib/reputation/selects";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import { randomUUID } from "crypto";
 import type { Database } from "@/lib/database.types";
 
 type CampaignRow = Database["public"]["Tables"]["reputation_review_campaigns"]["Row"];
-type CampaignSendRow = Database["public"]["Tables"]["reputation_campaign_sends"]["Row"];
+
+type InsertedSendRow = Pick<
+  Database["public"]["Tables"]["reputation_campaign_sends"]["Row"],
+  "id" | "trip_id" | "client_phone" | "nps_token" | "client_name"
+>;
 
 /** Fields selected from the clients table -- not all columns exist in generated types */
 type ClientContactFields = {
@@ -29,13 +30,14 @@ export async function POST(req: Request) {
 
     const organizationId = auth.organizationId!;
     const supabase = auth.adminClient;
-    // Fetch active campaigns for this org
+
     const { data: campaignsData, error: campaignsError } = await supabase
       .from("reputation_review_campaigns")
       .select(REPUTATION_REVIEW_CAMPAIGN_SELECT)
       .eq("organization_id", organizationId)
       .eq("status", "active")
       .in("trigger_event", ["trip_completed", "trip_day_2"]);
+
     const campaigns = campaignsData as unknown as CampaignRow[] | null;
 
     if (campaignsError) {
@@ -50,11 +52,8 @@ export async function POST(req: Request) {
 
     for (const campaign of campaigns) {
       const delayHours = campaign.trigger_delay_hours ?? 24;
-      const cutoffTime = new Date(
-        Date.now() - delayHours * 60 * 60 * 1000
-      ).toISOString();
+      const cutoffTime = new Date(Date.now() - delayHours * 60 * 60 * 1000).toISOString();
 
-      // Query trips that completed within the trigger window
       const { data: trips, error: tripsError } = await supabase
         .from("trips")
         .select("id, client_id, organization_id")
@@ -64,10 +63,7 @@ export async function POST(req: Request) {
         .lte("end_date", new Date().toISOString());
 
       if (tripsError) {
-        console.error(
-          `Error querying trips for campaign ${campaign.id}:`,
-          tripsError
-        );
+        console.error(`Error querying trips for campaign ${campaign.id}:`, tripsError);
         continue;
       }
 
@@ -80,14 +76,11 @@ export async function POST(req: Request) {
         new Set(
           trips
             .map((trip) => trip.client_id)
-            .filter((value): value is string => typeof value === "string" && value.length > 0)
-        )
+            .filter((value): value is string => typeof value === "string" && value.length > 0),
+        ),
       );
 
-      const [
-        { data: existingSendsData, error: existingSendsError },
-        clientsResult,
-      ] = await Promise.all([
+      const [{ data: existingSendsData, error: existingSendsError }, clientsResult] = await Promise.all([
         supabase
           .from("reputation_campaign_sends")
           .select("trip_id")
@@ -105,113 +98,103 @@ export async function POST(req: Request) {
       ]);
 
       if (existingSendsError) {
-        console.error(
-          `Error checking existing sends for campaign ${campaign.id}:`,
-          existingSendsError
-        );
+        console.error(`Error checking existing sends for campaign ${campaign.id}:`, existingSendsError);
         continue;
       }
 
       if (clientsResult.error) {
-        console.error(
-          `Error loading clients for campaign ${campaign.id}:`,
-          clientsResult.error
-        );
+        console.error(`Error loading clients for campaign ${campaign.id}:`, clientsResult.error);
         continue;
       }
 
       const existingTripIds = new Set((existingSendsData ?? []).map((send) => send.trip_id));
       const clientById = new Map((clientsResult.data ?? []).map((client) => [client.id, client]));
 
-      for (const trip of trips) {
-        if (existingTripIds.has(trip.id)) {
-          continue;
-        }
+      const sendInsertPayloads = trips
+        .filter((trip) => !existingTripIds.has(trip.id))
+        .map((trip) => {
+          const client = trip.client_id ? clientById.get(trip.client_id) : null;
+          const npsToken = randomUUID();
+          const tokenExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-        // Fetch client details for the send
-        const client = trip.client_id ? clientById.get(trip.client_id) : null;
-        const clientName = client?.name ?? null;
-        const clientPhone = client?.phone ?? null;
-        const clientEmail = client?.email ?? null;
-
-        const npsToken = randomUUID();
-        const tokenExpiresAt = new Date(
-          Date.now() + 7 * 24 * 60 * 60 * 1000
-        ).toISOString();
-
-        const sendPayload = {
-          organization_id: organizationId,
-          campaign_id: campaign.id,
-          trip_id: trip.id,
-          client_id: trip.client_id,
-          client_name: clientName,
-          client_phone: clientPhone,
-          client_email: clientEmail,
-          status: "pending" as const,
-          nps_token: npsToken,
-          nps_token_expires_at: tokenExpiresAt,
-          review_link_clicked: false,
-          review_submitted: false,
-        };
-
-        const { data: sendRowData, error: sendError } = await supabase
-          .from("reputation_campaign_sends")
-          .insert(sendPayload)
-          .select(REPUTATION_CAMPAIGN_SEND_SELECT)
-          .single();
-        const send = sendRowData as unknown as CampaignSendRow | null;
-
-        if (sendError) {
-          console.error(
-            `Error creating send for campaign ${campaign.id}, trip ${trip.id}:`,
-            sendError
-          );
-          continue;
-        }
-
-        // Queue notification for WhatsApp delivery
-        if (send && clientPhone && campaign.channel_sequence?.includes("whatsapp")) {
-          // notification_queue insert uses runtime schema fields not in generated types
-          const notificationPayload = {
+          return {
             organization_id: organizationId,
-            channel: "whatsapp",
-            recipient: clientPhone,
-            template_name: campaign.whatsapp_template_name || "nps_survey",
-            template_data: {
-              client_name: clientName,
-              nps_link: `${process.env.NEXT_PUBLIC_APP_URL || ""}/reputation/nps/${npsToken}`,
-              campaign_name: campaign.name,
-            },
-            status: "pending",
-            related_type: "campaign_send",
-            related_id: send.id,
+            campaign_id: campaign.id,
+            trip_id: trip.id,
+            client_id: trip.client_id,
+            client_name: client?.name ?? null,
+            client_phone: client?.phone ?? null,
+            client_email: client?.email ?? null,
+            status: "pending" as const,
+            nps_token: npsToken,
+            nps_token_expires_at: tokenExpiresAt,
+            review_link_clicked: false,
+            review_submitted: false,
           };
-          const { error: queueError } = await (supabase
-            .from("notification_queue")
-            .insert(notificationPayload as unknown as Database['public']['Tables']['notification_queue']['Insert'])
-          );
+        });
 
-          if (queueError) {
-            console.error(
-              `Error queuing notification for send ${send.id}:`,
-              queueError
-            );
-          } else {
-            // Update the send with the notification queue link
-            const { error: sendUpdateError } = await supabase
-              .from("reputation_campaign_sends")
-              .update({ status: "sent", sent_at: new Date().toISOString() })
-              .eq("id", send.id);
-            if (sendUpdateError) {
-              console.error(
-                `Error updating campaign send ${send.id} after queueing:`,
-                sendUpdateError
-              );
-            }
-          }
+      if (sendInsertPayloads.length === 0) {
+        continue;
+      }
+
+      const { data: insertedSendsData, error: sendInsertError } = await supabase
+        .from("reputation_campaign_sends")
+        .insert(sendInsertPayloads)
+        .select("id,trip_id,client_phone,nps_token,client_name");
+
+      const insertedSends = (insertedSendsData as unknown as InsertedSendRow[] | null) ?? [];
+
+      if (sendInsertError) {
+        console.error(`Error creating sends for campaign ${campaign.id}:`, sendInsertError);
+        continue;
+      }
+
+      totalSendsCreated += insertedSends.length;
+
+      if (!campaign.channel_sequence?.includes("whatsapp")) {
+        continue;
+      }
+
+      const notificationPayloads = insertedSends
+        .filter((send) => typeof send.client_phone === "string" && send.client_phone.length > 0)
+        .map((send) => ({
+          organization_id: organizationId,
+          channel: "whatsapp",
+          recipient: send.client_phone,
+          template_name: campaign.whatsapp_template_name || "nps_survey",
+          template_data: {
+            client_name: send.client_name ?? null,
+            nps_link: `${process.env.NEXT_PUBLIC_APP_URL || ""}/reputation/nps/${send.nps_token}`,
+            campaign_name: campaign.name,
+          },
+          status: "pending",
+          related_type: "campaign_send",
+          related_id: send.id,
+        }));
+
+      if (notificationPayloads.length === 0) {
+        continue;
+      }
+
+      const { error: queueError } = await supabase
+        .from("notification_queue")
+        .insert(notificationPayloads as unknown as Database["public"]["Tables"]["notification_queue"]["Insert"][]);
+
+      if (queueError) {
+        console.error(`Error queueing notifications for campaign ${campaign.id}:`, queueError);
+        continue;
+      }
+
+      const sendIds = insertedSends.map((send) => send.id);
+      if (sendIds.length > 0) {
+        const { error: sendUpdateError } = await supabase
+          .from("reputation_campaign_sends")
+          .update({ status: "sent", sent_at: new Date().toISOString() })
+          .in("id", sendIds);
+
+        if (sendUpdateError) {
+          console.error(`Error updating campaign sends for campaign ${campaign.id}:`, sendUpdateError);
         }
-
-        totalSendsCreated++;
       }
     }
 

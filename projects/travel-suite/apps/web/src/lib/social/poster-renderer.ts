@@ -69,7 +69,13 @@ export async function renderPoster(
       : await sharp({
           create: { width: dims.width, height: dims.height, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 1 } },
         }).png().toBuffer();
-    jsx = buildPremiumTextJsx(input.templateData, input.layoutType, dims, input.brandColor, input.accentColor);
+    jsx = buildPremiumTextJsx(
+      input.templateData,
+      input.layoutType,
+      dims,
+      input.brandColor,
+      input.accentColor,
+    ) as unknown as Parameters<typeof satori>[0];
   } else {
     // Standard path: single photo background
     const slotsFn = MULTI_IMAGE_SLOTS[input.layoutType];
@@ -88,7 +94,7 @@ export async function renderPoster(
     }
 
     const layoutConfig = LAYOUT_CONFIGS[input.layoutType] ?? LAYOUT_CONFIGS.CenterLayout;
-    jsx = buildPosterJsx(input.templateData, layoutConfig, dims);
+    jsx = buildPosterJsx(input.templateData, layoutConfig, dims) as unknown as Parameters<typeof satori>[0];
   }
 
   // Satori renders JSX to SVG

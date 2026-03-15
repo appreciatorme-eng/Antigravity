@@ -538,8 +538,8 @@ function CreateProposalPanel({
   const fields = [
     { icon: <MapPin className="w-3.5 h-3.5" />, label: 'Destination', val: extracted?.destination },
     { icon: <Calendar className="w-3.5 h-3.5" />, label: 'Dates', val: extracted?.travel_dates || (extracted?.trip_start_date ? `${extracted.trip_start_date} → ${extracted.trip_end_date ?? '?'}` : null) },
-    { icon: <Users className="w-3.5 h-3.5" />, label: 'Group', val: extracted?.group_size != null ? `${extracted.group_size} people` : null },
-    { icon: <IndianRupee className="w-3.5 h-3.5" />, label: 'Budget', val: extracted?.budget_inr != null ? `₹${extracted.budget_inr.toLocaleString('en-IN')}` : null },
+    { icon: <Users className="w-3.5 h-3.5" />, label: 'Group', val: extracted?.group_size !== null && extracted?.group_size !== undefined ? `${extracted.group_size} people` : null },
+    { icon: <IndianRupee className="w-3.5 h-3.5" />, label: 'Budget', val: extracted?.budget_inr !== null && extracted?.budget_inr !== undefined ? `₹${extracted.budget_inr.toLocaleString('en-IN')}` : null },
   ].filter((f) => f.val);
 
   return (

@@ -218,7 +218,7 @@ export async function GET(req: NextRequest) {
       if (!trip.driver_id) continue;
       const latest = latestByDriver.get(trip.driver_id);
       const ageMin = minutesSince(latest?.recorded_at || null);
-      if (ageMin == null || ageMin > staleThresholdMinutes) {
+      if (ageMin === null || ageMin === undefined || ageMin > staleThresholdMinutes) {
         staleActiveDriverTrips += 1;
       }
     }
@@ -238,7 +238,7 @@ export async function GET(req: NextRequest) {
           recorded_at: latest?.recorded_at || null,
           age_minutes: ageMinutes,
           status:
-            ageMinutes != null && ageMinutes <= staleThresholdMinutes
+            ageMinutes !== null && ageMinutes !== undefined && ageMinutes <= staleThresholdMinutes
               ? "fresh"
               : "stale",
         };

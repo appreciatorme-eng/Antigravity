@@ -22,7 +22,7 @@ function formatDate(dateString: string): string {
   });
 }
 
-// TODO(blog,S33-A17-3): Replace this regex renderer with a structured markdown pipeline if the blog surface expands.
+// Follow-up(blog,S33-A17-3): replace this regex renderer with a structured markdown pipeline if the blog surface expands.
 function renderMarkdownContent(content: string): string {
   return content
     // Headings: ### before ## to avoid double-matching

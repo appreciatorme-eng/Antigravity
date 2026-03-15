@@ -684,7 +684,7 @@ export default function NotificationLogsPage() {
                                                     variant={item.status === "fresh" ? "success" : "danger"}
                                                     size="sm"
                                                 >
-                                                    {item.age_minutes == null ? "No ping" : `${item.age_minutes}m`}
+                                                    {item.age_minutes === null || item.age_minutes === undefined ? "No ping" : `${item.age_minutes}m`}
                                                 </GlassBadge>
                                             </div>
                                         ))}

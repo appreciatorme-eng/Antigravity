@@ -24,9 +24,21 @@ interface TripRow {
 }
 
 interface ClientRow {
+  id: string;
   name: string | null;
   phone: string | null;
   email: string | null;
+}
+
+interface ExistingSendRow {
+  trip_id: string;
+}
+
+interface InsertedSendRow {
+  id: string;
+  trip_id: string;
+  client_phone: string | null;
+  client_email: string | null;
 }
 
 type QueryErrorLike = { message: string } | null;
@@ -48,7 +60,7 @@ type UntypedSupabase = {
 
 export async function triggerCampaignSendsForOrg(
   supabase: SupabaseClient,
-  organizationId: string
+  organizationId: string,
 ): Promise<CampaignTriggerResult> {
   const errors: string[] = [];
   let sendsCreated = 0;
@@ -57,7 +69,7 @@ export async function triggerCampaignSendsForOrg(
   const { data: campaigns, error: campaignsError } = await ((rawSupabase
     .from("reputation_review_campaigns")
     .select(
-      "id, name, trigger_delay_hours, channel_sequence, whatsapp_template_name, email_template_name"
+      "id, name, trigger_delay_hours, channel_sequence, whatsapp_template_name, email_template_name",
     )
     .eq("organization_id", organizationId)
     .eq("status", "active")
@@ -68,7 +80,7 @@ export async function triggerCampaignSendsForOrg(
 
   if (campaignsError) {
     errors.push(
-      `Campaigns fetch failed for org ${organizationId}: ${campaignsError.message}`
+      `Campaigns fetch failed for org ${organizationId}: ${campaignsError.message}`,
     );
     return { sends_created: 0, errors };
   }
@@ -79,9 +91,7 @@ export async function triggerCampaignSendsForOrg(
 
   for (const campaign of campaigns) {
     const delayHours = campaign.trigger_delay_hours ?? 24;
-    const cutoffTime = new Date(
-      Date.now() - delayHours * 60 * 60 * 1000
-    ).toISOString();
+    const cutoffTime = new Date(Date.now() - delayHours * 60 * 60 * 1000).toISOString();
     const now = new Date().toISOString();
 
     const { data: trips, error: tripsError } = await supabase
@@ -93,149 +103,185 @@ export async function triggerCampaignSendsForOrg(
       .lte("end_date", now);
 
     if (tripsError) {
+      errors.push(`Trips query failed for campaign ${campaign.id}: ${tripsError.message}`);
+      continue;
+    }
+
+    const tripRows = (trips as TripRow[] | null) ?? [];
+    if (tripRows.length === 0) {
+      continue;
+    }
+
+    const tripIds = tripRows.map((trip) => trip.id);
+
+    const { data: existingSends, error: existingSendsError } = await ((rawSupabase
+      .from("reputation_campaign_sends")
+      .select("trip_id")
+      .eq("campaign_id", campaign.id)
+      .in("trip_id", tripIds)) as unknown as Promise<{
+      data: ExistingSendRow[] | null;
+      error: QueryErrorLike;
+    }>);
+
+    if (existingSendsError) {
       errors.push(
-        `Trips query failed for campaign ${campaign.id}: ${tripsError.message}`
+        `Existing send lookup failed for campaign ${campaign.id}: ${existingSendsError.message}`,
       );
       continue;
     }
 
-    if (!trips || trips.length === 0) {
-      continue;
-    }
+    const existingTripIds = new Set((existingSends ?? []).map((row) => row.trip_id));
 
-    for (const trip of trips as TripRow[]) {
-      const { data: existingSend } = await ((rawSupabase
-        .from("reputation_campaign_sends")
-        .select("id")
-        .eq("campaign_id", campaign.id)
-        .eq("trip_id", trip.id)
-        .limit(1)
-        .maybeSingle()) as unknown as Promise<{
-        data: { id: string } | null;
+    const clientIds = Array.from(
+      new Set(
+        tripRows
+          .map((trip) => trip.client_id)
+          .filter((value): value is string => typeof value === "string" && value.length > 0),
+      ),
+    );
+
+    let clientById = new Map<string, ClientRow>();
+    if (clientIds.length > 0) {
+      const { data: clients, error: clientsError } = await ((rawSupabase
+        .from("clients")
+        .select("id, name, phone, email")
+        .in("id", clientIds)) as unknown as Promise<{
+        data: ClientRow[] | null;
         error: QueryErrorLike;
       }>);
 
-      if (existingSend) {
+      if (clientsError) {
+        errors.push(
+          `Client lookup failed for campaign ${campaign.id}: ${clientsError.message}`,
+        );
         continue;
       }
 
-      let clientName: string | null = null;
-      let clientPhone: string | null = null;
-      let clientEmail: string | null = null;
+      clientById = new Map((clients ?? []).map((client) => [client.id, client]));
+    }
 
-      if (trip.client_id) {
-        const { data: client } = await supabase
-          .from("clients")
-          .select("name, phone, email")
-          .eq("id", trip.client_id)
-          .single();
-
-        if (client) {
-          const c = client as ClientRow;
-          clientName = c.name ?? null;
-          clientPhone = c.phone ?? null;
-          clientEmail = c.email ?? null;
-        }
+    const sendPayloadByTripId = new Map<
+      string,
+      {
+        npsToken: string;
+        clientName: string | null;
       }
+    >();
 
-      const npsToken = randomUUID();
-      const tokenExpiresAt = new Date(
-        Date.now() + 7 * 24 * 60 * 60 * 1000
-      ).toISOString();
-      const npsLink = `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/reputation/nps/${npsToken}`;
+    const sendInsertPayloads = tripRows
+      .filter((trip) => !existingTripIds.has(trip.id))
+      .map((trip) => {
+        const client = trip.client_id ? clientById.get(trip.client_id) : null;
+        const npsToken = randomUUID();
+        const tokenExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
-      const { data: send, error: sendError } = await ((rawSupabase
-        .from("reputation_campaign_sends")
-        .insert({
+        sendPayloadByTripId.set(trip.id, {
+          npsToken,
+          clientName: client?.name ?? null,
+        });
+
+        return {
           organization_id: organizationId,
           campaign_id: campaign.id,
           trip_id: trip.id,
           client_id: trip.client_id,
-          client_name: clientName,
-          client_phone: clientPhone,
-          client_email: clientEmail,
+          client_name: client?.name ?? null,
+          client_phone: client?.phone ?? null,
+          client_email: client?.email ?? null,
           status: "pending",
           nps_token: npsToken,
           nps_token_expires_at: tokenExpiresAt,
           review_link_clicked: false,
           review_submitted: false,
-        })
-        .select("id")
-        .single()) as unknown as Promise<{
-        data: { id: string } | null;
-        error: QueryErrorLike;
-      }>);
+        };
+      });
 
-      if (sendError || !send) {
-        errors.push(
-          `Send creation failed (campaign ${campaign.id} / trip ${trip.id}): ${sendError?.message ?? "unknown error"}`
-        );
+    if (sendInsertPayloads.length === 0) {
+      continue;
+    }
+
+    const { data: insertedSends, error: sendInsertError } = await ((rawSupabase
+      .from("reputation_campaign_sends")
+      .insert(sendInsertPayloads)
+      .select("id, trip_id, client_phone, client_email")) as unknown as Promise<{
+      data: InsertedSendRow[] | null;
+      error: QueryErrorLike;
+    }>);
+
+    if (sendInsertError || !insertedSends) {
+      errors.push(
+        `Send creation failed for campaign ${campaign.id}: ${sendInsertError?.message ?? "unknown error"}`,
+      );
+      continue;
+    }
+
+    sendsCreated += insertedSends.length;
+
+    const channelSequence: string[] = campaign.channel_sequence ?? [];
+    if (channelSequence.length === 0) {
+      continue;
+    }
+
+    const queueInserts: Array<Record<string, unknown>> = [];
+    const queuedSendIds = new Set<string>();
+
+    for (const send of insertedSends) {
+      const sendPayload = sendPayloadByTripId.get(send.trip_id);
+      if (!sendPayload) {
         continue;
       }
 
-      const channelSequence: string[] = campaign.channel_sequence ?? [];
       const templateData = {
-        client_name: clientName,
-        nps_link: npsLink,
+        client_name: sendPayload.clientName,
+        nps_link: `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/reputation/nps/${sendPayload.npsToken}`,
         campaign_name: campaign.name,
       };
 
-      let notificationQueued = false;
-
-      if (clientPhone && channelSequence.includes("whatsapp")) {
-        const { error: waError } = await supabase
-          .from("notification_queue")
-          .insert({
-            organization_id: organizationId,
-            channel: "whatsapp",
-            recipient: clientPhone,
-            template_name: campaign.whatsapp_template_name ?? "nps_survey",
-            template_data: templateData,
-            status: "pending",
-            related_type: "campaign_send",
-            related_id: send.id,
-          });
-
-        if (waError) {
-          errors.push(
-            `WhatsApp queue failed for send ${send.id}: ${waError.message}`
-          );
-        } else {
-          notificationQueued = true;
-        }
+      if (send.client_phone && channelSequence.includes("whatsapp")) {
+        queueInserts.push({
+          organization_id: organizationId,
+          channel: "whatsapp",
+          recipient: send.client_phone,
+          template_name: campaign.whatsapp_template_name ?? "nps_survey",
+          template_data: templateData,
+          status: "pending",
+          related_type: "campaign_send",
+          related_id: send.id,
+        });
+        queuedSendIds.add(send.id);
       }
 
-      if (clientEmail && channelSequence.includes("email")) {
-        const { error: emailError } = await supabase
-          .from("notification_queue")
-          .insert({
-            organization_id: organizationId,
-            channel: "email",
-            recipient: clientEmail,
-            template_name: campaign.email_template_name ?? "nps_survey_email",
-            template_data: templateData,
-            status: "pending",
-            related_type: "campaign_send",
-            related_id: send.id,
-          });
-
-        if (emailError) {
-          errors.push(
-            `Email queue failed for send ${send.id}: ${emailError.message}`
-          );
-        } else {
-          notificationQueued = true;
-        }
+      if (send.client_email && channelSequence.includes("email")) {
+        queueInserts.push({
+          organization_id: organizationId,
+          channel: "email",
+          recipient: send.client_email,
+          template_name: campaign.email_template_name ?? "nps_survey_email",
+          template_data: templateData,
+          status: "pending",
+          related_type: "campaign_send",
+          related_id: send.id,
+        });
+        queuedSendIds.add(send.id);
       }
+    }
 
-      if (notificationQueued) {
-        await rawSupabase
-          .from("reputation_campaign_sends")
-          .update({ status: "sent", sent_at: new Date().toISOString() })
-          .eq("id", send.id);
+    if (queueInserts.length > 0) {
+      const { error: queueError } = await supabase
+        .from("notification_queue")
+        .insert(queueInserts);
+
+      if (queueError) {
+        errors.push(`Queue insert failed for campaign ${campaign.id}: ${queueError.message}`);
       }
+    }
 
-      sendsCreated++;
+    const sendIdsToMarkSent = Array.from(queuedSendIds);
+    if (sendIdsToMarkSent.length > 0) {
+      await rawSupabase
+        .from("reputation_campaign_sends")
+        .update({ status: "sent", sent_at: new Date().toISOString() })
+        .in("id", sendIdsToMarkSent);
     }
   }
 

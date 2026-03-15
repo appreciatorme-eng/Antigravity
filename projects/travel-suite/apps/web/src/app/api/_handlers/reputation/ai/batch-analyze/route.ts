@@ -47,7 +47,10 @@ interface BatchReviewRow {
 }
 
 function buildAnalysisPrompt(text: string, rating?: number): string {
-  const ratingContext = rating != null ? `\nThe reviewer gave a rating of ${rating}/5.` : "";
+  const ratingContext =
+    rating !== null && rating !== undefined
+      ? `\nThe reviewer gave a rating of ${rating}/5.`
+      : "";
 
   return `You are a travel industry review analyst. Analyze the following customer review and return a JSON object with exactly these fields:
 

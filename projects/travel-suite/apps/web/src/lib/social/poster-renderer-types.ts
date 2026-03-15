@@ -2,8 +2,13 @@
 // Shared types for poster renderer modules
 // ---------------------------------------------------------------------------
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type SatoriNode = any;
+export type SatoriNode =
+  | Record<string, unknown>
+  | string
+  | number
+  | boolean
+  | null
+  | SatoriNode[];
 
 export interface LayoutConfig {
   headerPosition: "top-center" | "top-left" | "none";

@@ -252,7 +252,7 @@ const getPendingItems: ActionDefinition = {
         sections.push("\n**Expiring Proposals (next 3 days):**");
         for (const row of expiringRows) {
           const price =
-            row.total_price != null ? ` -- ${formatINR(row.total_price)}` : "";
+            row.total_price !== null && row.total_price !== undefined ? ` -- ${formatINR(row.total_price)}` : "";
           sections.push(
             `- "${row.title ?? "Untitled"}"${price} (expires ${row.expires_at ?? "N/A"})`,
           );
@@ -387,12 +387,14 @@ const getKpiSnapshot: ActionDefinition = {
       const proposalRows = proposalsResult.data ?? [];
       const sentOrApproved = proposalRows.filter(
         (p): p is typeof p & { readonly status: string } =>
-          p.status != null &&
+          p.status !== null &&
+          p.status !== undefined &&
           ["sent", "approved", "accepted", "draft"].includes(p.status),
       );
       const approved = proposalRows.filter(
         (p): p is typeof p & { readonly status: string } =>
-          p.status != null &&
+          p.status !== null &&
+          p.status !== undefined &&
           ["approved", "accepted"].includes(p.status),
       );
       const conversionRate =

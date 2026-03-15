@@ -44,11 +44,11 @@ function parseInlineMarkdown(line: string): React.ReactNode[] {
         if (match.index > lastIndex) {
             nodes.push(line.slice(lastIndex, match.index));
         }
-        if (match[2] != null) {
+        if (match[2] !== null && match[2] !== undefined) {
             nodes.push(<strong key={match.index}>{match[2]}</strong>);
-        } else if (match[3] != null) {
+        } else if (match[3] !== null && match[3] !== undefined) {
             nodes.push(<em key={match.index}>{match[3]}</em>);
-        } else if (match[4] != null) {
+        } else if (match[4] !== null && match[4] !== undefined) {
             nodes.push(
                 <code
                     key={match.index}
@@ -58,7 +58,12 @@ function parseInlineMarkdown(line: string): React.ReactNode[] {
                     {match[4]}
                 </code>,
             );
-        } else if (match[5] != null && match[6] != null) {
+        } else if (
+            match[5] !== null &&
+            match[5] !== undefined &&
+            match[6] !== null &&
+            match[6] !== undefined
+        ) {
             nodes.push(
                 <a
                     key={match.index}

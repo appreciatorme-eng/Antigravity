@@ -1,55 +1,54 @@
 import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient as createServerClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 
-const supabaseAdmin = createAdminClient();
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-async function getAuthUserId(req: Request): Promise<string | null> {
-  const authHeader = req.headers.get("authorization");
-  const token = authHeader?.replace("Bearer ", "");
-
-  if (token) {
-    const { data, error } = await supabaseAdmin.auth.getUser(token);
-    if (!error && data?.user) return data.user.id;
-  } else {
-    const serverClient = await createServerClient();
-    const { data: { user } } = await serverClient.auth.getUser();
-    return user?.id || null;
-  }
-  return null;
-}
-
-export async function GET(req: Request, { params }: { params: Promise<{ id?: string }> }) {
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ id?: string }> },
+) {
   try {
-    const userId = await getAuthUserId(req);
-    if (!userId) {
-      return apiError("Unauthorized", 401);
+    const admin = await requireAdmin(req, { requireOrganization: true });
+    if (!admin.ok) {
+      return admin.response;
     }
 
     const { id: tripId } = await params;
-    if (!tripId) {
-      return apiError("Missing trip id", 400);
+    if (!tripId || !UUID_REGEX.test(tripId)) {
+      return apiError("Invalid trip id", 400);
     }
 
-    // Fetch from notification_logs
-    const { data: logs } = await supabaseAdmin
+    let tripScopeQuery = admin.adminClient
+      .from("trips")
+      .select("id")
+      .eq("id", tripId);
+
+    if (!admin.isSuperAdmin) {
+      tripScopeQuery = tripScopeQuery.eq("organization_id", admin.organizationId ?? "");
+    }
+
+    const { data: scopedTrip, error: scopedTripError } = await tripScopeQuery.maybeSingle();
+
+    if (scopedTripError || !scopedTrip) {
+      return apiError("Trip not found", 404);
+    }
+
+    const { data: logs } = await admin.adminClient
       .from("notification_logs")
       .select("id, notification_type, title, body, status, sent_at, created_at")
       .eq("trip_id", tripId)
       .order("created_at", { ascending: false })
       .limit(50);
 
-    // Fetch from notification_queue
-    const { data: queue } = await supabaseAdmin
+    const { data: queue } = await admin.adminClient
       .from("notification_queue")
       .select("id, notification_type, status, scheduled_for, created_at, payload, channel_preference")
       .eq("trip_id", tripId)
       .order("created_at", { ascending: false })
       .limit(50);
 
-    // Combine and normalize
     const fromLogs = (logs || []).map((log) => ({
       id: log.id,
       source: "log" as const,
@@ -79,7 +78,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
       };
     });
 
-    // Merge and sort by created_at descending
     const notifications = [...fromLogs, ...fromQueue].sort((a, b) => {
       const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
       const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;

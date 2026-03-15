@@ -251,7 +251,7 @@ export default function AnnouncementsPage() {
                             <div className="flex items-center justify-between text-xs text-gray-500">
                                 <div className="flex gap-3">
                                     <span>Target: {ann.target_segment}</span>
-                                    {ann.recipient_count != null && <span>{ann.recipient_count} recipients</span>}
+                                    {ann.recipient_count !== null && ann.recipient_count !== undefined && <span>{ann.recipient_count} recipients</span>}
                                     <span>{ann.sent_at ? `Sent ${timeAgo(ann.sent_at)}` : timeAgo(ann.created_at)}</span>
                                 </div>
                                 {ann.status === "draft" && (

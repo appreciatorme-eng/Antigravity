@@ -54,7 +54,9 @@ const MilestoneSchema = z.object({
   due_date:       z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "due_date must be YYYY-MM-DD"),
   sort_order:     z.number().int().min(0).optional(),
 }).refine(
-  (m) => m.amount_percent != null || m.amount_fixed != null,
+  (m) =>
+    (m.amount_percent !== null && m.amount_percent !== undefined) ||
+    (m.amount_fixed !== null && m.amount_fixed !== undefined),
   { message: "Each milestone must have amount_percent or amount_fixed" }
 );
 
@@ -329,9 +331,9 @@ async function handleSendMilestone(
   const totalAmountInr = Number(proposal.client_selected_price ?? proposal.total_price ?? 0);
 
   let milestoneAmountInr: number;
-  if (milestone.amount_percent != null) {
+  if (milestone.amount_percent !== null && milestone.amount_percent !== undefined) {
     milestoneAmountInr = Math.round((milestone.amount_percent / 100) * totalAmountInr * 100) / 100;
-  } else if (milestone.amount_fixed != null) {
+  } else if (milestone.amount_fixed !== null && milestone.amount_fixed !== undefined) {
     milestoneAmountInr = Number(milestone.amount_fixed);
   } else {
     return apiError("Milestone has no amount configured", 400);

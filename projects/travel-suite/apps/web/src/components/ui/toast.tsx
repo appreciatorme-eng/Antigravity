@@ -170,7 +170,7 @@ export function useToast() {
 }
 
 function stringifyAlertMessage(message: unknown): string {
-    if (message == null) return "Action completed";
+    if (message === null || message === undefined) return "Action completed";
     if (typeof message === "string") return message;
     if (typeof message === "number" || typeof message === "boolean") return String(message);
     try {

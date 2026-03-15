@@ -38,10 +38,10 @@ export function TripCostEditor({
         .then((data) => {
           if (data.category) setCategory(data.category);
           if (data.vendor_name) setVendorName(data.vendor_name);
-          if (data.cost_amount != null) setCostAmount(String(data.cost_amount));
-          if (data.price_amount != null) setPriceAmount(String(data.price_amount));
-          if (data.commission_pct != null) setCommissionPct(String(data.commission_pct));
-          if (data.pax_count != null) setPaxCount(String(data.pax_count));
+          if (data.cost_amount !== null && data.cost_amount !== undefined) setCostAmount(String(data.cost_amount));
+          if (data.price_amount !== null && data.price_amount !== undefined) setPriceAmount(String(data.price_amount));
+          if (data.commission_pct !== null && data.commission_pct !== undefined) setCommissionPct(String(data.commission_pct));
+          if (data.pax_count !== null && data.pax_count !== undefined) setPaxCount(String(data.pax_count));
           if (data.notes) setNotes(data.notes);
         })
         .catch(() => {});
