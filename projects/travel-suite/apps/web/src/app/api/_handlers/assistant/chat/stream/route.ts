@@ -16,6 +16,7 @@ import { saveConversationMessages } from "@/lib/assistant/conversation-store";
 import { getRecentMemory } from "@/lib/assistant/conversation-memory";
 import { getActiveWorkflow, startWorkflow, processWorkflowStep } from "@/lib/assistant/workflows/engine";
 import { findWorkflow, ALL_WORKFLOWS } from "@/lib/assistant/workflows/definitions";
+import { normalizeClientConversationHistory } from "@/lib/assistant/history-validation";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { safeErrorMessage } from "@/lib/security/safe-error";
@@ -37,7 +38,7 @@ const TEMPERATURE = 0.3;
 // ---------------------------------------------------------------------------
 
 interface ChatMessage {
-  readonly role: string;
+  readonly role: ConversationMessage["role"];
   readonly content: string;
   readonly tool_call_id?: string;
   readonly name?: string;
@@ -626,12 +627,15 @@ export async function POST(req: Request) {
     }
 
     // 3. Parse request
-    const body = (await req.json()) as {
-      message?: string;
-      history?: Array<{ role: string; content: string }>;
-    };
+    const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
+    if (!body) {
+      return new Response(JSON.stringify({ error: "Invalid JSON in request body" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
-    const { message, history = [] } = body;
+    const message = body.message;
 
     if (!message || typeof message !== "string" || message.trim().length === 0) {
       return new Response(JSON.stringify({ error: "Message is required" }), {
@@ -649,12 +653,14 @@ export async function POST(req: Request) {
       });
     }
 
-    const normalizedHistory: ConversationMessage[] = history
-      .slice(-20)
-      .map((msg) => ({
-        role: msg.role as ConversationMessage["role"],
-        content: msg.content,
-      }));
+    const normalizedHistoryResult = normalizeClientConversationHistory(body.history);
+    if (!normalizedHistoryResult.ok) {
+      return new Response(JSON.stringify({ error: normalizedHistoryResult.error }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    const normalizedHistory = normalizedHistoryResult.history;
 
     // 4. Create SSE stream
     const sessionId = `s-${Date.now().toString(36)}-${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`;

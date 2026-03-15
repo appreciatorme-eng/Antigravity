@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, lazy } from "react";
+import type { Application } from "@splinetool/runtime";
 
 const Spline = lazy(() => import("@splinetool/react-spline"));
 
@@ -15,8 +16,7 @@ function SplineFallback() {
 interface SplineSceneProps {
   sceneUrl: string;
   className?: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Spline app instance type is not exported from @splinetool/react-spline
-  onLoad?: (splineApp: any) => void;
+  onLoad?: (splineApp: Application) => void;
 }
 
 export function SplineScene({ sceneUrl, className = "", onLoad }: SplineSceneProps) {

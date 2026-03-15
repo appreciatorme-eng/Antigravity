@@ -9,8 +9,6 @@ import {
 import { paymentService } from "@/lib/payments/payment-service";
 import type { Database } from "@/lib/database.types";
 import { requireAdmin } from "@/lib/auth/admin";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 
 const createListingSubscriptionSchema = z.object({
   planId: z.enum(["featured_lite", "featured_pro", "top_placement"]),
@@ -26,6 +24,10 @@ type MarketplaceListingSubscriptionSummary = Omit<
   MarketplaceListingSubscriptionRow,
   "created_by" | "razorpay_order_id" | "razorpay_payment_id"
 >;
+type AdminClient = Extract<
+  Awaited<ReturnType<typeof requireAdmin>>,
+  { ok: true }
+>["adminClient"];
 
 const MARKETPLACE_LISTING_SUBSCRIPTION_SELECT = [
   "amount_paise",
@@ -46,33 +48,8 @@ const MARKETPLACE_LISTING_SUBSCRIPTION_SELECT = [
   "updated_at",
 ].join(", ");
 
-async function getAuthContext() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    return { user: null, profile: null };
-  }
-
-  const admin = createAdminClient();
-  const { data: profile, error: profileError } = await admin
-    .from("profiles")
-    .select("id, role, organization_id")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (profileError || !profile?.organization_id) {
-    return { user: null, profile: null };
-  }
-
-  return { user, profile };
-}
-
 async function normalizeCurrentSubscription(
-  admin: ReturnType<typeof createAdminClient>,
+  admin: AdminClient,
   organizationId: string,
 ): Promise<MarketplaceListingSubscriptionRow | null> {
   const { data, error } = await admin
@@ -112,7 +89,7 @@ async function normalizeCurrentSubscription(
       throw updateError;
     }
 
-    await admin
+    const { error: profileUpdateError } = await admin
       .from("marketplace_profiles")
       .update({
         listing_tier: "free",
@@ -122,6 +99,9 @@ async function normalizeCurrentSubscription(
         updated_at: new Date().toISOString(),
       })
       .eq("organization_id", organizationId);
+    if (profileUpdateError) {
+      throw profileUpdateError;
+    }
 
     return expired;
   }
@@ -153,18 +133,18 @@ function sanitizeSubscription(
   };
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const { user, profile } = await getAuthContext();
-    if (!user || !profile) {
-      return apiError("Unauthorized", 401);
+    const auth = await requireAdmin(request, { requireOrganization: true });
+    if (!auth.ok) {
+      return auth.response;
     }
-    const organizationId = profile.organization_id;
+    const organizationId = auth.organizationId;
     if (!organizationId) {
       return apiError("Organization not found", 404);
     }
 
-    const admin = createAdminClient();
+    const admin = auth.adminClient;
     const [subscription, marketplaceProfile] = await Promise.all([
       normalizeCurrentSubscription(admin, organizationId),
       admin

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { SplineScene } from '@/components/marketing/SplineScene';
+import type { Application } from '@splinetool/runtime';
 
 /**
  * Static placeholder screens — arranged in a 2×3 grid layout
@@ -38,15 +39,14 @@ export function HeroScreens({ onSplineReady }: HeroScreensProps) {
     '/marketing/invoicing_ui_mockup_1773062297390.png',
   ];
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Spline app instance has no public type definition
-  const onSplineLoad = async (splineApp: any) => {
+  const onSplineLoad = async (splineApp: Application) => {
     // 1. Hide unwanted Spline text/logos
     const targetsToHide = [
       'PROJECT NAME', 'PROMO', 'your logo+text',
       'P', 'E', 'A', 'R', 'L', 'PEARL',
     ];
     targetsToHide.forEach(name => {
-      const obj = splineApp.findObjectByName(name);
+      const obj = splineApp.findObjectByName(name) as ({ text?: string; visible?: boolean } | undefined);
       if (obj && typeof obj.text !== 'undefined') obj.text = '';
       if (obj) obj.visible = false;
     });
@@ -58,9 +58,10 @@ export function HeroScreens({ onSplineReady }: HeroScreensProps) {
     for (let i = 1; i <= 6; i++) {
       const panel = splineApp.findObjectByName(`1700x950 ${i}`);
       if (panel?.material?.layers) {
-        panel.material.layers.forEach((layer: Record<string, unknown>) => {
-          if (layer.type === 'texture' || layer.type === 'matcap') {
-            promises.push((layer.updateTexture as (url: string) => Promise<void>)(window.location.origin + mockups[i - 1]));
+        panel.material.layers.forEach((layer) => {
+          const textureLayer = layer as { type?: string; updateTexture?: (url: string) => Promise<void> };
+          if ((textureLayer.type === 'texture' || textureLayer.type === 'matcap') && textureLayer.updateTexture) {
+            promises.push(textureLayer.updateTexture(window.location.origin + mockups[i - 1]));
           }
         });
       }

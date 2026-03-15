@@ -37,7 +37,7 @@ export async function POST(req: Request) {
         }
 
         const supabaseAdmin = admin.adminClient;
-        await supabaseAdmin.from('organization_settings').upsert(
+        const { error: upsertError } = await supabaseAdmin.from('organization_settings').upsert(
             {
                 organization_id: admin.organizationId,
                 tripadvisor_location_id: locationId,
@@ -46,6 +46,9 @@ export async function POST(req: Request) {
             },
             { onConflict: 'organization_id' }
         );
+        if (upsertError) {
+            return apiError('Failed to save TripAdvisor settings', 500);
+        }
 
         return NextResponse.json({
             success: true,

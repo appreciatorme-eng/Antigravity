@@ -147,7 +147,7 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
                             <h3 className="text-sm font-bold text-slate-800 dark:text-white truncate tracking-tight leading-tight group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
                                 {itinerary.trip_title || itinerary.destination || "Untitled Itinerary"}
                             </h3>
-                            <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center gap-1.5 shrink-0">
                                 <span className={cn(
                                     "flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[9px] font-black uppercase tracking-widest",
                                     stageConfig.color, stageConfig.bg, stageConfig.borderColor,
@@ -159,6 +159,7 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
                                 {itinerary.trip_id && (
                                     <Link
                                         href={`/trips/${itinerary.trip_id}`}
+                                        onClick={(e) => e.stopPropagation()}
                                         className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors text-[9px] font-black uppercase tracking-widest border border-emerald-200 dark:border-emerald-800/40"
                                     >
                                         <ExternalLink className="w-2.5 h-2.5" />
@@ -309,7 +310,7 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
                 )}
 
                 {/* Client Feedback Panel */}
-                <div onClick={(e) => e.stopPropagation()}>
+                <div>
                     <ClientFeedbackPanel
                         itineraryId={itinerary.id}
                         comments={comments}

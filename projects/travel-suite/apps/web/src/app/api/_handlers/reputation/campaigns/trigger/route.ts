@@ -13,7 +13,12 @@ type CampaignRow = Database["public"]["Tables"]["reputation_review_campaigns"]["
 type CampaignSendRow = Database["public"]["Tables"]["reputation_campaign_sends"]["Row"];
 
 /** Fields selected from the clients table -- not all columns exist in generated types */
-type ClientContactFields = { name: string | null; phone: string | null; email: string | null };
+type ClientContactFields = {
+  id: string;
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+};
 
 export async function POST(req: Request) {
   try {
@@ -70,39 +75,64 @@ export async function POST(req: Request) {
         continue;
       }
 
-      for (const trip of trips) {
-        // Dedup: check if a send already exists for this campaign + trip
-        const { data: existingSend } = await supabase
-          .from("reputation_campaign_sends")
-          .select("id")
-          .eq("campaign_id", campaign.id)
-          .eq("trip_id", trip.id)
-          .limit(1)
-          .maybeSingle();
+      const tripIds = trips.map((trip) => trip.id);
+      const clientIds = Array.from(
+        new Set(
+          trips
+            .map((trip) => trip.client_id)
+            .filter((value): value is string => typeof value === "string" && value.length > 0)
+        )
+      );
 
-        if (existingSend) {
+      const [
+        { data: existingSendsData, error: existingSendsError },
+        clientsResult,
+      ] = await Promise.all([
+        supabase
+          .from("reputation_campaign_sends")
+          .select("trip_id")
+          .eq("campaign_id", campaign.id)
+          .in("trip_id", tripIds),
+        clientIds.length > 0
+          ? (supabase
+              .from("clients")
+              .select("id, name, phone, email")
+              .in("id", clientIds) as unknown as Promise<{
+              data: ClientContactFields[] | null;
+              error: unknown;
+            }>)
+          : Promise.resolve({ data: [] as ClientContactFields[], error: null }),
+      ]);
+
+      if (existingSendsError) {
+        console.error(
+          `Error checking existing sends for campaign ${campaign.id}:`,
+          existingSendsError
+        );
+        continue;
+      }
+
+      if (clientsResult.error) {
+        console.error(
+          `Error loading clients for campaign ${campaign.id}:`,
+          clientsResult.error
+        );
+        continue;
+      }
+
+      const existingTripIds = new Set((existingSendsData ?? []).map((send) => send.trip_id));
+      const clientById = new Map((clientsResult.data ?? []).map((client) => [client.id, client]));
+
+      for (const trip of trips) {
+        if (existingTripIds.has(trip.id)) {
           continue;
         }
 
         // Fetch client details for the send
-        let clientName: string | null = null;
-        let clientPhone: string | null = null;
-        let clientEmail: string | null = null;
-
-        if (trip.client_id) {
-          // clients table select uses fields not fully represented in generated types
-          const { data: client } = await (supabase
-            .from("clients")
-            .select("name, phone, email")
-            .eq("id", trip.client_id)
-            .single() as unknown as Promise<{ data: ClientContactFields | null; error: unknown }>);
-
-          if (client) {
-            clientName = client.name ?? null;
-            clientPhone = client.phone ?? null;
-            clientEmail = client.email ?? null;
-          }
-        }
+        const client = trip.client_id ? clientById.get(trip.client_id) : null;
+        const clientName = client?.name ?? null;
+        const clientPhone = client?.phone ?? null;
+        const clientEmail = client?.email ?? null;
 
         const npsToken = randomUUID();
         const tokenExpiresAt = new Date(
@@ -168,10 +198,16 @@ export async function POST(req: Request) {
             );
           } else {
             // Update the send with the notification queue link
-            await supabase
+            const { error: sendUpdateError } = await supabase
               .from("reputation_campaign_sends")
               .update({ status: "sent", sent_at: new Date().toISOString() })
               .eq("id", send.id);
+            if (sendUpdateError) {
+              console.error(
+                `Error updating campaign send ${send.id} after queueing:`,
+                sendUpdateError
+              );
+            }
           }
         }
 
