@@ -15,5 +15,28 @@
     "clear": "Clear",
     "error": "Error",
     "success": "Success"
+  },
+  "settings": {
+    "title": "Settings",
+    "description": "Manage your organization preferences, profile, and integrations",
+    "tabs": {
+      "organization": "Organization",
+      "profile": "Profile",
+      "notifications": "Notifications",
+      "integrations": "Integrations",
+      "billing": "Billing",
+      "security": "Security",
+      "team": "Team"
+    },
+    "messages": {
+      "whatsappDisconnected": "WhatsApp disconnected successfully",
+      "whatsappDisconnectFailed": "Failed to disconnect WhatsApp",
+      "timezoneSaved": "Timezone saved",
+      "timezoneSavedDescription": "Your timezone has been updated to {timezone}",
+      "timezoneSaveFailed": "Failed to save timezone",
+      "timezoneSaveFailedDescription": "Please try again",
+      "settingsSaved": "Settings saved",
+      "settingsSavedDescription": "Your changes have been saved successfully"
+    }
   }
 }

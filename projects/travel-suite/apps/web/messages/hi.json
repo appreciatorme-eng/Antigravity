@@ -15,5 +15,28 @@
     "clear": "साफ़ करें",
     "error": "त्रुटि",
     "success": "सफलता"
+  },
+  "settings": {
+    "title": "सेटिंग्स",
+    "description": "अपने संगठन की प्राथमिकताएं, प्रोफ़ाइल और एकीकरण प्रबंधित करें",
+    "tabs": {
+      "organization": "संगठन",
+      "profile": "प्रोफ़ाइल",
+      "notifications": "सूचनाएं",
+      "integrations": "एकीकरण",
+      "billing": "बिलिंग",
+      "security": "सुरक्षा",
+      "team": "टीम"
+    },
+    "messages": {
+      "whatsappDisconnected": "WhatsApp सफलतापूर्वक डिस्कनेक्ट हो गया",
+      "whatsappDisconnectFailed": "WhatsApp डिस्कनेक्ट करने में विफल",
+      "timezoneSaved": "टाइमज़ोन सहेजा गया",
+      "timezoneSavedDescription": "आपका टाइमज़ोन {timezone} में अपडेट कर दिया गया है",
+      "timezoneSaveFailed": "टाइमज़ोन सहेजने में विफल",
+      "timezoneSaveFailedDescription": "कृपया पुनः प्रयास करें",
+      "settingsSaved": "सेटिंग्स सहेजी गईं",
+      "settingsSavedDescription": "आपके परिवर्तन सफलतापूर्वक सहेजे गए हैं"
+    }
   }
 }
