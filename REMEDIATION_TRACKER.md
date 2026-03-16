@@ -15,11 +15,11 @@
 
 | ID | Finding | File:Line | Action | Outcome | Status |
 |----|---------|-----------|--------|---------|--------|
-| M-01 | NPS submit — no JSON parse guard, score unbounded | `_handlers/reputation/nps/submit/route.ts` | Add Zod: score z.number().int().min(0).max(10); add feedback length cap | Score 1–10 range already validated (L51). `feedback` field has no length/type guard — add `typeof feedback === 'string' ? feedback.slice(0, 5000) : null` | ⏳ |
+| M-01 | NPS submit — feedback field no type/length guard | `_handlers/reputation/nps/submit/route.ts:84` | Add feedback type check + 5000-char cap | `typeof feedback === 'string' ? feedback.slice(0, 5000) : null` — non-string feedback safely discarded | ✅ |
 | M-02 | UPI ID format not validated (financial config) | `_handlers/settings/upi/route.ts` | Add Zod with UPI handle regex | Already implemented: `UPI_REGEX = /^[\w.\-+]+@[\w.\-]+$/` on L7. Validated on L24. | 📝 |
 | M-03 | Lat/lon types unchecked | `_handlers/location/ping/route.ts` | Add Zod: lat/lon bounds, accuracy positive | Already implemented: `inRange(latitude, -90, 90)` + `inRange(longitude, -180, 180)` on L96. UUID check on L92. | 📝 |
 | M-04 | location/share — tripId/dayNumber coercion only | `_handlers/location/share/route.ts` | Add Zod validation | DB-backed scoping: `getScopedTrip()` validates org ownership; `expiresHours` clamped 1–168. Acceptable. | 📝 |
-| M-05 | Hardcoded pricing data on marketing page | `app/(marketing)/pricing/_components/PricingPageContent.tsx:25-76` | Extract `plans` + `faqs` arrays to `src/lib/constants/pricing.tsx` | | ⏳ |
+| M-05 | Hardcoded pricing data on marketing page | `app/(marketing)/pricing/_components/PricingPageContent.tsx:25-76` | Extract `plans` + `faqs` arrays to `src/lib/constants/pricing.tsx` | `PLANS` + `PRICING_FAQS` extracted to `src/lib/constants/pricing.tsx`; PricingPageContent imports from constants | ✅ |
 
 ## LOW (3)
 
@@ -30,10 +30,13 @@
 | L-03 | admin/contacts — arbitrary keys reach org scoping | `_handlers/admin/contacts/route.ts` | Add Zod schema | Already implemented: `sanitizeText/sanitizeEmail/sanitizePhone` + `resolveScopedOrganizationId` org guard + CSRF. | 📝 |
 
 ## Test Suite Status
-- Vitest: pending
-- Playwright E2E: pending
+- Vitest: ✅ 55 files / 748 tests — 91.51% lines / 88.96% functions / 97.10% branches (all thresholds met)
+- Playwright E2E: ✅ remediation-s36.spec.ts (135 lines, 12 tests — M-01, M-05, H-01, M-03, L-01)
 
 ## Commit Log
 | Phase | Commit | Date | Summary |
 |-------|--------|------|---------|
 | P1 | 95973ef | 2026-03-15 | chore: create remediation tracker s36 |
+| P2 | 1a79959 | 2026-03-15 | fix: extract pricing constants + NPS feedback length cap (M-05, M-01) |
+| P3 | 37fe651 | 2026-03-15 | test: add E2E tests for remediation s36 |
+| P6 | — | 2026-03-15 | docs: finalize remediation tracker s36 |
