@@ -37,6 +37,28 @@
       "timezoneSaveFailedDescription": "Please try again",
       "settingsSaved": "Settings saved",
       "settingsSavedDescription": "Your changes have been saved successfully"
+    },
+    "profile": {
+      "title": "Personal Account",
+      "description": "Manage your operational identity and personal details.",
+      "avatar": {
+        "uploadButton": "Upload Avatar",
+        "fileRequirements": "JPG or PNG. Max size of 2MB."
+      },
+      "fields": {
+        "fullName": "Full Name",
+        "email": "Email Address"
+      },
+      "timezone": {
+        "label": "Operational Timezone",
+        "description": "Used for bookings, proposal activity, and inbox timestamps.",
+        "save": "Save timezone",
+        "saving": "Saving timezone..."
+      },
+      "actions": {
+        "save": "Save Configuration",
+        "saving": "Committing..."
+      }
     }
   }
 }
