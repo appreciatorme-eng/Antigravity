@@ -5,6 +5,7 @@ import {
   Building2,
   CheckCircle2,
   Loader2,
+  SkipForward,
 } from 'lucide-react';
 import {
   FIRST_VALUE_STEP,
@@ -12,6 +13,8 @@ import {
   TOTAL_WIZARD_STEPS,
   WIZARD_STEPS,
 } from './types';
+import { StepTooltip } from './StepTooltip';
+import { VideoHelpButton } from './VideoHelpButton';
 
 interface OnboardingFormShellProps {
   currentStep: number;
@@ -24,6 +27,7 @@ interface OnboardingFormShellProps {
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onPrevious: () => void;
   onNext: () => void;
+  onSkip?: () => void;
   children: ReactNode;
 }
 
@@ -38,6 +42,7 @@ export function OnboardingFormShell({
   onSubmit,
   onPrevious,
   onNext,
+  onSkip,
   children,
 }: OnboardingFormShellProps) {
   const submitLabel =
@@ -78,12 +83,20 @@ export function OnboardingFormShell({
         <form onSubmit={onSubmit} className="space-y-6 rounded-2xl border border-[#eadfcd] bg-white p-6 shadow-sm md:p-8">
           <div className="rounded-xl border border-[#eadfcd] bg-[#fcf8f1] p-4 md:p-5">
             <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9c7c46]">
-                  Step {currentStep} of {TOTAL_WIZARD_STEPS}
-                </p>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9c7c46]">
+                    Step {currentStep} of {TOTAL_WIZARD_STEPS}
+                  </p>
+                  {activeStep.helpText && <StepTooltip content={activeStep.helpText} />}
+                </div>
                 <h2 className="mt-1 text-lg font-semibold text-[#1b140a]">{activeStep.title}</h2>
                 <p className="mt-1 text-sm text-[#6f5b3e]">{activeStep.description}</p>
+                {activeStep.videoUrl && (
+                  <div className="mt-3">
+                    <VideoHelpButton videoUrl={activeStep.videoUrl} title={`${activeStep.title} Tutorial`} />
+                  </div>
+                )}
               </div>
               <span className="text-sm font-semibold text-[#9c7c46]">{stepProgress}%</span>
             </div>
@@ -124,26 +137,40 @@ export function OnboardingFormShell({
               Back
             </button>
 
-            {currentStep < REVIEW_STEP ? (
-              <button
-                type="button"
-                onClick={onNext}
-                disabled={saving}
-                className="inline-flex items-center gap-2 rounded-lg bg-[#9c7c46] px-5 py-2.5 text-white hover:bg-[#8a6d3e] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Next
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            ) : (
-              <button
-                type="submit"
-                disabled={saving || firstValueLoading}
-                className="inline-flex items-center gap-2 rounded-lg bg-[#9c7c46] px-5 py-2.5 text-white hover:bg-[#8a6d3e] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {saving || firstValueLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                {submitLabel}
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {activeStep.skippable && onSkip && currentStep < REVIEW_STEP ? (
+                <button
+                  type="button"
+                  onClick={onSkip}
+                  disabled={saving}
+                  className="inline-flex items-center gap-2 rounded-lg border border-[#dcc9aa] px-4 py-2 text-[#9c7c46] hover:bg-[#f8f1e6] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <SkipForward className="h-4 w-4" />
+                  Skip
+                </button>
+              ) : null}
+
+              {currentStep < REVIEW_STEP ? (
+                <button
+                  type="button"
+                  onClick={onNext}
+                  disabled={saving}
+                  className="inline-flex items-center gap-2 rounded-lg bg-[#9c7c46] px-5 py-2.5 text-white hover:bg-[#8a6d3e] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Next
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={saving || firstValueLoading}
+                  className="inline-flex items-center gap-2 rounded-lg bg-[#9c7c46] px-5 py-2.5 text-white hover:bg-[#8a6d3e] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {saving || firstValueLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  {submitLabel}
+                </button>
+              )}
+            </div>
           </div>
         </form>
       </div>
