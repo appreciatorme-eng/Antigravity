@@ -5,7 +5,7 @@ import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import { logError } from "@/lib/observability/logger";
-import type { Database } from "@/supabase/database.types.generated";
+import type { Database } from "@/lib/database.types";
 
 const RECEIPT_UPLOAD_RATE_LIMIT_MAX = 30;
 const RECEIPT_UPLOAD_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
