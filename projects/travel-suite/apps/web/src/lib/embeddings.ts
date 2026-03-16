@@ -8,6 +8,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { logEvent, logError } from "@/lib/observability/logger";
 import {
+  EMBEDDING_DIMENSIONS_V2,
   EMBEDDING_MODEL_V2,
   EMBEDDING_VERSION_V2,
   generateDocumentEmbeddingV2,
@@ -26,7 +27,17 @@ export async function generateEmbedding(text: string): Promise<number[]> {
     return [];
   }
 
-  return generateDocumentEmbeddingV2(text);
+  const embedding = await generateDocumentEmbeddingV2(text);
+
+  // Dimension lock: gemini-embedding-001 = 1536. If changing models, update all vector columns in migrations.
+  if (embedding.length > 0 && embedding.length !== EMBEDDING_DIMENSIONS_V2) {
+    throw new Error(
+      `Unexpected embedding dimension ${embedding.length}. Expected ${EMBEDDING_DIMENSIONS_V2} (${EMBEDDING_MODEL_V2}). ` +
+      'Update vector column dimensions in all migrations before changing embedding models.'
+    );
+  }
+
+  return embedding;
 }
 
 /**

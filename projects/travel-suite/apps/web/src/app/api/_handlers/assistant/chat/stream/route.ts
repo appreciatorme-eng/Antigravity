@@ -313,15 +313,19 @@ async function executeToolCall(
   if (action.requiresConfirmation) {
     const confirmationMessage = `I'd like to perform **${action.name}** with these details: ${JSON.stringify(params)}. Shall I proceed?`;
 
-    logAuditEvent(ctx, {
-      sessionId: null,
-      eventType: "action_proposed",
-      actionName: toolCall.function.name,
-      actionParams: params,
-      actionResult: null,
-    }).catch((err: unknown) => {
-      logError('Failed to log audit event', err);
-    });
+    (async () => {
+      try {
+        await logAuditEvent(ctx, {
+          sessionId: null,
+          eventType: "action_proposed",
+          actionName: toolCall.function.name,
+          actionParams: params,
+          actionResult: null,
+        });
+      } catch (err) {
+        logError('Failed to log audit event', err);
+      }
+    })();
 
     return {
       toolMessage: {
@@ -336,21 +340,29 @@ async function executeToolCall(
 
   const result = await action.execute(ctx, params);
 
-  logAuditEvent(ctx, {
-    sessionId: null,
-    eventType: "action_executed",
-    actionName: toolCall.function.name,
-    actionParams: params,
-    actionResult: { success: result.success, message: result.message },
-  }).catch((err: unknown) => {
-    logError('Failed to log audit event', err);
-  });
+  (async () => {
+    try {
+      await logAuditEvent(ctx, {
+        sessionId: null,
+        eventType: "action_executed",
+        actionName: toolCall.function.name,
+        actionParams: params,
+        actionResult: { success: result.success, message: result.message },
+      });
+    } catch (err) {
+      logError('Failed to log audit event', err);
+    }
+  })();
 
   // Invalidate response cache after write actions so stale data is not served
   if (action.category === "write") {
-    invalidateOrgCache(ctx.organizationId).catch((err: unknown) => {
-      logError('Failed to invalidate org cache', err);
-    });
+    (async () => {
+      try {
+        await invalidateOrgCache(ctx.organizationId);
+      } catch (err) {
+        logError('Failed to invalidate org cache', err);
+      }
+    })();
   }
 
   return {
@@ -403,9 +415,13 @@ async function handleStreamingRequest(
     if (!usageStatus.allowed) {
       const usageLimitReply = `You've used ${usageStatus.used} of ${usageStatus.limit} assistant messages this month on the ${usageStatus.tier} plan. Upgrade to get more messages, or wait until next month for your quota to reset.`;
       writeTextAsSSE(writer, usageLimitReply);
-      saveConversationMessages(ctx, sessionId, message, usageLimitReply, null, null).catch((err: unknown) => {
-        logError('Failed to save conversation messages', err);
-      });
+      (async () => {
+        try {
+          await saveConversationMessages(ctx, sessionId, message, usageLimitReply, null, null);
+        } catch (err) {
+          logError('Failed to save conversation messages', err);
+        }
+      })();
       controller.close();
       return;
     }
@@ -413,13 +429,21 @@ async function handleStreamingRequest(
     // -- Direct execution: try zero-cost pattern matching first
     const directResult = await tryDirectExecution(message, ctx);
     if (directResult !== null) {
-      incrementUsage(ctx, { isDirectExecution: true }).catch((err: unknown) => {
-        logError('Failed to increment usage', err);
-      });
+      (async () => {
+        try {
+          await incrementUsage(ctx, { isDirectExecution: true });
+        } catch (err) {
+          logError('Failed to increment usage', err);
+        }
+      })();
       writeTextAsSSE(writer, directResult.reply);
-      saveConversationMessages(ctx, sessionId, message, directResult.reply, null, null).catch((err: unknown) => {
-        logError('Failed to save conversation messages', err);
-      });
+      (async () => {
+        try {
+          await saveConversationMessages(ctx, sessionId, message, directResult.reply, null, null);
+        } catch (err) {
+          logError('Failed to save conversation messages', err);
+        }
+      })();
       controller.close();
       return;
     }
@@ -430,9 +454,13 @@ async function handleStreamingRequest(
       const workflowDef = ALL_WORKFLOWS.find((w) => w.id === activeWorkflow.workflowId);
       if (workflowDef) {
         const workflowResult = await processWorkflowStep(ctx, workflowDef, activeWorkflow, message);
-        incrementUsage(ctx, { isDirectExecution: true }).catch((err: unknown) => {
-          logError('Failed to increment usage', err);
-        });
+        (async () => {
+          try {
+            await incrementUsage(ctx, { isDirectExecution: true });
+          } catch (err) {
+            logError('Failed to increment usage', err);
+          }
+        })();
         writeTextAsSSE(writer, workflowResult.reply);
         if (workflowResult.actionProposal) {
           writer.writeData("proposal", {
@@ -442,9 +470,13 @@ async function handleStreamingRequest(
             reply: workflowResult.reply,
           });
         }
-        saveConversationMessages(ctx, sessionId, message, workflowResult.reply, null, null).catch((err: unknown) => {
-          logError('Failed to save conversation messages', err);
-        });
+        (async () => {
+          try {
+            await saveConversationMessages(ctx, sessionId, message, workflowResult.reply, null, null);
+          } catch (err) {
+            logError('Failed to save conversation messages', err);
+          }
+        })();
         controller.close();
         return;
       }
@@ -453,13 +485,21 @@ async function handleStreamingRequest(
     const triggeredWorkflow = findWorkflow(message);
     if (triggeredWorkflow !== null) {
       const workflowResult = await startWorkflow(ctx, triggeredWorkflow);
-      incrementUsage(ctx, { isDirectExecution: true }).catch((err: unknown) => {
-        logError('Failed to increment usage', err);
-      });
+      (async () => {
+        try {
+          await incrementUsage(ctx, { isDirectExecution: true });
+        } catch (err) {
+          logError('Failed to increment usage', err);
+        }
+      })();
       writeTextAsSSE(writer, workflowResult.reply);
-      saveConversationMessages(ctx, sessionId, message, workflowResult.reply, null, null).catch((err: unknown) => {
-        logError('Failed to save conversation messages', err);
-      });
+      (async () => {
+        try {
+          await saveConversationMessages(ctx, sessionId, message, workflowResult.reply, null, null);
+        } catch (err) {
+          logError('Failed to save conversation messages', err);
+        }
+      })();
       controller.close();
       return;
     }
@@ -467,13 +507,21 @@ async function handleStreamingRequest(
     // -- Response cache: check for cached response before OpenAI
     const cachedResponse = await getCachedResponse(organizationId, message);
     if (cachedResponse !== null) {
-      incrementUsage(ctx, { isCacheHit: true }).catch((err: unknown) => {
-        logError('Failed to increment usage', err);
-      });
+      (async () => {
+        try {
+          await incrementUsage(ctx, { isCacheHit: true });
+        } catch (err) {
+          logError('Failed to increment usage', err);
+        }
+      })();
       writeTextAsSSE(writer, cachedResponse.reply);
-      saveConversationMessages(ctx, sessionId, message, cachedResponse.reply, null, null).catch((err: unknown) => {
-        logError('Failed to save conversation messages', err);
-      });
+      (async () => {
+        try {
+          await saveConversationMessages(ctx, sessionId, message, cachedResponse.reply, null, null);
+        } catch (err) {
+          logError('Failed to save conversation messages', err);
+        }
+      })();
       controller.close();
       return;
     }
@@ -504,20 +552,33 @@ async function handleStreamingRequest(
       if (result.toolCalls.length === 0) {
         if (result.content && result.content.trim().length >= 10) {
           // Good response from function-calling -- write it as tokens
+          const replyText = result.content;
           writer.writeStatus("Generating response...");
-          for (const char of result.content) {
+          for (const char of replyText) {
             writer.writeToken(char);
           }
           const suggestions = getSuggestedActions(lastActionName);
-          setCachedResponse(organizationId, message, { reply: result.content }).catch((err: unknown) => {
-            logError('Failed to set cached response', err);
-          });
-          incrementUsage(ctx).catch((err: unknown) => {
-            logError('Failed to increment usage', err);
-          });
-          saveConversationMessages(ctx, sessionId, message, result.content, lastActionName, null).catch((err: unknown) => {
-            logError('Failed to save conversation messages', err);
-          });
+          (async () => {
+            try {
+              await setCachedResponse(organizationId, message, { reply: replyText });
+            } catch (err) {
+              logError('Failed to set cached response', err);
+            }
+          })();
+          (async () => {
+            try {
+              await incrementUsage(ctx);
+            } catch (err) {
+              logError('Failed to increment usage', err);
+            }
+          })();
+          (async () => {
+            try {
+              await saveConversationMessages(ctx, sessionId, message, replyText, lastActionName, null);
+            } catch (err) {
+              logError('Failed to save conversation messages', err);
+            }
+          })();
           if (suggestions.length > 0) {
             writer.writeData("suggestions", { suggestedActions: suggestions });
           }
@@ -570,18 +631,30 @@ async function handleStreamingRequest(
           reply: finalText,
         });
 
-        setCachedResponse(organizationId, message, {
-          reply: finalText,
-          actionProposal: pendingProposal,
-        }).catch((err: unknown) => {
-          logError('Failed to set cached response', err);
-        });
-        incrementUsage(ctx).catch((err: unknown) => {
-          logError('Failed to increment usage', err);
-        });
-        saveConversationMessages(ctx, sessionId, message, finalText, pendingProposal.actionName, null).catch((err: unknown) => {
-          logError('Failed to save conversation messages', err);
-        });
+        (async () => {
+          try {
+            await setCachedResponse(organizationId, message, {
+              reply: finalText,
+              actionProposal: pendingProposal,
+            });
+          } catch (err) {
+            logError('Failed to set cached response', err);
+          }
+        })();
+        (async () => {
+          try {
+            await incrementUsage(ctx);
+          } catch (err) {
+            logError('Failed to increment usage', err);
+          }
+        })();
+        (async () => {
+          try {
+            await saveConversationMessages(ctx, sessionId, message, finalText, pendingProposal.actionName, null);
+          } catch (err) {
+            logError('Failed to save conversation messages', err);
+          }
+        })();
         writer.writeDone();
         controller.close();
         return;
@@ -598,15 +671,27 @@ async function handleStreamingRequest(
     }
     writer.writeStatus("Generating response...");
     const streamedReply = await streamOpenAI(openaiKey, messages, writer);
-    setCachedResponse(organizationId, message, { reply: streamedReply }).catch((err: unknown) => {
-      logError('Failed to set cached response', err);
-    });
-    incrementUsage(ctx).catch((err: unknown) => {
-      logError('Failed to increment usage', err);
-    });
-    saveConversationMessages(ctx, sessionId, message, streamedReply, lastActionName, null).catch((err: unknown) => {
-      logError('Failed to save conversation messages', err);
-    });
+    (async () => {
+      try {
+        await setCachedResponse(organizationId, message, { reply: streamedReply });
+      } catch (err) {
+        logError('Failed to set cached response', err);
+      }
+    })();
+    (async () => {
+      try {
+        await incrementUsage(ctx);
+      } catch (err) {
+        logError('Failed to increment usage', err);
+      }
+    })();
+    (async () => {
+      try {
+        await saveConversationMessages(ctx, sessionId, message, streamedReply, lastActionName, null);
+      } catch (err) {
+        logError('Failed to save conversation messages', err);
+      }
+    })();
     writer.writeDone();
     controller.close();
   } catch (error) {

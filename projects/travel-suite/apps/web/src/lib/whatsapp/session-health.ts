@@ -19,8 +19,9 @@ export async function checkWPPConnectHealth(input: SessionHealthInput = {}): Pro
     };
   }
 
-  const sessionName = input.sessionName ?? env.wppconnect.session ?? null;
-  const token = input.token ?? env.wppconnect.token ?? null;
+  // WhatsApp: Meta Cloud API only. WPPConnect path removed — see CLAUDE.md.
+  const sessionName = input.sessionName ?? null;
+  const token = input.token ?? null;
 
   if (!sessionName || !token) {
     return {

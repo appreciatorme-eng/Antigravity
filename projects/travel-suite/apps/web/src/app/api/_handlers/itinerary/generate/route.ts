@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { apiSuccess, apiError } from "@/lib/api/response";
-import { GoogleGenerativeAI, SchemaType, type Schema } from '@google/generative-ai';
+import { GoogleGenerativeAI, SchemaType, type Schema, type SingleRequestOptions } from '@google/generative-ai';
 import { z } from 'zod';
 import Groq from "groq-sdk";
 import { getCachedItinerary, saveItineraryToCache, extractCacheParams } from '@/lib/itinerary-cache';
@@ -153,18 +153,6 @@ async function buildFallbackItinerary(prompt: string, days: number) {
             ],
         })),
     };
-}
-
-async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-    let timeoutId: NodeJS.Timeout | null = null;
-    const timeoutPromise = new Promise<T>((_, reject) => {
-        timeoutId = setTimeout(() => reject(new Error(`Timed out after ${ms}ms`)), ms);
-    });
-    try {
-        return await Promise.race([promise, timeoutPromise]);
-    } finally {
-        if (timeoutId) clearTimeout(timeoutId);
-    }
 }
 
 /**
@@ -566,46 +554,66 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
 
             // ROUTER: Try Groq first (cheaper & faster) — use for ALL queries when key is present
             if (groqApiKey) {
+                const groqController = new AbortController();
+                const groqTimeoutId = setTimeout(() => groqController.abort(), 30_000);
                 try {
                     const groq = new Groq({ apiKey: groqApiKey });
-                    const chatCompletion = await withTimeout(
-                        groq.chat.completions.create({
-                            messages: [
-                                { role: 'system', content: groqSystemPrompt },
-                                { role: 'user', content: finalPrompt }
-                            ],
-                            model: 'llama-3.3-70b-versatile',
-                            temperature: 0.5,
-                            max_completion_tokens: 8000,
-                            response_format: { type: 'json_object' }
-                        }),
-                        30_000,
-                    );
+                    const chatCompletion = await groq.chat.completions.create({
+                        messages: [
+                            { role: 'system', content: groqSystemPrompt },
+                            { role: 'user', content: finalPrompt }
+                        ],
+                        model: 'llama-3.3-70b-versatile',
+                        temperature: 0.5,
+                        max_completion_tokens: 8000,
+                        response_format: { type: 'json_object' }
+                    }, { signal: groqController.signal });
+                    clearTimeout(groqTimeoutId);
                     const responseContent = chatCompletion.choices[0]?.message?.content || "";
                     itinerary = JSON.parse(responseContent) as ItineraryLike;
                     aiGenerated = true;
                     aiGenerationCostUsd = toSafeCost(ESTIMATED_COST_GROQ_USD, 0.006);
                 } catch (groqError) {
-                    logError(`❌ [GROQ] Failed`, groqError);
+                    clearTimeout(groqTimeoutId);
+                    if ((groqError as Error).name === 'AbortError') {
+                        logError('[GROQ] Timed out after 30s', groqError);
+                    } else {
+                        logError('[GROQ] Failed', groqError);
+                    }
                     // Fall through to Gemini below
                 }
             }
 
             // If Groq didn't produce a result, try Gemini
             if (!itinerary && geminiApiKey) {
-                const genAI = new GoogleGenerativeAI(geminiApiKey);
-                const model = genAI.getGenerativeModel({
-                    model: "gemini-2.0-flash",
-                    generationConfig: {
-                        responseMimeType: "application/json",
-                        responseSchema: itinerarySchema,
-                    },
-                });
-                const result = await withTimeout(model.generateContent(finalPrompt), 30_000);
-                const responseText = result.response.text();
-                itinerary = JSON.parse(responseText.trim()) as ItineraryLike;
-                aiGenerated = true;
-                aiGenerationCostUsd = toSafeCost(ESTIMATED_COST_GEMINI_FLASH_USD, 0.012);
+                const geminiController = new AbortController();
+                const geminiTimeoutId = setTimeout(() => geminiController.abort(), 30_000);
+                try {
+                    const genAI = new GoogleGenerativeAI(geminiApiKey);
+                    const model = genAI.getGenerativeModel({
+                        model: "gemini-2.0-flash",
+                        generationConfig: {
+                            responseMimeType: "application/json",
+                            responseSchema: itinerarySchema,
+                        },
+                    });
+                    const result = await model.generateContent(
+                        { contents: [{ role: "user", parts: [{ text: finalPrompt }] }] },
+                        { signal: geminiController.signal } satisfies SingleRequestOptions,
+                    );
+                    clearTimeout(geminiTimeoutId);
+                    const responseText = result.response.text();
+                    itinerary = JSON.parse(responseText.trim()) as ItineraryLike;
+                    aiGenerated = true;
+                    aiGenerationCostUsd = toSafeCost(ESTIMATED_COST_GEMINI_FLASH_USD, 0.012);
+                } catch (geminiError) {
+                    clearTimeout(geminiTimeoutId);
+                    if ((geminiError as Error).name === 'AbortError') {
+                        logError('[GEMINI] Timed out after 30s', geminiError);
+                    } else {
+                        logError('[GEMINI] Failed', geminiError);
+                    }
+                }
             }
 
             // If all AI providers failed, use fallback

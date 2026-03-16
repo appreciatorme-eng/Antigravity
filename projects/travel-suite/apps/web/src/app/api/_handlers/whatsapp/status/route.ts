@@ -1,5 +1,6 @@
 // GET /api/whatsapp/status
-// Returns the current WPPConnect session status mapped to a frontend shape.
+// Returns the current WAHA session status mapped to a frontend shape.
+// WhatsApp: Meta Cloud API only. WPPConnect path removed — see CLAUDE.md.
 // Requires admin role — response includes phone number and display name.
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
             });
         }
 
-        // WPPConnect reports "DISCONNECTED" during both QR phase and truly disconnected.
+        // WAHA reports "DISCONNECTED" during both QR phase and truly disconnected.
         // Use the DB status to distinguish: "connecting" = QR is showing.
         if (dbStatus === "connecting") {
             return NextResponse.json({ status: "pending" });

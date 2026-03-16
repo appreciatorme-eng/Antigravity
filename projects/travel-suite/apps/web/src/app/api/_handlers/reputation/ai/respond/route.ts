@@ -291,14 +291,23 @@ export async function POST(req: Request) {
 
     const aiResponse = parseResponseResult(responseText, brandVoice.tone);
 
-    // Save AI suggested response to the review
-    await repFrom(supabase, "reputation_reviews")
+    // Save AI suggested response to the review.
+    // Use upsert-style update: concurrent requests both generate a response and
+    // update the same row — last writer wins, which is acceptable since any valid
+    // AI response is equivalent. Errors are non-blocking to avoid losing the
+    // generated response.
+    const { error: saveError } = await repFrom(supabase, "reputation_reviews")
       .update({
         ai_suggested_response: aiResponse.suggested_response,
         updated_at: new Date().toISOString(),
       })
       .eq("id", reviewId)
       .eq("organization_id", organizationId);
+
+    if (saveError) {
+      logError("[reputation/ai/respond] failed to persist AI response", saveError);
+      // Still return the generated response even if save failed
+    }
 
     return NextResponse.json({ response: aiResponse });
   } catch (error: unknown) {

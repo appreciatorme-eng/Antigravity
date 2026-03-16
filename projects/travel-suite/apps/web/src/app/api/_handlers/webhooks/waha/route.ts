@@ -1,12 +1,13 @@
 /* ------------------------------------------------------------------
- * WPPConnect inbound webhook — handles onStateChange and onMessage events.
+ * WAHA inbound webhook — handles onStateChange and onMessage events.
+ * WhatsApp: Meta Cloud API only. WPPConnect path removed — see CLAUDE.md.
  *
- * POST: Process WPPConnect events (session lifecycle + incoming messages).
+ * POST: Process WAHA events (session lifecycle + incoming messages).
  *
  * Security: shared secret provided via x-webhook-secret header during migration,
  * with temporary ?secret= query-param compatibility for existing WAHA sessions.
  *
- * WPPConnect event shape:
+ * WAHA event shape:
  *   { event: "onStateChange", session: "org_xxx", token: "...", response: "CONNECTED" }
  *   { event: "onMessage",     session: "org_xxx", token: "...", response: { id, from, body, type } }
  * ------------------------------------------------------------------ */

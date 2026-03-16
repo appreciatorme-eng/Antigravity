@@ -16,10 +16,10 @@ export const env = {
     anonKey: firstDefined(rawEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY),
     serviceRoleKey: firstDefined(rawEnv.SUPABASE_SERVICE_ROLE_KEY),
   },
+  // WhatsApp: Meta Cloud API only. WPPConnect path removed — see CLAUDE.md.
   wppconnect: {
-    baseUrl: firstDefined(rawEnv.WPPCONNECT_BASE_URL, rawEnv.WPPCONNECT_URL),
-    token: firstDefined(rawEnv.WPPCONNECT_TOKEN, rawEnv.WHATSAPP_API_KEY),
-    session: firstDefined(rawEnv.WPPCONNECT_SESSION) ?? "default",
+    baseUrl: firstDefined(rawEnv.WPPCONNECT_BASE_URL),
+    token: firstDefined(rawEnv.WPPCONNECT_TOKEN),
   },
   resend: {
     apiKey: firstDefined(rawEnv.RESEND_API_KEY),

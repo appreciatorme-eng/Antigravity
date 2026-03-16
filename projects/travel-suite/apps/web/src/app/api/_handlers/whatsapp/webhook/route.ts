@@ -1,9 +1,9 @@
 /* ------------------------------------------------------------------
- * WhatsApp Webhook -- WPPConnect / self-hosted WhatsApp
+ * WhatsApp Webhook -- Meta Cloud API
  *
  * Handles inbound events (location shares, text messages, images)
- * from the self-hosted WPPConnect (WAHA) gateway, as opposed to the
- * Meta Cloud API webhook at /api/webhooks/whatsapp.
+ * from the Meta Cloud API webhook.
+ * WhatsApp: Meta Cloud API only. WPPConnect path removed — see CLAUDE.md.
  *
  * GET: Webhook verification challenge (hub.mode subscribe).
  * POST: Process incoming location, text, and image messages.
@@ -17,6 +17,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { safeEqual } from "@/lib/security/safe-equal";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { parseWhatsAppLocationMessages, parseWhatsAppImageMessages, parseWhatsAppTextMessages, downloadWhatsAppMedia } from "@/lib/whatsapp.server";
 import { handleWhatsAppMessage } from "@/lib/assistant/channel-adapters/whatsapp";
 import { getRequestContext, getRequestId, logError, logEvent } from "@/lib/observability/logger";
@@ -129,29 +130,43 @@ export async function POST(request: NextRequest) {
         const signatureValid = verifySignature(rawBody, signatureHeader);
 
         if (!signatureValid && !allowUnsignedWebhook) {
-            try {
-                await supabaseAdmin.from("whatsapp_webhook_events").insert({
-                    provider_message_id: `invalid-signature-${Date.now()}-${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`,
-                    wa_id: null,
-                    event_type: "location",
-                    payload_hash: payloadHash(rawBody),
-                    processing_status: "rejected",
-                    reject_reason: appSecret
-                        ? "invalid_signature"
-                        : "missing_whatsapp_app_secret",
-                    metadata: {
-                        signature_present: !!signatureHeader,
-                        mode: allowUnsignedWebhook ? "permissive_non_prod" : "strict",
-                    },
-                });
-            } catch (error) {
-                // Signature validation must fail-closed even if telemetry storage is unavailable.
-                logError("WhatsApp webhook signature rejection telemetry failed", error, requestContext);
+            // Rate limit logging of invalid signature attempts to prevent DB spam.
+            // An attacker spamming invalid signatures would otherwise insert unbounded rows.
+            const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+            const logRateLimit = await enforceRateLimit({
+                identifier: `webhook:invalid-sig:${clientIp}`,
+                limit: 10,
+                windowMs: 60_000,
+                prefix: "wh:invalid",
+            });
+
+            if (logRateLimit.success) {
+                try {
+                    await supabaseAdmin.from("whatsapp_webhook_events").insert({
+                        provider_message_id: `invalid-signature-${Date.now()}-${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`,
+                        wa_id: null,
+                        event_type: "location",
+                        payload_hash: payloadHash(rawBody),
+                        processing_status: "rejected",
+                        reject_reason: appSecret
+                            ? "invalid_signature"
+                            : "missing_whatsapp_app_secret",
+                        metadata: {
+                            signature_present: !!signatureHeader,
+                            mode: allowUnsignedWebhook ? "permissive_non_prod" : "strict",
+                        },
+                    });
+                } catch (error) {
+                    // Signature validation must fail-closed even if telemetry storage is unavailable.
+                    logError("WhatsApp webhook signature rejection telemetry failed", error, requestContext);
+                }
             }
+
             logEvent("warn", "WhatsApp webhook rejected due to signature validation", {
                 ...requestContext,
                 signature_present: !!signatureHeader,
                 webhook_signature_mode: allowUnsignedWebhook ? "permissive_non_prod" : "strict",
+                log_rate_limited: !logRateLimit.success,
             });
             return apiError("Invalid webhook signature", 401);
         }

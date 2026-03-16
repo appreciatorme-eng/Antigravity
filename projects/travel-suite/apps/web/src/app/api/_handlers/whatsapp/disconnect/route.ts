@@ -1,5 +1,6 @@
 // POST /api/whatsapp/disconnect
-// Closes the WPPConnect session for the caller's org and marks the DB row disconnected.
+// Closes the WAHA session for the caller's org and marks the DB row disconnected.
+// WhatsApp: Meta Cloud API only. WPPConnect path removed — see CLAUDE.md.
 // Requires admin role — any member could otherwise reset the shared org session.
 import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
