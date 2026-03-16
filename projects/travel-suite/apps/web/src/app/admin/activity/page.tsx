@@ -324,7 +324,7 @@ export default function ActivityPage() {
                           {activity.channel || "—"}
                         </span>
                       </td>
-                    </tr>
+                    </motion.tr>
                   ))}
                 </tbody>
               </table>

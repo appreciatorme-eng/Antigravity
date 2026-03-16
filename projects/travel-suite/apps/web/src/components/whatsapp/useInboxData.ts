@@ -80,7 +80,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
   const { timezone } = useUserTimezone();
 
   const [conversations, setConversations] = useState<ChannelConversation[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(isDemoMode ? 'conv_1' : null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isLoadingConvs, setIsLoadingConvs] = useState(false);
   const [conversationsError, setConversationsError] = useState<string | null>(null);
   const [whatsAppStatus, setWhatsAppStatus] = useState<WhatsAppStatus>('disconnected');
