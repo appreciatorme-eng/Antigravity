@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { GlassCard } from '@/components/glass/GlassCard';
-import { User, Bell, Link2, CreditCard, Shield, Globe, Users } from 'lucide-react';
+import { User, Bell, Link2, CreditCard, Shield, Globe, Users, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import { WhatsAppConnectModal } from '@/components/whatsapp/WhatsAppConnectModal';
@@ -15,12 +15,14 @@ import { IntegrationsTab } from './_components/IntegrationsTab';
 import { SecurityTab } from './_components/SecurityTab';
 import { TeamTab } from './_components/TeamTab';
 import { PlaceholderTab } from './_components/PlaceholderTab';
+import { EInvoicingTab } from './_components/EInvoicingTab';
 
 const TABS = [
     { id: 'organization', label: 'Organization', icon: Globe },
     { id: 'profile', label: 'Profile', icon: User },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'integrations', label: 'Integrations', icon: Link2 },
+    { id: 'e-invoicing', label: 'E-Invoicing', icon: FileText },
     { id: 'billing', label: 'Billing & Plans', icon: CreditCard },
     { id: 'security', label: 'Security', icon: Shield },
     { id: 'team', label: 'Team', icon: Users },
@@ -187,6 +189,8 @@ export default function SettingsPage() {
                                     onDisconnectWhatsApp={() => { void handleDisconnectWhatsApp(); }}
                                 />
                             )}
+
+                            {activeTab === 'e-invoicing' && <EInvoicingTab />}
 
                             {activeTab === 'security' && <SecurityTab />}
 
