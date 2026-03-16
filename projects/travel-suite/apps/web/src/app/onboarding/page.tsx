@@ -17,12 +17,15 @@ import { FirstValueSprintStep } from './_components/FirstValueSprintStep';
 import { OnboardingDetailsSteps } from './_components/OnboardingDetailsSteps';
 import { OnboardingFormShell } from './_components/OnboardingFormShell';
 import { SampleDataLoader } from './_components/SampleDataLoader';
+import { TripCreationStep } from './_components/TripCreationStep';
+import type { ItineraryResult } from '@/types/itinerary';
 import {
   FIRST_VALUE_STEP,
   OnboardingPayload,
   FirstValuePayload,
   REVIEW_STEP,
   TOTAL_WIZARD_STEPS,
+  TRIP_CREATION_STEP,
   WIZARD_STEPS,
 } from './_components/types';
 
@@ -59,6 +62,13 @@ function OnboardingPageContent() {
   const [firstValueLoading, setFirstValueLoading] = useState(false);
   const [firstValueRefreshing, setFirstValueRefreshing] = useState(false);
   const [shareLinkCopied, setShareLinkCopied] = useState(false);
+
+  const [tripClientId, setTripClientId] = useState('');
+  const [tripStartDate, setTripStartDate] = useState('');
+  const [tripEndDate, setTripEndDate] = useState('');
+  const [tripAiPrompt, setTripAiPrompt] = useState('');
+  const [tripSelectedItineraryId, setTripSelectedItineraryId] = useState<string | null>(null);
+  const [tripGeneratedItinerary, setTripGeneratedItinerary] = useState<ItineraryResult | null>(null);
 
   const serviceRegionOptions = useMemo(
     () => mergeMarketplaceOptions(marketplaceRegionCatalog, serviceRegions),
@@ -326,6 +336,21 @@ function OnboardingPageContent() {
           shareLinkCopied={shareLinkCopied}
           onRefresh={() => void loadFirstValueProgress(false)}
           onCopyShareLink={() => void handleCopyShareLink()}
+        />
+      ) : currentStep === TRIP_CREATION_STEP ? (
+        <TripCreationStep
+          clientId={tripClientId}
+          startDate={tripStartDate}
+          endDate={tripEndDate}
+          aiPrompt={tripAiPrompt}
+          selectedItineraryId={tripSelectedItineraryId}
+          generatedItinerary={tripGeneratedItinerary}
+          setClientId={setTripClientId}
+          setStartDate={setTripStartDate}
+          setEndDate={setTripEndDate}
+          setAiPrompt={setTripAiPrompt}
+          setSelectedItineraryId={setTripSelectedItineraryId}
+          setGeneratedItinerary={setTripGeneratedItinerary}
         />
       ) : (
         <OnboardingDetailsSteps
