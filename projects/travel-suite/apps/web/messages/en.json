@@ -115,5 +115,12 @@
         "saving": "Committing..."
       }
     }
+  },
+  "portal": {
+    "help": "Help",
+    "footer": {
+      "safe": "Your trip is safe & secured",
+      "poweredBy": "Powered by TourOS"
+    }
   }
 }
