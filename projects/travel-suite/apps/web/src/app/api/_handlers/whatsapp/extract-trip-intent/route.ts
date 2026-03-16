@@ -8,6 +8,8 @@ import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { getGeminiModel, parseGeminiJson } from "@/lib/ai/gemini.server";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { logError } from "@/lib/observability/logger";
 
 export const maxDuration = 30;
 
@@ -56,6 +58,16 @@ export async function POST(request: Request): Promise<Response> {
         const authResult = await requireAdmin(request);
         if (!authResult.ok) return authResult.response;
         const { userId, organizationId, adminClient } = authResult;
+
+        const rl = await enforceRateLimit({
+            identifier: userId,
+            limit: 20,
+            windowMs: 60_000,
+            prefix: "api:whatsapp:extract-trip-intent",
+        });
+        if (!rl.success) {
+            return apiError("Too many requests", 429);
+        }
 
         if (!organizationId) {
             return apiError("Organization not configured", 400);
@@ -153,13 +165,13 @@ export async function POST(request: Request): Promise<Response> {
             .single();
 
         if (insertError || !draft) {
-            console.error("[extract-trip-intent] draft insert failed:", insertError);
+            logError("[extract-trip-intent] draft insert failed", insertError);
             return apiError("Failed to save proposal draft", 500);
         }
 
         return apiSuccess({ draftId: draft.id, extracted });
     } catch (error) {
-        console.error("[/api/whatsapp/extract-trip-intent:POST] Unhandled error:", error);
+        logError("[/api/whatsapp/extract-trip-intent:POST] Unhandled error", error);
         return apiError("An unexpected error occurred. Please try again.", 500);
     }
 }

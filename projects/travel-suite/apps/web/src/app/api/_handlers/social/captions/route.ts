@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { apiSuccess, apiError } from "@/lib/api/response";
 import { GoogleGenerativeAI, SchemaType, type ResponseSchema } from '@google/generative-ai';
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { logError } from "@/lib/observability/logger";
 
 export const maxDuration = 60;
 
@@ -61,6 +63,16 @@ export async function POST(req: NextRequest) {
       return apiError("Unauthorized", 401);
     }
 
+    const rl = await enforceRateLimit({
+      identifier: user.id,
+      limit: 20,
+      windowMs: 60_000,
+      prefix: "api:social:captions",
+    });
+    if (!rl.success) {
+      return apiError("Too many requests", 429);
+    }
+
     const { templateData, tone, platform } = await req.json();
 
     const geminiApiKey = process.env.GOOGLE_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
@@ -109,7 +121,7 @@ export async function POST(req: NextRequest) {
     return apiSuccess(response);
 
   } catch (error) {
-    console.error("Caption Error:", error);
+    logError("Caption Error", error);
     return apiError("Failed to generate captions", 500);
   }
 }

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { apiSuccess, apiError } from "@/lib/api/response";
 import { GoogleGenerativeAI, SchemaType, type ResponseSchema } from '@google/generative-ai';
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { logError } from "@/lib/observability/logger";
 
 export const maxDuration = 60;
 
@@ -32,6 +34,16 @@ export async function POST(req: NextRequest) {
 
     if (!user) {
       return apiError("Unauthorized", 401);
+    }
+
+    const rl = await enforceRateLimit({
+      identifier: user.id,
+      limit: 20,
+      windowMs: 60_000,
+      prefix: "api:social:extract",
+    });
+    if (!rl.success) {
+      return apiError("Too many requests", 429);
     }
 
     const { image } = await req.json(); // base64 image
@@ -92,7 +104,7 @@ export async function POST(req: NextRequest) {
     return apiSuccess(response);
 
   } catch (error) {
-    console.error("Extraction Error:", error);
+    logError("Extraction Error", error);
     return apiError("Failed to extract content", 500);
   }
 }
