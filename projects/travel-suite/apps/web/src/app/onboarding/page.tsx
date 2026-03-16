@@ -19,6 +19,7 @@ import { OnboardingFormShell } from './_components/OnboardingFormShell';
 import { ProposalGenerationStep } from './_components/ProposalGenerationStep';
 import { SampleDataLoader } from './_components/SampleDataLoader';
 import { TripCreationStep } from './_components/TripCreationStep';
+import { WhatsAppSetupStep } from './_components/WhatsAppSetupStep';
 import type { ItineraryResult } from '@/types/itinerary';
 import {
   FIRST_VALUE_STEP,
@@ -28,6 +29,7 @@ import {
   REVIEW_STEP,
   TOTAL_WIZARD_STEPS,
   TRIP_CREATION_STEP,
+  WHATSAPP_SETUP_STEP,
   WIZARD_STEPS,
 } from './_components/types';
 
@@ -360,6 +362,8 @@ function OnboardingPageContent() {
           tripStartDate={tripStartDate}
           tripEndDate={tripEndDate}
         />
+      ) : currentStep === WHATSAPP_SETUP_STEP ? (
+        <WhatsAppSetupStep />
       ) : (
         <OnboardingDetailsSteps
           currentStep={currentStep}

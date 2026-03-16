@@ -52,7 +52,7 @@ async function checkSampleDataExists(organizationId: string): Promise<boolean> {
 
 async function loadSampleData(organizationId: string) {
   // Trip IDs
-  const tripIds = Array.from({ length: 10 }, (_, i) => randomUUID());
+  const tripIds = Array.from({ length: 10 }, () => randomUUID());
   const [t1, t2, t3, t4, t5, t6, t7, t8, t9, t10] = tripIds;
 
   // External Drivers (no auth.users FK — headless)

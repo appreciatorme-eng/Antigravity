@@ -91,6 +91,14 @@ export const WIZARD_STEPS: readonly WizardStep[] = [
   },
   {
     id: 5,
+    title: 'Connect WhatsApp',
+    description: 'Link your WhatsApp Business account for client communication.',
+    skippable: true,
+    helpText: 'Connect WhatsApp to send proposals and updates directly to clients. You can set this up later from Settings if you prefer.',
+    videoUrl: undefined,
+  },
+  {
+    id: 6,
     title: 'Proposal Style',
     description: 'Choose the default itinerary template your clients will see.',
     skippable: false,
@@ -98,7 +106,7 @@ export const WIZARD_STEPS: readonly WizardStep[] = [
     videoUrl: undefined,
   },
   {
-    id: 6,
+    id: 7,
     title: 'Review & Launch',
     description: 'Confirm details and save your workspace setup.',
     skippable: false,
@@ -106,7 +114,7 @@ export const WIZARD_STEPS: readonly WizardStep[] = [
     videoUrl: undefined,
   },
   {
-    id: 7,
+    id: 8,
     title: 'First-Value Sprint',
     description: 'Create and share your first itinerary inside 10 minutes.',
     skippable: true,
@@ -118,8 +126,9 @@ export const WIZARD_STEPS: readonly WizardStep[] = [
 export const TOTAL_WIZARD_STEPS = WIZARD_STEPS.length;
 export const TRIP_CREATION_STEP = 3;
 export const PROPOSAL_GENERATION_STEP = 4;
-export const REVIEW_STEP = 6;
-export const FIRST_VALUE_STEP = 7;
+export const WHATSAPP_SETUP_STEP = 5;
+export const REVIEW_STEP = 7;
+export const FIRST_VALUE_STEP = 8;
 
 export function formatDateTime(input: string | null): string {
   if (!input) return 'Not completed';
