@@ -71,6 +71,7 @@ const routes = createCatchAllHandlers([
   ["pricing/transactions", () => import("@/app/api/_handlers/admin/pricing/transactions/route")],
   ["pricing/receipts/upload", () => import("@/app/api/_handlers/admin/pricing/receipts/upload/route")],
   ["pricing/receipts/ocr", () => import("@/app/api/_handlers/admin/pricing/receipts/ocr/route")],
+  ["pricing/export", () => import("@/app/api/_handlers/admin/pricing/export/route")],
   ["revenue", () => import("@/app/api/_handlers/admin/revenue/route")],
   ["seed-demo", () => import("@/app/api/_handlers/admin/seed-demo/route")],
 ], { rateLimit: ADMIN_RATE_LIMIT });
