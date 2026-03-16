@@ -27,3 +27,44 @@ comment on column public.invoices.e_invoice_json is 'Signed e-invoice JSON respo
 comment on column public.invoices.e_invoice_status is 'E-invoice generation status: pending, generated, acknowledged, failed, cancelled';
 comment on column public.invoices.qr_code_data is 'QR code data string per GST e-invoice specification';
 comment on column public.invoices.e_invoice_error is 'Error message if e-invoice generation failed';
+
+-- Create e_invoice_settings table for organization credentials and configuration
+create table if not exists public.e_invoice_settings (
+    id uuid default gen_random_uuid() primary key,
+    organization_id uuid references public.organizations(id) on delete cascade not null,
+    gstin text not null,
+    irp_username text,
+    irp_password_encrypted text,
+    irp_api_key_encrypted text,
+    threshold_amount numeric(12,2) not null default 0,
+    auto_generate_enabled boolean not null default false,
+    sandbox_mode boolean not null default true,
+    created_at timestamptz default now(),
+    updated_at timestamptz default now(),
+    unique (organization_id)
+);
+
+create index if not exists idx_e_invoice_settings_org
+    on public.e_invoice_settings(organization_id);
+
+alter table public.e_invoice_settings enable row level security;
+
+create policy "Admins can manage e-invoice settings"
+    on public.e_invoice_settings for all
+    using (
+        exists (
+            select 1 from public.profiles
+            where profiles.id = auth.uid()
+              and profiles.role = 'admin'
+              and profiles.organization_id = e_invoice_settings.organization_id
+        )
+    );
+
+comment on table public.e_invoice_settings is 'E-invoicing configuration and IRP credentials per organization';
+comment on column public.e_invoice_settings.gstin is 'Organization GSTIN (Goods and Services Tax Identification Number)';
+comment on column public.e_invoice_settings.irp_username is 'Username for IRP (Invoice Registration Portal) API';
+comment on column public.e_invoice_settings.irp_password_encrypted is 'Encrypted password for IRP API authentication';
+comment on column public.e_invoice_settings.irp_api_key_encrypted is 'Encrypted API key for IRP service';
+comment on column public.e_invoice_settings.threshold_amount is 'Minimum invoice amount (INR) for automatic e-invoice generation';
+comment on column public.e_invoice_settings.auto_generate_enabled is 'Whether to automatically generate e-invoices for qualifying invoices';
+comment on column public.e_invoice_settings.sandbox_mode is 'Whether to use IRP sandbox/test environment (true) or production (false)';
