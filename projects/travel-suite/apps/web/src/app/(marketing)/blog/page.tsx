@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import { ArrowRight } from 'lucide-react';
 import { getAllPublishedPosts, type BlogPostSummary } from '@/lib/blog/queries';
 import { BlogCard } from '@/components/marketing/blog/BlogCard';
@@ -74,11 +75,12 @@ export default async function BlogPage() {
                   {article.cover_image && (
                     <div className="relative aspect-video overflow-hidden">
                       <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors z-10" />
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
+                      <Image
                         src={article.cover_image}
                         alt={article.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                        fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                        className="object-cover group-hover:scale-105 transition-transform duration-700"
                       />
                       <div className="absolute top-4 left-4 z-20 px-3 py-1 bg-black/60 backdrop-blur-md rounded-full border border-white/10 text-xs font-semibold text-[#00F0FF]">
                         {article.category}

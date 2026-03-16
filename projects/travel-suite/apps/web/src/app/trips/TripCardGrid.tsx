@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { MapPin, Wallet, ArrowRight, Trash2, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -107,11 +108,12 @@ export default function TripCardGrid({ trips }: TripCardGridProps) {
                                     {/* Hero image or gradient */}
                                     <div className="h-48 relative overflow-hidden">
                                         {heroImg ? (
-                                            /* eslint-disable-next-line @next/next/no-img-element */
-                                            <img
+                                            <Image
                                                 src={heroImg}
                                                 alt={trip.destination}
-                                                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                                                fill
+                                                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                                                className="object-cover transition-transform duration-700 group-hover:scale-110"
                                                 onError={(e) => {
                                                     e.currentTarget.style.display = "none";
                                                 }}

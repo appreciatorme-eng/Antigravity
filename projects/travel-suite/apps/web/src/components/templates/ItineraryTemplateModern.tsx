@@ -1,4 +1,5 @@
 import type { Day, Activity } from "@/types/itinerary";
+import Image from "next/image";
 import { MapPin, Calendar, Plane, Compass } from "lucide-react";
 import ClientItineraryMap from "@/components/map/ClientItineraryMap";
 import { ItineraryTemplateProps } from "./types";
@@ -9,12 +10,14 @@ export default function ItineraryTemplateModern({ itineraryData, organizationNam
             {/* Modern Hero Header */}
             <header className="relative bg-stone-900 text-white pb-12 pt-6">
                 <div className="absolute inset-0 overflow-hidden">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                        src={`https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1920&q=80`}
+                    <Image
+                        src="https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1920&q=80"
                         alt={itineraryData.destination}
-                        className="w-full h-full object-cover opacity-20"
+                        fill
+                        sizes="100vw"
+                        className="object-cover opacity-20"
                         onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        priority
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-stone-900 via-stone-900/40 to-transparent" />
                 </div>
@@ -154,13 +157,13 @@ export default function ItineraryTemplateModern({ itineraryData, organizationNam
 
                                                     <div className="md:pl-24">
                                                         {activity.image && (
-                                                            <div className="w-full h-48 sm:h-56 rounded-xl border border-stone-100 overflow-hidden mb-4 shadow-sm">
-                                                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                                <img
+                                                            <div className="relative w-full h-48 sm:h-56 rounded-xl border border-stone-100 overflow-hidden mb-4 shadow-sm">
+                                                                <Image
                                                                     src={activity.image}
                                                                     alt={activity.title}
-                                                                    className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
-                                                                    loading="lazy"
+                                                                    fill
+                                                                    sizes="(max-width: 640px) 100vw, 50vw"
+                                                                    className="object-cover transition-transform duration-700 hover:scale-105"
                                                                     onError={(e) => {
                                                                         e.currentTarget.src = "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3";
                                                                         e.currentTarget.onerror = null;

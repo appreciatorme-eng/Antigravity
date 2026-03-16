@@ -12,6 +12,7 @@
  */
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { ChevronDown, ChevronUp, MapPin, Clock, DollarSign, Calendar, Check, X } from 'lucide-react';
 import { ItineraryResult, Day, Activity } from '@/types/itinerary';
 import { Card, CardContent } from '@/components/ui/card';
@@ -56,12 +57,13 @@ export default function ProfessionalItineraryView({ itinerary, images = {}, orga
                 <div className="relative p-12 md:p-16">
                     {/* Operator Logo (if provided) */}
                     {organizationBranding?.logo_url && (
-                        <div className="mb-8 print:mb-6">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
+                        <div className="mb-8 print:mb-6 relative h-12 md:h-16 w-48">
+                            <Image
                                 src={organizationBranding.logo_url}
                                 alt={organizationBranding.name || 'Operator Logo'}
-                                className="h-12 md:h-16 object-contain filter brightness-0 invert"
+                                fill
+                                sizes="192px"
+                                className="object-contain object-left filter brightness-0 invert"
                             />
                         </div>
                     )}
@@ -286,11 +288,12 @@ function ActivityCard({ activity, image, brandColor }: ActivityCardProps) {
             {/* Activity Image (if available) */}
             {image && (
                 <div className="relative h-64 rounded-xl overflow-hidden mb-4 shadow-md">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                    <Image
                         src={image}
                         alt={activity.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        fill
+                        sizes="(max-width: 768px) 100vw, 60vw"
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
                     <div className="absolute bottom-4 left-4 right-4">

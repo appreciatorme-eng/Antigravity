@@ -1,7 +1,7 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import { useState, useCallback } from "react";
+import Image from "next/image";
 import { Images, ArrowRightLeft, Plus, Check } from "lucide-react";
 import { matchDestination, type DestinationImage } from "@/lib/social/destination-images";
 
@@ -97,10 +97,12 @@ export function GallerySlotPicker({
                         style={{ width: 100, height: 100 }}
                     >
                         {url ? (
-                            <img
+                            <Image
                                 src={url}
                                 alt={`Slot ${idx + 1}`}
-                                className="w-full h-full object-cover"
+                                fill
+                                sizes="100px"
+                                className="object-cover"
                             />
                         ) : (
                             <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-800 text-slate-400">
@@ -146,10 +148,12 @@ export function GallerySlotPicker({
                                     style={{ width: 80, height: 80 }}
                                     title={`${img.destination} — by ${img.photographer}`}
                                 >
-                                    <img
+                                    <Image
                                         src={img.thumb}
                                         alt={img.destination}
-                                        className="w-full h-full object-cover"
+                                        fill
+                                        sizes="80px"
+                                        className="object-cover"
                                     />
                                     {used && (
                                         <div className="absolute inset-0 flex items-center justify-center bg-black/30">
