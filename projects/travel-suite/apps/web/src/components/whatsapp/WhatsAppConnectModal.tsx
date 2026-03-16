@@ -51,7 +51,6 @@ export function WhatsAppConnectModal({
 
     const startDemoConnection = useCallback(async () => {
         setLoading(true);
-        await new Promise((resolve) => setTimeout(resolve, 1500));
         setSessionName("demo_" + Date.now());
         setStep("scanning");
         setLoading(false);
@@ -102,20 +101,16 @@ export function WhatsAppConnectModal({
         }
     }, [isOpen, step, startConnection]);
 
-    // Demo mode: auto-connect after 6 seconds of showing QR
+    // Demo mode: auto-connect immediately
     useEffect(() => {
         if (!isDemoMode || step !== "scanning") return;
 
-        const timer = setTimeout(() => {
-            setBusinessProfile({
-                number: "+91 98765 43210",
-                name: "GoBuddy Adventures",
-            });
-            setStep("connected");
-            onConnected();
-        }, 6000);
-
-        return () => clearTimeout(timer);
+        setBusinessProfile({
+            number: "+91 98765 43210",
+            name: "GoBuddy Adventures",
+        });
+        setStep("connected");
+        onConnected();
     }, [isDemoMode, step, onConnected]);
 
     // Real mode: poll for QR every 5 s until received (Chrome needs ~20-30 s to boot)
@@ -182,7 +177,6 @@ export function WhatsAppConnectModal({
     const handleTestMessage = async () => {
         if (isDemoMode) {
             setTestingMessage(true);
-            await new Promise((resolve) => setTimeout(resolve, 1500));
             toast({
                 title: "Test Message Dispatched! 🚀",
                 description: "Check your WhatsApp for the magic link test message.",
@@ -190,7 +184,7 @@ export function WhatsAppConnectModal({
                 durationMs: 4000,
             });
             setTestingMessage(false);
-            setTimeout(() => onClose(), 2000);
+            onClose();
             return;
         }
 

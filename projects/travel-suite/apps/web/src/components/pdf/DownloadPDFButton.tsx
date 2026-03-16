@@ -32,9 +32,6 @@ const DownloadPDFButton: React.FC<DownloadPDFButtonProps> = ({ data, fileName })
         throw new Error("Could not find the itinerary content to generate PDF");
       }
 
-      // Small delay to ensure any layout shifts/images have loaded
-      await new Promise(resolve => setTimeout(resolve, 300));
-
       // Add a class that templates can hook into via '[.pdf-exporting_&]:property' to expand accordions and un-hide elements
       element.classList.add('pdf-exporting');
 
