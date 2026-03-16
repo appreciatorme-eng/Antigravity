@@ -1,11 +1,14 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { Inter, Cormorant_Garamond } from "next/font/google";
+import { NextIntlClientProvider } from "next-intl";
+import { getMessages } from "next-intl/server";
 import "./globals.css";
 import "@/styles/print.css";
 import AppProviders from "@/components/providers/AppProviders";
 import AppShell from "@/components/layout/AppShell";
 import { ServiceWorkerRegistrar } from "@/components/pwa/ServiceWorkerRegistrar";
+import { getLocaleDirection } from "@/i18n";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -43,13 +46,21 @@ export const viewport: Viewport = {
   themeColor: "#6366f1",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
+  params: { locale },
 }: Readonly<{
   children: React.ReactNode;
+  params: { locale: string };
 }>) {
+  // Load messages for the current locale
+  const messages = await getMessages();
+
+  // Get text direction for locale (supports RTL languages like Arabic, Urdu)
+  const direction = getLocaleDirection(locale);
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} dir={direction} suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -74,12 +85,14 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${cormorant.variable} antialiased font-sans bg-white dark:bg-[#0a1628] text-slate-900 dark:text-slate-100`}
       >
-        <AppProviders>
-          <Suspense fallback={null}>
-            <AppShell>{children}</AppShell>
-          </Suspense>
-        </AppProviders>
-        <ServiceWorkerRegistrar />
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <AppProviders>
+            <Suspense fallback={null}>
+              <AppShell>{children}</AppShell>
+            </Suspense>
+          </AppProviders>
+          <ServiceWorkerRegistrar />
+        </NextIntlClientProvider>
       </body>
     </html>
   );

@@ -1,0 +1,199 @@
+{
+  "common": {
+    "loading": "लोड हो रहा है...",
+    "save": "सहेजें",
+    "cancel": "रद्द करें",
+    "delete": "हटाएं",
+    "edit": "संपादित करें",
+    "close": "बंद करें",
+    "confirm": "पुष्टि करें",
+    "back": "वापस",
+    "next": "आगे",
+    "submit": "जमा करें",
+    "search": "खोजें",
+    "filter": "फ़िल्टर",
+    "clear": "साफ़ करें",
+    "error": "त्रुटि",
+    "success": "सफलता",
+    "view": "देखें",
+    "download": "डाउनलोड करें",
+    "export": "निर्यात करें",
+    "import": "आयात करें",
+    "refresh": "रीफ़्रेश करें",
+    "print": "प्रिंट करें",
+    "duplicate": "डुप्लिकेट करें",
+    "archive": "संग्रहित करें",
+    "restore": "पुनर्स्थापित करें",
+    "send": "भेजें",
+    "resend": "पुनः भेजें",
+    "approve": "अनुमोदित करें",
+    "reject": "अस्वीकार करें",
+    "add": "जोड़ें",
+    "remove": "हटाएं",
+    "update": "अपडेट करें",
+    "create": "बनाएं",
+    "status": {
+      "pending": "लंबित",
+      "confirmed": "पुष्ट",
+      "cancelled": "रद्द",
+      "completed": "पूर्ण",
+      "active": "सक्रिय",
+      "inactive": "निष्क्रिय",
+      "processing": "प्रोसेसिंग",
+      "approved": "अनुमोदित",
+      "rejected": "अस्वीकृत",
+      "paid": "भुगतान किया गया",
+      "unpaid": "भुगतान नहीं किया गया",
+      "refunded": "रिफंड किया गया",
+      "draft": "ड्राफ्ट",
+      "sent": "भेजा गया"
+    },
+    "labels": {
+      "total": "कुल",
+      "items": "आइटम",
+      "showing": "दिखाया जा रहा है",
+      "of": "का",
+      "perPage": "प्रति पृष्ठ",
+      "selectAll": "सभी चुनें",
+      "deselectAll": "सभी अचयनित करें",
+      "noData": "कोई डेटा उपलब्ध नहीं है",
+      "noResults": "कोई परिणाम नहीं मिला",
+      "showMore": "और दिखाएं",
+      "showLess": "कम दिखाएं",
+      "required": "आवश्यक",
+      "optional": "वैकल्पिक",
+      "actions": "क्रियाएं",
+      "name": "नाम",
+      "description": "विवरण",
+      "date": "तारीख",
+      "time": "समय",
+      "amount": "राशि",
+      "notes": "टिप्पणियां"
+    }
+  },
+  "settings": {
+    "title": "सेटिंग्स",
+    "description": "अपने संगठन की प्राथमिकताएं, प्रोफ़ाइल और एकीकरण प्रबंधित करें",
+    "tabs": {
+      "organization": "संगठन",
+      "profile": "प्रोफ़ाइल",
+      "notifications": "सूचनाएं",
+      "integrations": "एकीकरण",
+      "billing": "बिलिंग",
+      "security": "सुरक्षा",
+      "team": "टीम"
+    },
+    "messages": {
+      "whatsappDisconnected": "WhatsApp सफलतापूर्वक डिस्कनेक्ट हो गया",
+      "whatsappDisconnectFailed": "WhatsApp डिस्कनेक्ट करने में विफल",
+      "timezoneSaved": "टाइमज़ोन सहेजा गया",
+      "timezoneSavedDescription": "आपका टाइमज़ोन {timezone} में अपडेट कर दिया गया है",
+      "timezoneSaveFailed": "टाइमज़ोन सहेजने में विफल",
+      "timezoneSaveFailedDescription": "कृपया पुनः प्रयास करें",
+      "settingsSaved": "सेटिंग्स सहेजी गईं",
+      "settingsSavedDescription": "आपके परिवर्तन सफलतापूर्वक सहेजे गए हैं"
+    },
+    "profile": {
+      "title": "व्यक्तिगत खाता",
+      "description": "अपनी परिचालन पहचान और व्यक्तिगत विवरण प्रबंधित करें।",
+      "avatar": {
+        "uploadButton": "अवतार अपलोड करें",
+        "fileRequirements": "JPG या PNG। अधिकतम आकार 2MB।"
+      },
+      "fields": {
+        "fullName": "पूरा नाम",
+        "email": "ईमेल पता"
+      },
+      "timezone": {
+        "label": "परिचालन टाइमज़ोन",
+        "description": "बुकिंग, प्रस्ताव गतिविधि और इनबॉक्स टाइमस्टैम्प के लिए उपयोग किया जाता है।",
+        "save": "टाइमज़ोन सहेजें",
+        "saving": "टाइमज़ोन सहेजा जा रहा है..."
+      },
+      "actions": {
+        "save": "कॉन्फ़िगरेशन सहेजें",
+        "saving": "सहेजा जा रहा है..."
+      }
+    }
+  },
+  "languageSwitcher": {
+    "label": "भाषा",
+    "languages": {
+      "en": "English",
+      "hi": "हिन्दी"
+    }
+  },
+  "portal": {
+    "help": "सहायता",
+    "footer": {
+      "safe": "आपकी यात्रा सुरक्षित है",
+      "poweredBy": "TourOS द्वारा संचालित"
+    },
+    "loading": "आपका यात्रा पोर्टल लोड हो रहा है...",
+    "errors": {
+      "notFound": {
+        "title": "पोर्टल नहीं मिला",
+        "description": "यह पोर्टल लिंक अमान्य है। अपने ट्रैवल ऑपरेटर से नवीनतम यात्रा लिंक पुनः भेजने के लिए कहें।"
+      },
+      "expired": {
+        "title": "यह यात्रा लिंक समाप्त हो गया है",
+        "description": "यह यात्रा लिंक समाप्त हो गया है। पुनः प्रयास करने से पहले नया लिंक प्राप्त करने के लिए अपने ट्रैवल ऑपरेटर से संपर्क करें।"
+      },
+      "unavailable": {
+        "title": "पोर्टल उपलब्ध नहीं है",
+        "description": "यात्रा पोर्टल लोड नहीं किया जा सका। नया लिंक प्राप्त करने के लिए अपने ट्रैवल ऑपरेटर से संपर्क करें।"
+      },
+      "loadFailed": "यात्रा पोर्टल लोड नहीं किया जा सका।"
+    },
+    "dates": {
+      "toBeConfirmed": "तारीखों की पुष्टि होनी बाकी है"
+    },
+    "hero": {
+      "yourTripPortal": "आपका यात्रा पोर्टल",
+      "welcome": "स्वागत है, {firstName}",
+      "needHelp": "सहायता चाहिए? अपने ऑपरेटर से संपर्क करें",
+      "call": "{operatorName} को कॉल करें"
+    },
+    "tripSummary": {
+      "title": "यात्रा सारांश",
+      "destination": "गंतव्य",
+      "toBeConfirmed": "पुष्टि होनी बाकी है",
+      "duration": "अवधि",
+      "days": "{days} दिन",
+      "travellers": "यात्री",
+      "travellersCount": "{count} यात्री",
+      "travellersPending": "यात्री विवरण लंबित",
+      "tripStarts": "यात्रा शुरू होती है",
+      "paymentStatus": "भुगतान स्थिति",
+      "awaitingLink": "लिंक की प्रतीक्षा में",
+      "paid": "भुगतान किया गया"
+    },
+    "itinerary": {
+      "title": "आपका यात्रा कार्यक्रम"
+    },
+    "driver": {
+      "title": "आपका ड्राइवर",
+      "phoneWillBeShared": "प्रस्थान से पहले फ़ोन नंबर साझा किया जाएगा",
+      "vehicle": "वाहन",
+      "vehicleToBeConfirmed": "वाहन विवरण की पुष्टि होनी बाकी है",
+      "contact": "संपर्क",
+      "sharedInWhatsApp": "WhatsApp में साझा किया गया",
+      "reachOutBeforePickup": "यदि योजना बदलती है तो पिकअप से पहले संपर्क करें।",
+      "callDriver": "ड्राइवर को कॉल करें",
+      "whatsappDriver": "ड्राइवर को WhatsApp करें",
+      "whatsappMessage": "नमस्ते {driverName}, मैं {clientName} हूं। मैं {tripName} पर यात्रा कर रहा/रही हूं। कृपया सुविधाजनक होने पर पिकअप विवरण की पुष्टि करें।"
+    },
+    "payment": {
+      "title": "भुगतान"
+    },
+    "shareLocation": {
+      "title": "अपना लाइव स्थान साझा करें",
+      "description": "अपने निर्धारित ड्राइवर के लिए पहले से भरे गए स्थान संदेश के साथ WhatsApp खोलें।",
+      "button": "ड्राइवर के साथ स्थान साझा करें",
+      "message": "नमस्ते {driverName}, मैं {tripName} के लिए अपना पिकअप स्थान साझा कर रहा/रही हूं: https://maps.google.com/?q=my+location"
+    },
+    "review": {
+      "title": "अपनी यात्रा को रेट करें"
+    }
+  }
+}

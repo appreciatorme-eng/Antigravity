@@ -1,0 +1,199 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "search": "Search",
+    "filter": "Filter",
+    "clear": "Clear",
+    "error": "Error",
+    "success": "Success",
+    "view": "View",
+    "download": "Download",
+    "export": "Export",
+    "import": "Import",
+    "refresh": "Refresh",
+    "print": "Print",
+    "duplicate": "Duplicate",
+    "archive": "Archive",
+    "restore": "Restore",
+    "send": "Send",
+    "resend": "Resend",
+    "approve": "Approve",
+    "reject": "Reject",
+    "add": "Add",
+    "remove": "Remove",
+    "update": "Update",
+    "create": "Create",
+    "status": {
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "cancelled": "Cancelled",
+      "completed": "Completed",
+      "active": "Active",
+      "inactive": "Inactive",
+      "processing": "Processing",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "paid": "Paid",
+      "unpaid": "Unpaid",
+      "refunded": "Refunded",
+      "draft": "Draft",
+      "sent": "Sent"
+    },
+    "labels": {
+      "total": "Total",
+      "items": "Items",
+      "showing": "Showing",
+      "of": "of",
+      "perPage": "per page",
+      "selectAll": "Select All",
+      "deselectAll": "Deselect All",
+      "noData": "No data available",
+      "noResults": "No results found",
+      "showMore": "Show More",
+      "showLess": "Show Less",
+      "required": "Required",
+      "optional": "Optional",
+      "actions": "Actions",
+      "name": "Name",
+      "description": "Description",
+      "date": "Date",
+      "time": "Time",
+      "amount": "Amount",
+      "notes": "Notes"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "description": "Manage your organization preferences, profile, and integrations",
+    "tabs": {
+      "organization": "Organization",
+      "profile": "Profile",
+      "notifications": "Notifications",
+      "integrations": "Integrations",
+      "billing": "Billing",
+      "security": "Security",
+      "team": "Team"
+    },
+    "messages": {
+      "whatsappDisconnected": "WhatsApp disconnected successfully",
+      "whatsappDisconnectFailed": "Failed to disconnect WhatsApp",
+      "timezoneSaved": "Timezone saved",
+      "timezoneSavedDescription": "Your timezone has been updated to {timezone}",
+      "timezoneSaveFailed": "Failed to save timezone",
+      "timezoneSaveFailedDescription": "Please try again",
+      "settingsSaved": "Settings saved",
+      "settingsSavedDescription": "Your changes have been saved successfully"
+    },
+    "profile": {
+      "title": "Personal Account",
+      "description": "Manage your operational identity and personal details.",
+      "avatar": {
+        "uploadButton": "Upload Avatar",
+        "fileRequirements": "JPG or PNG. Max size of 2MB."
+      },
+      "fields": {
+        "fullName": "Full Name",
+        "email": "Email Address"
+      },
+      "timezone": {
+        "label": "Operational Timezone",
+        "description": "Used for bookings, proposal activity, and inbox timestamps.",
+        "save": "Save timezone",
+        "saving": "Saving timezone..."
+      },
+      "actions": {
+        "save": "Save Configuration",
+        "saving": "Committing..."
+      }
+    }
+  },
+  "languageSwitcher": {
+    "label": "Language",
+    "languages": {
+      "en": "English",
+      "hi": "हिन्दी"
+    }
+  },
+  "portal": {
+    "help": "Help",
+    "footer": {
+      "safe": "Your trip is safe & secured",
+      "poweredBy": "Powered by TourOS"
+    },
+    "loading": "Loading your trip portal...",
+    "errors": {
+      "notFound": {
+        "title": "Portal not found",
+        "description": "This portal link is invalid. Ask your travel operator to resend the latest trip link."
+      },
+      "expired": {
+        "title": "This trip link has expired",
+        "description": "This trip link has expired. Contact your travel operator for a fresh link before trying again."
+      },
+      "unavailable": {
+        "title": "Portal unavailable",
+        "description": "The trip portal could not be loaded. Contact your travel operator for a fresh link."
+      },
+      "loadFailed": "The trip portal could not be loaded."
+    },
+    "dates": {
+      "toBeConfirmed": "Dates to be confirmed"
+    },
+    "hero": {
+      "yourTripPortal": "Your Trip Portal",
+      "welcome": "Welcome, {firstName}",
+      "needHelp": "Need help? Contact your operator",
+      "call": "Call {operatorName}"
+    },
+    "tripSummary": {
+      "title": "Trip Summary",
+      "destination": "Destination",
+      "toBeConfirmed": "To be confirmed",
+      "duration": "Duration",
+      "days": "{days} days",
+      "travellers": "Travellers",
+      "travellersCount": "{count} travellers",
+      "travellersPending": "Traveller details pending",
+      "tripStarts": "Trip Starts",
+      "paymentStatus": "Payment status",
+      "awaitingLink": "Awaiting link",
+      "paid": "Paid"
+    },
+    "itinerary": {
+      "title": "Your Itinerary"
+    },
+    "driver": {
+      "title": "Your Driver",
+      "phoneWillBeShared": "Phone number will be shared before departure",
+      "vehicle": "Vehicle",
+      "vehicleToBeConfirmed": "Vehicle details to be confirmed",
+      "contact": "Contact",
+      "sharedInWhatsApp": "Shared in WhatsApp",
+      "reachOutBeforePickup": "Reach out before pickup if plans change.",
+      "callDriver": "Call Driver",
+      "whatsappDriver": "WhatsApp Driver",
+      "whatsappMessage": "Hello {driverName}, this is {clientName}. I am travelling on {tripName}. Please confirm the pickup details when convenient."
+    },
+    "payment": {
+      "title": "Payment"
+    },
+    "shareLocation": {
+      "title": "Share Your Live Location",
+      "description": "Open WhatsApp with a pre-filled location message for your assigned driver.",
+      "button": "Share Location with Driver",
+      "message": "Hello {driverName}, I am sharing my pickup location for {tripName}: https://maps.google.com/?q=my+location"
+    },
+    "review": {
+      "title": "Rate Your Trip"
+    }
+  }
+}

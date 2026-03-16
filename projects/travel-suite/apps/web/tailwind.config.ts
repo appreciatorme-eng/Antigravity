@@ -2,6 +2,45 @@ import type { Config } from "tailwindcss";
 import tailwindcssAnimate from "tailwindcss-animate";
 import tailwindClipPath from "tailwind-clip-path";
 
+/**
+ * RTL (Right-to-Left) Support Configuration
+ *
+ * Tailwind CSS v4 has built-in RTL support via `rtl:` and `ltr:` variants.
+ * The `dir` attribute on the <html> element (set dynamically in src/app/layout.tsx)
+ * automatically enables RTL mode for supported languages (Arabic, Urdu, Hebrew).
+ *
+ * IMPORTANT RTL-Safe Utility Patterns:
+ *
+ * 1. Logical Properties (Recommended):
+ *    Use directional-agnostic utilities that adapt to text direction:
+ *    - `ms-4` (margin-inline-start) instead of `ml-4` (margin-left)
+ *    - `me-4` (margin-inline-end) instead of `mr-4` (margin-right)
+ *    - `ps-4` (padding-inline-start) instead of `pl-4` (padding-left)
+ *    - `pe-4` (padding-inline-end) instead of `pr-4` (padding-right)
+ *    - `start-0` (inset-inline-start) instead of `left-0`
+ *    - `end-0` (inset-inline-end) instead of `right-0`
+ *    - `rounded-s-lg` instead of `rounded-l-lg`
+ *    - `rounded-e-lg` instead of `rounded-r-lg`
+ *
+ * 2. RTL Variants (For Specific Cases):
+ *    Use `rtl:` and `ltr:` variants when logical properties aren't sufficient:
+ *    - `ltr:ml-4 rtl:mr-4` - different margins for each direction
+ *    - `ltr:text-left rtl:text-right` - text alignment per direction
+ *    - `ltr:flex-row rtl:flex-row-reverse` - reverse flex direction
+ *
+ * 3. Direction-Aware Icons:
+ *    For directional icons (arrows, chevrons), use RTL variants:
+ *    - `ltr:rotate-0 rtl:rotate-180` - flip arrow icons in RTL
+ *
+ * Current Locale Support:
+ * - English (en): LTR
+ * - Hindi (hi): LTR
+ * - Future: Arabic (ar), Urdu (ur) - RTL
+ *
+ * See: src/i18n.ts for locale direction configuration
+ * See: src/app/layout.tsx for dynamic `dir` attribute
+ */
+
 const config = {
   darkMode: ["class"],
   content: [
