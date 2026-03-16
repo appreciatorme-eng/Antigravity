@@ -2010,3 +2010,80 @@ Ran `audit-remediation.spec.ts` against Vercel production (`travelsuite-rust.ver
 - Pre-existing 3 TypeScript errors in `reputation/nps` and `reputation/widget` unrelated to S22 changes
 - 17 complex API handlers intentionally left with raw NextResponse (they set response headers or perform redirects)
 - E2E tests deferred until Vercel deploy receives this branch merge
+
+---
+
+## Session S36 — 2026-03-15 (Remediation S36)
+**Branch**: `fix/remediation-s36` | **Scope**: Zod/input validation audit + pricing constants
+
+### Verification Results
+| Check | Result | Notes |
+|-------|--------|-------|
+| `npm run lint` | ✅ Pass | Fixed unused `robots` var in s35 spec (pre-existing warning) |
+| `npm run typecheck` | ✅ Pass | 0 errors |
+| `npm run test:coverage` | ✅ Pass | 55 files / 748 tests — 91.51% lines / 88.96% functions / 97.1% branches |
+| Playwright E2E | ⏳ Deferred | remediation-s36.spec.ts (135 lines, 12 tests — M-01, M-05, H-01, M-03, L-01) |
+
+### Issues Found and Fixed
+| ID | Issue | Fix |
+|----|-------|-----|
+| M-01 | NPS submit: feedback field had no type/length guard | Added `typeof feedback === 'string' ? feedback.slice(0, 5000) : null` |
+| M-05 | Pricing data hardcoded in PricingPageContent | Extracted `PLANS` + `PRICING_FAQS` to `src/lib/constants/pricing.tsx` |
+
+### False Alarms (already implemented)
+| ID | Finding | Why it's already OK |
+|----|---------|---------------------|
+| H-01 | SSRF in itinerary URL import | Full SSRF stack: `isPrivateIp()`, DNS lookup, scheme check |
+| H-02 | Arbitrary actionName in assistant/confirm | Registry lookup + `isActionBlocked()` is the whitelist |
+| M-02 | UPI ID format | `UPI_REGEX` already validates on POST |
+| M-03 | Lat/lon type safety | `inRange(-90,90)` + `inRange(-180,180)` already in place |
+| M-04 | location/share tripId | `getScopedTrip()` DB validation covers this |
+| L-01 | admin/retry queue_id | `UUID_PATTERN` + `sanitizeText` already present |
+| L-02 | pdf-imports action enum | Switch-case with `default: 400` is an enum constraint |
+| L-03 | admin/contacts body | Extensive sanitize* functions + org scope checks |
+
+**Commits:**
+| Commit | Description |
+|--------|-------------|
+| `95973ef` | chore: create remediation tracker s36 |
+| `1a79959` | fix: extract pricing constants + NPS feedback length cap (M-05, M-01) |
+| `37fe651` | test: add E2E tests for remediation s36 |
+
+## Session S37 — 2026-03-16 (Remediation S37)
+**Branch**: `fix/remediation-s37` | **Scope**: Rate limiting gaps, N+1 writes, error handling, RLS performance
+
+### Verification Results
+| Check | Result | Notes |
+|-------|--------|-------|
+| `npm run lint` | ✅ Pass | 0 warnings |
+| `npm run typecheck` | ✅ Pass | 0 errors (fixed metadata type in broadcast batch) |
+| `npm run test:coverage` | ✅ Pass | 748 tests — 91.51% lines / 89.08% functions / 97.1% branches |
+| Playwright E2E | ⏳ Deferred | remediation-s37.spec.ts (160 lines, 12 tests — H-01..H-04, H-06, M-02, M-06) |
+
+### Issues Found and Fixed
+| ID | Issue | Fix |
+|----|-------|-----|
+| H-01 | `billing/contact-sales` missing rate limit | `enforceRateLimit` 3/10min per user |
+| H-02 | `ai/pricing-suggestion` missing rate limit (live Gemini) | `enforceRateLimit` 30/min per user |
+| H-03 | `ai/suggest-reply` missing rate limit (live Gemini) | `enforceRateLimit` 30/min per user |
+| H-04 | `ai/draft-review-response` missing rate limit (live Gemini) | `enforceRateLimit` 20/min per user |
+| H-06 | `whatsapp/broadcast` N+1 DB inserts (up to 200 serial writes) | Collect inserts in array during loop; single batch `.insert()` after loop |
+| M-02 | `itinerary/generate` empty `catch {}` (dead code block) | Removed dead `if (ratelimit) { try { /* comment */ } catch { } }` block |
+| M-03 | `reputation/ai/batch-analyze` per-review `getEmergencyDailySpendCapUsd()` call | Hoisted call above loop — 50 calls → 1 call |
+| M-05 | `leads/convert` `console.error` instead of `logError` | Replaced with `logError` from `@/lib/observability/logger` |
+| M-06 | `auth_rls_initplan` on 7 tables (per-row `auth.role()` evaluation) | Supabase migration: `auth.role()` → `(select auth.role())` on all 7 tables |
+
+### Documented (no code change needed)
+| ID | Finding | Why accepted |
+|----|---------|-------------|
+| H-05 | `social/process-queue` per-item DB writes | Intentional CAS pattern — per-item UPDATE needed for race-free claiming |
+| M-01 | `health/route.ts` no rate limit | Unauthenticated path returns immediately; amplified path is HEALTHCHECK_TOKEN gated |
+| M-04 | `payments/webhook` `db_error.message` in logs | Server-side internal structured logs only — not returned to clients |
+| L-01..L-03 | 202 unused indexes, unindexed FK, multiple permissive policies | Deferred to dedicated DB optimization sprint |
+
+**Commits:**
+| Commit | Description |
+|--------|-------------|
+| `852af72` | chore: create remediation tracker s37 |
+| `d641591` | fix: add rate limiting to AI+billing endpoints, batch broadcast inserts, improve error handling |
+| `8208dfa` | test: add E2E tests for remediation s37 |
