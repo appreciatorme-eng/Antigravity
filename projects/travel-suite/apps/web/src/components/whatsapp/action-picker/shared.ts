@@ -76,6 +76,7 @@ export function useOrganizationTrips(): UseDataResult<Trip> {
             start_date?: string | null;
             end_date?: string | null;
             destination?: string | null;
+            pax_count?: number | null;
             itineraries?: {
               trip_title?: string | null;
               duration_days?: number | null;
@@ -103,8 +104,8 @@ export function useOrganizationTrips(): UseDataResult<Trip> {
             duration: t.itineraries?.duration_days
               ? `${t.itineraries.duration_days - 1}N/${t.itineraries.duration_days}D`
               : "",
-            pax: 2,
-            hotel: "",
+            pax: t.pax_count ?? 0,
+            hotel: t.destination || t.itineraries?.destination || "",
             amount: 0,
             bookingId: `GB-${t.id.slice(0, 8).toUpperCase()}`,
             itinerarySummary: "",
