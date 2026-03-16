@@ -16,6 +16,7 @@ import {
 import { FirstValueSprintStep } from './_components/FirstValueSprintStep';
 import { OnboardingDetailsSteps } from './_components/OnboardingDetailsSteps';
 import { OnboardingFormShell } from './_components/OnboardingFormShell';
+import { PaymentSetupStep } from './_components/PaymentSetupStep';
 import { ProposalGenerationStep } from './_components/ProposalGenerationStep';
 import { SampleDataLoader } from './_components/SampleDataLoader';
 import { TripCreationStep } from './_components/TripCreationStep';
@@ -25,6 +26,7 @@ import {
   FIRST_VALUE_STEP,
   OnboardingPayload,
   FirstValuePayload,
+  PAYMENT_SETUP_STEP,
   PROPOSAL_GENERATION_STEP,
   REVIEW_STEP,
   TOTAL_WIZARD_STEPS,
@@ -364,6 +366,8 @@ function OnboardingPageContent() {
         />
       ) : currentStep === WHATSAPP_SETUP_STEP ? (
         <WhatsAppSetupStep />
+      ) : currentStep === PAYMENT_SETUP_STEP ? (
+        <PaymentSetupStep />
       ) : (
         <OnboardingDetailsSteps
           currentStep={currentStep}

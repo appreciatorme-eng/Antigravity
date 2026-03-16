@@ -99,6 +99,14 @@ export const WIZARD_STEPS: readonly WizardStep[] = [
   },
   {
     id: 6,
+    title: 'Payment Link Setup',
+    description: 'Configure UPI payment links for seamless client payments.',
+    skippable: true,
+    helpText: 'Add your UPI ID to include payment links in proposals and WhatsApp messages. This makes it easy for clients to pay you directly.',
+    videoUrl: undefined,
+  },
+  {
+    id: 7,
     title: 'Proposal Style',
     description: 'Choose the default itinerary template your clients will see.',
     skippable: false,
@@ -106,7 +114,7 @@ export const WIZARD_STEPS: readonly WizardStep[] = [
     videoUrl: undefined,
   },
   {
-    id: 7,
+    id: 8,
     title: 'Review & Launch',
     description: 'Confirm details and save your workspace setup.',
     skippable: false,
@@ -114,7 +122,7 @@ export const WIZARD_STEPS: readonly WizardStep[] = [
     videoUrl: undefined,
   },
   {
-    id: 8,
+    id: 9,
     title: 'First-Value Sprint',
     description: 'Create and share your first itinerary inside 10 minutes.',
     skippable: true,
@@ -127,8 +135,9 @@ export const TOTAL_WIZARD_STEPS = WIZARD_STEPS.length;
 export const TRIP_CREATION_STEP = 3;
 export const PROPOSAL_GENERATION_STEP = 4;
 export const WHATSAPP_SETUP_STEP = 5;
-export const REVIEW_STEP = 7;
-export const FIRST_VALUE_STEP = 8;
+export const PAYMENT_SETUP_STEP = 6;
+export const REVIEW_STEP = 8;
+export const FIRST_VALUE_STEP = 9;
 
 export function formatDateTime(input: string | null): string {
   if (!input) return 'Not completed';
