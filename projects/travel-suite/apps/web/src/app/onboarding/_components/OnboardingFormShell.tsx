@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Loader2,
 } from 'lucide-react';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import {
   FIRST_VALUE_STEP,
   REVIEW_STEP,
@@ -51,15 +52,20 @@ export function OnboardingFormShell({
     <div className="min-h-screen bg-gradient-to-br from-[#f8f5ef] to-[#efe4d2] px-4 py-10">
       <div className="mx-auto max-w-3xl space-y-6">
         <div className="rounded-2xl border border-[#eadfcd] bg-white p-6 shadow-sm md:p-8">
-          <div className="flex items-start gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#eadfcd] bg-[#f8f1e6]">
-              <Building2 className="h-5 w-5 text-[#9c7c46]" />
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#eadfcd] bg-[#f8f1e6]">
+                <Building2 className="h-5 w-5 text-[#9c7c46]" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-semibold text-[#1b140a]">Set Up Your Operator Workspace</h1>
+                <p className="mt-1 text-sm text-[#6f5b3e]">
+                  Finish setup, generate your first itinerary, and share it with a client in the first 10 minutes.
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-semibold text-[#1b140a]">Set Up Your Operator Workspace</h1>
-              <p className="mt-1 text-sm text-[#6f5b3e]">
-                Finish setup, generate your first itinerary, and share it with a client in the first 10 minutes.
-              </p>
+            <div className="shrink-0">
+              <LanguageSwitcher />
             </div>
           </div>
         </div>
