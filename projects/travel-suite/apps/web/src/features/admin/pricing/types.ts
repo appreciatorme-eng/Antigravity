@@ -89,12 +89,35 @@ export interface MonthlyTrendPoint {
   revenue: number;
 }
 
+export interface DestinationProfitability {
+  destination: string;
+  revenue: number;
+  cost: number;
+  profit: number;
+  tripCount: number;
+  avgMargin: number;
+}
+
+export interface ClientProfitability {
+  clientId: string;
+  clientName: string;
+  revenue: number;
+  cost: number;
+  profit: number;
+  tripCount: number;
+  avgMargin: number;
+}
+
 export interface PricingDashboardData {
   kpis: PricingDashboardKpis;
   categoryBreakdown: CategoryBreakdown[];
   topProfitableTrips: TopProfitableTrip[];
   bottomProfitableTrips: TopProfitableTrip[];
   monthlyTrend: MonthlyTrendPoint[];
+  topDestinations: DestinationProfitability[];
+  bottomDestinations: DestinationProfitability[];
+  topClients: ClientProfitability[];
+  bottomClients: ClientProfitability[];
 }
 
 export interface TripWithCosts {

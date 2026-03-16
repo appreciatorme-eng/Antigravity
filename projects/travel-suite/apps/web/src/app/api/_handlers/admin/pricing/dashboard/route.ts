@@ -147,9 +147,11 @@ export async function GET(req: NextRequest) {
       destProfitMap.set(destination, existing);
     }
 
-    type DestinationProfitability = { destination: string; profit: number; tripCount: number; avgMargin: number };
+    type DestinationProfitability = { destination: string; revenue: number; cost: number; profit: number; tripCount: number; avgMargin: number };
     const destinationProfits = Array.from(destProfitMap.entries()).map(([destination, data]) => ({
       destination,
+      revenue: data.revenue,
+      cost: data.cost,
       profit: data.revenue - data.cost,
       tripCount: data.tripCount,
       avgMargin: data.revenue > 0 ? ((data.revenue - data.cost) / data.revenue) * 100 : 0,
@@ -170,10 +172,12 @@ export async function GET(req: NextRequest) {
       clientProfitMap.set(trip.client_id, existing);
     }
 
-    type ClientProfitability = { clientId: string; clientName: string; profit: number; tripCount: number; avgMargin: number };
+    type ClientProfitability = { clientId: string; clientName: string; revenue: number; cost: number; profit: number; tripCount: number; avgMargin: number };
     const clientProfits = Array.from(clientProfitMap.entries()).map(([clientId, data]) => ({
       clientId,
       clientName: clientNameMap.get(clientId) || "Unknown Client",
+      revenue: data.revenue,
+      cost: data.cost,
       profit: data.revenue - data.cost,
       tripCount: data.tripCount,
       avgMargin: data.revenue > 0 ? ((data.revenue - data.cost) / data.revenue) * 100 : 0,
