@@ -176,7 +176,7 @@ test.describe('Portal Footer Localization', () => {
       const footerText = await footer.textContent();
       expect(footerText).toBeTruthy();
       // Footer text should exist (content may be in Hindi or English)
-      expect(footerText.length).toBeGreaterThan(0);
+      expect(footerText?.length ?? 0).toBeGreaterThan(0);
     }
   });
 });

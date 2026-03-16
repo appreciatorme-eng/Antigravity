@@ -136,7 +136,7 @@ export default function PortalPage() {
     return () => {
       isMounted = false;
     };
-  }, [token]);
+  }, [token, t]);
 
   async function handleReviewSubmit(rating: number, comment: string) {
     if (!portal) return;
