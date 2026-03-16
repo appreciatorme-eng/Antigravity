@@ -105,7 +105,7 @@ export async function GET(req: NextRequest) {
       tripProfitMap.set(c.trip_id, existing);
     }
     type ProfitableTrip = { tripId: string; tripTitle: string; destination: string | null; profit: number; paxCount: number | null; revenue: number; cost: number };
-    const topProfitableTrips = tripRows
+    const sortedTrips = tripRows
       .map((t) => {
         const p = tripProfitMap.get(t.id) || { cost: 0, revenue: 0 };
         return {
@@ -118,8 +118,9 @@ export async function GET(req: NextRequest) {
           cost: p.cost,
         };
       })
-      .sort((a: ProfitableTrip, b: ProfitableTrip) => b.profit - a.profit)
-      .slice(0, 5);
+      .sort((a: ProfitableTrip, b: ProfitableTrip) => b.profit - a.profit);
+    const topProfitableTrips = sortedTrips.slice(0, 5);
+    const bottomProfitableTrips = sortedTrips.slice(-5).reverse();
 
     // Fetch client names for client profitability calculations
     const uniqueClientIds = Array.from(new Set(tripRows.map(t => t.client_id).filter(Boolean))) as string[];
@@ -235,6 +236,7 @@ export async function GET(req: NextRequest) {
       },
       categoryBreakdown,
       topProfitableTrips,
+      bottomProfitableTrips,
       topDestinations,
       bottomDestinations,
       topClients,

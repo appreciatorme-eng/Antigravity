@@ -93,6 +93,7 @@ export interface PricingDashboardData {
   kpis: PricingDashboardKpis;
   categoryBreakdown: CategoryBreakdown[];
   topProfitableTrips: TopProfitableTrip[];
+  bottomProfitableTrips: TopProfitableTrip[];
   monthlyTrend: MonthlyTrendPoint[];
 }
 
