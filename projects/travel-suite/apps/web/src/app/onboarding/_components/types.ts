@@ -47,31 +47,55 @@ export interface FirstValuePayload {
   milestones: FirstValueMilestone[];
 }
 
-export const WIZARD_STEPS = [
+export interface WizardStep {
+  id: number;
+  title: string;
+  description: string;
+  skippable?: boolean;
+  helpText?: string;
+  videoUrl?: string;
+}
+
+export const WIZARD_STEPS: readonly WizardStep[] = [
   {
     id: 1,
     title: 'Business Basics',
     description: 'Set your operator identity and visual branding.',
+    skippable: false,
+    helpText: 'Your business name and logo appear on all proposals. Choose a primary color that matches your brand.',
+    videoUrl: undefined,
   },
   {
     id: 2,
     title: 'Services & Market',
     description: 'Define regions, specialties, and your marketplace pitch.',
+    skippable: true,
+    helpText: 'Service regions and specialties help clients find you in the marketplace. You can update these later.',
+    videoUrl: undefined,
   },
   {
     id: 3,
     title: 'Proposal Style',
     description: 'Choose the default itinerary template your clients will see.',
+    skippable: false,
+    helpText: 'This template will be used for all new proposals. You can change it per-proposal later.',
+    videoUrl: undefined,
   },
   {
     id: 4,
     title: 'Review & Launch',
     description: 'Confirm details and save your workspace setup.',
+    skippable: false,
+    helpText: 'Review your setup before launching. You can modify these settings anytime from your dashboard.',
+    videoUrl: undefined,
   },
   {
     id: 5,
     title: 'First-Value Sprint',
     description: 'Create and share your first itinerary inside 10 minutes.',
+    skippable: true,
+    helpText: 'Complete these quick tasks to see how the platform works. Each milestone takes under 3 minutes.',
+    videoUrl: undefined,
   },
 ] as const;
 
