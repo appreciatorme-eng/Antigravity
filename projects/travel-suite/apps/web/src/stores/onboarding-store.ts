@@ -6,7 +6,9 @@ interface OnboardingState {
     currentStep: number;
     totalSteps: number;
     completedSteps: string[];
+    skippedSteps: string[];
     completeStep: (stepId: string) => void;
+    skipStep: (stepId: string) => void;
     nextStep: () => void;
     prevStep: () => void;
     finishOnboarding: () => void;
@@ -20,10 +22,16 @@ export const useOnboardingStore = create<OnboardingState>()(
             currentStep: 0,
             totalSteps: 4,
             completedSteps: [],
+            skippedSteps: [],
             completeStep: (stepId) => set((state) => ({
                 completedSteps: state.completedSteps.includes(stepId)
                     ? state.completedSteps
                     : [...state.completedSteps, stepId]
+            })),
+            skipStep: (stepId) => set((state) => ({
+                skippedSteps: state.skippedSteps.includes(stepId)
+                    ? state.skippedSteps
+                    : [...state.skippedSteps, stepId]
             })),
             nextStep: () => set((state) => ({
                 currentStep: Math.min(state.currentStep + 1, state.totalSteps - 1)
@@ -35,7 +43,8 @@ export const useOnboardingStore = create<OnboardingState>()(
             resetOnboarding: () => set({
                 hasCompletedOnboarding: false,
                 currentStep: 0,
-                completedSteps: []
+                completedSteps: [],
+                skippedSteps: []
             }),
         }),
         {
