@@ -65,6 +65,11 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: cronAuth.reason }, { status: cronAuth.status });
         }
 
+        if (process.env.NODE_ENV === 'production' && isMockSocialPublishingEnabled()) {
+            logError('CRITICAL: Social mock publishing is enabled in production', new Error('MockPublishingInProduction'));
+            return apiError('Social publishing misconfigured', 500);
+        }
+
         const supabaseAdmin = createAdminClient();
         const maxAttempts = parsePositiveInt(process.env.SOCIAL_QUEUE_MAX_ATTEMPTS, 3);
         const mockPublishingEnabled = isMockSocialPublishingEnabled();

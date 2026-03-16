@@ -118,6 +118,7 @@ function warnLocalFallback(prefix: string): void {
 export async function enforceRateLimit(options: RateLimitOptions): Promise<RateLimitResult> {
     const limiter = getUpstashLimiter(options.limit, options.windowMs, options.prefix);
     if (!limiter) {
+        // RATE_LIMIT_FAIL_OPEN=true is a dev-only override. Never set in production.
         if (process.env.NODE_ENV === "production" && process.env.RATE_LIMIT_FAIL_OPEN !== "true") {
             logError(
                 `[rate-limit] FAIL-CLOSED: Redis unavailable for prefix "${options.prefix}". ` +

@@ -83,6 +83,10 @@ const mockSupabase = {
   from: vi.fn().mockReturnThis(),
   select: vi.fn().mockReturnThis(),
   eq: vi.fn().mockReturnThis(),
+  not: vi.fn().mockReturnThis(),
+  order: vi.fn().mockReturnThis(),
+  limit: vi.fn().mockReturnThis(),
+  insert: vi.fn().mockReturnThis(),
   maybeSingle: vi.fn(),
 };
 
@@ -120,6 +124,11 @@ beforeEach(() => {
   mockSupabase.from.mockReturnThis();
   mockSupabase.select.mockReturnThis();
   mockSupabase.eq.mockReturnThis();
+  mockSupabase.not.mockReturnThis();
+  mockSupabase.order.mockReturnThis();
+  mockSupabase.limit.mockReturnThis();
+  mockSupabase.insert.mockReturnThis();
+  // Default: no existing records (idempotency checks return null → proceed normally)
   mockSupabase.maybeSingle.mockResolvedValue({ data: null, error: null });
 });
 
@@ -144,7 +153,8 @@ describe("POST /api/payments/create-order", () => {
         500,
         "INR",
         "org-456",
-        expect.any(Object)
+        expect.any(Object),
+        undefined // receiptId (C-04 idempotency) — undefined when no invoice_id
       );
     });
 
@@ -158,15 +168,19 @@ describe("POST /api/payments/create-order", () => {
         100,
         "INR",
         "org-456",
-        expect.any(Object)
+        expect.any(Object),
+        undefined // receiptId (C-04 idempotency) — undefined when no invoice_id
       );
     });
 
     it("passes invoice_id in notes when provided", async () => {
+      // maybeSingle call 1: invoice lookup
       mockSupabase.maybeSingle.mockResolvedValueOnce({
         data: { id: "inv-1", organization_id: "org-456", total_amount: 100, status: "pending" },
         error: null,
       });
+      // maybeSingle call 2: idempotency check — no existing order
+      mockSupabase.maybeSingle.mockResolvedValueOnce({ data: null, error: null });
       mockCreateOrder.mockResolvedValueOnce({ id: "order_inv" });
 
       const { POST } = await loadRoute();
@@ -178,7 +192,8 @@ describe("POST /api/payments/create-order", () => {
         100,
         "INR",
         "org-456",
-        expect.objectContaining({ invoice_id: "inv-1" })
+        expect.objectContaining({ invoice_id: "inv-1" }),
+        "inv-1" // receiptId = invoice_id (C-04 idempotency)
       );
     });
 
@@ -198,7 +213,8 @@ describe("POST /api/payments/create-order", () => {
         200,
         "INR",
         "org-456",
-        expect.objectContaining({ subscription_id: "sub-1" })
+        expect.objectContaining({ subscription_id: "sub-1" }),
+        undefined // no invoice_id → no receipt
       );
     });
   });
@@ -374,6 +390,7 @@ describe("POST /api/payments/create-order", () => {
     });
 
     it("allows partial payment when allow_partial is true", async () => {
+      // maybeSingle call 1: invoice lookup
       mockSupabase.maybeSingle.mockResolvedValueOnce({
         data: {
           id: "inv-1",
@@ -383,6 +400,8 @@ describe("POST /api/payments/create-order", () => {
         },
         error: null,
       });
+      // maybeSingle call 2: idempotency check — no existing order
+      mockSupabase.maybeSingle.mockResolvedValueOnce({ data: null, error: null });
       mockCreateOrder.mockResolvedValueOnce({ id: "order_partial" });
 
       const { POST } = await loadRoute();
@@ -394,6 +413,7 @@ describe("POST /api/payments/create-order", () => {
     });
 
     it("allows full amount even when invoice total is set", async () => {
+      // maybeSingle call 1: invoice lookup
       mockSupabase.maybeSingle.mockResolvedValueOnce({
         data: {
           id: "inv-1",
@@ -403,6 +423,8 @@ describe("POST /api/payments/create-order", () => {
         },
         error: null,
       });
+      // maybeSingle call 2: idempotency check — no existing order
+      mockSupabase.maybeSingle.mockResolvedValueOnce({ data: null, error: null });
       mockCreateOrder.mockResolvedValueOnce({ id: "order_full" });
 
       const { POST } = await loadRoute();

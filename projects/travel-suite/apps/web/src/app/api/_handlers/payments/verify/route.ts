@@ -27,6 +27,24 @@ export async function POST(request: NextRequest) {
     }
 
     const admin = createAdminClient();
+
+    // Idempotency guard: if this payment was already verified, return early
+    const { data: existingCapture, error: captureCheckError } = await admin
+      .from("payment_events")
+      .select("id")
+      .eq("external_id", parsed.data.razorpay_payment_id)
+      .eq("status", "captured")
+      .limit(1)
+      .maybeSingle();
+
+    if (captureCheckError) {
+      logError("[payments/verify] Failed to check idempotency", captureCheckError);
+    }
+
+    if (existingCapture) {
+      return apiSuccess({ alreadyVerified: true, verified: true });
+    }
+
     const link = await getPaymentLinkByToken(admin, parsed.data.token, new URL(request.url).origin);
     if (!link) {
       return apiError("Payment link not found", 404);

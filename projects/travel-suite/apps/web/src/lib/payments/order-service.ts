@@ -13,7 +13,8 @@ export async function createOrder(
   amount: number,
   currency: 'INR' | 'USD' = 'INR',
   organizationId?: string,
-  notes?: Record<string, string>
+  notes?: Record<string, string>,
+  receipt?: string
 ): Promise<Order> {
   try {
     if (!Number.isFinite(amount) || amount <= 0) {
@@ -28,7 +29,7 @@ export async function createOrder(
     const order = await razorpay.orders.create({
       amount: Math.round(amount * 100),
       currency,
-      receipt: `rcpt_${Date.now()}`,
+      receipt: receipt || `rcpt_${Date.now()}`,
       notes: {
         ...notes,
         organization_id: organizationId || '',

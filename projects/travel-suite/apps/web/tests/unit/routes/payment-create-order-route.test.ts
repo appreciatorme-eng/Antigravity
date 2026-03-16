@@ -128,7 +128,8 @@ it("returns the created order in the normalized success envelope", async () => {
     },
     error: null,
   });
-  expect(createOrderMock).toHaveBeenCalledWith(5000, "INR", "org-1", {});
+  // 5th arg is receiptId (C-04 idempotency) — undefined when no invoice_id provided
+  expect(createOrderMock).toHaveBeenCalledWith(5000, "INR", "org-1", {}, undefined);
 });
 
 function makeAuthenticatedClient(orgId: string | null = "org-1") {

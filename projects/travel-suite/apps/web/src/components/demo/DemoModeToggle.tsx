@@ -8,6 +8,10 @@ import { FlaskConical, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDemoMode } from "@/lib/demo/demo-mode-context";
 
+// In production, only render when explicitly opted in via NEXT_PUBLIC_DEMO_MODE_ENABLED=true.
+const DEMO_DISABLED_IN_PRODUCTION =
+  process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_DEMO_MODE_ENABLED !== 'true';
+
 export default function DemoModeToggle({ className }: { className?: string }) {
   const { isDemoMode, toggleDemoMode, mounted } = useDemoMode();
   const [localMounted, setLocalMounted] = useState(false);
@@ -17,6 +21,10 @@ export default function DemoModeToggle({ className }: { className?: string }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLocalMounted(true);
   }, []);
+
+  if (DEMO_DISABLED_IN_PRODUCTION) {
+    return null;
+  }
 
   if (!localMounted || !mounted) {
     return (

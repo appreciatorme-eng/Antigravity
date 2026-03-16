@@ -40,9 +40,10 @@ export class PaymentService {
     amount: number,
     currency: 'INR' | 'USD' = 'INR',
     organizationId?: string,
-    notes?: Record<string, string>
+    notes?: Record<string, string>,
+    receipt?: string
   ): Promise<Order> {
-    return createOrder(amount, currency, organizationId, notes);
+    return createOrder(amount, currency, organizationId, notes, receipt);
   }
 
   verifyWebhookSignature(body: string, signature: string): boolean {

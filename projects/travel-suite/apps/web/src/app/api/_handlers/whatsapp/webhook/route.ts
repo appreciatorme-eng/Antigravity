@@ -108,6 +108,11 @@ export async function POST(request: NextRequest) {
     const requestId = getRequestId(request);
     const requestContext = getRequestContext(request, requestId);
 
+    if (process.env.NODE_ENV === 'production' && isUnsignedWebhookAllowed()) {
+        logError('SECURITY: unsigned WhatsApp webhooks are allowed in production', new Error('UnsignedWebhookInProduction'));
+        return apiError('Webhook configuration error', 500);
+    }
+
     try {
         const contentLength = parseInt(request.headers.get("content-length") || "0", 10);
         if (contentLength > 1_048_576) {

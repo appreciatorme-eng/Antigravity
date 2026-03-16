@@ -108,7 +108,31 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create Razorpay order
+    // Idempotency: if an invoice_id is provided, check for an existing non-failed order
+    if (invoice_id) {
+      const { data: existingEvent, error: existingEventError } = await supabase
+        .from('payment_events')
+        .select('external_id, status')
+        .eq('invoice_id', invoice_id)
+        .eq('event_type', 'order_created')
+        .not('status', 'eq', 'failed')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existingEventError) {
+        logError('Error checking existing order for invoice', existingEventError, {
+          invoice_id,
+        });
+      }
+
+      if (existingEvent?.external_id) {
+        return apiSuccess({ order: { id: existingEvent.external_id }, deduplicated: true });
+      }
+    }
+
+    // Create Razorpay order with receipt set to invoice_id for Razorpay-level deduplication
+    const receiptId = invoice_id || undefined;
     const order = await paymentService.createOrder(
       amount,
       currency,
@@ -117,8 +141,33 @@ export async function POST(request: NextRequest) {
         ...orderNotes,
         ...(invoice_id ? { invoice_id } : {}),
         ...(subscription_id ? { subscription_id } : {}),
-      }
+      },
+      receiptId
     );
+
+    // Log order creation event for future idempotency checks
+    if (invoice_id) {
+      const { error: logEventError } = await supabase.from('payment_events').insert({
+        organization_id: organizationId!,
+        invoice_id,
+        event_type: 'order_created',
+        external_id: order.id,
+        amount,
+        currency,
+        status: 'created',
+        metadata: {
+          razorpay_order_id: order.id,
+          receipt: order.receipt,
+        },
+      });
+
+      if (logEventError) {
+        logError('Failed to log order creation event', logEventError, {
+          invoice_id,
+          razorpay_order_id: order.id,
+        });
+      }
+    }
 
     return apiSuccess({ order });
   } catch (error) {
