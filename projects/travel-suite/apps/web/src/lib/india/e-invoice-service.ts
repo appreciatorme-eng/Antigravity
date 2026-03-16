@@ -4,6 +4,7 @@ import { irpClient } from './irp-client';
 import { PaymentServiceError } from '../payments/errors';
 import { getPaymentClient, wrapPaymentError } from '../payments/payment-utils';
 import { logPaymentEvent } from '../payments/payment-logger';
+import { decryptIRPCredential } from '../security/irp-crypto';
 import type { Database } from '@/lib/database.types';
 import type {
   IRNGenerationRequest,
@@ -137,10 +138,13 @@ async function getIRPCredentials(
       });
     }
 
+    // Decrypt password before returning
+    const decryptedPassword = decryptIRPCredential(settings.irp_password_encrypted);
+
     return {
       gstin: settings.gstin,
       username: settings.irp_username,
-      password: settings.irp_password_encrypted,
+      password: decryptedPassword,
       sandboxMode: settings.sandbox_mode ?? true,
     };
   } catch (error) {

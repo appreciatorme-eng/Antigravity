@@ -88,6 +88,7 @@ const routes = createCatchAllHandlers([
   ["proposals/create", () => import("@/app/api/_handlers/proposals/create/route")],
   ["proposals/public/:token", () => import("@/app/api/_handlers/proposals/public/[token]/route")],
   ["proposals/send-pdf", () => import("@/app/api/_handlers/proposals/send-pdf/route")],
+  ["settings/e-invoicing", () => import("@/app/api/_handlers/settings/e-invoicing/route")],
   ["settings/integrations", () => import("@/app/api/_handlers/settings/integrations/route")],
   ["settings/marketplace", () => import("@/app/api/_handlers/settings/marketplace/route")],
   ["settings/team/:id/resend", () => import("@/app/api/_handlers/settings/team/[id]/resend/route")],
