@@ -127,7 +127,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const body = (await request.json().catch(() => ({}))) as {
+    const body = (await request.json().catch((e: unknown) => { logError('Failed to parse API response', e); return {}; })) as {
       connectionId?: string;
     };
 
@@ -209,7 +209,7 @@ export async function POST(request: Request) {
           },
         });
 
-        const payload = (await placesResponse.json().catch(() => null)) as
+        const payload = (await placesResponse.json().catch((e: unknown) => { logError('Failed to parse API response', e); return null; })) as
           | GooglePlaceDetailsResponse
           | null;
 

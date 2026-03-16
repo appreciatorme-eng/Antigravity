@@ -65,13 +65,15 @@ export async function POST(request: Request) {
     }
 
     const resendApiKey = process.env.RESEND_API_KEY;
-    const senderEmail =
-      process.env.PROPOSAL_FROM_EMAIL ||
-      process.env.WELCOME_FROM_EMAIL ||
-      process.env.RESEND_FROM_EMAIL;
+    const senderEmail = process.env.PROPOSAL_FROM_EMAIL ?? process.env.RESEND_FROM_EMAIL;
 
-    if (!resendApiKey || !senderEmail) {
-      return apiError("Email provider is not configured (RESEND_API_KEY / sender email missing)", 503);
+    if (!senderEmail) {
+      logError('Invoice email sender not configured', new Error('Missing PROPOSAL_FROM_EMAIL'));
+      return apiError('Email sender not configured', 500);
+    }
+
+    if (!resendApiKey) {
+      return apiError("Email provider is not configured (RESEND_API_KEY missing)", 503);
     }
 
     const cleanedBase64 = normalizeBase64(pdf_base64);
@@ -103,7 +105,7 @@ export async function POST(request: Request) {
     });
 
     if (!emailResponse.ok) {
-      const rawBody = await emailResponse.json().catch(() => ({}));
+      const rawBody = await emailResponse.json().catch((e: unknown) => { logError('Failed to parse API response', e); return {}; });
       logError("[invoices/send-pdf] Resend API failure", {
         status: emailResponse.status,
         body: rawBody,

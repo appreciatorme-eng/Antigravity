@@ -254,7 +254,6 @@ export async function POST(request: NextRequest) {
       );
       response.headers.set("retry-after", String(retryAfterSeconds));
       response.headers.set("x-ratelimit-limit", String(rateLimit.limit));
-      response.headers.set("x-ratelimit-remaining", String(rateLimit.remaining));
       response.headers.set("x-ratelimit-reset", String(rateLimit.reset));
       return response;
     }

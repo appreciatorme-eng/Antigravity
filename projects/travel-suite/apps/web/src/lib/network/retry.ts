@@ -3,6 +3,8 @@ interface RetryFetchOptions {
     baseDelayMs?: number;
     timeoutMs?: number;
     retryOnStatuses?: number[];
+    /** Custom random function for jitter; defaults to Math.random(). Override in tests for determinism. */
+    random?: () => number;
 }
 
 const DEFAULT_RETRY_STATUSES = [408, 425, 429, 500, 502, 503, 504];
@@ -51,7 +53,8 @@ export async function fetchWithRetry(
             }
         }
 
-        const waitMs = baseDelayMs * 2 ** attempt + Math.floor(Math.random() * 100);
+        const jitter = (options.random ?? Math.random)() * baseDelayMs;
+        const waitMs = baseDelayMs * 2 ** attempt + Math.floor(jitter);
         await delay(waitMs);
     }
 

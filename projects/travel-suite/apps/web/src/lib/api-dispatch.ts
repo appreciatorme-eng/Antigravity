@@ -93,7 +93,6 @@ async function dispatch(
                     headers: {
                         "retry-after": String(retryAfter),
                         "x-ratelimit-limit": String(result.limit),
-                        "x-ratelimit-remaining": "0",
                         "x-ratelimit-reset": String(result.reset),
                     },
                 }

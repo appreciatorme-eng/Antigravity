@@ -13,7 +13,6 @@ function attachRateLimitHeaders(
     const retryAfterSeconds = Math.max(1, Math.ceil((rateLimit.reset - Date.now()) / 1000));
     response.headers.set("retry-after", String(retryAfterSeconds));
     response.headers.set("x-ratelimit-limit", String(rateLimit.limit));
-    response.headers.set("x-ratelimit-remaining", String(rateLimit.remaining));
     response.headers.set("x-ratelimit-reset", String(rateLimit.reset));
     return response;
 }

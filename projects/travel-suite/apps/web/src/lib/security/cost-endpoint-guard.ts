@@ -86,7 +86,6 @@ function withRateLimitHeaders(
   }
 ): NextResponse {
   response.headers.set("x-ratelimit-limit", String(limits.daily.limit));
-  response.headers.set("x-ratelimit-remaining", String(limits.daily.remaining));
   response.headers.set("x-ratelimit-reset", String(limits.daily.reset));
 
   response.headers.set("x-ratelimit-burst-limit", String(limits.burst.limit));

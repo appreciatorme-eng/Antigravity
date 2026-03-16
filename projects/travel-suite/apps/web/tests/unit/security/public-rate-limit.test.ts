@@ -53,7 +53,8 @@ it("sets standard rate limit headers", async () => {
   });
 
   expect(response.headers.get("x-ratelimit-limit")).toBe("10");
-  expect(response.headers.get("x-ratelimit-remaining")).toBe("0");
+  // x-ratelimit-remaining removed (L-01: exposes remaining count to attackers)
+  expect(response.headers.get("x-ratelimit-remaining")).toBeNull();
   expect(response.headers.get("x-ratelimit-reset")).toBe("123456");
 });
 

@@ -4,6 +4,7 @@ import { getAmadeusToken, resolveAmadeusBaseUrl } from "@/lib/external/amadeus";
 import { fetchWithRetry } from "@/lib/network/retry";
 import { guardCostEndpoint, withCostGuardHeaders } from "@/lib/security/cost-endpoint-guard";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import { logError } from "@/lib/observability/logger";
 
 function parsePositiveInt(value: string | null, fallback: number) {
   const parsed = Number.parseInt(value || "", 10);
@@ -111,7 +112,7 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    const payload = await response.json().catch(() => ({}));
+    const payload = await response.json().catch((e: unknown) => { logError('Failed to parse API response', e); return {}; });
     if (!response.ok) {
       const errorMessage =
         payload?.errors?.[0]?.detail ||

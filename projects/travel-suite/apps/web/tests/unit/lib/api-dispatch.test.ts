@@ -402,7 +402,8 @@ describe("createCatchAllHandlers with rateLimit option", () => {
     expect(body.error).toContain("Too many requests");
     expect(res.headers.get("retry-after")).toBeTruthy();
     expect(res.headers.get("x-ratelimit-limit")).toBe("5");
-    expect(res.headers.get("x-ratelimit-remaining")).toBe("0");
+    // x-ratelimit-remaining removed (L-01: exposes remaining count to attackers)
+    expect(res.headers.get("x-ratelimit-remaining")).toBeNull();
   });
 
   it("uses x-real-ip as identifier when no authorization header", async () => {

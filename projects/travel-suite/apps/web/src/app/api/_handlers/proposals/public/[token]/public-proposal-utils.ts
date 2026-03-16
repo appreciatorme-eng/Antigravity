@@ -276,7 +276,6 @@ export function getRequestIp(request: Request): string {
 
 export function withRateLimitHeaders(response: NextResponse, limiter: RateLimitResult) {
   response.headers.set("x-ratelimit-limit", String(limiter.limit));
-  response.headers.set("x-ratelimit-remaining", String(limiter.remaining));
   response.headers.set("x-ratelimit-reset", String(limiter.reset));
   return response;
 }

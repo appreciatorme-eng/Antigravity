@@ -19,7 +19,7 @@ export interface CronAuthResult {
     replayKey?: string;
 }
 
-const DEFAULT_MAX_CLOCK_SKEW_MS = 5 * 60_000;
+const DEFAULT_MAX_CLOCK_SKEW_MS = 60_000;
 const DEFAULT_REPLAY_WINDOW_MS = 10 * 60_000;
 const localReplayKeys = new Map<string, number>();
 let replayRedis: Redis | null | undefined;

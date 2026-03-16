@@ -4,6 +4,7 @@ import { guessIataCode, normalizeIataCode } from "@/lib/airport";
 import { fetchWithRetry } from "@/lib/network/retry";
 import { guardCostEndpoint, withCostGuardHeaders } from "@/lib/security/cost-endpoint-guard";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import { logError } from "@/lib/observability/logger";
 
 type HotelResult = {
   hotelId: string;
@@ -88,7 +89,7 @@ export async function GET(req: NextRequest) {
     );
 
     if (!listResponse.ok) {
-      const error = await listResponse.json().catch(() => ({}));
+      const error = await listResponse.json().catch((e: unknown) => { logError('Failed to parse API response', e); return {}; });
       return withCostGuardHeaders(NextResponse.json(error, { status: listResponse.status }), guard.context);
     }
 
@@ -118,7 +119,7 @@ export async function GET(req: NextRequest) {
       );
 
       if (offersResponse.ok) {
-        const offersPayload = await offersResponse.json().catch(() => ({}));
+        const offersPayload = await offersResponse.json().catch((e: unknown) => { logError('Failed to parse API response', e); return {}; });
         for (const offerItem of offersPayload?.data || []) {
           const hotel = offerItem?.hotel;
           const hotelId = String(hotel?.hotelId || "").trim();

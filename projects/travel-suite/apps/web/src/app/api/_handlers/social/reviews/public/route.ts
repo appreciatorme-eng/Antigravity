@@ -46,7 +46,6 @@ function getRequestIp(request: NextRequest): string {
 
 function withRateLimitHeaders(response: NextResponse, limiter: RateLimitResult) {
     response.headers.set("x-ratelimit-limit", String(limiter.limit));
-    response.headers.set("x-ratelimit-remaining", String(limiter.remaining));
     response.headers.set("x-ratelimit-reset", String(limiter.reset));
     return response;
 }
@@ -201,7 +200,9 @@ export async function POST(req: NextRequest) {
 
         if (rating >= 4) {
             const reviewTemplateIds = ["social_review_1", "social_review_2"];
-            const template_id = reviewTemplateIds[Math.floor(Math.random() * reviewTemplateIds.length)];
+            const reviewId = review?.id as string | undefined;
+            const idx = (reviewId?.charCodeAt(0) ?? 0) % reviewTemplateIds.length;
+            const template_id = reviewTemplateIds[idx];
 
             const template_data = {
                 rating,
