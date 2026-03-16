@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth/admin";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import { EXTERNAL_DRIVER_SELECT } from "@/lib/travel/selects";
+import { logError } from "@/lib/observability/logger";
 
 const TRIP_DETAILS_RATE_LIMIT_MAX = 120;
 const TRIP_DETAILS_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
@@ -311,7 +312,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
             latestDriverLocation: latestLocation || null,
         });
     } catch (error) {
-        console.error("Error fetching trip details:", error);
+        logError("Error fetching trip details", error);
         return NextResponse.json({ error: safeErrorMessage(error, "Request failed") }, { status: 500 });
     }
 }

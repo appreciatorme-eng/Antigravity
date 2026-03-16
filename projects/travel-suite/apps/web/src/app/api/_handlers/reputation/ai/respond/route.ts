@@ -21,6 +21,7 @@ import type {
   ReputationBrandVoice,
   ReputationReview,
 } from "@/lib/reputation/types";
+import { logError } from "@/lib/observability/logger";
 
 export const maxDuration = 30;
 
@@ -300,7 +301,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ response: aiResponse });
   } catch (error: unknown) {
-    console.error("Error generating AI response:", error);
+    logError("Error generating AI response", error);
     return apiError("Internal server error", 500);
   }
 }

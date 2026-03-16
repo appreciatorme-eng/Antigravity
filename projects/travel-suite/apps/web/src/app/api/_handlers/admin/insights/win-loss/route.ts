@@ -3,6 +3,7 @@ import { apiError } from "@/lib/api/response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { daysSince, medianPrice, normalizeStatus, toNumber } from "@/lib/admin/insights";
+import { logError } from "@/lib/observability/logger";
 
 const QuerySchema = z.object({
   daysBack: z.coerce.number().int().min(14).max(365).default(120),
@@ -110,7 +111,7 @@ export async function GET(req: NextRequest) {
       patterns,
     });
   } catch (error) {
-    console.error("[/api/admin/insights/win-loss:GET] Unhandled error:", error);
+    logError("[/api/admin/insights/win-loss:GET] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },

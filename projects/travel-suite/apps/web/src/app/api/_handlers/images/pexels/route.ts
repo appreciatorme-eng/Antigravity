@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { guardCostEndpoint, withCostGuardHeaders } from "@/lib/security/cost-endpoint-guard";
+import { logError } from "@/lib/observability/logger";
 
 export async function GET(req: NextRequest) {
     const guard = await guardCostEndpoint(req, "image_search");
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest) {
         );
 
         if (!response.ok) {
-            console.error("Pexels API error:", response.status);
+            logError("Pexels API error", response.status);
             return withCostGuardHeaders(NextResponse.json({ url: null }, { status: 200 }), guard.context);
         }
 
@@ -47,7 +48,7 @@ export async function GET(req: NextRequest) {
 
         return withCostGuardHeaders(NextResponse.json({ url: null }, { status: 200 }), guard.context);
     } catch (error) {
-        console.error("Pexels fetch error:", error);
+        logError("Pexels fetch error", error);
         return withCostGuardHeaders(NextResponse.json({ url: null }, { status: 200 }), guard.context);
     }
 }

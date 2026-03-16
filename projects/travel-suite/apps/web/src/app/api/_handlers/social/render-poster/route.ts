@@ -3,6 +3,7 @@ import { apiError } from "@/lib/api/response";
 import { createClient } from "@/lib/supabase/server";
 import { renderPoster } from "@/lib/social/poster-renderer";
 import type { LayoutType, AspectRatio } from "@/lib/social/types";
+import { logError } from "@/lib/observability/logger";
 
 /**
  * POST /api/social/render-poster
@@ -98,7 +99,7 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (err: unknown) {
-    console.error("[render-poster] Error:", err);
+    logError("[render-poster] Error", err);
     return apiError("Poster render failed", 500);
   }
 }

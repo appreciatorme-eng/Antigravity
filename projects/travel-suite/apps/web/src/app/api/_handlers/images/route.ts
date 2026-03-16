@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWikimediaImage } from '@/lib/external/wikimedia';
 import { guardCostEndpoint, withCostGuardHeaders } from "@/lib/security/cost-endpoint-guard";
+import { logError } from "@/lib/observability/logger";
 
 export async function GET(req: NextRequest) {
   try {
@@ -22,7 +23,7 @@ export async function GET(req: NextRequest) {
 
       return withCostGuardHeaders(NextResponse.json({ url: imageUrl }), guard.context);
   } catch (error) {
-    console.error("[/api/images:GET] Unhandled error:", error);
+    logError("[/api/images:GET] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },

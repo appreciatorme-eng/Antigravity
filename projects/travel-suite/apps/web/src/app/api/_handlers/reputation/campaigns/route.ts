@@ -6,6 +6,7 @@ import { REPUTATION_REVIEW_CAMPAIGN_SELECT } from "@/lib/reputation/selects";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { CampaignType } from "@/lib/reputation/types";
 import type { Database } from "@/lib/database.types";
+import { logError } from "@/lib/observability/logger";
 
 type CampaignRow = Database["public"]["Tables"]["reputation_review_campaigns"]["Row"];
 
@@ -51,7 +52,7 @@ export async function GET() {
     return NextResponse.json({ campaigns: campaigns ?? [] });
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");
-    console.error("Error fetching reputation campaigns:", error);
+    logError("Error fetching reputation campaigns", error);
     return apiError(message, 500);
   }
 }
@@ -123,7 +124,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ campaign });
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");
-    console.error("Error creating reputation campaign:", error);
+    logError("Error creating reputation campaign", error);
     return apiError(message, 500);
   }
 }

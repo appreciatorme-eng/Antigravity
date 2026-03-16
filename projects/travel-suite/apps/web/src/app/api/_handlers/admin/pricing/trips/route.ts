@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/auth/admin";
 import type { Database } from "@/lib/database.types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import { logError } from "@/lib/observability/logger";
 
 const QuerySchema = z.object({
   month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
@@ -120,7 +121,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ trips });
   } catch (error) {
-    console.error("[/api/admin/pricing/trips:GET] Unhandled error:", error);
+    logError("[/api/admin/pricing/trips:GET] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },

@@ -6,6 +6,7 @@ import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { sendNotificationToUser } from "@/lib/notifications";
 import { getDriverWhatsAppLink, formatDriverAssignmentMessage } from "@/lib/notifications.shared";
 import type { Activity, Day, ItineraryResult } from "@/types/itinerary";
+import { logError } from "@/lib/observability/logger";
 
 const supabaseAdmin = createAdminClient();
 const CLIENT_LANDED_ASSIGNMENT_SELECT = `
@@ -173,7 +174,7 @@ export async function POST(request: NextRequest) {
             dayNumber,
         });
     } catch (error: unknown) {
-        console.error("Client landed error:", error);
+        logError("Client landed error", error);
         return apiError(safeErrorMessage(error, "Failed to process landing notification"), 500);
     }
 }

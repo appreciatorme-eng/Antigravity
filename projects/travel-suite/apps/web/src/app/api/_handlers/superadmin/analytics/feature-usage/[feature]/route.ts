@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
+import { logError } from "@/lib/observability/logger";
 
 type FeatureTableName =
     | "trips"
@@ -96,7 +97,7 @@ export async function GET(
 
         return NextResponse.json({ feature, range, total, rows });
     } catch (err) {
-        console.error(`[superadmin/analytics/feature-usage/${feature}]`, err);
+        logError(`[superadmin/analytics/feature-usage/${feature}]`, err);
         return apiError("Failed to load feature drill-down", 500);
     }
 }

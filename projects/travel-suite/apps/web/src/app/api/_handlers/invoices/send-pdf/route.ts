@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { getIntegrationDisabledMessage, isEmailIntegrationEnabled } from "@/lib/integrations";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import { logError } from "@/lib/observability/logger";
 
 const SendInvoicePdfSchema = z.object({
   invoice_id: z.string().uuid(),
@@ -103,7 +104,7 @@ export async function POST(request: Request) {
 
     if (!emailResponse.ok) {
       const rawBody = await emailResponse.json().catch(() => ({}));
-      console.error("[invoices/send-pdf] Resend API failure:", {
+      logError("[invoices/send-pdf] Resend API failure", {
         status: emailResponse.status,
         body: rawBody,
       });
@@ -115,7 +116,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, message: "Invoice email sent successfully" });
   } catch (error) {
-    console.error("Error in POST /api/invoices/send-pdf:", error);
+    logError("Error in POST /api/invoices/send-pdf", error);
     return apiError(safeErrorMessage(error, "Failed to send invoice email"), 500);
   }
 }

@@ -3,6 +3,7 @@ import { apiError } from "@/lib/api/response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import { logError } from "@/lib/observability/logger";
 
 const QuerySchema = z.object({
   vendor: z.string().min(1),
@@ -42,7 +43,7 @@ export async function GET(req: NextRequest) {
       .limit(10);
 
     if (error) {
-      console.error("[/api/admin/pricing/vendor-history:GET] DB error:", error);
+      logError("[/api/admin/pricing/vendor-history:GET] DB error", error);
       return apiError(safeErrorMessage(error, "Request failed"), 500);
     }
 
@@ -69,7 +70,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ history });
   } catch (error) {
-    console.error("[/api/admin/pricing/vendor-history:GET] Unhandled error:", error);
+    logError("[/api/admin/pricing/vendor-history:GET] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },

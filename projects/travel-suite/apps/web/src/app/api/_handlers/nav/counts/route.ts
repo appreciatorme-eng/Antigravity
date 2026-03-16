@@ -4,6 +4,7 @@ import { unstable_cache } from "next/cache";
 import { requireAdmin } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveDemoOrg } from "@/lib/auth/demo-org-resolver";
+import { logError, logWarn } from "@/lib/observability/logger";
 
 function sessionNameFromOrgId(orgId: string): string {
   return `org_${orgId.replace(/-/g, "").slice(0, 8)}`;
@@ -63,7 +64,7 @@ const getCachedNavCounts = unstable_cache(
       inboxUnreadResult.error.code !== "PGRST205" &&
       inboxUnreadResult.error.code !== "42P01"
     ) {
-      console.warn("[nav/counts] inboxUnread error (non-fatal):", inboxUnreadResult.error.message);
+      logWarn("[nav/counts] inboxUnread error (non-fatal)", { details: String(inboxUnreadResult.error.message) });
     }
     if (proposalsResult.error) throw proposalsResult.error;
     if (bookingsTodayResult.error) throw bookingsTodayResult.error;
@@ -114,7 +115,7 @@ export async function GET(request: Request) {
     const counts = await getCachedNavCounts(organizationId, sessionName, today);
     return apiSuccess(counts);
   } catch (error) {
-    console.error("[/api/nav/counts:GET] Unhandled error:", error);
+    logError("[/api/nav/counts:GET] Unhandled error", error);
     return NextResponse.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },

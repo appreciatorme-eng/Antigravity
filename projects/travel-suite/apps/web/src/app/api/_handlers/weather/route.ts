@@ -3,6 +3,7 @@ import { apiError } from "@/lib/api/response";
 import { getWeatherForLocation, getWeatherForLocations, type LocationWeather } from "@/lib/external/weather";
 import { getCachedJson, setCachedJson } from "@/lib/cache/upstash";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { logError } from "@/lib/observability/logger";
 
 const WEATHER_TTL_SECONDS = 6 * 60 * 60;
 const WEATHER_CACHE_HEADERS = {
@@ -96,7 +97,7 @@ export async function GET(request: NextRequest) {
 
         return apiError("Provide 'location' or 'locations' query parameter", 400);
     } catch (error) {
-        console.error("Weather API error:", error);
+        logError("Weather API error", error);
         return apiError("Failed to fetch weather data", 500);
     }
 }

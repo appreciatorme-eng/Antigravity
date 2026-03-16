@@ -14,6 +14,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import { authorizeCronRequest } from "@/lib/security/cron-auth";
 import { triggerCampaignSendsForOrg } from "@/lib/reputation/campaign-trigger";
+import { logError } from "@/lib/observability/logger";
 
 type QueryErrorLike = { message: string } | null;
 
@@ -78,7 +79,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (allErrors.length > 0) {
-      console.error("[cron/reputation-campaigns] Partial errors:", allErrors);
+      logError("[cron/reputation-campaigns] Partial errors", allErrors);
     }
 
     return NextResponse.json({
@@ -88,7 +89,7 @@ export async function POST(request: NextRequest) {
       errors: allErrors.length,
     });
   } catch (error) {
-    console.error("[cron/reputation-campaigns] Fatal error:", error);
+    logError("[cron/reputation-campaigns] Fatal error", error);
     return NextResponse.json(
       {
         error: safeErrorMessage(error, "Request failed"),

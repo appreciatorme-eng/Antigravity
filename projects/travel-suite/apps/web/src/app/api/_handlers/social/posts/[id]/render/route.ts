@@ -3,6 +3,7 @@ import { apiError } from "@/lib/api/response";
 import { SOCIAL_POST_SELECT } from "@/lib/social/selects";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/database.types";
+import { logError } from "@/lib/observability/logger";
 
 type SocialPostRow = Database["public"]["Tables"]["social_posts"]["Row"];
 
@@ -65,7 +66,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
         return NextResponse.json({ post });
     } catch (error) {
-        console.error("Render upload error:", error);
+        logError("Render upload error", error);
         return apiError("An internal error occurred", 500);
     }
 }

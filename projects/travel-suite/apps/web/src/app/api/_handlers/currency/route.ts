@@ -10,6 +10,7 @@ import {
 } from "@/lib/external/currency";
 import { getCachedJson, setCachedJson } from "@/lib/cache/upstash";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { logError } from "@/lib/observability/logger";
 
 const CURRENCY_LIST_TTL_SECONDS = 7 * 24 * 60 * 60;
 const CURRENCY_RATES_TTL_SECONDS = 24 * 60 * 60;
@@ -140,7 +141,7 @@ export async function GET(request: NextRequest) {
             { status: 400 }
         );
     } catch (error) {
-        console.error("Currency API error:", error);
+        logError("Currency API error", error);
         return apiError("Failed to process currency request", 500);
     }
 }

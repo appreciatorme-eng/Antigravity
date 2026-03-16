@@ -7,6 +7,7 @@ import {
   getIntegrationDisabledMessage,
   isPaymentsIntegrationEnabled,
 } from "@/lib/integrations";
+import { logError } from "@/lib/observability/logger";
 
 const createPaymentLinkSchema = z.object({
   proposalId: z.string().uuid().optional(),
@@ -101,7 +102,7 @@ export async function POST(request: NextRequest) {
       currency: link.currency,
     });
   } catch (error) {
-    console.error("[payments/links] create failed:", error);
+    logError("[payments/links] create failed", error);
     return apiError("Failed to create payment link", 500);
   }
 }

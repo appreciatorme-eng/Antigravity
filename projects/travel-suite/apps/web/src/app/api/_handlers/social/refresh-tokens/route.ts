@@ -3,6 +3,7 @@ import { apiError } from "@/lib/api/response";
 import { authorizeCronRequest } from "@/lib/security/cron-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { decodeSocialTokenWithMigration, encryptSocialToken } from "@/lib/security/social-token-crypto";
+import { logError } from "@/lib/observability/logger";
 
 function parseMsEnv(value: string | undefined, fallbackMs: number): number {
     const parsed = Number(value);
@@ -95,7 +96,7 @@ export async function POST(req: Request) {
 
                 results.push({ id: conn.id, status: "success", platform: conn.platform });
             } catch (err: unknown) {
-                console.error(`Error refreshing token for connection ${conn.id}:`, err);
+                logError(`Error refreshing token for connection ${conn.id}`, err);
                 results.push({
                     id: conn.id,
                     status: "failed",
@@ -107,7 +108,7 @@ export async function POST(req: Request) {
 
         return NextResponse.json({ success: true, processed: results.length, results });
     } catch (error: unknown) {
-        console.error("Error refreshing social tokens:", error);
+        logError("Error refreshing social tokens", error);
         return apiError("Token refresh failed", 500);
     }
 }

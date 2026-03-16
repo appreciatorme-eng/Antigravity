@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { apiError } from "@/lib/api/response";
 import { requireAdmin } from '@/lib/auth/admin';
 import { safeErrorMessage } from '@/lib/security/safe-error';
+import { logError } from "@/lib/observability/logger";
 
 // Validates standard UPI handle: localpart@provider (e.g. name@upi, name@okaxis)
 const UPI_REGEX = /^[\w.\-+]+@[\w.\-]+$/;
@@ -35,13 +36,13 @@ export async function POST(req: Request) {
         );
 
         if (upsertError) {
-            console.error('UPI upsert error:', upsertError);
+            logError('UPI upsert error', upsertError);
             return apiError('Failed to save UPI ID', 500);
         }
 
         return NextResponse.json({ success: true, upiId });
     } catch (error: unknown) {
-        console.error('UPI save error:', error);
+        logError('UPI save error', error);
         return apiError(safeErrorMessage(error, 'Failed to save UPI ID'), 500);
     }
 }
@@ -62,7 +63,7 @@ export async function GET(req: Request) {
 
         return NextResponse.json({ upiId: settings?.upi_id ?? null });
     } catch (error: unknown) {
-        console.error('UPI load error:', error);
+        logError('UPI load error', error);
         return NextResponse.json({ upiId: null });
     }
 }

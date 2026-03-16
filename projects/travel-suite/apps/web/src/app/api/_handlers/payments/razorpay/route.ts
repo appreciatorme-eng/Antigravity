@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { ensureMockEndpointAllowed } from '@/lib/security/mock-endpoint-guard'
+import { logError } from "@/lib/observability/logger";
 
 // POST /api/payments/razorpay
 // Creates a mock Razorpay order (development only)
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
       created_at: Math.floor(Date.now() / 1000),
     })
   } catch (error) {
-    console.error("[/api/payments/razorpay:POST] Unhandled error:", error);
+    logError("[/api/payments/razorpay:POST] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },
@@ -60,7 +61,7 @@ export async function GET(request: Request) {
       payment_id: `pay_${crypto.randomUUID().replace(/-/g, "").slice(0, 14)}`,
     })
   } catch (error) {
-    console.error("[/api/payments/razorpay:GET] Unhandled error:", error);
+    logError("[/api/payments/razorpay:GET] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },

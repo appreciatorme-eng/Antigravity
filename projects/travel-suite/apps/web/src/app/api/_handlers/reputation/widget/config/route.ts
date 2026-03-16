@@ -6,6 +6,7 @@ import { REPUTATION_WIDGET_SELECT } from "@/lib/reputation/selects";
 import type { Database } from "@/lib/database.types";
 import type { WidgetType, WidgetTheme } from "@/lib/reputation/types";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import { logError } from "@/lib/observability/logger";
 
 type WidgetRow = Database["public"]["Tables"]["reputation_widgets"]["Row"];
 
@@ -54,7 +55,7 @@ export async function GET() {
     return NextResponse.json({ widgets: widgets ?? [] });
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Internal server error");
-    console.error("Error fetching widgets:", error);
+    logError("Error fetching widgets", error);
     return apiError(message, 500);
   }
 }
@@ -129,7 +130,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ widget });
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Internal server error");
-    console.error("Error creating widget:", error);
+    logError("Error creating widget", error);
     return apiError(message, 500);
   }
 }
@@ -238,7 +239,7 @@ export async function PUT(req: Request) {
     return NextResponse.json({ widget });
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Internal server error");
-    console.error("Error updating widget:", error);
+    logError("Error updating widget", error);
     return apiError(message, 500);
   }
 }

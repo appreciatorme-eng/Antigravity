@@ -1,6 +1,7 @@
 import { apiSuccess, apiError } from "@/lib/api/response";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/database.types";
+import { logError } from "@/lib/observability/logger";
 
 const SUPPORT_TICKET_SELECT = [
     "admin_response",
@@ -63,13 +64,13 @@ export async function POST(req: Request) {
         const data = ticketData as unknown as SupportTicketRow | null;
 
         if (error) {
-            console.error("Error creating ticket:", error);
+            logError("Error creating ticket", error);
             return apiError("Failed to create support ticket", 500);
         }
 
         return apiSuccess(data);
     } catch (error) {
-        console.error("Support ticket creation error:", error);
+        logError("Support ticket creation error", error);
         return apiError("Internal Server Error", 500);
     }
 }
@@ -101,13 +102,13 @@ export async function GET() {
         const data = ticketsData as unknown as SupportTicketRow[] | null;
 
         if (error) {
-            console.error("Error fetching tickets:", error);
+            logError("Error fetching tickets", error);
             return apiError("Failed to fetch support tickets", 500);
         }
 
         return apiSuccess(data);
     } catch (error) {
-        console.error("Support ticket fetch error:", error);
+        logError("Support ticket fetch error", error);
         return apiError("Internal Server Error", 500);
     }
 }

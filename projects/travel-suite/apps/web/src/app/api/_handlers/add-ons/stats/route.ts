@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 import { apiError } from "@/lib/api/response";
 import { createClient } from '@/lib/supabase/server';
 import { safeErrorMessage } from '@/lib/security/safe-error';
+import { logError } from "@/lib/observability/logger";
 
 interface AddOnSaleRelation {
   name: string | null;
@@ -65,7 +66,7 @@ export async function GET() {
       .eq('status', 'confirmed');
 
     if (salesError) {
-      console.error('Error fetching sales:', salesError);
+      logError('Error fetching sales', salesError);
       return apiError(safeErrorMessage(salesError, 'Failed to load add-on stats'), 500);
     }
 
@@ -130,7 +131,7 @@ export async function GET() {
         .slice(0, 5),
     });
   } catch (error) {
-    console.error('Error in GET /api/add-ons/stats:', error);
+    logError('Error in GET /api/add-ons/stats', error);
     return apiError('Internal server error', 500);
   }
 }

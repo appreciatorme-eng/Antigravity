@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { medianPrice, safeTitle, toNumber } from "@/lib/admin/insights";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import { logError } from "@/lib/observability/logger";
 
 const BodySchema = z.object({
   proposalId: z.string().uuid().optional(),
@@ -185,7 +186,7 @@ export async function POST(req: NextRequest) {
       ],
     });
   } catch (error) {
-    console.error("[/api/admin/insights/best-quote:POST] Unhandled error:", error);
+    logError("[/api/admin/insights/best-quote:POST] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },

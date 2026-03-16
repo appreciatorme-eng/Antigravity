@@ -3,6 +3,7 @@ import type { Database } from "@/lib/database.types";
 import type { TeamRole } from "@/lib/team/roles";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { logError } from "@/lib/observability/logger";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
@@ -196,7 +197,7 @@ export async function resolveTeamContext(): Promise<ResolveTeamContextResult> {
     .maybeSingle();
 
   if (profileError) {
-    console.error("[settings/team] failed to load actor profile:", profileError);
+    logError("[settings/team] failed to load actor profile", profileError);
     return {
       response: Response.json(
         { data: null, error: "Failed to load team context" },
@@ -218,7 +219,7 @@ export async function resolveTeamContext(): Promise<ResolveTeamContextResult> {
     .maybeSingle();
 
   if (organizationError) {
-    console.error("[settings/team] failed to load organization:", organizationError);
+    logError("[settings/team] failed to load organization", organizationError);
     return {
       response: Response.json(
         { data: null, error: "Failed to load organization" },

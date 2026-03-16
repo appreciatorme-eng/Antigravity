@@ -11,6 +11,7 @@ import {
 } from "@/lib/invoices/module";
 import type { Database, Json } from "@/lib/database.types";
 import { sanitizeText } from "@/lib/security/sanitize";
+import { logError } from "@/lib/observability/logger";
 
 type InvoiceRow = Database["public"]["Tables"]["invoices"]["Row"];
 type InvoicePaymentRow = Database["public"]["Tables"]["invoice_payments"]["Row"];
@@ -66,7 +67,7 @@ export async function GET(
 
     const { invoice, error } = await loadInvoiceForOrg(adminClient, id, auth.organizationId!);
     if (error) {
-      console.error("Failed to fetch invoice:", error);
+      logError("Failed to fetch invoice", error);
       return jsonError("Failed to fetch invoice", 500);
     }
     if (!invoice) return jsonError("Invoice not found", 404);
@@ -79,7 +80,7 @@ export async function GET(
       .order("payment_date", { ascending: false });
 
     if (paymentsError) {
-      console.error("Failed to fetch invoice payments:", paymentsError);
+      logError("Failed to fetch invoice payments", paymentsError);
       return jsonError("Failed to fetch invoice payments", 500);
     }
     const payments = paymentsData as unknown as InvoicePaymentRow[] | null;
@@ -97,7 +98,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("[/api/invoices/[id]:GET] Unhandled error:", error);
+    logError("[/api/invoices/[id]:GET] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },
@@ -117,7 +118,7 @@ export async function PUT(
     const adminClient = auth.adminClient;
     const { invoice, error } = await loadInvoiceForOrg(adminClient, id, auth.organizationId!);
     if (error) {
-      console.error("Failed to fetch invoice for update:", error);
+      logError("Failed to fetch invoice for update", error);
       return jsonError("Failed to fetch invoice", 500);
     }
     if (!invoice) return jsonError("Invoice not found", 404);
@@ -205,7 +206,7 @@ export async function PUT(
 
     const updatedInvoice = updatedInvoiceData as InvoiceRow | null;
     if (updateError || !updatedInvoice) {
-      console.error("Failed to update invoice:", updateError);
+      logError("Failed to update invoice", updateError);
       return jsonError("Failed to update invoice", 500);
     }
 
@@ -221,7 +222,7 @@ export async function PUT(
       },
     });
   } catch (error) {
-    console.error("[/api/invoices/[id]:PUT] Unhandled error:", error);
+    logError("[/api/invoices/[id]:PUT] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },
@@ -242,7 +243,7 @@ export async function DELETE(
 
     const { invoice, error } = await loadInvoiceForOrg(adminClient, id, auth.organizationId!);
     if (error) {
-      console.error("Failed to fetch invoice for delete:", error);
+      logError("Failed to fetch invoice for delete", error);
       return jsonError("Failed to fetch invoice", 500);
     }
     if (!invoice) return jsonError("Invoice not found", 404);
@@ -258,13 +259,13 @@ export async function DELETE(
       .eq("organization_id", auth.organizationId!);
 
     if (deleteError) {
-      console.error("Failed to delete invoice:", deleteError);
+      logError("Failed to delete invoice", deleteError);
       return jsonError("Failed to delete invoice", 500);
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("[/api/invoices/[id]:DELETE] Unhandled error:", error);
+    logError("[/api/invoices/[id]:DELETE] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },

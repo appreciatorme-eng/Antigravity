@@ -5,6 +5,7 @@ import { apiError } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import { logError } from "@/lib/observability/logger";
 
 interface DismissBody {
     taskId: string;
@@ -60,13 +61,13 @@ export async function POST(request: NextRequest) {
             );
 
         if (error) {
-            console.error("Failed to dismiss task:", error);
+            logError("Failed to dismiss task", error);
             return apiError("Failed to dismiss task", 500);
         }
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error("Task dismiss error:", error);
+        logError("Task dismiss error", error);
         return NextResponse.json(
             {
                 error: safeErrorMessage(error, "Request failed"),

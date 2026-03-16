@@ -34,6 +34,7 @@ import {
   supabaseAdmin,
   withRateLimitHeaders,
 } from "./public-proposal-utils";
+import { logError } from "@/lib/observability/logger";
 
 export async function GET(
   request: Request,
@@ -65,7 +66,7 @@ export async function GET(
 
     return NextResponse.json(payload);
   } catch (error) {
-    console.error("Error loading public proposal:", error);
+    logError("Error loading public proposal", error);
     return NextResponse.json(
       {
         error: 'Failed to process proposal',
@@ -151,7 +152,7 @@ export async function POST(
         .eq('id', activityId);
 
       if (activityError) {
-        console.error("[proposals] toggle activity error:", activityError);
+        logError("[proposals] toggle activity error", activityError);
         return NextResponse.json({ error: "Request failed" }, { status: 400 });
       }
 
@@ -195,7 +196,7 @@ export async function POST(
         .eq('id', addOnId);
 
       if (addOnError) {
-        console.error("[proposals] toggle add-on error:", addOnError);
+        logError("[proposals] toggle add-on error", addOnError);
         return NextResponse.json({ error: "Request failed" }, { status: 400 });
       }
 
@@ -236,7 +237,7 @@ export async function POST(
         .eq('id', addOnId);
 
       if (vehicleError) {
-        console.error("[proposals] select vehicle error:", vehicleError);
+        logError("[proposals] select vehicle error", vehicleError);
         return NextResponse.json({ error: "Request failed" }, { status: 400 });
       }
 
@@ -280,7 +281,7 @@ export async function POST(
       });
 
       if (commentError) {
-        console.error("[proposals] insert comment error:", commentError);
+        logError("[proposals] insert comment error", commentError);
         return NextResponse.json({ error: "Request failed" }, { status: 400 });
       }
 
@@ -312,7 +313,7 @@ export async function POST(
         .eq('id', proposal.id);
 
       if (approveError) {
-        console.error("[proposals] approve error:", approveError);
+        logError("[proposals] approve error", approveError);
         return NextResponse.json({ error: "Request failed" }, { status: 400 });
       }
 
@@ -430,7 +431,7 @@ export async function POST(
               }
             }
           } catch (paymentError) {
-            console.error("[proposals] payment link error:", paymentError);
+            logError("[proposals] payment link error", paymentError);
             paymentRequestError = "Failed to create payment link";
           }
         }
@@ -482,7 +483,7 @@ export async function POST(
         .eq('id', proposal.id);
 
       if (rejectError) {
-        console.error("[proposals] reject error:", rejectError);
+        logError("[proposals] reject error", rejectError);
         return NextResponse.json({ error: "Request failed" }, { status: 400 });
       }
 
@@ -536,7 +537,7 @@ export async function POST(
         .eq('id', proposal.id);
 
       if (tierError) {
-        console.error("[proposals] select tier error:", tierError);
+        logError("[proposals] select tier error", tierError);
         return NextResponse.json({ error: "Request failed" }, { status: 400 });
       }
 
@@ -549,7 +550,7 @@ export async function POST(
 
     return NextResponse.json({ error: 'Unsupported action' }, { status: 400 });
   } catch (error) {
-    console.error("Error processing public proposal action:", error);
+    logError("Error processing public proposal action", error);
     return NextResponse.json(
       {
         error: 'Failed to process proposal',

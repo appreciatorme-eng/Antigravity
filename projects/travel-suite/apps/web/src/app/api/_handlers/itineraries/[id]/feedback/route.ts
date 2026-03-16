@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { ClientComment } from "@/types/feedback";
+import { logError } from "@/lib/observability/logger";
 
 const FeedbackActionSchema = z.discriminatedUnion("action", [
     z.object({
@@ -191,13 +192,13 @@ export async function POST(
             .eq("id", share.id);
 
         if (updateError) {
-            console.error("Error updating feedback:", updateError);
+            logError("Error updating feedback", updateError);
             return apiError(safeErrorMessage(updateError, "Failed to update feedback"), 500);
         }
 
         return NextResponse.json({ success: true, comments: updatedComments });
     } catch (error) {
-        console.error("Internal error in feedback endpoint:", error);
+        logError("Internal error in feedback endpoint", error);
         const message = safeErrorMessage(error, "Request failed");
         return apiError(message, 500);
     }

@@ -3,6 +3,7 @@ import { apiError } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { safeErrorMessage } from '@/lib/security/safe-error';
 import { getTripAdvisorLocationDetails, getTripAdvisorReviews } from '@/lib/external/tripadvisor.server';
+import { logError } from "@/lib/observability/logger";
 
 const TRIPADVISOR_API_KEY = process.env.TRIPADVISOR_API_KEY;
 
@@ -57,7 +58,7 @@ export async function POST(req: Request) {
             numReviews: locationDetails.num_reviews,
         });
     } catch (error: unknown) {
-        console.error('TripAdvisor connect error:', error);
+        logError('TripAdvisor connect error', error);
         return apiError(safeErrorMessage(error, "Request failed"), 500);
     }
 }
@@ -92,7 +93,7 @@ export async function GET(request: Request) {
         const reviews = await getTripAdvisorReviews(TRIPADVISOR_API_KEY, settings.tripadvisor_location_id);
         return NextResponse.json({ reviews, connected: true });
     } catch (error: unknown) {
-        console.error('TripAdvisor reviews fetch error:', error);
+        logError('TripAdvisor reviews fetch error', error);
         return apiError(safeErrorMessage(error, "Request failed"), 500);
     }
 }

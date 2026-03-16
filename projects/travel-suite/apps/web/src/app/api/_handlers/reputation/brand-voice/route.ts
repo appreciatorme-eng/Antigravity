@@ -6,6 +6,7 @@ import type { Database } from "@/lib/database.types";
 import { REPUTATION_BRAND_VOICE_SELECT } from "@/lib/reputation/selects";
 import type { BrandVoiceTone, LanguagePreference, ReputationBrandVoice } from "@/lib/reputation/types";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import { logError } from "@/lib/observability/logger";
 
 const VALID_TONES: BrandVoiceTone[] = [
   "professional_warm",
@@ -81,7 +82,7 @@ export async function GET() {
     return NextResponse.json({ brandVoice: buildDefaultBrandVoice(organizationId) });
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Internal server error");
-    console.error("Error fetching brand voice:", error);
+    logError("Error fetching brand voice", error);
     return apiError(message, 500);
   }
 }
@@ -229,7 +230,7 @@ export async function PUT(req: Request) {
     return NextResponse.json({ brandVoice });
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Internal server error");
-    console.error("Error updating brand voice:", error);
+    logError("Error updating brand voice", error);
     return apiError(message, 500);
   }
 }

@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth/admin";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { passesMutationCsrfGuard } from "@/lib/security/admin-mutation-csrf";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { logError } from "@/lib/observability/logger";
 
 const AvailabilityQuerySchema = z.object({
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -59,7 +60,7 @@ export async function GET(request: Request) {
       .order("start_date", { ascending: true });
 
     if (error) {
-      console.error("[availability] failed to load blocked dates:", error);
+      logError("[availability] failed to load blocked dates", error);
       return apiError("Failed to load blocked dates", 500);
     }
 
@@ -74,7 +75,7 @@ export async function GET(request: Request) {
       })),
     );
   } catch (error) {
-    console.error("[availability] unexpected GET error:", error);
+    logError("[availability] unexpected GET error", error);
     return apiError("Failed to load blocked dates", 500);
   }
 }
@@ -127,7 +128,7 @@ export async function POST(request: Request) {
       .single();
 
     if (error) {
-      console.error("[availability] failed to create blocked dates:", error);
+      logError("[availability] failed to create blocked dates", error);
       return apiError("Failed to block dates", 500);
     }
 
@@ -139,7 +140,7 @@ export async function POST(request: Request) {
       createdAt: data.created_at,
     });
   } catch (error) {
-    console.error("[availability] unexpected POST error:", error);
+    logError("[availability] unexpected POST error", error);
     return apiError("Failed to block dates", 500);
   }
 }
@@ -181,13 +182,13 @@ export async function DELETE(request: Request) {
       .eq("organization_id", organizationId);
 
     if (error) {
-      console.error("[availability] failed to delete blocked dates:", error);
+      logError("[availability] failed to delete blocked dates", error);
       return apiError("Failed to unblock dates", 500);
     }
 
     return apiSuccess({ success: true });
   } catch (error) {
-    console.error("[availability] unexpected DELETE error:", error);
+    logError("[availability] unexpected DELETE error", error);
     return apiError("Failed to unblock dates", 500);
   }
 }

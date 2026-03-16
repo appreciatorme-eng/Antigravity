@@ -18,6 +18,7 @@ import {
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { logError, logWarn } from "@/lib/observability/logger";
 
 // Allow up to 60s for AI generation + geocoding
 export const maxDuration = 60;
@@ -59,7 +60,7 @@ try {
         });
     }
 } catch {
-    console.warn("Ratelimit initialization failed (likely build step)");
+    logWarn("Ratelimit initialization failed (likely build step)");
 }
 
 const FORCE_LOW_COST_MODE = ["1", "true", "yes"].includes(
@@ -115,7 +116,7 @@ async function buildFallbackItinerary(prompt: string, days: number) {
             cityCoordinates = { lat, lng };
         }
     } catch (err) {
-        console.error('Geocoding failed for fallback, using default coords:', err);
+        logError('Geocoding failed for fallback, using default coords', err);
     }
 
     return {
@@ -211,7 +212,7 @@ async function geocodeItineraryActivities(itinerary: ItineraryLike): Promise<Iti
 
         return itinerary;
     } catch (error) {
-        console.error('Geocoding error (non-blocking):', error);
+        logError('Geocoding error (non-blocking)', error);
         return itinerary; // Return original itinerary if geocoding fails
     }
 }
@@ -341,7 +342,7 @@ async function handleGenerateItineraryPost(req: NextRequest) {
                 }
             }
         } catch {
-            console.warn("Redis fallback missed / connection issue");
+            logWarn("Redis fallback missed / connection issue");
         }
         // TIER 0.75: SHARED CACHE (Cross-org exact or canonical hit)
         try {
@@ -355,7 +356,7 @@ async function handleGenerateItineraryPost(req: NextRequest) {
                 });
             }
         } catch (e) {
-            console.error('[TIER 0.75: SHARED CACHE ERROR]', e);
+            logError('[TIER 0.75: SHARED CACHE ERROR]', e);
         }
         // TIER 0.5: SEMANTIC CACHE (Vector Match)
         try {
@@ -375,7 +376,7 @@ async function handleGenerateItineraryPost(req: NextRequest) {
                 });
             }
         } catch (e) {
-            console.error('[TIER 0.5: SEMANTIC CACHE ERROR]', e);
+            logError('[TIER 0.5: SEMANTIC CACHE ERROR]', e);
         }
         // TIER 2: RAG TEMPLATE SEARCH (Unified Knowledge Base)
         try {
@@ -416,7 +417,7 @@ async function handleGenerateItineraryPost(req: NextRequest) {
                                 geocodedItinerary.base_template_id,
                                 undefined // requestingOrgId - could extract from auth
                             ).catch(err => {
-                                console.error('Attribution tracking failed (non-blocking):', err);
+                                logError('Attribution tracking failed (non-blocking)', err);
                             });
                         }
                     }
@@ -443,7 +444,7 @@ async function handleGenerateItineraryPost(req: NextRequest) {
             }
 
         } catch (ragError) {
-            console.error('[TIER 2: RAG ERROR] RAG system error (non-blocking):', ragError);
+            logError('[TIER 2: RAG ERROR] RAG system error (non-blocking)', ragError);
         }
 
         // TIER 3: AI GENERATION — try Groq first, then Gemini, then fallback
@@ -453,7 +454,7 @@ async function handleGenerateItineraryPost(req: NextRequest) {
         const groqApiKey = process.env.GROQ_API_KEY;
 
         if (!geminiApiKey && !groqApiKey) {
-            console.warn('⚠️ No AI keys configured (GOOGLE_API_KEY / GROQ_API_KEY). Returning fallback itinerary.');
+            logWarn('⚠️ No AI keys configured (GOOGLE_API_KEY / GROQ_API_KEY). Returning fallback itinerary.');
             void trackOrgAiUsage(user.id, "fallback", 0);
             return NextResponse.json(await buildFallbackItinerary(prompt, days));
         }
@@ -582,7 +583,7 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
                     aiGenerated = true;
                     aiGenerationCostUsd = toSafeCost(ESTIMATED_COST_GROQ_USD, 0.006);
                 } catch (groqError) {
-                    console.error(`❌ [GROQ] Failed:`, groqError);
+                    logError(`❌ [GROQ] Failed`, groqError);
                     // Fall through to Gemini below
                 }
             }
@@ -606,11 +607,11 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
 
             // If all AI providers failed, use fallback
             if (!itinerary) {
-                console.warn('⚠️ All AI providers failed or unavailable — using fallback itinerary.');
+                logWarn('⚠️ All AI providers failed or unavailable — using fallback itinerary.');
                 itinerary = await buildFallbackItinerary(prompt, days);
             }
         } catch (innerError) {
-            console.error("AI Generation Error (outer catch):", innerError);
+            logError("AI Generation Error (outer catch)", innerError);
             itinerary = await buildFallbackItinerary(prompt, days);
         }
 
@@ -687,7 +688,7 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
                     // Cache infinitely, Upstash allows max limit to naturally evict LRU items
                     await redisStore.set(redisCacheKey, JSON.stringify(geocodedItinerary));
                 } catch {
-                    console.error("Failed to memorize to Redis");
+                    logError("Failed to memorize to Redis", undefined);
                 }
             }
 
@@ -700,7 +701,7 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
                 cacheParams.interests,
                 geocodedItinerary
             ).catch(err => {
-                console.error('Cache save failed (non-blocking):', err);
+                logError('Cache save failed (non-blocking)', err);
             });
 
             void promoteSharedItineraryCache({
@@ -720,7 +721,7 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
         // Save to semantic pgvector cache asynchronously
         if (isEmbeddingV2Configured() && !isFallbackItinerary) {
             saveSemanticMatch(prompt, destination, days, geocodedItinerary)
-                .catch(e => console.error(e));
+                .catch((e: unknown) => logError("Semantic cache save failed", e));
         }
 
         void trackSharedCacheSourceEvent({
@@ -737,7 +738,7 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
         });
 
     } catch (error) {
-        console.error("AI Generation Error:", error);
+        logError("AI Generation Error", error);
         void trackOrgAiUsage(user.id, "fallback", 0);
         return NextResponse.json(await buildFallbackItinerary(prompt, days));
     }

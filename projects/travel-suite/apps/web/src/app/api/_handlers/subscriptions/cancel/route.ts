@@ -17,6 +17,7 @@ import {
   isPaymentsIntegrationEnabled,
 } from '@/lib/integrations';
 import type { Database } from '@/lib/database.types';
+import { logError } from "@/lib/observability/logger";
 
 type SubscriptionRow = Database["public"]["Tables"]["subscriptions"]["Row"];
 
@@ -66,7 +67,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ subscription });
   } catch (error) {
-    console.error('Error in POST /api/subscriptions/cancel:', error);
+    logError('Error in POST /api/subscriptions/cancel', error);
     if (error instanceof PaymentServiceError) {
       return NextResponse.json(
         { error: "Failed to cancel subscription" },

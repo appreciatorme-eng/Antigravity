@@ -22,6 +22,7 @@ import {
   buildExternalDrivers,
   buildWorkflowStageEvents,
 } from "./fixture";
+import { logError } from "@/lib/observability/logger";
 
 const SEED_DEMO_RATE_LIMIT_MAX = 5;
 const SEED_DEMO_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
@@ -92,7 +93,7 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ ok: true, message: "Demo organization seeded successfully with ~150 records." });
   } catch (error) {
-    console.error("[admin/seed-demo] Failed to seed demo organization", error);
+    logError("[admin/seed-demo] Failed to seed demo organization", error);
     return NextResponse.json(
       { error: "An unexpected error occurred. Please try again." },
       { status: 500 },

@@ -6,6 +6,7 @@ import { apiError } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import { getWahaQR, sessionNameFromOrgId } from "@/lib/whatsapp-waha.server";
+import { logError } from "@/lib/observability/logger";
 
 export async function GET(request: NextRequest) {
     try {
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest) {
         const qrBase64 = await getWahaQR(sessionName, connection.session_token);
         return NextResponse.json({ qrBase64 });
     } catch (error) {
-        console.error("[whatsapp/qr] error:", error);
+        logError("[whatsapp/qr] error", error);
         const message = safeErrorMessage(error, "Request failed");
         return apiError(message, 500);
     }

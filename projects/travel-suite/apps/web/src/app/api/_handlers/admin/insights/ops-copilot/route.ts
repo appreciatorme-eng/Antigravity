@@ -3,6 +3,7 @@ import { apiError } from "@/lib/api/response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { daysUntil, normalizeStatus, safeTitle } from "@/lib/admin/insights";
+import { logError } from "@/lib/observability/logger";
 
 const QuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(12),
@@ -212,7 +213,7 @@ export async function GET(req: NextRequest) {
       ],
     });
   } catch (error) {
-    console.error("[/api/admin/insights/ops-copilot:GET] Unhandled error:", error);
+    logError("[/api/admin/insights/ops-copilot:GET] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },

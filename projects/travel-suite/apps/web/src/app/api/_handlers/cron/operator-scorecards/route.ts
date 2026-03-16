@@ -3,6 +3,7 @@ import { apiError } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { deliverMonthlyOperatorScorecards } from "@/lib/admin/operator-scorecard-delivery";
 import { authorizeCronRequest } from "@/lib/security/cron-auth";
+import { logError } from "@/lib/observability/logger";
 
 export async function POST(request: NextRequest) {
   try {
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest) {
       result,
     });
   } catch (error) {
-    console.error("[/api/cron/operator-scorecards:POST] failed:", error);
+    logError("[/api/cron/operator-scorecards:POST] failed", error);
     return NextResponse.json(
       { error: "Failed to generate operator scorecards" },
       { status: 500 },

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { Database } from "@/lib/database.types";
+import { logError } from "@/lib/observability/logger";
 
 type TripServiceCostRow = Database["public"]["Tables"]["trip_service_costs"]["Row"];
 
@@ -46,13 +47,13 @@ export async function GET(req: NextRequest) {
 
     const { data, error } = await query;
     if (error) {
-      console.error("[/api/admin/pricing/trip-costs:GET] DB error:", error);
+      logError("[/api/admin/pricing/trip-costs:GET] DB error", error);
       return apiError(safeErrorMessage(error, "Request failed"), 500);
     }
 
     return NextResponse.json({ costs: data || [] });
   } catch (error) {
-    console.error("[/api/admin/pricing/trip-costs:GET] Unhandled error:", error);
+    logError("[/api/admin/pricing/trip-costs:GET] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },
@@ -94,13 +95,13 @@ export async function POST(req: NextRequest) {
     const data = costData as unknown as TripServiceCostRow | null;
 
     if (error) {
-      console.error("[/api/admin/pricing/trip-costs:POST] DB error:", error);
+      logError("[/api/admin/pricing/trip-costs:POST] DB error", error);
       return apiError(safeErrorMessage(error, "Request failed"), 500);
     }
 
     return apiSuccess(data, { status: 201 });
   } catch (error) {
-    console.error("[/api/admin/pricing/trip-costs:POST] Unhandled error:", error);
+    logError("[/api/admin/pricing/trip-costs:POST] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },

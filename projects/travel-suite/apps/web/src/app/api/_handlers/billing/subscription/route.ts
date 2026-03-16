@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth/admin";
 import { paymentService } from "@/lib/payments/payment-service";
 import { resolveOrganizationPlan } from "@/lib/subscriptions/limits";
 import { createClient } from "@/lib/supabase/server";
+import { logError } from "@/lib/observability/logger";
 
 function mapPlanIdToTier(planId: CanonicalPlanId): "free" | "pro" | "enterprise" {
   if (planId === "enterprise") return "enterprise";
@@ -27,7 +28,7 @@ export async function GET(request: Request) {
       .maybeSingle();
 
     if (profileError) {
-      console.error("[billing/subscription] failed to load profile:", profileError);
+      logError("[billing/subscription] failed to load profile", profileError);
       return apiError("Failed to load billing profile", 500);
     }
 
@@ -61,7 +62,7 @@ export async function GET(request: Request) {
       ]);
 
     if (orgError) {
-      console.error("[billing/subscription] failed to load organization:", orgError);
+      logError("[billing/subscription] failed to load organization", orgError);
       return apiError("Failed to load billing organization", 500);
     }
 
@@ -109,7 +110,7 @@ export async function GET(request: Request) {
       support_whatsapp_number: supportWhatsAppNumber,
     });
   } catch (error) {
-    console.error("[billing/subscription] unexpected error:", error);
+    logError("[billing/subscription] unexpected error", error);
     return apiError("Failed to load billing subscription", 500);
   }
 }

@@ -5,6 +5,7 @@ import { apiError } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import { logError } from "@/lib/observability/logger";
 
 const supabaseAdmin = createAdminClient();
 
@@ -131,7 +132,7 @@ export async function GET(request: Request) {
             .in("status", ["confirmed", "active", "in_progress", "completed"]);
 
         if (error) {
-            console.error("Schedule query error:", error);
+            logError("Schedule query error", error);
             return apiError("Failed to fetch schedule", 500);
         }
 
@@ -189,7 +190,7 @@ export async function GET(request: Request) {
 
         return NextResponse.json({ events, completedCount });
     } catch (error) {
-        console.error("Dashboard schedule error:", error);
+        logError("Dashboard schedule error", error);
         return NextResponse.json(
             {
                 error: safeErrorMessage(error, "Request failed"),

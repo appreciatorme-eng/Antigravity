@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { getGeocodingUsageStats } from "@/lib/geocoding-with-cache";
+import { logError } from "@/lib/observability/logger";
 
 type AdminAuth = Awaited<ReturnType<typeof requireAdmin>>;
 
@@ -87,7 +88,7 @@ export async function GET(req: NextRequest) {
             message: getStatusMessage(status, stats),
         });
     } catch (error) {
-        console.error("Geocoding usage stats error:", error);
+        logError("Geocoding usage stats error", error);
         return apiError("Failed to retrieve usage statistics", 500);
     }
 }

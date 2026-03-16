@@ -27,6 +27,7 @@ import {
 } from "@/lib/whatsapp/chatbot-flow";
 import { isUnsignedWebhookAllowed } from "@/lib/security/whatsapp-webhook-config";
 import { validateWahaWebhookSecret } from "./secret";
+import { logError, logWarn } from "@/lib/observability/logger";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -68,9 +69,9 @@ export async function POST(request: Request): Promise<Response> {
     });
     if (!validation.ok) {
         if (validation.status === 503) {
-            console.error("[webhooks/waha] WPPCONNECT_WEBHOOK_SECRET not configured");
+            logError("[webhooks/waha] WPPCONNECT_WEBHOOK_SECRET not configured", undefined);
         } else {
-            console.warn("[webhooks/waha] Invalid or missing webhook secret");
+            logWarn("[webhooks/waha] Invalid or missing webhook secret");
         }
         return NextResponse.json({ error: validation.error }, { status: validation.status });
     }
@@ -186,7 +187,7 @@ export async function POST(request: Request): Promise<Response> {
             organizationId,
             senderPhone,
         ).catch((error) => {
-            console.error("[webhooks/waha] failed to resolve whatsapp profile:", error);
+            logError("[webhooks/waha] failed to resolve whatsapp profile", error);
             return null;
         });
 
@@ -196,14 +197,14 @@ export async function POST(request: Request): Promise<Response> {
         if (isInternalOperator) {
             await handleWhatsAppMessage(waId, payload.body, senderPhone).catch(
                 (err) => {
-                    console.error("[webhooks/waha] message processing error:", err);
+                    logError("[webhooks/waha] message processing error", err);
                 },
             );
             return NextResponse.json({ ok: true });
         }
 
         const chatbotEnabled = await isWhatsAppChatbotEnabled().catch((error) => {
-            console.error("[webhooks/waha] failed to resolve chatbot flag:", error);
+            logError("[webhooks/waha] failed to resolve chatbot flag", error);
             return false;
         });
 
@@ -213,7 +214,7 @@ export async function POST(request: Request): Promise<Response> {
 
         const recentHumanReply = await hasRecentHumanReply(event.session, waId).catch(
             (error) => {
-                console.error("[webhooks/waha] failed to inspect recent human reply:", error);
+                logError("[webhooks/waha] failed to inspect recent human reply", error);
                 return true;
             },
         );
@@ -227,7 +228,7 @@ export async function POST(request: Request): Promise<Response> {
             incomingMessage: payload.body,
             organizationId,
         }).catch((error) => {
-            console.error("[webhooks/waha] chatbot processing error:", error);
+            logError("[webhooks/waha] chatbot processing error", error);
             return null;
         });
 
@@ -243,7 +244,7 @@ export async function POST(request: Request): Promise<Response> {
             chatbotSessionId: chatbotResult.sessionId,
             reply: chatbotResult.reply,
         }).catch((error) => {
-            console.error("[webhooks/waha] failed to send chatbot reply:", error);
+            logError("[webhooks/waha] failed to send chatbot reply", error);
         });
     }
 

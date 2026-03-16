@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { SOCIAL_POST_SELECT } from "@/lib/social/selects";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { Database } from "@/lib/database.types";
+import { logError } from "@/lib/observability/logger";
 
 type SocialPostRow = Database["public"]["Tables"]["social_posts"]["Row"];
 
@@ -49,7 +50,7 @@ export async function GET() {
 
         return NextResponse.json({ posts });
     } catch (error: unknown) {
-        console.error("Error fetching social posts:", error);
+        logError("Error fetching social posts", error);
         const message = safeErrorMessage(error, "Request failed");
         return apiError(message, 500);
     }
@@ -108,7 +109,7 @@ export async function POST(req: Request) {
 
         return NextResponse.json({ post });
     } catch (error: unknown) {
-        console.error("Error creating social post:", error);
+        logError("Error creating social post", error);
         const message = safeErrorMessage(error, "Request failed");
         return apiError(message, 500);
     }

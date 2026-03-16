@@ -6,6 +6,7 @@ import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { logPlatformAction } from "@/lib/platform/audit";
 import { passesMutationCsrfGuard } from "@/lib/security/admin-mutation-csrf";
 import type { Database } from "@/lib/database.types";
+import { logError } from "@/lib/observability/logger";
 
 const PLATFORM_ANNOUNCEMENT_SELECT = [
     "announcement_type",
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
             pages: Math.ceil((result.count ?? 0) / limit),
         });
     } catch (err) {
-        console.error("[superadmin/announcements GET]", err);
+        logError("[superadmin/announcements GET]", err);
         return apiError("Failed to load announcements", 500);
     }
 }
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest) {
 
         return apiSuccess(announcement, { status: 201 });
     } catch (err) {
-        console.error("[superadmin/announcements POST]", err);
+        logError("[superadmin/announcements POST]", err);
         return apiError("Failed to create announcement", 500);
     }
 }

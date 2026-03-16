@@ -13,6 +13,7 @@ import {
   isEmailIntegrationEnabled,
 } from '@/lib/integrations';
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import { logError } from "@/lib/observability/logger";
 
 const SendPdfSchema = z.object({
   proposal_id: z.string().uuid(),
@@ -104,7 +105,7 @@ export async function POST(request: Request) {
 
     if (!emailResponse.ok) {
       const rawBody = await emailResponse.json().catch(() => ({}));
-      console.error("[proposals/send-pdf] Resend API failure:", {
+      logError("[proposals/send-pdf] Resend API failure", {
         status: emailResponse.status,
         body: rawBody,
       });
@@ -126,7 +127,7 @@ export async function POST(request: Request) {
       message: 'PDF sent successfully',
     });
   } catch (error) {
-    console.error('Error in POST /api/proposals/send-pdf:', error);
+    logError('Error in POST /api/proposals/send-pdf', error);
     return apiError(safeErrorMessage(error, "Request failed"), 500);
   }
 }

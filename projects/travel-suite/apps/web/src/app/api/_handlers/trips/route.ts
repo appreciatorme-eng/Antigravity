@@ -3,6 +3,7 @@ import { apiError } from "@/lib/api/response";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sanitizeText } from "@/lib/security/sanitize";
+import { logError } from "@/lib/observability/logger";
 
 const supabaseAdmin = createAdminClient();
 
@@ -372,7 +373,7 @@ export async function GET(req: NextRequest) {
             : null;
         return NextResponse.json({ trips, nextCursor, hasMore: nextCursor !== null });
     } catch (error) {
-        console.error("Error fetching trips:", error);
+        logError("Error fetching trips", error);
         return apiError("Failed to process trip", 500);
     }
 }

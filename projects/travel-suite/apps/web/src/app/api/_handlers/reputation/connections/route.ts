@@ -6,6 +6,7 @@ import { REPUTATION_PLATFORM_CONNECTION_SELECT } from "@/lib/reputation/selects"
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { ConnectionPlatform } from "@/lib/reputation/types";
 import type { Database } from "@/lib/database.types";
+import { logError } from "@/lib/observability/logger";
 
 type ConnectionRow = Database["public"]["Tables"]["reputation_platform_connections"]["Row"];
 
@@ -44,7 +45,7 @@ export async function GET() {
     return NextResponse.json({ connections: connections ?? [] });
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");
-    console.error("Error fetching platform connections:", error);
+    logError("Error fetching platform connections", error);
     return apiError(message, 500);
   }
 }
@@ -115,7 +116,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ connection });
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");
-    console.error("Error creating platform connection:", error);
+    logError("Error creating platform connection", error);
     return apiError(message, 500);
   }
 }
@@ -149,7 +150,7 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");
-    console.error("Error deleting platform connection:", error);
+    logError("Error deleting platform connection", error);
     return apiError(message, 500);
   }
 }

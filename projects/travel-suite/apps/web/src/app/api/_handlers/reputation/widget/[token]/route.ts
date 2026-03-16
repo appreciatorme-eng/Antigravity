@@ -9,6 +9,7 @@ import { repFrom } from "@/lib/reputation/db";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 import type { ReputationWidget, ReputationReview } from "@/lib/reputation/types";
+import { logError } from "@/lib/observability/logger";
 
 type PublicWidgetReviewRow = {
   id: string;
@@ -160,7 +161,7 @@ export async function GET(
       headers: corsHeaders(),
     });
   } catch (error: unknown) {
-    console.error("Error fetching widget data:", error);
+    logError("Error fetching widget data", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500, headers: corsHeaders() }

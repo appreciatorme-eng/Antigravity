@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/auth/admin";
 import { resolveScopedOrgWithDemo, blockDemoMutation } from "@/lib/auth/demo-org-resolver";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { Database } from "@/lib/database.types";
+import { logError } from "@/lib/observability/logger";
 
 type MonthlyOverheadRow = Database["public"]["Tables"]["monthly_overhead_expenses"]["Row"];
 
@@ -54,13 +55,13 @@ export async function GET(req: NextRequest) {
     const data = expenseData as unknown as MonthlyOverheadRow[] | null;
 
     if (error) {
-      console.error("[/api/admin/pricing/overheads:GET] DB error:", error);
+      logError("[/api/admin/pricing/overheads:GET] DB error", error);
       return apiError(safeErrorMessage(error, "Request failed"), 500);
     }
 
     return NextResponse.json({ expenses: data || [] });
   } catch (error) {
-    console.error("[/api/admin/pricing/overheads:GET] Unhandled error:", error);
+    logError("[/api/admin/pricing/overheads:GET] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },
@@ -108,13 +109,13 @@ export async function POST(req: NextRequest) {
     const data = expenseData as unknown as MonthlyOverheadRow | null;
 
     if (error) {
-      console.error("[/api/admin/pricing/overheads:POST] DB error:", error);
+      logError("[/api/admin/pricing/overheads:POST] DB error", error);
       return apiError(safeErrorMessage(error, "Request failed"), 500);
     }
 
     return apiSuccess(data, { status: 201 });
   } catch (error) {
-    console.error("[/api/admin/pricing/overheads:POST] Unhandled error:", error);
+    logError("[/api/admin/pricing/overheads:POST] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },

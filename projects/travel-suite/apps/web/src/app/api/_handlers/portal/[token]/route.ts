@@ -2,6 +2,7 @@ import { apiError, apiSuccess } from "@/lib/api/response";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPaymentLinkByToken } from "@/lib/payments/payment-links.server";
 import { enforcePublicRouteRateLimit } from "@/lib/security/public-rate-limit";
+import { logError } from "@/lib/observability/logger";
 
 const SHARE_TOKEN_REGEX = /^[A-Za-z0-9_-]{8,200}$/;
 const PUBLIC_PORTAL_READ_RATE_LIMIT_MAX = Number(
@@ -78,7 +79,7 @@ export async function GET(
       .maybeSingle();
 
     if (proposalError) {
-      console.error("[portal/:token] failed to load proposal:", proposalError);
+      logError("[portal/:token] failed to load proposal", proposalError);
       return apiError("Failed to load trip portal", 500);
     }
 
@@ -136,27 +137,27 @@ export async function GET(
       ]);
 
     if (clientProfileResult.error) {
-      console.error("[portal/:token] failed to load client profile:", clientProfileResult.error);
+      logError("[portal/:token] failed to load client profile", clientProfileResult.error);
       return apiError("Failed to load trip portal", 500);
     }
 
     if (organizationResult.error) {
-      console.error("[portal/:token] failed to load organization:", organizationResult.error);
+      logError("[portal/:token] failed to load organization", organizationResult.error);
       return apiError("Failed to load trip portal", 500);
     }
 
     if (tripResult.error) {
-      console.error("[portal/:token] failed to load trip:", tripResult.error);
+      logError("[portal/:token] failed to load trip", tripResult.error);
       return apiError("Failed to load trip portal", 500);
     }
 
     if (daysResult.error) {
-      console.error("[portal/:token] failed to load itinerary days:", daysResult.error);
+      logError("[portal/:token] failed to load itinerary days", daysResult.error);
       return apiError("Failed to load trip portal", 500);
     }
 
     if (paymentLinksResult.error) {
-      console.error("[portal/:token] failed to load payment links:", paymentLinksResult.error);
+      logError("[portal/:token] failed to load payment links", paymentLinksResult.error);
       return apiError("Failed to load trip portal", 500);
     }
 
@@ -182,12 +183,12 @@ export async function GET(
     ]);
 
     if (activities.error) {
-      console.error("[portal/:token] failed to load activities:", activities.error);
+      logError("[portal/:token] failed to load activities", activities.error);
       return apiError("Failed to load trip portal", 500);
     }
 
     if (accommodations.error) {
-      console.error("[portal/:token] failed to load accommodations:", accommodations.error);
+      logError("[portal/:token] failed to load accommodations", accommodations.error);
       return apiError("Failed to load trip portal", 500);
     }
 
@@ -356,7 +357,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("[portal/:token] unexpected error:", error);
+    logError("[portal/:token] unexpected error", error);
     return apiError("Failed to load trip portal", 500);
   }
 }

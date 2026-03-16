@@ -13,6 +13,7 @@ import {
 import { resolveOrganizationPlan } from "@/lib/subscriptions/limits";
 import { REPUTATION_TIER_LIMITS } from "@/lib/reputation/constants";
 import type { AIAnalysisResult } from "@/lib/reputation/types";
+import { logError } from "@/lib/observability/logger";
 
 export const maxDuration = 300;
 
@@ -227,7 +228,7 @@ export async function POST(req: Request) {
         // Rate limiting between calls
         await delay(DELAY_BETWEEN_CALLS_MS);
       } catch (reviewError) {
-        console.error(`Error analyzing review ${review.id}:`, reviewError);
+        logError(`Error analyzing review ${review.id}`, reviewError);
         errors += 1;
       }
     }
@@ -235,7 +236,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ analyzed, skipped, errors });
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");
-    console.error("Error in batch analyze:", error);
+    logError("Error in batch analyze", error);
     return NextResponse.json(
       { error: message, analyzed, skipped, errors },
       { status: 500 }

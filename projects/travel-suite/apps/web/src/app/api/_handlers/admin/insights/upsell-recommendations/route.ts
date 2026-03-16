@@ -3,6 +3,7 @@ import { apiError } from "@/lib/api/response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { clamp, safeTitle, toNumber } from "@/lib/admin/insights";
+import { logError } from "@/lib/observability/logger";
 
 const QuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(30).default(8),
@@ -203,7 +204,7 @@ export async function GET(req: NextRequest) {
       quick_wins: quickWins,
     });
   } catch (error) {
-    console.error("[/api/admin/insights/upsell-recommendations:GET] Unhandled error:", error);
+    logError("[/api/admin/insights/upsell-recommendations:GET] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },

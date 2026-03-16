@@ -13,6 +13,7 @@ import type {
   ReputationDashboardData,
   ReputationHealthScoreFactors,
 } from "@/lib/reputation/types";
+import { logError } from "@/lib/observability/logger";
 
 const getCachedReputationDashboard = unstable_cache(
   async (organizationId: string) => {
@@ -144,7 +145,7 @@ export async function GET(request: Request) {
     return apiSuccess(dashboardData);
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");
-    console.error("Error fetching reputation dashboard:", error);
+    logError("Error fetching reputation dashboard", error);
     return apiError(message, 500);
   }
 }

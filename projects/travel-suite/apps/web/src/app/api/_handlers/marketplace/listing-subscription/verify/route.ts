@@ -9,6 +9,7 @@ import { verifyRazorpayPaymentSignature } from "@/lib/payments/payment-links.ser
 import type { Database } from "@/lib/database.types";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { logError } from "@/lib/observability/logger";
 
 const verifyListingSubscriptionSchema = z.object({
   subscriptionId: z.string().uuid(),
@@ -203,7 +204,7 @@ export async function POST(request: NextRequest) {
       plan,
     });
   } catch (error) {
-    console.error("[marketplace/listing-subscription/verify] failed:", error);
+    logError("[marketplace/listing-subscription/verify] failed", error);
     return apiError("Failed to verify marketplace listing payment", 500);
   }
 }

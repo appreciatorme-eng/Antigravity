@@ -17,6 +17,7 @@ import {
 import { apiError, apiSuccess } from '@/lib/api/response';
 import { enforceRateLimit } from '@/lib/security/rate-limit';
 import { z } from 'zod';
+import { logError } from "@/lib/observability/logger";
 
 const createOrderSchema = z.object({
   amount: z.number().positive("Amount must be positive"),
@@ -121,7 +122,7 @@ export async function POST(request: NextRequest) {
 
     return apiSuccess({ order });
   } catch (error) {
-    console.error('Error in POST /api/payments/create-order:', error);
+    logError('Error in POST /api/payments/create-order', error);
 
     if (error instanceof PaymentServiceError) {
       return apiError("Failed to create payment order", paymentErrorHttpStatus(error));

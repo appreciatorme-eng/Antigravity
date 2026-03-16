@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { toNumber } from "@/lib/admin/insights";
+import { logError } from "@/lib/observability/logger";
 
 function isSchemaDriftError(message: string | undefined): boolean {
   if (!message) return false;
@@ -100,7 +101,7 @@ export async function GET(req: NextRequest) {
       degraded_mode_recommended: requestPct >= 85 || spendPct >= 85,
     });
   } catch (error) {
-    console.error("[/api/admin/insights/ai-usage:GET] Unhandled error:", error);
+    logError("[/api/admin/insights/ai-usage:GET] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },

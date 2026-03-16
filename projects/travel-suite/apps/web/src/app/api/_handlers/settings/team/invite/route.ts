@@ -8,6 +8,7 @@ import {
   requireTeamManager,
   resolveTeamContext,
 } from "../shared";
+import { logError } from "@/lib/observability/logger";
 
 const InviteTeamMemberSchema = z.object({
   email: z.string().trim().email(),
@@ -53,7 +54,7 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (existingProfileError) {
-      console.error("[settings/team/invite] failed to check existing profile:", existingProfileError);
+      logError("[settings/team/invite] failed to check existing profile", existingProfileError);
       return apiError("Failed to prepare invite", 500);
     }
 
@@ -78,7 +79,7 @@ export async function POST(request: Request) {
       });
 
       if (inviteResponse.error) {
-        console.error("[settings/team/invite] inviteUserByEmail failed:", inviteResponse.error);
+        logError("[settings/team/invite] inviteUserByEmail failed", inviteResponse.error);
         return apiError("Failed to send invite email", 500);
       }
 
@@ -112,7 +113,7 @@ export async function POST(request: Request) {
     );
 
     if (upsertError) {
-      console.error("[settings/team/invite] failed to upsert invited profile:", upsertError);
+      logError("[settings/team/invite] failed to upsert invited profile", upsertError);
       return apiError("Failed to provision invited member", 500);
     }
 
@@ -126,7 +127,7 @@ export async function POST(request: Request) {
       invited: true,
     });
   } catch (error) {
-    console.error("[settings/team/invite] unexpected error:", error);
+    logError("[settings/team/invite] unexpected error", error);
     return apiError("Failed to invite team member", 500);
   }
 }

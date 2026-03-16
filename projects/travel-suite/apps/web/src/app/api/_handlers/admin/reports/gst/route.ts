@@ -6,6 +6,7 @@
 import { apiError } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { NextResponse } from "next/server";
+import { logError } from "@/lib/observability/logger";
 
 function parseMonthParam(raw: string | null): { start: string; end: string } | null {
   if (!raw) return null;
@@ -68,7 +69,7 @@ export async function GET(request: Request): Promise<Response> {
     const { data: rows, error } = await query.limit(500);
 
     if (error) {
-      console.error("[reports/gst] DB error:", error);
+      logError("[reports/gst] DB error", error);
       return apiError("Failed to fetch GST report data", 500);
     }
 
@@ -95,7 +96,7 @@ export async function GET(request: Request): Promise<Response> {
 
     return NextResponse.json({ data: { rows: gstRows } });
   } catch (error) {
-    console.error("[/api/admin/reports/gst:GET] Unhandled error:", error);
+    logError("[/api/admin/reports/gst:GET] Unhandled error", error);
     return apiError("An unexpected error occurred. Please try again.", 500);
   }
 }

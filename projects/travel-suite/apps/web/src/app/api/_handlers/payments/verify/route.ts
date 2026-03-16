@@ -9,6 +9,7 @@ import {
   recordPaymentLinkEvent,
   verifyRazorpayPaymentSignature,
 } from "@/lib/payments/payment-links.server";
+import { logError } from "@/lib/observability/logger";
 
 const verifySchema = z.object({
   token: z.string().min(8).max(200),
@@ -67,7 +68,7 @@ export async function POST(request: NextRequest) {
         .eq("id", updatedLink.proposalId);
 
       if (proposalUpdateError) {
-        console.error("[payments/verify] Failed to update proposal status", {
+        logError("[payments/verify] Failed to update proposal status", {
           proposalId: updatedLink.proposalId,
           error: proposalUpdateError.message,
         });
@@ -99,7 +100,7 @@ export async function POST(request: NextRequest) {
       verified: true,
     });
   } catch (error) {
-    console.error("[payments/verify] verification failed:", error);
+    logError("[payments/verify] verification failed", error);
     return apiError("Failed to verify payment", 500);
   }
 }

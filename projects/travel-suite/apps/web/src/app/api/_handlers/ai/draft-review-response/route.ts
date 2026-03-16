@@ -3,6 +3,7 @@ import { apiError, apiSuccess } from "@/lib/api/response";
 import { getGeminiModel } from "@/lib/ai/gemini.server";
 import { createClient } from "@/lib/supabase/server";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { logError } from "@/lib/observability/logger";
 
 export const maxDuration = 30;
 
@@ -61,7 +62,7 @@ export async function POST(request: Request) {
 
     return apiSuccess({ draft });
   } catch (error) {
-    console.error("[ai/draft-review-response] unexpected error:", error);
+    logError("[ai/draft-review-response] unexpected error", error);
     return apiError("Failed to draft review response", 500);
   }
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
+import { logError } from "@/lib/observability/logger";
 
 function isSchemaDriftError(message: string | undefined): boolean {
   if (!message) return false;
@@ -43,7 +44,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ jobs: data || [] });
   } catch (error) {
-    console.error("[/api/admin/insights/batch-jobs:GET] Unhandled error:", error);
+    logError("[/api/admin/insights/batch-jobs:GET] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },
@@ -108,7 +109,7 @@ export async function POST(req: NextRequest) {
       note: "Heavy insight recomputation queued asynchronously. Process with a scheduled worker.",
     });
   } catch (error) {
-    console.error("[/api/admin/insights/batch-jobs:POST] Unhandled error:", error);
+    logError("[/api/admin/insights/batch-jobs:POST] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },

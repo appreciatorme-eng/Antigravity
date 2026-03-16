@@ -3,6 +3,7 @@
 import { NextRequest } from "next/server";
 import { apiSuccess, apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
+import { logError } from "@/lib/observability/logger";
 
 const PLATFORM_ANNOUNCEMENT_SELECT = [
     "announcement_type",
@@ -66,7 +67,7 @@ export async function PATCH(
 
         return apiSuccess(result.data);
     } catch (err) {
-        console.error(`[superadmin/announcements/${id} PATCH]`, err);
+        logError(`[superadmin/announcements/${id} PATCH]`, err);
         return apiError("Failed to update announcement", 500);
     }
 }

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAllFeatureLimitStatuses, resolveOrganizationPlan } from "@/lib/subscriptions/limits";
 import { resolveCreditPackOffers } from "@/lib/billing/credit-packs";
+import { logError } from "@/lib/observability/logger";
 
 export async function GET() {
   try {
@@ -44,7 +45,7 @@ export async function GET() {
       premium_automation_gate: creditPackCatalog.premium_automation_gate,
     });
   } catch (error) {
-    console.error("Error in GET /api/subscriptions/limits:", error);
+    logError("Error in GET /api/subscriptions/limits", error);
     return apiError("Failed to load subscription limits", 500);
   }
 }

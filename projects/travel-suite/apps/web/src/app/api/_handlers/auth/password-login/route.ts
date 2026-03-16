@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { enforceRateLimit, type RateLimitResult } from "@/lib/security/rate-limit";
+import { logError } from "@/lib/observability/logger";
 
 const LoginSchema = z.object({
   email: z.string().email().max(320),
@@ -96,7 +97,7 @@ export async function POST(request: NextRequest) {
 
     return withRateLimitHeaders(response, rateLimit);
   } catch (error) {
-    console.error("[/api/auth/password-login:POST] Unhandled error:", error);
+    logError("[/api/auth/password-login:POST] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },

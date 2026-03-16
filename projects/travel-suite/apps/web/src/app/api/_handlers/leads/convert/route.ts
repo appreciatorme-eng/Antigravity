@@ -40,7 +40,7 @@ const ConvertLeadSchema = z.object({
 
 export async function POST(request: NextRequest): Promise<Response> {
   if (!INTERNAL_API_SECRET) {
-    console.error("[leads/convert] INTERNAL_API_SECRET is not configured; endpoint is disabled");
+    logError("[leads/convert] INTERNAL_API_SECRET is not configured; endpoint is disabled", undefined);
     return apiError("Service not configured", 503);
   }
   if (!verifyInternalToken(request)) {

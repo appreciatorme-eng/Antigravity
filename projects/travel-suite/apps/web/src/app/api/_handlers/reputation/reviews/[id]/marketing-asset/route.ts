@@ -8,6 +8,7 @@ import {
   ensureReviewMarketingAsset,
   scheduleReviewMarketingAsset,
 } from "@/lib/reputation/review-marketing.server";
+import { logError } from "@/lib/observability/logger";
 
 const requestSchema = z.object({
   action: z.enum(["generate", "schedule"]).default("generate"),
@@ -85,7 +86,7 @@ export async function POST(
             ? 400
             : 500;
 
-    console.error("Error processing review marketing asset:", error);
+    logError("Error processing review marketing asset", error);
     return NextResponse.json({ error: message }, { status });
   }
 }

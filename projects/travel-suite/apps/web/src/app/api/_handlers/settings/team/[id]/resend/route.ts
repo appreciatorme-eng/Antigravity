@@ -6,6 +6,7 @@ import {
   requireTeamManager,
   resolveTeamContext,
 } from "../../shared";
+import { logError } from "@/lib/observability/logger";
 
 const DEFAULT_INVITE_REDIRECT_PATH = "/auth";
 
@@ -33,7 +34,7 @@ export async function POST(
       .maybeSingle();
 
     if (targetError) {
-      console.error("[settings/team/:id/resend] failed to load member:", targetError);
+      logError("[settings/team/:id/resend] failed to load member", targetError);
       return apiError("Failed to load team member", 500);
     }
 
@@ -68,7 +69,7 @@ export async function POST(
     });
 
     if (inviteResponse.error) {
-      console.error("[settings/team/:id/resend] inviteUserByEmail failed:", inviteResponse.error);
+      logError("[settings/team/:id/resend] inviteUserByEmail failed", inviteResponse.error);
       return apiError("Failed to resend invite", 500);
     }
 
@@ -82,7 +83,7 @@ export async function POST(
 
     return apiSuccess({ id: targetMember.id, resent: true });
   } catch (error) {
-    console.error("[settings/team/:id/resend] unexpected error:", error);
+    logError("[settings/team/:id/resend] unexpected error", error);
     return apiError("Failed to resend invite", 500);
   }
 }

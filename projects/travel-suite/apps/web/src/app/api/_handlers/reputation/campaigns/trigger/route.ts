@@ -5,6 +5,7 @@ import { REPUTATION_REVIEW_CAMPAIGN_SELECT } from "@/lib/reputation/selects";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import { randomUUID } from "crypto";
 import type { Database } from "@/lib/database.types";
+import { logError } from "@/lib/observability/logger";
 
 type CampaignRow = Database["public"]["Tables"]["reputation_review_campaigns"]["Row"];
 
@@ -63,7 +64,7 @@ export async function POST(req: Request) {
         .lte("end_date", new Date().toISOString());
 
       if (tripsError) {
-        console.error(`Error querying trips for campaign ${campaign.id}:`, tripsError);
+        logError(`Error querying trips for campaign ${campaign.id}`, tripsError);
         continue;
       }
 
@@ -98,12 +99,12 @@ export async function POST(req: Request) {
       ]);
 
       if (existingSendsError) {
-        console.error(`Error checking existing sends for campaign ${campaign.id}:`, existingSendsError);
+        logError(`Error checking existing sends for campaign ${campaign.id}`, existingSendsError);
         continue;
       }
 
       if (clientsResult.error) {
-        console.error(`Error loading clients for campaign ${campaign.id}:`, clientsResult.error);
+        logError(`Error loading clients for campaign ${campaign.id}`, clientsResult.error);
         continue;
       }
 
@@ -145,7 +146,7 @@ export async function POST(req: Request) {
       const insertedSends = (insertedSendsData as unknown as InsertedSendRow[] | null) ?? [];
 
       if (sendInsertError) {
-        console.error(`Error creating sends for campaign ${campaign.id}:`, sendInsertError);
+        logError(`Error creating sends for campaign ${campaign.id}`, sendInsertError);
         continue;
       }
 
@@ -181,7 +182,7 @@ export async function POST(req: Request) {
         .insert(notificationPayloads as unknown as Database["public"]["Tables"]["notification_queue"]["Insert"][]);
 
       if (queueError) {
-        console.error(`Error queueing notifications for campaign ${campaign.id}:`, queueError);
+        logError(`Error queueing notifications for campaign ${campaign.id}`, queueError);
         continue;
       }
 
@@ -193,7 +194,7 @@ export async function POST(req: Request) {
           .in("id", sendIds);
 
         if (sendUpdateError) {
-          console.error(`Error updating campaign sends for campaign ${campaign.id}:`, sendUpdateError);
+          logError(`Error updating campaign sends for campaign ${campaign.id}`, sendUpdateError);
         }
       }
     }
@@ -201,7 +202,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ sends_created: totalSendsCreated });
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");
-    console.error("Error triggering campaign sends:", error);
+    logError("Error triggering campaign sends", error);
     return apiError(message, 500);
   }
 }

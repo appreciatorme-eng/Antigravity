@@ -7,6 +7,7 @@ import { resolveAdminDateRange } from "@/lib/admin/date-range";
 import { requireAdmin } from "@/lib/auth/admin";
 import { resolveScopedOrgWithDemo } from "@/lib/auth/demo-org-resolver";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logError } from "@/lib/observability/logger";
 
 type PaymentLinkRevenueRow = Pick<
   Database["public"]["Tables"]["payment_links"]["Row"],
@@ -158,7 +159,7 @@ export async function GET(req: NextRequest) {
 
     return apiSuccess(response);
   } catch (error) {
-    console.error("[/api/admin/revenue:GET] Unhandled error:", error);
+    logError("[/api/admin/revenue:GET] Unhandled error", error);
     return NextResponse.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },

@@ -8,6 +8,7 @@ import {
     isPaymentsIntegrationEnabled,
     isWhatsAppIntegrationEnabled,
 } from "@/lib/integrations";
+import { logError } from "@/lib/observability/logger";
 
 function envConfigured(key: string): boolean {
     const val = process.env[key]?.trim();
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({ integrations });
     } catch (error) {
-        console.error("[/api/settings/integrations:GET] Unhandled error:", error);
+        logError("[/api/settings/integrations:GET] Unhandled error", error);
         return NextResponse.json(
             { data: null, error: "An unexpected error occurred. Please try again." },
             { status: 500 },

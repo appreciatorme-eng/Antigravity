@@ -7,6 +7,7 @@ import {
   recordPaymentLinkEvent,
 } from "@/lib/payments/payment-links.server";
 import { enforcePublicRouteRateLimit } from "@/lib/security/public-rate-limit";
+import { logError } from "@/lib/observability/logger";
 
 const tokenSchema = z.string().min(8).max(200);
 const PUBLIC_PAYMENT_LINK_READ_RATE_LIMIT_MAX = Number(
@@ -52,7 +53,7 @@ export async function GET(
 
     return apiSuccess({ link });
   } catch (error) {
-    console.error("[payments/links/:token] load failed:", error);
+    logError("[payments/links/:token] load failed", error);
     return apiError("Failed to load payment link", 500);
   }
 }
@@ -108,7 +109,7 @@ export async function POST(
 
     return apiSuccess({ link });
   } catch (error) {
-    console.error("[payments/links/:token] event failed:", error);
+    logError("[payments/links/:token] event failed", error);
     return apiError("Failed to update payment link", 500);
   }
 }

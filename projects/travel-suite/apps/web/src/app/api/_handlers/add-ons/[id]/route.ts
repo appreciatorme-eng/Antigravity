@@ -14,6 +14,7 @@ import { ADD_ON_SELECT } from "@/lib/business/selects";
 import { createClient } from '@/lib/supabase/server';
 import { sanitizeText } from '@/lib/security/sanitize';
 import type { Database } from '@/lib/database.types';
+import { logError } from "@/lib/observability/logger";
 
 type AddOnRow = Database["public"]["Tables"]["add_ons"]["Row"];
 
@@ -53,7 +54,7 @@ export async function GET(
 
     return NextResponse.json({ addon });
   } catch (error) {
-    console.error('Error in GET /api/add-ons/[id]:', error);
+    logError('Error in GET /api/add-ons/[id]', error);
     return apiError('Internal server error', 500);
   }
 }
@@ -117,7 +118,7 @@ export async function PUT(
     const addon = addonData as unknown as AddOnRow | null;
 
     if (error) {
-      console.error('Error updating add-on:', error);
+      logError('Error updating add-on', error);
       return apiError("Failed to update add-on", 500);
     }
 
@@ -127,7 +128,7 @@ export async function PUT(
 
     return NextResponse.json({ addon });
   } catch (error) {
-    console.error('Error in PUT /api/add-ons/[id]:', error);
+    logError('Error in PUT /api/add-ons/[id]', error);
     return apiError('Internal server error', 500);
   }
 }
@@ -189,13 +190,13 @@ export async function DELETE(
       .eq('organization_id', profile.organization_id); // Security: ensure user owns this add-on
 
     if (error) {
-      console.error('Error deleting add-on:', error);
+      logError('Error deleting add-on', error);
       return apiError("Failed to delete add-on", 500);
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error in DELETE /api/add-ons/[id]:', error);
+    logError('Error in DELETE /api/add-ons/[id]', error);
     return apiError('Internal server error', 500);
   }
 }

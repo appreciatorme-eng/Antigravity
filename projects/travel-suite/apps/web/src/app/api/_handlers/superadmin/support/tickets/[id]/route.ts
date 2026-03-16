@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { logError } from "@/lib/observability/logger";
 
 /**
  * The live DB has a support_tickets_user_id_fkey relationship that is not present
@@ -90,7 +91,7 @@ export async function GET(
             } : null,
         });
     } catch (err) {
-        console.error(`[superadmin/support/tickets/${id}]`, err);
+        logError(`[superadmin/support/tickets/${id}]`, err);
         return apiError("Failed to load ticket", 500);
     }
 }

@@ -60,6 +60,10 @@ export function logError(message: string, error: unknown, context: LogContext = 
     });
 }
 
+export function logWarn(message: string, context: LogContext = {}) {
+    logEvent("warn", message, context);
+}
+
 export function getRequestId(request: NextRequest): string {
     const existingRequestId = request.headers.get("x-request-id")?.trim();
     if (existingRequestId) return existingRequestId;

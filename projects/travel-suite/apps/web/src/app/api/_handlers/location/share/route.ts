@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { requireAdmin, type RequireAdminResult } from "@/lib/auth/admin";
+import { logError } from "@/lib/observability/logger";
 
 type AdminContext = Extract<RequireAdminResult, { ok: true }>;
 
@@ -69,7 +70,7 @@ export async function GET(req: NextRequest) {
             },
         });
     } catch (error) {
-        console.error("Error in GET /api/location/share:", error);
+        logError("Error in GET /api/location/share", error);
         return apiError("Failed to process location share", 500);
     }
 }
@@ -133,7 +134,7 @@ export async function POST(req: NextRequest) {
             .single();
 
         if (error || !data) {
-            console.error("Error creating location share:", error);
+            logError("Error creating location share", error);
             return apiError("Failed to process location share", 500);
         }
 
@@ -145,7 +146,7 @@ export async function POST(req: NextRequest) {
             reused: false,
         });
     } catch (error) {
-        console.error("Error in POST /api/location/share:", error);
+        logError("Error in POST /api/location/share", error);
         return apiError("Failed to process location share", 500);
     }
 }
@@ -199,7 +200,7 @@ export async function DELETE(req: NextRequest) {
 
         const { data, error } = await query.select("id");
         if (error) {
-            console.error("Error revoking location share:", error);
+            logError("Error revoking location share", error);
             return apiError("Failed to process location share", 500);
         }
 
@@ -219,7 +220,7 @@ export async function DELETE(req: NextRequest) {
             revoked: data?.length || 0,
         });
     } catch (error) {
-        console.error("Error in DELETE /api/location/share:", error);
+        logError("Error in DELETE /api/location/share", error);
         return apiError("Failed to process location share", 500);
     }
 }

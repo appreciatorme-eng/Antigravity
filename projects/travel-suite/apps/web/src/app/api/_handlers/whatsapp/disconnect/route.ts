@@ -9,6 +9,7 @@ import {
     disconnectWahaSession,
     sessionNameFromOrgId,
 } from "@/lib/whatsapp-waha.server";
+import { logError } from "@/lib/observability/logger";
 
 export async function POST(request: Request) {
     try {
@@ -39,13 +40,13 @@ export async function POST(request: Request) {
             .eq("organization_id", organizationId!);
 
         if (updateError) {
-            console.error("[whatsapp/disconnect] failed to update connection:", updateError);
+            logError("[whatsapp/disconnect] failed to update connection", updateError);
             return apiError("Failed to update connection status", 500);
         }
 
         return NextResponse.json({ success: true });
     } catch (error) {
-        console.error("[whatsapp/disconnect] error:", error);
+        logError("[whatsapp/disconnect] error", error);
         const message = safeErrorMessage(error, "Request failed");
         return apiError(message, 500);
     }

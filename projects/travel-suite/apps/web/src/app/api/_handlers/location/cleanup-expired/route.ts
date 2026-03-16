@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { safeEqual } from "@/lib/security/safe-equal";
 import { isServiceRoleBearer } from "@/lib/security/service-role-auth";
+import { logError } from "@/lib/observability/logger";
 
 const cleanupSecret = process.env.NOTIFICATION_CRON_SECRET || "";
 const signingSecret = process.env.NOTIFICATION_SIGNING_SECRET || "";
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest) {
             .select("id");
 
         if (error) {
-            console.error("Error cleaning up expired locations:", error);
+            logError("Error cleaning up expired locations", error);
             return apiError("Failed to clean up expired locations", 500);
         }
 
@@ -85,7 +86,7 @@ export async function POST(request: NextRequest) {
             cleaned: data?.length || 0,
         });
     } catch (error) {
-        console.error("Error in POST /api/location/cleanup-expired:", error);
+        logError("Error in POST /api/location/cleanup-expired", error);
         return apiError("Failed to clean up expired locations", 500);
     }
 }

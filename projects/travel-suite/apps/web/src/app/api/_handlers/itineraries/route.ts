@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { createClient } from "@/lib/supabase/server";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import { logError } from "@/lib/observability/logger";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
     const { data: itineraries, error } = await itinQuery.limit(limit);
 
     if (error) {
-      console.error("Itinerary fetch error, retrying with core columns:", error.message);
+      logError("Itinerary fetch error, retrying with core columns", error.message);
       let fallbackQuery = supabase
         .from("itineraries")
         .select("id, trip_title, destination, duration_days, created_at, budget, interests, summary")

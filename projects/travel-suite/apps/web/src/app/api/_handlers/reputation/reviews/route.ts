@@ -5,6 +5,7 @@ import { REPUTATION_REVIEW_SELECT } from "@/lib/reputation/selects";
 import type { Database } from "@/lib/database.types";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { ReputationPlatform, ResponseStatus, SentimentLabel } from "@/lib/reputation/types";
+import { logError } from "@/lib/observability/logger";
 
 type ReputationReviewRow = Database['public']['Tables']['reputation_reviews']['Row'];
 
@@ -140,7 +141,7 @@ export async function GET(req: Request) {
     });
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");
-    console.error("Error fetching reputation reviews:", error);
+    logError("Error fetching reputation reviews", error);
     return apiError(message, 500);
   }
 }
@@ -211,7 +212,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ review });
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");
-    console.error("Error creating reputation review:", error);
+    logError("Error creating reputation review", error);
     return apiError(message, 500);
   }
 }

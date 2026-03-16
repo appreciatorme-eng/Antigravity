@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { apiError } from "@/lib/api/response";
 import { createClient } from '@/lib/supabase/server';
 import { safeErrorMessage } from '@/lib/security/safe-error';
+import { logError } from "@/lib/observability/logger";
 
 export async function DELETE(
     req: Request,
@@ -50,7 +51,7 @@ export async function DELETE(
 
         return NextResponse.json({ success: true });
     } catch (error: unknown) {
-        console.error('Error deleting social connection:', error);
+        logError('Error deleting social connection', error);
         const message = safeErrorMessage(error, "Request failed");
         return apiError(message, 500);
     }

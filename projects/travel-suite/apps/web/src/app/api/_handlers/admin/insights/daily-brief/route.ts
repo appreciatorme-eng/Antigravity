@@ -3,6 +3,7 @@ import { apiError } from "@/lib/api/response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { buildRevenueRiskActionQueue } from "@/lib/admin/action-queue";
+import { logError } from "@/lib/observability/logger";
 
 const QuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(10).default(5),
@@ -97,7 +98,7 @@ export async function GET(req: NextRequest) {
       ],
     });
   } catch (error) {
-    console.error("[/api/admin/insights/daily-brief:GET] Unhandled error:", error);
+    logError("[/api/admin/insights/daily-brief:GET] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },

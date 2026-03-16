@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { logPlatformAction, getClientIpFromRequest } from "@/lib/platform/audit";
+import { logError } from "@/lib/observability/logger";
 
 export async function POST(
     request: NextRequest,
@@ -61,7 +62,7 @@ export async function POST(
             responded_at: result.data.responded_at,
         });
     } catch (err) {
-        console.error(`[superadmin/support/tickets/${id}/respond]`, err);
+        logError(`[superadmin/support/tickets/${id}/respond]`, err);
         return apiError("Failed to respond to ticket", 500);
     }
 }

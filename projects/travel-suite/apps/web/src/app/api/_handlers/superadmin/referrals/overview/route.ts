@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { logError } from "@/lib/observability/logger";
 
 /**
  * The live DB schema for referrals and client_referral_incentives has columns
@@ -134,7 +135,7 @@ export async function GET(request: NextRequest) {
             },
         });
     } catch (err) {
-        console.error("[superadmin/referrals/overview]", err);
+        logError("[superadmin/referrals/overview]", err);
         return apiError("Failed to load referrals overview", 500);
     }
 }

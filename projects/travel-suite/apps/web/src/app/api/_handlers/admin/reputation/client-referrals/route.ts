@@ -11,6 +11,7 @@ import { requireAdmin } from "@/lib/auth/admin";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { issueReferralReward } from "@/lib/reputation/referral-flywheel";
 import { repFrom } from "@/lib/reputation/db";
+import { logError } from "@/lib/observability/logger";
 
 const IssueRewardSchema = z.object({
   action: z.literal("issue-reward"),
@@ -88,7 +89,7 @@ export async function GET(req: NextRequest) {
       recent_events: events.slice(0, 20),
     });
   } catch (error) {
-    console.error("[/api/admin/reputation/client-referrals:GET] Unhandled error:", error);
+    logError("[/api/admin/reputation/client-referrals:GET] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },
@@ -153,7 +154,7 @@ export async function POST(req: NextRequest) {
       client_email: profile.email,
     });
   } catch (error) {
-    console.error("[/api/admin/reputation/client-referrals:POST] Unhandled error:", error);
+    logError("[/api/admin/reputation/client-referrals:POST] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },

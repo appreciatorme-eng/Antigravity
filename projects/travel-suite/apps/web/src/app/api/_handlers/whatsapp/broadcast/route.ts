@@ -5,6 +5,7 @@ import type { Database } from "@/lib/database.types";
 import { requireAdmin } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendWahaText } from "@/lib/whatsapp-waha.server";
+import { logError } from "@/lib/observability/logger";
 
 type AdminProfileRow = Pick<
   Database["public"]["Tables"]["profiles"]["Row"],
@@ -108,7 +109,7 @@ async function resolveBroadcastContext(request: Request) {
     .maybeSingle();
 
   if (connectionError) {
-    console.error("[whatsapp/broadcast] failed to load connection:", connectionError);
+    logError("[whatsapp/broadcast] failed to load connection", connectionError);
     return { response: apiError("Failed to load WhatsApp connection", 500) };
   }
 
@@ -334,7 +335,7 @@ export async function GET(request: Request) {
         context.connection?.status === "connected",
     });
   } catch (error) {
-    console.error("[whatsapp/broadcast] failed to load broadcast metadata:", error);
+    logError("[whatsapp/broadcast] failed to load broadcast metadata", error);
     return apiError("Failed to load broadcast recipients", 500);
   }
 }
@@ -472,7 +473,7 @@ export async function POST(request: Request) {
       errors,
     });
   } catch (error) {
-    console.error("[whatsapp/broadcast] send failed:", error);
+    logError("[whatsapp/broadcast] send failed", error);
     return apiError("Failed to send broadcast", 500);
   }
 }

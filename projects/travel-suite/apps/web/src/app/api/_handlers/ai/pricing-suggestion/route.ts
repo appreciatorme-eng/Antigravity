@@ -3,6 +3,7 @@ import { apiError, apiSuccess } from "@/lib/api/response";
 import { getGeminiModel, parseGeminiJson } from "@/lib/ai/gemini.server";
 import { createClient } from "@/lib/supabase/server";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { logError } from "@/lib/observability/logger";
 
 const QuerySchema = z.object({
   destination: z.string().trim().min(1).max(120),
@@ -195,7 +196,7 @@ export async function GET(request: Request) {
       sampleSize: 0,
     });
   } catch (error) {
-    console.error("[ai/pricing-suggestion] unexpected error:", error);
+    logError("[ai/pricing-suggestion] unexpected error", error);
     return apiError("Failed to generate pricing suggestion", 500);
   }
 }

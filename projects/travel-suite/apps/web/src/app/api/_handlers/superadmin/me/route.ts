@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
+import { logError } from "@/lib/observability/logger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,7 +12,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ role: auth.role, userId: auth.userId });
   } catch (error) {
-    console.error("[/api/superadmin/me:GET] Unhandled error:", error);
+    logError("[/api/superadmin/me:GET] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },

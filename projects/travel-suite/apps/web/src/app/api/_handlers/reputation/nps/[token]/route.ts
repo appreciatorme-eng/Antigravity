@@ -3,6 +3,7 @@ import { apiError } from "@/lib/api/response";
 import { createClient } from "@/lib/supabase/server";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { repFrom } from "@/lib/reputation/db";
+import { logError } from "@/lib/observability/logger";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -100,7 +101,7 @@ export async function GET(
       passive_threshold: campaign?.passive_threshold ?? 7,
     });
   } catch (error: unknown) {
-    console.error("Error loading NPS form data:", error);
+    logError("Error loading NPS form data", error);
     return apiError("Internal server error", 500);
   }
 }

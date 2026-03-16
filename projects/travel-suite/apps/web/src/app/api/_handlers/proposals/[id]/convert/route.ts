@@ -6,6 +6,7 @@ import { getNextInvoiceNumber } from "@/lib/invoices/module";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { Database } from "@/lib/database.types";
 import { ITINERARY_SELECT, TRIP_SELECT } from "@/lib/travel/selects";
+import { logError } from "@/lib/observability/logger";
 
 // Define strict types for the database entities we're working with
 type ProposalDay = {
@@ -239,7 +240,7 @@ export async function POST(
                 invoiceId = invoiceData.id;
             }
         } catch (invoiceErr) {
-            console.error("Auto-create invoice failed (non-fatal):", invoiceErr);
+            logError("Auto-create invoice failed (non-fatal)", invoiceErr);
         }
 
         const [{ data: travelerProfile }, { data: operatorProfile }, { data: organization }] = await Promise.all([
@@ -302,7 +303,7 @@ export async function POST(
         });
 
     } catch (error) {
-        console.error("Convert proposal error:", error);
+        logError("Convert proposal error", error);
         return apiError(safeErrorMessage(error, "Request failed"), 500);
     }
 }

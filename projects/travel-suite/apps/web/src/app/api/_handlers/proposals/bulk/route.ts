@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
+import { logError } from "@/lib/observability/logger";
 
 const bulkSchema = z.object({
   action: z.enum(["approve", "archive"]),
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest) {
       errors,
     });
   } catch (error) {
-    console.error("[proposals/bulk] failed:", error);
+    logError("[proposals/bulk] failed", error);
     return apiError("Failed to process proposals", 500);
   }
 }

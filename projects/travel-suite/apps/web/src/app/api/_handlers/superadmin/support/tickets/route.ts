@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { logError } from "@/lib/observability/logger";
 
 /**
  * The live DB has a support_tickets_user_id_fkey relationship that is not present
@@ -96,7 +97,7 @@ export async function GET(request: NextRequest) {
             pages: Math.ceil((result.count ?? 0) / limit),
         });
     } catch (err) {
-        console.error("[superadmin/support/tickets]", err);
+        logError("[superadmin/support/tickets]", err);
         return apiError("Failed to load tickets", 500);
     }
 }

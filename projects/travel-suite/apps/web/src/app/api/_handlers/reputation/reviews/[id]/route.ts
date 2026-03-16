@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { REPUTATION_REVIEW_SELECT } from "@/lib/reputation/selects";
 import type { Database } from "@/lib/database.types";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import { logError } from "@/lib/observability/logger";
 
 export async function GET(
   _req: Request,
@@ -50,7 +51,7 @@ export async function GET(
     return NextResponse.json({ review });
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");
-    console.error("Error fetching reputation review:", error);
+    logError("Error fetching reputation review", error);
     return apiError(message, 500);
   }
 }
@@ -128,7 +129,7 @@ export async function PATCH(
     return NextResponse.json({ review });
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");
-    console.error("Error updating reputation review:", error);
+    logError("Error updating reputation review", error);
     return apiError(message, 500);
   }
 }

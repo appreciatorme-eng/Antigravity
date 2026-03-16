@@ -13,6 +13,7 @@ import { renderToStream, type DocumentProps } from '@react-pdf/renderer';
 import { ProposalDocument } from '@/components/pdf/ProposalDocument';
 import { PROPOSAL_ADD_ON_SELECT } from '@/lib/business/selects';
 import type { Database } from '@/lib/database.types';
+import { logError } from "@/lib/observability/logger";
 
 const normalizeRelation = <T,>(value: T | T[] | null | undefined): T | null => {
   if (!value) return null;
@@ -237,7 +238,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error('Error in GET /api/proposals/[id]/pdf:', error);
+    logError('Error in GET /api/proposals/[id]/pdf', error);
     return apiError('Failed to generate PDF', 500);
   }
 }

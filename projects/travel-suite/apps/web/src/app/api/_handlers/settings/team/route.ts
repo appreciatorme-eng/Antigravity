@@ -1,5 +1,6 @@
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { loadTeamMembers, requireTeamManager, resolveTeamContext } from "./shared";
+import { logError } from "@/lib/observability/logger";
 
 export async function GET() {
   try {
@@ -19,7 +20,7 @@ export async function GET() {
       viewerCanManageTeam: context.actorRole === "owner" || context.actorRole === "manager",
     });
   } catch (error) {
-    console.error("[settings/team] failed to load members:", error);
+    logError("[settings/team] failed to load members", error);
     return apiError("Failed to load team members", 500);
   }
 }

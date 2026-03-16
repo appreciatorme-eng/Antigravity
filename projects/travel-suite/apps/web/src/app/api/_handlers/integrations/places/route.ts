@@ -3,6 +3,7 @@ import { apiError } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { env } from "@/lib/config/env";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import { logError } from "@/lib/observability/logger";
 
 type PlacesRequestBody = {
   googlePlaceId?: string;
@@ -146,7 +147,7 @@ export async function GET(request: NextRequest) {
         connection?.platform_location_id || connection?.platform_account_id || "",
     });
   } catch (error: unknown) {
-    console.error("Google Places status check error:", error);
+    logError("Google Places status check error", error);
     return NextResponse.json({ enabled: false, googlePlaceId: "" });
   }
 }
@@ -192,7 +193,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, enabled: true });
   } catch (error: unknown) {
-    console.error("Google Places activation error:", error);
+    logError("Google Places activation error", error);
     return NextResponse.json(
       { error: safeErrorMessage(error, "Request failed") },
       { status: 500 },

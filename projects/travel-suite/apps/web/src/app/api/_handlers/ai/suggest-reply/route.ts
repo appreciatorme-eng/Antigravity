@@ -4,6 +4,7 @@ import { apiError, apiSuccess } from "@/lib/api/response";
 import { getGeminiModel, parseGeminiJson } from "@/lib/ai/gemini.server";
 import { createClient } from "@/lib/supabase/server";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { logError } from "@/lib/observability/logger";
 
 export const maxDuration = 30;
 
@@ -89,7 +90,7 @@ export async function POST(request: Request) {
     const suggestions = await getCachedSuggestions(JSON.stringify(parsed.data));
     return apiSuccess({ suggestions });
   } catch (error) {
-    console.error("[ai/suggest-reply] unexpected error:", error);
+    logError("[ai/suggest-reply] unexpected error", error);
     return apiError("Failed to generate smart replies", 500);
   }
 }

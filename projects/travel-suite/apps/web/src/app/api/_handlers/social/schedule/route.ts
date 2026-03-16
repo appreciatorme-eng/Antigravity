@@ -12,6 +12,7 @@ import {
   resolveScheduledFor,
   scheduleReviewSchema,
 } from "@/lib/social/review-queue.server";
+import { logError } from "@/lib/observability/logger";
 
 export async function POST(req: Request) {
   try {
@@ -74,7 +75,7 @@ export async function POST(req: Request) {
             ? 400
             : 500;
 
-    console.error("Error scheduling social post for review:", error);
+    logError("Error scheduling social post for review", error);
     return NextResponse.json({ error: message }, { status });
   }
 }

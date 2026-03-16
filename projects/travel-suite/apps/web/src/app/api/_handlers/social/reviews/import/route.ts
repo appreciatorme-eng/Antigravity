@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { apiError } from "@/lib/api/response";
 import { createClient } from '@/lib/supabase/server';
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import { logError } from "@/lib/observability/logger";
 
 export async function POST() {
     try {
@@ -80,7 +81,7 @@ export async function POST() {
 
         return NextResponse.json({ message: `Successfully imported ${importedCount} reviews` });
     } catch (error: unknown) {
-        console.error('Error importing reviews:', error);
+        logError('Error importing reviews', error);
         const message = safeErrorMessage(error, "Request failed");
         return apiError(message, 500);
     }

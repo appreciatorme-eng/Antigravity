@@ -5,6 +5,7 @@ import Groq from 'groq-sdk';
 import { PDFParse } from 'pdf-parse';
 import { enforceRateLimit } from '@/lib/security/rate-limit';
 import { safeErrorMessage } from '@/lib/security/safe-error';
+import { logError } from "@/lib/observability/logger";
 
 export const dynamic = 'force-dynamic';
 
@@ -123,7 +124,7 @@ export async function POST(req: Request) {
         });
 
     } catch (error: unknown) {
-        console.error("PDF Import Error:", error);
+        logError("PDF Import Error", error);
         const message = safeErrorMessage(error, "Request failed");
         return apiError(message, 500);
     }

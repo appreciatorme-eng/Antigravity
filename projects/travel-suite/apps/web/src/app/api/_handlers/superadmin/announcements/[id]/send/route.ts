@@ -6,6 +6,7 @@ import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { logPlatformAction } from "@/lib/platform/audit";
 import { sendNotificationToUser } from "@/lib/notifications";
 import type { Database } from "@/lib/database.types";
+import { logError } from "@/lib/observability/logger";
 
 const PLATFORM_ANNOUNCEMENT_SELECT = [
     "announcement_type",
@@ -112,7 +113,7 @@ export async function POST(
 
         return NextResponse.json({ sent: sentCount, total_recipients: recipients.length });
     } catch (err) {
-        console.error(`[superadmin/announcements/${id}/send]`, err);
+        logError(`[superadmin/announcements/${id}/send]`, err);
         return apiError("Failed to send announcement", 500);
     }
 }

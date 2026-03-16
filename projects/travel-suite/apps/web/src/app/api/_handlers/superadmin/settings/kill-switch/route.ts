@@ -5,6 +5,7 @@ import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { setPlatformSetting, type JsonValue } from "@/lib/platform/settings";
 import { logPlatformAction, getClientIpFromRequest } from "@/lib/platform/audit";
+import { logError } from "@/lib/observability/logger";
 
 const ALLOWED_KEYS = ["maintenance_mode", "feature_flags", "spend_limits", "org_suspensions"] as const;
 type AllowedKey = typeof ALLOWED_KEYS[number];
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ key: body.key, updated: true });
     } catch (err) {
-        console.error("[superadmin/settings/kill-switch]", err);
+        logError("[superadmin/settings/kill-switch]", err);
         return apiError("Failed to update setting", 500);
     }
 }

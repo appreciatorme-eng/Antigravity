@@ -3,6 +3,7 @@ import { apiError } from "@/lib/api/response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { clamp, medianPrice, normalizeStatus, safeTitle, toNumber } from "@/lib/admin/insights";
+import { logError } from "@/lib/observability/logger";
 
 const QuerySchema = z.object({
   daysBack: z.coerce.number().int().min(14).max(365).default(90),
@@ -114,7 +115,7 @@ export async function GET(req: NextRequest) {
       leaks,
     });
   } catch (error) {
-    console.error("[/api/admin/insights/margin-leak:GET] Unhandled error:", error);
+    logError("[/api/admin/insights/margin-leak:GET] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },

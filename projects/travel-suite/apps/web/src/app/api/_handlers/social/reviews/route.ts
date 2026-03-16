@@ -4,6 +4,7 @@ import { SOCIAL_REVIEW_SELECT } from "@/lib/social/selects";
 import { createClient } from '@/lib/supabase/server';
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { Database } from "@/lib/database.types";
+import { logError } from "@/lib/observability/logger";
 
 type SocialReviewRow = Database["public"]["Tables"]["social_reviews"]["Row"];
 
@@ -39,7 +40,7 @@ export async function GET() {
 
         return NextResponse.json({ reviews });
     } catch (error: unknown) {
-        console.error('Error fetching social reviews:', error);
+        logError('Error fetching social reviews', error);
         const message = safeErrorMessage(error, "Request failed");
         return apiError(message, 500);
     }
@@ -86,7 +87,7 @@ export async function POST(req: Request) {
 
         return NextResponse.json({ review });
     } catch (error: unknown) {
-        console.error('Error creating manual review:', error);
+        logError('Error creating manual review', error);
         const message = safeErrorMessage(error, "Request failed");
         return apiError(message, 500);
     }

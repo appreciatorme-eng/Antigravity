@@ -12,6 +12,7 @@ import {
 } from "@/lib/cost/spend-guardrails";
 import { REPUTATION_TIER_LIMITS } from "@/lib/reputation/constants";
 import type { AIAnalysisResult } from "@/lib/reputation/types";
+import { logError } from "@/lib/observability/logger";
 
 export const maxDuration = 30;
 
@@ -208,7 +209,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ analysis });
   } catch (error: unknown) {
-    console.error("Error analyzing review:", error);
+    logError("Error analyzing review", error);
     const message = safeErrorMessage(error, "Request failed");
     return apiError(message, 500);
   }

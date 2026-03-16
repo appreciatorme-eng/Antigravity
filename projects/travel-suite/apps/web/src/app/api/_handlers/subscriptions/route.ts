@@ -20,6 +20,7 @@ import {
 } from '@/lib/integrations';
 import { sanitizeEmail, sanitizeText } from '@/lib/security/sanitize';
 import type { Database } from '@/lib/database.types';
+import { logError } from "@/lib/observability/logger";
 
 const PlanRequestSchema = z
   .object({
@@ -142,7 +143,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ subscription: pickSafeFields(subscription as unknown as Record<string, unknown>) });
   } catch (error) {
-    console.error('Error in GET /api/subscriptions:', error);
+    logError('Error in GET /api/subscriptions', error);
     if (error instanceof PaymentServiceError) {
       return NextResponse.json(
         { error: "Subscription operation failed" },
@@ -226,7 +227,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ subscription }, { status: 201 });
   } catch (error) {
-    console.error('Error in POST /api/subscriptions:', error);
+    logError('Error in POST /api/subscriptions', error);
     if (error instanceof PaymentServiceError) {
       return NextResponse.json(
         { error: "Subscription operation failed" },

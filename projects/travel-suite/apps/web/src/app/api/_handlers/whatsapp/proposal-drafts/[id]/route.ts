@@ -10,6 +10,7 @@ import {
   getWhatsAppProposalDraftForOrg,
   refreshWhatsAppProposalDraft,
 } from "@/lib/whatsapp/proposal-drafts.server";
+import { logError } from "@/lib/observability/logger";
 
 type ProposalDraftPostBody = {
   action?: string;
@@ -71,7 +72,7 @@ export async function GET(
 
     return apiSuccess({ draft });
   } catch (error) {
-    console.error("[whatsapp/proposal-drafts/:id] unexpected GET error:", error);
+    logError("[whatsapp/proposal-drafts/:id] unexpected GET error", error);
     return apiError("Failed to load proposal draft", 500);
   }
 }
@@ -145,7 +146,7 @@ export async function POST(
 
     return apiError("Invalid proposal draft action", 400);
   } catch (error) {
-    console.error("[whatsapp/proposal-drafts/:id] unexpected POST error:", error);
+    logError("[whatsapp/proposal-drafts/:id] unexpected POST error", error);
     return apiError("Failed to update proposal draft", 500);
   }
 }

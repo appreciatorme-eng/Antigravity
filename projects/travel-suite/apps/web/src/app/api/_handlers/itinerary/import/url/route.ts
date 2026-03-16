@@ -8,6 +8,7 @@ import Groq from 'groq-sdk';
 import * as cheerio from 'cheerio';
 import { enforceRateLimit } from '@/lib/security/rate-limit';
 import { safeErrorMessage } from '@/lib/security/safe-error';
+import { logError } from "@/lib/observability/logger";
 
 function isPrivateIp(address: string): boolean {
     const normalized = address.trim().toLowerCase();
@@ -195,7 +196,7 @@ export async function POST(req: Request) {
         });
 
     } catch (error: unknown) {
-        console.error("URL Import Error:", error);
+        logError("URL Import Error", error);
         const message = safeErrorMessage(error, "Request failed");
         return apiError(message, 500);
     }

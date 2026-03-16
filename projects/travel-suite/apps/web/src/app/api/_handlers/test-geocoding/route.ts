@@ -5,6 +5,7 @@ import {
     isDiagnosticsTokenAuthorized,
 } from "@/lib/security/diagnostics-auth";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import { logError } from "@/lib/observability/logger";
 
 /**
  * Test endpoint to verify geocoding is working
@@ -30,7 +31,7 @@ export async function GET(req: NextRequest) {
                 : "Geocoding returned null - check logs for details",
         });
     } catch (error) {
-        console.error("Geocoding test error:", error);
+        logError("Geocoding test error", error);
         return NextResponse.json(
             {
                 success: false,

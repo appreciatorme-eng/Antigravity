@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { createClient } from "@/lib/supabase/server";
+import { logError } from "@/lib/observability/logger";
 
 const ITINERARY_DETAIL_SELECT = "id, user_id, client_id, budget, raw_data, created_at, updated_at";
 
@@ -32,7 +33,7 @@ export async function GET(
             .maybeSingle();
 
         if (error) {
-            console.error("Error fetching itinerary:", error);
+            logError("Error fetching itinerary", error);
             return apiError("Failed to fetch itinerary", 500);
         }
 
@@ -42,7 +43,7 @@ export async function GET(
 
         return NextResponse.json({ itinerary: data });
     } catch (error) {
-        console.error("Internal Error fetching itinerary:", error);
+        logError("Internal Error fetching itinerary", error);
         return apiError("Failed to fetch itinerary", 500);
     }
 }
@@ -93,13 +94,13 @@ export async function PATCH(
             .single();
 
         if (error) {
-            console.error("Error updating itinerary:", error);
+            logError("Error updating itinerary", error);
             return apiError("Failed to update itinerary", 400);
         }
 
         return NextResponse.json({ itinerary: data });
     } catch (error) {
-        console.error("Internal Error updating itinerary:", error);
+        logError("Internal Error updating itinerary", error);
         return apiError("Failed to update itinerary", 500);
     }
 }

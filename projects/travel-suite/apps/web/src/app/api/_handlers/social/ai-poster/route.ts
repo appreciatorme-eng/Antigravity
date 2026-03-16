@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI, SchemaType, type ResponseSchema } from '@google/generative-ai';
 import { guardCostEndpoint, withCostGuardHeaders } from "@/lib/security/cost-endpoint-guard";
+import { logError } from "@/lib/observability/logger";
 
 export const maxDuration = 60;
 
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
         const geminiApiKey = process.env.GOOGLE_API_KEY || process.env.GOOGLE_GEMINI_API_KEY;
 
         if (!geminiApiKey) {
-            console.error("[ai-poster] GOOGLE_API_KEY not configured");
+            logError("[ai-poster] GOOGLE_API_KEY not configured", undefined);
             return withCostGuardHeaders(
                 NextResponse.json({ error: "AI service is not configured" }, { status: 503 }),
                 guard.context
@@ -70,7 +71,7 @@ export async function POST(req: NextRequest) {
         );
 
     } catch (error) {
-        console.error("[ai-poster] Error:", error);
+        logError("[ai-poster] Error", error);
         return withCostGuardHeaders(
             NextResponse.json({ error: "Failed to generate poster" }, { status: 500 }),
             guard.context

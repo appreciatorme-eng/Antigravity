@@ -6,6 +6,7 @@ import { sanitizeText } from "@/lib/security/sanitize";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import { enforceRateLimit, type RateLimitResult } from "@/lib/security/rate-limit";
 import type { Database } from "@/lib/database.types";
+import { logError } from "@/lib/observability/logger";
 
 type SocialReviewRow = Database["public"]["Tables"]["social_reviews"]["Row"];
 
@@ -219,14 +220,14 @@ export async function POST(req: NextRequest) {
             });
 
             if (postError) {
-                console.error("Failed to auto-generate post for review:", postError);
+                logError("Failed to auto-generate post for review", postError);
             }
         }
 
         const response = NextResponse.json({ success: true, review });
         return withRateLimitHeaders(response, limiter);
     } catch (error: unknown) {
-        console.error("Error submitting public review:", error);
+        logError("Error submitting public review", error);
         const message = safeErrorMessage(error, "Request failed");
         return NextResponse.json({ error: message }, { status: 500 });
     }

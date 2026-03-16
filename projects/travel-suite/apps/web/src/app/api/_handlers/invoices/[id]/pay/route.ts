@@ -6,6 +6,7 @@ import {
   INVOICE_SELECT,
   RecordInvoicePaymentSchema,
 } from "@/lib/invoices/module";
+import { logError } from "@/lib/observability/logger";
 
 type InvoiceRow = Database["public"]["Tables"]["invoices"]["Row"];
 type InvoicePaymentRow = Database["public"]["Tables"]["invoice_payments"]["Row"];
@@ -38,7 +39,7 @@ export async function POST(
 
     const invoice = invoiceData as InvoiceRow | null;
     if (invoiceError) {
-      console.error("Failed to fetch invoice for payment:", invoiceError);
+      logError("Failed to fetch invoice for payment", invoiceError);
       return jsonError("Failed to fetch invoice", 500);
     }
     if (!invoice) return jsonError("Invoice not found", 404);
@@ -85,7 +86,7 @@ export async function POST(
       if (paymentError.code === "23505") {
         return jsonError("Payment reference already exists", 409);
       }
-      console.error("Failed to record invoice payment:", paymentError);
+      logError("Failed to record invoice payment", paymentError);
       return jsonError("Failed to record invoice payment", 500);
     }
 
@@ -123,7 +124,7 @@ export async function POST(
 
     const updatedInvoice = updatedInvoiceData as InvoiceRow | null;
     if (invoiceUpdateError || !updatedInvoice) {
-      console.error("Failed to update invoice after payment:", invoiceUpdateError);
+      logError("Failed to update invoice after payment", invoiceUpdateError);
       return jsonError("Failed to finalize invoice payment", 500);
     }
 
@@ -135,7 +136,7 @@ export async function POST(
       .order("payment_date", { ascending: false });
 
     if (paymentsError) {
-      console.error("Failed to fetch invoice payments:", paymentsError);
+      logError("Failed to fetch invoice payments", paymentsError);
       return jsonError("Failed to fetch invoice payments", 500);
     }
     const payments = paymentsData as unknown as InvoicePaymentRow[] | null;
@@ -149,7 +150,7 @@ export async function POST(
       },
     });
   } catch (error) {
-    console.error("[/api/invoices/[id]/pay:POST] Unhandled error:", error);
+    logError("[/api/invoices/[id]/pay:POST] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },

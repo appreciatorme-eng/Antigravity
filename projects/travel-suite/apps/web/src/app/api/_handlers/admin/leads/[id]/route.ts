@@ -15,6 +15,7 @@ import {
   type BudgetTier,
 } from "@/lib/leads/types";
 import type { Database } from "@/lib/database.types";
+import { logError } from "@/lib/observability/logger";
 
 type LeadRow = Database["public"]["Tables"]["crm_contacts"]["Row"];
 
@@ -129,7 +130,7 @@ export async function PATCH(
   const lead = leadData as unknown as LeadRow | null;
 
   if (updateError) {
-    console.error("[admin/leads/:id] PATCH error:", updateError);
+    logError("[admin/leads/:id] PATCH error", updateError);
     return apiError("Failed to update lead", 500);
   }
 

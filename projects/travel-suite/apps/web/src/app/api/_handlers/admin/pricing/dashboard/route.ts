@@ -4,6 +4,7 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { resolveScopedOrgWithDemo } from "@/lib/auth/demo-org-resolver";
 import type { Database } from "@/lib/database.types";
+import { logError } from "@/lib/observability/logger";
 
 const QuerySchema = z.object({
   month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
@@ -177,7 +178,7 @@ export async function GET(req: NextRequest) {
       monthlyTrend,
     });
   } catch (error) {
-    console.error("[/api/admin/pricing/dashboard:GET] Unhandled error:", error);
+    logError("[/api/admin/pricing/dashboard:GET] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },

@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
+import { logError } from "@/lib/observability/logger";
 
 const GOOGLE_PLACES_API_KEY = env.google.placesApiKey;
 
@@ -340,7 +341,7 @@ export async function POST(request: Request) {
     });
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");
-    console.error("[reputation/sync] sync failed:", error);
+    logError("[reputation/sync] sync failed", error);
     return apiError(message, 500);
   }
 }

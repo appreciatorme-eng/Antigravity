@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
+import { logError } from "@/lib/observability/logger";
 
 function monthStartISO(): string {
     const now = new Date();
@@ -122,7 +123,7 @@ export async function GET(
             trend,
         });
     } catch (err) {
-        console.error(`[superadmin/cost/org/${orgId}]`, err);
+        logError(`[superadmin/cost/org/${orgId}]`, err);
         return apiError("Failed to load org cost detail", 500);
     }
 }

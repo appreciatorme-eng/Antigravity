@@ -5,6 +5,7 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { Database } from "@/lib/database.types";
+import { logError } from "@/lib/observability/logger";
 
 type MonthlyOverheadRow = Database["public"]["Tables"]["monthly_overhead_expenses"]["Row"];
 
@@ -37,7 +38,7 @@ export async function GET(req: NextRequest) {
       .maybeSingle();
 
     if (error) {
-      console.error("[/api/admin/pricing/overheads/[id]:GET] DB error:", error);
+      logError("[/api/admin/pricing/overheads/[id]:GET] DB error", error);
       return apiError(safeErrorMessage(error, "Request failed"), 500);
     }
     if (!data) {
@@ -46,7 +47,7 @@ export async function GET(req: NextRequest) {
 
     return apiSuccess(data);
   } catch (error) {
-    console.error("[/api/admin/pricing/overheads/[id]:GET] Unhandled error:", error);
+    logError("[/api/admin/pricing/overheads/[id]:GET] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },
@@ -87,7 +88,7 @@ export async function PATCH(req: NextRequest) {
     const data = expenseData as unknown as MonthlyOverheadRow | null;
 
     if (error || !data) {
-      console.error("[/api/admin/pricing/overheads/[id]:PATCH] DB error:", error);
+      logError("[/api/admin/pricing/overheads/[id]:PATCH] DB error", error);
       return NextResponse.json(
         { error: safeErrorMessage(error, "Not found") },
         { status: error ? 500 : 404 }
@@ -95,7 +96,7 @@ export async function PATCH(req: NextRequest) {
     }
     return apiSuccess(data);
   } catch (error) {
-    console.error("[/api/admin/pricing/overheads/[id]:PATCH] Unhandled error:", error);
+    logError("[/api/admin/pricing/overheads/[id]:PATCH] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },
@@ -120,12 +121,12 @@ export async function DELETE(req: NextRequest) {
       .eq("organization_id", admin.organizationId);
 
     if (error) {
-      console.error("[/api/admin/pricing/overheads/[id]:DELETE] DB error:", error);
+      logError("[/api/admin/pricing/overheads/[id]:DELETE] DB error", error);
       return apiError(safeErrorMessage(error, "Request failed"), 500);
     }
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("[/api/admin/pricing/overheads/[id]:DELETE] Unhandled error:", error);
+    logError("[/api/admin/pricing/overheads/[id]:DELETE] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },

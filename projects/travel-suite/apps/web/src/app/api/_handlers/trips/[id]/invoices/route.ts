@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth/admin";
 import type { Database } from "@/lib/database.types";
 import { normalizeInvoiceMetadata } from "@/lib/invoices/module";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import { logError } from "@/lib/observability/logger";
 
 const TRIP_INVOICE_SELECT = [
   "balance_amount",
@@ -80,7 +81,7 @@ export async function GET(
     const invoiceRows = (invoices as unknown as TripInvoiceRow[] | null) ?? [];
 
     if (error) {
-      console.error("Failed to fetch trip invoices:", error);
+      logError("Failed to fetch trip invoices", error);
       return NextResponse.json(
         { error: "Failed to fetch invoices" },
         { status: 500 },
@@ -148,7 +149,7 @@ export async function GET(
 
     return NextResponse.json({ invoices: normalized });
   } catch (error) {
-    console.error("Trip invoices error:", error);
+    logError("Trip invoices error", error);
     return NextResponse.json(
       {
         error: safeErrorMessage(error, "Request failed"),

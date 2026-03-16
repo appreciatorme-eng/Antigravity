@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import { logError } from "@/lib/observability/logger";
 
 const supabaseAdmin = createAdminClient();
 
@@ -343,7 +344,7 @@ export async function GET(request: Request) {
 
         return NextResponse.json({ tasks, completedTasks });
     } catch (error) {
-        console.error("Dashboard tasks error:", error);
+        logError("Dashboard tasks error", error);
         return NextResponse.json(
             {
                 error: safeErrorMessage(error, "Request failed"),

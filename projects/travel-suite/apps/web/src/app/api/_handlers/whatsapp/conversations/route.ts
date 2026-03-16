@@ -10,6 +10,7 @@ import { requireAdmin } from "@/lib/auth/admin";
 import { formatLocalTime, resolveAppTimezone } from "@/lib/date/tz";
 import { createClient } from "@/lib/supabase/server";
 import { getChatbotSessionsForPhones } from "@/lib/whatsapp/chatbot-flow";
+import { logError } from "@/lib/observability/logger";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -161,7 +162,7 @@ export async function GET(request: Request): Promise<Response> {
 
       return NextResponse.json({ conversations });
   } catch (error) {
-    console.error("[/api/whatsapp/conversations:GET] Unhandled error:", error);
+    logError("[/api/whatsapp/conversations:GET] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },

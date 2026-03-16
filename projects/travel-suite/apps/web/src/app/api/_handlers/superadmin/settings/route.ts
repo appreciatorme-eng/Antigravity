@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
+import { logError } from "@/lib/observability/logger";
 
 export async function GET(request: NextRequest) {
     const auth = await requireSuperAdmin(request);
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({ settings });
     } catch (err) {
-        console.error("[superadmin/settings]", err);
+        logError("[superadmin/settings]", err);
         return apiError("Failed to load settings", 500);
     }
 }

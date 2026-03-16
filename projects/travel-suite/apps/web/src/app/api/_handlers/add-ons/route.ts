@@ -12,6 +12,7 @@ import { ADD_ON_SELECT } from "@/lib/business/selects";
 import { createClient } from '@/lib/supabase/server';
 import { sanitizeText } from '@/lib/security/sanitize';
 import type { Database } from '@/lib/database.types';
+import { logError } from "@/lib/observability/logger";
 
 type AddOnRow = Database["public"]["Tables"]["add_ons"]["Row"];
 
@@ -62,7 +63,7 @@ export async function GET(request: Request) {
     const addOns = addOnsData as unknown as AddOnRow[] | null;
 
     if (error) {
-      console.error('Error fetching add-ons:', error);
+      logError('Error fetching add-ons', error);
       return apiError("Failed to fetch add-ons", 500);
     }
 
@@ -70,7 +71,7 @@ export async function GET(request: Request) {
     const nextCursor = rows.length === limit ? rows[rows.length - 1]?.created_at ?? null : null;
     return NextResponse.json({ addOns: rows, nextCursor, hasMore: nextCursor !== null });
   } catch (error) {
-    console.error('Error in GET /api/add-ons:', error);
+    logError('Error in GET /api/add-ons', error);
     return apiError('Internal server error', 500);
   }
 }
@@ -130,13 +131,13 @@ export async function POST(request: Request) {
     const addon = addonData as unknown as AddOnRow | null;
 
     if (error) {
-      console.error('Error creating add-on:', error);
+      logError('Error creating add-on', error);
       return apiError("Failed to create add-on", 500);
     }
 
     return NextResponse.json({ addon }, { status: 201 });
   } catch (error) {
-    console.error('Error in POST /api/add-ons:', error);
+    logError('Error in POST /api/add-ons', error);
     return apiError('Internal server error', 500);
   }
 }

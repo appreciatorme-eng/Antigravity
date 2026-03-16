@@ -4,6 +4,7 @@ import { apiError } from "@/lib/api/response";
 import { getSharedCacheStats } from "@/lib/shared-itinerary-cache";
 import { requireAdmin } from "@/lib/auth/admin";
 import { resolveScopedOrgWithDemo } from "@/lib/auth/demo-org-resolver";
+import { logError } from "@/lib/observability/logger";
 
 export async function GET(req: NextRequest) {
   try {
@@ -30,7 +31,7 @@ export async function GET(req: NextRequest) {
       error: null,
     });
   } catch (error) {
-    console.error("[/api/admin/cache-metrics:GET] Unhandled error:", error);
+    logError("[/api/admin/cache-metrics:GET] Unhandled error", error);
     return NextResponse.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },

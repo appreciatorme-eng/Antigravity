@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth/admin";
 import { passesMutationCsrfGuard } from "@/lib/security/admin-mutation-csrf";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { markChatbotSessionHandedOff } from "@/lib/whatsapp/chatbot-flow";
+import { logError } from "@/lib/observability/logger";
 
 const PatchChatbotSessionSchema = z.object({
   state: z.literal("handed_off"),
@@ -58,7 +59,7 @@ export async function PATCH(
 
     return apiSuccess({ session: updated });
   } catch (error) {
-    console.error("[whatsapp/chatbot-sessions/:id] unexpected error:", error);
+    logError("[whatsapp/chatbot-sessions/:id] unexpected error", error);
     return apiError("Failed to update chatbot session", 500);
   }
 }

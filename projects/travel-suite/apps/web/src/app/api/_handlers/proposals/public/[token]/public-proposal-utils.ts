@@ -7,6 +7,7 @@ import {
   type ProposalTierPricing,
   parseTierPricing,
 } from '@/lib/proposals/types';
+import { logError } from "@/lib/observability/logger";
 
 export const supabaseAdmin = createAdminClient();
 
@@ -258,7 +259,7 @@ export async function loadOperatorContact(organizationId: string | null, created
         }
       : null;
   } catch (err) {
-    console.error("[proposals] loadOperatorContact error:", err);
+    logError("[proposals] loadOperatorContact error", err);
     return null;
   }
 }
@@ -389,7 +390,7 @@ export async function recalculateProposalPrice(proposalId: string) {
   });
 
   if (error) {
-    console.error("[proposals] recalculate price rpc error:", error);
+    logError("[proposals] recalculate price rpc error", error);
     return { error: "Request failed" };
   }
 
@@ -401,7 +402,7 @@ export async function recalculateProposalPrice(proposalId: string) {
       .eq('id', proposalId);
 
     if (updateError) {
-      console.error("[proposals] update price error:", updateError);
+      logError("[proposals] update price error", updateError);
       return { error: "Request failed" };
     }
 
@@ -430,7 +431,7 @@ export async function buildPublicPayload(shareToken: string) {
       .eq('id', proposal.id);
 
     if (viewedUpdateError) {
-      console.error("[proposals] buildPublicPayload mark-viewed error:", viewedUpdateError);
+      logError("[proposals] buildPublicPayload mark-viewed error", viewedUpdateError);
     }
 
     proposal.viewed_at = new Date().toISOString();
@@ -580,7 +581,7 @@ export async function buildPublicPayload(shareToken: string) {
     addOns,
   };
   } catch (err) {
-    console.error("[proposals] buildPublicPayload unexpected error:", err);
+    logError("[proposals] buildPublicPayload unexpected error", err);
     return { error: "Failed to load proposal", status: 500 as const };
   }
 }

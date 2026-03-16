@@ -5,6 +5,7 @@ import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { Redis } from "@upstash/redis";
 import { env } from "@/lib/config/env";
+import { logError } from "@/lib/observability/logger";
 
 let _redis: Redis | null | undefined;
 function getRedisClient(): Redis | null {
@@ -114,7 +115,7 @@ export async function GET(request: NextRequest) {
             checked_at: new Date().toISOString(),
         });
     } catch (err) {
-        console.error("[superadmin/monitoring/health]", err);
+        logError("[superadmin/monitoring/health]", err);
         return apiError("Failed to run health checks", 500);
     }
 }

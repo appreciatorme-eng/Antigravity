@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
+import { logError } from "@/lib/observability/logger";
 
 export async function GET(
     request: NextRequest,
@@ -66,7 +67,7 @@ export async function GET(
             support_tickets: ticketsResult.data ?? [],
         });
     } catch (err) {
-        console.error("[superadmin/users/:id]", err);
+        logError("[superadmin/users/:id]", err);
         return apiError("Failed to load user", 500);
     }
 }

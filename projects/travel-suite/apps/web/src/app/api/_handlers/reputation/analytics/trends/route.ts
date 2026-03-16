@@ -5,6 +5,7 @@ import { REPUTATION_SNAPSHOT_SELECT } from "@/lib/reputation/selects";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { ReputationPlatform, TrendDataPoint } from "@/lib/reputation/types";
 import type { Database } from "@/lib/database.types";
+import { logError } from "@/lib/observability/logger";
 
 type SnapshotRow = Database['public']['Tables']['reputation_snapshots']['Row'];
 
@@ -152,7 +153,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ trends });
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");
-    console.error("Error fetching reputation trends:", error);
+    logError("Error fetching reputation trends", error);
     return apiError(message, 500);
   }
 }

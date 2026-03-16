@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { fetchWithRetry } from "@/lib/network/retry";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { logError } from "@/lib/observability/logger";
 
 const ContactSalesSchema = z.object({
   target_tier: z.enum(["pro", "business", "enterprise"]),
@@ -99,7 +100,7 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (profileError) {
-      console.error("[billing/contact-sales] failed to load profile:", profileError);
+      logError("[billing/contact-sales] failed to load profile", profileError);
       return apiError("Failed to prepare request", 500);
     }
 
@@ -116,7 +117,7 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (orgError || !organization) {
-      console.error("[billing/contact-sales] failed to load organization:", orgError);
+      logError("[billing/contact-sales] failed to load organization", orgError);
       return apiError("Organization not found", 404);
     }
     const note = [
@@ -144,7 +145,7 @@ export async function POST(request: Request) {
       .single();
 
     if (leadError) {
-      console.error("[billing/contact-sales] failed to create lead:", leadError);
+      logError("[billing/contact-sales] failed to create lead", leadError);
       return apiError("Failed to record upgrade request", 500);
     }
 
@@ -175,7 +176,7 @@ export async function POST(request: Request) {
       email_skipped: Boolean(emailResult.skipped),
     });
   } catch (error) {
-    console.error("[billing/contact-sales] unexpected error:", error);
+    logError("[billing/contact-sales] unexpected error", error);
     return apiError("Failed to submit upgrade request", 500);
   }
 }

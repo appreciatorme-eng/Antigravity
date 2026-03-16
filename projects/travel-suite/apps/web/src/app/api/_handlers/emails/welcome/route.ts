@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendWelcomeEmail } from "@/lib/email";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import { logError } from "@/lib/observability/logger";
 
 const supabaseAdmin = createAdminClient();
 
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ success: result.success, skipped: result.skipped, reason: result.reason });
     } catch (error: unknown) {
-        console.error("Welcome email error:", error);
+        logError("Welcome email error", error);
         return apiError(safeErrorMessage(error, "Failed to send welcome email"), 500);
     }
 }

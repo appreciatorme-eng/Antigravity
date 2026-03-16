@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { createClient } from "@/lib/supabase/server";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import { logError } from "@/lib/observability/logger";
 
 const PERIOD_DAYS: Record<string, number> = {
   "30d": 30,
@@ -81,7 +82,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ topics });
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");
-    console.error("Error fetching reputation topics:", error);
+    logError("Error fetching reputation topics", error);
     return apiError(message, 500);
   }
 }

@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { logError } from "@/lib/observability/logger";
 
 /**
  * The live DB schema for referrals, client_referral_events, and client_referral_incentives
@@ -137,7 +138,7 @@ export async function GET(
             pages: Math.ceil((result.count ?? 0) / limit),
         });
     } catch (err) {
-        console.error(`[superadmin/referrals/detail/${type}]`, err);
+        logError(`[superadmin/referrals/detail/${type}]`, err);
         return apiError("Failed to load referral details", 500);
     }
 }

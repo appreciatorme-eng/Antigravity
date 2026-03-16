@@ -4,6 +4,7 @@ import { consumeSocialOAuthState } from '@/lib/security/social-oauth-state';
 import { encryptSocialToken } from '@/lib/security/social-token-crypto';
 import { exchangeGoogleCode, getGoogleUserInfo } from '@/lib/external/google.server';
 import { exchangeLinkedInCode, getLinkedInProfile } from '@/lib/external/linkedin.server';
+import { logError } from "@/lib/observability/logger";
 
 const META_APP_ID = process.env.META_APP_ID;
 const META_APP_SECRET = process.env.META_APP_SECRET;
@@ -60,7 +61,7 @@ async function handleFacebookCallback(req: Request, code: string, userId: string
     });
 
     if (!tokenRes.ok) {
-        console.error('FB token error:', await tokenRes.text());
+        logError('FB token error', await tokenRes.text());
         return redirectWithError(req, 'oauth_failed');
     }
 
@@ -87,7 +88,7 @@ async function handleFacebookCallback(req: Request, code: string, userId: string
         headers: { Authorization: `Bearer ${longLivedToken}` },
     });
     if (!pagesRes.ok) {
-        console.error('Failed to fetch Facebook pages:', await pagesRes.text());
+        logError('Failed to fetch Facebook pages', await pagesRes.text());
         return redirectWithError(req, 'oauth_pages_fetch_failed');
     }
 
@@ -157,7 +158,7 @@ async function handleGoogleCallback(req: Request, code: string, userId: string):
     try {
         tokens = await exchangeGoogleCode(code, GOOGLE_REDIRECT_URI);
     } catch (err) {
-        console.error('Google code exchange error:', err);
+        logError('Google code exchange error', err);
         return redirectWithError(req, 'oauth_failed');
     }
 
@@ -169,7 +170,7 @@ async function handleGoogleCallback(req: Request, code: string, userId: string):
     try {
         userInfo = await getGoogleUserInfo(tokens.access_token);
     } catch (err) {
-        console.error('Google user info error:', err);
+        logError('Google user info error', err);
         return redirectWithError(req, 'oauth_failed');
     }
 
@@ -211,7 +212,7 @@ async function handleLinkedInCallback(req: Request, code: string, userId: string
     try {
         tokens = await exchangeLinkedInCode(code, LINKEDIN_REDIRECT_URI);
     } catch (err) {
-        console.error('LinkedIn code exchange error:', err);
+        logError('LinkedIn code exchange error', err);
         return redirectWithError(req, 'oauth_failed');
     }
 
@@ -223,7 +224,7 @@ async function handleLinkedInCallback(req: Request, code: string, userId: string
     try {
         liProfile = await getLinkedInProfile(tokens.access_token);
     } catch (err) {
-        console.error('LinkedIn profile fetch error:', err);
+        logError('LinkedIn profile fetch error', err);
         return redirectWithError(req, 'oauth_failed');
     }
 
@@ -280,7 +281,7 @@ export async function GET(req: Request) {
 
         return handleFacebookCallback(req, code, userId);
     } catch (error: unknown) {
-        console.error('Callback error:', error);
+        logError('Callback error', error);
         return redirectWithError(req, 'server_error');
     }
 }

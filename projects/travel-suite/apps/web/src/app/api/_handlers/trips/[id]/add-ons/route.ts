@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import { logError } from "@/lib/observability/logger";
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -72,7 +73,7 @@ export async function GET(
     const { data: proposals, error: proposalsError } = await proposalsQuery;
 
     if (proposalsError) {
-      console.error("Failed to fetch trip proposals:", proposalsError);
+      logError("Failed to fetch trip proposals", proposalsError);
       return NextResponse.json(
         { error: "Failed to fetch proposals" },
         { status: 500 },
@@ -94,7 +95,7 @@ export async function GET(
       .order("category", { ascending: true });
 
     if (error) {
-      console.error("Failed to fetch trip add-ons:", error);
+      logError("Failed to fetch trip add-ons", error);
       return NextResponse.json(
         { error: "Failed to fetch add-ons" },
         { status: 500 },
@@ -103,7 +104,7 @@ export async function GET(
 
     return NextResponse.json({ addOns: addOns || [] });
   } catch (error) {
-    console.error("Trip add-ons error:", error);
+    logError("Trip add-ons error", error);
     return NextResponse.json(
       {
         error: safeErrorMessage(error, "Request failed"),
@@ -199,7 +200,7 @@ export async function PATCH(
       .single();
 
     if (error) {
-      console.error("Failed to update add-on:", error);
+      logError("Failed to update add-on", error);
       return NextResponse.json(
         { error: "Failed to update add-on" },
         { status: 500 },
@@ -208,7 +209,7 @@ export async function PATCH(
 
     return NextResponse.json({ addOn: updated });
   } catch (error) {
-    console.error("Trip add-on update error:", error);
+    logError("Trip add-on update error", error);
     return NextResponse.json(
       {
         error: safeErrorMessage(error, "Request failed"),

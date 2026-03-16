@@ -5,6 +5,7 @@ import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { getPlatformSetting, setPlatformSetting } from "@/lib/platform/settings";
 import { logPlatformAction, getClientIpFromRequest } from "@/lib/platform/audit";
+import { logError } from "@/lib/observability/logger";
 
 export async function POST(request: NextRequest) {
     const auth = await requireSuperAdmin(request);
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
             suspended_org_ids: updated,
         });
     } catch (err) {
-        console.error("[superadmin/settings/org-suspend]", err);
+        logError("[superadmin/settings/org-suspend]", err);
         return apiError("Failed to update org suspension", 500);
     }
 }

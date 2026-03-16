@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { Redis } from "@upstash/redis";
+import { logError } from "@/lib/observability/logger";
 
 let _redis: Redis | null | undefined;
 function getRedisClient(): Redis | null {
@@ -131,7 +132,7 @@ export async function GET(request: NextRequest) {
             by_org: byOrg,
         });
     } catch (err) {
-        console.error("[superadmin/cost/aggregate]", err);
+        logError("[superadmin/cost/aggregate]", err);
         return apiError("Failed to load cost aggregate", 500);
     }
 }

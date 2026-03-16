@@ -3,6 +3,7 @@ import type { Database, Json } from "@/lib/database.types";
 import { requireAdmin } from "@/lib/auth/admin";
 import { normalizeMarketplaceOptionList } from "@/lib/marketplace-options";
 import { MARKETPLACE_PROFILE_SELECT } from "@/lib/marketplace/selects";
+import { logError } from "@/lib/observability/logger";
 
 type MarketplaceProfileRow = Database["public"]["Tables"]["marketplace_profiles"]["Row"];
 
@@ -100,12 +101,12 @@ export async function GET(request: Request) {
       ]);
 
     if (organizationError) {
-      console.error("[settings/marketplace] failed to load organization:", organizationError);
+      logError("[settings/marketplace] failed to load organization", organizationError);
       return apiError("Failed to load marketplace settings", 500);
     }
 
     if (marketplaceError) {
-      console.error("[settings/marketplace] failed to load marketplace profile:", marketplaceError);
+      logError("[settings/marketplace] failed to load marketplace profile", marketplaceError);
       return apiError("Failed to load marketplace settings", 500);
     }
     const marketplaceProfileRow = marketplaceProfile as unknown as MarketplaceProfileRow | null;
@@ -120,7 +121,7 @@ export async function GET(request: Request) {
       profile: normalizeMarketplaceProfile(marketplaceProfileRow),
     });
   } catch (error) {
-    console.error("[settings/marketplace] unexpected error:", error);
+    logError("[settings/marketplace] unexpected error", error);
     return apiError("Failed to load marketplace settings", 500);
   }
 }

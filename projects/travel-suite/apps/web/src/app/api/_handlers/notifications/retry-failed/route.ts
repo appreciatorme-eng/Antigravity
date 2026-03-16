@@ -3,6 +3,7 @@ import { apiError } from "@/lib/api/response";
 import { isCronSecretBearer } from "@/lib/security/cron-auth";
 import { isServiceRoleBearer } from "@/lib/security/service-role-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logError } from "@/lib/observability/logger";
 
 const supabaseAdmin = createAdminClient();
 
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
             .select("id");
 
         if (error) {
-            console.error("Error retrying failed notifications:", error);
+            logError("Error retrying failed notifications", error);
             return apiError("Failed to retry notifications", 500);
         }
 
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
             retried: data?.length || 0,
         });
     } catch (error) {
-        console.error("Error in POST /api/notifications/retry-failed:", error);
+        logError("Error in POST /api/notifications/retry-failed", error);
         return apiError("Failed to retry notifications", 500);
     }
 }

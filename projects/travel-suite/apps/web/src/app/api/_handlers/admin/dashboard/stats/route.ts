@@ -5,6 +5,7 @@ import { resolveScopedOrgWithDemo } from "@/lib/auth/demo-org-resolver";
 import { getLastMonthKeys, monthKeyFromDate, monthLabel } from "@/lib/analytics/adapters";
 import type { Database } from "@/lib/database.types";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { logError } from "@/lib/observability/logger";
 
 type TripRow = Database['public']['Tables']['trips']['Row'];
 type InvoiceRow = Database['public']['Tables']['invoices']['Row'];
@@ -197,7 +198,7 @@ export async function GET(req: NextRequest) {
       operatorName,
     });
   } catch (error) {
-    console.error("[/api/admin/dashboard/stats:GET] Unhandled error:", error);
+    logError("[/api/admin/dashboard/stats:GET] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },

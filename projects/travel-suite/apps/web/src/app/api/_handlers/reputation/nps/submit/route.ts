@@ -8,6 +8,7 @@ import { firePromoterFollowup } from "@/lib/reputation/referral-flywheel";
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 import type { RouteTarget } from "@/lib/reputation/types";
 import { NPS_BOUNDARIES, REVIEW_LINK_TEMPLATES } from "@/lib/reputation/constants";
+import { logError } from "@/lib/observability/logger";
 
 export async function POST(req: NextRequest) {
   try {
@@ -119,7 +120,7 @@ export async function POST(req: NextRequest) {
         clientEmail: send.client_email ?? null,
         reviewLink,
         campaignSendId: send.id,
-      }).catch((err) => console.error("[nps/submit] promoter followup failed:", err));
+      }).catch((err: unknown) => logError("[nps/submit] promoter followup failed", err));
     }
 
     return NextResponse.json({
@@ -128,7 +129,7 @@ export async function POST(req: NextRequest) {
       review_link: reviewLink,
     });
   } catch (error: unknown) {
-    console.error("Error submitting NPS score:", error);
+    logError("Error submitting NPS score", error);
     return apiError("Internal server error", 500);
   }
 }

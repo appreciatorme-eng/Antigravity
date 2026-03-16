@@ -11,6 +11,7 @@ import {
   type ProposalPackageTier,
 } from "@/lib/proposals/types";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import { logError } from "@/lib/observability/logger";
 
 const TierPriceSchema = z.number().min(0).max(100_000_000).nullable().optional();
 
@@ -65,7 +66,7 @@ export async function GET(
       })),
     });
   } catch (error) {
-    console.error("[/api/admin/proposals/[id]/tiers:GET] Unhandled error:", error);
+    logError("[/api/admin/proposals/[id]/tiers:GET] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },
@@ -129,7 +130,7 @@ export async function PATCH(
       .maybeSingle();
 
     if (error) {
-      console.error("[/api/admin/proposals/[id]/tiers:PATCH] DB error:", error);
+      logError("[/api/admin/proposals/[id]/tiers:PATCH] DB error", error);
       return apiError(safeErrorMessage(error, "Validation failed"), 400);
     }
     if (!updated) {
@@ -143,7 +144,7 @@ export async function PATCH(
       client_selected_price: updated.client_selected_price ?? null,
     });
   } catch (error) {
-    console.error("[/api/admin/proposals/[id]/tiers:PATCH] Unhandled error:", error);
+    logError("[/api/admin/proposals/[id]/tiers:PATCH] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },

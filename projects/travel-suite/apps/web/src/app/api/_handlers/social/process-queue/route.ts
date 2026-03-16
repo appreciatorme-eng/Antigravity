@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { authorizeCronRequest } from "@/lib/security/cron-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { logError } from "@/lib/observability/logger";
 
 const SOCIAL_QUEUE_PROCESS_SELECT = [
     "attempts",
@@ -141,7 +142,7 @@ export async function POST(req: Request) {
                 results.push({ id: item.id, status: "success" });
             } catch (err: unknown) {
                 const internalMessage = err instanceof Error ? err.message : "Unknown publish error";
-                console.error(`Failed to publish item ${item.id}:`, err);
+                logError(`Failed to publish item ${item.id}`, err);
 
                 const attemptNumber = Number(item.attempts || 0) + 1;
                 const exhausted = attemptNumber >= maxAttempts;
@@ -195,7 +196,7 @@ export async function POST(req: Request) {
             results,
         });
     } catch (error: unknown) {
-        console.error("Error processing social queue:", error);
+        logError("Error processing social queue", error);
         return apiError("Failed to process queue item", 500);
     }
 }

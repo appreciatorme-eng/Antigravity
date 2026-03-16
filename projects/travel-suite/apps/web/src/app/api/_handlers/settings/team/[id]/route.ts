@@ -7,6 +7,7 @@ import {
   requireTeamManager,
   resolveTeamContext,
 } from "../shared";
+import { logError } from "@/lib/observability/logger";
 
 const UpdateTeamMemberSchema = z.object({
   role: z.enum(["manager", "agent", "driver"]),
@@ -44,7 +45,7 @@ export async function PATCH(
       .maybeSingle();
 
     if (targetError) {
-      console.error("[settings/team/:id] failed to load member:", targetError);
+      logError("[settings/team/:id] failed to load member", targetError);
       return apiError("Failed to load team member", 500);
     }
 
@@ -76,13 +77,13 @@ export async function PATCH(
       .eq("id", targetMember.id);
 
     if (updateError) {
-      console.error("[settings/team/:id] failed to update role:", updateError);
+      logError("[settings/team/:id] failed to update role", updateError);
       return apiError("Failed to update team member", 500);
     }
 
     return apiSuccess({ id: targetMember.id, role: nextRole });
   } catch (error) {
-    console.error("[settings/team/:id] unexpected patch error:", error);
+    logError("[settings/team/:id] unexpected patch error", error);
     return apiError("Failed to update team member", 500);
   }
 }
@@ -111,7 +112,7 @@ export async function DELETE(
       .maybeSingle();
 
     if (targetError) {
-      console.error("[settings/team/:id] failed to load removable member:", targetError);
+      logError("[settings/team/:id] failed to load removable member", targetError);
       return apiError("Failed to load team member", 500);
     }
 
@@ -143,13 +144,13 @@ export async function DELETE(
       .eq("id", targetMember.id);
 
     if (removeError) {
-      console.error("[settings/team/:id] failed to remove member:", removeError);
+      logError("[settings/team/:id] failed to remove member", removeError);
       return apiError("Failed to remove team member", 500);
     }
 
     return apiSuccess({ id: targetMember.id, removed: true });
   } catch (error) {
-    console.error("[settings/team/:id] unexpected delete error:", error);
+    logError("[settings/team/:id] unexpected delete error", error);
     return apiError("Failed to remove team member", 500);
   }
 }

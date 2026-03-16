@@ -11,6 +11,7 @@ import {
     sessionNameFromOrgId,
 } from "@/lib/whatsapp-waha.server";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { logError } from "@/lib/observability/logger";
 
 const WHATSAPP_CONNECT_RATE_LIMIT_MAX = 5;
 const WHATSAPP_CONNECT_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
@@ -65,7 +66,7 @@ export async function POST(request: Request) {
 
         return NextResponse.json({ success: true, sessionName, qrBase64 });
     } catch (error) {
-        console.error("[whatsapp/connect] error:", error);
+        logError("[whatsapp/connect] error", error);
         return NextResponse.json(
             { error: "An unexpected error occurred. Please try again." },
             { status: 500 },

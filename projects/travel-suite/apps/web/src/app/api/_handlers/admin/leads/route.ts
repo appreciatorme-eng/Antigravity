@@ -15,6 +15,7 @@ import {
   type BudgetTier,
 } from "@/lib/leads/types";
 import type { Database } from "@/lib/database.types";
+import { logError } from "@/lib/observability/logger";
 
 type LeadRow = Database["public"]["Tables"]["crm_contacts"]["Row"];
 
@@ -70,7 +71,7 @@ export async function GET(req: Request) {
   const leads = leadsData as unknown as LeadRow[] | null;
 
   if (error) {
-    console.error("[admin/leads] GET error:", error);
+    logError("[admin/leads] GET error", error);
     return apiError("Failed to fetch leads", 500);
   }
 
@@ -152,7 +153,7 @@ export async function POST(req: Request) {
   const lead = leadData as unknown as LeadRow | null;
 
   if (error || !lead) {
-    console.error("[admin/leads] POST error:", error);
+    logError("[admin/leads] POST error", error);
     return apiError("Failed to create lead", 500);
   }
 

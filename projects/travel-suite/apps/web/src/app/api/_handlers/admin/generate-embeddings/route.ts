@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth/admin";
 import { embedAllTemplates } from "@/lib/embeddings";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import { passesMutationCsrfGuard } from "@/lib/security/admin-mutation-csrf";
+import { logError } from "@/lib/observability/logger";
 
 type AdminAuth = Awaited<ReturnType<typeof requireAdmin>>;
 
@@ -54,7 +55,7 @@ export async function POST(req: NextRequest) {
     const result = await embedAllTemplates();
 
     if (result.errors.length > 0) {
-      console.error(`Embedding generation completed with ${result.errors.length} errors:`, result.errors);
+      logError(`Embedding generation completed with ${result.errors.length} errors`, result.errors);
     }
 
     await auditAdminAction(
@@ -73,7 +74,7 @@ export async function POST(req: NextRequest) {
       message: `Successfully processed ${result.processed} templates with ${result.model}. ${result.errors.length} errors encountered.`,
     });
   } catch (error) {
-    console.error("Batch embedding generation failed:", error);
+    logError("Batch embedding generation failed", error);
 
     await auditAdminAction(
       admin,
@@ -121,7 +122,7 @@ export async function GET(req: NextRequest) {
       percentageComplete: total ? Math.round(((withEmbeddings || 0) / total) * 100) : 0,
     });
   } catch (error) {
-    console.error("Failed to get embedding stats:", error);
+    logError("Failed to get embedding stats", error);
 
     return NextResponse.json(
       {

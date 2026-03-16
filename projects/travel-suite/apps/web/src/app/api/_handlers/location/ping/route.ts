@@ -4,6 +4,7 @@ import { apiError } from "@/lib/api/response";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import { logError } from "@/lib/observability/logger";
 
 const supabaseAdmin = createAdminClient();
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -202,7 +203,7 @@ export async function POST(req: NextRequest) {
       });
 
     if (insertError) {
-      console.error("Location ping insert error:", insertError);
+      logError("Location ping insert error", insertError);
       return apiError("Failed to record location", 500);
     }
 

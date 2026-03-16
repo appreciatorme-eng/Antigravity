@@ -5,6 +5,7 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { Database } from "@/lib/database.types";
+import { logError } from "@/lib/observability/logger";
 
 type TripServiceCostRow = Database["public"]["Tables"]["trip_service_costs"]["Row"];
 
@@ -48,7 +49,7 @@ export async function GET(req: NextRequest) {
     }
     return apiSuccess(data);
   } catch (error) {
-    console.error("[/api/admin/pricing/trip-costs/[id]:GET] Unhandled error:", error);
+    logError("[/api/admin/pricing/trip-costs/[id]:GET] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },
@@ -89,7 +90,7 @@ export async function PATCH(req: NextRequest) {
     const data = costData as unknown as TripServiceCostRow | null;
 
     if (error || !data) {
-      console.error("[/api/admin/pricing/trip-costs/[id]:PATCH] DB error:", error);
+      logError("[/api/admin/pricing/trip-costs/[id]:PATCH] DB error", error);
       return NextResponse.json(
         { error: safeErrorMessage(error, "Not found") },
         { status: error ? 500 : 404 }
@@ -97,7 +98,7 @@ export async function PATCH(req: NextRequest) {
     }
     return apiSuccess(data);
   } catch (error) {
-    console.error("[/api/admin/pricing/trip-costs/[id]:PATCH] Unhandled error:", error);
+    logError("[/api/admin/pricing/trip-costs/[id]:PATCH] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },
@@ -122,12 +123,12 @@ export async function DELETE(req: NextRequest) {
       .eq("organization_id", admin.organizationId);
 
     if (error) {
-      console.error("[/api/admin/pricing/trip-costs/[id]:DELETE] DB error:", error);
+      logError("[/api/admin/pricing/trip-costs/[id]:DELETE] DB error", error);
       return apiError(safeErrorMessage(error, "Request failed"), 500);
     }
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("[/api/admin/pricing/trip-costs/[id]:DELETE] Unhandled error:", error);
+    logError("[/api/admin/pricing/trip-costs/[id]:DELETE] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },

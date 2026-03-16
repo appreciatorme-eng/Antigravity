@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { apiSuccess } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { checkWPPConnectHealth } from "@/lib/whatsapp/session-health";
+import { logError } from "@/lib/observability/logger";
 
 export async function GET(request: Request) {
   try {
@@ -19,7 +20,7 @@ export async function GET(request: Request) {
       .maybeSingle();
 
     if (error) {
-      console.error("[whatsapp/health] failed to load connection:", error);
+      logError("[whatsapp/health] failed to load connection", error);
       return NextResponse.json(
         { connected: false, sessionName: null, error: "Failed to load WhatsApp connection" },
         { status: 500 },
@@ -33,7 +34,7 @@ export async function GET(request: Request) {
 
     return apiSuccess(health);
   } catch (error) {
-    console.error("[whatsapp/health] unexpected error:", error);
+    logError("[whatsapp/health] unexpected error", error);
     return NextResponse.json(
       { connected: false, sessionName: null, error: "Failed to check WhatsApp health" },
       { status: 500 },

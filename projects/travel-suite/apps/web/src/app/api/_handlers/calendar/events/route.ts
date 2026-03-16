@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { createClient } from "@/lib/supabase/server";
+import { logError } from "@/lib/observability/logger";
 
 function getMonthWindow(year: number, month: number) {
     const first = new Date(Date.UTC(year, month - 1, 1));
@@ -72,7 +73,7 @@ export async function GET(request: NextRequest) {
             },
         });
     } catch (error) {
-        console.error("[/api/calendar/events:GET] Unhandled error:", error);
+        logError("[/api/calendar/events:GET] Unhandled error", error);
         return NextResponse.json(
             { data: null, error: "An unexpected error occurred. Please try again." },
             { status: 500 },

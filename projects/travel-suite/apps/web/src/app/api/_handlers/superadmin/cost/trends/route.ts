@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
+import { logError } from "@/lib/observability/logger";
 
 function daysAgo(n: number): string {
     return new Date(Date.now() - n * 86_400_000).toISOString();
@@ -90,7 +91,7 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({ range, daily: finalDaily });
     } catch (err) {
-        console.error("[superadmin/cost/trends]", err);
+        logError("[superadmin/cost/trends]", err);
         return apiError("Failed to load cost trends", 500);
     }
 }

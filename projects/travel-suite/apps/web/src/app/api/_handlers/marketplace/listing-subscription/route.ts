@@ -9,6 +9,7 @@ import {
 import { paymentService } from "@/lib/payments/payment-service";
 import type { Database } from "@/lib/database.types";
 import { requireAdmin } from "@/lib/auth/admin";
+import { logError } from "@/lib/observability/logger";
 
 const createListingSubscriptionSchema = z.object({
   planId: z.enum(["featured_lite", "featured_pro", "top_placement"]),
@@ -172,7 +173,7 @@ export async function GET(request: NextRequest) {
       ),
     });
   } catch (error) {
-    console.error("[marketplace/listing-subscription] load failed:", error);
+    logError("[marketplace/listing-subscription] load failed", error);
     return apiError("Failed to load listing subscription", 500);
   }
 }
@@ -244,7 +245,7 @@ export async function POST(request: NextRequest) {
       plan,
     });
   } catch (error) {
-    console.error("[marketplace/listing-subscription] create failed:", error);
+    logError("[marketplace/listing-subscription] create failed", error);
     return apiError("Failed to start marketplace listing checkout", 500);
   }
 }
@@ -297,7 +298,7 @@ export async function PATCH(request: NextRequest) {
       tier: "free" as MarketplaceListingPlanId,
     });
   } catch (error) {
-    console.error("[marketplace/listing-subscription] cancel failed:", error);
+    logError("[marketplace/listing-subscription] cancel failed", error);
     return apiError("Failed to update listing plan", 500);
   }
 }

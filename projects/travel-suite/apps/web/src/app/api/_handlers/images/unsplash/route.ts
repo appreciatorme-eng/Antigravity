@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { guardCostEndpoint, withCostGuardHeaders } from "@/lib/security/cost-endpoint-guard";
+import { logError } from "@/lib/observability/logger";
 
 type UnsplashSearchResult = {
     id: string;
@@ -53,7 +54,7 @@ export async function GET(req: NextRequest) {
         );
 
         if (!response.ok) {
-            console.error("Unsplash API error:", response.status);
+            logError("Unsplash API error", response.status);
             return withCostGuardHeaders(
                 NextResponse.json({
                     url: null,
@@ -83,7 +84,7 @@ export async function GET(req: NextRequest) {
             guard.context
         );
     } catch (error: unknown) {
-        console.error("Unsplash fetch error:", error);
+        logError("Unsplash fetch error", error);
         return withCostGuardHeaders(
             NextResponse.json({
                 url: null,

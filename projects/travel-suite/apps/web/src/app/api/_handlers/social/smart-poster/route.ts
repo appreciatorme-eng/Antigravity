@@ -8,6 +8,7 @@ import { selectBestTemplate } from "@/lib/social/template-selector";
 import { generateBackgroundPrompt } from "@/lib/social/ai-prompts";
 import type { AspectRatio } from "@/lib/social/types";
 import type { AiImageStyle } from "@/lib/social/ai-prompts";
+import { logError, logWarn } from "@/lib/observability/logger";
 
 export const maxDuration = 60;
 
@@ -65,10 +66,7 @@ export async function POST(req: NextRequest) {
         content = { ...content, ...parsed };
       }
     } catch (err) {
-      console.warn(
-        "[smart-poster] Gemini content generation failed, using prompt as destination:",
-        err
-      );
+      logWarn("[smart-poster] Gemini content generation failed, using prompt as destination", { details: String(err) });
     }
 
     // Step 2: Select best template
@@ -102,7 +100,7 @@ export async function POST(req: NextRequest) {
           ?.images?.[0]?.url;
       }
     } catch (err) {
-      console.warn("[smart-poster] FAL.ai background generation failed:", err);
+      logWarn("[smart-poster] FAL.ai background generation failed", { details: String(err) });
     }
 
     // Step 4: Compose poster via Satori+Sharp
@@ -147,7 +145,7 @@ export async function POST(req: NextRequest) {
       guard.context
     );
   } catch (err: unknown) {
-    console.error("[smart-poster] Error:", err);
+    logError("[smart-poster] Error", err);
     return withCostGuardHeaders(
       NextResponse.json({ error: "Smart poster generation failed" }, { status: 500 }),
       guard.context

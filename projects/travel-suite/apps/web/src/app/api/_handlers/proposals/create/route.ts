@@ -7,6 +7,7 @@ import { apiError, apiSuccess } from "@/lib/api/response";
 import { captureServerAnalyticsEvent } from "@/lib/analytics/server";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import { logError } from "@/lib/observability/logger";
 
 const PROPOSAL_CREATE_RATE_LIMIT_MAX = 20;
 const PROPOSAL_CREATE_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
@@ -244,7 +245,7 @@ export async function POST(req: NextRequest) {
       limit: refreshedLimitStatus,
     });
   } catch (error) {
-    console.error("Error in POST /api/admin/proposals/create:", error);
+    logError("Error in POST /api/admin/proposals/create", error);
     return apiError("An unexpected error occurred. Please try again.", 500);
   }
 }

@@ -10,6 +10,7 @@ import {
 } from "@/lib/invoices/public-link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/database.types";
+import { logError } from "@/lib/observability/logger";
 
 type InvoiceRow = Database["public"]["Tables"]["invoices"]["Row"];
 
@@ -112,7 +113,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("[/api/bookings/[id]/invoice:GET] Unhandled error:", error);
+    logError("[/api/bookings/[id]/invoice:GET] Unhandled error", error);
     return NextResponse.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },

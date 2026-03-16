@@ -10,6 +10,7 @@ import type {
   ReputationHealthScoreFactors,
 } from "@/lib/reputation/types";
 import type { Database } from "@/lib/database.types";
+import { logError } from "@/lib/observability/logger";
 
 type SnapshotRow = Database["public"]["Tables"]["reputation_snapshots"]["Row"];
 
@@ -79,7 +80,7 @@ export async function GET() {
     return NextResponse.json({ snapshot: snapshot ?? null });
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");
-    console.error("Error fetching reputation snapshot:", error);
+    logError("Error fetching reputation snapshot", error);
     return apiError(message, 500);
   }
 }
@@ -250,7 +251,7 @@ export async function POST() {
     return NextResponse.json({ snapshot });
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");
-    console.error("Error generating reputation snapshot:", error);
+    logError("Error generating reputation snapshot", error);
     return apiError(message, 500);
   }
 }

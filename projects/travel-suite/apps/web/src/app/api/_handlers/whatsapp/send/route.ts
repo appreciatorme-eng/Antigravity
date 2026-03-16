@@ -3,6 +3,7 @@ import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { sendWahaText } from "@/lib/whatsapp-waha.server";
+import { logError } from "@/lib/observability/logger";
 
 const SendWhatsAppSchema = z.object({
   phone: z.string().trim().min(8),
@@ -35,7 +36,7 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (connectionError) {
-      console.error("[whatsapp/send] failed to load connection:", connectionError);
+      logError("[whatsapp/send] failed to load connection", connectionError);
       return apiError("Failed to load WhatsApp connection", 500);
     }
 
@@ -109,7 +110,7 @@ export async function POST(request: Request) {
       connection_status: "connected",
     });
   } catch (error) {
-    console.error("[whatsapp/send] unexpected error:", error);
+    logError("[whatsapp/send] unexpected error", error);
     return apiError("Failed to send WhatsApp message", 500);
   }
 }

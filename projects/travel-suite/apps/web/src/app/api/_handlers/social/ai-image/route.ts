@@ -3,6 +3,7 @@ import { apiError } from "@/lib/api/response";
 import { guardCostEndpoint, withCostGuardHeaders } from "@/lib/security/cost-endpoint-guard";
 import type { CostEndpointCategory } from "@/lib/security/cost-endpoint-guard";
 import { fal } from "@fal-ai/client";
+import { logError } from "@/lib/observability/logger";
 
 /**
  * POST /api/social/ai-image
@@ -86,7 +87,7 @@ async function generateImage(
         const url = images[0]?.url;
         return typeof url === "string" ? url : null;
     } catch (err) {
-        console.error("[ai-image] FAL generation error:", err);
+        logError("[ai-image] FAL generation error", err);
         return null;
     }
 }
@@ -155,7 +156,7 @@ export async function POST(req: NextRequest) {
             guard.context
         );
     } catch (err: unknown) {
-        console.error(`[ai-${mode}] Error:`, err);
+        logError(`[ai-${mode}] Error`, err);
         return withCostGuardHeaders(
             NextResponse.json({ error: "Image generation failed" }, { status: 500 }),
             guard.context

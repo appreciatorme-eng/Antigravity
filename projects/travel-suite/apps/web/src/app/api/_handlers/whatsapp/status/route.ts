@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { getWahaStatus } from "@/lib/whatsapp-waha.server";
+import { logError } from "@/lib/observability/logger";
 
 export async function GET(request: NextRequest) {
     try {
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({ status: "disconnected" });
     } catch (error) {
-        console.error("[whatsapp/status] error:", error);
+        logError("[whatsapp/status] error", error);
         return NextResponse.json({ status: "error" }, { status: 500 });
     }
 }

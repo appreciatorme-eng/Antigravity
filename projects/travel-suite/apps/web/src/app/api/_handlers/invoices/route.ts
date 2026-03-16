@@ -15,6 +15,7 @@ import {
 } from "@/lib/invoices/module";
 import type { Database, Json } from "@/lib/database.types";
 import { sanitizeText } from "@/lib/security/sanitize";
+import { logError } from "@/lib/observability/logger";
 
 type InvoiceRow = Database["public"]["Tables"]["invoices"]["Row"];
 type OrganizationRow = Database["public"]["Tables"]["organizations"]["Row"];
@@ -51,7 +52,7 @@ export async function GET(request: NextRequest) {
 
     const { data: invoicesData, error, count } = await query;
     if (error) {
-      console.error("Failed to list invoices:", error);
+      logError("Failed to list invoices", error);
       return jsonError("Failed to fetch invoices", 500);
     }
     const invoices = invoicesData as unknown as InvoiceRow[] | null;
@@ -77,7 +78,7 @@ export async function GET(request: NextRequest) {
       offset: pageOffset,
     });
   } catch (error) {
-    console.error("[/api/invoices:GET] Unhandled error:", error);
+    logError("[/api/invoices:GET] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },
@@ -196,7 +197,7 @@ export async function POST(request: NextRequest) {
       if (insertError.code === "23505") {
         return jsonError("Duplicate invoice number. Please retry.", 409);
       }
-      console.error("Failed to create invoice:", insertError);
+      logError("Failed to create invoice", insertError);
       return jsonError("Failed to create invoice", 500);
     }
     if (!createdInvoice) {
@@ -219,7 +220,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("[/api/invoices:POST] Unhandled error:", error);
+    logError("[/api/invoices:POST] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },

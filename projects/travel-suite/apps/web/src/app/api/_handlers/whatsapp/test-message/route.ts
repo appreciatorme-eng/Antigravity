@@ -6,6 +6,7 @@ import { apiError } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import { sendWahaText } from "@/lib/whatsapp-waha.server";
+import { logError } from "@/lib/observability/logger";
 
 export async function POST(request: Request) {
     try {
@@ -47,7 +48,7 @@ export async function POST(request: Request) {
             messageId: "wpp_" + Date.now(),
         });
     } catch (error) {
-        console.error("[whatsapp/test-message] error:", error);
+        logError("[whatsapp/test-message] error", error);
         const message = safeErrorMessage(error, "Request failed");
         return apiError(message, 500);
     }

@@ -6,6 +6,7 @@ import { apiError } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { resolveScopedOrgWithDemo } from "@/lib/auth/demo-org-resolver";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import { logError } from "@/lib/observability/logger";
 
 type CostRow = {
   id: string;
@@ -165,7 +166,7 @@ export async function GET(req: NextRequest) {
       summary: { totalCost, totalRevenue, totalProfit, totalCommission, count: transactions.length },
     });
   } catch (error) {
-    console.error("[/api/admin/pricing/transactions:GET] Unhandled error:", error);
+    logError("[/api/admin/pricing/transactions:GET] Unhandled error", error);
     return Response.json(
       { data: null, error: "An unexpected error occurred. Please try again." },
       { status: 500 },

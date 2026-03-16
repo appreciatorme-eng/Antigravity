@@ -1,6 +1,7 @@
 import { apiSuccess, apiError } from "@/lib/api/response";
 import { createClient } from '@/lib/supabase/server';
 import { safeErrorMessage } from '@/lib/security/safe-error';
+import { logError } from "@/lib/observability/logger";
 
 export async function GET() {
     try {
@@ -30,7 +31,7 @@ export async function GET() {
 
         return apiSuccess(connections);
     } catch (error: unknown) {
-        console.error('Error fetching social connections:', error);
+        logError('Error fetching social connections', error);
         const message = safeErrorMessage(error, "Request failed");
         return apiError(message, 500);
     }
