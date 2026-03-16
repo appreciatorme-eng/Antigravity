@@ -2,6 +2,7 @@ import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { getGeminiModel } from "@/lib/ai/gemini.server";
 import { createClient } from "@/lib/supabase/server";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 export const maxDuration = 30;
 
@@ -30,6 +31,16 @@ export async function POST(request: Request) {
 
     if (!user) {
       return apiError("Unauthorized", 401);
+    }
+
+    const rl = await enforceRateLimit({
+      identifier: user.id,
+      limit: 20,
+      windowMs: 60_000, // 20 requests per minute per user
+      prefix: "api:ai:draft-review-response",
+    });
+    if (!rl.success) {
+      return apiError("Too many requests", 429);
     }
 
     const body = await request.json();

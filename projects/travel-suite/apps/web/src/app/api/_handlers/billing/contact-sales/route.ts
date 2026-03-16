@@ -3,6 +3,7 @@ import { apiError, apiSuccess } from "@/lib/api/response";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { fetchWithRetry } from "@/lib/network/retry";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 const ContactSalesSchema = z.object({
   target_tier: z.enum(["pro", "business", "enterprise"]),
@@ -71,6 +72,16 @@ export async function POST(request: Request) {
 
     if (userError || !user) {
       return apiError("Unauthorized", 401);
+    }
+
+    const rl = await enforceRateLimit({
+      identifier: user.id,
+      limit: 3,
+      windowMs: 600_000, // 3 requests per 10 minutes per user
+      prefix: "api:billing:contact-sales",
+    });
+    if (!rl.success) {
+      return apiError("Too many requests", 429);
     }
 
     const body = await request.json();

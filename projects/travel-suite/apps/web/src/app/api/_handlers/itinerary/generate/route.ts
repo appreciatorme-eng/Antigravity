@@ -317,13 +317,6 @@ async function handleGenerateItineraryPost(req: NextRequest) {
         const promptHash = Buffer.from(prompt).toString('base64').substring(0, 50).replace(/[^a-zA-Z0-9]/g, '');
         const redisCacheKey = `itinerary_memo:${promptHash}:${days}`;
 
-        if (ratelimit) {
-            try {
-                // We use ratelimit.redis (the internal redis client) to fetch the cache
-                // But the property might be private depending on Upstash versions, 
-                // so let's import and instantiate our own explicit Redis client to be safe.
-            } catch { }
-        }
 
         let redisStore: Redis | null = null;
         try {

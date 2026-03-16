@@ -391,6 +391,16 @@ export async function POST(request: Request) {
     const sentAt = new Date().toISOString();
     const errors: Array<{ phone: string; message: string }> = [];
     let sent = 0;
+    const pendingEventInserts: Array<{
+      provider_message_id: string;
+      payload_hash: string;
+      event_type: string;
+      wa_id: string;
+      metadata: Record<string, string | boolean | null>;
+      processing_status: string;
+      processed_at: string;
+      received_at: string;
+    }> = [];
 
     for (const recipient of recipients) {
       try {
@@ -415,7 +425,7 @@ export async function POST(request: Request) {
           )
           .digest("hex");
 
-        await context.admin.from("whatsapp_webhook_events").insert({
+        pendingEventInserts.push({
           provider_message_id: providerMessageId,
           payload_hash: payloadHash,
           event_type: "text",
@@ -447,6 +457,11 @@ export async function POST(request: Request) {
       await new Promise((resolve) => {
         setTimeout(resolve, 500);
       });
+    }
+
+    // Batch-insert all send audit records in a single round-trip instead of N serial inserts
+    if (pendingEventInserts.length > 0) {
+      await context.admin.from("whatsapp_webhook_events").insert(pendingEventInserts);
     }
 
     return apiSuccess({

@@ -152,6 +152,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ analyzed: 0, skipped: 0, errors: 0 });
     }
 
+    // Fetch global emergency cap once before the loop — it's the same for all reviews
+    const emergencyCap = await getEmergencyDailySpendCapUsd("ai_text");
+
     // Cache org tier lookups to avoid repeated queries
     const orgTierCache = new Map<string, string>();
 
@@ -185,7 +188,6 @@ export async function POST(req: Request) {
           "ai_text",
           tier as "free" | "pro" | "enterprise"
         );
-        const emergencyCap = await getEmergencyDailySpendCapUsd("ai_text");
 
         const reservation = await reserveDailySpendUsd(
           review.organization_id,

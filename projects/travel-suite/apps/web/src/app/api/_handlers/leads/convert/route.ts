@@ -8,6 +8,7 @@ import { apiError } from "@/lib/api/response";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
+import { logError } from "@/lib/observability/logger";
 import { parseLeadMessage } from "@/lib/leads/intent-parser";
 import { BUDGET_TIERS, type BudgetTier } from "@/lib/leads/types";
 
@@ -154,7 +155,7 @@ export async function POST(request: NextRequest): Promise<Response> {
     .single();
 
   if (error) {
-    console.error("[leads/convert] insert error:", error);
+    logError("[leads/convert] insert error", error);
     return apiError("Failed to create lead", 500);
   }
 

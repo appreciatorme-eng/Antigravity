@@ -2,6 +2,7 @@ import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { getGeminiModel, parseGeminiJson } from "@/lib/ai/gemini.server";
 import { createClient } from "@/lib/supabase/server";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 
 const QuerySchema = z.object({
   destination: z.string().trim().min(1).max(120),
@@ -128,6 +129,16 @@ export async function GET(request: Request) {
 
     if (!user) {
       return apiError("Unauthorized", 401);
+    }
+
+    const rl = await enforceRateLimit({
+      identifier: user.id,
+      limit: 30,
+      windowMs: 60_000, // 30 requests per minute per user
+      prefix: "api:ai:pricing-suggestion",
+    });
+    if (!rl.success) {
+      return apiError("Too many requests", 429);
     }
 
     const { data: profile } = await supabase
