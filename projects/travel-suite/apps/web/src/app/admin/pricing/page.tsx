@@ -331,6 +331,77 @@ export default function PricingPage() {
                     </div>
                   </GlassCard>
                 )}
+
+                {/* Least Profitable Trips */}
+                {dashboard.data.bottomProfitableTrips.length > 0 && (
+                  <GlassCard padding="lg" className="border-red-200 bg-red-50/30">
+                    <h3 className="text-lg font-serif text-red-800 mb-1">
+                      Least Profitable Trips
+                    </h3>
+                    <p className="text-xs text-red-600 mb-4">
+                      Trips requiring attention — lowest profit margin this month
+                    </p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-red-100/60">
+                          <tr>
+                            <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-red-800">
+                              #
+                            </th>
+                            <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-red-800">
+                              Trip
+                            </th>
+                            <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-red-800">
+                              Destination
+                            </th>
+                            <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-emerald-600">
+                              Revenue
+                            </th>
+                            <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-rose-600">
+                              Cost
+                            </th>
+                            <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-red-700">
+                              Profit
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-red-100">
+                          {dashboard.data.bottomProfitableTrips.map((trip, i) => (
+                            <tr key={trip.tripId} className="hover:bg-red-100/50 transition-colors">
+                              <td className="px-4 py-3 font-bold text-red-800">
+                                {i + 1}
+                              </td>
+                              <td className="px-4 py-3 font-medium text-red-900">
+                                {trip.tripTitle}
+                              </td>
+                              <td className="px-4 py-3 text-red-700">
+                                {trip.destination || "\u2014"}
+                              </td>
+                              <td className="px-4 py-3 text-right tabular-nums text-emerald-600 font-medium">
+                                {new Intl.NumberFormat("en-IN", {
+                                  style: "currency", currency: "INR",
+                                  maximumFractionDigits: 0,
+                                }).format(trip.revenue)}
+                              </td>
+                              <td className="px-4 py-3 text-right tabular-nums text-rose-600">
+                                {new Intl.NumberFormat("en-IN", {
+                                  style: "currency", currency: "INR",
+                                  maximumFractionDigits: 0,
+                                }).format(trip.cost)}
+                              </td>
+                              <td className="px-4 py-3 text-right tabular-nums text-red-700 font-bold">
+                                {new Intl.NumberFormat("en-IN", {
+                                  style: "currency", currency: "INR",
+                                  maximumFractionDigits: 0,
+                                }).format(trip.profit)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </GlassCard>
+                )}
               </>
             ) : (
               <GlassCard padding="xl" className="text-center">
