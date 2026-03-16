@@ -1,10 +1,15 @@
 import path from "node:path";
 import bundleAnalyzer from "@next/bundle-analyzer";
+import createNextIntlPlugin from "next-intl/plugin";
 
 const projectRoot = path.resolve(import.meta.dirname);
 const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === "true",
 });
+
+// i18n configuration via next-intl plugin
+// Supports EN/HI initially, framework ready for regional (TA/BN/TE/MR) and international (TH/ID) languages
+const withNextIntl = createNextIntlPlugin();
 
 const DEFAULT_HTTPS_IMAGE_HOSTS = [
   "images.unsplash.com",
@@ -103,4 +108,4 @@ const nextConfig = {
   },
 };
 
-export default withBundleAnalyzer(nextConfig);
+export default withBundleAnalyzer(withNextIntl(nextConfig));
