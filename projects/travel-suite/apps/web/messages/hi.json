@@ -116,6 +116,13 @@
       }
     }
   },
+  "languageSwitcher": {
+    "label": "भाषा",
+    "languages": {
+      "en": "English",
+      "hi": "हिन्दी"
+    }
+  },
   "portal": {
     "help": "सहायता",
     "footer": {
