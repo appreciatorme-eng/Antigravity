@@ -162,3 +162,23 @@ export interface TransactionFilters {
   vendor: string;
   sort: TransactionSort;
 }
+
+export interface ReceiptOcrResult {
+  amount: number;
+  currency: string;
+  confidence: number;
+  raw_response: string;
+}
+
+export interface ExpenseReceipt {
+  id: string;
+  organization_id: string;
+  trip_service_cost_id: string | null;
+  receipt_url: string;
+  ocr_extracted_amount: number | null;
+  ocr_confidence: number | null;
+  ocr_raw_response: Record<string, any> | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
