@@ -13,6 +13,7 @@ import {
   SERVICE_REGION_OPTIONS,
   SPECIALTY_OPTIONS,
 } from '@/lib/marketplace-options';
+import { useAnalytics } from '@/lib/analytics/events';
 import { FirstValueSprintStep } from './_components/FirstValueSprintStep';
 import { OnboardingDetailsSteps } from './_components/OnboardingDetailsSteps';
 import { OnboardingFormShell } from './_components/OnboardingFormShell';
@@ -38,6 +39,7 @@ import {
 function OnboardingPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const analytics = useAnalytics();
   const nextPath = useMemo(() => {
     const requested = searchParams.get('next');
     if (requested && requested.startsWith('/')) return requested;
@@ -102,6 +104,12 @@ function OnboardingPageContent() {
     void loadMarketplaceOptions();
   }, []);
   /* eslint-enable react-hooks/exhaustive-deps */
+
+  useEffect(() => {
+    if (!loading && activeStep) {
+      analytics.stepViewed(currentStep, activeStep.title);
+    }
+  }, [currentStep, loading, activeStep, analytics]);
 
   useEffect(() => {
     if (currentStep !== FIRST_VALUE_STEP) return undefined;
@@ -265,6 +273,11 @@ function OnboardingPageContent() {
         throw new Error(payload.error || 'Failed to save onboarding details');
       }
 
+      if (activeStep) {
+        analytics.stepCompleted(currentStep, activeStep.title);
+      }
+      analytics.wizardCompleted();
+
       setSuccess('Workspace setup saved. Complete the first-value sprint below.');
       setCurrentStep(FIRST_VALUE_STEP);
       await loadFirstValueProgress(true);
@@ -289,6 +302,10 @@ function OnboardingPageContent() {
       return;
     }
 
+    if (activeStep) {
+      analytics.stepCompleted(currentStep, activeStep.title);
+    }
+
     setError(null);
     setCurrentStep((previous) => Math.min(REVIEW_STEP, previous + 1));
   }
@@ -310,6 +327,7 @@ function OnboardingPageContent() {
   }
 
   async function handleSampleDataLoaded() {
+    analytics.sampleDataLoaded();
     await loadOnboardingData();
     if (currentStep === FIRST_VALUE_STEP) {
       await loadFirstValueProgress(true);
