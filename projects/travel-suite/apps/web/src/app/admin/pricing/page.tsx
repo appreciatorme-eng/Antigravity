@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
-  Coins, ChevronLeft, ChevronRight, RefreshCw, LayoutGrid, Receipt, BarChart3, Database,
+  Coins, ChevronLeft, ChevronRight, RefreshCw, LayoutGrid, Receipt, BarChart3, Database, Download,
 } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
@@ -81,6 +81,16 @@ export default function PricingPage() {
     overheads.reload();
   }, [dashboard, tripCosts, overheads]);
 
+  const handleExport = useCallback(() => {
+    const url = `/api/admin/pricing/export?month=${month}&format=csv`;
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `expense-report-${month}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, [month]);
+
   const isLoading = dashboard.loading || tripCosts.loading || overheads.loading;
 
   return (
@@ -127,6 +137,15 @@ export default function PricingPage() {
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
+
+            <GlassButton
+              variant="outline"
+              onClick={handleExport}
+              className="rounded-xl"
+              title="Export CSV"
+            >
+              <Download className="w-4 h-4" />
+            </GlassButton>
 
             <GlassButton
               variant="outline"
