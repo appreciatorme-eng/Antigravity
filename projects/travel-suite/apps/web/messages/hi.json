@@ -121,6 +121,72 @@
     "footer": {
       "safe": "आपकी यात्रा सुरक्षित है",
       "poweredBy": "TourOS द्वारा संचालित"
+    },
+    "loading": "आपका यात्रा पोर्टल लोड हो रहा है...",
+    "errors": {
+      "notFound": {
+        "title": "पोर्टल नहीं मिला",
+        "description": "यह पोर्टल लिंक अमान्य है। अपने ट्रैवल ऑपरेटर से नवीनतम यात्रा लिंक पुनः भेजने के लिए कहें।"
+      },
+      "expired": {
+        "title": "यह यात्रा लिंक समाप्त हो गया है",
+        "description": "यह यात्रा लिंक समाप्त हो गया है। पुनः प्रयास करने से पहले नया लिंक प्राप्त करने के लिए अपने ट्रैवल ऑपरेटर से संपर्क करें।"
+      },
+      "unavailable": {
+        "title": "पोर्टल उपलब्ध नहीं है",
+        "description": "यात्रा पोर्टल लोड नहीं किया जा सका। नया लिंक प्राप्त करने के लिए अपने ट्रैवल ऑपरेटर से संपर्क करें।"
+      },
+      "loadFailed": "यात्रा पोर्टल लोड नहीं किया जा सका।"
+    },
+    "dates": {
+      "toBeConfirmed": "तारीखों की पुष्टि होनी बाकी है"
+    },
+    "hero": {
+      "yourTripPortal": "आपका यात्रा पोर्टल",
+      "welcome": "स्वागत है, {firstName}",
+      "needHelp": "सहायता चाहिए? अपने ऑपरेटर से संपर्क करें",
+      "call": "{operatorName} को कॉल करें"
+    },
+    "tripSummary": {
+      "title": "यात्रा सारांश",
+      "destination": "गंतव्य",
+      "toBeConfirmed": "पुष्टि होनी बाकी है",
+      "duration": "अवधि",
+      "days": "{days} दिन",
+      "travellers": "यात्री",
+      "travellersCount": "{count} यात्री",
+      "travellersPending": "यात्री विवरण लंबित",
+      "tripStarts": "यात्रा शुरू होती है",
+      "paymentStatus": "भुगतान स्थिति",
+      "awaitingLink": "लिंक की प्रतीक्षा में",
+      "paid": "भुगतान किया गया"
+    },
+    "itinerary": {
+      "title": "आपका यात्रा कार्यक्रम"
+    },
+    "driver": {
+      "title": "आपका ड्राइवर",
+      "phoneWillBeShared": "प्रस्थान से पहले फ़ोन नंबर साझा किया जाएगा",
+      "vehicle": "वाहन",
+      "vehicleToBeConfirmed": "वाहन विवरण की पुष्टि होनी बाकी है",
+      "contact": "संपर्क",
+      "sharedInWhatsApp": "WhatsApp में साझा किया गया",
+      "reachOutBeforePickup": "यदि योजना बदलती है तो पिकअप से पहले संपर्क करें।",
+      "callDriver": "ड्राइवर को कॉल करें",
+      "whatsappDriver": "ड्राइवर को WhatsApp करें",
+      "whatsappMessage": "नमस्ते {driverName}, मैं {clientName} हूं। मैं {tripName} पर यात्रा कर रहा/रही हूं। कृपया सुविधाजनक होने पर पिकअप विवरण की पुष्टि करें।"
+    },
+    "payment": {
+      "title": "भुगतान"
+    },
+    "shareLocation": {
+      "title": "अपना लाइव स्थान साझा करें",
+      "description": "अपने निर्धारित ड्राइवर के लिए पहले से भरे गए स्थान संदेश के साथ WhatsApp खोलें।",
+      "button": "ड्राइवर के साथ स्थान साझा करें",
+      "message": "नमस्ते {driverName}, मैं {tripName} के लिए अपना पिकअप स्थान साझा कर रहा/रही हूं: https://maps.google.com/?q=my+location"
+    },
+    "review": {
+      "title": "अपनी यात्रा को रेट करें"
     }
   }
 }
