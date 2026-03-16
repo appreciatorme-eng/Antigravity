@@ -53,10 +53,6 @@ test.describe('Remediation S35 — SEO Metadata (H-01)', () => {
 
   test('auth page has noindex robots meta', async ({ page }) => {
     await page.goto('/auth');
-    const robots = await page.$eval(
-      'meta[name="robots"]',
-      (el) => el.getAttribute('content') ?? '',
-    ).catch(() => '');
     // Either meta tag is present with noindex, or Next.js sets it via <head>
     // We verify the page responds with valid HTML
     expect(await page.title()).toBeTruthy();

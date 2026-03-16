@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
     // Update the campaign send with NPS data
     const updateData = {
       nps_score: scoreValue,
-      nps_feedback: feedback || null,
+      nps_feedback: typeof feedback === 'string' ? feedback.slice(0, 5000) || null : null,
       nps_submitted_at: new Date().toISOString(),
       routed_to: routedTo,
       review_link: reviewLink,
