@@ -2087,3 +2087,49 @@ Ran `audit-remediation.spec.ts` against Vercel production (`travelsuite-rust.ver
 | `852af72` | chore: create remediation tracker s37 |
 | `d641591` | fix: add rate limiting to AI+billing endpoints, batch broadcast inserts, improve error handling |
 | `8208dfa` | test: add E2E tests for remediation s37 |
+
+---
+
+## S38 Remediation — 2026-03-15
+
+**Source**: `/review-deep` S38 (score 48/60, +2 vs S29)
+**Branch**: `fix/remediation-s38`
+**Scope**: Rate limit on AI routes, bulk structured-logger migration
+
+### Vitest
+| Metric | Result | Threshold | Status |
+|--------|--------|-----------|--------|
+| Tests | 748 passed | — | ✅ |
+| Statements | 91.51% | 80% | ✅ |
+| Branches | 88.96% | 75% | ✅ |
+| Functions | 97.1% | 90% | ✅ |
+| Lines | 92.46% | 80% | ✅ |
+| Lint | 0 warnings | 0 | ✅ |
+| TypeCheck | 0 errors | 0 | ✅ |
+
+### E2E
+- `e2e/tests/remediation-s38.spec.ts` — 9 tests, auth guards + error envelope cleanliness
+- Target: `https://travelsuite-rust.vercel.app` (post-deploy)
+
+### Issues Fixed
+| ID | Severity | Description |
+|----|----------|-------------|
+| H-01 | HIGH | `enforceRateLimit` added to `social/captions` (20 req/min) |
+| H-02 | HIGH | `enforceRateLimit` added to `social/extract` (20 req/min) |
+| H-03 | HIGH | `enforceRateLimit` added to `whatsapp/extract-trip-intent` (20 req/min) |
+| M-03 | MEDIUM | 386 `console.error/warn` → `logError/logWarn` across 190 handler files |
+
+### Documented (no code change)
+| ID | Severity | Reason |
+|----|----------|--------|
+| M-01 | MEDIUM | `auth_leaked_password_protection` — Supabase dashboard setting, no code path |
+| M-02 | MEDIUM | `rls_policy_always_true` on proposal tables — intentional for public proposal link UX |
+| L-01 | LOW | `crm_contacts` unindexed FK — false positive, composite indexes cover all FK join paths |
+
+### Commits
+| Commit | Description |
+|--------|-------------|
+| `72393bb` | chore: create remediation tracker s38 |
+| `1352e2c` | fix: add enforceRateLimit to AI routes (H-01, H-02, H-03) |
+| `d17f9a2` | fix: migrate console.error/warn → logError/logWarn in API handlers (M-03) |
+| `a8daa25` | test: add E2E tests for remediation s38 |
