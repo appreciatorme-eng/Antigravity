@@ -16,6 +16,7 @@ import { IntegrationsTab } from './_components/IntegrationsTab';
 import { SecurityTab } from './_components/SecurityTab';
 import { TeamTab } from './_components/TeamTab';
 import { PlaceholderTab } from './_components/PlaceholderTab';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 
 export default function SettingsPage() {
     const t = useTranslations('settings');
@@ -127,11 +128,16 @@ export default function SettingsPage() {
         <>
             <div className="max-w-7xl mx-auto space-y-8 pb-12">
                 {/* Header */}
-                <div>
-                    <h1 className="text-4xl font-serif text-secondary tracking-tight">{t('title')}</h1>
-                    <p className="text-text-secondary mt-2 text-lg">
-                        {t('description')}
-                    </p>
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                    <div>
+                        <h1 className="text-4xl font-serif text-secondary tracking-tight">{t('title')}</h1>
+                        <p className="text-text-secondary mt-2 text-lg">
+                            {t('description')}
+                        </p>
+                    </div>
+                    <div className="shrink-0">
+                        <LanguageSwitcher />
+                    </div>
                 </div>
 
                 <div className="flex flex-col md:flex-row gap-8 items-start">
