@@ -8,6 +8,7 @@ import "@/styles/print.css";
 import AppProviders from "@/components/providers/AppProviders";
 import AppShell from "@/components/layout/AppShell";
 import { ServiceWorkerRegistrar } from "@/components/pwa/ServiceWorkerRegistrar";
+import { getLocaleDirection } from "@/i18n";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -55,8 +56,11 @@ export default async function RootLayout({
   // Load messages for the current locale
   const messages = await getMessages();
 
+  // Get text direction for locale (supports RTL languages like Arabic, Urdu)
+  const direction = getLocaleDirection(locale);
+
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html lang={locale} dir={direction} suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
