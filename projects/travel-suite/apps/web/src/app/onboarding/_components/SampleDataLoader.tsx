@@ -51,7 +51,7 @@ export function SampleDataLoader({ onDataLoaded }: SampleDataLoaderProps) {
         setSuccess(false);
         onDataLoaded?.();
       }, 1500);
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);

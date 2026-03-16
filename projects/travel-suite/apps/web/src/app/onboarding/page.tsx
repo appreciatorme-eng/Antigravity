@@ -16,6 +16,7 @@ import {
 import { FirstValueSprintStep } from './_components/FirstValueSprintStep';
 import { OnboardingDetailsSteps } from './_components/OnboardingDetailsSteps';
 import { OnboardingFormShell } from './_components/OnboardingFormShell';
+import { SampleDataLoader } from './_components/SampleDataLoader';
 import {
   FIRST_VALUE_STEP,
   OnboardingPayload,
@@ -292,6 +293,13 @@ function OnboardingPageContent() {
     }
   }
 
+  async function handleSampleDataLoaded() {
+    await loadOnboardingData();
+    if (currentStep === FIRST_VALUE_STEP) {
+      await loadFirstValueProgress(true);
+    }
+  }
+
   if (loading) {
     return <OnboardingPageFallback />;
   }
@@ -308,6 +316,7 @@ function OnboardingPageContent() {
       onSubmit={handleSubmit}
       onPrevious={handlePreviousStep}
       onNext={handleNextStep}
+      extraActions={<SampleDataLoader onDataLoaded={handleSampleDataLoaded} />}
     >
       {currentStep === FIRST_VALUE_STEP ? (
         <FirstValueSprintStep
