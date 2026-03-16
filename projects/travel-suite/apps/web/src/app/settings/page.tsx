@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { GlassCard } from '@/components/glass/GlassCard';
-import { User, Bell, Link2, CreditCard, Shield, Globe, Users } from 'lucide-react';
+import { GlassButton } from '@/components/glass/GlassButton';
+import { User, Bell, Link2, CreditCard, Shield, Globe, Users, PlayCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import { WhatsAppConnectModal } from '@/components/whatsapp/WhatsAppConnectModal';
@@ -27,11 +29,15 @@ const TABS = [
 ];
 
 export default function SettingsPage() {
+    const router = useRouter();
     const { toast } = useToast();
     const { timezone, saveTimezone, saving: savingTimezone, timezoneOptions } = useUserTimezone();
     const [activeTab, setActiveTab] = useState('organization');
     const [loading, setLoading] = useState(false);
     const [draftTimezone, setDraftTimezone] = useState(DEFAULT_APP_TIMEZONE);
+
+    // Onboarding State
+    const [isOnboardingIncomplete, setIsOnboardingIncomplete] = useState(false);
 
     // WhatsApp Connect State
     const [isWhatsAppConnectOpen, setIsWhatsAppConnectOpen] = useState(false);
@@ -40,6 +46,21 @@ export default function SettingsPage() {
         number: string;
         name: string;
     } | null>(null);
+
+    // Load onboarding status on mount
+    useEffect(() => {
+        void (async () => {
+            try {
+                const response = await fetch('/api/onboarding/setup', { cache: 'no-store' });
+                if (response.ok) {
+                    const data = await response.json() as { onboardingComplete: boolean };
+                    setIsOnboardingIncomplete(!data.onboardingComplete);
+                }
+            } catch {
+                // Silently fail - onboarding status is not critical for settings page
+            }
+        })();
+    }, []);
 
     // Load real WhatsApp connection status on mount
     useEffect(() => {
@@ -121,15 +142,32 @@ export default function SettingsPage() {
         void handleSaveTimezone();
     }, [handleSaveTimezone]);
 
+    const handleResumeOnboarding = useCallback(() => {
+        router.push('/onboarding');
+    }, [router]);
+
     return (
         <>
             <div className="max-w-7xl mx-auto space-y-8 pb-12">
                 {/* Header */}
-                <div>
-                    <h1 className="text-4xl font-serif text-secondary tracking-tight">Settings</h1>
-                    <p className="text-text-secondary mt-2 text-lg">
-                        Configure your workspace, operational preferences, and security footprint.
-                    </p>
+                <div className="flex items-start justify-between gap-4">
+                    <div>
+                        <h1 className="text-4xl font-serif text-secondary tracking-tight">Settings</h1>
+                        <p className="text-text-secondary mt-2 text-lg">
+                            Configure your workspace, operational preferences, and security footprint.
+                        </p>
+                    </div>
+                    {isOnboardingIncomplete && (
+                        <GlassButton
+                            variant="primary"
+                            size="sm"
+                            onClick={handleResumeOnboarding}
+                            className="flex items-center gap-2 shrink-0 mt-1"
+                        >
+                            <PlayCircle className="w-4 h-4" />
+                            Resume Onboarding
+                        </GlassButton>
+                    )}
                 </div>
 
                 <div className="flex flex-col md:flex-row gap-8 items-start">
