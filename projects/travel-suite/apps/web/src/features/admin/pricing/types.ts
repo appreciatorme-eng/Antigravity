@@ -201,7 +201,7 @@ export interface ExpenseReceipt {
   receipt_url: string;
   ocr_extracted_amount: number | null;
   ocr_confidence: number | null;
-  ocr_raw_response: Record<string, any> | null;
+  ocr_raw_response: Record<string, unknown> | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;

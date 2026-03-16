@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef } from "react";
 import { GlassModal } from "@/components/glass/GlassModal";
 import { GlassButton } from "@/components/glass/GlassButton";
-import { Upload, Loader2, CheckCircle, AlertCircle, Image as ImageIcon } from "lucide-react";
+import { Upload, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { formatINR } from "@/lib/india/formats";
 import type { ReceiptOcrResult } from "../types";
 
@@ -230,6 +230,7 @@ export function ReceiptUploader({
 
             {previewUrl && (
               <div className="relative rounded-xl overflow-hidden bg-white/10 p-4">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={previewUrl}
                   alt="Receipt preview"
@@ -301,6 +302,7 @@ export function ReceiptUploader({
 
             {previewUrl && (
               <div className="relative rounded-xl overflow-hidden bg-white/10 p-4">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={previewUrl}
                   alt="Receipt preview"

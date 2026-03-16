@@ -5,6 +5,7 @@ import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import { logError } from "@/lib/observability/logger";
+import type { Database } from "@/supabase/database.types.generated";
 
 const RECEIPT_UPLOAD_RATE_LIMIT_MAX = 30;
 const RECEIPT_UPLOAD_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
@@ -113,7 +114,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!ALLOWED_IMAGE_TYPES.includes(file.type as any)) {
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type as typeof ALLOWED_IMAGE_TYPES[number])) {
       return NextResponse.json(
         { success: false, error: "Only JPG, PNG, and PDF files are supported" },
         { status: 400 },
@@ -176,7 +177,7 @@ export async function POST(req: NextRequest) {
       .from("expense-receipts")
       .getPublicUrl(fileName);
 
-    const insertData: any = {
+    const insertData: Database["public"]["Tables"]["expense_receipts"]["Insert"] = {
       organization_id: scopedOrg.organizationId,
       receipt_url: publicUrlData.publicUrl,
       created_by: admin.userId,

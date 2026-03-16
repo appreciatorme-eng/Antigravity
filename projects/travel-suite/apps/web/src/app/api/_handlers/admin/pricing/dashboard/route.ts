@@ -147,7 +147,6 @@ export async function GET(req: NextRequest) {
       destProfitMap.set(destination, existing);
     }
 
-    type DestinationProfitability = { destination: string; revenue: number; cost: number; profit: number; tripCount: number; avgMargin: number };
     const destinationProfits = Array.from(destProfitMap.entries()).map(([destination, data]) => ({
       destination,
       revenue: data.revenue,
@@ -172,7 +171,6 @@ export async function GET(req: NextRequest) {
       clientProfitMap.set(trip.client_id, existing);
     }
 
-    type ClientProfitability = { clientId: string; clientName: string; revenue: number; cost: number; profit: number; tripCount: number; avgMargin: number };
     const clientProfits = Array.from(clientProfitMap.entries()).map(([clientId, data]) => ({
       clientId,
       clientName: clientNameMap.get(clientId) || "Unknown Client",
