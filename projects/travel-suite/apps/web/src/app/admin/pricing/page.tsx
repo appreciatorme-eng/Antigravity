@@ -16,6 +16,7 @@ import { MonthlyTripTable } from "@/features/admin/pricing/components/MonthlyTri
 import { OverheadExpensesCard } from "@/features/admin/pricing/components/OverheadExpensesCard";
 import { ProfitTrendChart } from "@/features/admin/pricing/components/ProfitTrendChart";
 import { CategoryBreakdownChart } from "@/features/admin/pricing/components/CategoryBreakdownChart";
+import { AnalyticsByDimension } from "@/features/admin/pricing/components/AnalyticsByDimension";
 import { TransactionLedger } from "@/features/admin/pricing/components/TransactionLedger";
 import { TransactionDetailPanel } from "@/features/admin/pricing/components/TransactionDetailPanel";
 import SlideOutPanel from "@/components/god-mode/SlideOutPanel";
@@ -260,6 +261,14 @@ export default function PricingPage() {
                   <ProfitTrendChart data={dashboard.data.monthlyTrend} />
                   <CategoryBreakdownChart data={dashboard.data.categoryBreakdown} />
                 </div>
+
+                {/* Analytics by Dimension */}
+                <AnalyticsByDimension
+                  topDestinations={dashboard.data.topDestinations}
+                  bottomDestinations={dashboard.data.bottomDestinations}
+                  topClients={dashboard.data.topClients}
+                  bottomClients={dashboard.data.bottomClients}
+                />
 
                 {/* Top Profitable Trips */}
                 {dashboard.data.topProfitableTrips.length > 0 && (
