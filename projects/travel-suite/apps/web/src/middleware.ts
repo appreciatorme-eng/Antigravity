@@ -43,11 +43,16 @@ const PROTECTED_PREFIXES = [
 
 const MARKETING_PATHS = ["/", "/pricing", "/about", "/blog", "/demo", "/solutions"];
 
-// Create next-intl middleware for locale handling
+// Create next-intl middleware for locale handling.
+// localeDetection: true enables automatic browser locale detection via Accept-Language header.
+// This is critical for the traveler portal — when travelers visit /portal/[token] without
+// a locale prefix, the middleware detects their browser language and redirects to
+// /[locale]/portal/[token] with the best matching supported locale.
 const intlMiddleware = createMiddleware({
     locales,
     defaultLocale,
     localePrefix: "always",
+    localeDetection: true,
 });
 
 /**
