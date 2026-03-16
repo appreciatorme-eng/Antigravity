@@ -138,23 +138,19 @@ async function loadAuthUsersByEmail(
 
   if (wantedEmails.size === 0) return usersByEmail;
 
-  const perPage = 500;
-  for (let page = 1; page <= 6; page += 1) {
-    const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
-    if (error) {
-      throw error;
-    }
+  const { data: { users }, error } = await admin.auth.admin.listUsers({
+    perPage: 1000,
+    page: 1,
+  });
+  if (error) {
+    logError("Failed to list users", error);
+    return usersByEmail;
+  }
 
-    const users = data.users ?? [];
-    for (const user of users) {
-      const email = user.email?.trim().toLowerCase();
-      if (!email || !wantedEmails.has(email)) continue;
-      usersByEmail.set(email, user);
-    }
-
-    if (users.length < perPage || usersByEmail.size >= wantedEmails.size) {
-      break;
-    }
+  for (const user of users) {
+    const email = user.email?.trim().toLowerCase();
+    if (!email || !wantedEmails.has(email)) continue;
+    usersByEmail.set(email, user);
   }
 
   return usersByEmail;

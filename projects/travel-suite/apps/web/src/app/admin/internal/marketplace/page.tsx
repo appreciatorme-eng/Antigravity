@@ -14,6 +14,7 @@ import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
 import Link from "next/link";
 import { logError } from "@/lib/observability/logger";
+import { useToast } from "@/components/ui/toast";
 
 interface PendingVerificationRequest {
     id: string;
@@ -30,6 +31,8 @@ export default function InternalMarketplaceAdmin() {
     const [loading, setLoading] = useState(true);
     const [notesByOrg, setNotesByOrg] = useState<Record<string, string>>({});
     const [levelByOrg, setLevelByOrg] = useState<Record<string, "standard" | "gold" | "platinum">>({});
+    const [verifyingOrg, setVerifyingOrg] = useState<string | null>(null);
+    const { toast } = useToast();
 
     const fetchPending = async () => {
         setLoading(true);
@@ -49,8 +52,9 @@ export default function InternalMarketplaceAdmin() {
     }, []);
 
     const handleVerify = async (orgId: string, status: 'verified' | 'rejected') => {
+        setVerifyingOrg(orgId);
         try {
-            await fetch("/api/admin/marketplace/verify", {
+            const res = await fetch("/api/admin/marketplace/verify", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -58,11 +62,35 @@ export default function InternalMarketplaceAdmin() {
                     status,
                     notes: notesByOrg[orgId] || "",
                     level: levelByOrg[orgId] || "standard",
-                })
+                }),
+            });
+            if (!res.ok) {
+                throw new Error(`Verification failed (${res.status})`);
+            }
+            toast({
+                title: status === "verified"
+                    ? "Partner verified successfully"
+                    : "Partner verification rejected",
+            });
+            setNotesByOrg((previous) => {
+                const next = { ...previous };
+                delete next[orgId];
+                return next;
+            });
+            setLevelByOrg((previous) => {
+                const next = { ...previous };
+                delete next[orgId];
+                return next;
             });
             void fetchPending();
         } catch (error) {
             logError("Failed to verify marketplace partner", error);
+            toast({
+                title: "Verification failed",
+                variant: "error",
+            });
+        } finally {
+            setVerifyingOrg(null);
         }
     };
 
@@ -142,6 +170,7 @@ export default function InternalMarketplaceAdmin() {
                                         variant="secondary"
                                         className="bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20 px-3"
                                         onClick={() => handleVerify(req.organization_id, 'rejected')}
+                                        disabled={verifyingOrg === req.organization_id}
                                         aria-label={`Reject verification request for ${req.organization?.name || "organization"}`}
                                     >
                                         <X size={18} />
@@ -149,6 +178,7 @@ export default function InternalMarketplaceAdmin() {
                                     <GlassButton
                                         className="bg-green-600 text-white hover:bg-green-500 px-3"
                                         onClick={() => handleVerify(req.organization_id, 'verified')}
+                                        disabled={verifyingOrg === req.organization_id}
                                     >
                                         <Check size={18} />
                                         Approve

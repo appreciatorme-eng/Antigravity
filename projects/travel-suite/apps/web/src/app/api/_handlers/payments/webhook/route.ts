@@ -11,7 +11,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { apiError } from "@/lib/api/response";
+import { apiError, apiSuccess } from "@/lib/api/response";
 import { revalidateTag } from 'next/cache';
 import { paymentService } from '@/lib/payments/payment-service';
 import type { PaymentMethod } from '@/lib/payments/payment-service';
@@ -204,6 +204,43 @@ export async function POST(request: NextRequest) {
       payment_operation: 'webhook_ingest',
     });
 
+    // --- Event deduplication (H-03) ---
+    const razorpayEventId = request.headers.get('x-razorpay-event-id');
+    if (!razorpayEventId) {
+      logEvent('warn', 'Razorpay webhook missing x-razorpay-event-id header', {
+        ...requestContext,
+        payment_event_type: eventType,
+        payment_operation: 'webhook_dedup',
+      });
+    }
+
+    if (razorpayEventId) {
+      const supabaseDedup = createAdminClient();
+      const { data: existingEvent, error: dedupQueryError } = await supabaseDedup
+        .from('payment_events')
+        .select('id')
+        .eq('external_id', razorpayEventId)
+        .eq('event_type', 'webhook_received')
+        .maybeSingle();
+
+      if (dedupQueryError) {
+        logError('Webhook dedup query failed, proceeding with processing', dedupQueryError, {
+          ...requestContext,
+          payment_event_type: eventType,
+          payment_operation: 'webhook_dedup',
+          razorpay_event_id: razorpayEventId,
+        });
+      } else if (existingEvent) {
+        logEvent('info', 'Razorpay webhook deduplicated (already processed)', {
+          ...requestContext,
+          payment_event_type: eventType,
+          payment_operation: 'webhook_dedup',
+          razorpay_event_id: razorpayEventId,
+        });
+        return apiSuccess({ deduplicated: true });
+      }
+    }
+
     // Handle different event types
     switch (eventType) {
       case 'payment.captured':
@@ -236,6 +273,27 @@ export async function POST(request: NextRequest) {
           payment_event_type: eventType,
           payment_operation: 'webhook_ignore',
         });
+    }
+
+    // Record event for deduplication
+    if (razorpayEventId) {
+      const supabaseRecord = createAdminClient();
+      const { error: recordError } = await supabaseRecord
+        .from('payment_events')
+        .insert({
+          event_type: 'webhook_received',
+          external_id: razorpayEventId,
+          metadata: { razorpay_event_type: eventType },
+        });
+
+      if (recordError) {
+        logError('Failed to record webhook event for deduplication', recordError, {
+          ...requestContext,
+          payment_event_type: eventType,
+          payment_operation: 'webhook_dedup',
+          razorpay_event_id: razorpayEventId,
+        });
+      }
     }
 
     return NextResponse.json({ received: true });
