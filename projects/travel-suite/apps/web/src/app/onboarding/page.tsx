@@ -14,6 +14,7 @@ import {
   SPECIALTY_OPTIONS,
 } from '@/lib/marketplace-options';
 import { useAnalytics } from '@/lib/analytics/events';
+import { useOnboardingStore } from '@/stores/onboarding-store';
 import { FirstValueSprintStep } from './_components/FirstValueSprintStep';
 import { OnboardingDetailsSteps } from './_components/OnboardingDetailsSteps';
 import { OnboardingFormShell } from './_components/OnboardingFormShell';
@@ -40,6 +41,7 @@ function OnboardingPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const analytics = useAnalytics();
+  const onboardingStore = useOnboardingStore();
   const nextPath = useMemo(() => {
     const requested = searchParams.get('next');
     if (requested && requested.startsWith('/')) return requested;
@@ -50,7 +52,7 @@ function OnboardingPageContent() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [currentStep, setCurrentStep] = useState<number>(1);
+  const [currentStep, setCurrentStep] = useState<number>(onboardingStore.currentStep);
 
   const [operatorName, setOperatorName] = useState('');
   const [companyName, setCompanyName] = useState('');
@@ -110,6 +112,10 @@ function OnboardingPageContent() {
       analytics.stepViewed(currentStep, activeStep.title);
     }
   }, [currentStep, loading, activeStep, analytics]);
+
+  useEffect(() => {
+    onboardingStore.setCurrentStep(currentStep);
+  }, [currentStep, onboardingStore]);
 
   useEffect(() => {
     if (currentStep !== FIRST_VALUE_STEP) return undefined;
@@ -334,6 +340,12 @@ function OnboardingPageContent() {
     }
   }
 
+  function handleDismiss() {
+    onboardingStore.dismissWizard();
+    analytics.wizardDismissed(currentStep, activeStep?.title || '');
+    router.push(nextPath);
+  }
+
   if (loading) {
     return <OnboardingPageFallback />;
   }
@@ -350,6 +362,7 @@ function OnboardingPageContent() {
       onSubmit={handleSubmit}
       onPrevious={handlePreviousStep}
       onNext={handleNextStep}
+      onDismiss={handleDismiss}
       extraActions={<SampleDataLoader onDataLoaded={handleSampleDataLoaded} />}
     >
       {currentStep === FIRST_VALUE_STEP ? (

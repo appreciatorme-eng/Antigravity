@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Loader2,
   SkipForward,
+  X,
 } from 'lucide-react';
 import {
   FIRST_VALUE_STEP,
@@ -28,6 +29,7 @@ interface OnboardingFormShellProps {
   onPrevious: () => void;
   onNext: () => void;
   onSkip?: () => void;
+  onDismiss?: () => void;
   extraActions?: ReactNode;
   children: ReactNode;
 }
@@ -44,6 +46,7 @@ export function OnboardingFormShell({
   onPrevious,
   onNext,
   onSkip,
+  onDismiss,
   extraActions,
   children,
 }: OnboardingFormShellProps) {
@@ -70,7 +73,19 @@ export function OnboardingFormShell({
                 </p>
               </div>
             </div>
-            {extraActions ? <div className="flex-shrink-0">{extraActions}</div> : null}
+            <div className="flex flex-shrink-0 items-center gap-2">
+              {extraActions ? <div>{extraActions}</div> : null}
+              {onDismiss ? (
+                <button
+                  type="button"
+                  onClick={onDismiss}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#dcc9aa] text-[#6f5b3e] hover:bg-[#f8f1e6]"
+                  title="Dismiss wizard and return later"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : null}
+            </div>
           </div>
         </div>
 

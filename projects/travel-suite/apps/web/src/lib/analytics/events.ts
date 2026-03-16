@@ -30,6 +30,8 @@ export function useAnalytics() {
       posthog.capture("step_skipped", { step_number: stepNumber, step_name: stepName }),
     wizardCompleted: () =>
       posthog.capture("wizard_completed", {}),
+    wizardDismissed: (stepNumber: number, stepName: string) =>
+      posthog.capture("wizard_dismissed", { step_number: stepNumber, step_name: stepName }),
     sampleDataLoaded: () =>
       posthog.capture("sample_data_loaded", {}),
   };
