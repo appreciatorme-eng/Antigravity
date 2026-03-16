@@ -1,5 +1,6 @@
 // POST /api/whatsapp/connect
-// Creates (or resumes) a WPPConnect session for the caller's org, returns the QR code.
+// WhatsApp integration: Meta Cloud API only. WPPConnect path removed (see CLAUDE.md).
+// Creates (or resumes) a WAHA session for the caller's org, returns the QR code.
 // Idempotent: safe to call multiple times — existing sessions are reused.
 // createWahaSession now returns a Bearer token stored in whatsapp_connections.
 import { NextResponse } from "next/server";
@@ -18,11 +19,7 @@ const WHATSAPP_CONNECT_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 
 export async function POST(request: Request) {
     try {
-        const webhookSecret = process.env.WPPCONNECT_WEBHOOK_SECRET?.trim();
         const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
-        if (!webhookSecret) {
-            return apiError("Webhook secret is not configured", 503);
-        }
         if (!appUrl) {
             return apiError("App URL is not configured", 503);
         }

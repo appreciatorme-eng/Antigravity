@@ -77,7 +77,17 @@ async function requestEmbedding(
     }
 
     const body = (await response.json()) as GeminiEmbeddingResponse;
-    return body.embedding?.values ?? [];
+    const values = body.embedding?.values ?? [];
+
+    // Dimension lock: gemini-embedding-001 = 1536. Change this only with a DB migration.
+    if (values.length > 0 && values.length !== EMBEDDING_DIMENSIONS_V2) {
+      throw new Error(
+        `Unexpected embedding dimension: ${values.length}. Expected ${EMBEDDING_DIMENSIONS_V2} (${EMBEDDING_MODEL_V2}). ` +
+        "If you changed embedding models, update vector column dimensions in all migrations.",
+      );
+    }
+
+    return values;
   } catch (error) {
     logError("[embeddings-v2] Gemini embedding error", error);
     return [];

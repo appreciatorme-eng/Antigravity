@@ -147,14 +147,15 @@ async function getOrCreateBrandVoice(
     escalation_threshold: 2,
   };
 
-  const { data: createdData, error } = await repFrom(supabase, "reputation_brand_voice")
-    .insert(defaultVoice)
+  // Use upsert to handle concurrent requests safely (race condition on organization_id).
+  const { data: upsertedData, error } = await repFrom(supabase, "reputation_brand_voice")
+    .upsert(defaultVoice, { onConflict: "organization_id" })
     .select(REPUTATION_BRAND_VOICE_SELECT)
     .single();
-  const created = createdData as unknown as ReputationBrandVoice | null;
+  const upserted = upsertedData as unknown as ReputationBrandVoice | null;
 
-  if (error) {
-    // Return a fallback object if insert fails (e.g. race condition)
+  if (error || !upserted) {
+    logError("[reputation/ai/respond] brand voice upsert failed", error);
     return {
       id: "",
       ...defaultVoice,
@@ -163,7 +164,7 @@ async function getOrCreateBrandVoice(
     };
   }
 
-  return created as ReputationBrandVoice;
+  return upserted;
 }
 
 export async function POST(req: Request) {

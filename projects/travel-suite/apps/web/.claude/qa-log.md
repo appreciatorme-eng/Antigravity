@@ -2133,3 +2133,51 @@ Ran `audit-remediation.spec.ts` against Vercel production (`travelsuite-rust.ver
 | `1352e2c` | fix: add enforceRateLimit to AI routes (H-01, H-02, H-03) |
 | `d17f9a2` | fix: migrate console.error/warn → logError/logWarn in API handlers (M-03) |
 | `a8daa25` | test: add E2E tests for remediation s38 |
+
+---
+
+## S40 — 2026-03-16 | Production Readiness Audit Remediation
+
+**Test results**: Vitest 748 passed | Lint ✅ | TypeCheck ✅ | All thresholds ✅
+**E2E spec**: `e2e/tests/remediation-s40.spec.ts` (17 tests — auth guards + error envelope cleanliness)
+
+### Fixes Applied
+| ID | Severity | Summary |
+|----|----------|---------|
+| C-01 | CRITICAL | Real Supabase queries replace hardcoded mock analytics (invoices table) |
+| C-02 | CRITICAL | Social mock mode hard-fails in production |
+| C-04 | CRITICAL | Payment order creation — receipt field + existing order idempotency check |
+| C-05 | CRITICAL | Payment verify — skip re-processing if razorpay_payment_id already captured |
+| C-06 | CRITICAL | Migration: RLS enabled on template_usage_attribution + pdf_extraction_queue |
+| C-07 | CRITICAL | src/lib/env.ts — Zod env validation (fail-fast on startup) |
+| C-08 | CRITICAL | Rate limit fail-closed annotation confirmed; RATE_LIMIT_FAIL_OPEN documented as dev-only |
+| H-03 | HIGH | Razorpay webhook deduplication via x-razorpay-event-id |
+| H-04 | HIGH | WhatsApp webhook — hard fail if unsigned webhooks allowed in production |
+| H-11 | HIGH | Settings team: 6 sequential listUsers replaced with single perPage:1000 |
+| H-12 | HIGH | Marketplace verify button wired with loading state + toast feedback |
+| H-13 | HIGH | Demo mode toggle rendered null in production unless explicitly enabled |
+| M-01 | MEDIUM | Invoice sender email fail-fast (PROPOSAL_FROM_EMAIL required) |
+| M-02 | MEDIUM | Cron auth clock skew: 5 min → 60 seconds |
+| M-05 | MEDIUM | Middleware fail-open documented with design rationale |
+| M-06 | MEDIUM | Silent JSON parse failures log via logError (4 files, 6 sites) |
+| M-15 | MEDIUM | PWA offline IDs use crypto.randomUUID() |
+| L-01 | LOW | x-ratelimit-remaining removed from 20 files |
+| L-06 | LOW | Review template selection deterministic by reviewId charCode |
+| L-07 | LOW | Retry jitter accepts seeded random for test determinism |
+
+### Documented (no code change)
+| ID | Severity | Reason |
+|----|----------|--------|
+| C-03 | CRITICAL | Billing checkout — manual upgrade model is intentional (no self-serve Razorpay subscription yet) |
+| H-05 | HIGH | Admin brute-force — already rate-limited (commit 714ce10, prior sprint) |
+| H-17 | HIGH | Proposal RLS always-true — accepted intentional design for public proposal links (S38) |
+| M-09 | MEDIUM | Streaming itinerary — complex refactor, separate sprint |
+
+### Commits
+| Commit | Description |
+|--------|-------------|
+| `0409b65` | chore: create remediation tracker s40 |
+| `786053c` | fix: remediate CRITICAL findings (C-01 through C-08) |
+| `324c7dc` | fix: remediate HIGH findings (H-03, H-05, H-11, H-12) |
+| `1850687` | fix: remediate MEDIUM/LOW findings |
+| `4bff3b45` | test: add E2E tests for remediation s40 |

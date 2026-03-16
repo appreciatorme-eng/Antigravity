@@ -220,14 +220,19 @@ async function checkFirebaseFcm(): Promise<CheckResult> {
     };
 }
 
-async function checkWhatsappApi(): Promise<CheckResult> {
-    const token = process.env.WHATSAPP_TOKEN;
-    const phoneNumberId = process.env.WHATSAPP_PHONE_ID;
+async function checkWhatsappApi(): Promise<CheckResult & { missing?: string[] }> {
+    const token = process.env.WHATSAPP_API_TOKEN ?? process.env.WHATSAPP_TOKEN;
+    const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID ?? process.env.WHATSAPP_PHONE_ID;
 
-    if (!token || !phoneNumberId) {
+    const missingVars: string[] = [];
+    if (!token) missingVars.push("WHATSAPP_API_TOKEN");
+    if (!phoneNumberId) missingVars.push("WHATSAPP_PHONE_NUMBER_ID");
+
+    if (missingVars.length > 0) {
         return {
             status: "unconfigured",
-            detail: "WHATSAPP_TOKEN/WHATSAPP_PHONE_ID missing",
+            missing: missingVars,
+            detail: `Missing env vars: ${missingVars.join(", ")}`,
         };
     }
 

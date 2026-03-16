@@ -568,16 +568,19 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
             if (groqApiKey) {
                 try {
                     const groq = new Groq({ apiKey: groqApiKey });
-                    const chatCompletion = await groq.chat.completions.create({
-                        messages: [
-                            { role: 'system', content: groqSystemPrompt },
-                            { role: 'user', content: finalPrompt }
-                        ],
-                        model: 'llama-3.3-70b-versatile',
-                        temperature: 0.5,
-                        max_completion_tokens: 8000,
-                        response_format: { type: 'json_object' }
-                    });
+                    const chatCompletion = await withTimeout(
+                        groq.chat.completions.create({
+                            messages: [
+                                { role: 'system', content: groqSystemPrompt },
+                                { role: 'user', content: finalPrompt }
+                            ],
+                            model: 'llama-3.3-70b-versatile',
+                            temperature: 0.5,
+                            max_completion_tokens: 8000,
+                            response_format: { type: 'json_object' }
+                        }),
+                        30_000,
+                    );
                     const responseContent = chatCompletion.choices[0]?.message?.content || "";
                     itinerary = JSON.parse(responseContent) as ItineraryLike;
                     aiGenerated = true;
