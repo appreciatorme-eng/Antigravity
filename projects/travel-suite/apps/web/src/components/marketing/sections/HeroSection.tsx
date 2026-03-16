@@ -52,11 +52,10 @@ export function HeroSection() {
   return (
     <div ref={containerRef}>
       <section className="relative h-screen flex items-center justify-between px-6 md:px-24 overflow-hidden pt-4 transform-gpu isolate">
-        {/* Particles -- TOP LEFT */}
+        {/* Particles -- TOP */}
         <div
-          className="absolute top-0 left-0 z-[15] pointer-events-none overflow-hidden"
+          className="absolute top-0 left-0 z-[15] pointer-events-none overflow-hidden w-full md:w-[45%]"
           style={{
-            width: "45%",
             height: "60%",
             maskImage:
               "linear-gradient(to right, black 65%, transparent 100%)",
@@ -70,11 +69,10 @@ export function HeroSection() {
           />
         </div>
 
-        {/* Particles -- BOTTOM LEFT */}
+        {/* Particles -- BOTTOM */}
         <div
-          className="absolute bottom-0 left-0 z-[15] pointer-events-none overflow-hidden"
+          className="absolute bottom-0 left-0 z-[15] pointer-events-none overflow-hidden w-full md:w-[50%]"
           style={{
-            width: "50%",
             height: "45%",
             maskImage:
               "linear-gradient(to right, black 70%, transparent 100%), linear-gradient(to top, black 40%, transparent 100%)",

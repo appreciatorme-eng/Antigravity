@@ -20,11 +20,11 @@ export function ForceFieldBackground({ id = 'tsparticles-forcefield', particleCo
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth < 768) {
-        // Mobile: drastically reduce count for performance, but keep interaction
-        setActiveParticleCount(Math.min(150, Math.floor(particleCount * 0.3)));
+        // Mobile: balanced count for rich visuals without tanking performance
+        setActiveParticleCount(Math.min(250, Math.floor(particleCount * 0.5)));
       } else if (window.innerWidth < 1024) {
-        // Tablet: moderate reduction
-        setActiveParticleCount(Math.min(300, Math.floor(particleCount * 0.6)));
+        // Tablet: near-desktop density
+        setActiveParticleCount(Math.min(400, Math.floor(particleCount * 0.8)));
       } else {
         // Desktop: full count
         setActiveParticleCount(particleCount);
