@@ -143,30 +143,29 @@ export function useOrganizationDrivers(): UseDataResult<Driver> {
 
     async function fetchDrivers() {
       try {
-        const res = await fetch("/api/admin/clients");
+        const res = await fetch("/api/drivers/search?limit=100");
         if (!res.ok) throw new Error("Failed to load drivers");
         const json = await res.json();
         if (cancelled) return;
 
-        const drivers: Driver[] = (json.clients ?? [])
-          .filter(
-            (c: { role?: string | null }) => c.role === "driver",
-          )
-          .map(
-            (c: {
-              id: string;
-              full_name?: string | null;
-              phone?: string | null;
-            }) => ({
-              id: c.id,
-              name: c.full_name || "Unknown Driver",
-              phone: c.phone || "",
-              vehicle: "Assigned Vehicle",
-              vehicleNumber: "",
-              rating: 0,
-              available: true,
-            }),
-          );
+        const drivers: Driver[] = (json.drivers ?? []).map(
+          (d: {
+            id: string;
+            fullName: string;
+            phone: string;
+            vehicleType: string | null;
+            vehiclePlate: string | null;
+            todayTripCount: number;
+          }) => ({
+            id: d.id,
+            name: d.fullName,
+            phone: d.phone,
+            vehicle: d.vehicleType || "Not assigned",
+            vehicleNumber: d.vehiclePlate || "",
+            rating: 0,
+            available: d.todayTripCount === 0,
+          }),
+        );
 
         setData(drivers);
       } catch (err) {
