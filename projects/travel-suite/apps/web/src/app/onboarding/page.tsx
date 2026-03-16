@@ -16,6 +16,7 @@ import {
 import { FirstValueSprintStep } from './_components/FirstValueSprintStep';
 import { OnboardingDetailsSteps } from './_components/OnboardingDetailsSteps';
 import { OnboardingFormShell } from './_components/OnboardingFormShell';
+import { ProposalGenerationStep } from './_components/ProposalGenerationStep';
 import { SampleDataLoader } from './_components/SampleDataLoader';
 import { TripCreationStep } from './_components/TripCreationStep';
 import type { ItineraryResult } from '@/types/itinerary';
@@ -23,6 +24,7 @@ import {
   FIRST_VALUE_STEP,
   OnboardingPayload,
   FirstValuePayload,
+  PROPOSAL_GENERATION_STEP,
   REVIEW_STEP,
   TOTAL_WIZARD_STEPS,
   TRIP_CREATION_STEP,
@@ -351,6 +353,12 @@ function OnboardingPageContent() {
           setAiPrompt={setTripAiPrompt}
           setSelectedItineraryId={setTripSelectedItineraryId}
           setGeneratedItinerary={setTripGeneratedItinerary}
+        />
+      ) : currentStep === PROPOSAL_GENERATION_STEP ? (
+        <ProposalGenerationStep
+          clientId={tripClientId}
+          tripStartDate={tripStartDate}
+          tripEndDate={tripEndDate}
         />
       ) : (
         <OnboardingDetailsSteps

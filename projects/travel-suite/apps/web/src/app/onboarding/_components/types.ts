@@ -83,6 +83,14 @@ export const WIZARD_STEPS: readonly WizardStep[] = [
   },
   {
     id: 4,
+    title: 'Generate Proposal',
+    description: 'Create your first professional proposal with AI assistance.',
+    skippable: true,
+    helpText: 'Generate a polished proposal from your trip data. This shows how proposals work in the platform.',
+    videoUrl: undefined,
+  },
+  {
+    id: 5,
     title: 'Proposal Style',
     description: 'Choose the default itinerary template your clients will see.',
     skippable: false,
@@ -90,7 +98,7 @@ export const WIZARD_STEPS: readonly WizardStep[] = [
     videoUrl: undefined,
   },
   {
-    id: 5,
+    id: 6,
     title: 'Review & Launch',
     description: 'Confirm details and save your workspace setup.',
     skippable: false,
@@ -98,7 +106,7 @@ export const WIZARD_STEPS: readonly WizardStep[] = [
     videoUrl: undefined,
   },
   {
-    id: 6,
+    id: 7,
     title: 'First-Value Sprint',
     description: 'Create and share your first itinerary inside 10 minutes.',
     skippable: true,
@@ -109,8 +117,9 @@ export const WIZARD_STEPS: readonly WizardStep[] = [
 
 export const TOTAL_WIZARD_STEPS = WIZARD_STEPS.length;
 export const TRIP_CREATION_STEP = 3;
-export const REVIEW_STEP = 5;
-export const FIRST_VALUE_STEP = 6;
+export const PROPOSAL_GENERATION_STEP = 4;
+export const REVIEW_STEP = 6;
+export const FIRST_VALUE_STEP = 7;
 
 export function formatDateTime(input: string | null): string {
   if (!input) return 'Not completed';
