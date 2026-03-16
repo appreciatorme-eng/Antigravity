@@ -121,6 +121,72 @@
     "footer": {
       "safe": "Your trip is safe & secured",
       "poweredBy": "Powered by TourOS"
+    },
+    "loading": "Loading your trip portal...",
+    "errors": {
+      "notFound": {
+        "title": "Portal not found",
+        "description": "This portal link is invalid. Ask your travel operator to resend the latest trip link."
+      },
+      "expired": {
+        "title": "This trip link has expired",
+        "description": "This trip link has expired. Contact your travel operator for a fresh link before trying again."
+      },
+      "unavailable": {
+        "title": "Portal unavailable",
+        "description": "The trip portal could not be loaded. Contact your travel operator for a fresh link."
+      },
+      "loadFailed": "The trip portal could not be loaded."
+    },
+    "dates": {
+      "toBeConfirmed": "Dates to be confirmed"
+    },
+    "hero": {
+      "yourTripPortal": "Your Trip Portal",
+      "welcome": "Welcome, {firstName}",
+      "needHelp": "Need help? Contact your operator",
+      "call": "Call {operatorName}"
+    },
+    "tripSummary": {
+      "title": "Trip Summary",
+      "destination": "Destination",
+      "toBeConfirmed": "To be confirmed",
+      "duration": "Duration",
+      "days": "{days} days",
+      "travellers": "Travellers",
+      "travellersCount": "{count} travellers",
+      "travellersPending": "Traveller details pending",
+      "tripStarts": "Trip Starts",
+      "paymentStatus": "Payment status",
+      "awaitingLink": "Awaiting link",
+      "paid": "Paid"
+    },
+    "itinerary": {
+      "title": "Your Itinerary"
+    },
+    "driver": {
+      "title": "Your Driver",
+      "phoneWillBeShared": "Phone number will be shared before departure",
+      "vehicle": "Vehicle",
+      "vehicleToBeConfirmed": "Vehicle details to be confirmed",
+      "contact": "Contact",
+      "sharedInWhatsApp": "Shared in WhatsApp",
+      "reachOutBeforePickup": "Reach out before pickup if plans change.",
+      "callDriver": "Call Driver",
+      "whatsappDriver": "WhatsApp Driver",
+      "whatsappMessage": "Hello {driverName}, this is {clientName}. I am travelling on {tripName}. Please confirm the pickup details when convenient."
+    },
+    "payment": {
+      "title": "Payment"
+    },
+    "shareLocation": {
+      "title": "Share Your Live Location",
+      "description": "Open WhatsApp with a pre-filled location message for your assigned driver.",
+      "button": "Share Location with Driver",
+      "message": "Hello {driverName}, I am sharing my pickup location for {tripName}: https://maps.google.com/?q=my+location"
+    },
+    "review": {
+      "title": "Rate Your Trip"
     }
   }
 }
