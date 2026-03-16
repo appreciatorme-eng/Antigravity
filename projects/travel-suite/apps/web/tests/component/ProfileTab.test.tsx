@@ -2,7 +2,17 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { NextIntlClientProvider } from "next-intl";
 import { ProfileTab } from "@/app/settings/_components/ProfileTab";
+
+// Mock useLocale hook
+vi.mock("next-intl", async () => {
+  const actual = await vi.importActual("next-intl");
+  return {
+    ...actual,
+    useLocale: () => "en",
+  };
+});
 
 vi.mock("@/components/glass/GlassButton", () => ({
   GlassButton: ({
@@ -31,6 +41,33 @@ vi.mock("@/lib/date/tz", () => ({
   getTimezoneDisplayName: (tz: string) => `Display: ${tz}`,
 }));
 
+const mockMessages = {
+  settings: {
+    profile: {
+      title: "Personal Account",
+      description: "Manage your operational identity and personal details.",
+      avatar: {
+        uploadButton: "Upload Avatar",
+        fileRequirements: "JPG or PNG. Max size of 2MB.",
+      },
+      fields: {
+        fullName: "Full Name",
+        email: "Email Address",
+      },
+      timezone: {
+        label: "Operational Timezone",
+        description: "Used for bookings, proposal activity, and inbox timestamps.",
+        save: "Save timezone",
+        saving: "Saving timezone...",
+      },
+      actions: {
+        save: "Save Configuration",
+        saving: "Committing...",
+      },
+    },
+  },
+};
+
 describe("ProfileTab", () => {
   const defaultProps = {
     draftTimezone: "Asia/Kolkata",
@@ -44,37 +81,59 @@ describe("ProfileTab", () => {
   };
 
   it("renders personal account heading", () => {
-    render(<ProfileTab {...defaultProps} />);
+    render(
+      <NextIntlClientProvider locale="en" messages={mockMessages}>
+        <ProfileTab {...defaultProps} />
+      </NextIntlClientProvider>
+    );
     expect(screen.getByText("Personal Account")).toBeInTheDocument();
   });
 
   it("renders upload avatar button", () => {
-    render(<ProfileTab {...defaultProps} />);
+    render(
+      <NextIntlClientProvider locale="en" messages={mockMessages}>
+        <ProfileTab {...defaultProps} />
+      </NextIntlClientProvider>
+    );
     expect(screen.getByText("Upload Avatar")).toBeInTheDocument();
   });
 
   it("renders name and email inputs", () => {
-    render(<ProfileTab {...defaultProps} />);
+    render(
+      <NextIntlClientProvider locale="en" messages={mockMessages}>
+        <ProfileTab {...defaultProps} />
+      </NextIntlClientProvider>
+    );
     expect(screen.getByText("Full Name")).toBeInTheDocument();
     expect(screen.getByText("Email Address")).toBeInTheDocument();
   });
 
   it("renders timezone select with options", () => {
-    render(<ProfileTab {...defaultProps} />);
+    render(
+      <NextIntlClientProvider locale="en" messages={mockMessages}>
+        <ProfileTab {...defaultProps} />
+      </NextIntlClientProvider>
+    );
     expect(screen.getByText("Operational Timezone")).toBeInTheDocument();
     expect(screen.getByText("Display: Asia/Kolkata")).toBeInTheDocument();
     expect(screen.getByText("Display: America/New_York")).toBeInTheDocument();
   });
 
   it("disables save timezone button when timezone unchanged", () => {
-    render(<ProfileTab {...defaultProps} />);
+    render(
+      <NextIntlClientProvider locale="en" messages={mockMessages}>
+        <ProfileTab {...defaultProps} />
+      </NextIntlClientProvider>
+    );
     const saveBtn = screen.getByText("Save timezone");
     expect(saveBtn).toBeDisabled();
   });
 
   it("enables save timezone button when timezone changed", () => {
     render(
-      <ProfileTab {...defaultProps} draftTimezone="America/New_York" />
+      <NextIntlClientProvider locale="en" messages={mockMessages}>
+        <ProfileTab {...defaultProps} draftTimezone="America/New_York" />
+      </NextIntlClientProvider>
     );
     const saveBtn = screen.getByText("Save timezone");
     expect(saveBtn).not.toBeDisabled();
@@ -82,11 +141,13 @@ describe("ProfileTab", () => {
 
   it("shows saving state for timezone", () => {
     render(
-      <ProfileTab
-        {...defaultProps}
-        savingTimezone={true}
-        draftTimezone="America/New_York"
-      />
+      <NextIntlClientProvider locale="en" messages={mockMessages}>
+        <ProfileTab
+          {...defaultProps}
+          savingTimezone={true}
+          draftTimezone="America/New_York"
+        />
+      </NextIntlClientProvider>
     );
     expect(screen.getByText("Saving timezone...")).toBeInTheDocument();
   });
@@ -94,29 +155,43 @@ describe("ProfileTab", () => {
   it("calls onSaveTimezone when save timezone clicked", async () => {
     const onSaveTimezone = vi.fn();
     render(
-      <ProfileTab
-        {...defaultProps}
-        draftTimezone="America/New_York"
-        onSaveTimezone={onSaveTimezone}
-      />
+      <NextIntlClientProvider locale="en" messages={mockMessages}>
+        <ProfileTab
+          {...defaultProps}
+          draftTimezone="America/New_York"
+          onSaveTimezone={onSaveTimezone}
+        />
+      </NextIntlClientProvider>
     );
     await userEvent.click(screen.getByText("Save timezone"));
     expect(onSaveTimezone).toHaveBeenCalledOnce();
   });
 
   it("renders save configuration button", () => {
-    render(<ProfileTab {...defaultProps} />);
+    render(
+      <NextIntlClientProvider locale="en" messages={mockMessages}>
+        <ProfileTab {...defaultProps} />
+      </NextIntlClientProvider>
+    );
     expect(screen.getByText("Save Configuration")).toBeInTheDocument();
   });
 
   it("shows committing state when loading", () => {
-    render(<ProfileTab {...defaultProps} loading={true} />);
+    render(
+      <NextIntlClientProvider locale="en" messages={mockMessages}>
+        <ProfileTab {...defaultProps} loading={true} />
+      </NextIntlClientProvider>
+    );
     expect(screen.getByText("Committing...")).toBeInTheDocument();
   });
 
   it("calls onSave when save configuration clicked", async () => {
     const onSave = vi.fn();
-    render(<ProfileTab {...defaultProps} onSave={onSave} />);
+    render(
+      <NextIntlClientProvider locale="en" messages={mockMessages}>
+        <ProfileTab {...defaultProps} onSave={onSave} />
+      </NextIntlClientProvider>
+    );
     await userEvent.click(screen.getByText("Save Configuration"));
     expect(onSave).toHaveBeenCalledOnce();
   });
