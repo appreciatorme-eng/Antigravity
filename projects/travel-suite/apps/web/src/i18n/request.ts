@@ -17,7 +17,7 @@ import { locales, type Locale } from '@/i18n';
 
 export default getRequestConfig(async ({ locale }) => {
   // Validate that the incoming `locale` parameter is valid
-  if (!locales.includes(locale as Locale)) {
+  if (!locale || !locales.includes(locale as Locale)) {
     notFound();
   }
 
@@ -25,6 +25,7 @@ export default getRequestConfig(async ({ locale }) => {
   const messages = (await import(`../../messages/${locale}.json`)).default;
 
   return {
+    locale: locale as string,
     messages,
     // Configure time zone (India Standard Time for default, can be overridden)
     timeZone: 'Asia/Kolkata',
