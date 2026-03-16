@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
-  Coins, ChevronLeft, ChevronRight, RefreshCw, LayoutGrid, Receipt, BarChart3, Database,
+  Coins, ChevronLeft, ChevronRight, RefreshCw, LayoutGrid, Receipt, BarChart3, Database, Download,
 } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
@@ -16,6 +16,7 @@ import { MonthlyTripTable } from "@/features/admin/pricing/components/MonthlyTri
 import { OverheadExpensesCard } from "@/features/admin/pricing/components/OverheadExpensesCard";
 import { ProfitTrendChart } from "@/features/admin/pricing/components/ProfitTrendChart";
 import { CategoryBreakdownChart } from "@/features/admin/pricing/components/CategoryBreakdownChart";
+import { AnalyticsByDimension } from "@/features/admin/pricing/components/AnalyticsByDimension";
 import { TransactionLedger } from "@/features/admin/pricing/components/TransactionLedger";
 import { TransactionDetailPanel } from "@/features/admin/pricing/components/TransactionDetailPanel";
 import SlideOutPanel from "@/components/god-mode/SlideOutPanel";
@@ -80,6 +81,16 @@ export default function PricingPage() {
     overheads.reload();
   }, [dashboard, tripCosts, overheads]);
 
+  const handleExport = useCallback(() => {
+    const url = `/api/admin/pricing/export?month=${month}&format=csv`;
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `expense-report-${month}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, [month]);
+
   const isLoading = dashboard.loading || tripCosts.loading || overheads.loading;
 
   return (
@@ -126,6 +137,15 @@ export default function PricingPage() {
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
+
+            <GlassButton
+              variant="outline"
+              onClick={handleExport}
+              className="rounded-xl"
+              title="Export CSV"
+            >
+              <Download className="w-4 h-4" />
+            </GlassButton>
 
             <GlassButton
               variant="outline"
@@ -261,6 +281,14 @@ export default function PricingPage() {
                   <CategoryBreakdownChart data={dashboard.data.categoryBreakdown} />
                 </div>
 
+                {/* Analytics by Dimension */}
+                <AnalyticsByDimension
+                  topDestinations={dashboard.data.topDestinations}
+                  bottomDestinations={dashboard.data.bottomDestinations}
+                  topClients={dashboard.data.topClients}
+                  bottomClients={dashboard.data.bottomClients}
+                />
+
                 {/* Top Profitable Trips */}
                 {dashboard.data.topProfitableTrips.length > 0 && (
                   <GlassCard padding="lg">
@@ -319,6 +347,77 @@ export default function PricingPage() {
                                 }).format(trip.paxCount * 1000)}
                               </td>
                               <td className="px-4 py-3 text-right tabular-nums text-violet-600 font-bold">
+                                {new Intl.NumberFormat("en-IN", {
+                                  style: "currency", currency: "INR",
+                                  maximumFractionDigits: 0,
+                                }).format(trip.profit)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </GlassCard>
+                )}
+
+                {/* Least Profitable Trips */}
+                {dashboard.data.bottomProfitableTrips.length > 0 && (
+                  <GlassCard padding="lg" className="border-red-200 bg-red-50/30">
+                    <h3 className="text-lg font-serif text-red-800 mb-1">
+                      Least Profitable Trips
+                    </h3>
+                    <p className="text-xs text-red-600 mb-4">
+                      Trips requiring attention — lowest profit margin this month
+                    </p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-red-100/60">
+                          <tr>
+                            <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-red-800">
+                              #
+                            </th>
+                            <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-red-800">
+                              Trip
+                            </th>
+                            <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-red-800">
+                              Destination
+                            </th>
+                            <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-emerald-600">
+                              Revenue
+                            </th>
+                            <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-rose-600">
+                              Cost
+                            </th>
+                            <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-red-700">
+                              Profit
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-red-100">
+                          {dashboard.data.bottomProfitableTrips.map((trip, i) => (
+                            <tr key={trip.tripId} className="hover:bg-red-100/50 transition-colors">
+                              <td className="px-4 py-3 font-bold text-red-800">
+                                {i + 1}
+                              </td>
+                              <td className="px-4 py-3 font-medium text-red-900">
+                                {trip.tripTitle}
+                              </td>
+                              <td className="px-4 py-3 text-red-700">
+                                {trip.destination || "\u2014"}
+                              </td>
+                              <td className="px-4 py-3 text-right tabular-nums text-emerald-600 font-medium">
+                                {new Intl.NumberFormat("en-IN", {
+                                  style: "currency", currency: "INR",
+                                  maximumFractionDigits: 0,
+                                }).format(trip.revenue)}
+                              </td>
+                              <td className="px-4 py-3 text-right tabular-nums text-rose-600">
+                                {new Intl.NumberFormat("en-IN", {
+                                  style: "currency", currency: "INR",
+                                  maximumFractionDigits: 0,
+                                }).format(trip.cost)}
+                              </td>
+                              <td className="px-4 py-3 text-right tabular-nums text-red-700 font-bold">
                                 {new Intl.NumberFormat("en-IN", {
                                   style: "currency", currency: "INR",
                                   maximumFractionDigits: 0,

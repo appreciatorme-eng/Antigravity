@@ -43,12 +43,12 @@ export async function GET(req: NextRequest) {
 
     const { data: monthTrips } = await db
       .from("trips")
-      .select("id, name, destination, pax_count, status")
+      .select("id, name, destination, pax_count, status, client_id")
       .eq("organization_id", orgId)
       .gte("start_date", monthStart)
       .lt("start_date", nextMonth);
 
-    const tripRows = (monthTrips || []) as Pick<TripRow, 'id' | 'name' | 'destination' | 'pax_count' | 'status'>[];
+    const tripRows = (monthTrips || []) as Pick<TripRow, 'id' | 'name' | 'destination' | 'pax_count' | 'status' | 'client_id'>[];
     const tripIds = tripRows.map((t) => t.id);
 
     let costs: CostRow[] = [];
@@ -105,7 +105,7 @@ export async function GET(req: NextRequest) {
       tripProfitMap.set(c.trip_id, existing);
     }
     type ProfitableTrip = { tripId: string; tripTitle: string; destination: string | null; profit: number; paxCount: number | null; revenue: number; cost: number };
-    const topProfitableTrips = tripRows
+    const sortedTrips = tripRows
       .map((t) => {
         const p = tripProfitMap.get(t.id) || { cost: 0, revenue: 0 };
         return {
@@ -118,8 +118,71 @@ export async function GET(req: NextRequest) {
           cost: p.cost,
         };
       })
-      .sort((a: ProfitableTrip, b: ProfitableTrip) => b.profit - a.profit)
-      .slice(0, 5);
+      .sort((a: ProfitableTrip, b: ProfitableTrip) => b.profit - a.profit);
+    const topProfitableTrips = sortedTrips.slice(0, 5);
+    const bottomProfitableTrips = sortedTrips.slice(-5).reverse();
+
+    // Fetch client names for client profitability calculations
+    const uniqueClientIds = Array.from(new Set(tripRows.map(t => t.client_id).filter(Boolean))) as string[];
+    const clientNameMap = new Map<string, string>();
+    if (uniqueClientIds.length > 0) {
+      const { data: clientProfiles } = await db
+        .from("profiles")
+        .select("id, full_name, email")
+        .in("id", uniqueClientIds);
+      for (const profile of (clientProfiles || [])) {
+        clientNameMap.set(profile.id, profile.full_name || profile.email || "Unknown Client");
+      }
+    }
+
+    // Calculate destination profitability
+    const destProfitMap = new Map<string, { cost: number; revenue: number; tripCount: number }>();
+    for (const trip of tripRows) {
+      const destination = trip.destination || "Unknown Destination";
+      const tripProfit = tripProfitMap.get(trip.id) || { cost: 0, revenue: 0 };
+      const existing = destProfitMap.get(destination) || { cost: 0, revenue: 0, tripCount: 0 };
+      existing.cost += tripProfit.cost;
+      existing.revenue += tripProfit.revenue;
+      existing.tripCount += 1;
+      destProfitMap.set(destination, existing);
+    }
+
+    const destinationProfits = Array.from(destProfitMap.entries()).map(([destination, data]) => ({
+      destination,
+      revenue: data.revenue,
+      cost: data.cost,
+      profit: data.revenue - data.cost,
+      tripCount: data.tripCount,
+      avgMargin: data.revenue > 0 ? ((data.revenue - data.cost) / data.revenue) * 100 : 0,
+    }));
+    const sortedDestinations = destinationProfits.sort((a, b) => b.profit - a.profit);
+    const topDestinations = sortedDestinations.slice(0, 5);
+    const bottomDestinations = sortedDestinations.slice(-5).reverse();
+
+    // Calculate client profitability
+    const clientProfitMap = new Map<string, { cost: number; revenue: number; tripCount: number }>();
+    for (const trip of tripRows) {
+      if (!trip.client_id) continue;
+      const tripProfit = tripProfitMap.get(trip.id) || { cost: 0, revenue: 0 };
+      const existing = clientProfitMap.get(trip.client_id) || { cost: 0, revenue: 0, tripCount: 0 };
+      existing.cost += tripProfit.cost;
+      existing.revenue += tripProfit.revenue;
+      existing.tripCount += 1;
+      clientProfitMap.set(trip.client_id, existing);
+    }
+
+    const clientProfits = Array.from(clientProfitMap.entries()).map(([clientId, data]) => ({
+      clientId,
+      clientName: clientNameMap.get(clientId) || "Unknown Client",
+      revenue: data.revenue,
+      cost: data.cost,
+      profit: data.revenue - data.cost,
+      tripCount: data.tripCount,
+      avgMargin: data.revenue > 0 ? ((data.revenue - data.cost) / data.revenue) * 100 : 0,
+    }));
+    const sortedClients = clientProfits.sort((a, b) => b.profit - a.profit);
+    const topClients = sortedClients.slice(0, 5);
+    const bottomClients = sortedClients.slice(-5).reverse();
 
     const monthlyTrend = [];
     for (let i = 5; i >= 0; i--) {
@@ -175,6 +238,11 @@ export async function GET(req: NextRequest) {
       },
       categoryBreakdown,
       topProfitableTrips,
+      bottomProfitableTrips,
+      topDestinations,
+      bottomDestinations,
+      topClients,
+      bottomClients,
       monthlyTrend,
     });
   } catch (error) {

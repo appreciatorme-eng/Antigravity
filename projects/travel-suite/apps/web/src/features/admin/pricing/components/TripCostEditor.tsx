@@ -3,9 +3,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { GlassModal } from "@/components/glass/GlassModal";
 import { GlassButton } from "@/components/glass/GlassButton";
+import { Upload } from "lucide-react";
 import { formatINR } from "@/lib/india/formats";
 import { SERVICE_CATEGORIES, CATEGORY_LABELS } from "../types";
 import type { ServiceCategory, VendorHistoryItem } from "../types";
+import { ReceiptUploader } from "./ReceiptUploader";
+import { createClient } from "@/lib/supabase/client";
 
 interface TripCostEditorProps {
   isOpen: boolean;
@@ -30,6 +33,9 @@ export function TripCostEditor({
   const [error, setError] = useState<string | null>(null);
   const [vendorHistory, setVendorHistory] = useState<VendorHistoryItem[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [showReceiptUploader, setShowReceiptUploader] = useState(false);
+  const [receiptId, setReceiptId] = useState<string | null>(null);
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (costId) {
@@ -66,6 +72,13 @@ export function TripCostEditor({
     (parseFloat(costAmount) || 0) * (parseFloat(commissionPct) || 0) / 100 * 100
   ) / 100;
 
+  const handleAmountExtracted = useCallback((amount: number, extractedReceiptId: string, extractedReceiptUrl: string) => {
+    setCostAmount(String(amount));
+    setReceiptId(extractedReceiptId);
+    setReceiptUrl(extractedReceiptUrl);
+    setShowReceiptUploader(false);
+  }, []);
+
   const handleSave = useCallback(async () => {
     setSaving(true);
     setError(null);
@@ -99,13 +112,30 @@ export function TripCostEditor({
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || `HTTP ${res.status}`);
       }
+
+      const savedData = await res.json();
+      const savedCostId = savedData.data?.id || savedData.id || costId;
+
+      // Link receipt to trip_service_cost if a receipt was uploaded
+      if (receiptId && savedCostId) {
+        const supabase = createClient();
+        const { error: linkError } = await supabase
+          .from("expense_receipts")
+          .update({ trip_service_cost_id: savedCostId })
+          .eq("id", receiptId);
+
+        if (linkError) {
+          throw new Error("Failed to link receipt to cost entry");
+        }
+      }
+
       onSaved();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
     } finally {
       setSaving(false);
     }
-  }, [tripId, category, vendorName, costAmount, priceAmount, commissionPct, paxCount, notes, costId, onSaved]);
+  }, [tripId, category, vendorName, costAmount, priceAmount, commissionPct, paxCount, notes, costId, receiptId, onSaved]);
 
   return (
     <GlassModal
@@ -175,11 +205,30 @@ export function TripCostEditor({
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-sm font-medium text-secondary mb-1.5">
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="block text-sm font-medium text-secondary">
               Cost Amount (₹) *
             </label>
+            <GlassButton
+              variant="outline"
+              size="sm"
+              onClick={() => setShowReceiptUploader(true)}
+              className="text-xs"
+            >
+              <Upload className="w-3 h-3" />
+              Upload Receipt
+            </GlassButton>
+          </div>
+          {receiptUrl && (
+            <div className="mb-2 p-2 rounded-lg bg-green-50 border border-green-200 text-xs text-green-700">
+              ✓ Receipt attached
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
             <input
               type="number"
               value={costAmount}
@@ -265,6 +314,12 @@ export function TripCostEditor({
           </GlassButton>
         </div>
       </div>
+
+      <ReceiptUploader
+        isOpen={showReceiptUploader}
+        onClose={() => setShowReceiptUploader(false)}
+        onAmountExtracted={handleAmountExtracted}
+      />
     </GlassModal>
   );
 }
