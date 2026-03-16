@@ -7,13 +7,7 @@ import ShinyText from "@/components/marketing/ShinyText";
 import { HeroScreens } from "@/components/marketing/HeroScreens";
 import dynamic from "next/dynamic";
 import { ArrowRight } from "lucide-react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { MagneticButton } from "@/components/marketing/effects";
-
-if (typeof window !== "undefined") {
-  gsap.registerPlugin(ScrollTrigger);
-}
 
 const ForceFieldBackground = dynamic(
   () =>
@@ -33,20 +27,38 @@ export function HeroSection() {
   const yParallax = useTransform(scrollYProgress, [0, 1], ["0%", "50%"]);
 
   useEffect(() => {
-    gsap.utils.toArray(".reveal-text").forEach((text) => {
-      const el = text as HTMLElement;
-      gsap.from(el, {
-        scrollTrigger: {
-          trigger: el,
-          start: "top 80%",
-          toggleActions: "play none none reverse",
-        },
-        y: 50,
-        opacity: 0,
-        duration: 1,
-        ease: "power3.out",
+    let cancelled = false;
+
+    async function initScrollAnimations() {
+      const [{ default: gsap }, { ScrollTrigger }] = await Promise.all([
+        import("gsap"),
+        import("gsap/ScrollTrigger"),
+      ]);
+      if (cancelled) return;
+
+      gsap.registerPlugin(ScrollTrigger);
+
+      gsap.utils.toArray(".reveal-text").forEach((text) => {
+        const el = text as HTMLElement;
+        gsap.from(el, {
+          scrollTrigger: {
+            trigger: el,
+            start: "top 80%",
+            toggleActions: "play none none reverse",
+          },
+          y: 50,
+          opacity: 0,
+          duration: 1,
+          ease: "power3.out",
+        });
       });
-    });
+    }
+
+    void initScrollAnimations();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (

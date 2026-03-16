@@ -1,7 +1,6 @@
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { createAdminClient } from "@/lib/supabase/admin";
-import { getPaymentLinkByToken } from "@/lib/payments/payment-links.server";
+import { getPortalPaymentData } from "@/lib/payments/portal-lookup";
 import { PaymentCheckoutClient } from "./PaymentCheckoutClient";
 
 async function getOriginFromHeaders() {
@@ -22,8 +21,7 @@ export default async function PayPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  const admin = createAdminClient();
-  const link = await getPaymentLinkByToken(admin, token, await getOriginFromHeaders());
+  const link = await getPortalPaymentData(token, await getOriginFromHeaders());
 
   if (!link) {
     notFound();
