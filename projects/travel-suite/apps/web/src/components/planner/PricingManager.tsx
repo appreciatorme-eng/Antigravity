@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Pricing, PricingAddOn, ItineraryResult } from '@/types/itinerary';
 import { logError } from "@/lib/observability/logger";
+import { PricingSuggestionWidget } from './PricingSuggestionWidget';
 
 interface AddOnCatalogItem {
     id: string;
@@ -15,6 +16,24 @@ interface AddOnCatalogItem {
     category: string;
 }
 
+interface ComparableTrip {
+    destination: string;
+    durationDays: number;
+    pricePerPerson: number;
+    packageTier?: string;
+    matchScore: number;
+    organizationHash: string;
+}
+
+interface PricingSuggestion {
+    min: number;
+    median: number;
+    max: number;
+    confidence: 'high' | 'medium' | 'low' | 'ai_estimate';
+    sampleSize: number;
+    comparableTrips?: ComparableTrip[];
+}
+
 interface PricingManagerProps {
     data: ItineraryResult;
     onChange: (newData: ItineraryResult) => void;
@@ -22,6 +41,9 @@ interface PricingManagerProps {
 
 export function PricingManager({ data, onChange }: PricingManagerProps) {
     const [dbAddOns, setDbAddOns] = useState<AddOnCatalogItem[]>([]);
+    const [pricingSuggestion, setPricingSuggestion] = useState<PricingSuggestion | null>(null);
+    const [suggestionLoading, setSuggestionLoading] = useState(false);
+    const [showSuggestion, setShowSuggestion] = useState(true);
 
     useEffect(() => {
         async function load() {
@@ -37,6 +59,37 @@ export function PricingManager({ data, onChange }: PricingManagerProps) {
         }
         load();
     }, []);
+
+    useEffect(() => {
+        async function loadPricingSuggestion() {
+            if (!data.destination || !data.duration_days) {
+                return;
+            }
+
+            setSuggestionLoading(true);
+            try {
+                const params = new URLSearchParams({
+                    destination: data.destination,
+                    durationDays: String(data.duration_days),
+                    pax: String(data.pricing?.passengerCount || 2),
+                });
+
+                const res = await fetch(`/api/ai/pricing-suggestion?${params.toString()}`);
+                const json = await res.json();
+
+                if (res.ok && json.data) {
+                    setPricingSuggestion(json.data);
+                    setShowSuggestion(true);
+                }
+            } catch (e) {
+                logError("Failed to load pricing suggestion", e);
+            } finally {
+                setSuggestionLoading(false);
+            }
+        }
+
+        loadPricingSuggestion();
+    }, [data.destination, data.duration_days, data.pricing?.passengerCount]);
 
     const formatIndianNumber = (num: number) => {
         return num.toLocaleString('en-IN');
@@ -92,11 +145,42 @@ export function PricingManager({ data, onChange }: PricingManagerProps) {
         onChange({ ...data, pricing: { ...pricing, availableAddOns: addons } });
     };
 
+    const handleAcceptSuggestion = (price: number) => {
+        const perPersonPrice = price;
+        const passengerCount = data.pricing?.passengerCount || 2;
+        const totalBasePrice = perPersonPrice * passengerCount;
+        updatePricing('basePrice', totalBasePrice);
+        setShowSuggestion(false);
+    };
+
+    const handleAdjustSuggestion = (price: number) => {
+        const perPersonPrice = price;
+        const passengerCount = data.pricing?.passengerCount || 2;
+        const totalBasePrice = perPersonPrice * passengerCount;
+        updatePricing('basePrice', totalBasePrice);
+    };
+
+    const handleDismissSuggestion = () => {
+        setShowSuggestion(false);
+    };
+
     return (
         <div className="space-y-6">
             <h2 className="text-xl font-bold font-serif flex items-center gap-2">
                 <IndianRupee className="w-5 h-5 text-emerald-500" /> Pricing & Add-ons
             </h2>
+
+            {/* AI Pricing Suggestion Widget */}
+            {showSuggestion && (suggestionLoading || pricingSuggestion) && (
+                <PricingSuggestionWidget
+                    suggestion={pricingSuggestion!}
+                    loading={suggestionLoading}
+                    onAccept={handleAcceptSuggestion}
+                    onAdjust={handleAdjustSuggestion}
+                    onDismiss={handleDismissSuggestion}
+                />
+            )}
+
             <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 rounded-xl p-6 shadow-sm space-y-6">
                 <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="space-y-2">
