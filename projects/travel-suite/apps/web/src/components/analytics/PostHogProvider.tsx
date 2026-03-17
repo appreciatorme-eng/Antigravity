@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import posthog from "posthog-js";
 import { PostHogProvider as PostHogReactProvider } from "posthog-js/react";
@@ -8,8 +8,15 @@ import { PostHogProvider as PostHogReactProvider } from "posthog-js/react";
 function PageViewTracker() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const isFirstRender = useRef(true);
 
   useEffect(() => {
+    // Skip initial mount — PostHogProvider captures the first pageview after init
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
     if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) {
       return;
     }
@@ -18,7 +25,7 @@ function PageViewTracker() {
     posthog.capture("$pageview", {
       pathname,
       search,
-      url: typeof window !== "undefined" ? window.location.href : pathname,
+      url: window.location.href,
     });
   }, [pathname, searchParams]);
 
@@ -35,6 +42,14 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
       api_host: "https://us.i.posthog.com",
       capture_pageview: false,
       person_profiles: "identified_only",
+    });
+
+    // Capture initial pageview here — PageViewTracker fires before init due to React's
+    // child-first useEffect ordering, so we handle the first pageview post-init.
+    posthog.capture("$pageview", {
+      pathname: window.location.pathname,
+      search: window.location.search,
+      url: window.location.href,
     });
   }, []);
 
