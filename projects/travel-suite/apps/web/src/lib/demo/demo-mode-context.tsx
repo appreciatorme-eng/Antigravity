@@ -30,7 +30,7 @@ const DemoModeContext = createContext<DemoModeContextValue>({
   mounted: false,
 });
 
-const LS_KEY = "antigravity:demo_mode";
+const LS_KEY = "tripbuilt:demo_mode";
 
 export function DemoModeProvider({ children }: { children: ReactNode }) {
   const [isDemoMode, setIsDemoMode] = useState(false);

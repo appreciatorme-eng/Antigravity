@@ -8,7 +8,7 @@ import { X, Sparkles, Navigation } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDemoMode } from "@/lib/demo/demo-mode-context";
 
-const DISMISS_KEY = "antigravity:demo_banner_dismissed";
+const DISMISS_KEY = "tripbuilt:demo_banner_dismissed";
 
 interface DemoModeBannerProps {
   onStartTour?: () => void;
@@ -60,7 +60,7 @@ export default function DemoModeBanner({ onStartTour }: DemoModeBannerProps) {
 
       <span className="truncate">
         Viewing sample data from{" "}
-        <strong className="text-gray-800 dark:text-slate-200">GoBuddy Adventures</strong>.
+        <strong className="text-gray-800 dark:text-slate-200">TripBuilt</strong>.
         Your real data is safe &mdash;{" "}
         <button
           onClick={toggleDemoMode}

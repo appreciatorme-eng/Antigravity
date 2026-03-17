@@ -97,8 +97,8 @@ test.describe('Portal Footer Localization', () => {
     if (isFooterVisible) {
       const footerText = await footer.textContent();
       expect(footerText).toBeTruthy();
-      // Should contain branding text (TourOS, Powered by, etc.)
-      expect(footerText).toMatch(/TourOS|Powered|safe|secured/i);
+      // Should contain branding text (TripBuilt, Powered by, etc.)
+      expect(footerText).toMatch(/TripBuilt|Powered|safe|secured/i);
     }
   });
 

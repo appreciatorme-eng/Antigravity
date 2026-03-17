@@ -132,7 +132,7 @@ test.describe('Remediation S30 — M-01 ForceField background dependency', () =>
     expect(response.status()).toBe(200);
 
     const html = await response.text();
-    expect(html).toContain('TravelBuilt');
+    expect(html).toContain('TripBuilt');
     expect(html).not.toContain('Module not found');
     expect(html).not.toContain('@tsparticles/slim');
   });

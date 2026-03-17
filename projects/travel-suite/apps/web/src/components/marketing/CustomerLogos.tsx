@@ -1,7 +1,7 @@
 'use client';
 
 const logos = [
-    { name: "TravelBuilt", weight: "font-black" },
+    { name: "TripBuilt", weight: "font-black" },
     { name: "Himalayan Treks", weight: "font-bold" },
     { name: "Wanderlust India Tours", weight: "font-extrabold" },
     { name: "Kerala Voyages", weight: "font-bold tracking-tight" },

@@ -358,7 +358,7 @@ export default function WidgetPreview({
           className="text-[10px] text-center mt-4"
           style={{ color: isLight ? "#94a3b8" : "#475569" }}
         >
-          Powered by TravelSuite Reputation
+          Powered by TripBuilt Reputation
         </p>
       )}
     </div>

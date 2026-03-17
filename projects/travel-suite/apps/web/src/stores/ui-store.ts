@@ -32,7 +32,7 @@ interface UIState {
 
 function getInitialLanguage(): 'en' | 'hi' {
     if (typeof window !== 'undefined') {
-        const stored = localStorage.getItem('touros_language');
+        const stored = localStorage.getItem('tripbuilt_language');
         if (stored === 'en' || stored === 'hi') {
             return stored;
         }

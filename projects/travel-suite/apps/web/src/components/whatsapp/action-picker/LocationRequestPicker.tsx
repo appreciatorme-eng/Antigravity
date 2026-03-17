@@ -67,26 +67,26 @@ export function LocationRequestPicker({
     if (channel === "whatsapp") {
       if (locationType === "hotel") {
         return {
-          body: `${name} Ji 🙏\n\nAapka pickup${dateStr}${timeStr} schedule hai. Kripya apne hotel ka naam aur room number share karein taaki driver accurately locate kar sake.\n\n📋 Hotel Name:\n🔢 Room Number:\n📍 Hotel Address (agar nahin pata):\n\nThank you! GoBuddy Adventures 🚗`,
+          body: `${name} Ji 🙏\n\nAapka pickup${dateStr}${timeStr} schedule hai. Kripya apne hotel ka naam aur room number share karein taaki driver accurately locate kar sake.\n\n📋 Hotel Name:\n🔢 Room Number:\n📍 Hotel Address (agar nahin pata):\n\nThank you! TripBuilt 🚗`,
         };
       }
       if (locationType === "airport") {
         return {
-          body: `${name} Ji 🙏\n\nAapka airport pickup${dateStr}${timeStr} schedule hai. Kripya yeh details share karein:\n\n✈️ Flight Number:\n🏢 Terminal: (T1 / T2 / T3)\n⏰ Landing Time:\n📍 Arrival Gate (agar pata ho):\n\nDriver gate pe waiting karega aapki name board ke saath. GoBuddy Adventures 🚗`,
+          body: `${name} Ji 🙏\n\nAapka airport pickup${dateStr}${timeStr} schedule hai. Kripya yeh details share karein:\n\n✈️ Flight Number:\n🏢 Terminal: (T1 / T2 / T3)\n⏰ Landing Time:\n📍 Arrival Gate (agar pata ho):\n\nDriver gate pe waiting karega aapki name board ke saath. TripBuilt 🚗`,
         };
       }
       if (locationType === "railway") {
         return {
-          body: `${name} Ji 🙏\n\nAapka railway station pickup${dateStr}${timeStr} schedule hai. Kripya yeh details share karein:\n\n🚂 Train Number & Name:\n🚉 Station Name:\n🔢 Platform Number (agar pata ho):\n⏰ Arrival Time:\n\nDriver platform pe waiting karega. GoBuddy Adventures 🚗`,
+          body: `${name} Ji 🙏\n\nAapka railway station pickup${dateStr}${timeStr} schedule hai. Kripya yeh details share karein:\n\n🚂 Train Number & Name:\n🚉 Station Name:\n🔢 Platform Number (agar pata ho):\n⏰ Arrival Time:\n\nDriver platform pe waiting karega. TripBuilt 🚗`,
         };
       }
       if (locationType === "home") {
         return {
-          body: `${name} Ji 🙏\n\nAapka home pickup${dateStr}${timeStr} hai. Kripya apna complete address share karein taaki driver GPS pe set kar sake:\n\n🏠 House/Flat No.:\n🏘️ Colony/Society:\n🗺️ Landmark:\n🏙️ City & PIN:\n\nYa Google Maps location share kar sakte hain. GoBuddy Adventures 🚗`,
+          body: `${name} Ji 🙏\n\nAapka home pickup${dateStr}${timeStr} hai. Kripya apna complete address share karein taaki driver GPS pe set kar sake:\n\n🏠 House/Flat No.:\n🏘️ Colony/Society:\n🗺️ Landmark:\n🏙️ City & PIN:\n\nYa Google Maps location share kar sakte hain. TripBuilt 🚗`,
         };
       }
       return {
-        body: `${name} Ji 🙏\n\nAapka pickup${dateStr}${timeStr} schedule hai.\n\n📍 Pickup Location: ${customAddress || "[Address needed]"}\n\nKripya confirm karein ya apna exact location share karein. Driver coordinates pe directly navigate karega.\n\nGoBuddy Adventures 🚗`,
+        body: `${name} Ji 🙏\n\nAapka pickup${dateStr}${timeStr} schedule hai.\n\n📍 Pickup Location: ${customAddress || "[Address needed]"}\n\nKripya confirm karein ya apna exact location share karein. Driver coordinates pe directly navigate karega.\n\nTripBuilt 🚗`,
       };
     }
 
@@ -95,20 +95,20 @@ export function LocationRequestPicker({
     if (locationType === "hotel") {
       return {
         subject,
-        body: `Dear ${name},\n\nWe hope you are looking forward to your trip with GoBuddy Adventures!\n\nYour pickup is scheduled${dateStr}${timeStr}. To ensure your driver reaches you without any delays, we kindly request the following details:\n\n🏨 Hotel Name: ___________________\n🔢 Room Number: ___________________\n📍 Hotel Address (if available): ___________________\n\nPlease reply to this email at your earliest convenience. Our driver will arrive 10 minutes early.\n\nThank you!\nTeam GoBuddy Adventures\n📞 +91 98765 00000`,
+        body: `Dear ${name},\n\nWe hope you are looking forward to your trip with TripBuilt!\n\nYour pickup is scheduled${dateStr}${timeStr}. To ensure your driver reaches you without any delays, we kindly request the following details:\n\n🏨 Hotel Name: ___________________\n🔢 Room Number: ___________________\n📍 Hotel Address (if available): ___________________\n\nPlease reply to this email at your earliest convenience. Our driver will arrive 10 minutes early.\n\nThank you!\nTeam TripBuilt\n📞 +91 98765 00000`,
       };
     }
 
     if (locationType === "airport") {
       return {
         subject,
-        body: `Dear ${name},\n\nYour airport pickup is scheduled${dateStr}${timeStr}. Please share the following details:\n\n✈️ Flight Number: ___________________\n🏢 Terminal: ___________________\n⏰ Landing Time: ___________________\n📍 Arrival Gate: ___________________\n\nYour driver will be at the arrivals gate with a name board. In case of flight delays, please inform us via this email or call +91 98765 00000.\n\nSafe travels!\nTeam GoBuddy Adventures`,
+        body: `Dear ${name},\n\nYour airport pickup is scheduled${dateStr}${timeStr}. Please share the following details:\n\n✈️ Flight Number: ___________________\n🏢 Terminal: ___________________\n⏰ Landing Time: ___________________\n📍 Arrival Gate: ___________________\n\nYour driver will be at the arrivals gate with a name board. In case of flight delays, please inform us via this email or call +91 98765 00000.\n\nSafe travels!\nTeam TripBuilt`,
       };
     }
 
     return {
       subject,
-      body: `Dear ${name},\n\nYour pickup is scheduled${dateStr}${timeStr}.\n\nCould you please share your exact pickup address? This helps us provide accurate navigation to your driver.\n\n📍 Address: ${customAddress || "___________________"}\n\nAlternatively, you can share a Google Maps link in your reply.\n\nThank you!\nTeam GoBuddy Adventures\n📞 +91 98765 00000`,
+      body: `Dear ${name},\n\nYour pickup is scheduled${dateStr}${timeStr}.\n\nCould you please share your exact pickup address? This helps us provide accurate navigation to your driver.\n\n📍 Address: ${customAddress || "___________________"}\n\nAlternatively, you can share a Google Maps link in your reply.\n\nThank you!\nTeam TripBuilt\n📞 +91 98765 00000`,
     };
   }
 

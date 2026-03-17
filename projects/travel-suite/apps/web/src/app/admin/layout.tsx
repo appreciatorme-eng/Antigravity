@@ -1,7 +1,7 @@
 /**
  * Admin Panel Layout
  *
- * Updated to match GoBuddy Adventures design system
+ * Updated to match TripBuilt design system
  * Features glassmorphism, unified colors (#00d084, #124ea2)
  */
 

@@ -48,7 +48,7 @@ type DraftRow = Database["public"]["Tables"]["whatsapp_proposal_drafts"]["Row"];
 const DRAFT_COLUMNS =
   "id, organization_id, chatbot_session_id, client_id, template_id, traveler_name, traveler_phone, traveler_email, destination, travel_dates, trip_start_date, trip_end_date, group_size, budget_inr, title, status, source_context, created_at, updated_at" as const;
 
-const DRAFT_PLACEHOLDER_DOMAIN = "lead.antigravity.invalid";
+const DRAFT_PLACEHOLDER_DOMAIN = "lead.tripbuilt.invalid";
 
 function normalizePhone(phone: string) {
   const digits = phone.replace(/\D/g, "");

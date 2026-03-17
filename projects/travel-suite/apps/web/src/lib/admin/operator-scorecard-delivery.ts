@@ -82,7 +82,7 @@ export async function deliverOperatorScorecard(args: {
     actions: payload.actions,
     revenueLabel: `₹${Math.round(payload.metrics.revenueInr).toLocaleString("en-IN")}`,
     approvalRateLabel: `${payload.metrics.approvalRate}%`,
-    dashboardUrl: `${env.app.url || "https://app.antigravity.travel"}/admin`,
+    dashboardUrl: `${env.app.url || "https://app.tripbuilt.com"}/admin`,
     attachment: {
       filename: scorecardFilename(payload),
       content: pdfBuffer,

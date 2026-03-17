@@ -41,7 +41,7 @@ describe("OrganizationTab", () => {
   it("renders official name input", () => {
     render(<OrganizationTab {...defaultProps} />);
     expect(screen.getByText("Official Name")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("Travel Suite Elite")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("TripBuilt Elite")).toBeInTheDocument();
   });
 
   it("renders website domain input", () => {

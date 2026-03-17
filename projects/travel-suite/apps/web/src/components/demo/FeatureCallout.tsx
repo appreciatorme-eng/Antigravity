@@ -8,7 +8,7 @@ import { X, Lightbulb } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDemoMode } from "@/lib/demo/demo-mode-context";
 
-const LS_PREFIX = "antigravity:feature_callout_dismissed:";
+const LS_PREFIX = "tripbuilt:feature_callout_dismissed:";
 
 /** Per-page demo tips keyed by page identifier */
 const PAGE_TIPS: Record<string, { tip: string; emoji: string }> = {

@@ -90,7 +90,7 @@ export function BeforeAfterInteractive({ oldWayItems, newWayItems }: BeforeAfter
       ref={containerRef}
       className="relative w-full max-w-5xl mx-auto min-h-[340px] md:min-h-[500px] rounded-[20px] md:rounded-[40px] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)] border border-white/5 select-none"
     >
-      {/* --- BACKGROUND LAYER: TRAVELBUILT (The Good Way) --- */}
+      {/* --- BACKGROUND LAYER: TRIPBUILT (The Good Way) --- */}
       {/* Positioned to fill the right side conceptually, but it physically fills the whole container and the Old Way covers it on the left */}
       <div className="absolute inset-0 bg-[#0A0A0A] p-4 md:p-8 lg:p-12 flex flex-col justify-center overflow-hidden">
         {/* Futuristic Grid Background */}
@@ -118,7 +118,7 @@ export function BeforeAfterInteractive({ oldWayItems, newWayItems }: BeforeAfter
                 <CheckCircle2 size={32} className="hidden md:block" />
               </motion.div>
               <h3 className="text-lg md:text-4xl font-black bg-gradient-to-r from-[#00F0FF] to-[#A259FF] bg-clip-text text-transparent drop-shadow-[0_0_15px_rgba(0,240,255,0.4)]">
-                TravelBuilt
+                TripBuilt
               </h3>
             </div>
             <div className="space-y-3 md:space-y-8">

@@ -216,7 +216,7 @@ export async function GET(
     const document = React.createElement(ProposalDocument, {
       proposal: proposalData,
       addOns: formattedAddOns,
-      organizationName: proposalOrganization?.name || 'Travel Suite',
+      organizationName: proposalOrganization?.name || 'TripBuilt',
       organizationLogo: proposalOrganization?.logo_url || null,
       primaryColor: proposalOrganization?.primary_color || '#00d084',
     }) as unknown as React.ReactElement<DocumentProps>;

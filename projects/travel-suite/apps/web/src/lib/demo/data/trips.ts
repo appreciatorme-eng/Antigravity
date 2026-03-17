@@ -1,4 +1,4 @@
-// Demo Mode — 10 hardcoded GoBuddy Adventures trips matching the EnrichedTrip shape.
+// Demo Mode — 10 hardcoded TripBuilt trips matching the EnrichedTrip shape.
 // Returned by useTrips() when isDemoMode is true; zero DB reads required.
 
 interface DemoTrip {

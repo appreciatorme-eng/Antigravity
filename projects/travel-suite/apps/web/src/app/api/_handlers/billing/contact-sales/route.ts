@@ -2,9 +2,9 @@ import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { fetchWithRetry } from "@/lib/network/retry";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { logError } from "@/lib/observability/logger";
+import { sendContactSalesConfirmation } from "@/lib/email/notifications";
 
 const ContactSalesSchema = z.object({
   target_tier: z.enum(["pro", "business", "enterprise"]),
@@ -13,55 +13,6 @@ const ContactSalesSchema = z.object({
   email: z.string().trim().email(),
   message: z.string().trim().min(8).max(1000),
 });
-
-async function sendConfirmationEmail(params: {
-  email: string;
-  name: string;
-  organizationName: string;
-  targetTier: string;
-}) {
-  const apiKey = process.env.RESEND_API_KEY;
-  const fromEmail =
-    process.env.RESEND_FROM_EMAIL ||
-    process.env.WELCOME_FROM_EMAIL ||
-    process.env.PROPOSAL_FROM_EMAIL;
-
-  if (!apiKey || !fromEmail) {
-    return { success: false, skipped: true };
-  }
-
-  const response = await fetchWithRetry(
-    "https://api.resend.com/emails",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: fromEmail,
-        to: params.email,
-        subject: `Travel Suite ${params.targetTier} upgrade request received`,
-        html: `
-          <div style="font-family:Inter,system-ui,sans-serif;line-height:1.6;color:#0f172a;">
-            <h2 style="margin-bottom:12px;">We received your upgrade request</h2>
-            <p>Hi ${params.name},</p>
-            <p>Thanks for your interest in the <strong>${params.targetTier}</strong> plan for <strong>${params.organizationName}</strong>.</p>
-            <p>Our team will review your request and follow up with the next steps shortly.</p>
-            <p style="color:#64748b;font-size:13px;">If this request was sent by mistake, you can ignore this email.</p>
-          </div>
-        `,
-      }),
-    },
-    {
-      retries: 2,
-      timeoutMs: 8000,
-      baseDelayMs: 300,
-    }
-  );
-
-  return { success: response.ok, skipped: false };
-}
 
 export async function POST(request: Request) {
   try {
@@ -162,12 +113,18 @@ export async function POST(request: Request) {
       created_by: profile.id,
     });
 
-    const emailResult = await sendConfirmationEmail({
-      email: parsed.data.email,
-      name: parsed.data.name,
-      organizationName: organization.name || "your agency",
-      targetTier: parsed.data.target_tier,
-    });
+    let emailResult: { success: boolean; skipped: boolean };
+    try {
+      const sent = await sendContactSalesConfirmation({
+        to: parsed.data.email,
+        name: parsed.data.name,
+        organizationName: organization.name || "your agency",
+        targetTier: parsed.data.target_tier,
+      });
+      emailResult = { success: sent, skipped: false };
+    } catch {
+      emailResult = { success: false, skipped: false };
+    }
 
     return apiSuccess({
       requested: true,

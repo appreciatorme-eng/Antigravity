@@ -303,7 +303,7 @@ export default function Sidebar({ className }: SidebarProps) {
                                 className="flex flex-col overflow-hidden"
                             >
                                 <span className="font-bold text-white text-sm truncate leading-tight">
-                                    GoBuddy Adventures
+                                    TripBuilt
                                 </span>
                                 <span className="text-[10px] text-slate-500 font-medium tracking-wide">
                                     PREMIUM SAAS

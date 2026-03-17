@@ -22,7 +22,7 @@ import { logError } from "@/lib/observability/logger";
 
 // Demo-only: realistic-looking QR payload that renders a visible code without real WA auth
 const DEMO_QR_PAYLOAD =
-    "2@GkT8mXpL1qBn7cJe4sWrY0vZhOi9FdAu=,H3NkRpSv6bQcMwUlKz+XoYtGfEeDb/JmIn2=,demo-gobuddy-qr-preview-only";
+    "2@GkT8mXpL1qBn7cJe4sWrY0vZhOi9FdAu=,H3NkRpSv6bQcMwUlKz+XoYtGfEeDb/JmIn2=,demo-tripbuilt-qr-preview-only";
 
 interface WhatsAppConnectModalProps {
     isOpen: boolean;
@@ -107,7 +107,7 @@ export function WhatsAppConnectModal({
 
         setBusinessProfile({
             number: "+91 98765 43210",
-            name: "GoBuddy Adventures",
+            name: "TripBuilt",
         });
         setStep("connected");
         onConnected();
@@ -441,7 +441,7 @@ export function WhatsAppConnectModal({
                                                 </p>
                                                 <p className="text-[11px] text-slate-500 dark:text-slate-400">
                                                     Once active, all client messages appear in
-                                                    your TravelSuite inbox automatically.
+                                                    your TripBuilt inbox automatically.
                                                 </p>
                                             </div>
                                         </div>
@@ -465,7 +465,7 @@ export function WhatsAppConnectModal({
                                             className="w-full bg-[#25D366] hover:bg-[#20bd5a] text-white border-transparent shadow-lg shadow-[#25D366]/20"
                                             onClick={() => {
                                                 window.open(
-                                                    "mailto:support@gobuddytravel.com?subject=WhatsApp%20QR%20Setup%20Request",
+                                                    "mailto:support@tripbuilt.com?subject=WhatsApp%20QR%20Setup%20Request",
                                                     "_blank"
                                                 );
                                             }}

@@ -60,7 +60,7 @@ const TIER_ORDER: TierName[] = ["free", "pro", "business", "enterprise"];
 const FAQ_ITEMS = [
   {
     q: "Can I pay via UPI?",
-    a: "Yes. Travel Suite uses Razorpay when self-serve checkout is enabled, including UPI, cards, and net banking.",
+    a: "Yes. TripBuilt uses Razorpay when self-serve checkout is enabled, including UPI, cards, and net banking.",
   },
   {
     q: "What happens if self-serve billing is not live for my workspace?",
@@ -186,7 +186,7 @@ export function BillingPageClient() {
   const supportPhone = normalizeSupportPhone(data?.support_whatsapp_number || null);
   const supportHref = supportPhone
     ? `https://wa.me/${supportPhone}?text=${encodeURIComponent(
-        "Hi, I want to discuss a Travel Suite plan upgrade."
+        "Hi, I want to discuss a TripBuilt plan upgrade."
       )}`
     : null;
 

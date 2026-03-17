@@ -83,7 +83,7 @@ export const PRICING_FAQS: FAQ[] = [
   {
     question: 'Does it support international payments?',
     answer:
-      'Yes, TravelBuilt integrates with global payment gateways like Stripe and Razorpay, supporting 135+ currencies.',
+      'Yes, TripBuilt integrates with global payment gateways like Stripe and Razorpay, supporting 135+ currencies.',
   },
   {
     question: 'Can I cancel my subscription anytime?',

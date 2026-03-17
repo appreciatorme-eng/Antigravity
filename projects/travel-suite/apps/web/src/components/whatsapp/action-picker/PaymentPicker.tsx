@@ -79,11 +79,11 @@ export function PaymentPicker({
           amount: formattedAmount,
           due_date: formattedDue,
           booking_id: bookingId,
-          upi_id: "gobuddy@paytm",
-          payment_link: `https://gobuddy.in/pay/${bookingId.toLowerCase()}`,
+          upi_id: "tripbuilt@paytm",
+          payment_link: `https://tripbuilt.com/pay/${bookingId.toLowerCase()}`,
           bank_account: "50200012345678",
           bank_ifsc: "HDFC0001234",
-          company_name: "GoBuddy Adventures",
+          company_name: "TripBuilt",
         }),
       };
     }
@@ -99,7 +99,7 @@ export function PaymentPicker({
 
     return {
       subject: `Payment Request — ${selectedTrip.name} — ${formattedAmount}`,
-      body: `Dear ${contact.name},\n\nThis is a payment request for your upcoming trip with GoBuddy Adventures.\n\n📋 Trip: ${selectedTrip.name}\n🔖 Booking ID: ${bookingId}\n💰 Amount: ${formattedAmount} (${paymentLabel})\n📅 Due By: ${formattedDue}\n\n━━━━━━━━━━━━━━━━━━━━━\nPAYMENT OPTIONS\n━━━━━━━━━━━━━━━━━━━━━\n\n🏦 Bank Transfer:\nAccount: 50200012345678\nIFSC: HDFC0001234\nName: GoBuddy Adventures\n\n📱 UPI: gobuddy@paytm\n\n🔗 Pay Online: https://gobuddy.in/pay/${bookingId.toLowerCase()}\n\nKindly share the payment screenshot after transfer. For any queries, reply to this email or call +91 98765 00000.\n\nThank you!\nTeam GoBuddy Adventures`,
+      body: `Dear ${contact.name},\n\nThis is a payment request for your upcoming trip with TripBuilt.\n\n📋 Trip: ${selectedTrip.name}\n🔖 Booking ID: ${bookingId}\n💰 Amount: ${formattedAmount} (${paymentLabel})\n📅 Due By: ${formattedDue}\n\n━━━━━━━━━━━━━━━━━━━━━\nPAYMENT OPTIONS\n━━━━━━━━━━━━━━━━━━━━━\n\n🏦 Bank Transfer:\nAccount: 50200012345678\nIFSC: HDFC0001234\nName: TripBuilt\n\n📱 UPI: tripbuilt@paytm\n\n🔗 Pay Online: https://tripbuilt.com/pay/${bookingId.toLowerCase()}\n\nKindly share the payment screenshot after transfer. For any queries, reply to this email or call +91 98765 00000.\n\nThank you!\nTeam TripBuilt`,
     };
   }
 

@@ -14,6 +14,7 @@ import {
 } from '@/lib/integrations';
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import { logError } from "@/lib/observability/logger";
+import { sendProposalPdfNotification } from "@/lib/email/notifications";
 
 const SendPdfSchema = z.object({
   proposal_id: z.string().uuid(),
@@ -72,43 +73,17 @@ export async function POST(request: Request) {
       return apiError('Proposal not found', 404);
     }
 
-    const resendApiKey = process.env.RESEND_API_KEY;
-    const senderEmail = process.env.WELCOME_FROM_EMAIL;
-    if (!resendApiKey || !senderEmail) {
-      return apiError('Email provider is not configured (RESEND_API_KEY / WELCOME_FROM_EMAIL missing)', 503);
-    }
-
     const attachmentBase64 = normalizeBase64(pdf_base64);
-    const emailResponse = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${resendApiKey}`,
-        'Content-Type': 'application/json',
+    const sent = await sendProposalPdfNotification({
+      to: client_email,
+      proposalTitle: proposal_title,
+      attachment: {
+        filename: `${proposal_title.replace(/\s+/g, "_")}_Proposal.pdf`,
+        content: attachmentBase64,
       },
-      body: JSON.stringify({
-        from: senderEmail,
-        to: [client_email],
-        subject: `Your Travel Proposal: ${proposal_title}`,
-        html: `
-          <h1>Your Personalized Travel Proposal</h1>
-          <p>Please find attached your proposal for <strong>${proposal_title}</strong>.</p>
-          <p>Reply to this email if you want us to customize anything before approval.</p>
-        `,
-        attachments: [
-          {
-            filename: `${proposal_title.replace(/\s+/g, "_")}_Proposal.pdf`,
-            content: attachmentBase64,
-          },
-        ],
-      }),
     });
 
-    if (!emailResponse.ok) {
-      const rawBody = await emailResponse.json().catch(() => ({}));
-      logError("[proposals/send-pdf] Resend API failure", {
-        status: emailResponse.status,
-        body: rawBody,
-      });
+    if (!sent) {
       return apiError("Failed to send email", 502);
     }
 

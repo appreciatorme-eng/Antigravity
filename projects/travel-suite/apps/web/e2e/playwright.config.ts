@@ -14,7 +14,7 @@ const resolvedBaseUrl =
   process.env.PLAYWRIGHT_BASE_URL || process.env.BASE_URL || 'http://127.0.0.1:3100';
 
 /**
- * GoBuddy Adventures - Playwright E2E Test Configuration
+ * TripBuilt - Playwright E2E Test Configuration
  * @see https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({

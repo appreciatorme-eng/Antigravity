@@ -12,7 +12,7 @@ test.describe('Admin Create Flows (prod)', () => {
 
     const uniq = Date.now();
     const clientName = `E2E Client ${uniq}`;
-    const clientEmail = `e2e-client-${uniq}@gobuddy.test`;
+    const clientEmail = `e2e-client-${uniq}@tripbuilt.test`;
     const templateName = `E2E Template ${uniq}`;
     const templateDestination = 'Dubai, UAE';
 

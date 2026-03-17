@@ -86,7 +86,7 @@ export default function UsageDashboard() {
         <div className="flex items-center gap-2">
           <BarChart3 className="w-4 h-4 text-indigo-500" />
           <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
-            GoBuddy Assistant Usage
+            TripBuilt Assistant Usage
           </h3>
         </div>
         <span className={cn("text-[11px] font-medium px-2 py-0.5 rounded-full", tierColor)}>

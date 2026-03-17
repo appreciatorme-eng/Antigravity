@@ -25,7 +25,7 @@ const cormorant = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
-  title: "GoBuddy Adventures | Premium Tour Operator Suite",
+  title: "TripBuilt | Premium Tour Operator Suite",
   description: "Enterprise-grade AI-Powered Travel Planning and Operations Management",
   manifest: "/manifest.json",
   icons: {
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "TourOS",
+    title: "TripBuilt",
   },
 };
 
@@ -78,7 +78,7 @@ export default async function RootLayout({
         <meta name="theme-color" content="#6366f1" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="TourOS" />
+        <meta name="apple-mobile-web-app-title" content="TripBuilt" />
         <link rel="apple-touch-icon" href="/icons/pwa-192.png" />
       </head>
       <body

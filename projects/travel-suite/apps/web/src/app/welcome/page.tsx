@@ -22,7 +22,7 @@ export default function WelcomePage() {
 
                 {/* Main Title */}
                 <h1 className="text-6xl md:text-7xl font-serif text-secondary mb-6 tracking-tight leading-tight drop-shadow-sm">
-                    GoBuddy <span className="text-primary bg-clip-text text-transparent bg-gradient-to-r from-primary to-emerald-500">Adventures</span>
+                    Trip<span className="text-primary bg-clip-text text-transparent bg-gradient-to-r from-primary to-emerald-500">Built</span>
                 </h1>
 
                 <p className="text-xl md:text-2xl text-gray-600 mb-10 max-w-2xl mx-auto font-light leading-relaxed">

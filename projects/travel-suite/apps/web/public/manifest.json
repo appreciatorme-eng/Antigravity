@@ -1,6 +1,6 @@
 {
-  "name": "Antigravity Trip Portal",
-  "short_name": "Trip Portal",
+  "name": "TripBuilt",
+  "short_name": "TripBuilt",
   "description": "Open your personalised trip itinerary, payment status, and operator details on the go.",
   "start_url": "/",
   "display": "standalone",

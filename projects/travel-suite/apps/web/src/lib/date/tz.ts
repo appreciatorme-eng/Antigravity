@@ -1,5 +1,5 @@
 export const DEFAULT_APP_TIMEZONE = "Asia/Kolkata";
-export const TIMEZONE_STORAGE_KEY = "travel-suite.user-timezone";
+export const TIMEZONE_STORAGE_KEY = "tripbuilt.user-timezone";
 
 const FALLBACK_TIMEZONES = [
   "Asia/Kolkata",

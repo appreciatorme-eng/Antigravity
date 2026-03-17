@@ -64,7 +64,7 @@ export function InteractiveDemo() {
                             <div className="w-3 h-3 rounded-full bg-green-500/80" />
                         </div>
                         <div className="flex-grow text-center text-xs text-gray-500 font-medium font-mono">
-                            TravelBuilt_OS_Sandbox
+                            TripBuilt_OS_Sandbox
                         </div>
                         {step === 2 && (
                             <button onClick={resetDemo} className="text-xs text-[#00F0FF] hover:underline">
@@ -233,7 +233,7 @@ export function InteractiveDemo() {
                                             <div className="flex items-center justify-between p-4 bg-[#1A1A1A] border border-white/10 rounded-2xl">
                                                 <div className="flex items-center gap-3 overflow-hidden">
                                                     <Search size={18} className="text-gray-500 shrink-0" />
-                                                    <span className="text-sm text-gray-300 truncate">travelbuilt.com/p/{destination.toLowerCase().replace(/\s+/g, '-')}-xyz123</span>
+                                                    <span className="text-sm text-gray-300 truncate">tripbuilt.com/p/{destination.toLowerCase().replace(/\s+/g, '-')}-xyz123</span>
                                                 </div>
                                                 <button className="p-2 ml-4 rounded-lg hover:bg-white/10 text-gray-400 transition-colors shrink-0">
                                                     <Copy size={16} />

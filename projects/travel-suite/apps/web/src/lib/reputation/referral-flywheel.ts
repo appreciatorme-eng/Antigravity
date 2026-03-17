@@ -5,7 +5,7 @@
 
 import { logError } from "@/lib/observability/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { fetchWithRetry } from "@/lib/network/retry";
+import { sendReferralPromoterNotification } from "@/lib/email/notifications";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "";
 const DEFAULT_REWARD_INR = 500;
@@ -18,70 +18,6 @@ interface PromoterFollowupInput {
   clientEmail: string | null;
   reviewLink: string | null;
   campaignSendId: string;
-}
-
-async function sendPromoterEmail(
-  toEmail: string,
-  recipientName: string,
-  reviewLink: string | null,
-  referralUrl: string,
-  rewardAmountInr: number
-): Promise<void> {
-  const resendApiKey = process.env.RESEND_API_KEY;
-  const senderEmail =
-    process.env.PROPOSAL_FROM_EMAIL ||
-    process.env.WELCOME_FROM_EMAIL ||
-    process.env.RESEND_FROM_EMAIL;
-
-  if (!resendApiKey || !senderEmail) return;
-
-  const reviewSection = reviewLink
-    ? `<p>Your feedback means the world to us. We'd be grateful if you could share it publicly:</p>
-       <p>
-         <a href="${reviewLink}" style="display:inline-block;padding:10px 20px;background:#0f766e;color:#fff;text-decoration:none;border-radius:8px;">
-           Leave a Review
-         </a>
-       </p>`
-    : "";
-
-  const html = `
-    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;line-height:1.6;max-width:600px;">
-      <h2>Thank you, ${recipientName}! 🙏</h2>
-      <p>We're thrilled you had a great experience with us. Your satisfaction is what drives everything we do.</p>
-      ${reviewSection}
-      <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;" />
-      <h3>Earn ₹${rewardAmountInr.toLocaleString("en-IN")} for every friend you refer</h3>
-      <p>Know someone who loves travel? Share your personal referral link and earn a reward when they complete their first booking.</p>
-      <p>
-        <a href="${referralUrl}" style="display:inline-block;padding:10px 20px;background:#0369a1;color:#fff;text-decoration:none;border-radius:8px;">
-          Share Your Referral Link
-        </a>
-      </p>
-      <p style="color:#64748b;font-size:13px;">Or copy: <a href="${referralUrl}" style="color:#0369a1;">${referralUrl}</a></p>
-      <p style="color:#94a3b8;font-size:12px;margin-top:24px;">
-        Reward is subject to your friend completing a paid booking.
-        TDS deduction applies per income tax rules if annual rewards exceed ₹10,000.
-      </p>
-    </div>
-  `;
-
-  await fetchWithRetry(
-    "https://api.resend.com/emails",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${resendApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: senderEmail,
-        to: [toEmail],
-        subject: "Thank you! + Earn ₹" + rewardAmountInr.toLocaleString("en-IN") + " by referring a friend",
-        html,
-      }),
-    },
-    { retries: 2, timeoutMs: 8000, baseDelayMs: 300 }
-  );
 }
 
 async function computeTdsFlag(
@@ -126,13 +62,13 @@ export async function firePromoterFollowup(input: PromoterFollowupInput): Promis
 
     const rewardAmountInr = DEFAULT_REWARD_INR;
 
-    await sendPromoterEmail(
-      clientEmail,
-      clientName ?? "Valued Traveler",
+    await sendReferralPromoterNotification({
+      to: clientEmail,
+      recipientName: clientName ?? "Valued Traveler",
       reviewLink,
       referralUrl,
-      rewardAmountInr
-    );
+      rewardAmountInr,
+    });
   } catch (err) {
     logError("[referral-flywheel] firePromoterFollowup failed", err);
   }

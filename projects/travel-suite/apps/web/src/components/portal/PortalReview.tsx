@@ -22,7 +22,7 @@ export default function PortalReview({
   const [submitted, setSubmitted] = useState(false);
   const [shareMessage, setShareMessage] = useState<string | null>(null);
 
-  const referralLink = `${typeof window !== 'undefined' ? window.location.origin : 'https://touros.in'}/refer?trip=${encodeURIComponent(tripName)}`;
+  const referralLink = `${typeof window !== 'undefined' ? window.location.origin : 'https://tripbuilt.com'}/refer?trip=${encodeURIComponent(tripName)}`;
 
   function handleSubmit() {
     if (rating === 0) return;
