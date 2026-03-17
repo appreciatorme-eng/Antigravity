@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Check, Settings, Save } from "lucide-react";
+import { Check, Settings, Save, Award } from "lucide-react";
 import { normalizeItineraryTemplateId } from "@/components/pdf/itinerary-types";
 import { createClient } from "@/lib/supabase/client";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassFormSkeleton } from "@/components/glass/GlassSkeleton";
+import { GlassCard } from "@/components/glass/GlassCard";
 import { useToast } from "@/components/ui/toast";
+import { Badge } from "@/components/ui/badge";
 import { WhatsAppConnectModal } from "@/components/whatsapp/WhatsAppConnectModal";
 import { BrandingThemeSection } from "./_components/BrandingThemeSection";
 import { OrganizationDetailsSection } from "./_components/OrganizationDetailsSection";
@@ -48,6 +50,7 @@ export default function SettingsPage() {
   const [upiId, setUpiId] = useState('');
   const [isUpiSaved, setIsUpiSaved] = useState(false);
   const [isUpiSaving, setIsUpiSaving] = useState(false);
+  const [contributorBadgeTier, setContributorBadgeTier] = useState<string | null>(null);
 
   useEffect(() => {
     void (async () => {
@@ -200,6 +203,23 @@ export default function SettingsPage() {
       const {
         data: { session },
       } = await supabase.auth.getSession();
+
+      // Fetch contributor badge tier
+      // Note: contributor_badge_tier column added via migration 20260325000003_add_contributor_badges.sql
+      // Types will be regenerated after migration is applied
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("contributor_badge_tier" as never)
+          .eq("id", session.user.id)
+          .maybeSingle();
+
+        const profileRecord = profile as unknown as { contributor_badge_tier?: string } | null;
+        if (profileRecord?.contributor_badge_tier && profileRecord.contributor_badge_tier !== "none") {
+          setContributorBadgeTier(profileRecord.contributor_badge_tier);
+        }
+      }
+
       const rulesResponse = await fetch("/api/admin/workflow/rules", {
         headers: { Authorization: `Bearer ${session?.access_token || ""}` },
       });
@@ -337,6 +357,34 @@ export default function SettingsPage() {
           <p className="mt-1 text-text-secondary">Manage your organization details and application preferences.</p>
         </div>
       </div>
+
+      {contributorBadgeTier && (
+        <GlassCard className="flex items-center gap-4 p-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-600">
+            <Award className="h-6 w-6 text-white" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+              Template Contributor
+            </h3>
+            <p className="text-xs text-slate-600 dark:text-slate-400">
+              You&apos;re earning contributor badges by sharing quality templates with the community
+            </p>
+          </div>
+          <Badge
+            variant="outline"
+            className={`text-xs font-bold uppercase ${
+              contributorBadgeTier === "gold"
+                ? "border-amber-500 bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400"
+                : contributorBadgeTier === "silver"
+                ? "border-slate-400 bg-slate-50 text-slate-700 dark:bg-slate-800/50 dark:text-slate-300"
+                : "border-orange-600 bg-orange-50 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400"
+            }`}
+          >
+            {contributorBadgeTier} Tier
+          </Badge>
+        </GlassCard>
+      )}
 
       <form onSubmit={handleSave} className="space-y-6">
         <OrganizationDetailsSection organization={organization} setOrganization={setOrganization} updateBillingAddressField={updateBillingAddressField} />
