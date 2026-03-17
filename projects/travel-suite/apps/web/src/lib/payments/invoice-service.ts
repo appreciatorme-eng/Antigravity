@@ -6,6 +6,7 @@ import { getPaymentClient, resolveCompanyState, wrapPaymentError } from './payme
 import { logPaymentEvent } from './payment-logger';
 import { ensureCustomer } from './customer-service';
 import { calculateGST } from '../tax/gst-calculator';
+import { registerEInvoice } from '../india/e-invoice-service';
 import type { Database } from '@/lib/database.types';
 import type {
   CreateInvoiceOptions,
@@ -137,6 +138,87 @@ export async function createInvoice(
       },
       context
     );
+
+    // Check if e-invoice generation should be triggered
+    try {
+      const { data: eInvoiceSettings, error: settingsError } = await supabase
+        .from('e_invoice_settings')
+        .select('auto_generate_enabled, threshold_amount')
+        .eq('organization_id', options.organizationId)
+        .maybeSingle();
+
+      if (!settingsError && eInvoiceSettings?.auto_generate_enabled) {
+        const threshold = eInvoiceSettings.threshold_amount || 0;
+
+        // Check if invoice amount meets threshold for e-invoicing
+        if (totalAmount >= threshold) {
+          // Fetch organization details for seller information
+          const { data: orgDetails, error: orgDetailsError } = await supabase
+            .from('organizations')
+            .select('name, billing_address_line1, billing_city, billing_pincode, billing_state')
+            .eq('id', options.organizationId)
+            .single();
+
+          if (!orgDetailsError && orgDetails) {
+            // Extract state code from billing_state (assumes format like "TN" or "Tamil Nadu")
+            const stateCode = orgDetails.billing_state?.length === 2
+              ? orgDetails.billing_state
+              : companyState;
+
+            // For B2C invoices or when client details are not available, use default buyer details
+            const buyerDetails = {
+              legalName: 'Customer',
+              address1: 'Address Line 1',
+              location: orgDetails.billing_city || 'City',
+              pincode: parseInt(orgDetails.billing_pincode ?? '', 10) || 600001,
+              stateCode: customerState.length === 2 ? customerState : stateCode,
+            };
+
+            // Attempt to register e-invoice
+            await registerEInvoice(
+              {
+                invoiceId: invoice.id,
+                sellerDetails: {
+                  legalName: orgDetails.name || org.name,
+                  address1: String(orgDetails.billing_address_line1 || 'Address Line 1'),
+                  location: orgDetails.billing_city || 'City',
+                  pincode: parseInt(orgDetails.billing_pincode ?? '', 10) || 600001,
+                  stateCode,
+                },
+                buyerDetails,
+                items: options.items?.map(item => ({
+                  description: item.description,
+                  quantity: item.quantity || 1,
+                  unitPrice: item.amount / (item.quantity || 1),
+                  amount: item.amount,
+                })),
+              },
+              execution
+            );
+          }
+        }
+      }
+    } catch (eInvoiceError) {
+      // Log the error but don't fail the invoice creation
+      // E-invoice can be generated later from the dashboard if automatic generation fails
+      await logPaymentEvent(
+        supabase,
+        {
+          organizationId: options.organizationId,
+          invoiceId: invoice.id,
+          eventType: 'e_invoice.auto_generation_failed',
+          status: 'failed',
+          errorDescription:
+            eInvoiceError instanceof Error
+              ? eInvoiceError.message
+              : 'Unknown error during e-invoice generation',
+          metadata: {
+            error: eInvoiceError instanceof Error ? eInvoiceError.message : String(eInvoiceError)
+          },
+        },
+        context
+      );
+    }
 
     return invoice.id;
   } catch (error) {

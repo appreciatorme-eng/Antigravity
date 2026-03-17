@@ -1,5 +1,5 @@
 import React from "react";
-import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
+import { Document, Image, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
 
 export type InvoicePdfTemplate = "executive" | "obsidian" | "heritage";
 
@@ -51,6 +51,8 @@ export interface InvoicePdfData {
   place_of_supply?: string | null;
   sac_code?: string | null;
   notes?: string | null;
+  irn?: string | null;
+  qr_code_data?: string | null;
   line_items: InvoicePdfLineItem[];
   organization_snapshot?: InvoicePdfSnapshot | null;
   client_snapshot?: InvoicePdfClientSnapshot | null;
@@ -198,6 +200,22 @@ export function InvoiceDocument({ invoice, template = "executive" }: InvoiceDocu
           <View style={styles.notesBlock}>
             <Text style={styles.sectionLabel}>Notes</Text>
             <Text style={styles.notesText}>{invoice.notes}</Text>
+          </View>
+        ) : null}
+
+        {invoice.irn && invoice.qr_code_data ? (
+          <View style={styles.eInvoiceSection}>
+            <View style={styles.qrCodeContainer}>
+              {/* eslint-disable-next-line jsx-a11y/alt-text */}
+              <Image
+                src={invoice.qr_code_data.startsWith('data:') ? invoice.qr_code_data : `data:image/png;base64,${invoice.qr_code_data}`}
+                style={styles.qrCode}
+              />
+              <View style={styles.irnContainer}>
+                <Text style={styles.irnLabel}>IRN:</Text>
+                <Text style={styles.irnText}>{invoice.irn}</Text>
+              </View>
+            </View>
           </View>
         ) : null}
 
@@ -430,6 +448,41 @@ function buildStyles(theme: { accent: string; muted: string; heading: string; st
       color: theme.muted,
       fontSize: 9,
       lineHeight: 1.5,
+    },
+    eInvoiceSection: {
+      marginTop: 16,
+      borderTopWidth: 1,
+      borderTopColor: "#e2e8f0",
+      paddingTop: 12,
+      paddingBottom: 8,
+      alignItems: "center",
+    },
+    qrCodeContainer: {
+      alignItems: "center",
+      gap: 6,
+    },
+    qrCode: {
+      width: 100,
+      height: 100,
+    },
+    irnContainer: {
+      maxWidth: 420,
+      alignItems: "center",
+    },
+    irnLabel: {
+      fontSize: 7,
+      color: theme.muted,
+      textTransform: "uppercase",
+      letterSpacing: 1,
+      marginBottom: 2,
+    },
+    irnText: {
+      fontSize: 8,
+      color: theme.heading,
+      fontFamily: "Courier",
+      letterSpacing: 0.5,
+      textAlign: "center",
+      wordBreak: "break-all",
     },
     footer: {
       marginTop: 16,

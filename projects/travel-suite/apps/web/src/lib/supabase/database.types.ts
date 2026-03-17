@@ -299,6 +299,54 @@ export type Database = {
           },
         ]
       }
+      blog_posts: {
+        Row: {
+          author_name: string
+          category: string
+          content: string
+          cover_image: string | null
+          created_at: string | null
+          excerpt: string
+          id: string
+          published: boolean | null
+          published_at: string | null
+          slug: string
+          tags: string[] | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          author_name?: string
+          category?: string
+          content: string
+          cover_image?: string | null
+          created_at?: string | null
+          excerpt: string
+          id?: string
+          published?: boolean | null
+          published_at?: string | null
+          slug: string
+          tags?: string[] | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          author_name?: string
+          category?: string
+          content?: string
+          cover_image?: string | null
+          created_at?: string | null
+          excerpt?: string
+          id?: string
+          published?: boolean | null
+          published_at?: string | null
+          slug?: string
+          tags?: string[] | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       calendar_events: {
         Row: {
           all_day: boolean | null
@@ -1041,6 +1089,56 @@ export type Database = {
           },
         ]
       }
+      e_invoice_settings: {
+        Row: {
+          auto_generate_enabled: boolean
+          created_at: string | null
+          gstin: string
+          id: string
+          irp_api_key_encrypted: string | null
+          irp_password_encrypted: string | null
+          irp_username: string | null
+          organization_id: string
+          sandbox_mode: boolean
+          threshold_amount: number
+          updated_at: string | null
+        }
+        Insert: {
+          auto_generate_enabled?: boolean
+          created_at?: string | null
+          gstin: string
+          id?: string
+          irp_api_key_encrypted?: string | null
+          irp_password_encrypted?: string | null
+          irp_username?: string | null
+          organization_id: string
+          sandbox_mode?: boolean
+          threshold_amount?: number
+          updated_at?: string | null
+        }
+        Update: {
+          auto_generate_enabled?: boolean
+          created_at?: string | null
+          gstin?: string
+          id?: string
+          irp_api_key_encrypted?: string | null
+          irp_password_encrypted?: string | null
+          irp_username?: string | null
+          organization_id?: string
+          sandbox_mode?: boolean
+          threshold_amount?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "e_invoice_settings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       external_drivers: {
         Row: {
           created_at: string | null
@@ -1093,67 +1191,6 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      expense_receipts: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          id: string
-          ocr_confidence: number | null
-          ocr_extracted_amount: number | null
-          ocr_raw_response: Json | null
-          organization_id: string
-          receipt_url: string
-          trip_service_cost_id: string | null
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          ocr_confidence?: number | null
-          ocr_extracted_amount?: number | null
-          ocr_raw_response?: Json | null
-          organization_id: string
-          receipt_url: string
-          trip_service_cost_id?: string | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          ocr_confidence?: number | null
-          ocr_extracted_amount?: number | null
-          ocr_raw_response?: Json | null
-          organization_id?: string
-          receipt_url?: string
-          trip_service_cost_id?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "expense_receipts_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "expense_receipts_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "expense_receipts_trip_service_cost_id_fkey"
-            columns: ["trip_service_cost_id"]
-            isOneToOne: false
-            referencedRelation: "trip_service_costs"
             referencedColumns: ["id"]
           },
         ]
@@ -1298,56 +1335,6 @@ export type Database = {
             foreignKeyName: "invoice_payments_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      e_invoice_settings: {
-        Row: {
-          auto_generate_enabled: boolean | null
-          created_at: string | null
-          gstin: string | null
-          id: string
-          irp_api_key_encrypted: string | null
-          irp_password_encrypted: string | null
-          irp_username: string | null
-          organization_id: string
-          sandbox_mode: boolean | null
-          threshold_amount: number | null
-          updated_at: string | null
-        }
-        Insert: {
-          auto_generate_enabled?: boolean | null
-          created_at?: string | null
-          gstin?: string | null
-          id?: string
-          irp_api_key_encrypted?: string | null
-          irp_password_encrypted?: string | null
-          irp_username?: string | null
-          organization_id: string
-          sandbox_mode?: boolean | null
-          threshold_amount?: number | null
-          updated_at?: string | null
-        }
-        Update: {
-          auto_generate_enabled?: boolean | null
-          created_at?: string | null
-          gstin?: string | null
-          id?: string
-          irp_api_key_encrypted?: string | null
-          irp_password_encrypted?: string | null
-          irp_username?: string | null
-          organization_id?: string
-          sandbox_mode?: boolean | null
-          threshold_amount?: number | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "e_invoice_settings_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: true
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -6983,3 +6970,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+

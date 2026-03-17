@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { GlassButton } from '@/components/glass/GlassButton';
-import { User, Bell, Link2, CreditCard, Shield, Globe, Users, PlayCircle } from 'lucide-react';
+import { User, Bell, Link2, CreditCard, Shield, Globe, Users, FileText, PlayCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import { WhatsAppConnectModal } from '@/components/whatsapp/WhatsAppConnectModal';
@@ -18,6 +18,7 @@ import { IntegrationsTab } from './_components/IntegrationsTab';
 import { SecurityTab } from './_components/SecurityTab';
 import { TeamTab } from './_components/TeamTab';
 import { PlaceholderTab } from './_components/PlaceholderTab';
+import { EInvoicingTab } from './_components/EInvoicingTab';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 
 export default function SettingsPage() {
@@ -37,6 +38,7 @@ export default function SettingsPage() {
         { id: 'profile', label: t('tabs.profile'), icon: User },
         { id: 'notifications', label: t('tabs.notifications'), icon: Bell },
         { id: 'integrations', label: t('tabs.integrations'), icon: Link2 },
+        { id: 'e-invoicing', label: 'E-Invoicing', icon: FileText },
         { id: 'billing', label: t('tabs.billing'), icon: CreditCard },
         { id: 'security', label: t('tabs.security'), icon: Shield },
         { id: 'team', label: t('tabs.team'), icon: Users },
@@ -231,6 +233,8 @@ export default function SettingsPage() {
                                     onDisconnectWhatsApp={() => { void handleDisconnectWhatsApp(); }}
                                 />
                             )}
+
+                            {activeTab === 'e-invoicing' && <EInvoicingTab />}
 
                             {activeTab === 'security' && <SecurityTab />}
 

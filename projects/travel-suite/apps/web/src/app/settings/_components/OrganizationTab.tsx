@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { GlassButton } from '@/components/glass/GlassButton';
 import { getTimezoneDisplayName } from '@/lib/date/tz';
+import { validateGSTIN } from '@/lib/tax/gst-calculator';
 
 export interface OrganizationTabProps {
     readonly draftTimezone: string;
@@ -10,6 +12,21 @@ export interface OrganizationTabProps {
 }
 
 export function OrganizationTab({ draftTimezone, loading, onSave }: OrganizationTabProps) {
+    const [gstin, setGstin] = useState('');
+    const [gstinError, setGstinError] = useState<string | null>(null);
+
+    const handleGstinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value.toUpperCase().replace(/\s/g, '');
+        setGstin(value);
+
+        // Validate GSTIN format if value is not empty
+        if (value && !validateGSTIN(value)) {
+            setGstinError('Invalid GSTIN format (e.g., 27AABCU9603R1ZX)');
+        } else {
+            setGstinError(null);
+        }
+    };
+
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="border-b border-gray-100 pb-4">
@@ -25,6 +42,30 @@ export function OrganizationTab({ draftTimezone, loading, onSave }: Organization
                 <div className="space-y-2">
                     <label className="text-xs font-bold uppercase tracking-widest text-text-secondary">Website Domain</label>
                     <input type="text" defaultValue="www.tripbuilt.app" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-secondary" />
+                </div>
+                <div className="space-y-2">
+                    <label className="text-xs font-bold uppercase tracking-widest text-text-secondary">GSTIN</label>
+                    <input
+                        type="text"
+                        value={gstin}
+                        onChange={handleGstinChange}
+                        placeholder="27AABCU9603R1ZX"
+                        maxLength={15}
+                        className={`w-full bg-gray-50 border rounded-xl px-4 py-3 focus:ring-2 outline-none text-secondary ${
+                            gstinError
+                                ? 'border-red-300 focus:ring-red-100 focus:border-red-400'
+                                : 'border-gray-200 focus:ring-primary/20 focus:border-primary'
+                        }`}
+                    />
+                    {gstinError && (
+                        <p className="text-xs text-red-600">{gstinError}</p>
+                    )}
+                    {!gstinError && gstin && (
+                        <p className="text-xs text-green-600">✓ Valid GSTIN format</p>
+                    )}
+                    <p className="text-xs text-text-muted">
+                        GST Identification Number for tax compliance and e-invoicing
+                    </p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -58,5 +99,4 @@ export function OrganizationTab({ draftTimezone, loading, onSave }: Organization
             </div>
         </div>
     );
-}
 }
