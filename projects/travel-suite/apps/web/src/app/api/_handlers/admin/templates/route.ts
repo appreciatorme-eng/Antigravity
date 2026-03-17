@@ -4,6 +4,7 @@ import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { resolveDemoOrg, blockDemoMutation } from "@/lib/auth/demo-org-resolver";
 import { passesMutationCsrfGuard } from "@/lib/security/admin-mutation-csrf";
+import { updateContributorBadge } from "@/lib/templates/badges";
 
 const TEMPLATES_READ_RATE_LIMIT_MAX = 120;
 const TEMPLATES_READ_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
@@ -292,6 +293,13 @@ export async function POST(req: NextRequest) {
                 { status: 400 }
             );
         }
+
+        // Update contributor badge tier for the organization
+        // This runs asynchronously - failure doesn't block template creation
+        await updateContributorBadge({
+            organizationId: admin.organizationId,
+            adminClient: admin.adminClient,
+        });
 
         return NextResponse.json({ template }, { status: 201 });
     } catch (err) {
