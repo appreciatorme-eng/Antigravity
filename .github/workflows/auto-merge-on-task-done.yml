@@ -1,0 +1,139 @@
+# Auto-Merge PR on Task Done
+# Automatically merges GitHub pull requests when associated roadmap tasks are marked as "done"
+# Includes safety gates: CI status verification and review approval validation
+
+name: Auto-Merge PR on Task Done
+
+on:
+  # Manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      task_id:
+        description: 'Task ID from roadmap (e.g., 027)'
+        required: true
+        type: string
+      pr_number:
+        description: 'Pull request number to merge'
+        required: true
+        type: number
+
+  # External automation trigger (for future integration with task management systems)
+  repository_dispatch:
+    types: [task_done]
+
+concurrency:
+  group: auto-merge-${{ github.event.inputs.pr_number || github.event.client_payload.pr_number }}
+  cancel-in-progress: false
+
+jobs:
+  auto-merge:
+    name: Auto-Merge PR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate inputs
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const taskId = '${{ github.event.inputs.task_id || github.event.client_payload.task_id }}';
+            const prNumber = parseInt('${{ github.event.inputs.pr_number || github.event.client_payload.pr_number }}', 10);
+
+            core.info(`📋 Task ID: ${taskId}`);
+            core.info(`🔀 PR Number: ${prNumber}`);
+
+            if (!taskId || taskId === 'undefined') {
+              core.setFailed('❌ Task ID is required');
+              return;
+            }
+
+            if (!prNumber || isNaN(prNumber)) {
+              core.setFailed('❌ Valid PR number is required');
+              return;
+            }
+
+            core.info('✅ Inputs validated');
+
+      - name: Check merge safety
+        id: safety-check
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const checkMergeSafety = require('./.github/scripts/check-merge-safety.js');
+            const prNumber = parseInt('${{ github.event.inputs.pr_number || github.event.client_payload.pr_number }}', 10);
+
+            core.info('🔍 Running merge safety checks...');
+
+            const result = await checkMergeSafety({
+              github,
+              context,
+              core,
+              prNumber
+            });
+
+            if (result.alreadyMerged) {
+              core.info('✅ PR is already merged - skipping merge execution');
+              core.setOutput('already_merged', 'true');
+              return;
+            }
+
+            if (!result.safe) {
+              core.setFailed(`❌ Merge safety check failed: ${result.reason || 'Unknown reason'}`);
+              return;
+            }
+
+            core.info('✅ All safety checks passed');
+            core.setOutput('already_merged', 'false');
+
+      - name: Execute merge
+        if: steps.safety-check.outputs.already_merged != 'true'
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const executeMerge = require('./.github/scripts/execute-merge.js');
+            const prNumber = parseInt('${{ github.event.inputs.pr_number || github.event.client_payload.pr_number }}', 10);
+            const taskId = '${{ github.event.inputs.task_id || github.event.client_payload.task_id }}';
+
+            core.info(`🚀 Executing merge for PR #${prNumber} (task ${taskId})...`);
+
+            const result = await executeMerge({
+              github,
+              context,
+              core,
+              prNumber
+            });
+
+            if (result.alreadyMerged) {
+              core.info('✅ PR was already merged (idempotent check)');
+              return;
+            }
+
+            if (!result.success) {
+              core.setFailed(`❌ Merge execution failed: ${result.reason || 'Unknown reason'}`);
+              return;
+            }
+
+            core.info(`✅ Successfully merged PR #${prNumber} to main`);
+            core.notice(`🎉 Auto-merged PR #${prNumber} for task ${taskId}`);
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Auto-Merge Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Task ID:** ${{ github.event.inputs.task_id || github.event.client_payload.task_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "**PR Number:** #${{ github.event.inputs.pr_number || github.event.client_payload.pr_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ Merge completed successfully" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Merge failed - check workflow logs for details" >> $GITHUB_STEP_SUMMARY
+          fi
