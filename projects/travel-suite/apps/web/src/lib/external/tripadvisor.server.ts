@@ -30,7 +30,7 @@ export async function getTripAdvisorLocationDetails(
 ): Promise<TripAdvisorLocation> {
     const url = `${TA_BASE}/location/${locationId}/details?key=${apiKey}&language=en&currency=USD`;
     const res = await fetch(url, {
-        headers: { Accept: 'application/json', Referer: 'https://travelsuite.app' },
+        headers: { Accept: 'application/json', Referer: 'https://tripbuilt.app' },
     });
 
     if (!res.ok) {
@@ -48,7 +48,7 @@ export async function getTripAdvisorReviews(
 ): Promise<TripAdvisorReview[]> {
     const url = `${TA_BASE}/location/${locationId}/reviews?key=${apiKey}&language=en&limit=${limit}`;
     const res = await fetch(url, {
-        headers: { Accept: 'application/json', Referer: 'https://travelsuite.app' },
+        headers: { Accept: 'application/json', Referer: 'https://tripbuilt.app' },
     });
 
     if (!res.ok) {
@@ -58,4 +58,6 @@ export async function getTripAdvisorReviews(
 
     const data = (await res.json()) as { data?: TripAdvisorReview[] };
     return data.data ?? [];
+}
+;
 }

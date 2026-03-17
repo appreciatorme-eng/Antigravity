@@ -18,7 +18,7 @@ const UrbanBriefHeroPage = ({ itinerary, branding, accent, coverImage, activityC
           <Text style={urbanStyles.contacts}>
             {branding.contactPhone ? `Phone: ${branding.contactPhone}` : 'Phone: available on request'}
             {'\n'}
-            {branding.contactEmail || 'Email: support@travelsuite.app'}
+            {branding.contactEmail || 'Email: support@tripbuilt.app'}
           </Text>
         </View>
         {branding.logoUrl ? <Image src={branding.logoUrl} style={urbanStyles.logo} /> : null}
@@ -168,3 +168,4 @@ export const UrbanBriefPages = ({ itinerary, branding }: TemplateRendererProps) 
     </>
   );
 };
+;
