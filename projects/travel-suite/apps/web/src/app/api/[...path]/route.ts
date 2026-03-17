@@ -5,6 +5,7 @@ export const maxDuration = 60;
 const routes = createCatchAllHandlers([
   // H-01: Rate limit config added to main catch-all
   ["ai/draft-review-response", () => import("@/app/api/_handlers/ai/draft-review-response/route")],
+  ["ai/pricing-feedback", () => import("@/app/api/_handlers/ai/pricing-feedback/route")],
   ["ai/pricing-suggestion", () => import("@/app/api/_handlers/ai/pricing-suggestion/route")],
   ["ai/suggest-reply", () => import("@/app/api/_handlers/ai/suggest-reply/route")],
   ["add-ons/stats", () => import("@/app/api/_handlers/add-ons/stats/route")],
