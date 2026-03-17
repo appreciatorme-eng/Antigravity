@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Zap,
@@ -21,6 +21,8 @@ import {
   Bell,
   ArrowRight,
   TrendingUp,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 
 interface AutomationRule {
@@ -35,9 +37,121 @@ interface AutomationRule {
   category: 'booking' | 'trip' | 'payment' | 'lead' | 'driver';
   icon: string;
   timeSaved?: string; // per week
+  rule_type?: string;
 }
 
-const INITIAL_RULES: AutomationRule[] = [
+// API response types
+interface ApiAutomationRule {
+  id?: string;
+  rule_type: string;
+  enabled: boolean;
+  trigger_config?: unknown;
+  action_config?: unknown;
+  created_at?: string;
+  updated_at?: string;
+  template: {
+    name: string;
+    description: string;
+    category: string;
+    trigger_config?: unknown;
+    action_config?: unknown;
+    stop_conditions?: unknown[];
+  } | null;
+}
+
+interface ApiResponse {
+  success: boolean;
+  data: {
+    rules: ApiAutomationRule[];
+    templates: unknown[];
+  };
+}
+
+// Map API category to UI category
+function mapApiCategory(apiCategory: string): AutomationRule['category'] {
+  const mapping: Record<string, AutomationRule['category']> = {
+    sales: 'lead',
+    operations: 'trip',
+    customer_success: 'booking',
+  };
+  return mapping[apiCategory] || 'booking';
+}
+
+// Map rule_type to icon
+function getRuleIcon(ruleType: string): string {
+  const icons: Record<string, string> = {
+    proposal_followup: '👋',
+    payment_reminder: '💳',
+    review_request: '⭐',
+    trip_countdown: '📅',
+  };
+  return icons[ruleType] || '✨';
+}
+
+// Format trigger description
+function getTriggerDescription(ruleType: string): string {
+  const descriptions: Record<string, string> = {
+    proposal_followup: '24 hours after proposal sent',
+    payment_reminder: '3 days before payment due',
+    review_request: '24 hours after trip completion',
+    trip_countdown: 'Configurable days before trip',
+  };
+  return descriptions[ruleType] || 'Trigger condition';
+}
+
+// Format action description
+function getActionDescription(ruleType: string): string {
+  const descriptions: Record<string, string> = {
+    proposal_followup: 'Send follow-up via WhatsApp',
+    payment_reminder: 'Send payment reminder',
+    review_request: 'Request review',
+    trip_countdown: 'Send countdown message',
+  };
+  return descriptions[ruleType] || 'Send message';
+}
+
+// Fallback mock data for demo purposes (only used if API fails)
+const FALLBACK_RULES: AutomationRule[] = [
+  {
+    id: 'proposal_followup',
+    name: 'Proposal Follow-Up',
+    description: 'Send WhatsApp follow-up 24 hours after proposal is sent if client hasn\'t viewed it',
+    trigger: '24 hours after proposal sent',
+    action: 'Send follow-up via WhatsApp',
+    enabled: false,
+    category: 'lead',
+    icon: '👋',
+  },
+  {
+    id: 'payment_reminder',
+    name: 'Payment Reminder',
+    description: 'Send automated reminder 3 days before payment due date',
+    trigger: '3 days before payment due',
+    action: 'Send payment reminder',
+    enabled: false,
+    category: 'payment',
+    icon: '💳',
+  },
+  {
+    id: 'review_request',
+    name: 'Review Request',
+    description: 'Request review 24 hours after trip completion',
+    trigger: '24 hours after trip completion',
+    action: 'Request review',
+    enabled: false,
+    category: 'booking',
+    icon: '⭐',
+  },
+  {
+    id: 'trip_countdown',
+    name: 'Trip Countdown',
+    description: 'Send countdown messages before trip start',
+    trigger: 'Configurable days before trip',
+    action: 'Send countdown message',
+    enabled: false,
+    category: 'trip',
+    icon: '📅',
+  },
   {
     id: 'auto_confirm_booking',
     name: 'Auto-confirm Booking',
@@ -294,10 +408,12 @@ function RuleCard({
   rule,
   onToggle,
   onView,
+  isToggling,
 }: {
   rule: AutomationRule;
   onToggle: (id: string) => void;
   onView: (rule: AutomationRule) => void;
+  isToggling?: boolean;
 }) {
   const catColor = CATEGORY_COLORS[rule.category];
 
@@ -375,15 +491,22 @@ function RuleCard({
           {/* Toggle */}
           <button
             onClick={() => onToggle(rule.id)}
-            className={`relative w-11 h-6 rounded-full transition-colors ${
+            disabled={isToggling}
+            className={`relative w-11 h-6 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
               rule.enabled ? 'bg-[#25D366]' : 'bg-slate-700'
             }`}
           >
-            <div
-              className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${
-                rule.enabled ? 'left-6' : 'left-1'
-              }`}
-            />
+            {isToggling ? (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Loader2 className="w-3 h-3 text-white animate-spin" />
+              </div>
+            ) : (
+              <div
+                className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${
+                  rule.enabled ? 'left-6' : 'left-1'
+                }`}
+              />
+            )}
           </button>
           <button
             onClick={() => onView(rule)}
@@ -536,15 +659,87 @@ function CreateRuleModal({ onClose }: { onClose: () => void }) {
 }
 
 export function AutomationRules() {
-  const [rules, setRules] = useState<AutomationRule[]>(INITIAL_RULES);
+  const [rules, setRules] = useState<AutomationRule[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [filterCategory, setFilterCategory] = useState<AutomationRule['category'] | 'all'>('all');
   const [viewRule, setViewRule] = useState<AutomationRule | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [toggling, setToggling] = useState<string | null>(null);
 
-  function handleToggle(id: string) {
-    setRules((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, enabled: !r.enabled } : r))
-    );
+  // Fetch rules from API
+  useEffect(() => {
+    async function fetchRules() {
+      try {
+        setLoading(true);
+        setError(null);
+        const res = await fetch('/api/admin/automation/rules');
+        const data = await res.json() as ApiResponse;
+
+        if (!res.ok || !data.success) {
+          throw new Error('Failed to fetch automation rules');
+        }
+
+        // Map API rules to UI format
+        const mappedRules: AutomationRule[] = data.data.rules.map((rule) => ({
+          id: rule.id || rule.rule_type,
+          rule_type: rule.rule_type,
+          name: rule.template?.name || 'Untitled Rule',
+          description: rule.template?.description || '',
+          trigger: getTriggerDescription(rule.rule_type),
+          action: getActionDescription(rule.rule_type),
+          enabled: rule.enabled,
+          category: mapApiCategory(rule.template?.category || 'operations'),
+          icon: getRuleIcon(rule.rule_type),
+          lastTriggered: undefined,
+          triggerCount: undefined,
+          timeSaved: undefined,
+        }));
+
+        setRules(mappedRules);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load rules');
+        setRules(FALLBACK_RULES);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    void fetchRules();
+  }, []);
+
+  async function handleToggle(id: string) {
+    const rule = rules.find((r) => r.id === id);
+    if (!rule || !rule.rule_type) return;
+
+    try {
+      setToggling(id);
+      const newEnabledState = !rule.enabled;
+
+      const res = await fetch('/api/admin/automation/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rule_type: rule.rule_type,
+          enabled: newEnabledState,
+        }),
+      });
+
+      const data = await res.json() as { success: boolean; data?: { message?: string } };
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.data?.message || 'Failed to toggle rule');
+      }
+
+      // Optimistically update UI
+      setRules((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, enabled: newEnabledState } : r))
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to toggle rule');
+    } finally {
+      setToggling(null);
+    }
   }
 
   const enabledCount = rules.filter((r) => r.enabled).length;
@@ -577,8 +772,38 @@ export function AutomationRules() {
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      {/* Stats bar */}
-      <div className="shrink-0 grid grid-cols-3 gap-3 p-4 border-b border-white/10">
+      {/* Loading state */}
+      {loading && (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 text-[#25D366] animate-spin mx-auto mb-3" />
+            <p className="text-sm text-slate-400">Loading automation rules...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Error state */}
+      {error && !loading && (
+        <div className="mx-4 mt-4 p-4 rounded-xl bg-red-500/10 border border-red-500/20 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-red-400">Error loading rules</p>
+            <p className="text-xs text-red-400/80 mt-1">{error}</p>
+          </div>
+          <button
+            onClick={() => window.location.reload()}
+            className="text-xs text-red-400 hover:text-red-300 font-medium"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* Main content */}
+      {!loading && (
+        <>
+          {/* Stats bar */}
+          <div className="shrink-0 grid grid-cols-3 gap-3 p-4 border-b border-white/10">
         <div className="rounded-xl bg-[#25D366]/10 border border-[#25D366]/20 p-3 text-center">
           <p className="text-2xl font-black text-[#25D366]">{enabledCount}</p>
           <p className="text-[10px] text-slate-400 font-medium mt-0.5">Active Rules</p>
@@ -636,6 +861,7 @@ export function AutomationRules() {
               rule={rule}
               onToggle={handleToggle}
               onView={setViewRule}
+              isToggling={toggling === rule.id}
             />
           ))}
         </div>
@@ -695,15 +921,21 @@ export function AutomationRules() {
               </div>
               <div className="flex gap-2">
                 <button
-                  onClick={() => { handleToggle(viewRule.id); setViewRule(null); }}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                  onClick={() => { void handleToggle(viewRule.id); setViewRule(null); }}
+                  disabled={toggling === viewRule.id}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                     viewRule.enabled
                       ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
                       : 'bg-[#25D366]/20 text-[#25D366] hover:bg-[#25D366]/30'
                   }`}
                 >
-                  {viewRule.enabled ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                  {viewRule.enabled ? 'Pause Rule' : 'Enable Rule'}
+                  {toggling === viewRule.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : viewRule.enabled ? (
+                    <><Pause className="w-4 h-4" /> Pause Rule</>
+                  ) : (
+                    <><Play className="w-4 h-4" /> Enable Rule</>
+                  )}
                 </button>
                 <button
                   onClick={() => setViewRule(null)}
@@ -716,6 +948,8 @@ export function AutomationRules() {
           </motion.div>
         )}
       </AnimatePresence>
+        </>
+      )}
     </div>
   );
 }
