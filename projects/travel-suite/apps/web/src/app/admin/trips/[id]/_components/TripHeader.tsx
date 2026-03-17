@@ -12,6 +12,7 @@ import {
     Save,
     Bell,
     CopyPlus,
+    BookTemplate,
 } from "lucide-react";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassInput, GlassTextarea } from "@/components/glass/GlassInput";
@@ -30,6 +31,7 @@ interface TripHeaderProps {
     onSave: () => void;
     onCreateLiveLink: () => void;
     onRevokeLiveLink: () => void;
+    onPublishAsTemplate?: () => void;
 }
 
 export function TripHeader({
@@ -41,6 +43,7 @@ export function TripHeader({
     onSave,
     onCreateLiveLink,
     onRevokeLiveLink,
+    onPublishAsTemplate,
 }: TripHeaderProps) {
     const [notificationOpen, setNotificationOpen] = useState(false);
     const [notificationTitle, setNotificationTitle] = useState("Trip Update");
@@ -153,6 +156,15 @@ export function TripHeader({
                     <CopyPlus className="h-4 w-4" />
                     Clone Trip
                 </Link>
+                {trip.status === "completed" && onPublishAsTemplate && (
+                    <button
+                        onClick={onPublishAsTemplate}
+                        className="flex items-center gap-2 px-4 py-2 border border-white/20 dark:border-white/10 rounded-lg hover:bg-white/40 dark:bg-white/5 transition-colors text-text-secondary"
+                    >
+                        <BookTemplate className="h-4 w-4" />
+                        Publish as Template
+                    </button>
+                )}
                 <button
                     onClick={onCreateLiveLink}
                     disabled={creatingLiveLink}
