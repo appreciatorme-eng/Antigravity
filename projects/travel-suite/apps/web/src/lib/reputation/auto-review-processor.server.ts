@@ -4,6 +4,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/lib/database.types";
+import { sendNotificationToUser } from "@/lib/notifications";
 import { ensureReviewMarketingAsset } from "@/lib/reputation/review-marketing.server";
 
 type AppSupabaseClient = SupabaseClient<Database>;
@@ -116,6 +117,25 @@ export async function processEligibleReviewForMarketing(options: {
   // Step 4: Generate marketing asset
   try {
     await ensureReviewMarketingAsset({ supabase, reviewId, userId });
+
+    // Step 5: Send notification to operator
+    const notificationResult = await sendNotificationToUser({
+      userId,
+      title: "New 5-star review",
+      body: "Marketing card ready to publish",
+      data: {
+        type: "review_marketing_asset",
+        reviewId,
+      },
+    });
+
+    if (!notificationResult.success) {
+      // Log notification failure but don't fail the whole operation
+      errors.push(
+        `Asset generated but notification failed for review ${reviewId}: ${notificationResult.error || "Unknown error"}`,
+      );
+    }
+
     return { processed: 1, assets_generated: 1, errors };
   } catch (error) {
     const errorMessage =
@@ -209,6 +229,24 @@ export async function processEligibleReviewsForOrganization(options: {
     try {
       await ensureReviewMarketingAsset({ supabase, reviewId: review.id, userId });
       totalAssetsGenerated++;
+
+      // Send notification to operator
+      const notificationResult = await sendNotificationToUser({
+        userId,
+        title: "New 5-star review",
+        body: "Marketing card ready to publish",
+        data: {
+          type: "review_marketing_asset",
+          reviewId: review.id,
+        },
+      });
+
+      if (!notificationResult.success) {
+        // Log notification failure but don't fail the whole operation
+        errors.push(
+          `Asset generated but notification failed for review ${review.id}: ${notificationResult.error || "Unknown error"}`,
+        );
+      }
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error generating asset";
