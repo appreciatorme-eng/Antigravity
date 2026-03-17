@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { Inter, Cormorant_Garamond } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
-import { getMessages } from "next-intl/server";
+import { getLocale, getMessages } from "next-intl/server";
 import "./globals.css";
 import "@/styles/print.css";
 import AppProviders from "@/components/providers/AppProviders";
@@ -48,12 +48,11 @@ export const viewport: Viewport = {
 
 export default async function RootLayout({
   children,
-  params: { locale },
 }: Readonly<{
   children: React.ReactNode;
-  params: { locale: string };
 }>) {
-  // Load messages for the current locale
+  // Get locale from next-intl request config (no [locale] route segment needed)
+  const locale = await getLocale();
   const messages = await getMessages();
 
   // Get text direction for locale (supports RTL languages like Arabic, Urdu)

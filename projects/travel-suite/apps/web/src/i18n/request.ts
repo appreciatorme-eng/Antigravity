@@ -12,20 +12,20 @@
  * ------------------------------------------------------------------ */
 
 import { getRequestConfig } from 'next-intl/server';
-import { notFound } from 'next/navigation';
 import { locales, type Locale } from '@/i18n';
 
-export default getRequestConfig(async ({ locale }) => {
-  // Validate that the incoming `locale` parameter is valid
-  if (!locale || !locales.includes(locale as Locale)) {
-    notFound();
-  }
+export default getRequestConfig(async ({ requestLocale }) => {
+  // In next-intl v4, requestLocale is a promise-like that resolves to the detected locale
+  const requested = await requestLocale;
+  const locale: Locale = (requested && locales.includes(requested as Locale))
+    ? (requested as Locale)
+    : 'en';
 
   // Load messages for the requested locale
   const messages = (await import(`../../messages/${locale}.json`)).default;
 
   return {
-    locale: locale as string,
+    locale,
     messages,
     // Configure time zone (India Standard Time for default, can be overridden)
     timeZone: 'Asia/Kolkata',

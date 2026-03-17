@@ -45,13 +45,13 @@ const MARKETING_PATHS = ["/", "/pricing", "/about", "/blog", "/demo", "/solution
 
 // Create next-intl middleware for locale handling.
 // localeDetection: true enables automatic browser locale detection via Accept-Language header.
-// This is critical for the traveler portal — when travelers visit /portal/[token] without
-// a locale prefix, the middleware detects their browser language and redirects to
-// /[locale]/portal/[token] with the best matching supported locale.
+// localePrefix: "as-needed" avoids adding /en prefix for the default locale — the app directory
+// does not have a [locale] dynamic segment, so "always" would 404 on every locale-prefixed URL.
+// Non-default locales (e.g., /hi/settings) still get a prefix.
 const intlMiddleware = createMiddleware({
     locales,
     defaultLocale,
-    localePrefix: "always",
+    localePrefix: "as-needed",
     localeDetection: true,
 });
 
