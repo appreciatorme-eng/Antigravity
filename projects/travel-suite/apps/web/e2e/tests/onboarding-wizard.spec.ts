@@ -5,7 +5,7 @@ import { gotoWithRetry } from '../fixtures/navigation';
  * Onboarding Wizard E2E Tests
  *
  * Covers the complete enhanced onboarding wizard flow:
- * - New user sees wizard on first login
+ * - Admin user with incomplete onboarding sees wizard
  * - Organization setup step
  * - Sample data loading
  * - Trip creation step
@@ -14,24 +14,32 @@ import { gotoWithRetry } from '../fixtures/navigation';
  * - Payment setup step (skippable)
  * - Wizard completion and PostHog events
  * - Dismiss and resume functionality
+ *
+ * Note: These tests use authenticated admin user with incomplete onboarding (onboarding_step < 2).
+ * The admin.json storage state is created by auth.setup.ts and provides authentication.
  */
 
 test.describe('Onboarding Wizard - New User Flow', () => {
-  test.beforeEach(async ({ page }) => {
-    // Clear storage to simulate new user
-    await page.context().clearCookies();
-    await page.context().clearPermissions();
-  });
-
   test('should display onboarding wizard for new users after registration', async ({ page }) => {
-    await gotoWithRetry(page, '/auth');
-
-    // Check if we're on auth page
-    await expect(page).toHaveURL(/auth/);
-
-    // For existing logged-in test users, go directly to onboarding
-    // (In a real scenario, new users would register first)
+    // Navigate directly to onboarding page
+    // The test runs as authenticated admin user (via storage state) with incomplete onboarding
     await gotoWithRetry(page, '/onboarding');
+
+    // Check if we got redirected to auth (indicates missing authentication)
+    const currentUrl = page.url();
+    if (currentUrl.includes('/auth')) {
+      throw new Error(
+        '❌ Test failed: Redirected to /auth instead of /onboarding\n\n' +
+        'This indicates missing E2E test authentication. To fix:\n' +
+        '1. Create a test admin user via http://localhost:3000/auth\n' +
+        '2. Update e2e/.env with:\n' +
+        '   TEST_ADMIN_EMAIL=your-test-admin@example.com\n' +
+        '   TEST_ADMIN_PASSWORD=your-password\n' +
+        '3. Ensure user has onboarding_step < 2 in database\n' +
+        '4. Re-run tests: npm run test:e2e\n\n' +
+        'See e2e/README.md for detailed setup instructions.'
+      );
+    }
 
     // Verify wizard is displayed
     await expect(page.locator('text=/onboarding|setup|get started/i').first()).toBeVisible({ timeout: 10000 });
