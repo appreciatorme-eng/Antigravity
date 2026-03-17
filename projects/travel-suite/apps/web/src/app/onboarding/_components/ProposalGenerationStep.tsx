@@ -329,8 +329,10 @@ export function ProposalGenerationStep({
           value={proposalTitle}
           onChange={(e) => setProposalTitle(e.target.value)}
           placeholder="e.g. Rajasthan Heritage Tour - John Doe"
-          className="w-full rounded-lg border border-[#eadfcd] px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/25"
+          className="w-full rounded-lg border border-[#eadfcd] px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/25"
+          required
         />
+        <p className="mt-1 text-xs text-[#9c7c46]">Give your proposal a descriptive title that includes the destination and client name</p>
       </div>
 
       <div>
@@ -347,14 +349,15 @@ export function ProposalGenerationStep({
             <button
               type="button"
               onClick={loadData}
-              className="mt-3 inline-flex items-center gap-2 rounded-lg border border-[#dcc9aa] px-3 py-2 text-sm text-[#6f5b3e] hover:bg-[#f8f1e6]"
+              disabled={loading}
+              className="mt-3 inline-flex items-center gap-2 rounded-lg border border-[#dcc9aa] px-3 py-2 text-sm text-[#6f5b3e] transition hover:bg-[#f8f1e6] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <RefreshCw className="h-4 w-4" />
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
               Refresh
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {templates.map((template) => (
               <button
                 key={template.id}
@@ -395,22 +398,22 @@ export function ProposalGenerationStep({
         )}
       </div>
 
-      <div className="flex flex-wrap gap-3 pt-2">
+      <div className="flex flex-col gap-3 pt-2 sm:flex-row">
         <button
           type="button"
           onClick={handleGenerateProposal}
           disabled={generating || !selectedTemplateId || !clientId || templates.length === 0}
-          className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#9c7c46] px-4 py-2.5 text-white transition hover:bg-[#8a6b3d] disabled:opacity-50"
+          className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#9c7c46] px-4 py-2.5 text-white transition hover:bg-[#8a6b3d] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {generating ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Generating...
+              <span>Generating...</span>
             </>
           ) : (
             <>
               <Sparkles className="h-4 w-4" />
-              Generate Proposal
+              <span>Generate Proposal</span>
             </>
           )}
         </button>
@@ -419,10 +422,10 @@ export function ProposalGenerationStep({
           type="button"
           onClick={loadData}
           disabled={loading || generating}
-          className="inline-flex items-center gap-2 rounded-lg border border-[#dcc9aa] px-3 py-2.5 text-[#6f5b3e] hover:bg-[#f8f1e6] disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#dcc9aa] px-3 py-2.5 text-[#6f5b3e] transition hover:bg-[#f8f1e6] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
         >
-          <RefreshCw className="h-4 w-4" />
-          Refresh
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          <span>Refresh</span>
         </button>
       </div>
 

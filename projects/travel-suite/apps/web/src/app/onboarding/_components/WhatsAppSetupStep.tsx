@@ -53,7 +53,7 @@ export function WhatsAppSetupStep({ onConnected }: WhatsAppSetupStepProps) {
       }
     } catch (checkError) {
       console.error('Error checking WhatsApp connection:', checkError);
-      setError('Failed to check WhatsApp connection status');
+      setError('Failed to check WhatsApp connection status. Please refresh the page.');
     } finally {
       setLoading(false);
     }
@@ -76,6 +76,7 @@ export function WhatsAppSetupStep({ onConnected }: WhatsAppSetupStepProps) {
   };
 
   const handleDisconnect = async () => {
+    setError(null);
     try {
       const res = await fetch('/api/whatsapp/disconnect', { method: 'POST' });
       if (!res.ok) throw new Error('Disconnect failed');
@@ -83,7 +84,7 @@ export function WhatsAppSetupStep({ onConnected }: WhatsAppSetupStepProps) {
       setWhatsAppProfile(null);
     } catch (disconnectError) {
       console.error('Error disconnecting WhatsApp:', disconnectError);
-      setError('Failed to disconnect WhatsApp');
+      setError('Failed to disconnect WhatsApp. Please try again or contact support.');
     }
   };
 
@@ -202,23 +203,23 @@ export function WhatsAppSetupStep({ onConnected }: WhatsAppSetupStepProps) {
         </ul>
       </div>
 
-      <div className="flex flex-wrap gap-3 pt-2">
+      <div className="flex flex-col gap-3 pt-2 sm:flex-row">
         <button
           type="button"
           onClick={handleConnectClick}
           className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#9c7c46] px-4 py-2.5 text-white transition hover:bg-[#8a6b3d]"
         >
           <MessageCircle className="h-4 w-4" />
-          Connect WhatsApp
+          <span>Connect WhatsApp</span>
         </button>
 
         <a
           href="https://business.whatsapp.com/"
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center gap-2 rounded-lg border border-[#dcc9aa] px-3 py-2.5 text-[#6f5b3e] hover:bg-[#f8f1e6]"
+          className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#dcc9aa] px-3 py-2.5 text-[#6f5b3e] transition hover:bg-[#f8f1e6] sm:w-auto"
         >
-          Learn More
+          <span>Learn More</span>
           <ExternalLink className="h-4 w-4" />
         </a>
       </div>

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { Calendar, User, Sparkles, Loader2, MapPin, Globe, Clock, Check } from 'lucide-react';
+import { Calendar, User, Sparkles, Loader2, MapPin, Globe, Clock, Check, AlertCircle } from 'lucide-react';
 import type { ItineraryResult } from '@/types/itinerary';
 
 interface SavedItinerary {
@@ -59,6 +59,7 @@ export function TripCreationStep({
   const [isGenerating, setIsGenerating] = useState(false);
   const [loadingRawData, setLoadingRawData] = useState(false);
   const [importMode, setImportMode] = useState<'saved' | 'ai'>('saved');
+  const [error, setError] = useState<string | null>(null);
 
   const fetchClients = useCallback(async () => {
     setLoadingClients(true);
@@ -153,6 +154,7 @@ export function TripCreationStep({
   const handleGenerateAI = async () => {
     if (!aiPrompt) return;
     setIsGenerating(true);
+    setError(null);
     try {
       const daysMatch = aiPrompt.match(/(\d+)\s*days?/i);
       const days = daysMatch ? parseInt(daysMatch[1]) : 3;
@@ -167,8 +169,8 @@ export function TripCreationStep({
       if (!res.ok) throw new Error(data.error || 'Failed to generate');
 
       setGeneratedItinerary(data as ItineraryResult);
-    } catch {
-      // Error handling - UI will show no generated itinerary
+    } catch (genError) {
+      setError(genError instanceof Error ? genError.message : 'Failed to generate itinerary. Please try again or use a saved plan.');
     } finally {
       setIsGenerating(false);
     }
@@ -182,6 +184,18 @@ export function TripCreationStep({
         </p>
       </div>
 
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-red-900">Unable to Generate</p>
+              <p className="mt-1 text-sm text-red-800">{error}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Basic Info */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
@@ -189,27 +203,33 @@ export function TripCreationStep({
             <User className="mr-1 inline-block h-4 w-4" />
             Client *
           </label>
-          <select
-            value={clientId}
-            onChange={(e) => setClientId(e.target.value)}
-            className="w-full rounded-lg border border-[#eadfcd] px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/25"
-            required
-          >
-            <option value="" disabled>
-              Select a client
-            </option>
-            {loadingClients ? (
-              <option disabled>Loading...</option>
-            ) : (
-              clients.map((client) => (
-                <option key={client.id} value={client.id}>
-                  {client.full_name} ({client.email})
-                </option>
-              ))
+          <div className="relative">
+            <select
+              value={clientId}
+              onChange={(e) => setClientId(e.target.value)}
+              disabled={loadingClients}
+              className="w-full rounded-lg border border-[#eadfcd] px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/25 disabled:cursor-not-allowed disabled:opacity-60"
+              required
+            >
+              <option value="" disabled>
+                {loadingClients ? 'Loading clients...' : 'Select a client'}
+              </option>
+              {!loadingClients &&
+                clients.map((client) => (
+                  <option key={client.id} value={client.id}>
+                    {client.full_name} ({client.email})
+                  </option>
+                ))}
+            </select>
+            {loadingClients && (
+              <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
+                <Loader2 className="h-4 w-4 animate-spin text-[#9c7c46]" />
+              </div>
             )}
-          </select>
+          </div>
+          <p className="mt-1 text-xs text-[#9c7c46]">Choose the client for this trip</p>
         </div>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <label className="mb-1.5 block text-sm font-medium text-[#6f5b3e]">
               <Calendar className="mr-1 inline-block h-4 w-4" />
@@ -219,7 +239,7 @@ export function TripCreationStep({
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="w-full rounded-lg border border-[#eadfcd] px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/25"
+              className="w-full rounded-lg border border-[#eadfcd] px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/25"
               required
             />
           </div>
@@ -232,7 +252,8 @@ export function TripCreationStep({
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="w-full rounded-lg border border-[#eadfcd] px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/25"
+              min={startDate}
+              className="w-full rounded-lg border border-[#eadfcd] px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/25"
               required
             />
           </div>
@@ -364,31 +385,41 @@ export function TripCreationStep({
 
           {importMode === 'ai' && (
             <div className="space-y-4 pt-2">
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <input
                   type="text"
                   placeholder="e.g. 7 days in Kyoto for a foodie couple..."
                   value={aiPrompt}
                   onChange={(e) => setAiPrompt(e.target.value)}
-                  className="flex-1 rounded-lg border border-[#eadfcd] bg-white px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/25"
-                  onKeyDown={(e) => e.key === 'Enter' && handleGenerateAI()}
+                  className="flex-1 rounded-lg border border-[#eadfcd] bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/25"
+                  onKeyDown={(e) => e.key === 'Enter' && !isGenerating && aiPrompt && handleGenerateAI()}
+                  disabled={isGenerating}
                 />
                 <button
                   type="button"
                   onClick={handleGenerateAI}
                   disabled={isGenerating || !aiPrompt}
-                  className="shrink-0 rounded-lg bg-[#9c7c46] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#8a6b3d] disabled:opacity-50"
+                  className="shrink-0 rounded-lg bg-[#9c7c46] px-5 py-2.5 text-sm font-medium text-white transition hover:bg-[#8a6b3d] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isGenerating ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <>
+                      <Loader2 className="mr-2 inline-block h-4 w-4 animate-spin" />
+                      <span>Generating...</span>
+                    </>
                   ) : (
                     'Generate'
                   )}
                 </button>
               </div>
-              <p className="text-xs text-[#6f5b3e]">
-                Describe what you want; the AI will structure a complete multi-day itinerary.
-              </p>
+              <div className="rounded-lg border border-[#eadfcd] bg-white p-3">
+                <p className="text-xs font-medium text-[#1b140a]">Tips for better results:</p>
+                <ul className="mt-1.5 space-y-1 text-xs text-[#6f5b3e]">
+                  <li>• Mention the number of days (e.g., &quot;7 days&quot;)</li>
+                  <li>• Specify the destination (e.g., &quot;in Paris&quot;)</li>
+                  <li>• Add traveler preferences (e.g., &quot;for a couple&quot;, &quot;adventure seekers&quot;)</li>
+                  <li>• Include interests (e.g., &quot;cultural sites&quot;, &quot;food tours&quot;, &quot;nature&quot;)</li>
+                </ul>
+              </div>
             </div>
           )}
         </div>

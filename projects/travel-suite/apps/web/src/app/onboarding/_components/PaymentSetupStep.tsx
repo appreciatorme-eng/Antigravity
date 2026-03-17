@@ -34,7 +34,7 @@ export function PaymentSetupStep({ onSaved }: PaymentSetupStepProps) {
       }
     } catch (checkError) {
       console.error('Error checking UPI status:', checkError);
-      setError('Failed to check UPI status');
+      setError('Failed to check UPI status. Please refresh the page.');
     } finally {
       setLoading(false);
     }
@@ -45,8 +45,14 @@ export function PaymentSetupStep({ onSaved }: PaymentSetupStepProps) {
   }, [checkUpiStatus]);
 
   const handleSaveUpi = async () => {
-    if (!upiId.trim()) {
+    const trimmedUpiId = upiId.trim();
+    if (!trimmedUpiId) {
       setError('Please enter a valid UPI ID');
+      return;
+    }
+    // Basic UPI ID validation
+    if (!trimmedUpiId.includes('@') || trimmedUpiId.length < 5) {
+      setError('UPI ID must be in format: yourname@upi or yourname@bankname');
       return;
     }
     setIsUpiSaving(true);
@@ -55,11 +61,11 @@ export function PaymentSetupStep({ onSaved }: PaymentSetupStepProps) {
       const res = await fetch('/api/settings/upi', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ upiId: upiId.trim() }),
+        body: JSON.stringify({ upiId: trimmedUpiId }),
       });
       const data = (await res.json()) as { success?: boolean; error?: string };
       if (!res.ok || !data.success) {
-        setError(data.error ?? 'Failed to save UPI ID');
+        setError(data.error ?? 'Failed to save UPI ID. Please try again.');
         return;
       }
       setIsUpiSaved(true);
@@ -68,7 +74,7 @@ export function PaymentSetupStep({ onSaved }: PaymentSetupStepProps) {
       }
     } catch (saveError) {
       console.error('Error saving UPI ID:', saveError);
-      setError('Failed to save UPI ID');
+      setError('Failed to save UPI ID. Please check your connection and try again.');
     } finally {
       setIsUpiSaving(false);
     }
@@ -190,13 +196,15 @@ export function PaymentSetupStep({ onSaved }: PaymentSetupStepProps) {
 
       <div className="rounded-xl border border-[#eadfcd] bg-white p-4">
         <h4 className="mb-3 text-sm font-semibold text-[#1b140a]">Enter Your UPI ID:</h4>
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <input
             type="text"
             value={upiId}
             onChange={(e) => setUpiId(e.target.value)}
             placeholder="yourname@upi or yourname@bank"
             className="flex-1 rounded-xl border border-[#dcc9aa] bg-white px-4 py-2.5 text-sm focus:border-[#9c7c46] focus:outline-none focus:ring-2 focus:ring-[#9c7c46]/20"
+            disabled={isUpiSaving}
+            onKeyDown={(e) => e.key === 'Enter' && !isUpiSaving && upiId.trim() && handleSaveUpi()}
           />
           <button
             type="button"
@@ -204,11 +212,19 @@ export function PaymentSetupStep({ onSaved }: PaymentSetupStepProps) {
               void handleSaveUpi();
             }}
             disabled={isUpiSaving || !upiId.trim()}
-            className="rounded-lg bg-[#9c7c46] px-5 py-2.5 text-sm text-white transition hover:bg-[#8a6b3d] disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg bg-[#9c7c46] px-5 py-2.5 text-sm text-white transition hover:bg-[#8a6b3d] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
           >
-            {isUpiSaving ? 'Saving...' : 'Save'}
+            {isUpiSaving ? (
+              <>
+                <Loader2 className="mr-2 inline-block h-4 w-4 animate-spin" />
+                <span>Saving...</span>
+              </>
+            ) : (
+              'Save'
+            )}
           </button>
         </div>
+        <p className="mt-2 text-xs text-[#9c7c46]">Example: myname@paytm, business@oksbi, shop@icici</p>
       </div>
 
       <div className="flex flex-wrap gap-3 pt-2">
@@ -216,9 +232,9 @@ export function PaymentSetupStep({ onSaved }: PaymentSetupStepProps) {
           href="https://razorpay.com/docs/payments/payment-links/"
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center gap-2 rounded-lg border border-[#dcc9aa] px-3 py-2.5 text-[#6f5b3e] hover:bg-[#f8f1e6]"
+          className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#dcc9aa] px-3 py-2.5 text-sm text-[#6f5b3e] transition hover:bg-[#f8f1e6]"
         >
-          Learn About Razorpay Payment Links
+          <span>Learn About Razorpay Payment Links</span>
           <ExternalLink className="h-4 w-4" />
         </a>
       </div>
