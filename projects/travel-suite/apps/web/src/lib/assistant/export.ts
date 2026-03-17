@@ -148,7 +148,7 @@ export function generateCSVExport(
 
   const timestamp = new Date().toISOString().slice(0, 10);
   const prefix = actionName ? actionName.replace(/_/g, "-") : "export";
-  const filename = `gobuddy-${prefix}-${timestamp}.csv`;
+  const filename = `tripbuilt-${prefix}-${timestamp}.csv`;
 
   return {
     csv,

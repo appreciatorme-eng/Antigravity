@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------------
- * Dynamic system-prompt builder for the GoBuddy operations assistant.
+ * Dynamic system-prompt builder for the TripBuilt operations assistant.
  *
  * Pure functions only -- no side effects, no mutations.
  * ------------------------------------------------------------------ */
@@ -118,7 +118,7 @@ export function buildSystemPrompt(
     : "";
 
   // Static section: identical for every org and every call (maximises prefix caching)
-  const staticSection = `You are GoBuddy, an AI business operations assistant built for tour operators.
+  const staticSection = `You are TripBuilt, an AI business operations assistant built for tour operators.
 
 ## Your Role
 You help tour operators run their daily business quickly and confidently.

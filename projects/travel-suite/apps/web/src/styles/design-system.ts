@@ -1,5 +1,5 @@
 /**
- * GoBuddy Adventures Design System
+ * TripBuilt Design System
  *
  * Unified design tokens matching the mobile app (Flutter)
  * Primary: #00d084 (Vivid Green)

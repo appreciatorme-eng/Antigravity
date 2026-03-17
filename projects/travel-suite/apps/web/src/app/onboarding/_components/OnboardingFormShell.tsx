@@ -9,6 +9,7 @@ import {
   SkipForward,
   X,
 } from 'lucide-react';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import {
   FIRST_VALUE_STEP,
   REVIEW_STEP,

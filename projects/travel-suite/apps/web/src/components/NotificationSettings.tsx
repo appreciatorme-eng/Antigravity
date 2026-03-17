@@ -268,7 +268,7 @@ export default function NotificationSettings() {
       <div className="p-6 bg-blue-50 border-t border-blue-200">
         <h3 className="text-sm font-bold text-blue-900 mb-2">💡 How Notifications Work</h3>
         <ul className="text-sm text-blue-800 space-y-1">
-          <li>• Notifications appear even when Travel Suite is closed</li>
+          <li>• Notifications appear even when TripBuilt is closed</li>
           <li>• Click a notification to open the relevant proposal</li>
           <li>• Works on desktop and mobile devices</li>
           <li>• You can change these settings anytime</li>

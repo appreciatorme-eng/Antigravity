@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------------
- * Proposal write actions for the GoBuddy assistant.
+ * Proposal write actions for the TripBuilt assistant.
  *
  * Actions: send_proposal, convert_proposal_to_trip
  *

@@ -65,14 +65,14 @@ export function DriverPicker({
           vehicle_number: selected.vehicleNumber,
           pickup_time: time,
           pickup_location: pickup,
-          company_name: "GoBuddy Adventures",
+          company_name: "TripBuilt",
         }),
       };
     }
 
     return {
       subject: `Driver Assignment — ${selected.name} for ${trip}`,
-      body: `Dear ${contact.name},\n\nWe are pleased to share your driver details for ${trip}.\n\n━━━━━━━━━━━━━━━━━━━━━\nYOUR DRIVER\n━━━━━━━━━━━━━━━━━━━━━\n\n👤 Name: ${selected.name}\n📞 Phone: ${selected.phone}\n🚗 Vehicle: ${selected.vehicle}\n🔢 Number: ${selected.vehicleNumber}\n⭐ Rating: ${selected.rating}/5.0\n\n━━━━━━━━━━━━━━━━━━━━━\nPICKUP DETAILS\n━━━━━━━━━━━━━━━━━━━━━\n\n⏰ Pickup Time: ${time}\n📍 Pickup Location: ${pickup}\n\nYour driver will call you 30 minutes before pickup. You can also contact them directly on the number above.\n\nHave a wonderful journey! 🌟\n\nWarm regards,\nTeam GoBuddy Adventures\n📞 +91 98765 00000`,
+      body: `Dear ${contact.name},\n\nWe are pleased to share your driver details for ${trip}.\n\n━━━━━━━━━━━━━━━━━━━━━\nYOUR DRIVER\n━━━━━━━━━━━━━━━━━━━━━\n\n👤 Name: ${selected.name}\n📞 Phone: ${selected.phone}\n🚗 Vehicle: ${selected.vehicle}\n🔢 Number: ${selected.vehicleNumber}\n⭐ Rating: ${selected.rating}/5.0\n\n━━━━━━━━━━━━━━━━━━━━━\nPICKUP DETAILS\n━━━━━━━━━━━━━━━━━━━━━\n\n⏰ Pickup Time: ${time}\n📍 Pickup Location: ${pickup}\n\nYour driver will call you 30 minutes before pickup. You can also contact them directly on the number above.\n\nHave a wonderful journey! 🌟\n\nWarm regards,\nTeam TripBuilt\n📞 +91 98765 00000`,
     };
   }
 

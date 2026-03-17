@@ -35,7 +35,7 @@ vi.mock("@/lib/config/env", () => ({
     resend: {
       apiKey: undefined,
       fromEmail: undefined,
-      fromName: "Antigravity Travel",
+      fromName: "TripBuilt",
     },
     sentry: {
       dsn: undefined,

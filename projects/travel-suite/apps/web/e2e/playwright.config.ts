@@ -20,7 +20,7 @@ const adminAuthPath = path.join(__dirname, '.auth', 'admin.json');
 const hasAdminAuth = fs.existsSync(adminAuthPath);
 
 /**
- * GoBuddy Adventures - Playwright E2E Test Configuration
+ * TripBuilt - Playwright E2E Test Configuration
  * @see https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({

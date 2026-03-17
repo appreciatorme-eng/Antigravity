@@ -574,6 +574,25 @@ out center tags 80;
         }
     };
 
+    const handlePublishAsTemplate = async () => {
+        if (!trip || !tripId) return;
+
+        try {
+            toast({
+                title: "Publishing template",
+                description: "This feature will be available soon",
+                variant: "info",
+            });
+        } catch (error) {
+            console.error("Publish template error:", error);
+            toast({
+                title: "Publish failed",
+                description: "Failed to publish template",
+                variant: "error",
+            });
+        }
+    };
+
     // --- WhatsApp ---
 
     const getWhatsAppLinkForDay = (dayNumber: number) => {
@@ -636,6 +655,7 @@ out center tags 80;
                 onSave={saveChanges}
                 onCreateLiveLink={createLiveLocationShare}
                 onRevokeLiveLink={revokeLiveLocationShare}
+                onPublishAsTemplate={handlePublishAsTemplate}
             />
 
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">

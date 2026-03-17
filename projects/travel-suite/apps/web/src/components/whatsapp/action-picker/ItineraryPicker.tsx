@@ -53,15 +53,15 @@ export function ItineraryPicker({
           duration: selected.duration,
           pax_count: String(selected.pax),
           itinerary_summary: selected.itinerarySummary,
-          itinerary_link: `https://gobuddy.in/trip/${selected.bookingId.toLowerCase()}`,
-          company_name: "GoBuddy Adventures",
+          itinerary_link: `https://tripbuilt.com/trip/${selected.bookingId.toLowerCase()}`,
+          company_name: "TripBuilt",
         }),
       };
     }
 
     return {
       subject: `Your ${selected.destination} Trip Itinerary — ${selected.startDate}–${selected.endDate}`,
-      body: `Dear ${contact.name},\n\nWe are pleased to share your day-wise itinerary for the upcoming trip.\n\n📋 Trip: ${selected.name}\n📅 Dates: ${selected.startDate} – ${selected.endDate} (${selected.duration})\n👥 Guests: ${selected.pax} person${selected.pax > 1 ? "s" : ""}\n🏨 Stay: ${selected.hotel}\n🔖 Booking ID: ${selected.bookingId}\n\n━━━━━━━━━━━━━━━━━━━━━\nDAY-WISE ITINERARY\n━━━━━━━━━━━━━━━━━━━━━\n${selected.itinerarySummary}\n\nYour full itinerary with vouchers is available at:\nhttps://gobuddy.in/trip/${selected.bookingId.toLowerCase()}\n\nPlease review and let us know if you need any changes. We are happy to customise!\n\nWarm regards,\nTeam GoBuddy Adventures\n📞 +91 98765 00000 | gobuddy.in`,
+      body: `Dear ${contact.name},\n\nWe are pleased to share your day-wise itinerary for the upcoming trip.\n\n📋 Trip: ${selected.name}\n📅 Dates: ${selected.startDate} – ${selected.endDate} (${selected.duration})\n👥 Guests: ${selected.pax} person${selected.pax > 1 ? "s" : ""}\n🏨 Stay: ${selected.hotel}\n🔖 Booking ID: ${selected.bookingId}\n\n━━━━━━━━━━━━━━━━━━━━━\nDAY-WISE ITINERARY\n━━━━━━━━━━━━━━━━━━━━━\n${selected.itinerarySummary}\n\nYour full itinerary with vouchers is available at:\nhttps://tripbuilt.com/trip/${selected.bookingId.toLowerCase()}\n\nPlease review and let us know if you need any changes. We are happy to customise!\n\nWarm regards,\nTeam TripBuilt\n📞 +91 98765 00000 | tripbuilt.com`,
     };
   }
 

@@ -10,7 +10,7 @@ export interface ItineraryBranding {
 }
 
 export const DEFAULT_ITINERARY_BRANDING: ItineraryBranding = {
-  companyName: 'Travel Suite',
+  companyName: 'TripBuilt',
   logoUrl: null,
   primaryColor: '#f26430',
   contactPhone: null,

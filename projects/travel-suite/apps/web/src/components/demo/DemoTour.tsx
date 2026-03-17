@@ -10,8 +10,8 @@ import { X, ChevronRight, ChevronLeft, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDemoMode } from "@/lib/demo/demo-mode-context";
 
-const LS_KEY_COMPLETED = "antigravity:demo_tour_completed";
-const LS_KEY_ACTIVE = "antigravity:demo_tour_active";
+const LS_KEY_COMPLETED = "tripbuilt:demo_tour_completed";
+const LS_KEY_ACTIVE = "tripbuilt:demo_tour_active";
 
 interface TourStep {
   /** Page path to navigate to */

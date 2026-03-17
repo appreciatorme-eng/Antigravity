@@ -406,7 +406,7 @@ export default function AdminInvoicesPage() {
           client_email: clientEmail,
           pdf_base64: base64,
           invoice_number: selectedInvoice.invoice_number,
-          organization_name: selectedInvoice.organization_snapshot?.name || "Travel Suite",
+          organization_name: selectedInvoice.organization_snapshot?.name || "TripBuilt",
         }),
       });
 

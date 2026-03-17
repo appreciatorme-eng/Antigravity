@@ -6,7 +6,7 @@ import type { MetadataRoute } from "next";
 import { createClient } from "@/lib/supabase/server";
 
 const BASE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://travelbuilt.com";
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://tripbuilt.com";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const marketingPages = [

@@ -100,7 +100,7 @@ function AuthPageInner() {
                     <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-primary to-primary/80 rounded-2xl shadow-lg mb-4 transform hover:rotate-3 transition-transform duration-300">
                         <Plane className="w-8 h-8 text-white" />
                     </div>
-                    <h1 className="text-3xl font-serif text-secondary tracking-tight">TravelBuilt OS</h1>
+                    <h1 className="text-3xl font-serif text-secondary tracking-tight">TripBuilt OS</h1>
                     <p className="text-gray-500 mt-2 font-light">The all-in-one operating system for modern travel professionals</p>
                 </div>
 

@@ -8,7 +8,7 @@ test.describe('Tour Operator Workflows', () => {
 
         const uniq = Date.now();
         const clientName = `Workflow Client ${uniq}`;
-        const clientEmail = `workflow-client-${uniq}@gobuddy.test`;
+        const clientEmail = `workflow-client-${uniq}@tripbuilt.test`;
         const templateName = `Workflow Template ${uniq}`;
         const addOnName = `Workflow Add-on ${uniq}`;
 

@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------------
- * Driver read actions for the GoBuddy assistant.
+ * Driver read actions for the TripBuilt assistant.
  *
  * Drivers are profiles with `role = 'driver'`. Their vehicle and
  * licence metadata lives in the JSON `driver_info` column.

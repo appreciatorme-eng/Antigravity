@@ -121,7 +121,7 @@ export function InvoiceDocument({ invoice, template = "executive" }: InvoiceDocu
         <View style={styles.header}>
           <View>
             <Text style={styles.kicker}>Tax Invoice</Text>
-            <Text style={styles.operatorName}>{org?.name || "Travel Suite"}</Text>
+            <Text style={styles.operatorName}>{org?.name || "TripBuilt"}</Text>
             {org?.gstin ? <Text style={styles.operatorMeta}>GSTIN: {org.gstin}</Text> : null}
             {org?.billing_state ? <Text style={styles.operatorMeta}>Billing State: {org.billing_state}</Text> : null}
             {addressLine ? <Text style={styles.operatorMeta}>{addressLine}</Text> : null}
@@ -203,7 +203,7 @@ export function InvoiceDocument({ invoice, template = "executive" }: InvoiceDocu
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            This invoice was generated digitally by {org?.name || "Travel Suite"}.
+            This invoice was generated digitally by {org?.name || "TripBuilt"}.
           </Text>
         </View>
       </Page>

@@ -1,7 +1,7 @@
 import "server-only";
 
 /* ------------------------------------------------------------------
- * Safety Guardrails for the GoBuddy Assistant
+ * Safety Guardrails for the TripBuilt Assistant
  *
  * This module enforces safety constraints on action execution:
  * 1. Action blocklist -- prevents dangerous operations

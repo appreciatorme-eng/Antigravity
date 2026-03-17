@@ -1,4 +1,4 @@
-// Demo Mode data barrel — re-exports all hardcoded GoBuddy Adventures constants.
+// Demo Mode data barrel — re-exports all hardcoded TripBuilt constants.
 // Import from here to keep demo data co-located and easy to discover.
 
 export { DEMO_CLIENTS } from "./clients";

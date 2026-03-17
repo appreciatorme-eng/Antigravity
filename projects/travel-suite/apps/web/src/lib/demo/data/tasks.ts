@@ -1,4 +1,4 @@
-// Demo Mode — "Needs Your Attention" tasks and today's schedule for GoBuddy Adventures.
+// Demo Mode — "Needs Your Attention" tasks and today's schedule for TripBuilt.
 // Returned by useDashboardTasks() and useDashboardSchedule() when isDemoMode is true.
 
 import type { TaskItem, ScheduleEvent } from "@/lib/queries/dashboard-tasks";

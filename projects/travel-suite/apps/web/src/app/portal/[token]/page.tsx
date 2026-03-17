@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Image from 'next/image';
+import { useTranslations } from 'next-intl';
 import {
   AlertTriangle,
   Calendar,
@@ -70,8 +71,8 @@ interface PortalPayload {
   };
 }
 
-function formatDisplayDate(dateIso: string | null) {
-  if (!dateIso) return 'Dates to be confirmed';
+function formatDisplayDate(dateIso: string | null, fallbackText: string) {
+  if (!dateIso) return fallbackText;
 
   return new Intl.DateTimeFormat('en-IN', {
     day: '2-digit',
@@ -81,6 +82,7 @@ function formatDisplayDate(dateIso: string | null) {
 }
 
 export default function PortalPage() {
+  const t = useTranslations('portal');
   const params = useParams();
   const token = params.token as string;
   const [portal, setPortal] = useState<PortalPayload | null>(null);
@@ -106,7 +108,7 @@ export default function PortalPage() {
 
         if (!response.ok || !payload?.data) {
           if (!isMounted) return;
-          setError(payload?.error || 'The trip portal could not be loaded.');
+          setError(payload?.error || t('errors.loadFailed'));
           setErrorStatus(response.status);
           setPortal(null);
           return;
@@ -118,7 +120,7 @@ export default function PortalPage() {
       } catch (loadError) {
         logError('[portal] Failed to load portal data', loadError);
         if (isMounted) {
-          setError('The trip portal could not be loaded.');
+          setError(t('errors.loadFailed'));
           setErrorStatus(500);
           setPortal(null);
         }
@@ -134,7 +136,7 @@ export default function PortalPage() {
     return () => {
       isMounted = false;
     };
-  }, [token]);
+  }, [token, t]);
 
   async function handleReviewSubmit(rating: number, comment: string) {
     if (!portal) return;
@@ -163,7 +165,11 @@ export default function PortalPage() {
     if (!portal?.driver?.phone) return;
 
     const msg = encodeURIComponent(
-      `Hello ${portal.driver.name}, this is ${portal.client.name}. I am travelling on ${portal.trip.name}. Please confirm the pickup details when convenient.`,
+      t('driver.whatsappMessage', {
+        driverName: portal.driver.name,
+        clientName: portal.client.name,
+        tripName: portal.trip.name,
+      }),
     );
     const digits = portal.driver.phone.replace(/\D/g, '');
     window.open(`https://wa.me/${digits}?text=${msg}`, '_blank');
@@ -173,7 +179,10 @@ export default function PortalPage() {
     if (!portal?.driver?.phone) return;
 
     const msg = encodeURIComponent(
-      `Hello ${portal.driver.name}, I am sharing my pickup location for ${portal.trip.name}: https://maps.google.com/?q=my+location`,
+      t('shareLocation.message', {
+        driverName: portal.driver.name,
+        tripName: portal.trip.name,
+      }),
     );
     const digits = portal.driver.phone.replace(/\D/g, '');
     window.open(`https://wa.me/${digits}?text=${msg}`, '_blank');
@@ -184,7 +193,7 @@ export default function PortalPage() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16">
         <div className="rounded-3xl border border-gray-200 bg-white shadow-sm p-10 text-center">
           <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-sm font-medium text-gray-600">Loading your trip portal...</p>
+          <p className="text-sm font-medium text-gray-600">{t('loading')}</p>
         </div>
       </div>
     );
@@ -193,16 +202,16 @@ export default function PortalPage() {
   if (error || !portal) {
     const title =
       errorStatus === 404
-        ? 'Portal not found'
+        ? t('errors.notFound.title')
         : errorStatus === 410
-          ? 'This trip link has expired'
-          : 'Portal unavailable';
+          ? t('errors.expired.title')
+          : t('errors.unavailable.title');
     const description =
       errorStatus === 404
-        ? 'This portal link is invalid. Ask your travel operator to resend the latest trip link.'
+        ? t('errors.notFound.description')
         : errorStatus === 410
-          ? 'This trip link has expired. Contact your travel operator for a fresh link before trying again.'
-          : error || 'The trip portal could not be loaded. Contact your travel operator for a fresh link.';
+          ? t('errors.expired.description')
+          : error || t('errors.unavailable.description');
 
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-16">
@@ -239,9 +248,9 @@ export default function PortalPage() {
         <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
 
         <div className="relative px-6 py-8">
-          <p className="text-emerald-100 text-sm font-medium mb-1">Your Trip Portal</p>
+          <p className="text-emerald-100 text-sm font-medium mb-1">{t('hero.yourTripPortal')}</p>
           <h1 className="text-2xl sm:text-3xl font-bold mb-1">
-            Welcome, {portal.client.firstName}
+            {t('hero.welcome', { firstName: portal.client.firstName })}
           </h1>
           <p className="text-emerald-100 text-base mt-2 font-medium">{portal.trip.name}</p>
 
@@ -249,8 +258,8 @@ export default function PortalPage() {
             <div className="flex items-center gap-1.5 bg-white/20 rounded-full px-3 py-1.5">
               <Calendar className="w-3.5 h-3.5" />
               <span>
-                {formatDisplayDate(portal.trip.startDate)}
-                {portal.trip.endDate ? ` – ${formatDisplayDate(portal.trip.endDate)}` : ''}
+                {formatDisplayDate(portal.trip.startDate, t('dates.toBeConfirmed'))}
+                {portal.trip.endDate ? ` – ${formatDisplayDate(portal.trip.endDate, t('dates.toBeConfirmed'))}` : ''}
               </span>
             </div>
             {portal.proposal.destination && (
@@ -262,14 +271,14 @@ export default function PortalPage() {
           </div>
 
           <div className="mt-4 pt-4 border-t border-white/20">
-            <p className="text-xs text-emerald-200 mb-1">Need help? Contact your operator</p>
+            <p className="text-xs text-emerald-200 mb-1">{t('hero.needHelp')}</p>
             {portal.operator.phone ? (
               <a
                 href={`tel:${portal.operator.phone}`}
                 className="inline-flex items-center gap-2 bg-white text-emerald-700 font-bold text-sm rounded-xl px-4 py-2 hover:bg-emerald-50 transition-colors"
               >
                 <Phone className="w-4 h-4" />
-                Call {portal.operator.name}
+                {t('hero.call', { operatorName: portal.operator.name })}
               </a>
             ) : (
               <p className="text-sm font-semibold text-white">{portal.operator.name}</p>
@@ -281,7 +290,7 @@ export default function PortalPage() {
       <section>
         <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-bold text-gray-800">Trip Summary</h2>
+            <h2 className="text-base font-bold text-gray-800">{t('tripSummary.title')}</h2>
             <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-100 rounded-full px-3 py-1">
               <CheckCircle className="w-3.5 h-3.5" />
               {portal.proposal.status}
@@ -290,29 +299,29 @@ export default function PortalPage() {
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
-              { label: 'Destination', value: portal.proposal.destination || 'To be confirmed', icon: MapPin },
+              { label: t('tripSummary.destination'), value: portal.proposal.destination || t('tripSummary.toBeConfirmed'), icon: MapPin },
               {
-                label: 'Duration',
+                label: t('tripSummary.duration'),
                 value: portal.proposal.durationDays
-                  ? `${portal.proposal.durationDays} days`
-                  : `${portal.itinerary.length} days`,
+                  ? t('tripSummary.days', { days: portal.proposal.durationDays })
+                  : t('tripSummary.days', { days: portal.itinerary.length }),
                 icon: Calendar,
               },
               {
-                label: 'Travellers',
+                label: t('tripSummary.travellers'),
                 value: portal.client.travelersCount
-                  ? `${portal.client.travelersCount} travellers`
-                  : 'Traveller details pending',
+                  ? t('tripSummary.travellersCount', { count: portal.client.travelersCount })
+                  : t('tripSummary.travellersPending'),
                 icon: Users,
               },
-              { label: 'Trip Starts', value: formatDisplayDate(portal.trip.startDate), icon: Calendar },
+              { label: t('tripSummary.tripStarts'), value: formatDisplayDate(portal.trip.startDate, t('dates.toBeConfirmed')), icon: Calendar },
               {
-                label: 'Payment status',
+                label: t('tripSummary.paymentStatus'),
                 value: portal.payment.paymentLink
                   ? portal.payment.paymentLink.status.replace('_', ' ')
                   : portal.payment.dueAmount > 0
-                    ? 'Awaiting link'
-                    : 'Paid',
+                    ? t('tripSummary.awaitingLink')
+                    : t('tripSummary.paid'),
                 icon: CheckCircle,
               },
             ].map((item) => (
@@ -335,13 +344,13 @@ export default function PortalPage() {
       </section>
 
       <section>
-        <h2 className="text-lg font-bold text-gray-800 mb-4">Your Itinerary</h2>
+        <h2 className="text-lg font-bold text-gray-800 mb-4">{t('itinerary.title')}</h2>
         <PortalItinerary days={portal.itinerary} />
       </section>
 
       {portal.driver && (
         <section>
-          <h2 className="text-lg font-bold text-gray-800 mb-4">Your Driver</h2>
+          <h2 className="text-lg font-bold text-gray-800 mb-4">{t('driver.title')}</h2>
           <div className="rounded-2xl bg-white border border-gray-200 shadow-sm p-5 space-y-4">
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
@@ -350,7 +359,7 @@ export default function PortalPage() {
               <div>
                 <p className="text-base font-bold text-gray-800">{portal.driver.name}</p>
                 <p className="text-sm text-gray-500">
-                  {portal.driver.phoneDisplay || 'Phone number will be shared before departure'}
+                  {portal.driver.phoneDisplay || t('driver.phoneWillBeShared')}
                 </p>
               </div>
             </div>
@@ -358,10 +367,10 @@ export default function PortalPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl bg-gray-50 border border-gray-100 p-3">
                 <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">
-                  Vehicle
+                  {t('driver.vehicle')}
                 </p>
                 <p className="text-sm font-semibold text-gray-700">
-                  {portal.driver.vehicle || 'Vehicle details to be confirmed'}
+                  {portal.driver.vehicle || t('driver.vehicleToBeConfirmed')}
                 </p>
                 {portal.driver.plate && (
                   <p className="text-xs text-gray-400 mt-0.5 font-mono">{portal.driver.plate}</p>
@@ -369,12 +378,12 @@ export default function PortalPage() {
               </div>
               <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3">
                 <p className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wide mb-1">
-                  Contact
+                  {t('driver.contact')}
                 </p>
                 <p className="text-sm font-semibold text-gray-700">
-                  {portal.driver.phoneDisplay || 'Shared in WhatsApp'}
+                  {portal.driver.phoneDisplay || t('driver.sharedInWhatsApp')}
                 </p>
-                <p className="text-xs text-gray-500 mt-0.5">Reach out before pickup if plans change.</p>
+                <p className="text-xs text-gray-500 mt-0.5">{t('driver.reachOutBeforePickup')}</p>
               </div>
             </div>
 
@@ -385,7 +394,7 @@ export default function PortalPage() {
                   className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
                 >
                   <Phone className="w-4 h-4 text-gray-500" />
-                  Call Driver
+                  {t('driver.callDriver')}
                 </a>
               )}
               {portal.driver.phone && (
@@ -395,7 +404,7 @@ export default function PortalPage() {
                   className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-[#25D366] text-white text-sm font-semibold hover:bg-[#1ebe5a] transition-colors shadow-sm"
                 >
                   <MessageCircle className="w-4 h-4" />
-                  WhatsApp Driver
+                  {t('driver.whatsappDriver')}
                 </button>
               )}
             </div>
@@ -404,7 +413,7 @@ export default function PortalPage() {
       )}
 
       <section>
-        <h2 className="text-lg font-bold text-gray-800 mb-4">Payment</h2>
+        <h2 className="text-lg font-bold text-gray-800 mb-4">{t('payment.title')}</h2>
         <PortalPayment
           totalAmount={portal.payment.totalAmount}
           paidAmount={portal.payment.paidAmount}
@@ -424,9 +433,9 @@ export default function PortalPage() {
                 <Navigation className="w-6 h-6 text-blue-500" />
               </div>
               <div className="flex-1">
-                <h2 className="text-base font-bold text-gray-800 mb-0.5">Share Your Live Location</h2>
+                <h2 className="text-base font-bold text-gray-800 mb-0.5">{t('shareLocation.title')}</h2>
                 <p className="text-xs text-gray-500 mb-4">
-                  Open WhatsApp with a pre-filled location message for your assigned driver.
+                  {t('shareLocation.description')}
                 </p>
                 <button
                   type="button"
@@ -434,7 +443,7 @@ export default function PortalPage() {
                   className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-emerald-500 text-white text-sm font-bold hover:bg-emerald-600 transition-colors shadow-sm shadow-emerald-200"
                 >
                   <Navigation className="w-4 h-4" />
-                  Share Location with Driver
+                  {t('shareLocation.button')}
                 </button>
               </div>
             </div>
@@ -444,7 +453,7 @@ export default function PortalPage() {
 
       {portal.review.enabled && tripEnded && (
         <section>
-          <h2 className="text-lg font-bold text-gray-800 mb-4">Rate Your Trip</h2>
+          <h2 className="text-lg font-bold text-gray-800 mb-4">{t('review.title')}</h2>
           <PortalReview
             tripName={portal.trip.name}
             operatorName={portal.operator.name}

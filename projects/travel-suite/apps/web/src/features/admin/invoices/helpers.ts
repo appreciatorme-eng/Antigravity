@@ -1,6 +1,6 @@
 import type { InvoiceRecord, InvoiceTemplate, OrganizationSnapshot } from "./types";
 
-const PRINT_WINDOW_URL_BASE = "https://print.antigravity.local";
+const PRINT_WINDOW_URL_BASE = "https://print.tripbuilt.local";
 
 function escapeHtml(value: string | null | undefined): string {
   return (value ?? "")
@@ -102,7 +102,7 @@ export function buildInvoiceMarkup(invoice: InvoiceRecord, template: InvoiceTemp
   }[template];
 
   const safeLogoUrl = sanitizePrintUrl(org?.logo_url);
-  const safeOrgName = escapeHtml(org?.name || "Travel Suite");
+  const safeOrgName = escapeHtml(org?.name || "TripBuilt");
   const safeLogoInitial = escapeHtml((org?.name || "T").charAt(0) || "T");
   const safeAddressLine = buildEscapedAddressLine(org?.billing_address);
   const safeClientName = escapeHtml(client?.full_name || "Walk-in client");

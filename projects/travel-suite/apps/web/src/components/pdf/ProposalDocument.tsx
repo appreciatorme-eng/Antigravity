@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
 
 export const ProposalDocument: React.FC<ProposalDocumentProps> = ({
   proposal,
-  organizationName = 'Travel Suite',
+  organizationName = 'TripBuilt',
   organizationLogo,
   primaryColor,
   addOns = [],
@@ -545,7 +545,7 @@ export const ProposalDocument: React.FC<ProposalDocumentProps> = ({
         </View>
 
         <Text style={styles.footer}>
-          {organizationName} • Powered by Travel Suite
+          {organizationName} • Powered by TripBuilt
           {'\n'}
           © {new Date().getFullYear()} All rights reserved
         </Text>

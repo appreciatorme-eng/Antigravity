@@ -1,4 +1,4 @@
-// Demo Mode — 12 hardcoded GoBuddy Adventures clients with every CRM field populated.
+// Demo Mode — 12 hardcoded TripBuilt clients with every CRM field populated.
 // Returned by useClients() when isDemoMode is true; zero DB reads required.
 
 interface Client {

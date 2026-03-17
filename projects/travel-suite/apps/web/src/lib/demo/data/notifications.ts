@@ -1,4 +1,4 @@
-// Demo Mode — 5 hardcoded GoBuddy Adventures notifications for the bell dropdown.
+// Demo Mode — 5 hardcoded TripBuilt notifications for the bell dropdown.
 // First 3 are unread (matches dashboard pendingNotifications: 3).
 
 interface DemoNotification {

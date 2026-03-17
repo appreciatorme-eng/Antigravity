@@ -237,7 +237,7 @@ Payment ke baad screenshot bhejiye confirm ke liye. GST invoice automatically em
 
 Koi sawaal? Reply karein! 😊`,
     variables: ['client_name', 'trip_name', 'amount', 'due_date', 'booking_id', 'upi_id', 'payment_link', 'bank_account', 'bank_ifsc', 'company_name'],
-    preview: '₹45,000 payment due for Rajasthan Royal Tour. Pay via UPI: gobuddy@paytm',
+    preview: '₹45,000 payment due for Rajasthan Royal Tour. Pay via UPI: tripbuilt@paytm',
     emoji: '💰',
   },
   {
@@ -314,7 +314,7 @@ Is itinerary mein koi changes chahiye? Batayein, hum customize kar denge! ✏️
 
 — {{company_name}}`,
     variables: ['client_name', 'destination', 'trip_name', 'start_date', 'end_date', 'duration', 'pax_count', 'itinerary_summary', 'itinerary_link', 'company_name'],
-    preview: 'Aapka Kerala 6-day itinerary ready hai! Full plan dekho: gobuddy.in/trip/KL2024',
+    preview: 'Aapka Kerala 6-day itinerary ready hai! Full plan dekho: tripbuilt.com/trip/KL2024',
     emoji: '🗺️',
   },
 
@@ -373,7 +373,7 @@ Aapki kuch basic details chahiye:
 
 Reply karein aur apna dream trip plan karein! 😊`,
     variables: ['company_name', 'destination', 'agent_phone'],
-    preview: 'Namaste! GoBuddy Adventures mein swagat hai! Goa ke liye best package denge! ✈️',
+    preview: 'Namaste! TripBuilt mein swagat hai! Goa ke liye best package denge! ✈️',
     emoji: '🙏',
   },
 
@@ -578,7 +578,7 @@ Any questions? Reply to this message!
 Regards,
 {{company_name}}`,
     variables: ['client_name', 'trip_name', 'amount', 'due_date', 'booking_id', 'upi_id', 'payment_link', 'bank_account', 'bank_ifsc', 'company_name'],
-    preview: '₹45,000 payment due for Rajasthan Tour. Pay via UPI: gobuddy@paytm',
+    preview: '₹45,000 payment due for Rajasthan Tour. Pay via UPI: tripbuilt@paytm',
     emoji: '💰',
   },
 
@@ -637,7 +637,7 @@ To help us build your ideal trip, could you share:
 
 Reply now and let's plan your dream holiday! 😊`,
     variables: ['company_name', 'destination', 'agent_phone'],
-    preview: 'Hello! Welcome to GoBuddy Adventures! Enquiry for Goa received. Let\'s plan! ✈️',
+    preview: 'Hello! Welcome to TripBuilt! Enquiry for Goa received. Let\'s plan! ✈️',
     emoji: '🙏',
   },
 

@@ -24,13 +24,13 @@ const outfit = Outfit({
 });
 
 const BASE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://travelbuilt.com";
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://tripbuilt.com";
 
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
   title: {
-    template: "%s | TravelBuilt",
-    default: "TravelBuilt | Build Your Travel Empire",
+    template: "%s | TripBuilt",
+    default: "TripBuilt | Build Your Travel Empire",
   },
   description: "Create instant packages, share stunning white label itineraries, and get them closed ASAP. The ultimate operating system for modern travel professionals.",
   keywords: [
@@ -40,24 +40,24 @@ export const metadata: Metadata = {
     "WhatsApp automation travel",
     "travel business management",
     "Indian tour operator",
-    "TravelBuilt",
+    "TripBuilt",
   ],
   openGraph: {
-    siteName: "TravelBuilt",
+    siteName: "TripBuilt",
     type: "website",
     locale: "en_IN",
     images: [
       {
-        url: "/api/og?title=TravelBuilt&subtitle=Build%20Your%20Travel%20Empire",
+        url: "/api/og?title=TripBuilt&subtitle=Build%20Your%20Travel%20Empire",
         width: 1200,
         height: 630,
-        alt: "TravelBuilt — Build Your Travel Empire",
+        alt: "TripBuilt — Build Your Travel Empire",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "TravelBuilt | Build Your Travel Empire",
+    title: "TripBuilt | Build Your Travel Empire",
     description:
       "The all-in-one OS for modern Indian tour operators.",
   },

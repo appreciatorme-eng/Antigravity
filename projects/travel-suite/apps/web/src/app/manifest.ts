@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "GoBuddy Adventures",
-    short_name: "GoBuddy",
+    name: "TripBuilt",
+    short_name: "TripBuilt",
     description: "AI-powered travel planning and itinerary management for tour operators.",
     start_url: "/",
     display: "standalone",

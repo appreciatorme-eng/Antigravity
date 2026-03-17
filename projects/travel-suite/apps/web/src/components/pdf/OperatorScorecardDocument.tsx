@@ -139,7 +139,7 @@ export function OperatorScorecardDocument({
     <Document title={`Operator Scorecard ${scorecard.monthKey}`}>
       <Page size="A4" style={styles.page}>
         <View style={styles.header}>
-          <Text style={styles.eyebrow}>Antigravity Travel</Text>
+          <Text style={styles.eyebrow}>TripBuilt</Text>
           <Text style={styles.title}>{scorecard.organization.name} Performance Scorecard</Text>
           <Text style={styles.subhead}>
             {scorecard.monthLabel} · Subscription {scorecard.organization.subscriptionTier || "free"}

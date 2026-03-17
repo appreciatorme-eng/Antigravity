@@ -159,7 +159,7 @@ export function TourAssistantPresentation({
 
                             <div className="flex-1 min-w-0">
                                 <p className="font-semibold text-sm leading-tight" style={{ color: "#f0f0ff" }}>
-                                    GoBuddy
+                                    TripBuilt
                                 </p>
                                 <div className="flex items-center gap-1.5 mt-0.5">
                                     <span
@@ -535,7 +535,7 @@ export function TourAssistantPresentation({
                                 type="text"
                                 value={input}
                                 onChange={(e) => onInputChange(e.target.value)}
-                                placeholder={isRecording ? "Listening..." : "Ask GoBuddy anything..."}
+                                placeholder={isRecording ? "Listening..." : "Ask TripBuilt anything..."}
                                 disabled={isLoading}
                                 className="flex-1 text-sm rounded-xl px-4 py-2.5 outline-none transition-all disabled:opacity-40"
                                 style={{

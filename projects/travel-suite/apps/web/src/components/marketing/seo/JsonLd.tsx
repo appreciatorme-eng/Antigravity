@@ -10,8 +10,8 @@ interface OrganizationSchemaProps {
 }
 
 export function OrganizationSchema({
-  name = "TravelBuilt",
-  url = "https://travelbuilt.com",
+  name = "TripBuilt",
+  url = "https://tripbuilt.com",
   description = "The all-in-one operating system for modern tour operators.",
 }: OrganizationSchemaProps) {
   const schema = {
@@ -43,8 +43,8 @@ interface WebsiteSchemaProps {
 }
 
 export function WebsiteSchema({
-  name = "TravelBuilt",
-  url = "https://travelbuilt.com",
+  name = "TripBuilt",
+  url = "https://tripbuilt.com",
 }: WebsiteSchemaProps) {
   const schema = {
     "@context": "https://schema.org",
@@ -76,9 +76,9 @@ interface ProductSchemaProps {
 }
 
 export function ProductSchema({
-  name = "TravelBuilt Pro",
+  name = "TripBuilt Pro",
   description = "All-in-one tour operator software with unlimited proposals, WhatsApp automation, and invoicing.",
-  url = "https://travelbuilt.com/pricing",
+  url = "https://tripbuilt.com/pricing",
   priceCurrency = "INR",
   price = "1999",
   priceValidUntil = "2027-12-31",
@@ -89,7 +89,7 @@ export function ProductSchema({
     name,
     description,
     url,
-    brand: { "@type": "Brand", name: "TravelBuilt" },
+    brand: { "@type": "Brand", name: "TripBuilt" },
     offers: {
       "@type": "Offer",
       priceCurrency,
@@ -123,7 +123,7 @@ export function BlogPostingSchema({
   url,
   datePublished,
   dateModified,
-  authorName = "TravelBuilt Team",
+  authorName = "TripBuilt Team",
   coverImage,
 }: BlogPostingSchemaProps) {
   const schema = {
@@ -137,10 +137,10 @@ export function BlogPostingSchema({
     author: { "@type": "Person", name: authorName },
     publisher: {
       "@type": "Organization",
-      name: "TravelBuilt",
+      name: "TripBuilt",
       logo: {
         "@type": "ImageObject",
-        url: "https://travelbuilt.com/marketing/logo.png",
+        url: "https://tripbuilt.com/marketing/logo.png",
       },
     },
     ...(coverImage ? { image: coverImage } : {}),

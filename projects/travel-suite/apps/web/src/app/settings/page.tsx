@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { GlassButton } from '@/components/glass/GlassButton';
@@ -17,19 +18,11 @@ import { IntegrationsTab } from './_components/IntegrationsTab';
 import { SecurityTab } from './_components/SecurityTab';
 import { TeamTab } from './_components/TeamTab';
 import { PlaceholderTab } from './_components/PlaceholderTab';
-
-const TABS = [
-    { id: 'organization', label: 'Organization', icon: Globe },
-    { id: 'profile', label: 'Profile', icon: User },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: 'integrations', label: 'Integrations', icon: Link2 },
-    { id: 'billing', label: 'Billing & Plans', icon: CreditCard },
-    { id: 'security', label: 'Security', icon: Shield },
-    { id: 'team', label: 'Team', icon: Users },
-];
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 
 export default function SettingsPage() {
     const router = useRouter();
+    const t = useTranslations('settings');
     const { toast } = useToast();
     const { timezone, saveTimezone, saving: savingTimezone, timezoneOptions } = useUserTimezone();
     const [activeTab, setActiveTab] = useState('organization');
@@ -38,6 +31,16 @@ export default function SettingsPage() {
 
     // Onboarding State
     const [isOnboardingIncomplete, setIsOnboardingIncomplete] = useState(false);
+
+    const TABS = [
+        { id: 'organization', label: t('tabs.organization'), icon: Globe },
+        { id: 'profile', label: t('tabs.profile'), icon: User },
+        { id: 'notifications', label: t('tabs.notifications'), icon: Bell },
+        { id: 'integrations', label: t('tabs.integrations'), icon: Link2 },
+        { id: 'billing', label: t('tabs.billing'), icon: CreditCard },
+        { id: 'security', label: t('tabs.security'), icon: Shield },
+        { id: 'team', label: t('tabs.team'), icon: Users },
+    ];
 
     // WhatsApp Connect State
     const [isWhatsAppConnectOpen, setIsWhatsAppConnectOpen] = useState(false);
@@ -91,36 +94,36 @@ export default function SettingsPage() {
             if (!res.ok) throw new Error('Disconnect failed');
             setIsWhatsAppConnected(false);
             setWhatsAppProfile(null);
-            toast({ title: 'WhatsApp disconnected', variant: 'success' });
+            toast({ title: t('messages.whatsappDisconnected'), variant: 'success' });
         } catch {
-            toast({ title: 'Failed to disconnect WhatsApp', variant: 'error' });
+            toast({ title: t('messages.whatsappDisconnectFailed'), variant: 'error' });
         }
-    }, [toast]);
+    }, [toast, t]);
 
     const handleSaveTimezone = useCallback(async () => {
         try {
             await saveTimezone(draftTimezone);
             toast({
-                title: 'Timezone saved',
-                description: `${getTimezoneDisplayName(draftTimezone)} will be used across bookings, proposals, and inbox timestamps.`,
+                title: t('messages.timezoneSaved'),
+                description: t('messages.timezoneSavedDescription', { timezone: getTimezoneDisplayName(draftTimezone) }),
                 variant: 'success',
             });
         } catch {
             toast({
-                title: 'Timezone save failed',
-                description: 'Keep working in your current timezone and try saving again.',
+                title: t('messages.timezoneSaveFailed'),
+                description: t('messages.timezoneSaveFailedDescription'),
                 variant: 'error',
             });
         }
-    }, [draftTimezone, saveTimezone, toast]);
+    }, [draftTimezone, saveTimezone, toast, t]);
 
     const handleSave = useCallback(() => {
         setLoading(true);
         setTimeout(() => {
             setLoading(false);
-            toast({ title: 'Settings saved', description: 'Your configuration has been updated.', variant: 'success' });
+            toast({ title: t('messages.settingsSaved'), description: t('messages.settingsSavedDescription'), variant: 'success' });
         }, 800);
-    }, [toast]);
+    }, [toast, t]);
 
     const handleOpenWhatsAppConnect = useCallback(() => {
         setIsWhatsAppConnectOpen(true);
@@ -150,24 +153,27 @@ export default function SettingsPage() {
         <>
             <div className="max-w-7xl mx-auto space-y-8 pb-12">
                 {/* Header */}
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                     <div>
-                        <h1 className="text-4xl font-serif text-secondary tracking-tight">Settings</h1>
+                        <h1 className="text-4xl font-serif text-secondary tracking-tight">{t('title')}</h1>
                         <p className="text-text-secondary mt-2 text-lg">
-                            Configure your workspace, operational preferences, and security footprint.
+                            {t('description')}
                         </p>
                     </div>
-                    {isOnboardingIncomplete && (
-                        <GlassButton
-                            variant="primary"
-                            size="sm"
-                            onClick={handleResumeOnboarding}
-                            className="flex items-center gap-2 shrink-0 mt-1"
-                        >
-                            <PlayCircle className="w-4 h-4" />
-                            Resume Onboarding
-                        </GlassButton>
-                    )}
+                    <div className="flex items-center gap-2 shrink-0">
+                        {isOnboardingIncomplete && (
+                            <GlassButton
+                                variant="primary"
+                                size="sm"
+                                onClick={handleResumeOnboarding}
+                                className="flex items-center gap-2"
+                            >
+                                <PlayCircle className="w-4 h-4" />
+                                Resume Onboarding
+                            </GlassButton>
+                        )}
+                        <LanguageSwitcher />
+                    </div>
                 </div>
 
                 <div className="flex flex-col md:flex-row gap-8 items-start">

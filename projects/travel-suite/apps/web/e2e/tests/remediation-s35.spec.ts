@@ -36,7 +36,7 @@ test.describe('Remediation S35 — SEO Metadata (H-01)', () => {
     await page.goto('/demo');
     const title = await page.title();
     expect(title.trim().length).toBeGreaterThan(0);
-    expect(title).not.toBe('TravelBuilt OS');
+    expect(title).not.toBe('TripBuilt OS');
   });
 
   test('about page has a <title> tag', async ({ page }) => {

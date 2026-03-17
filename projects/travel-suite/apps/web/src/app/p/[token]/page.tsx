@@ -728,7 +728,7 @@ export default function PublicProposalPage() {
       {/* Footer */}
       <div className="border-t border-[#eadfcd] bg-white py-8">
         <div className="max-w-6xl mx-auto px-4 text-center text-sm text-[#bda87f]">
-          <p>Powered by Travel Suite • Interactive Proposal System</p>
+          <p>Powered by TripBuilt • Interactive Proposal System</p>
         </div>
       </div>
     </div>

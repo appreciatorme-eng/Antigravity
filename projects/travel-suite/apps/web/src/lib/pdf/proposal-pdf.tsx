@@ -431,7 +431,7 @@ export const ProposalPDF: React.FC<ProposalPDFProps> = ({
             Please contact your travel operator for any questions or modifications.
           </Text>
           <Text style={styles.poweredBy}>
-            Generated with Travel Suite • www.travelsuite.app
+            Generated with TripBuilt • www.travelsuite.app
           </Text>
         </View>
       </Page>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslations } from 'next-intl';
 
 interface PortalLayoutProps {
   children: React.ReactNode;
@@ -18,6 +19,7 @@ function getOperatorFromToken(token: string) {
 }
 
 export default function PortalLayout({ children, params }: PortalLayoutProps) {
+  const t = useTranslations('portal');
   const operator = getOperatorFromToken(params.token);
 
   return (
@@ -50,7 +52,7 @@ export default function PortalLayout({ children, params }: PortalLayoutProps) {
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 8V5z" />
               </svg>
-              Help
+              {t('help')}
             </a>
           </div>
         </div>
@@ -65,10 +67,10 @@ export default function PortalLayout({ children, params }: PortalLayoutProps) {
       <footer className="py-4 px-4 border-t border-gray-100 bg-white">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <p className="text-xs text-gray-400">
-            Your trip is safe &amp; secured
+            {t('footer.safe')}
           </p>
           <p className="text-[10px] text-gray-300 tracking-wide">
-            Powered by TourOS
+            {t('footer.poweredBy')}
           </p>
         </div>
       </footer>

@@ -1,10 +1,17 @@
 import { BookingConfirmationEmail } from "@/emails/BookingConfirmation";
+import { ContactSalesConfirmationEmail } from "@/emails/ContactSalesConfirmationEmail";
+import { InvoicePdfEmail } from "@/emails/InvoicePdfEmail";
+import { MarketplaceInquiryEmail } from "@/emails/MarketplaceInquiryEmail";
+import { MarketplaceVerificationEmail } from "@/emails/MarketplaceVerificationEmail";
 import { OperatorScorecardEmail } from "@/emails/OperatorScorecard";
 import { PaymentReceiptEmail } from "@/emails/PaymentReceipt";
 import { ProposalApprovedEmail } from "@/emails/ProposalApproved";
+import { ProposalPdfEmail } from "@/emails/ProposalPdfEmail";
 import { ProposalRejectedEmail } from "@/emails/ProposalRejected";
 import { ProposalSentEmail } from "@/emails/ProposalSent";
+import { ReferralPromoterEmail } from "@/emails/ReferralPromoterEmail";
 import { TeamInviteEmail } from "@/emails/TeamInvite";
+import { WelcomeEmail } from "@/emails/WelcomeEmail";
 import { sendEmail, type EmailAttachment } from "@/lib/email/send";
 
 export function formatInr(amountPaise: number) {
@@ -98,7 +105,7 @@ export async function sendTeamInviteNotification(params: {
 }) {
   return sendEmail({
     to: params.to,
-    subject: `You're invited to join ${params.organizationName} on Antigravity Travel`,
+    subject: `You're invited to join ${params.organizationName} on TripBuilt`,
     react: <TeamInviteEmail {...params} />,
   });
 }
@@ -137,5 +144,109 @@ export async function sendOperatorScorecardNotification(params: {
       />
     ),
     attachments: [params.attachment],
+  });
+}
+
+export async function sendWelcomeNotification(params: {
+  to: string;
+  recipientName: string;
+  loginUrl: string;
+}) {
+  return sendEmail({
+    to: params.to,
+    subject: "Welcome to TripBuilt",
+    react: <WelcomeEmail {...params} />,
+  });
+}
+
+export async function sendInvoicePdfNotification(params: {
+  to: string;
+  invoiceNumber: string;
+  organizationName: string;
+  attachment: EmailAttachment;
+}) {
+  return sendEmail({
+    to: params.to,
+    subject: `Invoice ${params.invoiceNumber} from ${params.organizationName}`,
+    react: (
+      <InvoicePdfEmail
+        invoiceNumber={params.invoiceNumber}
+        organizationName={params.organizationName}
+      />
+    ),
+    attachments: [params.attachment],
+  });
+}
+
+export async function sendProposalPdfNotification(params: {
+  to: string;
+  proposalTitle: string;
+  recipientName?: string | null;
+  attachment: EmailAttachment;
+}) {
+  return sendEmail({
+    to: params.to,
+    subject: `Your Travel Proposal: ${params.proposalTitle}`,
+    react: (
+      <ProposalPdfEmail
+        proposalTitle={params.proposalTitle}
+        recipientName={params.recipientName}
+      />
+    ),
+    attachments: [params.attachment],
+  });
+}
+
+export async function sendMarketplaceInquiryNotification(params: {
+  to: string;
+  senderOrgName: string;
+  subject: string;
+  message: string;
+  inquiryUrl: string;
+}) {
+  return sendEmail({
+    to: params.to,
+    subject: `[Marketplace] New Inquiry from ${params.senderOrgName}`,
+    react: <MarketplaceInquiryEmail {...params} />,
+  });
+}
+
+export async function sendMarketplaceVerificationNotification(params: {
+  to: string;
+  orgName: string;
+  status: "verified" | "rejected";
+  settingsUrl: string;
+}) {
+  return sendEmail({
+    to: params.to,
+    subject: `[Marketplace] Verification Status: ${params.status}`,
+    react: <MarketplaceVerificationEmail {...params} />,
+  });
+}
+
+export async function sendReferralPromoterNotification(params: {
+  to: string;
+  recipientName: string;
+  reviewLink: string | null;
+  referralUrl: string;
+  rewardAmountInr: number;
+}) {
+  return sendEmail({
+    to: params.to,
+    subject: `Thank you! Earn ₹${params.rewardAmountInr.toLocaleString("en-IN")} by referring a friend`,
+    react: <ReferralPromoterEmail {...params} />,
+  });
+}
+
+export async function sendContactSalesConfirmation(params: {
+  to: string;
+  name: string;
+  targetTier: string;
+  organizationName: string;
+}) {
+  return sendEmail({
+    to: params.to,
+    subject: `TripBuilt ${params.targetTier} upgrade request received`,
+    react: <ContactSalesConfirmationEmail {...params} />,
   });
 }

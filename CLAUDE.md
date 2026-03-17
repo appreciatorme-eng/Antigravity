@@ -32,7 +32,7 @@ projects/travel-suite/
 # From repo root
 cd projects/travel-suite/apps/web
 
-npm run dev           # portless → http://antigravity.localhost:PORT
+npm run dev           # next dev → http://localhost:3000
 npm run lint          # ESLint (max-warnings=0, zero tolerance)
 npm run typecheck     # tsc --noEmit
 npm run test          # Vitest unit tests
@@ -60,7 +60,7 @@ npm run qa            # playwright-cli (interactive browser)
 ## Dev Verification Workflow
 
 1. `preview_start("web-dev")` → server starts
-2. `preview_logs` → parse `http://antigravity.localhost:PORT`
+2. `preview_logs` → confirm server running on `http://localhost:3000`
 3. `npx playwright-cli goto <url>` → `npx playwright-cli snapshot`
 4. `Read` the YAML from `.playwright-cli/page-*.yml`
 

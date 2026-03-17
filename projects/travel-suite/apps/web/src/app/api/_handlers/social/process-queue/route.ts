@@ -1,55 +1,12 @@
 import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { authorizeCronRequest } from "@/lib/security/cron-auth";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { logError } from "@/lib/observability/logger";
-
-const SOCIAL_QUEUE_PROCESS_SELECT = [
-    "attempts",
-    "id",
-    "platform",
-    "platform_post_id",
-    "post_id",
-    "scheduled_for",
-    "social_posts!inner(id)",
-    "social_connections!inner(platform_page_id)",
-].join(", ");
-
-type SocialQueueProcessRow = {
-    attempts: number | null;
-    id: string;
-    platform: string;
-    platform_post_id: string | null;
-    post_id: string;
-    scheduled_for: string | null;
-};
-
-function isMockSocialPublishingEnabled(): boolean {
-    const explicit = process.env.SOCIAL_PUBLISH_MOCK_ENABLED?.trim().toLowerCase();
-    if (explicit === "true") return true;
-    if (explicit === "false") return false;
-    return process.env.NODE_ENV !== "production";
-}
+import { processSocialPublishQueue } from "@/lib/social/process-publish-queue.server";
 
 function parseMsEnv(value: string | undefined, fallbackMs: number): number {
     const parsed = Number(value);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : fallbackMs;
-}
-
-function parsePositiveInt(value: string | undefined, fallback: number): number {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
-}
-
-function addMinutes(date: Date, minutes: number): string {
-    return new Date(date.getTime() + minutes * 60_000).toISOString();
-}
-
-function calculateRetryDelayMinutes(attemptNumber: number): number {
-    const base = parsePositiveInt(process.env.SOCIAL_QUEUE_RETRY_BASE_MINUTES, 5);
-    const maxBackoff = parsePositiveInt(process.env.SOCIAL_QUEUE_RETRY_MAX_MINUTES, 180);
-    const delay = base * Math.pow(2, Math.max(0, attemptNumber - 1));
-    return Math.min(delay, maxBackoff);
 }
 
 export async function POST(req: Request) {
@@ -65,140 +22,12 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: cronAuth.reason }, { status: cronAuth.status });
         }
 
-        if (process.env.NODE_ENV === 'production' && isMockSocialPublishingEnabled()) {
-            logError('CRITICAL: Social mock publishing is enabled in production', new Error('MockPublishingInProduction'));
-            return apiError('Social publishing misconfigured', 500);
-        }
-
-        const supabaseAdmin = createAdminClient();
-        const maxAttempts = parsePositiveInt(process.env.SOCIAL_QUEUE_MAX_ATTEMPTS, 3);
-        const mockPublishingEnabled = isMockSocialPublishingEnabled();
-
-        const { data: pendingItems, error: fetchError } = await supabaseAdmin
-            .from("social_post_queue")
-            .select(SOCIAL_QUEUE_PROCESS_SELECT)
-            .eq("status", "pending")
-            .lt("scheduled_for", new Date().toISOString())
-            .lt("attempts", maxAttempts)
-            .order("scheduled_for", { ascending: true })
-            .limit(10);
-        const queueItems = (pendingItems as unknown as SocialQueueProcessRow[] | null) ?? [];
-
-        if (fetchError) throw fetchError;
-
-        if (queueItems.length === 0) {
-            return NextResponse.json({ message: "No pending items" });
-        }
-
-        const results: Array<{ id: string; status: string; error?: string; retry_at?: string }> = [];
-        const sentPostIds = new Set<string>();
-
-        for (const item of queueItems) {
-            const claimTime = new Date().toISOString();
-            const { data: claimedRows } = await supabaseAdmin
-                .from("social_post_queue")
-                .update({ status: "processing", updated_at: claimTime })
-                .eq("id", item.id)
-                .eq("status", "pending")
-                .select("id")
-                .limit(1);
-
-            if (!claimedRows || claimedRows.length === 0) {
-                continue;
-            }
-
-            try {
-                if (item.platform_post_id) {
-                    await supabaseAdmin
-                        .from("social_post_queue")
-                        .update({
-                            status: "sent",
-                            updated_at: new Date().toISOString(),
-                        })
-                        .eq("id", item.id)
-                        .eq("status", "processing");
-
-                    sentPostIds.add(item.post_id);
-                    results.push({ id: item.id, status: "already_sent" });
-                    continue;
-                }
-
-                const platform = item.platform;
-                if (!mockPublishingEnabled) {
-                    throw new Error("Social publishing provider is not configured");
-                }
-
-                const platformPostId = `cron_${platform}_${Date.now()}`;
-                const platformPostUrl = `https://${platform}.com/p/${platformPostId}`;
-
-                await supabaseAdmin
-                    .from("social_post_queue")
-                    .update({
-                        status: "sent",
-                        platform_post_id: platformPostId,
-                        platform_post_url: platformPostUrl,
-                        attempts: (item.attempts ?? 0) + 1,
-                        updated_at: new Date().toISOString(),
-                    })
-                    .eq("id", item.id)
-                    .eq("status", "processing");
-
-                sentPostIds.add(item.post_id);
-                results.push({ id: item.id, status: "success" });
-            } catch (err: unknown) {
-                const internalMessage = err instanceof Error ? err.message : "Unknown publish error";
-                logError(`Failed to publish item ${item.id}`, err);
-
-                const attemptNumber = Number(item.attempts || 0) + 1;
-                const exhausted = attemptNumber >= maxAttempts;
-                const retryAt = exhausted
-                    ? undefined
-                    : addMinutes(new Date(), calculateRetryDelayMinutes(attemptNumber));
-
-                await supabaseAdmin
-                    .from("social_post_queue")
-                    .update({
-                        status: exhausted ? "failed" : "pending",
-                        error_message: internalMessage,
-                        attempts: attemptNumber,
-                        scheduled_for: retryAt ?? item.scheduled_for ?? undefined,
-                        updated_at: new Date().toISOString(),
-                    })
-                    .eq("id", item.id)
-                    .eq("status", "processing");
-
-                results.push({
-                    id: item.id,
-                    status: exhausted ? "dead_lettered" : "retry_scheduled",
-                    error: "Failed to process queue item",
-                    retry_at: retryAt,
-                });
-            }
-        }
-
-        if (sentPostIds.size > 0) {
-            const postIdList = [...sentPostIds];
-            const { data: remaining } = await supabaseAdmin
-                .from("social_post_queue")
-                .select("post_id")
-                .in("post_id", postIdList)
-                .in("status", ["pending", "processing"]);
-
-            const stillPending = new Set((remaining ?? []).map((r: { post_id: string }) => r.post_id));
-            const fullyPublished = postIdList.filter((id) => !stillPending.has(id));
-
-            if (fullyPublished.length > 0) {
-                await supabaseAdmin
-                    .from("social_posts")
-                    .update({ status: "published" })
-                    .in("id", fullyPublished);
-            }
-        }
+        const result = await processSocialPublishQueue();
 
         return NextResponse.json({
             success: true,
-            processed: results.length,
-            results,
+            processed: result.processed,
+            results: result.results,
         });
     } catch (error: unknown) {
         logError("Error processing social queue", error);

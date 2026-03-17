@@ -3,19 +3,25 @@
  *
  * Runs on every matched request before the page/route handler.
  * Responsibilities:
- *   1. Refresh Supabase session cookies (updateSession) on all routes.
- *   2. Redirect unauthenticated users away from protected prefixes.
- *   3. Redirect users who have not completed onboarding away from
+ *   1. Handle locale routing and detection (next-intl).
+ *   2. Refresh Supabase session cookies (updateSession) on all routes.
+ *   3. Redirect unauthenticated users away from protected prefixes.
+ *   4. Redirect users who have not completed onboarding away from
  *      protected routes to /onboarding.
- *   4. Redirect onboarding-complete users away from /onboarding back
+ *   5. Redirect onboarding-complete users away from /onboarding back
  *      to their intended destination.
  *
  * Previously split across middleware.ts + proxy.ts — merged to satisfy
  * Next.js 16 / Turbopack requirement that only one edge entry file exists.
+ *
+ * Locale handling chained before auth checks to ensure all redirects
+ * preserve the user's selected locale.
  * ------------------------------------------------------------------ */
 
 import { NextResponse, type NextRequest } from "next/server";
+import createMiddleware from "next-intl/middleware";
 import { updateSession } from "@/lib/supabase/middleware";
+import { locales, defaultLocale } from "@/i18n";
 
 const PROTECTED_PREFIXES = [
     "/admin",
@@ -37,24 +43,66 @@ const PROTECTED_PREFIXES = [
 
 const MARKETING_PATHS = ["/", "/pricing", "/about", "/blog", "/demo", "/solutions"];
 
+// Create next-intl middleware for locale handling.
+// localeDetection: true enables automatic browser locale detection via Accept-Language header.
+// localePrefix: "as-needed" avoids adding /en prefix for the default locale — the app directory
+// does not have a [locale] dynamic segment, so "always" would 404 on every locale-prefixed URL.
+// Non-default locales (e.g., /hi/settings) still get a prefix.
+const intlMiddleware = createMiddleware({
+    locales,
+    defaultLocale,
+    localePrefix: "as-needed",
+    localeDetection: true,
+});
+
+/**
+ * Strip locale prefix from pathname to get the actual path.
+ * E.g., "/en/admin" → "/admin", "/hi/settings" → "/settings"
+ */
+function stripLocalePrefix(pathname: string): string {
+    for (const locale of locales) {
+        if (pathname === `/${locale}` || pathname.startsWith(`/${locale}/`)) {
+            return pathname.slice(locale.length + 1) || "/";
+        }
+    }
+    return pathname;
+}
+
+/**
+ * Get current locale from pathname.
+ * E.g., "/en/admin" → "en", "/hi/settings" → "hi"
+ */
+function getLocaleFromPathname(pathname: string): string {
+    for (const locale of locales) {
+        if (pathname === `/${locale}` || pathname.startsWith(`/${locale}/`)) {
+            return locale;
+        }
+    }
+    return defaultLocale;
+}
+
 function isProtectedPath(pathname: string): boolean {
+    const withoutLocale = stripLocalePrefix(pathname);
     return PROTECTED_PREFIXES.some(
-        (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+        (prefix) => withoutLocale === prefix || withoutLocale.startsWith(`${prefix}/`)
     );
 }
 
 function isOnboardingPath(pathname: string): boolean {
-    return pathname === "/onboarding" || pathname.startsWith("/onboarding/");
+    const withoutLocale = stripLocalePrefix(pathname);
+    return withoutLocale === "/onboarding" || withoutLocale.startsWith("/onboarding/");
 }
 
 function isMarketingPath(pathname: string): boolean {
+    const withoutLocale = stripLocalePrefix(pathname);
     return MARKETING_PATHS.some(
-        (p) => pathname === p || pathname.startsWith(`${p}/`)
+        (p) => withoutLocale === p || withoutLocale.startsWith(`${p}/`)
     );
 }
 
 function buildAuthRedirect(request: NextRequest, nextPath: string): URL {
-    const destination = new URL("/auth", request.url);
+    const locale = getLocaleFromPathname(request.nextUrl.pathname);
+    const destination = new URL(`/${locale}/auth`, request.url);
     destination.searchParams.set("next", nextPath);
     return destination;
 }
@@ -78,15 +126,32 @@ function isOnboardingComplete(profile: {
 }
 
 export async function middleware(request: NextRequest) {
+    // Step 1: Handle locale routing via next-intl middleware.
+    // This ensures all URLs have proper locale prefixes and handles locale detection.
+    const intlResponse = intlMiddleware(request);
+
+    // If next-intl is redirecting (e.g., adding locale prefix), copy session cookies
+    // onto the redirect response so the browser preserves auth state.
+    if (intlResponse.status === 307 || intlResponse.status === 308) {
+        const { response: sessionResponse } = await updateSession(request);
+        // Copy session cookies to the intl redirect (preserving its status code)
+        for (const cookie of sessionResponse.headers.getSetCookie()) {
+            intlResponse.headers.append("Set-Cookie", cookie);
+        }
+        return intlResponse;
+    }
+
+    // Step 2: Update Supabase session cookies on all non-redirect requests.
     const { response: sessionResponse, user, supabase } = await updateSession(request);
 
     const pathname = request.nextUrl.pathname;
+    const locale = getLocaleFromPathname(pathname);
     const protectedPath = isProtectedPath(pathname);
     const onboardingPath = isOnboardingPath(pathname);
 
     // Authenticated users on marketing pages → redirect to dashboard.
     if (user && isMarketingPath(pathname)) {
-        return NextResponse.redirect(new URL("/admin", request.url));
+        return NextResponse.redirect(new URL(`/${locale}/admin`, request.url));
     }
 
     if (!protectedPath && !onboardingPath) {
@@ -118,7 +183,7 @@ export async function middleware(request: NextRequest) {
     const onboardingComplete = isOnboardingComplete(profile);
 
     if (!onboardingComplete && protectedPath) {
-        const destination = new URL("/onboarding", request.url);
+        const destination = new URL(`/${locale}/onboarding`, request.url);
         destination.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
         return NextResponse.redirect(destination);
     }
@@ -130,7 +195,7 @@ export async function middleware(request: NextRequest) {
             requestedNext.startsWith("/") &&
             !requestedNext.startsWith("//")
                 ? requestedNext
-                : "/admin";
+                : `/${locale}/admin`;
         return NextResponse.redirect(new URL(safeNext, request.url));
     }
 

@@ -8,12 +8,12 @@ const sizeMap = {
 
 type LogoSize = keyof typeof sizeMap;
 
-interface TravelBuiltLogoProps {
+interface TripBuiltLogoProps {
   size?: LogoSize;
   className?: string;
 }
 
-export function TravelBuiltLogo({ size = "md", className = "" }: TravelBuiltLogoProps) {
+export function TripBuiltLogo({ size = "md", className = "" }: TripBuiltLogoProps) {
   const { text, height } = sizeMap[size];
 
   return (
@@ -75,7 +75,7 @@ export function TravelBuiltLogo({ size = "md", className = "" }: TravelBuiltLogo
 
       <div className="relative z-10 font-black tracking-tighter flex items-center pr-2">
         <span className={`bg-clip-text text-transparent bg-gradient-to-br from-white via-gray-100 to-gray-400 ${text} drop-shadow-sm`}>
-          Travel
+          Trip
         </span>
         <span className={`bg-clip-text text-transparent bg-gradient-to-r from-[#FF9933] via-[#A259FF] to-[#00F0FF] ${text} animate-gradient-x`}>
           Built
