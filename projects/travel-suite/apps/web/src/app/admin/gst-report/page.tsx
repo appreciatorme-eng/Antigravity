@@ -543,12 +543,14 @@ export default function GSTReportPage() {
           <Info className="h-3.5 w-3.5 text-white/20" />
           <p className="text-xs text-white/25">
             Share this report with your CA. GST figures rounded to nearest rupee. For queries:{" "}
-            <a href="mailto:support@travelsuite.in" className="text-[#00d084]/60 hover:text-[#00d084]">
-              support@travelsuite.in
+            <a href="mailto:support@tripbuilt.in" className="text-[#00d084]/60 hover:text-[#00d084]">
+              support@tripbuilt.in
             </a>
           </p>
         </div>
       </div>
     </main>
   );
+}
+;
 }
