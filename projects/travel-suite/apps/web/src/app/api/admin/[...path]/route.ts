@@ -74,6 +74,7 @@ const routes = createCatchAllHandlers([
   ["pricing/receipts/ocr", () => import("@/app/api/_handlers/admin/pricing/receipts/ocr/route")],
   ["pricing/export", () => import("@/app/api/_handlers/admin/pricing/export/route")],
   ["revenue", () => import("@/app/api/_handlers/admin/revenue/route")],
+  ["scorecards", () => import("@/app/api/_handlers/admin/scorecards/route")],
   ["seed-demo", () => import("@/app/api/_handlers/admin/seed-demo/route")],
 ], { rateLimit: ADMIN_RATE_LIMIT });
 
