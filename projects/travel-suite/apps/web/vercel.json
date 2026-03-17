@@ -10,8 +10,8 @@
       "schedule": "0 1 * * *"
     },
     {
-      "path": "/api/notifications/schedule-followups",
-      "schedule": "0 2 * * *"
+      "path": "/api/cron/automation-processor",
+      "schedule": "*/10 * * * *"
     }
   ]
 }
