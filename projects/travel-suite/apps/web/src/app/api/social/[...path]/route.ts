@@ -14,6 +14,7 @@ const routes = createCatchAllHandlers([
   ["oauth/google",   () => import("@/app/api/_handlers/social/oauth/google/route")],
   ["oauth/linkedin", () => import("@/app/api/_handlers/social/oauth/linkedin/route")],
   ["posts/:id/render", () => import("@/app/api/_handlers/social/posts/[id]/render/route")],
+  ["posts/metrics", () => import("@/app/api/_handlers/social/posts/metrics/route")],
   ["posts", () => import("@/app/api/_handlers/social/posts/route")],
   ["process-queue", () => import("@/app/api/_handlers/social/process-queue/route")],
   ["publish", () => import("@/app/api/_handlers/social/publish/route")],
