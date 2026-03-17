@@ -79,15 +79,11 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
   const supabase = useMemo(() => createClient(), []);
   const { timezone } = useUserTimezone();
 
-  const [conversations, setConversations] = useState<ChannelConversation[]>(
-    isDemoMode ? ALL_MOCK_CONVERSATIONS : [],
-  );
-  const [selectedId, setSelectedId] = useState<string | null>(isDemoMode ? 'conv_1' : null);
+  const [conversations, setConversations] = useState<ChannelConversation[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isLoadingConvs, setIsLoadingConvs] = useState(false);
   const [conversationsError, setConversationsError] = useState<string | null>(null);
-  const [whatsAppStatus, setWhatsAppStatus] = useState<WhatsAppStatus>(
-    isDemoMode ? 'connected' : 'disconnected',
-  );
+  const [whatsAppStatus, setWhatsAppStatus] = useState<WhatsAppStatus>('disconnected');
   const [whatsAppHealthError, setWhatsAppHealthError] = useState<string | null>(null);
   const [isTakingOverChatbot, setIsTakingOverChatbot] = useState(false);
   const [isRefreshingProposalDraft, setIsRefreshingProposalDraft] = useState(false);
@@ -132,16 +128,31 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
         throw new Error(data.error || 'Failed to load conversations');
       }
       const convs = data.conversations ?? [];
-      setConversations(convs);
-      setSelectedId((current) => current || convs[0]?.id || null);
+
+      // In demo mode with no real data, fall back to mock conversations
+      if (isDemoMode && convs.length === 0) {
+        setConversations(ALL_MOCK_CONVERSATIONS);
+        setSelectedId('conv_1');
+        setWhatsAppStatus('connected');
+      } else {
+        setConversations(convs);
+        setSelectedId((current) => current || convs[0]?.id || null);
+      }
     } catch (error) {
-      setConversationsError(
-        error instanceof Error ? error.message : 'Unable to load conversations right now.',
-      );
+      // In demo mode, fall back to mock conversations on error
+      if (isDemoMode) {
+        setConversations(ALL_MOCK_CONVERSATIONS);
+        setSelectedId('conv_1');
+        setWhatsAppStatus('connected');
+      } else {
+        setConversationsError(
+          error instanceof Error ? error.message : 'Unable to load conversations right now.',
+        );
+      }
     } finally {
       setIsLoadingConvs(false);
     }
-  }, []);
+  }, [isDemoMode]);
 
   const loadWhatsAppHealth = useCallback(async () => {
     try {
@@ -159,16 +170,10 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
   }, []);
 
   useEffect(() => {
-    if (isDemoMode) {
-      setConversations(ALL_MOCK_CONVERSATIONS);
-      setSelectedId('conv_1');
-      setWhatsAppStatus('connected');
-      setConversationsError(null);
-      return;
-    }
+    // Always attempt to load real conversations first
     void loadLiveConversations();
     void loadWhatsAppHealth();
-  }, [isDemoMode, loadLiveConversations, loadWhatsAppHealth]);
+  }, [loadLiveConversations, loadWhatsAppHealth]);
 
   useEffect(() => {
     if (isDemoMode) return;

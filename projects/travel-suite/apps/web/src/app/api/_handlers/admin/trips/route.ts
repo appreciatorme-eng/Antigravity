@@ -27,6 +27,7 @@ interface TripListRow {
     end_date: string | null;
     created_at: string;
     organization_id: string;
+    pax_count: number | null;
     profiles:
     | {
         full_name: string | null;
@@ -160,6 +161,7 @@ export async function GET(req: NextRequest) {
                 end_date,
                 created_at,
                 organization_id,
+                pax_count,
                 profiles:client_id (
                     full_name,
                     email
@@ -196,6 +198,7 @@ export async function GET(req: NextRequest) {
                 end_date: t.end_date,
                 created_at: t.created_at,
                 organization_id: t.organization_id,
+                pax_count: t.pax_count,
                 profiles: profile ? {
                     full_name: profile.full_name,
                     email: profile.email
