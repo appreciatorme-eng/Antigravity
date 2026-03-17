@@ -3,11 +3,8 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import type { Database } from "@/lib/database.types";
 import { sendNotificationToUser } from "@/lib/notifications";
 import { ensureReviewMarketingAsset } from "@/lib/reputation/review-marketing.server";
-
-type AppSupabaseClient = SupabaseClient<Database>;
 
 const MIN_ELIGIBLE_RATING = 5;
 

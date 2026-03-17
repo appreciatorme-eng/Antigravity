@@ -120,7 +120,7 @@ async function runTest(organizationId: string, userId: string): Promise<TestResu
     const maxAssetChecks = 10;
 
     while (!assetFound && assetCheckAttempts < maxAssetChecks) {
-      const { data: asset, error: assetError } = await supabase
+      const { data: asset } = await supabase
         .from('review_marketing_assets')
         .select('id, lifecycle_state')
         .eq('review_id', review.id)
