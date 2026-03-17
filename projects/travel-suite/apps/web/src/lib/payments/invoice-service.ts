@@ -155,7 +155,7 @@ export async function createInvoice(
           // Fetch organization details for seller information
           const { data: orgDetails, error: orgDetailsError } = await supabase
             .from('organizations')
-            .select('name, billing_address, billing_city, billing_pincode, billing_state')
+            .select('name, billing_address_line1, billing_city, billing_pincode, billing_state')
             .eq('id', options.organizationId)
             .single();
 
@@ -170,7 +170,7 @@ export async function createInvoice(
               legalName: 'Customer',
               address1: 'Address Line 1',
               location: orgDetails.billing_city || 'City',
-              pincode: orgDetails.billing_pincode || 600001,
+              pincode: parseInt(orgDetails.billing_pincode ?? '', 10) || 600001,
               stateCode: customerState.length === 2 ? customerState : stateCode,
             };
 
@@ -180,9 +180,9 @@ export async function createInvoice(
                 invoiceId: invoice.id,
                 sellerDetails: {
                   legalName: orgDetails.name || org.name,
-                  address1: orgDetails.billing_address || 'Address Line 1',
+                  address1: String(orgDetails.billing_address_line1 || 'Address Line 1'),
                   location: orgDetails.billing_city || 'City',
-                  pincode: orgDetails.billing_pincode || 600001,
+                  pincode: parseInt(orgDetails.billing_pincode ?? '', 10) || 600001,
                   stateCode,
                 },
                 buyerDetails,

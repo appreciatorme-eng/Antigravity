@@ -181,7 +181,14 @@ export function GSTRExport({
     return options;
   }, []);
 
-  const kpis = useMemo(() => {
+  const kpis = useMemo((): Array<{
+    label: string;
+    value: string;
+    sub?: string;
+    icon: React.ComponentType<{ className?: string }>;
+    color: string;
+    bg: string;
+  }> => {
     if (!summary) {
       return [
         {

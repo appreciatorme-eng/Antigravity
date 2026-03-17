@@ -195,7 +195,7 @@ export async function exportGSTR1(
 
   const { data: org, error: orgError } = await supabase
     .from('organizations')
-    .select('name, gstin, metadata')
+    .select('name, gstin, legal_name')
     .eq('id', organizationId)
     .single();
 
@@ -207,7 +207,7 @@ export async function exportGSTR1(
     throw new Error('Organization GSTIN not configured. Cannot generate GSTR-1.');
   }
 
-  const tradeName = (org.metadata as Record<string, unknown>)?.tradeName as string | null ?? null;
+  const tradeName = org.legal_name ?? null;
 
   // ─── FETCH INVOICES FOR PERIOD ─────────────────────────────────────────────
 
@@ -259,8 +259,8 @@ export async function exportGSTR1(
 
   for (const inv of validInvoices) {
     const metadata = (inv.metadata as Record<string, unknown>) || {};
-    const buyerGSTIN = metadata.client_gstin || metadata.gstin || null;
-    const buyerName = metadata.client_name || 'Unknown';
+    const buyerGSTIN = (metadata.client_gstin || metadata.gstin || null) as string | null;
+    const buyerName = String(metadata.client_name || 'Unknown');
     const placeOfSupply = getStateCode(inv.place_of_supply);
     const sacCode = inv.sac_code || '998552'; // Default: Tour operator services
 
@@ -279,10 +279,10 @@ export async function exportGSTR1(
     if (buyerGSTIN) {
       // B2B: Buyer has GSTIN
       b2bInvoices.push({
-        gstin: buyerGSTIN,
+        gstin: buyerGSTIN as string,
         legalName: buyerName,
         invoiceNumber: inv.invoice_number,
-        invoiceDate: formatInvoiceDate(inv.created_at),
+        invoiceDate: formatInvoiceDate(inv.created_at ?? new Date()),
         invoiceValue,
         placeOfSupply,
         reverseCharge: 'N',
@@ -298,7 +298,7 @@ export async function exportGSTR1(
       // B2CL: No GSTIN, invoice value > ₹2.5L
       b2clInvoices.push({
         invoiceNumber: inv.invoice_number,
-        invoiceDate: formatInvoiceDate(inv.created_at),
+        invoiceDate: formatInvoiceDate(inv.created_at ?? new Date()),
         invoiceValue,
         placeOfSupply,
         taxableValue,
