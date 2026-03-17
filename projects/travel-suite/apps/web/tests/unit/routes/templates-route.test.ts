@@ -61,8 +61,18 @@ vi.mock("@/lib/observability/logger", () => ({
   logError: logErrorMock,
 }));
 
-function buildTemplateQueryChain(templates: any[]) {
-  const chain: any = {
+interface MockQueryChain {
+  from: ReturnType<typeof vi.fn>;
+  select: ReturnType<typeof vi.fn>;
+  eq: ReturnType<typeof vi.fn>;
+  ilike: ReturnType<typeof vi.fn>;
+  order: ReturnType<typeof vi.fn>;
+  single: ReturnType<typeof vi.fn>;
+  then?: (resolve: (v: unknown) => void) => void;
+}
+
+function buildTemplateQueryChain(templates: unknown[]): MockQueryChain {
+  const chain: MockQueryChain = {
     from: vi.fn(),
     select: vi.fn(),
     eq: vi.fn(),
@@ -72,19 +82,22 @@ function buildTemplateQueryChain(templates: any[]) {
   };
 
   for (const key of Object.keys(chain)) {
-    chain[key].mockImplementation(() => chain);
+    const method = chain[key as keyof MockQueryChain];
+    if (typeof method === 'function') {
+      method.mockImplementation(() => chain);
+    }
   }
 
   // Mock promise resolution
   Object.defineProperty(chain, "then", {
-    value: (resolve: (v: any) => void) => resolve({ data: templates, error: null }),
+    value: (resolve: (v: unknown) => void) => resolve({ data: templates, error: null }),
     configurable: true,
   });
 
   chain.single.mockImplementation(() => {
     const singleChain = { ...chain };
     Object.defineProperty(singleChain, "then", {
-      value: (resolve: (v: any) => void) =>
+      value: (resolve: (v: unknown) => void) =>
         resolve({ data: templates[0] || null, error: templates[0] ? null : { message: "Not found" } }),
       configurable: true,
     });
@@ -94,8 +107,17 @@ function buildTemplateQueryChain(templates: any[]) {
   return chain;
 }
 
-function buildItineraryQueryChain(itinerary: any) {
-  const chain: any = {
+interface MockItineraryChain {
+  from: ReturnType<typeof vi.fn>;
+  select: ReturnType<typeof vi.fn>;
+  eq: ReturnType<typeof vi.fn>;
+  single: ReturnType<typeof vi.fn>;
+  insert: ReturnType<typeof vi.fn>;
+  then?: (resolve: (v: unknown) => void) => void;
+}
+
+function buildItineraryQueryChain(itinerary: unknown): MockItineraryChain {
+  const chain: MockItineraryChain = {
     from: vi.fn(),
     select: vi.fn(),
     eq: vi.fn(),
@@ -104,19 +126,32 @@ function buildItineraryQueryChain(itinerary: any) {
   };
 
   for (const key of Object.keys(chain)) {
-    chain[key].mockImplementation(() => chain);
+    const method = chain[key as keyof MockItineraryChain];
+    if (typeof method === 'function') {
+      method.mockImplementation(() => chain);
+    }
   }
 
   Object.defineProperty(chain, "then", {
-    value: (resolve: (v: any) => void) => resolve({ data: itinerary, error: null }),
+    value: (resolve: (v: unknown) => void) => resolve({ data: itinerary, error: null }),
     configurable: true,
   });
 
   return chain;
 }
 
-function buildTripQueryChain(trip: any) {
-  const chain: any = {
+interface MockTripChain {
+  from: ReturnType<typeof vi.fn>;
+  select: ReturnType<typeof vi.fn>;
+  eq: ReturnType<typeof vi.fn>;
+  single: ReturnType<typeof vi.fn>;
+  insert: ReturnType<typeof vi.fn>;
+  update: ReturnType<typeof vi.fn>;
+  then?: (resolve: (v: unknown) => void) => void;
+}
+
+function buildTripQueryChain(trip: unknown): MockTripChain {
+  const chain: MockTripChain = {
     from: vi.fn(),
     select: vi.fn(),
     eq: vi.fn(),
@@ -126,18 +161,25 @@ function buildTripQueryChain(trip: any) {
   };
 
   for (const key of Object.keys(chain)) {
-    chain[key].mockImplementation(() => chain);
+    const method = chain[key as keyof MockTripChain];
+    if (typeof method === 'function') {
+      method.mockImplementation(() => chain);
+    }
   }
 
   Object.defineProperty(chain, "then", {
-    value: (resolve: (v: any) => void) => resolve({ data: trip, error: null }),
+    value: (resolve: (v: unknown) => void) => resolve({ data: trip, error: null }),
     configurable: true,
   });
 
   return chain;
 }
 
-function makeAdminClient(templates: any[] = [], itinerary: any = null, trip: any = null) {
+interface MockSupabaseClient {
+  from: ReturnType<typeof vi.fn>;
+}
+
+function makeAdminClient(templates: unknown[] = [], itinerary: unknown = null, trip: unknown = null): MockSupabaseClient {
   return {
     from: vi.fn((table: string) => {
       if (table === "itinerary_templates") {
@@ -277,8 +319,7 @@ describe("Template API - GET /api/admin/templates", () => {
     const response = await GET(req);
 
     expect(response.status).toBe(200);
-    const adminClient = makeAdminClient(templates);
-    // Verify ilike was called for destination filtering (implementation detail)
+    // Verify destination filtering works (implementation detail check removed)
   });
 });
 
@@ -286,8 +327,8 @@ describe("Template API - POST /api/admin/templates", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     enforceRateLimitMock.mockResolvedValue({ success: true, limit: 60, reset: Date.now() + 300000 });
-    passesMutationCsrfGuardMock.mockResolvedValue(true);
-    blockDemoMutationMock.mockReturnValue({ canMutate: true });
+    passesMutationCsrfGuardMock.mockReturnValue(true);
+    blockDemoMutationMock.mockReturnValue(null);
     resolveDemoOrgMock.mockReturnValue({ isDemoMode: false });
     updateContributorBadgeMock.mockResolvedValue(undefined);
   });
@@ -306,7 +347,7 @@ describe("Template API - POST /api/admin/templates", () => {
   });
 
   it("enforces CSRF guard", async () => {
-    passesMutationCsrfGuardMock.mockResolvedValue(false);
+    passesMutationCsrfGuardMock.mockReturnValue(false);
 
     requireAdminMock.mockResolvedValue({
       ok: true,
@@ -327,10 +368,10 @@ describe("Template API - POST /api/admin/templates", () => {
   });
 
   it("blocks demo organization mutations", async () => {
-    blockDemoMutationMock.mockReturnValue({
-      canMutate: false,
-      reason: "Demo mode",
-    });
+    const { NextResponse } = await import("next/server");
+    blockDemoMutationMock.mockReturnValue(
+      NextResponse.json({ error: "Demo mode" }, { status: 403 })
+    );
 
     requireAdminMock.mockResolvedValue({
       ok: true,
@@ -392,14 +433,19 @@ describe("Badge Tier Updates", () => {
     const mockClient = makeAdminClient([], itinerary, trip);
 
     // Mock the trips query to return completed trips
-    const completedTripsChain: any = {
+    interface MockCompletedTripsChain {
+      select: ReturnType<typeof vi.fn>;
+      eq: ReturnType<typeof vi.fn>;
+      then?: (resolve: (v: unknown) => void) => void;
+    }
+    const completedTripsChain: MockCompletedTripsChain = {
       select: vi.fn(),
       eq: vi.fn(),
     };
     completedTripsChain.select.mockImplementation(() => completedTripsChain);
     completedTripsChain.eq.mockImplementation(() => completedTripsChain);
     Object.defineProperty(completedTripsChain, "then", {
-      value: (resolve: (v: any) => void) => resolve({ data: [trip], error: null, count: 1 }),
+      value: (resolve: (v: unknown) => void) => resolve({ data: [trip], error: null, count: 1 }),
       configurable: true,
     });
 
@@ -411,7 +457,13 @@ describe("Badge Tier Updates", () => {
         return completedTripsChain;
       }
       if (table === "itinerary_templates") {
-        const insertChain: any = {
+        interface MockInsertChain {
+          insert: ReturnType<typeof vi.fn>;
+          select: ReturnType<typeof vi.fn>;
+          single: ReturnType<typeof vi.fn>;
+          then?: (resolve: (v: unknown) => void) => void;
+        }
+        const insertChain: MockInsertChain = {
           insert: vi.fn(),
           select: vi.fn(),
           single: vi.fn(),
@@ -420,7 +472,7 @@ describe("Badge Tier Updates", () => {
         insertChain.select.mockImplementation(() => insertChain);
         insertChain.single.mockImplementation(() => insertChain);
         Object.defineProperty(insertChain, "then", {
-          value: (resolve: (v: any) => void) =>
+          value: (resolve: (v: unknown) => void) =>
             resolve({
               data: { id: "template-1", title: "Test Template" },
               error: null,
@@ -454,7 +506,10 @@ describe("Badge Tier Updates", () => {
 
     // Should succeed and call badge update
     if (response.status === 201) {
-      expect(updateContributorBadgeMock).toHaveBeenCalledWith(mockClient, "org-1");
+      expect(updateContributorBadgeMock).toHaveBeenCalledWith({
+        adminClient: mockClient,
+        organizationId: "org-1",
+      });
     }
   });
 });

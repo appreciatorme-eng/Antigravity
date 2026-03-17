@@ -356,7 +356,7 @@ test.describe('Template Library API Integration', () => {
   test('templates endpoint returns valid data structure', async ({ adminPage }) => {
     // Intercept API call to verify response structure
     let apiResponseReceived = false;
-    let apiData: any = null;
+    let apiData: unknown = null;
 
     adminPage.on('response', async (response) => {
       if (response.url().includes('/api/admin/templates') && !response.url().includes('/fork')) {
@@ -364,7 +364,7 @@ test.describe('Template Library API Integration', () => {
           const data = await response.json();
           apiData = data;
           apiResponseReceived = true;
-        } catch (e) {
+        } catch {
           // Non-JSON response, skip
         }
       }
@@ -379,7 +379,8 @@ test.describe('Template Library API Integration', () => {
     // If API was called, verify structure
     if (apiResponseReceived && apiData) {
       // Should be an array or object with templates array
-      const templates = Array.isArray(apiData) ? apiData : apiData.templates || apiData.data;
+      const responseData = apiData as Record<string, unknown>;
+      const templates = Array.isArray(apiData) ? apiData : (responseData.templates || responseData.data) as unknown[];
 
       if (templates && templates.length > 0) {
         const firstTemplate = templates[0];

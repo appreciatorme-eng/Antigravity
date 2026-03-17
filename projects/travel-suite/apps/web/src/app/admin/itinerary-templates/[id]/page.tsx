@@ -149,8 +149,11 @@ export default function TemplateDetailPage() {
     }, [templateId, supabase.auth, demoFetch, toast]);
 
     useEffect(() => {
-        void fetchTemplate();
-    }, [fetchTemplate]);
+        fetchTemplate().catch(err => {
+            console.error('Failed to fetch template:', err);
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Only run on mount
 
     const handleFork = async () => {
         if (!template) return;

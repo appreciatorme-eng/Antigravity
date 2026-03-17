@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { sanitizeText } from "@/lib/security/sanitize";
-import { resolveDemoOrg, blockDemoMutation } from "@/lib/auth/demo-org-resolver";
+import { blockDemoMutation } from "@/lib/auth/demo-org-resolver";
 import { passesMutationCsrfGuard } from "@/lib/security/admin-mutation-csrf";
 import { updateContributorBadge } from "@/lib/templates/badges";
 
@@ -10,6 +10,25 @@ const TEMPLATES_READ_RATE_LIMIT_MAX = 120;
 const TEMPLATES_READ_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 const TEMPLATES_WRITE_RATE_LIMIT_MAX = 60;
 const TEMPLATES_WRITE_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
+
+interface ItineraryTemplateRow {
+    id: string;
+    title: string;
+    destination: string;
+    duration_days: number;
+    budget_range: string;
+    theme: string;
+    description?: string | null;
+    template_data: unknown;
+    usage_count: number;
+    rating_avg: number;
+    rating_count: number;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+    published_by_org_id?: string | null;
+    organization_id?: string | null;
+}
 
 function sanitizeSearchTerm(input: string): string {
     const safe = sanitizeText(input, { maxLength: 80 });
@@ -73,11 +92,6 @@ export async function GET(req: NextRequest) {
             return scopedOrg.error;
         }
 
-        const demoOverride = resolveDemoOrg(req);
-        const effectiveOrgId = demoOverride.isDemoMode && demoOverride.demoOrgId
-            ? demoOverride.demoOrgId
-            : scopedOrg.organizationId;
-
         const rateLimit = await enforceRateLimit({
             identifier: admin.userId,
             limit: TEMPLATES_READ_RATE_LIMIT_MAX,
@@ -100,6 +114,7 @@ export async function GET(req: NextRequest) {
         const search = sanitizeSearchTerm(searchParams.get("search") || "");
 
         // itinerary_templates table not yet in generated types - using type assertion
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let query = (admin.adminClient as any)
             .from("itinerary_templates")
             .select(`
@@ -141,17 +156,20 @@ export async function GET(req: NextRequest) {
             }
         }
 
-        const { data, error } = await query.order("usage_count", { ascending: false });
+        const { data, error } = await query.order("usage_count", { ascending: false }) as {
+            data: ItineraryTemplateRow[] | null;
+            error: unknown
+        };
 
         if (error) {
             return NextResponse.json({ error: "Failed to fetch templates" }, { status: 400 });
         }
 
         // Client-side search filtering if search term provided
-        let templates = (data || []) as any[];
+        let templates = (data || []) as ItineraryTemplateRow[];
         if (search) {
             const searchLower = search.toLowerCase();
-            templates = templates.filter((t: any) =>
+            templates = templates.filter((t) =>
                 t.title.toLowerCase().includes(searchLower) ||
                 t.destination.toLowerCase().includes(searchLower) ||
                 (t.description && t.description.toLowerCase().includes(searchLower))
@@ -256,7 +274,16 @@ export async function POST(req: NextRequest) {
         }
 
         // Determine budget range from estimated_budget
-        const itineraryData = itinerary as any;
+        interface ItineraryRow {
+            trip_title?: string | null;
+            destination?: string | null;
+            duration_days?: number | null;
+            estimated_budget?: number | null;
+            theme?: string | null;
+            description?: string | null;
+            raw_data?: unknown;
+        }
+        const itineraryData = itinerary as ItineraryRow;
         let budgetRange = "medium";
         if (itineraryData.estimated_budget) {
             if (itineraryData.estimated_budget < 20000) {
@@ -268,6 +295,7 @@ export async function POST(req: NextRequest) {
 
         // Create the template (anonymized - organization_id is null, published_by_org_id tracks publisher)
         // itinerary_templates table not yet in generated types - using type assertion
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: template, error: createError } = await (admin.adminClient as any)
             .from("itinerary_templates")
             .insert({
@@ -285,11 +313,14 @@ export async function POST(req: NextRequest) {
                 rating_avg: 0,
             })
             .select()
-            .single();
+            .single() as { data: ItineraryTemplateRow | null; error: unknown };
 
         if (createError || !template) {
+            const errorMessage = createError && typeof createError === 'object' && 'message' in createError
+                ? (createError as { message: string }).message
+                : undefined;
             return NextResponse.json(
-                { error: "Failed to create template", details: createError?.message },
+                { error: "Failed to create template", details: errorMessage },
                 { status: 400 }
             );
         }

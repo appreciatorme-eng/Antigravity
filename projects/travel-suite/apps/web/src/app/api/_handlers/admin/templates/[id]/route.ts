@@ -7,6 +7,23 @@ import { logError } from "@/lib/observability/logger";
 const TEMPLATE_DETAILS_RATE_LIMIT_MAX = 120;
 const TEMPLATE_DETAILS_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 
+interface ItineraryTemplateRow {
+    id: string;
+    title: string;
+    destination: string;
+    duration_days: number;
+    budget_range: string;
+    theme: string;
+    description?: string | null;
+    template_data: unknown;
+    usage_count: number;
+    rating_avg: number;
+    rating_count: number;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
 function attachRateLimitHeaders(
     response: NextResponse,
     rateLimit: Awaited<ReturnType<typeof enforceRateLimit>>
@@ -54,6 +71,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
         }
 
         // itinerary_templates table not yet in generated types - using type assertion
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: templateData, error: templateError } = await (admin.adminClient as any)
             .from("itinerary_templates")
             .select(`
@@ -74,7 +92,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
             `)
             .eq("id", templateId)
             .eq("is_active", true)
-            .single();
+            .single() as { data: ItineraryTemplateRow | null; error: unknown };
 
         if (templateError || !templateData) {
             return NextResponse.json({ error: "Template not found" }, { status: 404 });

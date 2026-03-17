@@ -2,14 +2,24 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { sanitizeText } from "@/lib/security/sanitize";
-import { resolveDemoOrg, blockDemoMutation } from "@/lib/auth/demo-org-resolver";
+import { blockDemoMutation } from "@/lib/auth/demo-org-resolver";
 import { passesMutationCsrfGuard } from "@/lib/security/admin-mutation-csrf";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const TEMPLATE_FORK_RATE_LIMIT_MAX = 20;
 const TEMPLATE_FORK_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 
-type AdminContext = Extract<Awaited<ReturnType<typeof requireAdmin>>, { ok: true }>;
+interface ItineraryTemplateRow {
+  id: string;
+  title: string;
+  destination: string;
+  duration_days: number;
+  budget_range: string;
+  theme: string;
+  description?: string | null;
+  template_data: unknown;
+  usage_count: number;
+}
 
 function attachRateLimitHeaders(
   response: NextResponse,
@@ -77,6 +87,7 @@ export async function POST(
 
     // Fetch the template
     // itinerary_templates table not yet in generated types - using type assertion
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: template, error: templateError } = await (admin.adminClient as any)
       .from("itinerary_templates")
       .select(`
@@ -92,7 +103,7 @@ export async function POST(
       `)
       .eq("id", sanitizedTemplateId)
       .eq("is_active", true)
-      .single();
+      .single() as { data: ItineraryTemplateRow | null; error: unknown };
 
     if (templateError || !template) {
       return NextResponse.json(
@@ -107,13 +118,14 @@ export async function POST(
     const customDestination = sanitizeText(body.destination, { maxLength: 120 });
 
     // Create itinerary from template
-    const { data: itinerary, error: itineraryError } = await admin.adminClient
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: itinerary, error: itineraryError } = await (admin.adminClient as any)
       .from("itineraries")
       .insert({
-        trip_title: customTitle || (template as any).title,
-        destination: customDestination || (template as any).destination,
-        duration_days: (template as any).duration_days,
-        raw_data: (template as any).template_data || { days: [] },
+        trip_title: customTitle || template.title,
+        destination: customDestination || template.destination,
+        duration_days: template.duration_days,
+        raw_data: template.template_data || { days: [] },
       })
       .select()
       .single();
@@ -157,10 +169,11 @@ export async function POST(
 
     // Create template_fork record
     // template_forks table not yet in generated types - using type assertion
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: forkError } = await (admin.adminClient as any)
       .from("template_forks")
       .insert({
-        template_id: (template as any).id,
+        template_id: template.id,
         itinerary_id: itinerary.id,
         organization_id: admin.organizationId,
       });
@@ -172,12 +185,13 @@ export async function POST(
 
     // Increment template usage_count
     // itinerary_templates table not yet in generated types - using type assertion
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: updateError } = await (admin.adminClient as any)
       .from("itinerary_templates")
       .update({
-        usage_count: ((template as any).usage_count || 0) + 1,
+        usage_count: (template.usage_count || 0) + 1,
       })
-      .eq("id", (template as any).id);
+      .eq("id", template.id);
 
     if (updateError) {
       // Log error but don't fail the request - usage count update is non-critical
