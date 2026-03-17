@@ -3,17 +3,17 @@
  * Triggered by database trigger on reputation_reviews table.
  * Calls POST /api/reputation/process-auto-reviews to generate
  * marketing assets for eligible 5-star reviews.
- * Requires env vars: NEXT_PUBLIC_APP_URL, SUPABASE_SERVICE_ROLE_KEY
+ * Requires env vars: NEXT_PUBLIC_APP_URL, CRON_SECRET
  * ------------------------------------------------------------------ */
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 Deno.serve(async (req: Request) => {
   const appUrl = Deno.env.get("NEXT_PUBLIC_APP_URL");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const cronSecret = Deno.env.get("CRON_SECRET");
 
-  if (!appUrl || !serviceRoleKey) {
-    console.error("[process-review-marketing] Missing NEXT_PUBLIC_APP_URL or SUPABASE_SERVICE_ROLE_KEY");
+  if (!appUrl || !cronSecret) {
+    console.error("[process-review-marketing] Missing NEXT_PUBLIC_APP_URL or CRON_SECRET");
     return new Response(
       JSON.stringify({ ok: false, error: "Missing required environment variables" }),
       { status: 503, headers: { "Content-Type": "application/json" } },
@@ -51,7 +51,7 @@ Deno.serve(async (req: Request) => {
     const response = await fetch(targetUrl, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${serviceRoleKey}`,
+        "x-cron-secret": cronSecret,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({

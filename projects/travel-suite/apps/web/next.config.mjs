@@ -9,7 +9,7 @@ const withBundleAnalyzer = bundleAnalyzer({
 
 // i18n configuration via next-intl plugin
 // Supports EN/HI initially, framework ready for regional (TA/BN/TE/MR) and international (TH/ID) languages
-const withNextIntl = createNextIntlPlugin();
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
 const DEFAULT_HTTPS_IMAGE_HOSTS = [
   "images.unsplash.com",

@@ -10,7 +10,7 @@ set search_path = public
 as $function$
 declare
     function_url text;
-    service_role_key text;
+    cron_secret text;
     request_id bigint;
 begin
     -- Only process 5-star reviews with non-empty comments
@@ -21,11 +21,11 @@ begin
     -- Get environment variables for edge function URL
     -- The edge function URL format: https://<project-ref>.supabase.co/functions/v1/<function-name>
     function_url := current_setting('app.settings.supabase_url', true) || '/functions/v1/process-review-marketing';
-    service_role_key := current_setting('app.settings.service_role_key', true);
+    cron_secret := current_setting('app.settings.cron_secret', true);
 
     -- If settings are not configured, skip invocation
-    if function_url is null or service_role_key is null then
-        raise warning 'Supabase function URL or service role key not configured - skipping marketing asset generation for review %', new.id;
+    if function_url is null or cron_secret is null then
+        raise warning 'Supabase function URL or cron secret not configured - skipping marketing asset generation for review %', new.id;
         return new;
     end if;
 
@@ -36,7 +36,7 @@ begin
             url := function_url,
             headers := jsonb_build_object(
                 'Content-Type', 'application/json',
-                'Authorization', 'Bearer ' || service_role_key
+                'Authorization', 'Bearer ' || cron_secret
             ),
             body := jsonb_build_object(
                 'reviewId', new.id::text,

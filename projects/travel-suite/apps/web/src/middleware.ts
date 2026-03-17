@@ -130,14 +130,15 @@ export async function middleware(request: NextRequest) {
     // This ensures all URLs have proper locale prefixes and handles locale detection.
     const intlResponse = intlMiddleware(request);
 
-    // If next-intl is redirecting (e.g., adding locale prefix), apply session handling
-    // to the redirect response and return it.
+    // If next-intl is redirecting (e.g., adding locale prefix), copy session cookies
+    // onto the redirect response so the browser preserves auth state.
     if (intlResponse.status === 307 || intlResponse.status === 308) {
-        // Pass the redirect through updateSession to ensure cookies are set
-        const { response } = await updateSession(request);
-        // Copy redirect headers to the session response
-        response.headers.set("Location", intlResponse.headers.get("Location") || "");
-        return response;
+        const { response: sessionResponse } = await updateSession(request);
+        // Copy session cookies to the intl redirect (preserving its status code)
+        for (const cookie of sessionResponse.headers.getSetCookie()) {
+            intlResponse.headers.append("Set-Cookie", cookie);
+        }
+        return intlResponse;
     }
 
     // Step 2: Update Supabase session cookies on all non-redirect requests.

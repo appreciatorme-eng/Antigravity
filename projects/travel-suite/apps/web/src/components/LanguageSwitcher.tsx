@@ -31,7 +31,8 @@ export function LanguageSwitcher({ className }: { className?: string }) {
 
     // Replace the locale prefix in the pathname
     // pathname includes locale: /en/settings -> /hi/settings
-    const pathWithoutLocale = pathname.replace(/^\/[a-z]{2}/, '');
+    const localePattern = new RegExp(`^/(${locales.join('|')})(?=/|$)`);
+    const pathWithoutLocale = pathname.replace(localePattern, '');
     const newPath = `/${newLocale}${pathWithoutLocale}`;
 
     router.push(newPath);
@@ -119,7 +120,8 @@ export function LanguageSwitcherButton({ className }: { className?: string }) {
       return;
     }
 
-    const pathWithoutLocale = pathname.replace(/^\/[a-z]{2}/, '');
+    const localePattern = new RegExp(`^/(${locales.join('|')})(?=/|$)`);
+    const pathWithoutLocale = pathname.replace(localePattern, '');
     const newPath = `/${newLocale}${pathWithoutLocale}`;
 
     router.push(newPath);
