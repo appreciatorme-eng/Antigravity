@@ -1,10 +1,12 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sparkles, TrendingUp, CheckCircle, XCircle, Edit } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/components/ui/toast';
+import { logError } from '@/lib/observability/logger';
 
 interface ComparableTrip {
     destination: string;
@@ -30,6 +32,12 @@ interface PricingSuggestionWidgetProps {
     onAccept: (price: number) => void;
     onAdjust: (price: number) => void;
     onDismiss: () => void;
+    destination?: string;
+    durationDays?: number;
+    pax?: number;
+    packageTier?: 'budget' | 'standard' | 'premium' | 'luxury';
+    seasonMonth?: number;
+    proposalId?: string;
 }
 
 export function PricingSuggestionWidget({
@@ -38,7 +46,114 @@ export function PricingSuggestionWidget({
     onAccept,
     onAdjust,
     onDismiss,
+    destination = '',
+    durationDays = 0,
+    pax = 2,
+    packageTier,
+    seasonMonth,
+    proposalId,
 }: PricingSuggestionWidgetProps) {
+    const [suggestionId, setSuggestionId] = useState<string>('');
+    const [isRecordingFeedback, setIsRecordingFeedback] = useState(false);
+    const { toast } = useToast();
+
+    // Generate a unique suggestion ID when suggestion changes
+    useEffect(() => {
+        if (suggestion) {
+            setSuggestionId(crypto.randomUUID());
+        }
+    }, [suggestion]);
+
+    /**
+     * Record pricing feedback to the backend API
+     */
+    const recordFeedback = async (
+        action: 'accepted' | 'adjusted' | 'dismissed',
+        finalPrice: number | null
+    ) => {
+        if (!suggestionId || !destination || !durationDays) {
+            logError('Missing required context for feedback recording', {
+                suggestionId,
+                destination,
+                durationDays,
+            });
+            return;
+        }
+
+        try {
+            setIsRecordingFeedback(true);
+
+            // Convert INR to paise (multiply by 100)
+            const suggestedPricePaise = Math.round(suggestion.median * 100);
+            const finalPricePaise = finalPrice !== null ? Math.round(finalPrice * 100) : null;
+
+            const response = await fetch('/api/ai/pricing-feedback', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    suggestionId,
+                    action,
+                    suggestedPrice: suggestedPricePaise,
+                    finalPrice: finalPricePaise,
+                    confidenceLevel: suggestion.confidence,
+                    comparableTripsCount: suggestion.comparableTrips?.length || 0,
+                    destination,
+                    durationDays,
+                    pax,
+                    packageTier,
+                    seasonMonth,
+                    proposalId,
+                }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || 'Failed to record feedback');
+            }
+        } catch (error) {
+            logError('Failed to record pricing feedback', error);
+            // Don't show error toast - fail silently for better UX
+            // The user action (accept/adjust/dismiss) still works
+        } finally {
+            setIsRecordingFeedback(false);
+        }
+    };
+
+    const handleAccept = async () => {
+        await recordFeedback('accepted', suggestion.median);
+        onAccept(suggestion.median);
+
+        toast({
+            title: 'Pricing accepted',
+            description: `₹${formatIndianNumber(suggestion.median)} per person has been applied`,
+            variant: 'success',
+        });
+    };
+
+    const handleAdjust = async () => {
+        await recordFeedback('adjusted', suggestion.median);
+        onAdjust(suggestion.median);
+
+        toast({
+            title: 'Pricing applied',
+            description: 'You can now adjust the price to your preference',
+            variant: 'success',
+        });
+    };
+
+    const handleDismiss = async () => {
+        await recordFeedback('dismissed', null);
+        onDismiss();
+
+        toast({
+            title: 'Suggestion dismissed',
+            description: 'You can set your own pricing',
+            variant: 'info',
+        });
+    };
+
     const formatIndianNumber = (num: number) => {
         return num.toLocaleString('en-IN');
     };
@@ -180,7 +295,8 @@ export function PricingSuggestionWidget({
                 <Button
                     variant="ghost"
                     size="sm"
-                    onClick={onDismiss}
+                    onClick={handleDismiss}
+                    disabled={isRecordingFeedback}
                     className="text-gray-600 dark:text-gray-400"
                 >
                     <XCircle className="w-4 h-4 mr-1" />
@@ -189,7 +305,8 @@ export function PricingSuggestionWidget({
                 <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => onAdjust(suggestion.median)}
+                    onClick={handleAdjust}
+                    disabled={isRecordingFeedback}
                     className="border-emerald-200 dark:border-emerald-900/50"
                 >
                     <Edit className="w-4 h-4 mr-1" />
@@ -198,7 +315,8 @@ export function PricingSuggestionWidget({
                 <Button
                     variant="default"
                     size="sm"
-                    onClick={() => onAccept(suggestion.median)}
+                    onClick={handleAccept}
+                    disabled={isRecordingFeedback}
                     className="bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700"
                 >
                     <CheckCircle className="w-4 h-4 mr-1" />

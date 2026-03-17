@@ -178,6 +178,9 @@ export function PricingManager({ data, onChange }: PricingManagerProps) {
                     onAccept={handleAcceptSuggestion}
                     onAdjust={handleAdjustSuggestion}
                     onDismiss={handleDismissSuggestion}
+                    destination={data.destination}
+                    durationDays={data.duration_days}
+                    pax={data.pricing?.passengerCount || 2}
                 />
             )}
 
