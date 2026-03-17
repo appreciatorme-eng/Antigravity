@@ -65,7 +65,8 @@ export default function PerformancePage() {
     }
 
     fetchScorecards();
-  }, [selectedMonthKey]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const selectedScorecard = useMemo(() => {
     return scorecards.find((sc) => sc.monthKey === selectedMonthKey) || scorecards[0] || null;

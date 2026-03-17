@@ -11,7 +11,7 @@ import {
   MessageSquare,
   MapPin,
 } from "lucide-react";
-import { formatINR, formatINRShort } from "@/lib/india/formats";
+import { formatINRShort } from "@/lib/india/formats";
 import type { OperatorScorecardPayload } from "@/lib/admin/operator-scorecard";
 
 interface ScorecardCardProps {

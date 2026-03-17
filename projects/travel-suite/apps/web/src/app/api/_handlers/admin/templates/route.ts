@@ -5,6 +5,7 @@ import { sanitizeText } from "@/lib/security/sanitize";
 import { blockDemoMutation } from "@/lib/auth/demo-org-resolver";
 import { passesMutationCsrfGuard } from "@/lib/security/admin-mutation-csrf";
 import { updateContributorBadge } from "@/lib/templates/badges";
+import { safeErrorMessage } from "@/lib/security/safe-error";
 
 const TEMPLATES_READ_RATE_LIMIT_MAX = 120;
 const TEMPLATES_READ_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
@@ -178,8 +179,7 @@ export async function GET(req: NextRequest) {
 
         return NextResponse.json({ templates }, { status: 200 });
     } catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        return NextResponse.json({ error: "Internal server error", details: message }, { status: 500 });
+        return NextResponse.json({ error: "Internal server error", details: safeErrorMessage(err) }, { status: 500 });
     }
 }
 
@@ -281,10 +281,10 @@ export async function POST(req: NextRequest) {
             estimated_budget?: number | null;
             theme?: string | null;
             description?: string | null;
-            raw_data?: unknown;
+            daily_plans?: unknown;
         }
         const itineraryData = itinerary as ItineraryRow;
-        let budgetRange = "medium";
+        let budgetRange = "mid-range";
         if (itineraryData.estimated_budget) {
             if (itineraryData.estimated_budget < 20000) {
                 budgetRange = "budget";
@@ -303,9 +303,9 @@ export async function POST(req: NextRequest) {
                 destination: itineraryData.destination || "",
                 duration_days: itineraryData.duration_days || 1,
                 budget_range: budgetRange,
-                theme: itineraryData.theme || "general",
+                theme: itineraryData.theme || "leisure",
                 description: itineraryData.description,
-                template_data: itineraryData.raw_data,
+                template_data: itineraryData.daily_plans,
                 published_by_org_id: admin.organizationId,
                 is_active: true,
                 usage_count: 0,
@@ -334,7 +334,6 @@ export async function POST(req: NextRequest) {
 
         return NextResponse.json({ template }, { status: 201 });
     } catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        return NextResponse.json({ error: "Internal server error", details: message }, { status: 500 });
+        return NextResponse.json({ error: "Internal server error", details: safeErrorMessage(err) }, { status: 500 });
     }
 }

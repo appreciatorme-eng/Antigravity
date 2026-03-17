@@ -32,7 +32,7 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
     }
 
     posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
-      api_host: "https://app.posthog.com",
+      api_host: "https://us.i.posthog.com",
       capture_pageview: false,
       person_profiles: "identified_only",
     });

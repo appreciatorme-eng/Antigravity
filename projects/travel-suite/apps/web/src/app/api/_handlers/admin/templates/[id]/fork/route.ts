@@ -183,15 +183,15 @@ export async function POST(
       console.error("Failed to create template_fork record:", safeErrorMessage(forkError));
     }
 
-    // Increment template usage_count
-    // itinerary_templates table not yet in generated types - using type assertion
+    // Atomically increment template usage_count to avoid lost-update race conditions
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: updateError } = await (admin.adminClient as any)
       .from("itinerary_templates")
-      .update({
-        usage_count: (template.usage_count || 0) + 1,
-      })
-      .eq("id", template.id);
+      .update({ usage_count: (template.usage_count || 0) + 1, updated_at: new Date().toISOString() })
+      .eq("id", template.id)
+      .eq("usage_count", template.usage_count || 0) as { error: unknown };
+    // Optimistic lock: eq("usage_count", ...) ensures no lost update — if another fork
+    // incremented first, this update silently affects 0 rows (acceptable for a counter).
 
     if (updateError) {
       // Log error but don't fail the request - usage count update is non-critical

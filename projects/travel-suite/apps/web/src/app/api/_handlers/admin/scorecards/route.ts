@@ -5,30 +5,29 @@
 
 import { apiError } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
+import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { NextResponse } from "next/server";
 import { logError } from "@/lib/observability/logger";
 import { filterScorecardForTier, type OperatorScorecardPayload } from "@/lib/admin/operator-scorecard";
-import type { Json } from "@/lib/database.types";
 
-type ScorecardRow = {
-  id: string;
-  organization_id: string;
-  month_key: string;
-  score: number;
-  status: string;
-  payload: Json;
-  pdf_generated_at: string | null;
-  emailed_at: string | null;
-  last_error: string | null;
-  created_at: string;
-  updated_at: string;
-};
+const SCORECARDS_RATE_LIMIT_MAX = 60;
+const SCORECARDS_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 
 export async function GET(request: Request): Promise<Response> {
   try {
     const authResult = await requireAdmin(request);
     if (!authResult.ok) return authResult.response;
-    const { organizationId, adminClient } = authResult;
+    const { organizationId, adminClient, userId } = authResult;
+
+    const rateLimit = await enforceRateLimit({
+      identifier: userId,
+      limit: SCORECARDS_RATE_LIMIT_MAX,
+      windowMs: SCORECARDS_RATE_LIMIT_WINDOW_MS,
+      prefix: "api:admin:scorecards",
+    });
+    if (!rateLimit.success) {
+      return apiError("Too many scorecard requests. Please retry later.", 429);
+    }
 
     if (!organizationId) {
       return apiError("Organization not configured", 400);
@@ -62,7 +61,7 @@ export async function GET(request: Request): Promise<Response> {
       };
     });
 
-    return NextResponse.json({ data: { scorecards } });
+    return NextResponse.json({ scorecards });
   } catch (error) {
     logError("[/api/admin/scorecards:GET] Unhandled error", error);
     return apiError("An unexpected error occurred. Please try again.", 500);
