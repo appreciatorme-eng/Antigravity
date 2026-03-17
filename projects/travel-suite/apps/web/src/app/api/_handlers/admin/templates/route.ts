@@ -98,7 +98,8 @@ export async function GET(req: NextRequest) {
         const durationDays = searchParams.get("duration_days");
         const search = sanitizeSearchTerm(searchParams.get("search") || "");
 
-        let query = admin.adminClient
+        // itinerary_templates table not yet in generated types - using type assertion
+        let query = (admin.adminClient as any)
             .from("itinerary_templates")
             .select(`
                 id,
@@ -146,10 +147,10 @@ export async function GET(req: NextRequest) {
         }
 
         // Client-side search filtering if search term provided
-        let templates = data || [];
+        let templates = (data || []) as any[];
         if (search) {
             const searchLower = search.toLowerCase();
-            templates = templates.filter((t) =>
+            templates = templates.filter((t: any) =>
                 t.title.toLowerCase().includes(searchLower) ||
                 t.destination.toLowerCase().includes(searchLower) ||
                 (t.description && t.description.toLowerCase().includes(searchLower))
@@ -174,17 +175,13 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
         }
 
-        const csrfCheck = passesMutationCsrfGuard(req);
-        if (!csrfCheck.ok) {
-            return NextResponse.json({ error: csrfCheck.error }, { status: 403 });
+        if (!passesMutationCsrfGuard(req)) {
+            return NextResponse.json({ error: "CSRF validation failed" }, { status: 403 });
         }
 
         const demoBlock = blockDemoMutation(req);
-        if (demoBlock.blocked) {
-            return NextResponse.json(
-                { error: "Demo mode does not allow template publishing" },
-                { status: 403 }
-            );
+        if (demoBlock) {
+            return demoBlock;
         }
 
         const rateLimit = await enforceRateLimit({
@@ -258,26 +255,28 @@ export async function POST(req: NextRequest) {
         }
 
         // Determine budget range from estimated_budget
+        const itineraryData = itinerary as any;
         let budgetRange = "medium";
-        if (itinerary.estimated_budget) {
-            if (itinerary.estimated_budget < 20000) {
+        if (itineraryData.estimated_budget) {
+            if (itineraryData.estimated_budget < 20000) {
                 budgetRange = "budget";
-            } else if (itinerary.estimated_budget >= 50000) {
+            } else if (itineraryData.estimated_budget >= 50000) {
                 budgetRange = "luxury";
             }
         }
 
         // Create the template (anonymized - organization_id is null, published_by_org_id tracks publisher)
-        const { data: template, error: createError } = await admin.adminClient
+        // itinerary_templates table not yet in generated types - using type assertion
+        const { data: template, error: createError } = await (admin.adminClient as any)
             .from("itinerary_templates")
             .insert({
-                title: itinerary.trip_title || "Untitled Template",
-                destination: itinerary.destination || "",
-                duration_days: itinerary.duration_days || 1,
+                title: itineraryData.trip_title || "Untitled Template",
+                destination: itineraryData.destination || "",
+                duration_days: itineraryData.duration_days || 1,
                 budget_range: budgetRange,
-                theme: itinerary.theme || "general",
-                description: itinerary.description,
-                daily_plans: itinerary.daily_plans,
+                theme: itineraryData.theme || "general",
+                description: itineraryData.description,
+                template_data: itineraryData.raw_data,
                 published_by_org_id: admin.organizationId,
                 is_active: true,
                 usage_count: 0,

@@ -42,17 +42,13 @@ export async function POST(
       );
     }
 
-    const csrfCheck = passesMutationCsrfGuard(req);
-    if (!csrfCheck.ok) {
-      return NextResponse.json({ error: csrfCheck.error }, { status: 403 });
+    if (!passesMutationCsrfGuard(req)) {
+      return NextResponse.json({ error: "CSRF validation failed" }, { status: 403 });
     }
 
     const demoBlock = blockDemoMutation(req);
-    if (demoBlock.blocked) {
-      return NextResponse.json(
-        { error: "Demo mode does not allow template forking" },
-        { status: 403 }
-      );
+    if (demoBlock) {
+      return demoBlock;
     }
 
     const rateLimit = await enforceRateLimit({
@@ -80,7 +76,8 @@ export async function POST(
     }
 
     // Fetch the template
-    const { data: template, error: templateError } = await admin.adminClient
+    // itinerary_templates table not yet in generated types - using type assertion
+    const { data: template, error: templateError } = await (admin.adminClient as any)
       .from("itinerary_templates")
       .select(`
         id,
@@ -90,7 +87,7 @@ export async function POST(
         budget_range,
         theme,
         description,
-        daily_plans,
+        template_data,
         usage_count
       `)
       .eq("id", sanitizedTemplateId)
@@ -113,14 +110,10 @@ export async function POST(
     const { data: itinerary, error: itineraryError } = await admin.adminClient
       .from("itineraries")
       .insert({
-        organization_id: admin.organizationId,
-        trip_title: customTitle || template.title,
-        destination: customDestination || template.destination,
-        duration_days: template.duration_days,
-        theme: template.theme || "general",
-        description: template.description,
-        daily_plans: template.daily_plans || [],
-        estimated_budget: null,
+        trip_title: customTitle || (template as any).title,
+        destination: customDestination || (template as any).destination,
+        duration_days: (template as any).duration_days,
+        raw_data: (template as any).template_data || { days: [] },
       })
       .select()
       .single();
@@ -163,14 +156,13 @@ export async function POST(
     }
 
     // Create template_fork record
-    const { error: forkError } = await admin.adminClient
+    // template_forks table not yet in generated types - using type assertion
+    const { error: forkError } = await (admin.adminClient as any)
       .from("template_forks")
       .insert({
-        template_id: template.id,
-        itinerary_id: trip.id,
+        template_id: (template as any).id,
+        itinerary_id: itinerary.id,
         organization_id: admin.organizationId,
-        forked_at: new Date().toISOString(),
-        trip_completed: false,
       });
 
     if (forkError) {
@@ -179,12 +171,13 @@ export async function POST(
     }
 
     // Increment template usage_count
-    const { error: updateError } = await admin.adminClient
+    // itinerary_templates table not yet in generated types - using type assertion
+    const { error: updateError } = await (admin.adminClient as any)
       .from("itinerary_templates")
       .update({
-        usage_count: (template.usage_count || 0) + 1,
+        usage_count: ((template as any).usage_count || 0) + 1,
       })
-      .eq("id", template.id);
+      .eq("id", (template as any).id);
 
     if (updateError) {
       // Log error but don't fail the request - usage count update is non-critical
