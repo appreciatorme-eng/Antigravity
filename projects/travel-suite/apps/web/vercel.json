@@ -12,6 +12,10 @@
     {
       "path": "/api/notifications/schedule-followups",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/operator-scorecards",
+      "schedule": "0 3 1 * *"
     }
   ]
 }
