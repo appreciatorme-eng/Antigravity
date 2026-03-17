@@ -1,4 +1,4 @@
-// Demo Mode — 6 hardcoded GoBuddy Adventures proposals at different lifecycle stages.
+// Demo Mode — 6 hardcoded TripBuilt proposals at different lifecycle stages.
 // Returned by useProposals() when isDemoMode is true; zero DB reads required.
 
 interface DemoProposal {

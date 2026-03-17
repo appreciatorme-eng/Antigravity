@@ -177,7 +177,7 @@ function DemoVideo() {
             See It In <span className="text-[#FF9933]">Action</span>
           </h2>
           <p className="text-lg md:text-xl text-gray-400 mt-4">
-            Watch how TravelBuilt transforms your daily workflow in 60 seconds.
+            Watch how TripBuilt transforms your daily workflow in 60 seconds.
           </p>
         </motion.div>
 
@@ -193,7 +193,7 @@ function DemoVideo() {
             <Play size={32} className="text-white ml-1" />
           </div>
           <div className="absolute bottom-6 left-6 right-6 flex justify-between items-center">
-            <p className="text-sm text-gray-400">TravelBuilt Product Demo</p>
+            <p className="text-sm text-gray-400">TripBuilt Product Demo</p>
             <p className="text-sm text-gray-500">1:02</p>
           </div>
         </motion.div>

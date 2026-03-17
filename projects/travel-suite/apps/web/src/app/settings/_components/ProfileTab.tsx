@@ -1,6 +1,7 @@
 'use client';
 
 import { User } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { GlassButton } from '@/components/glass/GlassButton';
 import { getTimezoneDisplayName } from '@/lib/date/tz';
 
@@ -25,11 +26,13 @@ export function ProfileTab({
     onSaveTimezone,
     onSave,
 }: ProfileTabProps) {
+    const t = useTranslations('settings.profile');
+
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="border-b border-gray-100 pb-4">
-                <h2 className="text-xl font-bold text-secondary">Personal Account</h2>
-                <p className="text-sm text-text-secondary mt-1">Manage your operational identity and personal details.</p>
+                <h2 className="text-xl font-bold text-secondary">{t('title')}</h2>
+                <p className="text-sm text-text-secondary mt-1">{t('description')}</p>
             </div>
 
             <div className="flex items-center gap-6">
@@ -40,26 +43,26 @@ export function ProfileTab({
                 </div>
                 <div>
                     <GlassButton variant="secondary" className="text-xs font-bold rounded-xl" size="sm">
-                        Upload Avatar
+                        {t('avatar.uploadButton')}
                     </GlassButton>
-                    <p className="text-xs text-text-muted mt-2">JPG or PNG. Max size of 2MB.</p>
+                    <p className="text-xs text-text-muted mt-2">{t('avatar.fileRequirements')}</p>
                 </div>
             </div>
 
             <div className="grid gap-6">
                 <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-widest text-text-secondary">Full Name</label>
+                    <label className="text-xs font-bold uppercase tracking-widest text-text-secondary">{t('fields.fullName')}</label>
                     <input type="text" defaultValue="Admin User" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3" />
                 </div>
                 <div className="space-y-2">
-                    <label className="text-xs font-bold uppercase tracking-widest text-text-secondary">Email Address</label>
+                    <label className="text-xs font-bold uppercase tracking-widest text-text-secondary">{t('fields.email')}</label>
                     <input type="email" defaultValue="admin@travelsuite.app" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3" />
                 </div>
                 <div className="rounded-2xl border border-primary/10 bg-primary/[0.04] p-4">
                     <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                         <div className="flex-1 space-y-2">
                             <label className="text-xs font-bold uppercase tracking-widest text-text-secondary">
-                                Operational Timezone
+                                {t('timezone.label')}
                             </label>
                             <select
                                 value={draftTimezone}
@@ -73,7 +76,7 @@ export function ProfileTab({
                                 ))}
                             </select>
                             <p className="text-xs text-text-muted">
-                                Used for bookings, proposal activity, and inbox timestamps.
+                                {t('timezone.description')}
                             </p>
                         </div>
                         <GlassButton
@@ -82,7 +85,7 @@ export function ProfileTab({
                             disabled={savingTimezone || draftTimezone === timezone}
                             className="rounded-xl px-6"
                         >
-                            {savingTimezone ? 'Saving timezone...' : 'Save timezone'}
+                            {savingTimezone ? t('timezone.saving') : t('timezone.save')}
                         </GlassButton>
                     </div>
                 </div>
@@ -90,7 +93,7 @@ export function ProfileTab({
 
             <div className="pt-6 border-t border-gray-50 flex justify-end">
                 <GlassButton variant="primary" onClick={onSave} disabled={loading} className="rounded-xl px-8">
-                    {loading ? 'Committing...' : 'Save Configuration'}
+                    {loading ? t('actions.saving') : t('actions.save')}
                 </GlassButton>
             </div>
         </div>

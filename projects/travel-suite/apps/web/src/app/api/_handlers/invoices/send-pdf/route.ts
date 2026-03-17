@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth/admin";
 import { getIntegrationDisabledMessage, isEmailIntegrationEnabled } from "@/lib/integrations";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import { logError } from "@/lib/observability/logger";
+import { sendInvoicePdfNotification } from "@/lib/email/notifications";
 
 const SendInvoicePdfSchema = z.object({
   invoice_id: z.string().uuid(),
@@ -64,52 +65,20 @@ export async function POST(request: Request) {
       return apiError("Invoice not found", 404);
     }
 
-    const resendApiKey = process.env.RESEND_API_KEY;
-    const senderEmail = process.env.PROPOSAL_FROM_EMAIL ?? process.env.RESEND_FROM_EMAIL;
-
-    if (!senderEmail) {
-      logError('Invoice email sender not configured', new Error('Missing PROPOSAL_FROM_EMAIL'));
-      return apiError('Email sender not configured', 500);
-    }
-
-    if (!resendApiKey) {
-      return apiError("Email provider is not configured (RESEND_API_KEY missing)", 503);
-    }
-
     const cleanedBase64 = normalizeBase64(pdf_base64);
-    const displayOrgName = organization_name || "Travel Suite";
+    const displayOrgName = organization_name || "TripBuilt";
 
-    const emailResponse = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${resendApiKey}`,
-        "Content-Type": "application/json",
+    const sent = await sendInvoicePdfNotification({
+      to: client_email,
+      invoiceNumber: invoice_number,
+      organizationName: displayOrgName,
+      attachment: {
+        filename: `${invoice_number.replace(/\s+/g, "_")}.pdf`,
+        content: cleanedBase64,
       },
-      body: JSON.stringify({
-        from: senderEmail,
-        to: [client_email],
-        subject: `Invoice ${invoice_number} from ${displayOrgName}`,
-        html: `
-          <h2>Invoice ${invoice_number}</h2>
-          <p>Please find your invoice attached as a PDF.</p>
-          <p>If you have any questions, reply to this email and our team will assist you.</p>
-          <p>Regards,<br/>${displayOrgName}</p>
-        `,
-        attachments: [
-          {
-            filename: `${invoice_number.replace(/\s+/g, "_")}.pdf`,
-            content: cleanedBase64,
-          },
-        ],
-      }),
     });
 
-    if (!emailResponse.ok) {
-      const rawBody = await emailResponse.json().catch((e: unknown) => { logError('Failed to parse API response', e); return {}; });
-      logError("[invoices/send-pdf] Resend API failure", {
-        status: emailResponse.status,
-        body: rawBody,
-      });
+    if (!sent) {
       return NextResponse.json(
         { error: "Failed to send email" },
         { status: 502 }

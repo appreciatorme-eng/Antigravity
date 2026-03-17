@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
   }
 
   const { searchParams } = new URL(request.url);
-  const title = sanitizeOgText(searchParams.get("title"), "TravelBuilt", 120);
+  const title = sanitizeOgText(searchParams.get("title"), "TripBuilt", 120);
   const subtitle = sanitizeOgText(
     searchParams.get("subtitle"),
     "Build Your Travel Empire",
@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
               letterSpacing: "-0.5px",
             }}
           >
-            TravelBuilt
+            TripBuilt
           </span>
         </div>
 

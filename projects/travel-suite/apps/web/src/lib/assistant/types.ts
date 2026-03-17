@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------------
- * Core type definitions for the GoBuddy assistant action system.
+ * Core type definitions for the TripBuilt assistant action system.
  *
  * All interfaces use readonly properties to enforce immutability.
  * This module is pure types plus one small helper function --

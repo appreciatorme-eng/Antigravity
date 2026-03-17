@@ -389,7 +389,7 @@ async function handlePaymentCaptured(
           paymentId: payment.id,
           bookingReference: invoiceRow.invoice_number || invoiceId,
           paidAt: paidAtLabel,
-          operatorName: organization?.name || 'Antigravity Travel',
+          operatorName: organization?.name || 'TripBuilt',
           gstLabel: DEFAULT_PAYMENT_RECEIPT_GST_LABEL,
           invoiceUrl: buildInvoiceDownloadUrl(requestOrigin, invoiceId, payment.id),
         });

@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------------
- * Client read actions for the GoBuddy assistant.
+ * Client read actions for the TripBuilt assistant.
  *
  * Actions: search_clients, get_client_details, get_client_history
  *

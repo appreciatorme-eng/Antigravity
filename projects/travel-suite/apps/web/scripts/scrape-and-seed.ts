@@ -64,10 +64,10 @@ async function fetchTourLinks(url: string): Promise<string[]> {
         const links = new Set<string>();
 
         // Look for anchor tags that contain "tour" or are inside specific grids.
-        // GoBuddyAdventures typically uses standard ahrefs.
+        // TripBuilt typically uses standard ahrefs.
         $('a[href*="/tours/"]').each((i, el) => {
             const href = $(el).attr('href');
-            if (href && href.length > 25 && href !== 'https://gobuddyadventures.com/tours/') {
+            if (href && href.length > 25 && href !== 'https://tripbuilt.com/tours/') {
                 links.add(href);
             }
         });
@@ -166,7 +166,7 @@ async function runScraperSeeder() {
         process.exit(1);
     }
 
-    const CATALOG_URL = 'https://gobuddyadventures.com/tours/';
+    const CATALOG_URL = 'https://tripbuilt.com/tours/';
     const tourLinks = await fetchTourLinks(CATALOG_URL);
 
     if (tourLinks.length === 0) {
@@ -182,7 +182,7 @@ async function runScraperSeeder() {
         await sleep(3000);
     }
 
-    console.log(`\n✅ Finished scraping and seeding ${tourLinks.length} tours from GoBuddyAdventures.`);
+    console.log(`\n✅ Finished scraping and seeding ${tourLinks.length} tours from TripBuilt.`);
     process.exit(0);
 }
 

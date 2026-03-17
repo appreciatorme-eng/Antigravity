@@ -1097,6 +1097,67 @@ export type Database = {
           },
         ]
       }
+      expense_receipts: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          ocr_confidence: number | null
+          ocr_extracted_amount: number | null
+          ocr_raw_response: Json | null
+          organization_id: string
+          receipt_url: string
+          trip_service_cost_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          ocr_confidence?: number | null
+          ocr_extracted_amount?: number | null
+          ocr_raw_response?: Json | null
+          organization_id: string
+          receipt_url: string
+          trip_service_cost_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          ocr_confidence?: number | null
+          ocr_extracted_amount?: number | null
+          ocr_raw_response?: Json | null
+          organization_id?: string
+          receipt_url?: string
+          trip_service_cost_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_receipts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_receipts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_receipts_trip_service_cost_id_fkey"
+            columns: ["trip_service_cost_id"]
+            isOneToOne: false
+            referencedRelation: "trip_service_costs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       geocoding_cache: {
         Row: {
           access_count: number

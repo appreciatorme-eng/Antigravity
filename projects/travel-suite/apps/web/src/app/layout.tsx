@@ -1,11 +1,14 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { Inter, Cormorant_Garamond } from "next/font/google";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages } from "next-intl/server";
 import "./globals.css";
 import "@/styles/print.css";
 import AppProviders from "@/components/providers/AppProviders";
 import AppShell from "@/components/layout/AppShell";
 import { ServiceWorkerRegistrar } from "@/components/pwa/ServiceWorkerRegistrar";
+import { getLocaleDirection } from "@/i18n";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -22,7 +25,7 @@ const cormorant = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
-  title: "GoBuddy Adventures | Premium Tour Operator Suite",
+  title: "TripBuilt | Premium Tour Operator Suite",
   description: "Enterprise-grade AI-Powered Travel Planning and Operations Management",
   manifest: "/manifest.json",
   icons: {
@@ -35,7 +38,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "TourOS",
+    title: "TripBuilt",
   },
 };
 
@@ -43,13 +46,20 @@ export const viewport: Viewport = {
   themeColor: "#6366f1",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Get locale from next-intl request config (no [locale] route segment needed)
+  const locale = await getLocale();
+  const messages = await getMessages();
+
+  // Get text direction for locale (supports RTL languages like Arabic, Urdu)
+  const direction = getLocaleDirection(locale);
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} dir={direction} suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -68,18 +78,20 @@ export default function RootLayout({
         <meta name="theme-color" content="#6366f1" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="TourOS" />
+        <meta name="apple-mobile-web-app-title" content="TripBuilt" />
         <link rel="apple-touch-icon" href="/icons/pwa-192.png" />
       </head>
       <body
         className={`${inter.variable} ${cormorant.variable} antialiased font-sans bg-white dark:bg-[#0a1628] text-slate-900 dark:text-slate-100`}
       >
-        <AppProviders>
-          <Suspense fallback={null}>
-            <AppShell>{children}</AppShell>
-          </Suspense>
-        </AppProviders>
-        <ServiceWorkerRegistrar />
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <AppProviders>
+            <Suspense fallback={null}>
+              <AppShell>{children}</AppShell>
+            </Suspense>
+          </AppProviders>
+          <ServiceWorkerRegistrar />
+        </NextIntlClientProvider>
       </body>
     </html>
   );

@@ -38,7 +38,7 @@ export async function POST(request: Request) {
             connection.session_name,
             connection.session_token,
             phoneDigits,
-            "✅ TravelSuite test — your WhatsApp inbox is live! Reply to verify two-way messaging.",
+            "✅ TripBuilt test — your WhatsApp inbox is live! Reply to verify two-way messaging.",
         );
 
         console.info("[whatsapp/test-message] sent by admin", { userId, organizationId });

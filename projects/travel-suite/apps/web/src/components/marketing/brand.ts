@@ -1,8 +1,8 @@
 export const BRAND = {
-  name: "TravelBuilt",
+  name: "TripBuilt",
   tagline: "Build Your Travel Empire",
   description: "The all-in-one operating system for modern tour operators.",
-  domain: "travelbuilt.com",
+  domain: "tripbuilt.com",
   colors: {
     primary: "#FF6B2C",
     accent: "#00D4AA",

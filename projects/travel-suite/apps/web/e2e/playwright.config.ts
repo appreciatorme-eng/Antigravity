@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 import { config as loadDotenv } from 'dotenv';
 import path from 'node:path';
+import fs from 'node:fs';
 
 // Load e2e/.env before resolving any env-dependent config values so that
 // PLAYWRIGHT_BASE_URL, TEST_ADMIN_EMAIL, etc. are available at config-eval time.
@@ -13,8 +14,13 @@ const appDir = path.resolve(configDir, '..');
 const resolvedBaseUrl =
   process.env.PLAYWRIGHT_BASE_URL || process.env.BASE_URL || 'http://127.0.0.1:3100';
 
+// Check if admin auth state exists - if not, tests will run unauthenticated
+// and middleware will redirect to /auth, which is expected for setup issues
+const adminAuthPath = path.join(__dirname, '.auth', 'admin.json');
+const hasAdminAuth = fs.existsSync(adminAuthPath);
+
 /**
- * GoBuddy Adventures - Playwright E2E Test Configuration
+ * TripBuilt - Playwright E2E Test Configuration
  * @see https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({
@@ -65,6 +71,8 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
+        // Use admin auth state for authenticated tests (if available)
+        ...(hasAdminAuth ? { storageState: adminAuthPath } : {}),
       },
       dependencies: ['setup'],
     },
@@ -73,6 +81,8 @@ export default defineConfig({
       name: 'firefox',
       use: {
         ...devices['Desktop Firefox'],
+        // Use admin auth state for authenticated tests (if available)
+        ...(hasAdminAuth ? { storageState: adminAuthPath } : {}),
       },
       dependencies: ['setup'],
     },
@@ -81,6 +91,8 @@ export default defineConfig({
       name: 'webkit',
       use: {
         ...devices['Desktop Safari'],
+        // Use admin auth state for authenticated tests (if available)
+        ...(hasAdminAuth ? { storageState: adminAuthPath } : {}),
       },
       dependencies: ['setup'],
     },
@@ -90,6 +102,8 @@ export default defineConfig({
       name: 'mobile-chrome',
       use: {
         ...devices['Pixel 5'],
+        // Use admin auth state for authenticated tests (if available)
+        ...(hasAdminAuth ? { storageState: adminAuthPath } : {}),
       },
       dependencies: ['setup'],
     },
@@ -97,6 +111,8 @@ export default defineConfig({
       name: 'mobile-safari',
       use: {
         ...devices['iPhone 12'],
+        // Use admin auth state for authenticated tests (if available)
+        ...(hasAdminAuth ? { storageState: adminAuthPath } : {}),
       },
       dependencies: ['setup'],
     },

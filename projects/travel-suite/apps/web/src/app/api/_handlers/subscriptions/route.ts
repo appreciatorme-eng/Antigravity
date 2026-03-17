@@ -206,7 +206,7 @@ export async function POST(request: NextRequest) {
     const safeBillingState = sanitizeText(org?.billing_state ?? null, { maxLength: 64 }) || undefined;
     const { data: { user: authUser } } = await adminClient.auth.admin.getUserById(userId);
     const safeCustomerEmail = sanitizeEmail(authUser?.email ?? null) || '';
-    const safeCustomerName = sanitizeText(org?.name ?? null, { maxLength: 120 }) || 'Travel Suite';
+    const safeCustomerName = sanitizeText(org?.name ?? null, { maxLength: 120 }) || 'TripBuilt';
 
     const subscriptionId = await paymentService.createSubscription({
       organizationId: organizationId!,

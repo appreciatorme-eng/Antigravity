@@ -3,7 +3,7 @@ import "server-only";
 /* ------------------------------------------------------------------
  * WhatsApp Channel Adapter
  *
- * Bridges incoming WhatsApp text messages to the GoBuddy orchestrator
+ * Bridges incoming WhatsApp text messages to the TripBuilt orchestrator
  * and sends replies back through the Meta Cloud API.
  *
  * Key differences from the web channel:
@@ -177,7 +177,7 @@ export async function handleWhatsAppMessage(
   if (!sender) {
     // Unknown user -- send a polite message and bail
     const unknownReply =
-      "Hi! I'm GoBuddy, a business assistant. I couldn't find your account. Please make sure your WhatsApp number is registered in your tour operator profile.";
+      "Hi! I'm TripBuilt, a business assistant. I couldn't find your account. Please make sure your WhatsApp number is registered in your tour operator profile.";
     await sendWhatsAppText(senderPhone, unknownReply);
     return { success: true, replySent: true, replyText: unknownReply };
   }

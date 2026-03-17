@@ -9,6 +9,7 @@ const ADMIN_RATE_LIMIT = {
 };
 
 const routes = createCatchAllHandlers([
+  ["activity", () => import("@/app/api/_handlers/admin/activity/route")],
   ["automation/rules", () => import("@/app/api/_handlers/admin/automation/rules/route")],
   ["automation/toggle", () => import("@/app/api/_handlers/admin/automation/toggle/route")],
   ["cache-metrics", () => import("@/app/api/_handlers/admin/cache-metrics/route")],
@@ -59,6 +60,9 @@ const routes = createCatchAllHandlers([
   ["trips/:id/clone", () => import("@/app/api/_handlers/admin/trips/[id]/clone/route")],
   ["trips/:id", () => import("@/app/api/_handlers/admin/trips/[id]/route")],
   ["trips", () => import("@/app/api/_handlers/admin/trips/route")],
+  ["templates/:id/fork", () => import("@/app/api/_handlers/admin/templates/[id]/fork/route")],
+  ["templates/:id", () => import("@/app/api/_handlers/admin/templates/[id]/route")],
+  ["templates", () => import("@/app/api/_handlers/admin/templates/route")],
   ["whatsapp/health", () => import("@/app/api/_handlers/admin/whatsapp/health/route")],
   ["whatsapp/normalize-driver-phones", () => import("@/app/api/_handlers/admin/whatsapp/normalize-driver-phones/route")],
   ["workflow/events", () => import("@/app/api/_handlers/admin/workflow/events/route")],
@@ -71,7 +75,11 @@ const routes = createCatchAllHandlers([
   ["pricing/overheads", () => import("@/app/api/_handlers/admin/pricing/overheads/route")],
   ["pricing/vendor-history", () => import("@/app/api/_handlers/admin/pricing/vendor-history/route")],
   ["pricing/transactions", () => import("@/app/api/_handlers/admin/pricing/transactions/route")],
+  ["pricing/receipts/upload", () => import("@/app/api/_handlers/admin/pricing/receipts/upload/route")],
+  ["pricing/receipts/ocr", () => import("@/app/api/_handlers/admin/pricing/receipts/ocr/route")],
+  ["pricing/export", () => import("@/app/api/_handlers/admin/pricing/export/route")],
   ["revenue", () => import("@/app/api/_handlers/admin/revenue/route")],
+  ["scorecards", () => import("@/app/api/_handlers/admin/scorecards/route")],
   ["seed-demo", () => import("@/app/api/_handlers/admin/seed-demo/route")],
 ], { rateLimit: ADMIN_RATE_LIMIT });
 

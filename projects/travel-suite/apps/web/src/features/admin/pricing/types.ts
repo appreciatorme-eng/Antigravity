@@ -89,11 +89,35 @@ export interface MonthlyTrendPoint {
   revenue: number;
 }
 
+export interface DestinationProfitability {
+  destination: string;
+  revenue: number;
+  cost: number;
+  profit: number;
+  tripCount: number;
+  avgMargin: number;
+}
+
+export interface ClientProfitability {
+  clientId: string;
+  clientName: string;
+  revenue: number;
+  cost: number;
+  profit: number;
+  tripCount: number;
+  avgMargin: number;
+}
+
 export interface PricingDashboardData {
   kpis: PricingDashboardKpis;
   categoryBreakdown: CategoryBreakdown[];
   topProfitableTrips: TopProfitableTrip[];
+  bottomProfitableTrips: TopProfitableTrip[];
   monthlyTrend: MonthlyTrendPoint[];
+  topDestinations: DestinationProfitability[];
+  bottomDestinations: DestinationProfitability[];
+  topClients: ClientProfitability[];
+  bottomClients: ClientProfitability[];
 }
 
 export interface TripWithCosts {
@@ -161,4 +185,24 @@ export interface TransactionFilters {
   category: ServiceCategory | "all";
   vendor: string;
   sort: TransactionSort;
+}
+
+export interface ReceiptOcrResult {
+  amount: number;
+  currency: string;
+  confidence: number;
+  raw_response: string;
+}
+
+export interface ExpenseReceipt {
+  id: string;
+  organization_id: string;
+  trip_service_cost_id: string | null;
+  receipt_url: string;
+  ocr_extracted_amount: number | null;
+  ocr_confidence: number | null;
+  ocr_raw_response: Record<string, unknown> | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
 }

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { X, Instagram, Facebook, Calendar, Clock, Send, Download, Save, Loader2, CheckCircle2, AlertCircle, Zap, MessageCircle } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { X, Instagram, Facebook, Calendar, Clock, Send, Download, Save, Loader2, CheckCircle2, AlertCircle, Zap, MessageCircle, RotateCcw, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -18,6 +18,16 @@ interface Props {
 }
 
 type PublishMode = "now" | "schedule";
+
+type QueueStatus = {
+    id: string;
+    platform: string;
+    status: "pending_review" | "pending" | "processing" | "sent" | "failed";
+    error_message: string | null;
+    platform_post_url: string | null;
+    scheduled_for: string | null;
+    attempts: number | null;
+};
 
 export const PublishKitDrawer = ({
     isOpen,
@@ -39,6 +49,9 @@ export const PublishKitDrawer = ({
     const [saving, setSaving] = useState(false);
     const [hdDownloading, setHdDownloading] = useState(false);
     const [submitted, setSubmitted] = useState(false);
+    const [queueIds, setQueueIds] = useState<string[]>([]);
+    const [queueStatuses, setQueueStatuses] = useState<QueueStatus[]>([]);
+    const [retrying, setRetrying] = useState<string | null>(null);
 
     const handlePublish = async () => {
         const hasConnection = (platforms.instagram && connections.instagram) || (platforms.facebook && connections.facebook);
@@ -72,12 +85,17 @@ export const PublishKitDrawer = ({
                 );
             }
             setSubmitted(true);
+
+            // Store queue IDs for status polling
+            if (payload.data?.queueIds) {
+                setQueueIds(payload.data.queueIds);
+            }
+
             toast.success(
                 publishMode === "now"
                     ? "Submitted for review."
                     : "Review scheduled."
             );
-            setTimeout(() => { setSubmitted(false); onClose(); }, 2000);
         } catch (error) {
             toast.error(
                 error instanceof Error
@@ -98,6 +116,77 @@ export const PublishKitDrawer = ({
             setSaving(false);
         }
     };
+
+    const handleRetry = async (queueId: string) => {
+        setRetrying(queueId);
+        try {
+            const res = await fetch("/api/social/queue-retry", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ queueId }),
+            });
+            const payload = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                throw new Error(
+                    typeof payload?.error === "string"
+                        ? payload.error
+                        : "Retry failed"
+                );
+            }
+            toast.success("Retry scheduled. Processing will resume shortly.");
+            // Trigger immediate status check
+            await pollQueueStatus();
+        } catch (error) {
+            toast.error(
+                error instanceof Error
+                    ? error.message
+                    : "Could not retry this item."
+            );
+        } finally {
+            setRetrying(null);
+        }
+    };
+
+    const pollQueueStatus = useCallback(async () => {
+        if (queueIds.length === 0) return;
+        try {
+            const res = await fetch("/api/social/queue-status", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ queueIds }),
+            });
+            const payload = await res.json().catch(() => ({}));
+            if (res.ok && payload.items) {
+                setQueueStatuses(payload.items);
+            }
+        } catch {
+            // Silent failure - don't interrupt user experience
+        }
+    }, [queueIds]);
+
+    // Poll queue status every 3 seconds when we have queue IDs
+    useEffect(() => {
+        if (queueIds.length === 0 || !isOpen) return;
+
+        // Poll immediately
+        void pollQueueStatus();
+
+        // Set up polling interval
+        const interval = setInterval(() => {
+            void pollQueueStatus();
+        }, 3000);
+
+        return () => clearInterval(interval);
+    }, [queueIds, isOpen, pollQueueStatus]);
+
+    // Reset state when drawer closes
+    useEffect(() => {
+        if (!isOpen) {
+            setQueueIds([]);
+            setQueueStatuses([]);
+            setSubmitted(false);
+        }
+    }, [isOpen]);
 
     const charCount = caption.length;
     const igLimit = 2200;
@@ -260,7 +349,106 @@ export const PublishKitDrawer = ({
 
                         {/* Footer actions */}
                         <div className="p-5 border-t border-slate-100 dark:border-slate-800 space-y-3">
-                            {submitted ? (
+                            {submitted && queueStatuses.length > 0 ? (
+                                <>
+                                    <div className="space-y-2">
+                                        {queueStatuses.map((queue) => {
+                                        const platformIcon = queue.platform === "instagram" ? Instagram : Facebook;
+                                        const PlatformIcon = platformIcon;
+
+                                        let statusColor = "text-slate-600";
+                                        let statusBg = "bg-slate-50 dark:bg-slate-800";
+                                        let statusIcon = <Loader2 className="w-4 h-4 animate-spin" />;
+                                        let displayText: string = queue.status;
+
+                                        if (queue.status === "sent") {
+                                            statusColor = "text-emerald-600";
+                                            statusBg = "bg-emerald-50 dark:bg-emerald-900/20";
+                                            statusIcon = <CheckCircle2 className="w-4 h-4" />;
+                                            displayText = "Published";
+                                        } else if (queue.status === "failed") {
+                                            statusColor = "text-red-600";
+                                            statusBg = "bg-red-50 dark:bg-red-900/20";
+                                            statusIcon = <AlertCircle className="w-4 h-4" />;
+                                            displayText = "Failed";
+                                        } else if (queue.status === "processing") {
+                                            statusColor = "text-blue-600";
+                                            statusBg = "bg-blue-50 dark:bg-blue-900/20";
+                                            statusIcon = <Loader2 className="w-4 h-4 animate-spin" />;
+                                            displayText = "Publishing...";
+                                        } else if (queue.status === "pending_review") {
+                                            statusColor = "text-amber-600";
+                                            statusBg = "bg-amber-50 dark:bg-amber-900/20";
+                                            statusIcon = <Clock className="w-4 h-4" />;
+                                            displayText = "Pending Review";
+                                        } else if (queue.status === "pending") {
+                                            statusColor = "text-indigo-600";
+                                            statusBg = "bg-indigo-50 dark:bg-indigo-900/20";
+                                            statusIcon = <Clock className="w-4 h-4" />;
+                                            displayText = "Queued";
+                                        }
+
+                                        return (
+                                            <div
+                                                key={queue.id}
+                                                className={`p-3 rounded-xl ${statusBg} border border-opacity-20 ${statusColor}`}
+                                            >
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <PlatformIcon className="w-4 h-4" />
+                                                        <span className="text-sm font-bold capitalize">{queue.platform}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        {statusIcon}
+                                                        <span className="text-xs font-bold">{displayText}</span>
+                                                    </div>
+                                                </div>
+                                                {queue.error_message && (
+                                                    <div className="mt-2 space-y-2">
+                                                        <p className="text-xs text-red-700 dark:text-red-300 font-medium">
+                                                            {queue.error_message}
+                                                        </p>
+                                                        {queue.status === "failed" && (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                className="w-full h-8 text-xs font-semibold"
+                                                                onClick={() => handleRetry(queue.id)}
+                                                                disabled={retrying === queue.id}
+                                                            >
+                                                                {retrying === queue.id ? (
+                                                                    <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                                                                ) : (
+                                                                    <RotateCcw className="w-3 h-3 mr-1" />
+                                                                )}
+                                                                Retry
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                )}
+                                                {queue.platform_post_url && queue.status === "sent" && (
+                                                    <a
+                                                        href={queue.platform_post_url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="mt-2 flex items-center gap-1 text-xs font-semibold hover:underline"
+                                                    >
+                                                        View Post <ExternalLink className="w-3 h-3" />
+                                                    </a>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    className="w-full font-semibold h-10 rounded-xl"
+                                    onClick={onClose}
+                                >
+                                    Close
+                                </Button>
+                            </>
+                            ) : submitted ? (
                                 <div className="flex items-center justify-center gap-3 py-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl text-emerald-600">
                                     <CheckCircle2 className="w-6 h-6" />
                                     <span className="font-bold text-lg">

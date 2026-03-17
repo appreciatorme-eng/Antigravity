@@ -30,7 +30,7 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().min(1).optional(),
   PROPOSAL_FROM_EMAIL: z.string().email().optional(),
   WELCOME_FROM_EMAIL: z.string().email().optional(),
-  RESEND_FROM_EMAIL: z.string().email().optional(),
+  RESEND_FROM_EMAIL: z.union([z.string().email(), z.literal('')]).optional().transform(v => v || undefined),
 
   // WhatsApp
   WHATSAPP_API_TOKEN: z.string().min(1).optional(),

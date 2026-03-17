@@ -13,7 +13,7 @@ export interface Message {
 }
 
 export const WELCOME =
-    "Hi! I'm GoBuddy, your operations co-pilot. I can look up live data from your business -- trips, clients, invoices, drivers, proposals. Ask me anything!";
+    "Hi! I'm TripBuilt, your operations co-pilot. I can look up live data from your business -- trips, clients, invoices, drivers, proposals. Ask me anything!";
 
 export const QUICK_PROMPTS = [
     "What's happening today?",

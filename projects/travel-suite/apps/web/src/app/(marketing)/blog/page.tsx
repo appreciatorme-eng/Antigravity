@@ -6,7 +6,7 @@ import { BlogCard } from '@/components/marketing/blog/BlogCard';
 import { BlogHero } from './BlogHero';
 
 export const metadata: Metadata = {
-  title: 'Blog | TravelBuilt',
+  title: 'Blog | TripBuilt',
   description:
     'Insights, strategies, and playbooks for modern tour operators who want to grow faster and work less.',
 };

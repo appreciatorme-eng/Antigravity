@@ -264,7 +264,7 @@ export async function POST(
         const tripUrl = proposalRow.share_token
             ? `${new URL(req.url).origin}/portal/${proposalRow.share_token}`
             : null;
-        const operatorName = operatorProfile?.full_name || organization?.name || "Antigravity Travel";
+        const operatorName = operatorProfile?.full_name || organization?.name || "TripBuilt";
         const operatorEmail = operatorProfile?.email || null;
 
         if (travelerProfile?.email) {

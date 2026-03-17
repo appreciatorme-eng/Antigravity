@@ -46,7 +46,7 @@ export function HowItWorks() {
                         transition={{ delay: 0.1 }}
                         className="text-xl text-gray-400 font-light max-w-2xl mx-auto"
                     >
-                        You don&apos;t need to be a tech expert. We&apos;ve built TravelBuilt to be as intuitive as sending a text message.
+                        You don&apos;t need to be a tech expert. We&apos;ve built TripBuilt to be as intuitive as sending a text message.
                     </motion.p>
                 </div>
 

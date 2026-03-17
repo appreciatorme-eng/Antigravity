@@ -1,10 +1,15 @@
 import path from "node:path";
 import bundleAnalyzer from "@next/bundle-analyzer";
+import createNextIntlPlugin from "next-intl/plugin";
 
 const projectRoot = path.resolve(import.meta.dirname);
 const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === "true",
 });
+
+// i18n configuration via next-intl plugin
+// Supports EN/HI initially, framework ready for regional (TA/BN/TE/MR) and international (TH/ID) languages
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
 const DEFAULT_HTTPS_IMAGE_HOSTS = [
   "images.unsplash.com",
@@ -12,8 +17,8 @@ const DEFAULT_HTTPS_IMAGE_HOSTS = [
   "images.pexels.com",
   "cdn.pixabay.com",
   "pixabay.com",
-  "gobuddyadventures.com",
-  "www.gobuddyadventures.com",
+  "tripbuilt.com",
+  "www.tripbuilt.com",
   "grainy-gradients.vercel.app",
   "unpkg.com",
   "tiles.openfreemap.org",
@@ -56,11 +61,11 @@ const cspHeader = [
   "base-uri 'self'",
   "object-src 'none'",
   "frame-ancestors 'self'",
-  "script-src 'self' 'unsafe-inline' https://checkout.razorpay.com https://app.posthog.com",
+  "script-src 'self' 'unsafe-inline' https://checkout.razorpay.com https://app.posthog.com https://us-assets.i.posthog.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data: https://fonts.gstatic.com",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://app.posthog.com https://*.sentry.io https://*.ingest.sentry.io https://maps.googleapis.com https://maps.gstatic.com https://prod.spline.design",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://app.posthog.com https://us.i.posthog.com https://us-assets.i.posthog.com https://*.sentry.io https://*.ingest.sentry.io https://maps.googleapis.com https://maps.gstatic.com https://prod.spline.design",
   "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com",
   "worker-src 'self' blob:",
   "form-action 'self' https://api.razorpay.com https://checkout.razorpay.com",
@@ -103,4 +108,4 @@ const nextConfig = {
   },
 };
 
-export default withBundleAnalyzer(nextConfig);
+export default withBundleAnalyzer(withNextIntl(nextConfig));

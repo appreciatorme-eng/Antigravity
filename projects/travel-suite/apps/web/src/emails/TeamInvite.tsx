@@ -25,7 +25,7 @@ export function TeamInviteEmail({
         <strong>{inviterName}</strong> invited you to join <strong>{organizationName}</strong> as a{" "}
         <strong>{role}</strong>.
       </Text>
-      <Text>Accept the invite to start collaborating inside Antigravity Travel.</Text>
+      <Text>Accept the invite to start collaborating inside TripBuilt.</Text>
     </BaseEmail>
   );
 }

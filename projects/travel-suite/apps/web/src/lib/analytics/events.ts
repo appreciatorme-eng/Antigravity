@@ -22,5 +22,17 @@ export function useAnalytics() {
       posthog.capture("whatsapp_message_sent", { type }),
     aiSuggestionUsed: (feature: "reply" | "review_response" | "pricing") =>
       posthog.capture("ai_suggestion_used", { feature }),
+    stepViewed: (stepNumber: number, stepName: string) =>
+      posthog.capture("step_viewed", { step_number: stepNumber, step_name: stepName }),
+    stepCompleted: (stepNumber: number, stepName: string) =>
+      posthog.capture("step_completed", { step_number: stepNumber, step_name: stepName }),
+    stepSkipped: (stepNumber: number, stepName: string) =>
+      posthog.capture("step_skipped", { step_number: stepNumber, step_name: stepName }),
+    wizardCompleted: () =>
+      posthog.capture("wizard_completed", {}),
+    wizardDismissed: (stepNumber: number, stepName: string) =>
+      posthog.capture("wizard_dismissed", { step_number: stepNumber, step_name: stepName }),
+    sampleDataLoaded: () =>
+      posthog.capture("sample_data_loaded", {}),
   };
 }

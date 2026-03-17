@@ -20,6 +20,7 @@ import {
   Image as ImageIcon,
   Mail,
   AtSign,
+  Sparkles,
 } from 'lucide-react';
 import Image from 'next/image';
 import { toast } from 'sonner';
@@ -28,6 +29,7 @@ import type { ActionMode, ConversationContact } from './whatsapp.types';
 import {
   ActionPickerModal,
 } from './ActionPickerModal';
+import type { ContextAction } from './unified-inbox-shared';
 
 export type MessageType = 'text' | 'location' | 'image' | 'voice' | 'system' | 'document';
 export type MessageStatus = 'sent' | 'delivered' | 'read' | 'pending';
@@ -231,6 +233,7 @@ interface MessageThreadProps {
   smartRepliesLoading?: boolean;
   onUseSmartReply?: (suggestion: string) => void;
   onRefreshSmartReplies?: () => void;
+  onContextAction?: (action: ContextAction, tripName?: string) => void;
 }
 
 export function MessageThread({
@@ -243,6 +246,7 @@ export function MessageThread({
   smartRepliesLoading = false,
   onUseSmartReply,
   onRefreshSmartReplies,
+  onContextAction,
 }: MessageThreadProps) {
   const [inputText, setInputText] = useState('');
   const [emailSubject, setEmailSubject] = useState('');
@@ -367,6 +371,14 @@ export function MessageThread({
           </div>
         </div>
         <div className="flex items-center gap-1">
+          <button
+            onClick={() => onContextAction?.('create-proposal')}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#25D366]/15 border border-[#25D366]/25 hover:bg-[#25D366]/25 text-[#25D366] text-xs font-semibold transition-colors active:scale-95"
+            title="Create Proposal"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Create Proposal</span>
+          </button>
           <button className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors">
             <Phone className="w-4 h-4 text-slate-400" />
           </button>

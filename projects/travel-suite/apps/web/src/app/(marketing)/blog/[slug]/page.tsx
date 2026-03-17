@@ -14,11 +14,11 @@ export async function generateMetadata({
   const { data: post } = await getPostBySlug(slug);
 
   if (!post) {
-    return { title: 'Post Not Found | TravelBuilt' };
+    return { title: 'Post Not Found | TripBuilt' };
   }
 
   return {
-    title: `${post.title} | TravelBuilt Blog`,
+    title: `${post.title} | TripBuilt Blog`,
     description: post.excerpt,
     openGraph: {
       title: post.title,

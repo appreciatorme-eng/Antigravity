@@ -9,7 +9,7 @@ import { X, Sparkles, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDemoMode } from "@/lib/demo/demo-mode-context";
 
-const LS_KEY = "antigravity:onboarded";
+const LS_KEY = "tripbuilt:onboarded";
 
 export default function WelcomeModal() {
   const { isDemoMode, toggleDemoMode, mounted } = useDemoMode();
@@ -116,7 +116,7 @@ export default function WelcomeModal() {
 
           {/* Heading */}
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-            Welcome to GoBuddy! 🎉
+            Welcome to TripBuilt! 🎉
           </h2>
 
           <p className="text-sm text-gray-500 dark:text-slate-400 leading-relaxed mb-6 max-w-xs mx-auto">

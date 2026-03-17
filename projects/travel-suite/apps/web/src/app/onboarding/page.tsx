@@ -13,21 +13,35 @@ import {
   SERVICE_REGION_OPTIONS,
   SPECIALTY_OPTIONS,
 } from '@/lib/marketplace-options';
+import { useAnalytics } from '@/lib/analytics/events';
+import { useOnboardingStore } from '@/stores/onboarding-store';
 import { FirstValueSprintStep } from './_components/FirstValueSprintStep';
 import { OnboardingDetailsSteps } from './_components/OnboardingDetailsSteps';
 import { OnboardingFormShell } from './_components/OnboardingFormShell';
+import { PaymentSetupStep } from './_components/PaymentSetupStep';
+import { ProposalGenerationStep } from './_components/ProposalGenerationStep';
+import { SampleDataLoader } from './_components/SampleDataLoader';
+import { TripCreationStep } from './_components/TripCreationStep';
+import { WhatsAppSetupStep } from './_components/WhatsAppSetupStep';
+import type { ItineraryResult } from '@/types/itinerary';
 import {
   FIRST_VALUE_STEP,
   OnboardingPayload,
   FirstValuePayload,
+  PAYMENT_SETUP_STEP,
+  PROPOSAL_GENERATION_STEP,
   REVIEW_STEP,
   TOTAL_WIZARD_STEPS,
+  TRIP_CREATION_STEP,
+  WHATSAPP_SETUP_STEP,
   WIZARD_STEPS,
 } from './_components/types';
 
 function OnboardingPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const analytics = useAnalytics();
+  const onboardingStore = useOnboardingStore();
   const nextPath = useMemo(() => {
     const requested = searchParams.get('next');
     if (requested && requested.startsWith('/')) return requested;
@@ -38,7 +52,7 @@ function OnboardingPageContent() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [currentStep, setCurrentStep] = useState<number>(1);
+  const [currentStep, setCurrentStep] = useState<number>(onboardingStore.currentStep);
 
   const [operatorName, setOperatorName] = useState('');
   const [companyName, setCompanyName] = useState('');
@@ -58,6 +72,13 @@ function OnboardingPageContent() {
   const [firstValueLoading, setFirstValueLoading] = useState(false);
   const [firstValueRefreshing, setFirstValueRefreshing] = useState(false);
   const [shareLinkCopied, setShareLinkCopied] = useState(false);
+
+  const [tripClientId, setTripClientId] = useState('');
+  const [tripStartDate, setTripStartDate] = useState('');
+  const [tripEndDate, setTripEndDate] = useState('');
+  const [tripAiPrompt, setTripAiPrompt] = useState('');
+  const [tripSelectedItineraryId, setTripSelectedItineraryId] = useState<string | null>(null);
+  const [tripGeneratedItinerary, setTripGeneratedItinerary] = useState<ItineraryResult | null>(null);
 
   const serviceRegionOptions = useMemo(
     () => mergeMarketplaceOptions(marketplaceRegionCatalog, serviceRegions),
@@ -85,6 +106,16 @@ function OnboardingPageContent() {
     void loadMarketplaceOptions();
   }, []);
   /* eslint-enable react-hooks/exhaustive-deps */
+
+  useEffect(() => {
+    if (!loading && activeStep) {
+      analytics.stepViewed(currentStep, activeStep.title);
+    }
+  }, [currentStep, loading, activeStep, analytics]);
+
+  useEffect(() => {
+    onboardingStore.setCurrentStep(currentStep);
+  }, [currentStep, onboardingStore]);
 
   useEffect(() => {
     if (currentStep !== FIRST_VALUE_STEP) return undefined;
@@ -248,6 +279,11 @@ function OnboardingPageContent() {
         throw new Error(payload.error || 'Failed to save onboarding details');
       }
 
+      if (activeStep) {
+        analytics.stepCompleted(currentStep, activeStep.title);
+      }
+      analytics.wizardCompleted();
+
       setSuccess('Workspace setup saved. Complete the first-value sprint below.');
       setCurrentStep(FIRST_VALUE_STEP);
       await loadFirstValueProgress(true);
@@ -272,6 +308,10 @@ function OnboardingPageContent() {
       return;
     }
 
+    if (activeStep) {
+      analytics.stepCompleted(currentStep, activeStep.title);
+    }
+
     setError(null);
     setCurrentStep((previous) => Math.min(REVIEW_STEP, previous + 1));
   }
@@ -292,6 +332,20 @@ function OnboardingPageContent() {
     }
   }
 
+  async function handleSampleDataLoaded() {
+    analytics.sampleDataLoaded();
+    await loadOnboardingData();
+    if (currentStep === FIRST_VALUE_STEP) {
+      await loadFirstValueProgress(true);
+    }
+  }
+
+  function handleDismiss() {
+    onboardingStore.dismissWizard();
+    analytics.wizardDismissed(currentStep, activeStep?.title || '');
+    router.push(nextPath);
+  }
+
   if (loading) {
     return <OnboardingPageFallback />;
   }
@@ -308,6 +362,8 @@ function OnboardingPageContent() {
       onSubmit={handleSubmit}
       onPrevious={handlePreviousStep}
       onNext={handleNextStep}
+      onDismiss={handleDismiss}
+      extraActions={<SampleDataLoader onDataLoaded={handleSampleDataLoaded} />}
     >
       {currentStep === FIRST_VALUE_STEP ? (
         <FirstValueSprintStep
@@ -318,6 +374,31 @@ function OnboardingPageContent() {
           onRefresh={() => void loadFirstValueProgress(false)}
           onCopyShareLink={() => void handleCopyShareLink()}
         />
+      ) : currentStep === TRIP_CREATION_STEP ? (
+        <TripCreationStep
+          clientId={tripClientId}
+          startDate={tripStartDate}
+          endDate={tripEndDate}
+          aiPrompt={tripAiPrompt}
+          selectedItineraryId={tripSelectedItineraryId}
+          generatedItinerary={tripGeneratedItinerary}
+          setClientId={setTripClientId}
+          setStartDate={setTripStartDate}
+          setEndDate={setTripEndDate}
+          setAiPrompt={setTripAiPrompt}
+          setSelectedItineraryId={setTripSelectedItineraryId}
+          setGeneratedItinerary={setTripGeneratedItinerary}
+        />
+      ) : currentStep === PROPOSAL_GENERATION_STEP ? (
+        <ProposalGenerationStep
+          clientId={tripClientId}
+          tripStartDate={tripStartDate}
+          tripEndDate={tripEndDate}
+        />
+      ) : currentStep === WHATSAPP_SETUP_STEP ? (
+        <WhatsAppSetupStep />
+      ) : currentStep === PAYMENT_SETUP_STEP ? (
+        <PaymentSetupStep />
       ) : (
         <OnboardingDetailsSteps
           currentStep={currentStep}

@@ -1,6 +1,6 @@
 /* Marketing-specific design tokens and utilities.
    Scoped under .marketing-theme to avoid collision with SaaS globals.css.
-   Brand: TravelBuilt — warm orange + teal accent on deep dark canvas. */
+   Brand: TripBuilt — warm orange + teal accent on deep dark canvas. */
 
 .marketing-theme {
   /* Brand palette */

@@ -110,6 +110,11 @@ export interface OperatorScorecardRecipient {
   email: string;
 }
 
+export interface TopDestination {
+  destination: string;
+  count: number;
+}
+
 export interface OperatorScorecardPayload {
   monthKey: string;
   monthLabel: string;
@@ -127,6 +132,7 @@ export interface OperatorScorecardPayload {
   comparison: OperatorScorecardComparison;
   highlights: string[];
   actions: string[];
+  topDestinations: TopDestination[];
 }
 
 export interface PersistedOperatorScorecard {
@@ -417,6 +423,42 @@ async function loadWhatsAppEvents(admin: AdminClient, organizationId: string, st
   return (data || []) as WebhookEventRow[];
 }
 
+async function loadTopDestinations(admin: AdminClient, organizationId: string, startISO: string, endISO: string): Promise<TopDestination[]> {
+  type ProposalWithTemplate = {
+    template_id: string | null;
+    tour_templates: {
+      destination: string | null;
+    } | null;
+  };
+
+  const { data, error } = await admin
+    .from("proposals")
+    .select("template_id, tour_templates!inner(destination)")
+    .eq("organization_id", organizationId)
+    .gte("created_at", startISO)
+    .lt("created_at", endISO);
+
+  if (error) throw error;
+
+  const proposals = (data || []) as unknown as ProposalWithTemplate[];
+  const destinationCounts = new Map<string, number>();
+
+  for (const proposal of proposals) {
+    const destination = proposal.tour_templates?.destination;
+    if (destination && destination.trim()) {
+      const normalizedDestination = destination.trim();
+      destinationCounts.set(normalizedDestination, (destinationCounts.get(normalizedDestination) || 0) + 1);
+    }
+  }
+
+  const topDestinations = Array.from(destinationCounts.entries())
+    .map(([destination, count]) => ({ destination, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3);
+
+  return topDestinations;
+}
+
 async function collectMetrics(admin: AdminClient, organizationId: string, startISO: string, endISO: string) {
   const [proposalsResult, paymentsResult, reviews, cacheEvents, whatsappEvents] = await Promise.all([
     admin
@@ -502,10 +544,11 @@ export async function buildOperatorScorecardPayload(args: {
 }): Promise<OperatorScorecardPayload> {
   const admin = args.adminClient || createAdminClient();
   const month = resolveScorecardMonth(args.monthKey);
-  const [{ organization, ownerProfile }, currentMetrics, previousMetrics] = await Promise.all([
+  const [{ organization, ownerProfile }, currentMetrics, previousMetrics, topDestinations] = await Promise.all([
     loadOrganization(admin, args.organizationId),
     collectMetrics(admin, args.organizationId, month.startISO, month.endISO),
     collectMetrics(admin, args.organizationId, month.previousWindow.startISO, month.previousWindow.endISO),
+    loadTopDestinations(admin, args.organizationId, month.startISO, month.endISO),
   ]);
 
   const comparison: OperatorScorecardComparison = {
@@ -539,6 +582,50 @@ export async function buildOperatorScorecardPayload(args: {
     comparison,
     highlights: buildHighlights(currentMetrics, comparison),
     actions: buildActions(currentMetrics),
+    topDestinations,
+  };
+}
+
+export function filterScorecardForTier(payload: OperatorScorecardPayload): OperatorScorecardPayload {
+  const tier = payload.organization.subscriptionTier?.toLowerCase();
+  const isFree = !tier || tier === "free" || tier === "trial";
+
+  if (!isFree) {
+    return payload;
+  }
+
+  return {
+    ...payload,
+    metrics: {
+      ...payload.metrics,
+      proposalsCreated: 0,
+      proposalsApproved: 0,
+      approvalRate: 0,
+      linksSent: 0,
+      paymentsCollected: 0,
+      paymentConversionRate: 0,
+      avgPaidValueInr: 0,
+      reviewsReceived: 0,
+      reviewResponseRate: null,
+      averageRating: null,
+      avgWhatsAppReplyMinutes: null,
+      whatsappInboundCount: 0,
+      whatsappOutboundCount: 0,
+      cacheHitRate: null,
+      cacheHits: 0,
+      cacheMisses: 0,
+    },
+    comparison: {
+      revenueDeltaPct: payload.comparison.revenueDeltaPct,
+      proposalDeltaPct: null,
+      paymentDeltaPct: null,
+      approvalDeltaPct: null,
+      reviewResponseDeltaPct: null,
+      cacheHitDeltaPct: null,
+    },
+    highlights: ["Upgrade to see full performance insights and actionable recommendations."],
+    actions: ["Unlock detailed analytics by upgrading your subscription."],
+    topDestinations: [],
   };
 }
 

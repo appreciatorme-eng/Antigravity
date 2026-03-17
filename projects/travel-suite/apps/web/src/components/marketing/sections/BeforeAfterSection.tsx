@@ -38,7 +38,7 @@ export function BeforeAfterSection() {
           </div>
           <h2 className="text-3xl md:text-5xl font-bold">
             The Old Way vs.{" "}
-            <span className="text-[#00F0FF]">The TravelBuilt Way</span>
+            <span className="text-[#00F0FF]">The TripBuilt Way</span>
           </h2>
         </motion.div>
 

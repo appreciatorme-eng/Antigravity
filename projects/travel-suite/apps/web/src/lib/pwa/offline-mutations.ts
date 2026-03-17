@@ -1,6 +1,6 @@
-export const OFFLINE_MUTATION_DB = "gobuddy-offline-mutations-v1";
+export const OFFLINE_MUTATION_DB = "tripbuilt-offline-mutations-v1";
 export const OFFLINE_MUTATION_STORE = "mutation_queue";
-export const OFFLINE_SYNC_TAG = "gobuddy-mutation-sync";
+export const OFFLINE_SYNC_TAG = "tripbuilt-mutation-sync";
 
 const REPLAYABLE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
