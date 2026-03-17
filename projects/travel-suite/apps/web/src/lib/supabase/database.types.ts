@@ -2601,10 +2601,15 @@ export type Database = {
           ai_monthly_request_cap: number | null
           ai_monthly_spend_cap_usd: number | null
           billing_address: Json | null
+          billing_address_line1: string | null
+          billing_address_line2: string | null
+          billing_city: string | null
+          billing_pincode: string | null
           billing_state: string | null
           created_at: string | null
           gstin: string | null
           id: string
+          legal_name: string | null
           logo_url: string | null
           name: string
           owner_id: string | null
@@ -2618,10 +2623,15 @@ export type Database = {
           ai_monthly_request_cap?: number | null
           ai_monthly_spend_cap_usd?: number | null
           billing_address?: Json | null
+          billing_address_line1?: string | null
+          billing_address_line2?: string | null
+          billing_city?: string | null
+          billing_pincode?: string | null
           billing_state?: string | null
           created_at?: string | null
           gstin?: string | null
           id?: string
+          legal_name?: string | null
           logo_url?: string | null
           name: string
           owner_id?: string | null
@@ -2635,10 +2645,15 @@ export type Database = {
           ai_monthly_request_cap?: number | null
           ai_monthly_spend_cap_usd?: number | null
           billing_address?: Json | null
+          billing_address_line1?: string | null
+          billing_address_line2?: string | null
+          billing_city?: string | null
+          billing_pincode?: string | null
           billing_state?: string | null
           created_at?: string | null
           gstin?: string | null
           id?: string
+          legal_name?: string | null
           logo_url?: string | null
           name?: string
           owner_id?: string | null
@@ -3206,6 +3221,10 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          billing_address: string | null
+          billing_city: string | null
+          billing_pincode: string | null
+          billing_state: string | null
           bio: string | null
           budget_max: number | null
           budget_min: number | null
@@ -3216,6 +3235,7 @@ export type Database = {
           driver_info: Json | null
           email: string | null
           full_name: string | null
+          gstin: string | null
           home_airport: string | null
           id: string
           interests: string[] | null
@@ -3243,6 +3263,10 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          billing_address?: string | null
+          billing_city?: string | null
+          billing_pincode?: string | null
+          billing_state?: string | null
           bio?: string | null
           budget_max?: number | null
           budget_min?: number | null
@@ -3253,6 +3277,7 @@ export type Database = {
           driver_info?: Json | null
           email?: string | null
           full_name?: string | null
+          gstin?: string | null
           home_airport?: string | null
           id: string
           interests?: string[] | null
@@ -3280,6 +3305,10 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          billing_address?: string | null
+          billing_city?: string | null
+          billing_pincode?: string | null
+          billing_state?: string | null
           bio?: string | null
           budget_max?: number | null
           budget_min?: number | null
@@ -3290,6 +3319,7 @@ export type Database = {
           driver_info?: Json | null
           email?: string | null
           full_name?: string | null
+          gstin?: string | null
           home_airport?: string | null
           id?: string
           interests?: string[] | null

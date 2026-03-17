@@ -134,9 +134,9 @@ export async function POST(request: NextRequest) {
         body.seller_details?.address1 ||
         organization.billing_address_line1 ||
         "Address Not Set",
-      address2: body.seller_details?.address2 || organization.billing_address_line2,
+      address2: body.seller_details?.address2 || organization.billing_address_line2 || undefined,
       location: body.seller_details?.location || organization.billing_city || "Unknown",
-      pincode: body.seller_details?.pincode || organization.billing_pincode || 110001,
+      pincode: body.seller_details?.pincode || Number(organization.billing_pincode) || 110001,
       stateCode: body.seller_details?.state_code || organization.billing_state || "07",
     };
 
@@ -168,7 +168,7 @@ export async function POST(request: NextRequest) {
           address1: body.buyer_details?.address1 || client.billing_address || "Not Provided",
           address2: body.buyer_details?.address2,
           location: body.buyer_details?.location || client.billing_city || "Unknown",
-          pincode: body.buyer_details?.pincode || client.billing_pincode || 110001,
+          pincode: body.buyer_details?.pincode || Number(client.billing_pincode) || 110001,
           stateCode: body.buyer_details?.state_code || client.billing_state || "07",
         };
       }
@@ -180,9 +180,14 @@ export async function POST(request: NextRequest) {
         invoiceId,
         sellerDetails,
         buyerDetails,
-        items: body.items,
+        items: body.items?.map((item) => ({
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unit_price,
+          amount: item.amount,
+        })),
       },
-      { context: "admin_api" }
+      { context: "admin" }
     );
 
     return NextResponse.json({

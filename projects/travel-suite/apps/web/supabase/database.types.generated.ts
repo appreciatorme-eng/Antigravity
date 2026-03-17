@@ -1303,6 +1303,56 @@ export type Database = {
           },
         ]
       }
+      e_invoice_settings: {
+        Row: {
+          auto_generate_enabled: boolean | null
+          created_at: string | null
+          gstin: string | null
+          id: string
+          irp_api_key_encrypted: string | null
+          irp_password_encrypted: string | null
+          irp_username: string | null
+          organization_id: string
+          sandbox_mode: boolean | null
+          threshold_amount: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          auto_generate_enabled?: boolean | null
+          created_at?: string | null
+          gstin?: string | null
+          id?: string
+          irp_api_key_encrypted?: string | null
+          irp_password_encrypted?: string | null
+          irp_username?: string | null
+          organization_id: string
+          sandbox_mode?: boolean | null
+          threshold_amount?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          auto_generate_enabled?: boolean | null
+          created_at?: string | null
+          gstin?: string | null
+          id?: string
+          irp_api_key_encrypted?: string | null
+          irp_password_encrypted?: string | null
+          irp_username?: string | null
+          organization_id?: string
+          sandbox_mode?: boolean | null
+          threshold_amount?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "e_invoice_settings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           balance_amount: number
@@ -1312,16 +1362,24 @@ export type Database = {
           created_by: string | null
           currency: string
           due_date: string | null
+          e_invoice_acknowledged_at: string | null
+          e_invoice_cancelled_at: string | null
+          e_invoice_error: string | null
+          e_invoice_generated_at: string | null
+          e_invoice_json: Json | null
+          e_invoice_status: string | null
           gstin: string | null
           id: string
           igst: number | null
           invoice_number: string
+          irn: string | null
           issued_at: string | null
           metadata: Json | null
           organization_id: string
           paid_amount: number
           paid_at: string | null
           place_of_supply: string | null
+          qr_code_data: string | null
           razorpay_invoice_id: string | null
           razorpay_payment_id: string | null
           sac_code: string | null
@@ -1343,16 +1401,24 @@ export type Database = {
           created_by?: string | null
           currency?: string
           due_date?: string | null
+          e_invoice_acknowledged_at?: string | null
+          e_invoice_cancelled_at?: string | null
+          e_invoice_error?: string | null
+          e_invoice_generated_at?: string | null
+          e_invoice_json?: Json | null
+          e_invoice_status?: string | null
           gstin?: string | null
           id?: string
           igst?: number | null
           invoice_number: string
+          irn?: string | null
           issued_at?: string | null
           metadata?: Json | null
           organization_id: string
           paid_amount?: number
           paid_at?: string | null
           place_of_supply?: string | null
+          qr_code_data?: string | null
           razorpay_invoice_id?: string | null
           razorpay_payment_id?: string | null
           sac_code?: string | null
@@ -1374,16 +1440,24 @@ export type Database = {
           created_by?: string | null
           currency?: string
           due_date?: string | null
+          e_invoice_acknowledged_at?: string | null
+          e_invoice_cancelled_at?: string | null
+          e_invoice_error?: string | null
+          e_invoice_generated_at?: string | null
+          e_invoice_json?: Json | null
+          e_invoice_status?: string | null
           gstin?: string | null
           id?: string
           igst?: number | null
           invoice_number?: string
+          irn?: string | null
           issued_at?: string | null
           metadata?: Json | null
           organization_id?: string
           paid_amount?: number
           paid_at?: string | null
           place_of_supply?: string | null
+          qr_code_data?: string | null
           razorpay_invoice_id?: string | null
           razorpay_payment_id?: string | null
           sac_code?: string | null
@@ -2540,10 +2614,15 @@ export type Database = {
           ai_monthly_request_cap: number | null
           ai_monthly_spend_cap_usd: number | null
           billing_address: Json | null
+          billing_address_line1: string | null
+          billing_address_line2: string | null
+          billing_city: string | null
+          billing_pincode: string | null
           billing_state: string | null
           created_at: string | null
           gstin: string | null
           id: string
+          legal_name: string | null
           logo_url: string | null
           name: string
           owner_id: string | null
@@ -2557,10 +2636,15 @@ export type Database = {
           ai_monthly_request_cap?: number | null
           ai_monthly_spend_cap_usd?: number | null
           billing_address?: Json | null
+          billing_address_line1?: string | null
+          billing_address_line2?: string | null
+          billing_city?: string | null
+          billing_pincode?: string | null
           billing_state?: string | null
           created_at?: string | null
           gstin?: string | null
           id?: string
+          legal_name?: string | null
           logo_url?: string | null
           name: string
           owner_id?: string | null
@@ -2574,10 +2658,15 @@ export type Database = {
           ai_monthly_request_cap?: number | null
           ai_monthly_spend_cap_usd?: number | null
           billing_address?: Json | null
+          billing_address_line1?: string | null
+          billing_address_line2?: string | null
+          billing_city?: string | null
+          billing_pincode?: string | null
           billing_state?: string | null
           created_at?: string | null
           gstin?: string | null
           id?: string
+          legal_name?: string | null
           logo_url?: string | null
           name?: string
           owner_id?: string | null
@@ -3145,6 +3234,10 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          billing_address: string | null
+          billing_city: string | null
+          billing_pincode: string | null
+          billing_state: string | null
           bio: string | null
           budget_max: number | null
           budget_min: number | null
@@ -3155,6 +3248,7 @@ export type Database = {
           driver_info: Json | null
           email: string | null
           full_name: string | null
+          gstin: string | null
           home_airport: string | null
           id: string
           interests: string[] | null
@@ -3182,6 +3276,10 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          billing_address?: string | null
+          billing_city?: string | null
+          billing_pincode?: string | null
+          billing_state?: string | null
           bio?: string | null
           budget_max?: number | null
           budget_min?: number | null
@@ -3192,6 +3290,7 @@ export type Database = {
           driver_info?: Json | null
           email?: string | null
           full_name?: string | null
+          gstin?: string | null
           home_airport?: string | null
           id: string
           interests?: string[] | null
@@ -3219,6 +3318,10 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          billing_address?: string | null
+          billing_city?: string | null
+          billing_pincode?: string | null
+          billing_state?: string | null
           bio?: string | null
           budget_max?: number | null
           budget_min?: number | null
@@ -3229,6 +3332,7 @@ export type Database = {
           driver_info?: Json | null
           email?: string | null
           full_name?: string | null
+          gstin?: string | null
           home_airport?: string | null
           id?: string
           interests?: string[] | null

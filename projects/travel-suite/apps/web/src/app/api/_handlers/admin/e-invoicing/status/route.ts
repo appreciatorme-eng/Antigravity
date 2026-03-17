@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get status from IRP
-    const statusResult = await getEInvoiceStatus(invoiceId, { context: "admin_api" });
+    const statusResult = await getEInvoiceStatus(invoiceId, { context: "admin" });
 
     return NextResponse.json({
       success: true,

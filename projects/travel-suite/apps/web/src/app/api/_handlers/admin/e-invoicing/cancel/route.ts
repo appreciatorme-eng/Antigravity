@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
         reason,
         remarks,
       },
-      { context: "admin_api" }
+      { context: "admin" }
     );
 
     return NextResponse.json({

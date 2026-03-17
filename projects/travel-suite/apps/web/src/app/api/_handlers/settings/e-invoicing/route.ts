@@ -113,7 +113,16 @@ export async function POST(request: NextRequest) {
         }
 
         // Prepare data for upsert
-        const settingsData: Record<string, unknown> = {
+        const settingsData: {
+            organization_id: string;
+            gstin: string;
+            irp_username: string;
+            threshold_amount: number;
+            auto_generate_enabled: boolean;
+            sandbox_mode: boolean;
+            updated_at: string;
+            irp_password_encrypted?: string;
+        } = {
             organization_id: organizationId,
             gstin: gstin.toUpperCase(),
             irp_username: irp_username.trim(),
