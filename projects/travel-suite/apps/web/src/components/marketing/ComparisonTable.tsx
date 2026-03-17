@@ -4,13 +4,13 @@ import { motion } from 'framer-motion';
 import { Check, Minus } from 'lucide-react';
 
 const features = [
-    { name: "Proposals", travelSuite: "Unlimited Interactive", oldWay: "Static PDFs" },
-    { name: "Time per Client", travelSuite: "5 minutes", oldWay: "2+ hours" },
-    { name: "WhatsApp Sync", travelSuite: "Automated & Logged", oldWay: "Manual tracking" },
-    { name: "Client CRM", travelSuite: "Built-in pipeline", oldWay: "Messy Excel sheets" },
-    { name: "Payment Collection", travelSuite: "1-click integrations", oldWay: "Manual sharing links" },
-    { name: "Flight/Hotel Search", travelSuite: "Amadeus Integrated", oldWay: "10 different tabs" },
-    { name: "Driver Management", travelSuite: "Auto-assigned", oldWay: "Constant calls" },
+    { name: "Proposals", tripBuilt: "Unlimited Interactive", oldWay: "Static PDFs" },
+    { name: "Time per Client", tripBuilt: "5 minutes", oldWay: "2+ hours" },
+    { name: "WhatsApp Sync", tripBuilt: "Automated & Logged", oldWay: "Manual tracking" },
+    { name: "Client CRM", tripBuilt: "Built-in pipeline", oldWay: "Messy Excel sheets" },
+    { name: "Payment Collection", tripBuilt: "1-click integrations", oldWay: "Manual sharing links" },
+    { name: "Flight/Hotel Search", tripBuilt: "Amadeus Integrated", oldWay: "10 different tabs" },
+    { name: "Driver Management", tripBuilt: "Auto-assigned", oldWay: "Constant calls" },
 ];
 
 export function ComparisonTable() {
@@ -47,7 +47,7 @@ export function ComparisonTable() {
                                     <span className="shrink-0 w-6 h-6 rounded-full bg-[#00F0FF]/20 flex items-center justify-center">
                                         <Check size={14} className="text-[#00F0FF]" />
                                     </span>
-                                    <span className="hidden sm:inline">{feature.travelSuite}</span>
+                                    <span className="hidden sm:inline">{feature.tripBuilt}</span>
                                 </div>
                                 <div className="flex items-center justify-center gap-2 text-gray-500">
                                     <Minus size={14} />

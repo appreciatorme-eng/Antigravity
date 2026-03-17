@@ -431,10 +431,11 @@ export const ProposalPDF: React.FC<ProposalPDFProps> = ({
             Please contact your travel operator for any questions or modifications.
           </Text>
           <Text style={styles.poweredBy}>
-            Generated with TripBuilt • www.travelsuite.app
+            Generated with TripBuilt • www.tripbuilt.app
           </Text>
         </View>
       </Page>
     </Document>
   );
 };
+;

@@ -41,7 +41,7 @@ export function OrganizationTab({ draftTimezone, loading, onSave }: Organization
                 </div>
                 <div className="space-y-2">
                     <label className="text-xs font-bold uppercase tracking-widest text-text-secondary">Website Domain</label>
-                    <input type="text" defaultValue="www.travelsuite.app" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-secondary" />
+                    <input type="text" defaultValue="www.tripbuilt.app" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-secondary" />
                 </div>
                 <div className="space-y-2">
                     <label className="text-xs font-bold uppercase tracking-widest text-text-secondary">GSTIN</label>
@@ -99,4 +99,5 @@ export function OrganizationTab({ draftTimezone, loading, onSave }: Organization
             </div>
         </div>
     );
+}
 }
