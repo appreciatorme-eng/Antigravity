@@ -586,6 +586,49 @@ export async function buildOperatorScorecardPayload(args: {
   };
 }
 
+export function filterScorecardForTier(payload: OperatorScorecardPayload): OperatorScorecardPayload {
+  const tier = payload.organization.subscriptionTier?.toLowerCase();
+  const isFree = !tier || tier === "free" || tier === "trial";
+
+  if (!isFree) {
+    return payload;
+  }
+
+  return {
+    ...payload,
+    metrics: {
+      ...payload.metrics,
+      proposalsCreated: 0,
+      proposalsApproved: 0,
+      approvalRate: 0,
+      linksSent: 0,
+      paymentsCollected: 0,
+      paymentConversionRate: 0,
+      avgPaidValueInr: 0,
+      reviewsReceived: 0,
+      reviewResponseRate: null,
+      averageRating: null,
+      avgWhatsAppReplyMinutes: null,
+      whatsappInboundCount: 0,
+      whatsappOutboundCount: 0,
+      cacheHitRate: null,
+      cacheHits: 0,
+      cacheMisses: 0,
+    },
+    comparison: {
+      revenueDeltaPct: payload.comparison.revenueDeltaPct,
+      proposalDeltaPct: null,
+      paymentDeltaPct: null,
+      approvalDeltaPct: null,
+      reviewResponseDeltaPct: null,
+      cacheHitDeltaPct: null,
+    },
+    highlights: ["Upgrade to see full performance insights and actionable recommendations."],
+    actions: ["Unlock detailed analytics by upgrading your subscription."],
+    topDestinations: [],
+  };
+}
+
 export async function upsertOperatorScorecard(args: {
   organizationId: string;
   monthKey?: string;
