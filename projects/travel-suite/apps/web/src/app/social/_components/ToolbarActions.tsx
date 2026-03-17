@@ -14,6 +14,7 @@ import {
   Package,
   ChevronDown,
   MoreHorizontal,
+  Calendar,
 } from "lucide-react";
 
 /* ---------- Types ---------- */
@@ -28,7 +29,8 @@ export type ToolbarAction =
   | "trips"
   | "bulk"
   | "history"
-  | "analytics";
+  | "analytics"
+  | "calendar";
 
 interface ToolbarActionsProps {
   onActionSelect: (action: ToolbarAction) => void;
@@ -50,6 +52,7 @@ const MORE_ACTIONS = [
   { id: "bulk" as const, label: "Campaign Pack", icon: Package },
   { id: "history" as const, label: "Post History", icon: History },
   { id: "analytics" as const, label: "Analytics", icon: BarChart3 },
+  { id: "calendar" as const, label: "Calendar", icon: Calendar },
 ];
 
 /* ---------- Style constants ---------- */
