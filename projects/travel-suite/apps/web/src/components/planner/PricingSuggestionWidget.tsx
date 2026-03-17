@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/toast';
 import { logError } from '@/lib/observability/logger';
+import { useAnalytics } from '@/lib/analytics/events';
+import { usePostHog } from 'posthog-js/react';
 
 interface ComparableTrip {
     destination: string;
@@ -56,13 +58,32 @@ export function PricingSuggestionWidget({
     const [suggestionId, setSuggestionId] = useState<string>('');
     const [isRecordingFeedback, setIsRecordingFeedback] = useState(false);
     const { toast } = useToast();
+    const analytics = useAnalytics();
+    const posthog = usePostHog();
 
     // Generate a unique suggestion ID when suggestion changes
     useEffect(() => {
         if (suggestion) {
-            setSuggestionId(crypto.randomUUID());
+            const id = crypto.randomUUID();
+            setSuggestionId(id);
+
+            // Track suggestion shown
+            posthog.capture('pricing_suggestion_shown', {
+                suggestionId: id,
+                confidence: suggestion.confidence,
+                sampleSize: suggestion.sampleSize,
+                suggestedPrice: suggestion.median,
+                priceMin: suggestion.min,
+                priceMax: suggestion.max,
+                destination,
+                durationDays,
+                pax,
+                packageTier,
+                seasonMonth,
+                proposalId,
+            });
         }
-    }, [suggestion]);
+    }, [suggestion, posthog, destination, durationDays, pax, packageTier, seasonMonth, proposalId]);
 
     /**
      * Record pricing feedback to the backend API
@@ -123,6 +144,21 @@ export function PricingSuggestionWidget({
 
     const handleAccept = async () => {
         await recordFeedback('accepted', suggestion.median);
+
+        // Track acceptance
+        analytics.aiSuggestionUsed('pricing');
+        posthog.capture('pricing_suggestion_accepted', {
+            suggestionId,
+            acceptedPrice: suggestion.median,
+            confidence: suggestion.confidence,
+            sampleSize: suggestion.sampleSize,
+            destination,
+            durationDays,
+            pax,
+            packageTier,
+            proposalId,
+        });
+
         onAccept(suggestion.median);
 
         toast({
@@ -134,6 +170,20 @@ export function PricingSuggestionWidget({
 
     const handleAdjust = async () => {
         await recordFeedback('adjusted', suggestion.median);
+
+        // Track adjustment
+        posthog.capture('pricing_suggestion_adjusted', {
+            suggestionId,
+            suggestedPrice: suggestion.median,
+            confidence: suggestion.confidence,
+            sampleSize: suggestion.sampleSize,
+            destination,
+            durationDays,
+            pax,
+            packageTier,
+            proposalId,
+        });
+
         onAdjust(suggestion.median);
 
         toast({
@@ -145,6 +195,20 @@ export function PricingSuggestionWidget({
 
     const handleDismiss = async () => {
         await recordFeedback('dismissed', null);
+
+        // Track dismissal
+        posthog.capture('pricing_suggestion_dismissed', {
+            suggestionId,
+            suggestedPrice: suggestion.median,
+            confidence: suggestion.confidence,
+            sampleSize: suggestion.sampleSize,
+            destination,
+            durationDays,
+            pax,
+            packageTier,
+            proposalId,
+        });
+
         onDismiss();
 
         toast({
