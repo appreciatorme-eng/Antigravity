@@ -5,7 +5,8 @@ import { createClient } from "@/lib/supabase/client";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { useToast } from "@/components/ui/toast";
-import { RefreshCw, FileCheck, XCircle, Clock, CheckCircle2, AlertCircle } from "lucide-react";
+import { RefreshCw, FileCheck, XCircle, Clock, CheckCircle2, AlertCircle, FileSpreadsheet } from "lucide-react";
+import { GSTRExport } from "@/features/admin/e-invoicing/GSTRExport";
 
 type EInvoiceStatus = "pending" | "generated" | "acknowledged" | "failed" | "cancelled" | null;
 
@@ -36,6 +37,7 @@ export default function EInvoicingDashboardPage() {
   const [invoices, setInvoices] = useState<InvoiceWithEInvoice[]>([]);
   const [statusFilter, setStatusFilter] = useState<EInvoiceStatus | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "gstr-export">("dashboard");
 
   const authHeaders = useCallback(async () => {
     const {
@@ -240,8 +242,39 @@ export default function EInvoicingDashboardPage() {
         </GlassButton>
       </div>
 
-      {/* Status Filter Tabs */}
-      <GlassCard className="p-4">
+      {/* Tab Navigation */}
+      <GlassCard className="p-2">
+        <div className="flex gap-2">
+          <button
+            onClick={() => setActiveTab("dashboard")}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+              activeTab === "dashboard"
+                ? "bg-blue-600 text-white"
+                : "bg-white/5 text-gray-300 hover:bg-white/10"
+            }`}
+          >
+            <FileCheck className="w-4 h-4" />
+            E-Invoice Dashboard
+          </button>
+          <button
+            onClick={() => setActiveTab("gstr-export")}
+            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+              activeTab === "gstr-export"
+                ? "bg-blue-600 text-white"
+                : "bg-white/5 text-gray-300 hover:bg-white/10"
+            }`}
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            GSTR-1 Export
+          </button>
+        </div>
+      </GlassCard>
+
+      {/* Dashboard Tab Content */}
+      {activeTab === "dashboard" && (
+        <>
+          {/* Status Filter Tabs */}
+          <GlassCard className="p-4">
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => setStatusFilter("all")}
@@ -412,6 +445,13 @@ export default function EInvoicingDashboardPage() {
           </div>
         </GlassCard>
       </div>
+        </>
+      )}
+
+      {/* GSTR-1 Export Tab Content */}
+      {activeTab === "gstr-export" && (
+        <GSTRExport />
+      )}
     </div>
   );
 }
