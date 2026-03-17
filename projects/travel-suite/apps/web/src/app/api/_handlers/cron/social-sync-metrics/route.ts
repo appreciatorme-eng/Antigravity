@@ -70,8 +70,18 @@ export async function POST(request: NextRequest) {
     let successCount = 0;
     let errorCount = 0;
     let rateLimited = false;
+    const startTime = Date.now();
+    const MAX_DURATION_MS = 50_000; // Leave 10s buffer before 60s Vercel timeout
 
     for (const item of queueItems as unknown as QueueItemRow[]) {
+      // Guard against Vercel 60s timeout — stop processing before we run out of time
+      if (Date.now() - startTime > MAX_DURATION_MS) {
+        logError("[cron/social-sync-metrics] Approaching timeout, stopping early", {
+          processed: successCount,
+          errors: errorCount,
+        });
+        break;
+      }
       if (!item.platform_post_id) {
         continue;
       }

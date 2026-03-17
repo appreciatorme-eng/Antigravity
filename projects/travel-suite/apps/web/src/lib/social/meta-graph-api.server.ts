@@ -98,7 +98,6 @@ export async function callMetaGraphApi<T = unknown>(
   const { method = "GET", accessToken, body, params } = options;
 
   const url = new URL(`${META_GRAPH_API_BASE_URL}/${endpoint.replace(/^\//, "")}`);
-  url.searchParams.set("access_token", accessToken);
 
   if (params) {
     Object.entries(params).forEach(([key, value]) => {
@@ -110,6 +109,7 @@ export async function callMetaGraphApi<T = unknown>(
     method,
     headers: {
       "Content-Type": "application/json",
+      "Authorization": `Bearer ${accessToken}`,
     },
   };
 

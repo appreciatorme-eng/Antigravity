@@ -10,16 +10,8 @@
       "schedule": "0 1 * * *"
     },
     {
-      "path": "/api/notifications/schedule-followups",
-      "schedule": "0 2 * * *"
-    },
-    {
       "path": "/api/cron/social-publish-queue",
       "schedule": "*/15 * * * *"
-    },
-    {
-      "path": "/api/cron/social-sync-metrics",
-      "schedule": "0 2 * * *"
     }
   ]
 }
