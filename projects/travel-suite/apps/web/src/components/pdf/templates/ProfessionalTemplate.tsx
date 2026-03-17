@@ -509,7 +509,7 @@ export default function ProfessionalTemplate({ itinerary, branding }: Props) {
           {/* Footer */}
           <View style={styles.footer}>
             <Text style={styles.footerText}>
-              Generated with {branding?.companyName || 'Travel Suite'}
+              Generated with {branding?.companyName || 'TripBuilt'}
             </Text>
             <Text style={styles.footerText}>
               This itinerary is subject to availability and may be customized to your preferences

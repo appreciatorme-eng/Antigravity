@@ -1,4 +1,4 @@
-// WhatsApp + Email mock conversations for GoBuddy Adventures demo inbox.
+// WhatsApp + Email mock conversations for TripBuilt demo inbox.
 // Names and trip references aligned with DEMO_CLIENTS and DEMO_TRIPS.
 
 import type { Conversation } from './MessageThread';
@@ -216,7 +216,7 @@ const EMAIL_CONVERSATIONS: ChannelConversation[] = [
         type: 'text',
         direction: 'out',
         subject: 'Re: Leh Ladakh Expedition — Balance Payment',
-        body: 'Dear Vikram,\n\nYour Leh Ladakh Bike Expedition starts April 10. A balance of ₹48,000 is pending.\n\nPayment details:\n- UPI: gobuddyadventures@icici\n- NEFT: HDFC Bank, A/C: 50100123456789\n\nPlease pay by April 5 to confirm your slot.\n\nBest,\nGoBuddy Adventures',
+        body: 'Dear Vikram,\n\nYour Leh Ladakh Bike Expedition starts April 10. A balance of ₹48,000 is pending.\n\nPayment details:\n- UPI: tripbuilt@icici\n- NEFT: HDFC Bank, A/C: 50100123456789\n\nPlease pay by April 5 to confirm your slot.\n\nBest,\nTripBuilt',
         timestamp: 'Yesterday 3:00 PM',
         status: 'read',
       },
@@ -260,7 +260,7 @@ const EMAIL_CONVERSATIONS: ChannelConversation[] = [
         type: 'text',
         direction: 'out',
         subject: 'Re: Invoice Request — Dubai Trip',
-        body: 'Hi Deepa,\n\nPlease find the invoice attached.\n\nBooking: GB-DX2026-041\nAmount: ₹2,40,000 (inclusive of all taxes)\nStatus: Paid in full\n\nThank you for choosing GoBuddy Adventures!\n\nBest,\nAccounts Team',
+        body: 'Hi Deepa,\n\nPlease find the invoice attached.\n\nBooking: GB-DX2026-041\nAmount: ₹2,40,000 (inclusive of all taxes)\nStatus: Paid in full\n\nThank you for choosing TripBuilt!\n\nBest,\nAccounts Team',
         timestamp: 'Yesterday 2:30 PM',
         status: 'read',
       },
@@ -272,9 +272,9 @@ const EMAIL_CONVERSATIONS: ChannelConversation[] = [
     unreadCount: 1,
     contact: {
       id: 'el1',
-      name: 'GoBuddy Bookings',
+      name: 'TripBuilt Bookings',
       phone: '',
-      email: 'bookings@gobuddy.in',
+      email: 'bookings@tripbuilt.com',
       type: 'lead',
       avatarColor: '#25D366',
       isOnline: false,

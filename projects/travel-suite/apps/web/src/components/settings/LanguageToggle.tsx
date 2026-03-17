@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 
-const STORAGE_KEY = 'touros_language'
+const STORAGE_KEY = 'tripbuilt_language'
 
 type Lang = 'en' | 'hi'
 

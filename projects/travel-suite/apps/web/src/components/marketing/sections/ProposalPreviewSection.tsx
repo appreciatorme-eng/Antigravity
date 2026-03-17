@@ -102,7 +102,7 @@ export function ProposalPreviewSection() {
             Experience a <span className="text-[#A259FF]">Magic Link</span>
           </h2>
           <p className="text-xl text-gray-400 mt-4">
-            Watch TravelBuilt generate a proposal in real-time.
+            Watch TripBuilt generate a proposal in real-time.
           </p>
         </motion.div>
 

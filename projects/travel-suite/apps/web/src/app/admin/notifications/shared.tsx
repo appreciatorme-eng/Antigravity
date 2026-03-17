@@ -144,7 +144,7 @@ export function buildWhatsAppLink(
   const cleanPhone = normalizePhone(phone);
   if (!cleanPhone) return null;
   const text = encodeURIComponent(
-    message || globalMessage || 'Hi! We have an update for you from Travel Suite.',
+    message || globalMessage || 'Hi! We have an update for you from TripBuilt.',
   );
   return `https://wa.me/${cleanPhone}?text=${text}`;
 }

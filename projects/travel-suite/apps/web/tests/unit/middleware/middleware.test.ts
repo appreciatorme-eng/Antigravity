@@ -17,6 +17,16 @@ vi.mock("@/lib/supabase/middleware", () => ({
     updateSession: updateSessionMock,
 }));
 
+// Mock next-intl middleware
+vi.mock("next-intl/middleware", () => ({
+    default: vi.fn(() => {
+        return () => {
+            // Return next() to let the test middleware proceed
+            return NextResponse.next();
+        };
+    }),
+}));
+
 function makeRequest(pathname: string, search = ""): NextRequest {
     return new NextRequest(`http://localhost${pathname}${search}`);
 }
@@ -68,37 +78,37 @@ afterEach(() => {
 
 it("passes public routes through without hitting the DB", async () => {
     const { middleware } = await loadMiddleware();
-    const response = await middleware(makeRequest("/"));
+    const response = await middleware(makeRequest("/en/"));
     expect(response.status).toBe(200);
 });
 
 it("passes /auth route through without hitting the DB", async () => {
     const { middleware } = await loadMiddleware();
-    const response = await middleware(makeRequest("/auth"));
+    const response = await middleware(makeRequest("/en/auth"));
     expect(response.status).toBe(200);
 });
 
 it("redirects unauthenticated request to /admin to /auth with next param", async () => {
     const { middleware } = await loadMiddleware();
-    const response = await middleware(makeRequest("/admin/dashboard"));
+    const response = await middleware(makeRequest("/en/admin/dashboard"));
     expect(response.status).toBe(307);
     const location = response.headers.get("location") ?? "";
-    expect(location).toContain("/auth");
-    expect(location).toContain("next=%2Fadmin%2Fdashboard");
+    expect(location).toContain("/en/auth");
+    expect(location).toContain("next=%2Fen%2Fadmin%2Fdashboard");
 });
 
 it("redirects unauthenticated request to /trips to /auth", async () => {
     const { middleware } = await loadMiddleware();
-    const response = await middleware(makeRequest("/trips"));
+    const response = await middleware(makeRequest("/en/trips"));
     expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toContain("/auth");
+    expect(response.headers.get("location")).toContain("/en/auth");
 });
 
 it("redirects unauthenticated request to /onboarding to /auth", async () => {
     const { middleware } = await loadMiddleware();
-    const response = await middleware(makeRequest("/onboarding"));
+    const response = await middleware(makeRequest("/en/onboarding"));
     expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toContain("/auth");
+    expect(response.headers.get("location")).toContain("/en/auth");
 });
 
 it("redirects incomplete-onboarding user from /admin to /onboarding", async () => {
@@ -107,11 +117,11 @@ it("redirects incomplete-onboarding user from /admin to /onboarding", async () =
         { organization_id: null, role: "admin", onboarding_step: 0 }
     );
     const { middleware } = await loadMiddleware();
-    const response = await middleware(makeRequest("/admin/trips"));
+    const response = await middleware(makeRequest("/en/admin/trips"));
     expect(response.status).toBe(307);
     const location = response.headers.get("location") ?? "";
-    expect(location).toContain("/onboarding");
-    expect(location).toContain("next=%2Fadmin%2Ftrips");
+    expect(location).toContain("/en/onboarding");
+    expect(location).toContain("next=%2Fen%2Fadmin%2Ftrips");
 });
 
 it("redirects user with no organization from /planner to /onboarding", async () => {
@@ -120,9 +130,9 @@ it("redirects user with no organization from /planner to /onboarding", async () 
         { organization_id: null, role: "admin", onboarding_step: 1 }
     );
     const { middleware } = await loadMiddleware();
-    const response = await middleware(makeRequest("/planner"));
+    const response = await middleware(makeRequest("/en/planner"));
     expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toContain("/onboarding");
+    expect(response.headers.get("location")).toContain("/en/onboarding");
 });
 
 it("allows onboarding-complete admin user through to /admin", async () => {
@@ -131,7 +141,7 @@ it("allows onboarding-complete admin user through to /admin", async () => {
         { organization_id: "org-1", role: "admin", onboarding_step: 2 }
     );
     const { middleware } = await loadMiddleware();
-    const response = await middleware(makeRequest("/admin/trips"));
+    const response = await middleware(makeRequest("/en/admin/trips"));
     expect(response.status).toBe(200);
 });
 
@@ -141,9 +151,9 @@ it("redirects onboarding-complete user away from /onboarding to /admin", async (
         { organization_id: "org-1", role: "admin", onboarding_step: 2 }
     );
     const { middleware } = await loadMiddleware();
-    const response = await middleware(makeRequest("/onboarding"));
+    const response = await middleware(makeRequest("/en/onboarding"));
     expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toContain("/admin");
+    expect(response.headers.get("location")).toContain("/en/admin");
 });
 
 it("redirects onboarding-complete user to safe next param from /onboarding", async () => {
@@ -152,9 +162,9 @@ it("redirects onboarding-complete user to safe next param from /onboarding", asy
         { organization_id: "org-1", role: "admin", onboarding_step: 2 }
     );
     const { middleware } = await loadMiddleware();
-    const response = await middleware(makeRequest("/onboarding", "?next=%2Ftrips"));
+    const response = await middleware(makeRequest("/en/onboarding", "?next=%2Fen%2Ftrips"));
     expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toContain("/trips");
+    expect(response.headers.get("location")).toContain("/en/trips");
 });
 
 it("blocks open-redirect: //evil.com next param falls back to /admin", async () => {
@@ -163,10 +173,10 @@ it("blocks open-redirect: //evil.com next param falls back to /admin", async () 
         { organization_id: "org-1", role: "admin", onboarding_step: 2 }
     );
     const { middleware } = await loadMiddleware();
-    const response = await middleware(makeRequest("/onboarding", "?next=%2F%2Fevil.com"));
+    const response = await middleware(makeRequest("/en/onboarding", "?next=%2F%2Fevil.com"));
     const location = response.headers.get("location") ?? "";
     expect(location).not.toContain("evil.com");
-    expect(location).toContain("/admin");
+    expect(location).toContain("/en/admin");
 });
 
 it("super_admin bypasses onboarding check for /god routes", async () => {
@@ -175,6 +185,6 @@ it("super_admin bypasses onboarding check for /god routes", async () => {
         { organization_id: null, role: "super_admin", onboarding_step: null }
     );
     const { middleware } = await loadMiddleware();
-    const response = await middleware(makeRequest("/god/panel"));
+    const response = await middleware(makeRequest("/en/god/panel"));
     expect(response.status).toBe(200);
 });

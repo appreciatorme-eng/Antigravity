@@ -6,7 +6,7 @@ import { Star, Quote } from 'lucide-react';
 
 const testimonials = [
     {
-        quote: "TravelBuilt completely changed how we pitch. What used to take 2 hours on Excel now takes 10 minutes, and the proposals look like a million bucks.",
+        quote: "TripBuilt completely changed how we pitch. What used to take 2 hours on Excel now takes 10 minutes, and the proposals look like a million bucks.",
         author: "Rahul Sharma",
         company: "Himalayan Treks",
         image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=200&auto=format&fit=crop"
@@ -14,11 +14,11 @@ const testimonials = [
     {
         quote: "Keeping track of agent commissions and driver payments was a nightmare. This OS brought everything into a single dashboard. Total game-changer.",
         author: "Sneha Patel",
-        company: "TravelBuilt",
+        company: "TripBuilt",
         image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&auto=format&fit=crop"
     },
     {
-        quote: "Since we started sending interactive proposals via TravelBuilt, our conversion rate went from 18% to 34%. Clients love the visual itineraries.",
+        quote: "Since we started sending interactive proposals via TripBuilt, our conversion rate went from 18% to 34%. Clients love the visual itineraries.",
         author: "Arjun Desai",
         company: "Wanderlust India Tours",
         image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=200&auto=format&fit=crop"

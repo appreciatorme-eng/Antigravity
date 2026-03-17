@@ -187,7 +187,7 @@ function generatePDF(rows: GSTRow[], month: string): void {
         </tbody>
       </table>
       <div class="footer">
-        Generated on ${new Date().toLocaleDateString("en-IN")} | TravelSuite — Built for Indian Tour Operators
+        Generated on ${new Date().toLocaleDateString("en-IN")} | TripBuilt — Built for Indian Tour Operators
       </div>
     </body>
     </html>`;

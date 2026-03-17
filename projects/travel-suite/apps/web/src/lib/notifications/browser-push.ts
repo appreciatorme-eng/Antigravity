@@ -206,7 +206,7 @@ export function createEventNotification(
 
     default:
       return {
-        title: 'Travel Suite',
+        title: 'TripBuilt',
         body: 'You have a new notification',
         tag: 'general',
         requireInteraction: false,

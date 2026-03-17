@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
         paymentId: parsed.data.razorpay_payment_id,
         bookingReference: updatedLink.proposalTitle || updatedLink.token,
         paidAt: paidAtLabel,
-        operatorName: updatedLink.organizationName || "Antigravity Travel",
+        operatorName: updatedLink.organizationName || "TripBuilt",
         gstLabel: DEFAULT_PAYMENT_RECEIPT_GST_LABEL,
         invoiceUrl: null,
       });

@@ -89,7 +89,7 @@ export function PaymentCheckoutClient({ initialLink }: PaymentCheckoutClientProp
         key: razorpayKey,
         amount: link.amount,
         currency: link.currency,
-        name: link.organizationName || "Travel Suite",
+        name: link.organizationName || "TripBuilt",
         description: link.description || link.proposalTitle || "Trip payment",
         order_id: link.razorpayOrderId,
         handler: async (response: Record<string, unknown>) => {

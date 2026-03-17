@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, ChevronDown } from 'lucide-react';
-import { TravelBuiltLogo } from './TravelBuiltLogo';
+import { TripBuiltLogo } from './TripBuiltLogo';
 
 const navLinks = [
   { label: 'Home', href: '/' },
@@ -49,8 +49,8 @@ export function Navbar() {
 
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 md:gap-3 no-underline z-50">
-            <TravelBuiltLogo size="md" className="hidden md:block" />
-            <TravelBuiltLogo size="sm" className="block md:hidden" />
+            <TripBuiltLogo size="md" className="hidden md:block" />
+            <TripBuiltLogo size="sm" className="block md:hidden" />
           </Link>
 
           {/* Desktop Nav Links */}

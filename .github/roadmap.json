@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Task-to-PR mapping configuration for auto-merge workflow. Maps roadmap task IDs to GitHub PR numbers and tracks their status.",
+  "tasks": [
+    {
+      "id": "027",
+      "title": "Auto-merge PRs when task moved to done",
+      "pr_number": 123,
+      "status": "in_progress",
+      "assigned_to": "user@example.com"
+    },
+    {
+      "id": "026",
+      "title": "Implement rate limiting for API endpoints",
+      "pr_number": 122,
+      "status": "done",
+      "assigned_to": "dev@example.com"
+    },
+    {
+      "id": "025",
+      "title": "Add Supabase RLS policies for user profiles",
+      "pr_number": 121,
+      "status": "done",
+      "assigned_to": "backend@example.com"
+    }
+  ]
+}

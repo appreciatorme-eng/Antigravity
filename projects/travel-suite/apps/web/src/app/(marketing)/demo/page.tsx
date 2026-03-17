@@ -4,11 +4,11 @@ import { BadgeCheck, Zap, Globe, CalendarDays } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Book a Demo',
-  description: 'See a personalized demo of TravelBuilt — the AI-powered platform for modern Indian tour operators. Book a 1-on-1 session with our travel tech experts.',
+  description: 'See a personalized demo of TripBuilt — the AI-powered platform for modern Indian tour operators. Book a 1-on-1 session with our travel tech experts.',
   openGraph: {
-    title: 'Book a Demo | TravelBuilt',
-    description: 'See how TravelBuilt can transform your travel agency. Book a free personalized demo today.',
-    images: [{ url: '/api/og?title=Book+a+Demo&subtitle=See+TravelBuilt+in+action', width: 1200, height: 630 }],
+    title: 'Book a Demo | TripBuilt',
+    description: 'See how TripBuilt can transform your travel agency. Book a free personalized demo today.',
+    images: [{ url: '/api/og?title=Book+a+Demo&subtitle=See+TripBuilt+in+action', width: 1200, height: 630 }],
   },
 };
 
@@ -25,7 +25,7 @@ export default function DemoPage() {
                 1-on-1 Product Tour
               </div>
               <h1 className="text-4xl md:text-6xl font-black mb-6 tracking-tight leading-tight">
-                See how TravelBuilt can transform your agency.
+                See how TripBuilt can transform your agency.
               </h1>
               <p className="text-xl text-gray-400 mb-10 leading-relaxed max-w-xl">
                 Book a personalized demo with our travel tech experts. We&apos;ll show you exactly how to automate your workflows, close more deals, and scale your revenue.
@@ -50,7 +50,7 @@ export default function DemoPage() {
               </div>
 
               <div className="mt-12 p-6 rounded-3xl bg-white/5 border border-white/10">
-                <p className="text-gray-300 italic">&quot;TravelBuilt replaced 4 different tools we were paying for. It&apos;s easily saved my team 20+ hours a week in manual admin work.&quot;</p>
+                <p className="text-gray-300 italic">&quot;TripBuilt replaced 4 different tools we were paying for. It&apos;s easily saved my team 20+ hours a week in manual admin work.&quot;</p>
                 <div className="mt-4 flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#00F0FF] to-[#0055FF] shrink-0" />
                   <div>

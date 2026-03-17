@@ -24,7 +24,7 @@ export const env = {
   resend: {
     apiKey: firstDefined(rawEnv.RESEND_API_KEY),
     fromEmail: firstDefined(rawEnv.RESEND_FROM_EMAIL, rawEnv.WELCOME_FROM_EMAIL),
-    fromName: firstDefined(rawEnv.RESEND_FROM_NAME) ?? "Antigravity Travel",
+    fromName: firstDefined(rawEnv.RESEND_FROM_NAME) ?? "TripBuilt",
   },
   sentry: {
     dsn: firstDefined(rawEnv.NEXT_PUBLIC_SENTRY_DSN, rawEnv.SENTRY_DSN),

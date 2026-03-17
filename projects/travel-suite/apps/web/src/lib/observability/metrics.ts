@@ -18,7 +18,7 @@ export async function captureOperationalMetric(
             body: JSON.stringify({
                 api_key: apiKey,
                 event,
-                distinct_id: "travel-suite-server",
+                distinct_id: "tripbuilt-server",
                 properties: {
                     ...properties,
                     source: "api",

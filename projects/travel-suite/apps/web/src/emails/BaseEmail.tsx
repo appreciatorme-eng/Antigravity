@@ -73,7 +73,7 @@ export function BaseEmail({ previewText, title, children, cta }: BaseEmailProps)
                 textTransform: "uppercase",
               }}
             >
-              Antigravity Travel
+              TripBuilt
             </Text>
             <Heading
               as="h1"
@@ -114,7 +114,7 @@ export function BaseEmail({ previewText, title, children, cta }: BaseEmailProps)
 
           <Section style={footerStyle}>
             <Text style={{ margin: "0 0 8px" }}>
-              © Antigravity Travel
+              © TripBuilt
             </Text>
             <Text style={{ margin: 0 }}>
               Unsubscribe

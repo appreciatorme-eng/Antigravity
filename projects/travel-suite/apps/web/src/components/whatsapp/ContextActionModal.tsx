@@ -353,12 +353,12 @@ function SendQuotePanel({
 
     if (channel === 'whatsapp') {
       return {
-        body: `${contact.name} Ji 🙏\n\nHere is your personalised travel quote from GoBuddy Adventures:\n\n🗺️ *${selected.name}*\n📍 ${selected.destination} · ${selected.duration} · ${selected.type}\n\n*INCLUSIONS*\n${inclusions}\n\n💰 *${formatCurrency(selected.price)}/person*\n⏰ Valid for ${selected.validity}\n\nReply here or call *+91 98765 00000* to confirm! 🎉\n— GoBuddy Adventures`,
+        body: `${contact.name} Ji 🙏\n\nHere is your personalised travel quote from TripBuilt:\n\n🗺️ *${selected.name}*\n📍 ${selected.destination} · ${selected.duration} · ${selected.type}\n\n*INCLUSIONS*\n${inclusions}\n\n💰 *${formatCurrency(selected.price)}/person*\n⏰ Valid for ${selected.validity}\n\nReply here or call *+91 98765 00000* to confirm! 🎉\n— TripBuilt`,
       };
     }
 
-    const subject = `Your Personalised Quote — ${selected.name} | GoBuddy Adventures`;
-    const body = `Dear ${contact.name},\n\nThank you for your interest in travelling with GoBuddy Adventures!\n\n━━━━━━━━━━━━━━━━━━━━━\n${selected.name.toUpperCase()}\n━━━━━━━━━━━━━━━━━━━━━\n\n📍 Destination: ${selected.destination}\n⏱️ Duration: ${selected.duration}\n🏷️ Package Type: ${selected.type}\n💰 Price: ${formatCurrency(selected.price)} per person\n\n━━━━━━━━━━━━━━━━━━━━━\nWHAT'S INCLUDED\n━━━━━━━━━━━━━━━━━━━━━\n${inclusions}\n\n⏰ Quote valid for: ${selected.validity} from today.\n\nTo confirm your booking or request customisation, reply to this email or call +91 98765 00000.\n\nWe look forward to making your trip unforgettable! 🌟\n\nWarm regards,\nTeam GoBuddy Adventures\ngobuddy.in | +91 98765 00000`;
+    const subject = `Your Personalised Quote — ${selected.name} | TripBuilt`;
+    const body = `Dear ${contact.name},\n\nThank you for your interest in travelling with TripBuilt!\n\n━━━━━━━━━━━━━━━━━━━━━\n${selected.name.toUpperCase()}\n━━━━━━━━━━━━━━━━━━━━━\n\n📍 Destination: ${selected.destination}\n⏱️ Duration: ${selected.duration}\n🏷️ Package Type: ${selected.type}\n💰 Price: ${formatCurrency(selected.price)} per person\n\n━━━━━━━━━━━━━━━━━━━━━\nWHAT'S INCLUDED\n━━━━━━━━━━━━━━━━━━━━━\n${inclusions}\n\n⏰ Quote valid for: ${selected.validity} from today.\n\nTo confirm your booking or request customisation, reply to this email or call +91 98765 00000.\n\nWe look forward to making your trip unforgettable! 🌟\n\nWarm regards,\nTeam TripBuilt\ntripbuilt.com | +91 98765 00000`;
 
     return { body, subject };
   }

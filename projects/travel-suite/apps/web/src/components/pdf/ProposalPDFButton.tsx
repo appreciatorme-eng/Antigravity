@@ -25,7 +25,7 @@ export const ProposalPDFButton: React.FC<ProposalPDFButtonProps> = ({
   proposalData,
   clientEmail,
   variant = 'both',
-  organizationName = 'Travel Suite',
+  organizationName = 'TripBuilt',
 }) => {
   const [downloading, setDownloading] = useState(false);
   const [emailing, setEmailing] = useState(false);

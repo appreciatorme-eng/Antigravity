@@ -88,7 +88,7 @@ test.describe("PWA Offline Mutation Replay", () => {
 
     await page.evaluate(async () => {
       await new Promise<void>((resolve) => {
-        const deletion = indexedDB.deleteDatabase("gobuddy-offline-mutations-v1");
+        const deletion = indexedDB.deleteDatabase("tripbuilt-offline-mutations-v1");
         deletion.onsuccess = () => resolve();
         deletion.onerror = () => resolve();
         deletion.onblocked = () => resolve();

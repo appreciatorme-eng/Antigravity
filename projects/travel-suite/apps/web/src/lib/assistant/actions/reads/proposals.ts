@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------------
- * Proposal read actions for the GoBuddy assistant.
+ * Proposal read actions for the TripBuilt assistant.
  *
  * Proposals reference clients via `proposals_client_id_fkey`, and
  * clients reference profiles via `clients_id_fkey` for contact info.

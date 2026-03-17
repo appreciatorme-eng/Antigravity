@@ -33,7 +33,7 @@ export function StickyMobileCTA() {
                 >
                     <div className="bg-[#0A0A0A]/90 backdrop-blur-xl border border-white/10 p-4 rounded-2xl shadow-[0_0_40px_rgba(0,0,0,0.8)] flex items-center justify-between">
                         <div>
-                            <p className="text-white font-bold text-sm">TravelBuilt OS</p>
+                            <p className="text-white font-bold text-sm">TripBuilt OS</p>
                             <p className="text-gray-400 text-xs">Free forever plan available.</p>
                         </div>
 

@@ -3,9 +3,9 @@ import PricingPageContent from './_components/PricingPageContent';
 
 export const metadata: Metadata = {
   title: 'Pricing',
-  description: 'Simple, transparent pricing for TravelBuilt. Start free, upgrade as you grow. Plans for solo operators to large travel agencies.',
+  description: 'Simple, transparent pricing for TripBuilt. Start free, upgrade as you grow. Plans for solo operators to large travel agencies.',
   openGraph: {
-    title: 'Pricing | TravelBuilt',
+    title: 'Pricing | TripBuilt',
     description: 'Transparent pricing for every stage of your travel business growth.',
     images: [{ url: '/api/og?title=Pricing&subtitle=Simple+transparent+pricing', width: 1200, height: 630 }],
   },

@@ -49,7 +49,7 @@ export function LiveChat() {
                                     <div className="absolute bottom-0 right-0 w-3 h-3 bg-[#00FF88] border-2 border-[#0A0A0A] rounded-full"></div>
                                 </div>
                                 <div>
-                                    <h4 className="text-sm font-bold text-white">TravelBuilt Support</h4>
+                                    <h4 className="text-sm font-bold text-white">TripBuilt Support</h4>
                                     <p className="text-xs text-[#00F0FF]">Typically replies in 2 mins</p>
                                 </div>
                             </div>

@@ -3,12 +3,18 @@ import { persist } from 'zustand/middleware';
 
 interface OnboardingState {
     hasCompletedOnboarding: boolean;
+    isDismissed: boolean;
     currentStep: number;
     totalSteps: number;
     completedSteps: string[];
+    skippedSteps: string[];
     completeStep: (stepId: string) => void;
+    skipStep: (stepId: string) => void;
+    setCurrentStep: (step: number) => void;
     nextStep: () => void;
     prevStep: () => void;
+    dismissWizard: () => void;
+    resumeWizard: () => void;
     finishOnboarding: () => void;
     resetOnboarding: () => void;
 }
@@ -17,25 +23,40 @@ export const useOnboardingStore = create<OnboardingState>()(
     persist(
         (set) => ({
             hasCompletedOnboarding: false,
-            currentStep: 0,
-            totalSteps: 4,
+            isDismissed: false,
+            currentStep: 1,
+            totalSteps: 9,
             completedSteps: [],
+            skippedSteps: [],
             completeStep: (stepId) => set((state) => ({
                 completedSteps: state.completedSteps.includes(stepId)
                     ? state.completedSteps
                     : [...state.completedSteps, stepId]
             })),
+            skipStep: (stepId) => set((state) => ({
+                skippedSteps: state.skippedSteps.includes(stepId)
+                    ? state.skippedSteps
+                    : [...state.skippedSteps, stepId]
+            })),
+            setCurrentStep: (step) => set({ currentStep: step }),
             nextStep: () => set((state) => ({
-                currentStep: Math.min(state.currentStep + 1, state.totalSteps - 1)
+                currentStep: Math.min(state.currentStep + 1, state.totalSteps)
             })),
             prevStep: () => set((state) => ({
-                currentStep: Math.max(state.currentStep - 1, 0)
+                currentStep: Math.max(state.currentStep - 1, 1)
             })),
-            finishOnboarding: () => set({ hasCompletedOnboarding: true }),
+            dismissWizard: () => set({ isDismissed: true }),
+            resumeWizard: () => set({ isDismissed: false }),
+            finishOnboarding: () => set({
+                hasCompletedOnboarding: true,
+                isDismissed: false,
+            }),
             resetOnboarding: () => set({
                 hasCompletedOnboarding: false,
-                currentStep: 0,
-                completedSteps: []
+                isDismissed: false,
+                currentStep: 1,
+                completedSteps: [],
+                skippedSteps: []
             }),
         }),
         {

@@ -126,7 +126,7 @@ export function HeroSection() {
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-[#00F0FF]"></span>
               </span>
               <ShinyText
-                text="TravelBuilt is Live"
+                text="TripBuilt is Live"
                 speed={3}
                 color="#00F0FF"
                 shineColor="#ffffff"

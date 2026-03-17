@@ -1,7 +1,7 @@
 const CACHE_NAME = 'trip-portal-v2';
 const APP_SHELL = ['/', '/offline', '/manifest.json'];
 
-const IDB_NAME = 'gobuddy-offline-mutations-v1';
+const IDB_NAME = 'tripbuilt-offline-mutations-v1';
 const IDB_STORE = 'outbox';
 const IDB_VERSION = 1;
 

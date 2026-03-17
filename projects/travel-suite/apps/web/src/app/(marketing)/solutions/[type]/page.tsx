@@ -21,7 +21,7 @@ const solutionsData: Record<string, {
   solo: {
     badge: "For Solo Agents",
     title: "Look like an agency of 50. Work like a team of 1.",
-    description: "Stop juggling WhatsApp, Word docs, and Excel. Create breathtaking itineraries in minutes and close clients faster with TravelBuilt.",
+    description: "Stop juggling WhatsApp, Word docs, and Excel. Create breathtaking itineraries in minutes and close clients faster with TripBuilt.",
     benefits: [
       "Access 100+ pre-built proposal templates",
       "One-click flight & hotel integrations",
@@ -115,7 +115,7 @@ export default function SolutionPage({ params }: { params: Promise<{ type: strin
           <div className="absolute top-1/2 right-0 w-[500px] h-[500px] bg-[#00F0FF]/5 blur-[120px] rounded-full" />
 
           <div className="px-6 md:px-24 max-w-7xl mx-auto relative z-10">
-            <h2 className="text-2xl md:text-5xl font-bold mb-12 md:mb-16 text-center">Why travel professionals choose <span className="text-[#00F0FF]">TravelBuilt</span></h2>
+            <h2 className="text-2xl md:text-5xl font-bold mb-12 md:mb-16 text-center">Why travel professionals choose <span className="text-[#00F0FF]">TripBuilt</span></h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {data.benefits.map((benefit) => (

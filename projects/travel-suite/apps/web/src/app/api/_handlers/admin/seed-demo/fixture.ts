@@ -1,4 +1,4 @@
-// seed-demo/fixture.ts — demo data for GoBuddy Adventures (Demo) org.
+// seed-demo/fixture.ts — demo data for TripBuilt (Demo) org.
 // Extracted from route.ts to keep the handler lean and data testable.
 
 import { DEMO_ORG_ID } from "@/lib/demo/constants";
@@ -60,8 +60,8 @@ function uuid() {
 export function buildOrganization() {
   return {
     id: DEMO_ORG_ID,
-    name: "GoBuddy Adventures (Demo)",
-    slug: "gobuddy-demo",
+    name: "TripBuilt (Demo)",
+    slug: "tripbuilt-demo",
     subscription_tier: "premium",
     created_at: "2025-12-01T00:00:00Z",
   };
@@ -71,7 +71,7 @@ export function buildProfiles() {
   const [c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12] = DEMO_CLIENT_IDS;
   const [d1, d2, d3, d4] = DEMO_DRIVER_IDS;
   return [
-    { id: DEMO_ADMIN_ID, full_name: "Avinash Kapoor", email: "avinash@gobuddy-demo.in", role: "admin", organization_id: DEMO_ORG_ID, created_at: "2025-12-01T00:00:00Z" },
+    { id: DEMO_ADMIN_ID, full_name: "Avinash Kapoor", email: "avinash@tripbuilt-demo.in", role: "admin", organization_id: DEMO_ORG_ID, created_at: "2025-12-01T00:00:00Z" },
     { id: c1,  full_name: "Priya Sharma",   email: "priya.sharma@gmail.com",     phone: "+919876543210", role: "client", organization_id: DEMO_ORG_ID, lifecycle_stage: "active",            created_at: "2025-12-15T10:00:00Z" },
     { id: c2,  full_name: "Rajesh Gupta",   email: "rajesh.gupta@yahoo.com",     phone: "+919876543211", role: "client", organization_id: DEMO_ORG_ID, lifecycle_stage: "active",            created_at: "2025-12-20T14:00:00Z" },
     { id: c3,  full_name: "Ananya Patel",   email: "ananya.patel@outlook.com",   phone: "+919876543212", role: "client", organization_id: DEMO_ORG_ID, lifecycle_stage: "review",            created_at: "2026-01-05T09:00:00Z" },
@@ -84,10 +84,10 @@ export function buildProfiles() {
     { id: c10, full_name: "Arjun Malhotra", email: "arjun.malhotra@gmail.com",   phone: "+919876543219", role: "client", organization_id: DEMO_ORG_ID, lifecycle_stage: "prospect",          created_at: "2026-02-25T12:00:00Z" },
     { id: c11, full_name: "Sunita Iyer",    email: "sunita.iyer@rediffmail.com", phone: "+919876543220", role: "client", organization_id: DEMO_ORG_ID, lifecycle_stage: "lead",              created_at: "2026-03-01T09:00:00Z" },
     { id: c12, full_name: "Ravi Krishnan",  email: "ravi.krishnan@gmail.com",    phone: "+919876543221", role: "client", organization_id: DEMO_ORG_ID, lifecycle_stage: "lead",              created_at: "2026-03-03T17:00:00Z" },
-    { id: d1,  full_name: "Raju Singh",     email: "raju.driver@gobuddy-demo.in",    phone: "+919800000001", role: "driver", organization_id: DEMO_ORG_ID, created_at: "2025-12-10T00:00:00Z" },
-    { id: d2,  full_name: "Suresh Kumar",   email: "suresh.driver@gobuddy-demo.in",  phone: "+919800000002", role: "driver", organization_id: DEMO_ORG_ID, created_at: "2025-12-10T00:00:00Z" },
-    { id: d3,  full_name: "Mohan Yadav",    email: "mohan.driver@gobuddy-demo.in",   phone: "+919800000003", role: "driver", organization_id: DEMO_ORG_ID, created_at: "2025-12-10T00:00:00Z" },
-    { id: d4,  full_name: "Kiran Patil",    email: "kiran.driver@gobuddy-demo.in",   phone: "+919800000004", role: "driver", organization_id: DEMO_ORG_ID, created_at: "2025-12-10T00:00:00Z" },
+    { id: d1,  full_name: "Raju Singh",     email: "raju.driver@tripbuilt-demo.in",    phone: "+919800000001", role: "driver", organization_id: DEMO_ORG_ID, created_at: "2025-12-10T00:00:00Z" },
+    { id: d2,  full_name: "Suresh Kumar",   email: "suresh.driver@tripbuilt-demo.in",  phone: "+919800000002", role: "driver", organization_id: DEMO_ORG_ID, created_at: "2025-12-10T00:00:00Z" },
+    { id: d3,  full_name: "Mohan Yadav",    email: "mohan.driver@tripbuilt-demo.in",   phone: "+919800000003", role: "driver", organization_id: DEMO_ORG_ID, created_at: "2025-12-10T00:00:00Z" },
+    { id: d4,  full_name: "Kiran Patil",    email: "kiran.driver@tripbuilt-demo.in",   phone: "+919800000004", role: "driver", organization_id: DEMO_ORG_ID, created_at: "2025-12-10T00:00:00Z" },
   ];
 }
 

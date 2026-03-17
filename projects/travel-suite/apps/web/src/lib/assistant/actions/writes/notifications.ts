@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------------
- * Notification write actions for the GoBuddy assistant.
+ * Notification write actions for the TripBuilt assistant.
  *
  * Actions: send_whatsapp_message, schedule_followup
  *

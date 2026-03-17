@@ -102,7 +102,7 @@ export default function NavHeader() {
                             <Plane className="w-5 h-5 text-white" />
                         </div>
                         <span className="text-xl font-serif text-secondary hidden sm:block">
-                            GoBuddy Adventures
+                            TripBuilt
                         </span>
                     </Link>
 

@@ -189,7 +189,7 @@ export default function ProfessionalItineraryView({ itinerary, images = {}, orga
 
             {/* Footer */}
             <div className="text-center py-8 text-sm text-gray-500 dark:text-gray-400 print:text-gray-600">
-                <p>Generated with {organizationBranding?.name || 'Travel Suite'}</p>
+                <p>Generated with {organizationBranding?.name || 'TripBuilt'}</p>
                 <p className="mt-1">
                     This itinerary is subject to availability and may be customized to your preferences
                 </p>

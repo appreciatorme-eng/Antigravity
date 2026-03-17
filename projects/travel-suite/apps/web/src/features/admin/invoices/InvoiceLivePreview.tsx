@@ -85,7 +85,7 @@ export default function InvoiceLivePreview({
                   Tax Invoice
                 </p>
                 <p className="mt-0.5 text-lg font-semibold text-slate-900">
-                  {org?.name || "Travel Suite"}
+                  {org?.name || "TripBuilt"}
                 </p>
                 {org?.gstin ? (
                   <p className="text-xs text-slate-600">GSTIN: {org.gstin}</p>

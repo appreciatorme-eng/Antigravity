@@ -39,7 +39,7 @@ export default function NotificationSettingsPage() {
             <h3 className="font-semibold text-secondary dark:text-white mb-1">Real-Time Updates</h3>
             <p>
               Notifications are powered by Supabase Realtime and delivered instantly when clients
-              interact with proposals. You&apos;ll receive notifications even when Travel Suite is
+              interact with proposals. You&apos;ll receive notifications even when TripBuilt is
               closed or in the background.
             </p>
           </div>
@@ -57,7 +57,7 @@ export default function NotificationSettingsPage() {
             <h3 className="font-semibold text-secondary dark:text-white mb-1">Device Support</h3>
             <p>
               Browser notifications work on desktop (Chrome, Firefox, Safari, Edge) and mobile
-              devices. For mobile push notifications, add Travel Suite to your home screen.
+              devices. For mobile push notifications, add TripBuilt to your home screen.
             </p>
           </div>
 

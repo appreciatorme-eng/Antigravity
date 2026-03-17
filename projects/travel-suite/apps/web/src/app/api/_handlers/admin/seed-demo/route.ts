@@ -1,5 +1,5 @@
 // seed-demo — one-shot idempotent demo data seeder.
-// POST /api/admin/seed-demo  →  inserts GoBuddy Adventures (Demo) org + all records.
+// POST /api/admin/seed-demo  →  inserts TripBuilt (Demo) org + all records.
 
 import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";

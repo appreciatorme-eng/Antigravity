@@ -4,9 +4,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowDownRight,
   ArrowUpRight,
+  Award,
   BarChart3,
   Calendar,
+  Eye,
   Facebook,
+  Heart,
   Instagram,
   Megaphone,
   Share2,
@@ -27,6 +30,13 @@ interface SocialStats {
     instagram: number;
     facebook: number;
   };
+  totalLikes: number;
+  totalReach: number;
+  avgEngagementRate: number;
+  topPost: {
+    caption: string;
+    engagementRate: number;
+  } | null;
 }
 
 interface StatCardProps {
@@ -43,6 +53,10 @@ const DEFAULT_STATS: SocialStats = {
   scheduledCount: 0,
   whatsappImages: 0,
   platformBreakdown: { instagram: 0, facebook: 0 },
+  totalLikes: 0,
+  totalReach: 0,
+  avgEngagementRate: 0,
+  topPost: null,
 };
 
 export const SocialAnalytics = () => {
@@ -68,6 +82,48 @@ export const SocialAnalytics = () => {
         if (item.platform === "facebook") breakdown.facebook += 1;
       });
 
+      // Fetch engagement metrics with JOIN to social_posts
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: metricsData } = await (supabase as any)
+        .from("social_post_metrics")
+        .select(`
+          likes,
+          reach,
+          engagement_rate,
+          social_posts!inner(
+            id,
+            caption
+          )
+        `);
+
+      // Calculate aggregations
+      let totalLikes = 0;
+      let totalReach = 0;
+      let totalEngagementRate = 0;
+      let topPost: { caption: string; engagementRate: number } | null = null;
+      let maxEngagementRate = 0;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      metricsData?.forEach((metric: any) => {
+        totalLikes += metric.likes || 0;
+        totalReach += metric.reach || 0;
+        totalEngagementRate += Number(metric.engagement_rate) || 0;
+
+        const engagementRate = Number(metric.engagement_rate) || 0;
+        if (engagementRate > maxEngagementRate) {
+          maxEngagementRate = engagementRate;
+          topPost = {
+            caption: metric.social_posts?.caption || "Untitled",
+            engagementRate,
+          };
+        }
+      });
+
+      const avgEngagementRate =
+        metricsData && metricsData.length > 0
+          ? totalEngagementRate / metricsData.length
+          : 0;
+
       setStats({
         totalPosts: posts?.length || 0,
         publishedCount: queue?.filter((item) => item.status === "sent").length || 0,
@@ -77,9 +133,11 @@ export const SocialAnalytics = () => {
           ).length || 0,
         whatsappImages: whatsappCount || 0,
         platformBreakdown: breakdown,
+        totalLikes,
+        totalReach,
+        avgEngagementRate,
+        topPost,
       });
-    } catch (error) {
-      console.error("Error fetching stats:", error);
     } finally {
       setLoading(false);
     }
@@ -123,10 +181,17 @@ export const SocialAnalytics = () => {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-pulse mt-6">
-        {[1, 2, 3, 4].map((item) => (
-          <div key={item} className="h-32 bg-slate-100 dark:bg-slate-800 rounded-2xl" />
-        ))}
+      <div className="space-y-6 mt-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-pulse">
+          {[1, 2, 3, 4].map((item) => (
+            <div key={item} className="h-32 bg-slate-100 dark:bg-slate-800 rounded-2xl" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-pulse">
+          {[5, 6, 7, 8].map((item) => (
+            <div key={item} className="h-32 bg-slate-100 dark:bg-slate-800 rounded-2xl" />
+          ))}
+        </div>
       </div>
     );
   }
@@ -185,6 +250,56 @@ export const SocialAnalytics = () => {
           trend="up"
           trendValue="+24%"
         />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard
+          title="Total Likes"
+          value={stats.totalLikes}
+          icon={Heart}
+          trend="up"
+          trendValue="+15%"
+        />
+        <StatCard
+          title="Total Reach"
+          value={stats.totalReach}
+          icon={Eye}
+          trend="up"
+          trendValue="+22%"
+        />
+        <StatCard
+          title="Avg Engagement"
+          value={Math.round(stats.avgEngagementRate * 100) / 100}
+          icon={TrendingUp}
+          trend="up"
+          trendValue="+5%"
+        />
+        <Card className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden relative">
+          <CardHeader className="pb-2">
+            <div className="flex justify-between items-start">
+              <CardTitle className="text-sm font-medium text-slate-500 uppercase tracking-wider">
+                Top Post
+              </CardTitle>
+              <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                <Award className="w-5 h-5 text-indigo-500" />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-xl font-bold text-slate-900 dark:text-white truncate">
+              {stats.topPost?.caption.slice(0, 40) || "No data"}
+              {stats.topPost && stats.topPost.caption.length > 40 ? "..." : ""}
+            </div>
+            <div className="mt-2 flex items-center gap-1">
+              <ArrowUpRight className="w-4 h-4 text-emerald-500" />
+              <span className="text-xs font-bold text-emerald-500">
+                {stats.topPost ? `${stats.topPost.engagementRate.toFixed(2)}%` : "0%"}
+              </span>
+              <span className="text-xs text-slate-400 font-medium ml-1">engagement</span>
+            </div>
+          </CardContent>
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-purple-600 opacity-20" />
+        </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

@@ -29,6 +29,7 @@ const PostHistory = dynamic(() => import("./PostHistory").then((mod) => mod.Post
 const SocialAnalytics = dynamic(() => import("./SocialAnalytics").then((mod) => mod.SocialAnalytics));
 const BulkExporter = dynamic(() => import("./BulkExporter").then((mod) => mod.BulkExporter));
 const TripImporter = dynamic(() => import("./TripImporter").then((mod) => mod.TripImporter));
+const CalendarView = dynamic(() => import("./CalendarView").then((mod) => mod.CalendarView));
 
 interface Props {
     initialOrgData: {
@@ -529,6 +530,13 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
             {activeAction === "analytics" && (
                 <GlassModal isOpen onClose={closeAction} title="Analytics" size="xl">
                     <SocialAnalytics />
+                </GlassModal>
+            )}
+
+            {/* Calendar */}
+            {activeAction === "calendar" && (
+                <GlassModal isOpen onClose={closeAction} title="Calendar" size="xl">
+                    <CalendarView />
                 </GlassModal>
             )}
         </div>

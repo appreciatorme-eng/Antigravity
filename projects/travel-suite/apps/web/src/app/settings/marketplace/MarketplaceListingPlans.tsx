@@ -190,7 +190,7 @@ export function MarketplaceListingPlans({
         key: publicKey,
         amount: selectedPlan.pricePaise,
         currency: "INR",
-        name: organizationName || "Antigravity Travel",
+        name: organizationName || "TripBuilt",
         description: `${selectedPlan.name} marketplace listing`,
         order_id: orderId,
         theme: { color: "#14b8a6" },

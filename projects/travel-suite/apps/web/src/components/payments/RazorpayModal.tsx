@@ -157,7 +157,7 @@ export default function RazorpayModal({
         key: razorpayKey,
         amount,
         currency: 'INR',
-        name: organizationName || 'Travel Suite',
+        name: organizationName || 'TripBuilt',
         description: description || tripName,
         order_id: razorpayOrderId,
         prefill: {

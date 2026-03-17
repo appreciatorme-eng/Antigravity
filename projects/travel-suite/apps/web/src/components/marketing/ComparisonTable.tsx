@@ -21,7 +21,7 @@ export function ComparisonTable() {
 
             <div className="max-w-4xl mx-auto">
                 <div className="text-center mb-16 relative z-10">
-                    <h2 className="text-3xl md:text-5xl font-bold mb-4">Why operators switch to <span className="text-[#00F0FF]">TravelBuilt</span></h2>
+                    <h2 className="text-3xl md:text-5xl font-bold mb-4">Why operators switch to <span className="text-[#00F0FF]">TripBuilt</span></h2>
                     <p className="text-gray-400">The difference between running a business and letting it run you.</p>
                 </div>
 
@@ -34,7 +34,7 @@ export function ComparisonTable() {
                     {/* Header */}
                     <div className="grid grid-cols-3 p-6 border-b border-white/10 bg-white/[0.02]">
                         <div className="font-semibold text-gray-500">Feature</div>
-                        <div className="font-bold text-[#00F0FF] text-center">TravelBuilt</div>
+                        <div className="font-bold text-[#00F0FF] text-center">TripBuilt</div>
                         <div className="font-semibold text-gray-500 text-center">The Old Way</div>
                     </div>
 
