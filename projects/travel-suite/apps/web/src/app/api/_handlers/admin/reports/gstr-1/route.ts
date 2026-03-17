@@ -13,7 +13,6 @@ function parseMonthParam(raw: string | null): string | null {
   if (!raw) return null;
   const match = raw.match(/^(\d{4})-(\d{2})$/);
   if (!match) return null;
-  const year = Number(match[1]);
   const month = Number(match[2]);
   if (month < 1 || month > 12) return null;
   return raw;

@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect } from "@playwright/test";
 import { test as authTest } from "../fixtures/auth";
 
 /**
@@ -215,7 +215,7 @@ authTest.describe("E-Invoicing - Full Workflow", () => {
 
     // Step 5: Verify invoice is included in B2B section (has GSTIN)
     const b2bInvoices = gstrData.data.b2b || [];
-    const foundInvoice = b2bInvoices.find((inv: any) =>
+    const foundInvoice = b2bInvoices.find((inv: Record<string, unknown>) =>
       inv.invoiceNumber === invoice.invoice_number
     );
 
@@ -315,7 +315,7 @@ authTest.describe("E-Invoicing - Full Workflow", () => {
 
     const gstrData = await gstrResponse.json();
     const b2bInvoices = gstrData.data.b2b || [];
-    const cancelledInvoice = b2bInvoices.find((inv: any) =>
+    const cancelledInvoice = b2bInvoices.find((inv: Record<string, unknown>) =>
       inv.invoiceNumber === invoice.invoice_number
     );
 
@@ -778,7 +778,7 @@ authTest.describe("E-Invoicing - Fallback Scenarios", () => {
     // Step 6: Look for the invoice in the list
     // Note: The invoice might appear in the list with 'pending' or 'failed' status
     // We verify the dashboard renders and shows invoice data
-    const invoiceNumberVisible = await adminPage.locator(`text=${invoice.invoice_number}`).isVisible({ timeout: 5000 }).catch(() => false);
+    const _invoiceNumberVisible = await adminPage.locator(`text=${invoice.invoice_number}`).isVisible({ timeout: 5000 }).catch(() => false);
 
     // Dashboard should be functional even with failed e-invoices
     // The exact appearance depends on the dashboard implementation

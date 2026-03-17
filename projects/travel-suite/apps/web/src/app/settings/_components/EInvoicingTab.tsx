@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { FileText, IndianRupee, Key, Building2, TestTube } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
 import { GlassButton } from '@/components/glass/GlassButton';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
@@ -108,7 +107,7 @@ export function EInvoicingTab() {
                 description: 'Your settings have been saved successfully',
                 variant: 'success'
             });
-        } catch (error) {
+        } catch {
             toast({
                 title: 'Failed to save settings',
                 description: 'Please try again',

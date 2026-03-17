@@ -206,6 +206,7 @@ export function InvoiceDocument({ invoice, template = "executive" }: InvoiceDocu
         {invoice.irn && invoice.qr_code_data ? (
           <View style={styles.eInvoiceSection}>
             <View style={styles.qrCodeContainer}>
+              {/* eslint-disable-next-line jsx-a11y/alt-text */}
               <Image
                 src={invoice.qr_code_data.startsWith('data:') ? invoice.qr_code_data : `data:image/png;base64,${invoice.qr_code_data}`}
                 style={styles.qrCode}
