@@ -29,7 +29,8 @@ import {
     Plane,
     TrendingUp,
     LayoutGrid,
-    List as ListIcon
+    List as ListIcon,
+    BookTemplate
 } from "lucide-react";
 import CreateTripModal from "@/components/CreateTripModal";
 import { GlassCard } from "@/components/glass/GlassCard";
@@ -209,14 +210,25 @@ export default function AdminTripsPage() {
                     </p>
                 </div>
 
-                <GlassButton
-                    variant="primary"
-                    onClick={() => setIsCreateModalOpen(true)}
-                    className="h-14 px-8 rounded-2xl shadow-xl shadow-primary/20 group"
-                >
-                    <Plus className="w-5 h-5 mr-3 transition-transform group-hover:rotate-90" />
-                    <span className="text-xs font-black uppercase tracking-widest">Create New Trip</span>
-                </GlassButton>
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <Link href="/admin/itinerary-templates">
+                        <GlassButton
+                            variant="secondary"
+                            className="h-14 px-8 rounded-2xl group w-full sm:w-auto"
+                        >
+                            <BookTemplate className="w-5 h-5 mr-3 transition-transform group-hover:scale-110" />
+                            <span className="text-xs font-black uppercase tracking-widest">Browse Templates</span>
+                        </GlassButton>
+                    </Link>
+                    <GlassButton
+                        variant="primary"
+                        onClick={() => setIsCreateModalOpen(true)}
+                        className="h-14 px-8 rounded-2xl shadow-xl shadow-primary/20 group"
+                    >
+                        <Plus className="w-5 h-5 mr-3 transition-transform group-hover:rotate-90" />
+                        <span className="text-xs font-black uppercase tracking-widest">Create New Trip</span>
+                    </GlassButton>
+                </div>
             </div>
 
             {/* Stats Grid */}
