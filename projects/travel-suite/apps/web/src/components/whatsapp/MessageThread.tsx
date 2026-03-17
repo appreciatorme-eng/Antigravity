@@ -43,6 +43,7 @@ export interface Message {
   timestamp: string; // e.g. "10:42 AM"
   status?: MessageStatus;
   subject?: string;
+  isAutomated?: boolean;
   // location
   lat?: number;
   lng?: number;
@@ -188,6 +189,11 @@ function MessageBubble({ msg, isEmailChannel }: { msg: Message; isEmailChannel?:
 
         {/* Footer */}
         <div className={`flex items-center gap-1 mt-1 ${isOut ? 'justify-end' : 'justify-start'}`}>
+          {msg.isAutomated && (
+            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+              Auto
+            </span>
+          )}
           <span className="text-[9px] text-slate-500 font-medium">{msg.timestamp}</span>
           {isOut && !isEmailChannel && <ReadReceipt status={msg.status} />}
         </div>

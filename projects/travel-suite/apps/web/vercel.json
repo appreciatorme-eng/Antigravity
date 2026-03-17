@@ -3,5 +3,15 @@
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
   "installCommand": "npm ci --legacy-peer-deps",
-  "devCommand": "npm run dev"
+  "devCommand": "npm run dev",
+  "crons": [
+    {
+      "path": "/api/cron/assistant-briefing",
+      "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/automation-processor",
+      "schedule": "0 2 * * *"
+    }
+  ]
 }
