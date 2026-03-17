@@ -18,7 +18,7 @@ const serverSchema = z.object({
   RAZORPAY_KEY_SECRET: z.string().min(1).optional(),
   RAZORPAY_WEBHOOK_SECRET: z.string().min(1).optional(),
   RESEND_API_KEY: z.string().min(1).optional(),
-  RESEND_FROM_EMAIL: z.string().email().optional(),
+  RESEND_FROM_EMAIL: z.string().email().optional().or(z.literal('')),
   RESEND_FROM_NAME: z.string().min(1).optional(),
   SENTRY_DSN: z.string().min(1).optional(),
   // WhatsApp: Meta Cloud API only. WPPConnect path removed — see CLAUDE.md.
