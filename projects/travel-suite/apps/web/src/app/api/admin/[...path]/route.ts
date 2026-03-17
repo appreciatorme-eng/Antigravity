@@ -9,6 +9,8 @@ const ADMIN_RATE_LIMIT = {
 };
 
 const routes = createCatchAllHandlers([
+  ["automation/rules", () => import("@/app/api/_handlers/admin/automation/rules/route")],
+  ["automation/toggle", () => import("@/app/api/_handlers/admin/automation/toggle/route")],
   ["cache-metrics", () => import("@/app/api/_handlers/admin/cache-metrics/route")],
   ["clear-cache", () => import("@/app/api/_handlers/admin/clear-cache/route")],
   ["clients", () => import("@/app/api/_handlers/admin/clients/route")],

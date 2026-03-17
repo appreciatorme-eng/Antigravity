@@ -146,6 +146,7 @@ async function fetchCandidateEntities(
   const tableName = `${entityType}s`;
 
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let query = (admin as any)
       .from(tableName)
       .select("*")

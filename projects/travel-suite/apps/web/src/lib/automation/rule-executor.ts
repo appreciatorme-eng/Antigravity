@@ -6,7 +6,6 @@ import { logError, logEvent } from "@/lib/observability/logger";
 import type {
   AutomationTemplate,
   TriggerConfig,
-  ActionConfig,
   StopCondition,
 } from "./templates";
 
