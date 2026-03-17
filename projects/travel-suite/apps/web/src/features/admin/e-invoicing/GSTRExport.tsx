@@ -16,7 +16,6 @@ import {
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassBadge } from "@/components/glass/GlassBadge";
-import { GlassSkeleton } from "@/components/glass/GlassSkeleton";
 import { useToast } from "@/components/ui/toast";
 import { formatINR } from "@/lib/india/formats";
 import { cn } from "@/lib/utils";
@@ -386,7 +385,7 @@ export function GSTRExport({
           transition={{ duration: 0.3, delay: 0.1 }}
         >
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            {kpis.map((kpi, idx) => (
+            {kpis.map((kpi) => (
               <GlassCard
                 key={kpi.label}
                 className="p-5 hover:scale-[1.02] transition-transform duration-200"

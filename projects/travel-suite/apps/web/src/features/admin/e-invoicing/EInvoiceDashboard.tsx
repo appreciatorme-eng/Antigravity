@@ -60,7 +60,6 @@ export function EInvoiceDashboard({
   onGenerateEInvoice,
   onCancelEInvoice,
   onProceedManual,
-  onRefresh,
   generatingId = null,
   cancellingId = null,
   irpApiDown = false,

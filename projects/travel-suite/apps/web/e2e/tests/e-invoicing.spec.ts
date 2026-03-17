@@ -778,7 +778,7 @@ authTest.describe("E-Invoicing - Fallback Scenarios", () => {
     // Step 6: Look for the invoice in the list
     // Note: The invoice might appear in the list with 'pending' or 'failed' status
     // We verify the dashboard renders and shows invoice data
-    const _invoiceNumberVisible = await adminPage.locator(`text=${invoice.invoice_number}`).isVisible({ timeout: 5000 }).catch(() => false);
+    await adminPage.locator(`text=${invoice.invoice_number}`).isVisible({ timeout: 5000 }).catch(() => false);
 
     // Dashboard should be functional even with failed e-invoices
     // The exact appearance depends on the dashboard implementation

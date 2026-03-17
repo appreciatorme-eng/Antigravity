@@ -207,7 +207,7 @@ export async function exportGSTR1(
     throw new Error('Organization GSTIN not configured. Cannot generate GSTR-1.');
   }
 
-  const tradeName = (org.metadata as any)?.tradeName || null;
+  const tradeName = (org.metadata as Record<string, unknown>)?.tradeName as string | null ?? null;
 
   // ─── FETCH INVOICES FOR PERIOD ─────────────────────────────────────────────
 
@@ -258,7 +258,7 @@ export async function exportGSTR1(
   const hsnData: Record<string, GSTR1HSNSummary> = {}; // Key: "hsnCode"
 
   for (const inv of validInvoices) {
-    const metadata = (inv.metadata as any) || {};
+    const metadata = (inv.metadata as Record<string, unknown>) || {};
     const buyerGSTIN = metadata.client_gstin || metadata.gstin || null;
     const buyerName = metadata.client_name || 'Unknown';
     const placeOfSupply = getStateCode(inv.place_of_supply);
@@ -365,7 +365,7 @@ export async function exportGSTR1(
     totalInvoices: validInvoices.length,
     totalB2BInvoices: b2bInvoices.length,
     totalB2CLInvoices: b2clInvoices.length,
-    totalB2CSInvoices: b2cs.reduce((sum, e) => sum + 1, 0),
+    totalB2CSInvoices: b2cs.reduce((sum) => sum + 1, 0),
     totalTaxableValue: validInvoices.reduce((sum, inv) => sum + (inv.subtotal_amount || 0), 0),
     totalCGST: validInvoices.reduce((sum, inv) => sum + (inv.cgst || 0), 0),
     totalSGST: validInvoices.reduce((sum, inv) => sum + (inv.sgst || 0), 0),

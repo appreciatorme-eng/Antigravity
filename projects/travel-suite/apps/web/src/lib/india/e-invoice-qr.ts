@@ -288,7 +288,7 @@ export function getQRCodeSummary(qrCodeData: string): {
       irn: parsed.irn,
       isValid: parsed.isValid,
     };
-  } catch (error) {
+  } catch {
     return null;
   }
 }
