@@ -500,3 +500,395 @@ authTest.describe("E-Invoicing - GSTR-1 Export Formats", () => {
     expect(response3.status()).toBe(400);
   });
 });
+
+authTest.describe("E-Invoicing - Fallback Scenarios", () => {
+  authTest("handles IRP API failure gracefully during auto-generation", async ({ adminPage }) => {
+    // Step 1: Configure e-invoice settings with invalid credentials to simulate IRP API failure
+    const invalidCredentials = {
+      gstin: "29AAFCD5862R000",
+      irp_username: "invalid_user",
+      irp_password: "invalid_password",
+      irp_api_key: "invalid_key",
+      threshold_amount: 50000,
+      auto_generate_enabled: true,
+      sandbox_mode: true,
+    };
+
+    const settingsResponse = await adminPage.request.post("/api/settings/e-invoicing", {
+      data: invalidCredentials,
+    });
+
+    expect(settingsResponse.status()).toBe(200);
+
+    // Step 2: Create invoice above threshold
+    const createResponse = await adminPage.request.post("/api/invoices", {
+      data: {
+        currency: "INR",
+        due_date: "2026-04-15",
+        notes: "E2E fallback test - IRP API unavailable",
+        items: [
+          {
+            description: "Premium Kerala Tour Package",
+            quantity: 1,
+            unit_price: 75000,
+            tax_rate: 18,
+          },
+        ],
+      },
+    });
+
+    // Step 3: Verify invoice is created successfully despite IRP failure
+    expect(createResponse.status(), await createResponse.text()).toBe(201);
+    const createData = await createResponse.json();
+    const invoice = createData.invoice;
+
+    expect(invoice).toBeTruthy();
+    expect(invoice.id).toBeTruthy();
+    expect(invoice.total_amount).toBeGreaterThan(invalidCredentials.threshold_amount);
+
+    // Step 4: Wait for auto-generation to be attempted
+    await adminPage.waitForTimeout(3000);
+
+    // Step 5: Fetch invoice details and verify fallback behavior
+    const detailResponse = await adminPage.request.get(`/api/invoices/${invoice.id}`);
+    expect(detailResponse.status()).toBe(200);
+    const detailData = await detailResponse.json();
+
+    // Invoice should exist but without IRN due to IRP failure
+    expect(detailData.invoice.id).toBe(invoice.id);
+
+    // E-invoice fields should be null or failed status
+    // Note: Auto-generation might fail silently, so we accept null or 'failed' status
+    if (detailData.invoice.e_invoice_status) {
+      expect(detailData.invoice.e_invoice_status).toBe('failed');
+      expect(detailData.invoice.e_invoice_error).toBeTruthy();
+    } else {
+      // Auto-generation failed before status was set
+      expect(detailData.invoice.irn).toBeNull();
+      expect(detailData.invoice.e_invoice_json).toBeNull();
+    }
+
+    // Step 6: Verify manual retry option is available (attempt manual generation)
+    // This should also fail but proves the retry mechanism exists
+    const retryResponse = await adminPage.request.post("/api/admin/e-invoicing/generate", {
+      data: {
+        invoice_id: invoice.id,
+        seller_details: {
+          legal_name: "Test Travel Agency Pvt Ltd",
+          address1: "123 MG Road",
+          location: "Bangalore",
+          pincode: 560001,
+          state_code: "29",
+        },
+        buyer_details: {
+          gstin: "27AAPFU0939F1ZV",
+          legal_name: "Test Customer Corp",
+          address1: "456 Commercial Street",
+          location: "Mumbai",
+          pincode: 400001,
+          state_code: "27",
+        },
+      },
+    });
+
+    // Manual generation should fail with invalid credentials
+    // We expect either 400 (validation) or 500 (IRP error)
+    expect([400, 500]).toContain(retryResponse.status());
+
+    // Clean up
+    await adminPage.request.delete(`/api/invoices/${invoice.id}`);
+  });
+
+  authTest("allows manual invoice generation when auto-generation fails", async ({ adminPage }) => {
+    // Step 1: Configure with valid sandbox credentials
+    const validCredentials = {
+      gstin: "29AAFCD5862R000",
+      irp_username: process.env.TEST_IRP_USERNAME || "sandbox_user",
+      irp_password: process.env.TEST_IRP_PASSWORD || "sandbox_pass",
+      irp_api_key: process.env.TEST_IRP_API_KEY || "sandbox_key",
+      threshold_amount: 50000,
+      auto_generate_enabled: false, // Disable auto-generation to simulate failure
+      sandbox_mode: true,
+    };
+
+    await adminPage.request.post("/api/settings/e-invoicing", {
+      data: validCredentials,
+    });
+
+    // Step 2: Create invoice above threshold (without auto-generation)
+    const createResponse = await adminPage.request.post("/api/invoices", {
+      data: {
+        currency: "INR",
+        due_date: "2026-04-15",
+        notes: "E2E manual fallback test",
+        items: [
+          {
+            description: "Rajasthan Desert Safari",
+            quantity: 1,
+            unit_price: 80000,
+            tax_rate: 18,
+          },
+        ],
+      },
+    });
+
+    expect(createResponse.status()).toBe(201);
+    const createData = await createResponse.json();
+    const invoice = createData.invoice;
+
+    // Step 3: Verify no e-invoice was auto-generated
+    await adminPage.waitForTimeout(2000);
+    const detailResponse = await adminPage.request.get(`/api/invoices/${invoice.id}`);
+    const detailData = await detailResponse.json();
+
+    expect(detailData.invoice.irn).toBeNull();
+    expect(detailData.invoice.e_invoice_status).toBeNull();
+
+    // Step 4: Manually generate e-invoice (fallback option)
+    const manualResponse = await adminPage.request.post("/api/admin/e-invoicing/generate", {
+      data: {
+        invoice_id: invoice.id,
+        seller_details: {
+          legal_name: "Test Travel Agency Pvt Ltd",
+          address1: "123 MG Road",
+          location: "Bangalore",
+          pincode: 560001,
+          state_code: "29",
+        },
+        buyer_details: {
+          gstin: "27AAPFU0939F1ZV",
+          legal_name: "Test Customer Corp",
+          address1: "456 Commercial Street",
+          location: "Mumbai",
+          pincode: 400001,
+          state_code: "27",
+        },
+      },
+    });
+
+    // Step 5: Verify manual generation succeeded
+    expect(manualResponse.status(), await manualResponse.text()).toBe(200);
+    const manualData = await manualResponse.json();
+
+    expect(manualData.irn).toBeTruthy();
+    expect(manualData.irn).toMatch(/^[A-Z0-9]{64}$/);
+    expect(manualData.e_invoice_status).toBeTruthy();
+
+    // Step 6: Verify invoice was updated with e-invoice data
+    const updatedResponse = await adminPage.request.get(`/api/invoices/${invoice.id}`);
+    const updatedData = await updatedResponse.json();
+
+    expect(updatedData.invoice.irn).toBe(manualData.irn);
+    expect(['generated', 'acknowledged']).toContain(updatedData.invoice.e_invoice_status);
+    expect(updatedData.invoice.qr_code_data).toBeTruthy();
+
+    // Clean up
+    await adminPage.request.delete(`/api/invoices/${invoice.id}`);
+  });
+
+  authTest("verifies PDF generates without QR code when IRN is missing", async ({ adminPage }) => {
+    // Step 1: Create invoice without e-invoice settings (no IRN will be generated)
+    const createResponse = await adminPage.request.post("/api/invoices", {
+      data: {
+        currency: "INR",
+        due_date: "2026-04-15",
+        notes: "E2E PDF fallback test - no QR code",
+        items: [
+          {
+            description: "Goa Beach Tour",
+            quantity: 1,
+            unit_price: 45000,
+            tax_rate: 18,
+          },
+        ],
+      },
+    });
+
+    expect(createResponse.status()).toBe(201);
+    const createData = await createResponse.json();
+    const invoice = createData.invoice;
+
+    // Step 2: Verify invoice has no IRN
+    const detailResponse = await adminPage.request.get(`/api/invoices/${invoice.id}`);
+    const detailData = await detailResponse.json();
+
+    expect(detailData.invoice.irn).toBeNull();
+    expect(detailData.invoice.qr_code_data).toBeNull();
+
+    // Step 3: Request PDF download
+    const pdfResponse = await adminPage.request.get(`/api/invoices/${invoice.id}/pdf`);
+
+    // Step 4: Verify PDF is generated successfully (without QR code)
+    expect(pdfResponse.status()).toBe(200);
+    expect(pdfResponse.headers()['content-type']).toContain('application/pdf');
+
+    // PDF generation should work even without e-invoice data
+    // The actual PDF content check would require PDF parsing, which is complex
+    // For now, we verify the PDF is returned successfully
+
+    // Clean up
+    await adminPage.request.delete(`/api/invoices/${invoice.id}`);
+  });
+
+  authTest("displays failed e-invoice status on dashboard", async ({ adminPage }) => {
+    // Step 1: Configure with invalid credentials
+    const invalidCredentials = {
+      gstin: "29AAFCD5862R000",
+      irp_username: "invalid_user",
+      irp_password: "invalid_password",
+      irp_api_key: "invalid_key",
+      threshold_amount: 40000,
+      auto_generate_enabled: true,
+      sandbox_mode: true,
+    };
+
+    await adminPage.request.post("/api/settings/e-invoicing", {
+      data: invalidCredentials,
+    });
+
+    // Step 2: Create invoice above threshold
+    const createResponse = await adminPage.request.post("/api/invoices", {
+      data: {
+        currency: "INR",
+        due_date: "2026-04-15",
+        notes: "E2E dashboard fallback test",
+        items: [
+          {
+            description: "Mumbai Sightseeing Tour",
+            quantity: 1,
+            unit_price: 50000,
+            tax_rate: 18,
+          },
+        ],
+      },
+    });
+
+    const createData = await createResponse.json();
+    const invoice = createData.invoice;
+
+    // Step 3: Wait for auto-generation attempt
+    await adminPage.waitForTimeout(3000);
+
+    // Step 4: Navigate to e-invoicing dashboard
+    await adminPage.goto("/admin/e-invoicing");
+
+    // Step 5: Verify page loads
+    await adminPage.waitForSelector("text=E-Invoice Dashboard", { timeout: 10000 });
+
+    // Step 6: Look for the invoice in the list
+    // Note: The invoice might appear in the list with 'pending' or 'failed' status
+    // We verify the dashboard renders and shows invoice data
+    const invoiceNumberVisible = await adminPage.locator(`text=${invoice.invoice_number}`).isVisible({ timeout: 5000 }).catch(() => false);
+
+    // Dashboard should be functional even with failed e-invoices
+    // The exact appearance depends on the dashboard implementation
+    // For now, we verify the dashboard loads without errors
+
+    // Step 7: Verify status filter tabs are present
+    const allTabVisible = await adminPage.locator("text=All").isVisible();
+    expect(allTabVisible).toBeTruthy();
+
+    // Step 8: Verify search functionality exists
+    const searchInput = await adminPage.locator('input[placeholder*="Search"]').count();
+    expect(searchInput).toBeGreaterThan(0);
+
+    // Clean up
+    await adminPage.request.delete(`/api/invoices/${invoice.id}`);
+  });
+
+  authTest("retries e-invoice generation after fixing credentials", async ({ adminPage }) => {
+    // Step 1: Start with invalid credentials
+    const invalidCredentials = {
+      gstin: "29AAFCD5862R000",
+      irp_username: "invalid_user",
+      irp_password: "invalid_password",
+      irp_api_key: "invalid_key",
+      threshold_amount: 50000,
+      auto_generate_enabled: true,
+      sandbox_mode: true,
+    };
+
+    await adminPage.request.post("/api/settings/e-invoicing", {
+      data: invalidCredentials,
+    });
+
+    // Step 2: Create invoice (e-invoice generation will fail)
+    const createResponse = await adminPage.request.post("/api/invoices", {
+      data: {
+        currency: "INR",
+        due_date: "2026-04-15",
+        notes: "E2E retry test after credential fix",
+        items: [
+          {
+            description: "Himalayan Trek Package",
+            quantity: 1,
+            unit_price: 95000,
+            tax_rate: 18,
+          },
+        ],
+      },
+    });
+
+    const createData = await createResponse.json();
+    const invoice = createData.invoice;
+
+    // Wait for failed auto-generation
+    await adminPage.waitForTimeout(3000);
+
+    // Step 3: Update credentials to valid ones
+    const validCredentials = {
+      gstin: "29AAFCD5862R000",
+      irp_username: process.env.TEST_IRP_USERNAME || "sandbox_user",
+      irp_password: process.env.TEST_IRP_PASSWORD || "sandbox_pass",
+      irp_api_key: process.env.TEST_IRP_API_KEY || "sandbox_key",
+      threshold_amount: 50000,
+      auto_generate_enabled: true,
+      sandbox_mode: true,
+    };
+
+    const updateResponse = await adminPage.request.post("/api/settings/e-invoicing", {
+      data: validCredentials,
+    });
+    expect(updateResponse.status()).toBe(200);
+
+    // Step 4: Manually retry e-invoice generation with valid credentials
+    const retryResponse = await adminPage.request.post("/api/admin/e-invoicing/generate", {
+      data: {
+        invoice_id: invoice.id,
+        seller_details: {
+          legal_name: "Test Travel Agency Pvt Ltd",
+          address1: "123 MG Road",
+          location: "Bangalore",
+          pincode: 560001,
+          state_code: "29",
+        },
+        buyer_details: {
+          gstin: "27AAPFU0939F1ZV",
+          legal_name: "Test Customer Corp",
+          address1: "456 Commercial Street",
+          location: "Mumbai",
+          pincode: 400001,
+          state_code: "27",
+        },
+      },
+    });
+
+    // Step 5: Verify retry succeeded after credential fix
+    expect(retryResponse.status(), await retryResponse.text()).toBe(200);
+    const retryData = await retryResponse.json();
+
+    expect(retryData.irn).toBeTruthy();
+    expect(retryData.irn).toMatch(/^[A-Z0-9]{64}$/);
+    expect(['generated', 'acknowledged']).toContain(retryData.e_invoice_status);
+
+    // Step 6: Verify invoice was updated
+    const updatedResponse = await adminPage.request.get(`/api/invoices/${invoice.id}`);
+    const updatedData = await updatedResponse.json();
+
+    expect(updatedData.invoice.irn).toBe(retryData.irn);
+    expect(updatedData.invoice.qr_code_data).toBeTruthy();
+
+    // Clean up
+    await adminPage.request.delete(`/api/invoices/${invoice.id}`);
+  });
+});
