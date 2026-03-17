@@ -15,6 +15,9 @@ import {
   Calendar,
   Search,
   Filter,
+  AlertTriangle,
+  FileText,
+  X,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 
@@ -44,9 +47,11 @@ interface EInvoiceDashboardProps {
   loading?: boolean;
   onGenerateEInvoice?: (invoiceId: string) => void;
   onCancelEInvoice?: (invoiceId: string) => void;
+  onProceedManual?: (invoiceId: string) => void;
   onRefresh?: () => void;
   generatingId?: string | null;
   cancellingId?: string | null;
+  irpApiDown?: boolean;
 }
 
 export function EInvoiceDashboard({
@@ -54,15 +59,18 @@ export function EInvoiceDashboard({
   loading = false,
   onGenerateEInvoice,
   onCancelEInvoice,
+  onProceedManual,
   onRefresh,
   generatingId = null,
   cancellingId = null,
+  irpApiDown = false,
 }: EInvoiceDashboardProps) {
   const [statusFilter, setStatusFilter] = useState<EInvoiceStatus | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
 
   // Filter invoices based on all filters
   const filteredInvoices = useMemo(() => {
@@ -220,6 +228,32 @@ export function EInvoiceDashboard({
 
   return (
     <div className="space-y-4">
+      {/* IRP API Down Banner */}
+      {irpApiDown && !bannerDismissed && (
+        <div className="relative overflow-hidden rounded-xl border border-orange-200 bg-gradient-to-r from-orange-50 via-orange-50/50 to-orange-50 p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 shrink-0 text-orange-600" />
+            <div className="min-w-0 flex-1">
+              <h4 className="text-sm font-semibold text-orange-900">
+                E-Invoice Portal Unavailable
+              </h4>
+              <p className="mt-1 text-xs text-orange-700">
+                The IRP (Invoice Registration Portal) is currently unreachable. You can still
+                generate invoices manually without IRN for now, and retry e-invoice generation
+                later when the service is restored.
+              </p>
+            </div>
+            <button
+              onClick={() => setBannerDismissed(true)}
+              className="shrink-0 rounded-full p-1 text-orange-600 transition hover:bg-orange-100"
+              aria-label="Dismiss banner"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Status Filter Tabs */}
       <div className="flex flex-wrap gap-2">
         <button
@@ -452,6 +486,19 @@ export function EInvoiceDashboard({
                     >
                       <Send className="h-3.5 w-3.5" />
                       {generatingId === invoice.id ? "Generating..." : "Generate"}
+                    </GlassButton>
+                  )}
+
+                  {invoice.e_invoice_status === "failed" && onProceedManual && (
+                    <GlassButton
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onProceedManual(invoice.id)}
+                      className="whitespace-nowrap border-orange-200 bg-orange-50/50 text-orange-700 hover:bg-orange-100"
+                    >
+                      <FileText className="h-3.5 w-3.5" />
+                      Manual Invoice
                     </GlassButton>
                   )}
 
