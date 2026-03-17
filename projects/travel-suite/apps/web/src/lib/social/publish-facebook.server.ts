@@ -1,4 +1,3 @@
-import { createAdminClient } from "@/lib/supabase/admin";
 import { logError } from "@/lib/observability/logger";
 import {
   getMetaConnectionWithToken,

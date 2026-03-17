@@ -3,6 +3,8 @@ import { apiError } from "@/lib/api/response";
 import { authorizeCronRequest } from "@/lib/security/cron-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logError } from "@/lib/observability/logger";
+import { publishToInstagram } from "@/lib/social/publish-instagram.server";
+import { publishToFacebook } from "@/lib/social/publish-facebook.server";
 
 const SOCIAL_QUEUE_PROCESS_SELECT = [
     "attempts",
@@ -11,7 +13,7 @@ const SOCIAL_QUEUE_PROCESS_SELECT = [
     "platform_post_id",
     "post_id",
     "scheduled_for",
-    "social_posts!inner(id)",
+    "social_posts!inner(id, organization_id, caption_facebook, rendered_image_url, rendered_image_urls)",
     "social_connections!inner(platform_page_id)",
 ].join(", ");
 
@@ -22,14 +24,17 @@ type SocialQueueProcessRow = {
     platform_post_id: string | null;
     post_id: string;
     scheduled_for: string | null;
+    social_posts: {
+        id: string;
+        organization_id: string;
+        caption_facebook: string | null;
+        rendered_image_url: string | null;
+        rendered_image_urls: string[] | null;
+    };
+    social_connections: {
+        platform_page_id: string;
+    };
 };
-
-function isMockSocialPublishingEnabled(): boolean {
-    const explicit = process.env.SOCIAL_PUBLISH_MOCK_ENABLED?.trim().toLowerCase();
-    if (explicit === "true") return true;
-    if (explicit === "false") return false;
-    return process.env.NODE_ENV !== "production";
-}
 
 function parseMsEnv(value: string | undefined, fallbackMs: number): number {
     const parsed = Number(value);
@@ -65,14 +70,8 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: cronAuth.reason }, { status: cronAuth.status });
         }
 
-        if (process.env.NODE_ENV === 'production' && isMockSocialPublishingEnabled()) {
-            logError('CRITICAL: Social mock publishing is enabled in production', new Error('MockPublishingInProduction'));
-            return apiError('Social publishing misconfigured', 500);
-        }
-
         const supabaseAdmin = createAdminClient();
         const maxAttempts = parsePositiveInt(process.env.SOCIAL_QUEUE_MAX_ATTEMPTS, 3);
-        const mockPublishingEnabled = isMockSocialPublishingEnabled();
 
         const { data: pendingItems, error: fetchError } = await supabaseAdmin
             .from("social_post_queue")
@@ -123,20 +122,47 @@ export async function POST(req: Request) {
                     continue;
                 }
 
-                const platform = item.platform;
-                if (!mockPublishingEnabled) {
-                    throw new Error("Social publishing provider is not configured");
+                // Publish to platform using Meta Graph API
+                let publishResult;
+
+                if (item.platform === "instagram") {
+                    publishResult = await publishToInstagram(item.id);
+                } else if (item.platform === "facebook") {
+                    const post = Array.isArray(item.social_posts)
+                        ? item.social_posts[0]
+                        : item.social_posts;
+                    const connection = Array.isArray(item.social_connections)
+                        ? item.social_connections[0]
+                        : item.social_connections;
+
+                    if (!post || !connection) {
+                        throw new Error("Post or connection data missing");
+                    }
+
+                    const imageUrls = post.rendered_image_urls || (post.rendered_image_url ? [post.rendered_image_url] : []);
+
+                    publishResult = await publishToFacebook(
+                        post.organization_id,
+                        {
+                            message: post.caption_facebook || undefined,
+                            imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
+                        },
+                        connection.platform_page_id
+                    );
+                } else {
+                    throw new Error(`Unsupported platform: ${item.platform}`);
                 }
 
-                const platformPostId = `cron_${platform}_${Date.now()}`;
-                const platformPostUrl = `https://${platform}.com/p/${platformPostId}`;
+                if (!publishResult.success) {
+                    throw new Error(publishResult.error || "Publishing failed");
+                }
 
                 await supabaseAdmin
                     .from("social_post_queue")
                     .update({
                         status: "sent",
-                        platform_post_id: platformPostId,
-                        platform_post_url: platformPostUrl,
+                        platform_post_id: publishResult.platformPostId ?? null,
+                        platform_post_url: publishResult.platformPostUrl ?? null,
                         attempts: (item.attempts ?? 0) + 1,
                         updated_at: new Date().toISOString(),
                     })
