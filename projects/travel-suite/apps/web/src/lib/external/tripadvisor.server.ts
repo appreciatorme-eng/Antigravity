@@ -59,5 +59,3 @@ export async function getTripAdvisorReviews(
     const data = (await res.json()) as { data?: TripAdvisorReview[] };
     return data.data ?? [];
 }
-;
-}

@@ -100,4 +100,3 @@ export function OrganizationTab({ draftTimezone, loading, onSave }: Organization
         </div>
     );
 }
-}
