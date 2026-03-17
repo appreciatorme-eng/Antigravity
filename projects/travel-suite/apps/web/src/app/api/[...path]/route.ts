@@ -25,6 +25,7 @@ const routes = createCatchAllHandlers([
   ["cron/assistant-digest", () => import("@/app/api/_handlers/cron/assistant-digest/route")],
   ["cron/operator-scorecards", () => import("@/app/api/_handlers/cron/operator-scorecards/route")],
   ["cron/reputation-campaigns", () => import("@/app/api/_handlers/cron/reputation-campaigns/route")],
+  ["cron/social-publish-queue", () => import("@/app/api/_handlers/cron/social-publish-queue/route")],
   ["currency", () => import("@/app/api/_handlers/currency/route")],
   ["dashboard/schedule", () => import("@/app/api/_handlers/dashboard/schedule/route")],
   ["dashboard/tasks/dismiss", () => import("@/app/api/_handlers/dashboard/tasks/dismiss/route")],
