@@ -168,7 +168,7 @@ export function OnboardingDetailsSteps({
     );
   }
 
-  if (currentStep === 3) {
+  if (currentStep === 5) {
     return (
       <div className="space-y-4">
         <div>
