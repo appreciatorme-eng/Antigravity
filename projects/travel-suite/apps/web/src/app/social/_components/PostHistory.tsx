@@ -189,7 +189,7 @@ export const PostHistory = () => {
                                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 dark:bg-purple-900/30">AI</span>
                                         )}
                                         {post.source === "auto_review" && (
-                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30">Review</span>
+                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30">Auto from Review</span>
                                         )}
                                         {!!post.template_data?.price && (
                                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 dark:bg-blue-900/30">{String(post.template_data.price)}</span>
