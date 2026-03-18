@@ -41,7 +41,9 @@ function OnboardingPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const analytics = useAnalytics();
-  const onboardingStore = useOnboardingStore();
+  const storeCurrentStep = useOnboardingStore((s) => s.currentStep);
+  const setStoreStep = useOnboardingStore((s) => s.setCurrentStep);
+  const dismissWizard = useOnboardingStore((s) => s.dismissWizard);
   const nextPath = useMemo(() => {
     const requested = searchParams.get('next');
     if (requested && requested.startsWith('/')) return requested;
@@ -52,7 +54,7 @@ function OnboardingPageContent() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [currentStep, setCurrentStep] = useState<number>(onboardingStore.currentStep);
+  const [currentStep, setCurrentStep] = useState<number>(storeCurrentStep);
 
   const [operatorName, setOperatorName] = useState('');
   const [companyName, setCompanyName] = useState('');
@@ -114,8 +116,8 @@ function OnboardingPageContent() {
   }, [currentStep, loading, activeStep, analytics]);
 
   useEffect(() => {
-    onboardingStore.setCurrentStep(currentStep);
-  }, [currentStep, onboardingStore]);
+    setStoreStep(currentStep);
+  }, [currentStep, setStoreStep]);
 
   useEffect(() => {
     if (currentStep !== FIRST_VALUE_STEP) return undefined;
@@ -341,7 +343,7 @@ function OnboardingPageContent() {
   }
 
   function handleDismiss() {
-    onboardingStore.dismissWizard();
+    dismissWizard();
     analytics.wizardDismissed(currentStep, activeStep?.title || '');
     router.push(nextPath);
   }
