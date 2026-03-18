@@ -69,9 +69,14 @@ export async function GET(req: NextRequest) {
             .map((photo) => {
                 const url = photo.urls?.regular;
                 if (!photo.id || !url) return null;
+                // Rewrite to local proxy path to avoid Unsplash hotlink 503s
+                const proxiedUrl = url.replace(
+                    "https://images.unsplash.com/",
+                    "/unsplash-img/"
+                );
                 return {
                     id: photo.id,
-                    url,
+                    url: proxiedUrl,
                 };
             })
             .filter((photo): photo is { id: string; url: string } => Boolean(photo));

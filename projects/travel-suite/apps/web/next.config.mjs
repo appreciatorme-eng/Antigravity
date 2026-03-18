@@ -80,10 +80,20 @@ const nextConfig = {
   outputFileTracingRoot: projectRoot,
   images: {
     remotePatterns,
-    formats: ["image/avif", "image/webp"],
+formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 60 * 60,
     dangerouslyAllowSVG: false,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+  },
+  async rewrites() {
+    return {
+      beforeFiles: [
+        {
+          source: "/unsplash-img/:path*",
+          destination: "https://images.unsplash.com/:path*",
+        },
+      ],
+    };
   },
   async redirects() {
     return [

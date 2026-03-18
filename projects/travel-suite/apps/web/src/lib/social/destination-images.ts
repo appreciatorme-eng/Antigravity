@@ -19,11 +19,11 @@ export interface DestinationImage {
 // ---------------------------------------------------------------------------
 
 function fullUrl(photoId: string): string {
-    return `https://images.unsplash.com/${photoId}?auto=format&fit=crop&w=1080&q=80`;
+    return `/unsplash-img/${photoId}?auto=format&fit=crop&w=1080&q=80`;
 }
 
 function thumbUrl(photoId: string): string {
-    return `https://images.unsplash.com/${photoId}?auto=format&fit=crop&w=400&q=60`;
+    return `/unsplash-img/${photoId}?auto=format&fit=crop&w=400&q=60`;
 }
 
 function img(
