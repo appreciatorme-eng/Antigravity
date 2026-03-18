@@ -6,6 +6,7 @@ interface OnboardingState {
     isDismissed: boolean;
     currentStep: number;
     totalSteps: number;
+    version: number;
     completedSteps: string[];
     skippedSteps: string[];
     completeStep: (stepId: string) => void;
@@ -25,7 +26,8 @@ export const useOnboardingStore = create<OnboardingState>()(
             hasCompletedOnboarding: false,
             isDismissed: false,
             currentStep: 1,
-            totalSteps: 9,
+            totalSteps: 2,
+            version: 2,
             completedSteps: [],
             skippedSteps: [],
             completeStep: (stepId) => set((state) => ({

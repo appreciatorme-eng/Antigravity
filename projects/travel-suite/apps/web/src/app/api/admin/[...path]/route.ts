@@ -82,6 +82,7 @@ const routes = createCatchAllHandlers([
   ["revenue", () => import("@/app/api/_handlers/admin/revenue/route")],
   ["scorecards", () => import("@/app/api/_handlers/admin/scorecards/route")],
   ["seed-demo", () => import("@/app/api/_handlers/admin/seed-demo/route")],
+  ["setup-progress", () => import("@/app/api/_handlers/admin/setup-progress/route")],
 ], { rateLimit: ADMIN_RATE_LIMIT });
 
 export const { GET, POST, PATCH, PUT, DELETE, OPTIONS } = routes;

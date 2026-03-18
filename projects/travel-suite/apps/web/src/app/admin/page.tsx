@@ -10,6 +10,7 @@
 
 'use client';
 
+import { SetupChecklist } from '@/components/dashboard/SetupChecklist';
 import { AIInsightsCarousel } from './_components/v2/AIInsightsCarousel';
 import { CalendarPreview } from './_components/v2/CalendarPreview';
 import { CustomerPulse } from './_components/v2/CustomerPulse';
@@ -26,6 +27,9 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-8 pb-20">
+      {/* Setup Checklist — onboarding widget */}
+      <SetupChecklist />
+
       {/* Zone 0: Morning Briefing */}
       <MorningBriefing data={data} />
 

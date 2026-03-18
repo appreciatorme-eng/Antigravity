@@ -121,7 +121,7 @@ export default function WelcomeModal() {
 
           <p className="text-sm text-gray-500 dark:text-slate-400 leading-relaxed mb-6 max-w-xs mx-auto">
             We&apos;ve loaded sample data so you can explore every feature.
-            Trips, pricing, invoices, and insights — all connected and ready to try.
+            Complete your setup checklist on the dashboard to configure WhatsApp, payments, and more.
           </p>
 
           {/* Feature highlights */}

@@ -1,12 +1,12 @@
-// DemoTour — lightweight tooltip stepper walking through key pages.
-// Renders a fixed-position card highlighting sidebar nav items on each step.
+// DemoTour — slide-in panel stepper walking through key pages.
+// Renders a fixed right-side panel with step info, pro tips, and progress dots.
 
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { createPortal } from "react-dom";
-import { X, ChevronRight, ChevronLeft, Sparkles } from "lucide-react";
+import { X, ChevronRight, ChevronLeft, Sparkles, Lightbulb } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /** Custom event name used to trigger the tour from anywhere (e.g. sidebar button) */
@@ -14,92 +14,76 @@ export const TOUR_START_EVENT = "tripbuilt:start-tour";
 
 const LS_KEY_COMPLETED = "tripbuilt:demo_tour_completed";
 const LS_KEY_ACTIVE = "tripbuilt:demo_tour_active";
-
 const LS_KEY_STEP = "tripbuilt:demo_tour_step";
 
 interface TourStep {
-  /** Page path to navigate to */
   path: string;
-  /** Sidebar link href to highlight (when different from path, e.g. "/" vs "/admin") */
-  sidebarHref?: string;
-  /** Sidebar label text to highlight */
-  sidebarLabel: string;
-  /** Title shown in tooltip */
+  sidebarHref: string;
   title: string;
-  /** Description shown in tooltip */
+  icon: string;
   description: string;
-  /** Emoji prefix */
-  emoji: string;
+  proTip: string;
 }
 
-const STEPS: TourStep[] = [
+const STEPS: readonly TourStep[] = [
   {
     path: "/admin",
     sidebarHref: "/",
-    sidebarLabel: "Home",
-    title: "Dashboard",
+    title: "Your Command Center",
+    icon: "\u{1F4CA}",
     description:
-      "Your command center — revenue trends, active trips, and KPIs at a glance. Everything updates in real-time.",
-    emoji: "📊",
+      "Your dashboard shows KPIs, revenue trends, and quick actions at a glance.",
+    proTip:
+      "Check your Morning Briefing each day for the most important updates.",
   },
   {
-    path: "/trips",
-    sidebarLabel: "Trips",
-    title: "Trip Management",
+    path: "/planner",
+    sidebarHref: "/planner",
+    title: "Create Itineraries with AI",
+    icon: "\u2708\uFE0F",
     description:
-      "Manage tours end-to-end: create itineraries, coordinate logistics, assign drivers, and track every detail.",
-    emoji: "✈️",
+      "Type a destination and let AI generate a complete trip plan in seconds.",
+    proTip:
+      'Try "5 day Rajasthan heritage tour for a family of 4" to see the magic.',
   },
   {
     path: "/clients",
-    sidebarLabel: "Clients",
-    title: "Client Pipeline",
+    sidebarHref: "/clients",
+    title: "Your Client Pipeline",
+    icon: "\u{1F465}",
     description:
-      "Track clients from Lead to Closed. View contact details, trip history, and communication logs.",
-    emoji: "👥",
+      "Track every client from first inquiry to trip completion.",
+    proTip:
+      "Clients automatically move through stages as you create and share proposals.",
   },
   {
-    path: "/admin/pricing",
-    sidebarLabel: "Pricing & Profit",
-    title: "Pricing & Profit",
+    path: "/admin",
+    sidebarHref: "/",
+    title: "You're Ready to Go!",
+    icon: "\u{1F680}",
     description:
-      "Track costs, margins, and commissions per trip. See your real profit with hotel, flight, and vehicle breakdowns.",
-    emoji: "💰",
+      "Head to Settings to configure WhatsApp, payments, and your marketplace profile.",
+    proTip:
+      "Check the setup checklist on your dashboard to track your remaining setup tasks.",
   },
-  {
-    path: "/admin/invoices",
-    sidebarLabel: "Invoices",
-    title: "Invoices",
-    description:
-      "Generate GST-compliant invoices, track payments, and manage outstanding balances for each client.",
-    emoji: "🧾",
-  },
-  {
-    path: "/admin/insights",
-    sidebarLabel: "AI Insights",
-    title: "AI Insights",
-    description:
-      "AI-powered actions: expiring proposals, stalled deals, upsell ideas. Your smart assistant for growth.",
-    emoji: "✨",
-  },
-];
+] as const;
 
 interface DemoTourProps {
-  /** Externally trigger the tour start (e.g. from banner button) */
   forceStart?: boolean;
   onForceStartHandled?: () => void;
 }
 
-export default function DemoTour({ forceStart, onForceStartHandled }: DemoTourProps) {
+export default function DemoTour({
+  forceStart,
+  onForceStartHandled,
+}: DemoTourProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   const [active, setActive] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
-  const [tooltipPos, setTooltipPos] = useState<{ top: number; left: number } | null>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null);
 
-  // SSR guard + resume tour from localStorage (survives layout boundary crossings)
+  // SSR guard + resume tour from localStorage
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- SSR-safe mount guard + localStorage resume
     setMounted(true);
@@ -132,7 +116,7 @@ export default function DemoTour({ forceStart, onForceStartHandled }: DemoTourPr
     }
   }, [forceStart, onForceStartHandled]);
 
-  // Listen for custom event trigger (from sidebar button, etc.)
+  // Listen for custom event trigger
   useEffect(() => {
     const handleStartEvent = () => {
       setActive(true);
@@ -149,48 +133,23 @@ export default function DemoTour({ forceStart, onForceStartHandled }: DemoTourPr
     return () => window.removeEventListener(TOUR_START_EVENT, handleStartEvent);
   }, []);
 
-  // Position the tooltip next to the sidebar link
+  // Highlight active sidebar link
   useEffect(() => {
-    if (!active) {
-      // Reset tooltip position when tour becomes inactive — legitimate effect-driven UI sync
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setTooltipPos(null);
-      return;
-    }
-
+    if (!active) return;
     const step = STEPS[currentStep];
     if (!step) return;
 
-    const positionTooltip = () => {
-      // Find the sidebar link by matching href (sidebarHref overrides path for positioning)
-      const matchHref = step.sidebarHref ?? step.path;
+    const timer = setTimeout(() => {
       const links = document.querySelectorAll<HTMLAnchorElement>("aside a");
-      let target: HTMLAnchorElement | null = null;
       for (const link of links) {
-        if (link.getAttribute("href") === matchHref) {
-          target = link;
-          break;
+        if (link.getAttribute("href") === step.sidebarHref) {
+          link.setAttribute("data-tour-active", "true");
         }
       }
-
-      if (target) {
-        const rect = target.getBoundingClientRect();
-        // Add highlight ring via CSS data attribute (styles defined in globals.css)
-        target.setAttribute("data-tour-active", "true");
-
-        setTooltipPos({
-          top: rect.top + rect.height / 2,
-          left: rect.right + 16,
-        });
-      }
-    };
-
-    // Small delay for page navigation to settle
-    const timer = setTimeout(positionTooltip, 200);
+    }, 200);
 
     return () => {
       clearTimeout(timer);
-      // Clean up highlights — removing the attribute removes the CSS styles
       const highlighted = document.querySelectorAll('[data-tour-active="true"]');
       highlighted.forEach((el) => el.removeAttribute("data-tour-active"));
     };
@@ -218,7 +177,7 @@ export default function DemoTour({ forceStart, onForceStartHandled }: DemoTourPr
       }
       router.push(STEPS[step].path);
     },
-    [router]
+    [router],
   );
 
   const handleNext = useCallback(() => {
@@ -240,7 +199,6 @@ export default function DemoTour({ forceStart, onForceStartHandled }: DemoTourPr
     if (!active) return;
     const step = STEPS[currentStep];
     if (!step) return;
-    // Skip navigation if already on the correct page
     if (pathname === step.path || pathname?.startsWith(step.path + "/")) return;
     router.push(step.path);
   }, [active, currentStep, pathname, router]);
@@ -248,10 +206,11 @@ export default function DemoTour({ forceStart, onForceStartHandled }: DemoTourPr
   if (!active || !mounted) return null;
 
   const step = STEPS[currentStep];
+  const isLastStep = currentStep >= STEPS.length - 1;
 
   return createPortal(
     <>
-      {/* Backdrop overlay — subtle */}
+      {/* Backdrop overlay */}
       <button
         type="button"
         className="fixed inset-0 bg-black/10 z-40 pointer-events-auto border-0 cursor-default"
@@ -259,102 +218,108 @@ export default function DemoTour({ forceStart, onForceStartHandled }: DemoTourPr
         aria-label="Close tour"
       />
 
-      {/* Tooltip Card */}
-      {tooltipPos && (
-        <div
-          ref={tooltipRef}
-          className={cn(
-            "fixed z-50 w-80",
-            "bg-white dark:bg-slate-900 rounded-2xl shadow-2xl",
-            "border border-gray-200 dark:border-slate-700",
-            "animate-in fade-in slide-in-from-left-3 duration-300"
-          )}
-          style={{
-            top: tooltipPos.top,
-            left: tooltipPos.left,
-            transform: "translateY(-50%)",
-          }}
-        >
-          {/* Arrow pointing left */}
-          <div
-            className="absolute top-1/2 -left-2 -translate-y-1/2 w-4 h-4 rotate-45 bg-white dark:bg-slate-900 border-l border-b border-gray-200 dark:border-slate-700"
-          />
+      {/* Slide-in panel */}
+      <div
+        className={cn(
+          "fixed right-0 top-0 h-full w-96 max-w-[85vw] z-50",
+          "bg-[#0f172a]/95 backdrop-blur-xl border-l border-white/10",
+          "flex flex-col",
+          "transition-transform duration-300",
+          active ? "translate-x-0" : "translate-x-full",
+        )}
+      >
+        {/* Close button */}
+        <div className="flex justify-end p-4">
+          <button
+            onClick={closeTour}
+            className="p-1.5 text-white/40 hover:text-white/80 transition-colors rounded-lg hover:bg-white/10"
+            aria-label="Close tour"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
-          <div className="relative p-5">
-            {/* Close */}
+        {/* Content */}
+        <div className="flex-1 flex flex-col items-center justify-center px-8 pb-8">
+          {/* Step badge */}
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#00d084]/10 text-[#00d084] text-[10px] font-bold uppercase tracking-widest mb-6">
+            <Sparkles className="w-3 h-3" />
+            Step {currentStep + 1} of {STEPS.length}
+          </div>
+
+          {/* Large icon */}
+          <div className="text-5xl mb-5" aria-hidden="true">
+            {step.icon}
+          </div>
+
+          {/* Title */}
+          <h3 className="text-xl font-bold text-white text-center mb-3">
+            {step.title}
+          </h3>
+
+          {/* Description */}
+          <p className="text-sm text-white/60 text-center leading-relaxed mb-6 max-w-xs">
+            {step.description}
+          </p>
+
+          {/* Pro tip */}
+          <div className="w-full bg-[#00d084]/10 border border-[#00d084]/20 rounded-xl p-3 mb-8">
+            <div className="flex items-start gap-2">
+              <Lightbulb className="w-4 h-4 text-[#00d084] shrink-0 mt-0.5" />
+              <p className="text-xs text-[#00d084]/90 leading-relaxed">
+                <span className="font-semibold">Pro tip:</span> {step.proTip}
+              </p>
+            </div>
+          </div>
+
+          {/* Progress dots */}
+          <div className="flex items-center gap-2 mb-8">
+            {STEPS.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => goToStep(i)}
+                className={cn(
+                  "w-2.5 h-2.5 rounded-full transition-all duration-300",
+                  i === currentStep
+                    ? "bg-[#00d084] scale-125"
+                    : "bg-white/20 hover:bg-white/40",
+                )}
+                aria-label={`Go to step ${i + 1}`}
+              />
+            ))}
+          </div>
+
+          {/* Navigation buttons */}
+          <div className="w-full flex items-center justify-between gap-2">
             <button
               onClick={closeTour}
-              className="absolute top-3 right-3 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800"
-              aria-label="Close tour"
+              className="text-xs text-white/40 hover:text-white/70 transition-colors font-medium px-3 py-2"
             >
-              <X className="w-4 h-4" />
+              Skip Tour
             </button>
 
-            {/* Step badge */}
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#00d084]/10 text-[#00d084] text-[10px] font-bold uppercase tracking-widest mb-3">
-              <Sparkles className="w-3 h-3" />
-              Step {currentStep + 1} of {STEPS.length}
-            </div>
-
-            {/* Content */}
-            <h3 className="text-base font-bold text-gray-900 dark:text-white mb-1.5">
-              {step.emoji} {step.title}
-            </h3>
-            <p className="text-sm text-gray-500 dark:text-slate-400 leading-relaxed mb-4">
-              {step.description}
-            </p>
-
-            {/* Progress dots */}
-            <div className="flex items-center gap-1.5 mb-4">
-              {STEPS.map((_, i) => (
+            <div className="flex items-center gap-2">
+              {currentStep > 0 && (
                 <button
-                  key={i}
-                  onClick={() => goToStep(i)}
-                  className={cn(
-                    "h-1.5 rounded-full transition-all duration-300",
-                    i === currentStep
-                      ? "w-6 bg-[#00d084]"
-                      : i < currentStep
-                        ? "w-1.5 bg-[#00d084]/40"
-                        : "w-1.5 bg-gray-200 dark:bg-slate-700"
-                  )}
-                  aria-label={`Go to step ${i + 1}`}
-                />
-              ))}
-            </div>
-
-            {/* Navigation buttons */}
-            <div className="flex items-center justify-between">
-              <button
-                onClick={closeTour}
-                className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 transition-colors font-medium"
-              >
-                Skip Tour
-              </button>
-
-              <div className="flex items-center gap-2">
-                {currentStep > 0 && (
-                  <button
-                    onClick={handlePrev}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
-                  >
-                    <ChevronLeft className="w-3.5 h-3.5" />
-                    Back
-                  </button>
-                )}
-                <button
-                  onClick={handleNext}
-                  className="inline-flex items-center gap-1 px-4 py-1.5 rounded-lg text-xs font-semibold bg-[#00d084] text-white hover:bg-[#00d084]/90 transition-colors shadow-sm"
+                  onClick={handlePrev}
+                  className="inline-flex items-center gap-1 px-3 py-2 rounded-lg text-xs font-medium text-white/60 hover:text-white hover:bg-white/10 transition-colors"
                 >
-                  {currentStep >= STEPS.length - 1 ? "Finish" : "Next"}
-                  {currentStep < STEPS.length - 1 && <ChevronRight className="w-3.5 h-3.5" />}
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  Back
                 </button>
-              </div>
+              )}
+              <button
+                onClick={handleNext}
+                className="inline-flex items-center gap-1 px-5 py-2 rounded-lg text-xs font-semibold bg-[#00d084] text-white hover:bg-[#00d084]/90 transition-colors shadow-sm"
+              >
+                {isLastStep ? "Finish" : "Next"}
+                {!isLastStep && <ChevronRight className="w-3.5 h-3.5" />}
+              </button>
             </div>
           </div>
         </div>
-      )}
+      </div>
     </>,
-    document.body
+    document.body,
   );
 }
