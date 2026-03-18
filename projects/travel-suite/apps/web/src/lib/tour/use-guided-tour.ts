@@ -106,6 +106,12 @@ export function useGuidedTour() {
 
       if (validSteps.length === 0) return;
 
+      // For multi-page tours: pre-set the continuation flag immediately
+      // so it's ready when the user naturally clicks away (e.g. clicking a trip row)
+      if (activeTourId === 'share') {
+        sessionStorage.setItem(SS_KEY_CONTINUE, 'share-detail');
+      }
+
       const d = driver({
         showProgress: true,
         animate: true,
@@ -132,28 +138,17 @@ export function useGuidedTour() {
               LS_KEY_SKIPPED,
               JSON.stringify({ ...existing, [activeTourId]: true }),
             );
+            // Clear any pending continuation on skip
+            sessionStorage.removeItem(SS_KEY_CONTINUE);
           }
 
           d.destroy();
 
           // On completion, redirect back to dashboard
-          if (isLastStep) {
+          // (but not for 'share' tour — user will navigate naturally to trip detail)
+          if (isLastStep && activeTourId !== 'share') {
             router.push('/admin');
           }
-        },
-        onNextClick: () => {
-          const activeIndex = d.getActiveIndex() ?? 0;
-          const isLastStep = activeIndex === validSteps.length - 1;
-
-          // For 'share' tour: last step tells user to click trip row
-          // Set continuation flag so trip detail page picks up the tour
-          if (activeTourId === 'share' && isLastStep) {
-            sessionStorage.setItem(SS_KEY_CONTINUE, 'share-detail');
-            d.destroy();
-            return;
-          }
-
-          d.moveNext();
         },
       });
 
