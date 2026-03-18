@@ -113,7 +113,11 @@ export default function SettingsPage() {
     const sectionId = setup === 'brand' ? 'section-branding' : setup === 'whatsapp' ? 'section-integrations' : null;
     if (!sectionId) return;
     const timer = setTimeout(() => {
-      document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const el = document.getElementById(sectionId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        el.setAttribute('data-setup-highlight', 'true');
+      }
     }, 300);
     return () => clearTimeout(timer);
   }, [searchParams, loading]);

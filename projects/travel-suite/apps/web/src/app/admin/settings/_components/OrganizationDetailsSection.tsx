@@ -1,6 +1,7 @@
 import { Building2 } from 'lucide-react';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { GlassInput } from '@/components/glass/GlassInput';
+import { LogoUpload } from './LogoUpload';
 import type { Organization } from '../shared';
 
 interface OrganizationDetailsSectionProps {
@@ -37,15 +38,12 @@ export function OrganizationDetailsSection({
             <GlassInput type="text" value={organization.slug || ''} disabled />
           </div>
         </div>
-        <div className="space-y-2">
-          <label className="text-sm font-semibold text-secondary dark:text-white">Logo URL</label>
-          <GlassInput
-            type="url"
-            value={organization.logo_url || ''}
-            onChange={(event) => setOrganization((prev) => (prev ? { ...prev, logo_url: event.target.value } : null))}
-            placeholder="https://example.com/logo.png"
-          />
-        </div>
+        <LogoUpload
+          currentUrl={organization.logo_url}
+          organizationId={organization.id}
+          onUploaded={(url) => setOrganization((prev) => (prev ? { ...prev, logo_url: url } : null))}
+          onRemoved={() => setOrganization((prev) => (prev ? { ...prev, logo_url: null } : null))}
+        />
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <label className="text-sm font-semibold text-secondary dark:text-white">GSTIN</label>
