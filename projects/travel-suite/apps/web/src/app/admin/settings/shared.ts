@@ -5,7 +5,6 @@ export const ORGANIZATION_SETTINGS_SELECT = [
     "billing_state",
     "gstin",
     "id",
-    "itinerary_template",
     "logo_url",
     "name",
     "primary_color",
