@@ -102,7 +102,7 @@ export default function SaveItineraryButton({
                     itinerary_id: insertedItinerary.id,
                     client_id: user.id,
                     organization_id: profile?.organization_id ?? null,
-                    status: "draft",
+                    status: "pending",
                     destination: itineraryData.destination || destination,
                 })
                 .select("id")
