@@ -76,14 +76,15 @@ export function LogoUpload({ currentUrl, organizationId, onUploaded, onRemoved }
         return;
       }
 
-      // Auto-save logo_url to the organization
-      const { error: updateError } = await supabase
-        .from('organizations')
-        .update({ logo_url: publicUrl })
-        .eq('id', organizationId);
+      // Save logo_url via server-side API (bypasses RLS)
+      const saveRes = await fetch('/api/admin/logo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ logo_url: publicUrl }),
+      });
 
-      if (updateError) {
-        setError('Logo uploaded but failed to save. Click "Save Changes" to save manually.');
+      if (!saveRes.ok) {
+        setError('Logo uploaded but failed to save. Please try again.');
         onUploaded(publicUrl);
         return;
       }

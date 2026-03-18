@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
   Rocket,
@@ -48,6 +49,8 @@ export function SetupChecklist() {
   const [dismissed, setDismissed] = useState(true);
   const [newlyCompleted, setNewlyCompleted] = useState<string | null>(null);
   const previousCompletedRef = useRef<Set<string>>(new Set());
+  const pathname = usePathname();
+  const mountedRef = useRef(false);
 
   const fetchProgress = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -103,6 +106,19 @@ export function SetupChecklist() {
     void fetchProgress(controller.signal);
     return () => controller.abort();
   }, [fetchProgress]);
+
+  // Re-fetch when navigating back to /admin (same-tab navigation via router.push)
+  useEffect(() => {
+    if (dismissed || !mountedRef.current) {
+      mountedRef.current = true;
+      return;
+    }
+    if (pathname === '/admin') {
+      // Delay slightly to let DB writes settle
+      const timer = setTimeout(() => void fetchProgress(), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [dismissed, pathname, fetchProgress]);
 
   // Re-fetch when page becomes visible (user returns from completing a task)
   useEffect(() => {
