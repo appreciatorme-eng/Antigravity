@@ -25,6 +25,7 @@ import { DepartingSoonSection } from "./DepartingSoonSection";
 import { TripListRow } from "./TripListRow";
 import { TripGridCard } from "./TripGridCard";
 import { SetupGuide } from "@/components/dashboard/SetupGuide";
+import { GuidedTour } from "@/components/tour/GuidedTour";
 
 const SORT_OPTIONS: { value: TripSortKey; label: string }[] = [
     { value: "departure", label: "Departure Date" },
@@ -105,6 +106,7 @@ export default function TripsPage() {
 
     return (
         <div className="space-y-8 pb-20">
+            <GuidedTour />
             <SetupGuide />
 
             {/* Header */}
@@ -290,10 +292,12 @@ export default function TripsPage() {
                     </div>
                 </GlassCard>
             ) : viewMode === "list" ? (
-                <GlassCard padding="none" className="overflow-hidden border-gray-100 dark:border-slate-800 shadow-sm">
+                <GlassCard padding="none" className="overflow-hidden border-gray-100 dark:border-slate-800 shadow-sm" data-tour="trip-list">
                     <div className="grid grid-cols-1">
-                        {processedTrips.map((trip) => (
-                            <TripListRow key={trip.id} trip={trip} />
+                        {processedTrips.map((trip, idx) => (
+                            <div key={trip.id} {...(idx === 0 ? { 'data-tour': 'trip-row-first' } : {})}>
+                                <TripListRow trip={trip} />
+                            </div>
                         ))}
                     </div>
                 </GlassCard>
