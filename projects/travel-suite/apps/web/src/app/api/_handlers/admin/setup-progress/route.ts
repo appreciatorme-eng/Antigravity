@@ -32,7 +32,7 @@ export async function GET(request: Request): Promise<Response> {
     }
 
     // Fetch all data in parallel
-    const [orgResult, itineraryResult, profileResult, sharedResult] =
+    const [orgResult, tripResult, profileResult, sharedResult] =
       await Promise.all([
         adminClient
           .from("organizations")
@@ -40,7 +40,7 @@ export async function GET(request: Request): Promise<Response> {
           .eq("id", organizationId)
           .maybeSingle(),
         adminClient
-          .from("itineraries")
+          .from("trips")
           .select("id", { count: "exact", head: true })
           .eq("organization_id", organizationId),
         adminClient
@@ -60,7 +60,7 @@ export async function GET(request: Request): Promise<Response> {
     }
 
     const hasLogo = !!orgResult.data?.logo_url;
-    const itineraryCount = itineraryResult.count ?? 0;
+    const tripCount = tripResult.count ?? 0;
     const hasWhatsApp = !!profileResult.data?.phone_whatsapp;
     const sharedCount = sharedResult.count ?? 0;
 
@@ -85,7 +85,7 @@ export async function GET(request: Request): Promise<Response> {
         id: "itinerary",
         title: "Create your first itinerary",
         description: "Build a trip with AI",
-        completed: itineraryCount > 0,
+        completed: tripCount > 0,
         href: "/planner?setup=itinerary",
         icon: "plane",
       },
