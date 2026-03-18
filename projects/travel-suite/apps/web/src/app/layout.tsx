@@ -65,7 +65,7 @@ export default async function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `
               try {
-                if (!('theme' in localStorage) || localStorage.theme === 'dark') {
+                if ('theme' in localStorage && localStorage.theme === 'dark') {
                   document.documentElement.classList.add('dark');
                 } else {
                   document.documentElement.classList.remove('dark');
