@@ -11,13 +11,14 @@ export default function ItineraryTemplateModern({ itineraryData, organizationNam
             <header className="relative bg-stone-900 text-white pb-12 pt-6">
                 <div className="absolute inset-0 overflow-hidden">
                     <Image
-                        src="https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1920&q=80"
+                        src="/unsplash-img/photo-1469854523086-cc02fe5d8800?w=1920&q=80"
                         alt={itineraryData.destination}
                         fill
                         sizes="100vw"
                         className="object-cover opacity-20"
                         onError={(e) => { e.currentTarget.style.display = 'none'; }}
                         priority
+                        unoptimized
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-stone-900 via-stone-900/40 to-transparent" />
                 </div>
@@ -165,7 +166,7 @@ export default function ItineraryTemplateModern({ itineraryData, organizationNam
                                                                     sizes="(max-width: 640px) 100vw, 50vw"
                                                                     className="object-cover transition-transform duration-700 hover:scale-105"
                                                                     onError={(e) => {
-                                                                        e.currentTarget.src = "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3";
+                                                                        e.currentTarget.src = "/unsplash-img/photo-1469854523086-cc02fe5d8800?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3";
                                                                         e.currentTarget.onerror = null;
                                                                     }}
                                                                 />

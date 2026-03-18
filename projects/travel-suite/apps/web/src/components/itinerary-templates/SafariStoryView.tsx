@@ -239,7 +239,7 @@ export const SafariStoryView: React.FC<ItineraryTemplateProps> = ({ itinerary, c
                                     alt={activity.title}
                                     className="w-full h-full object-cover filter contrast-[1.05] grayscale-[0.1]"
                                     onError={(e) => {
-                                      e.currentTarget.src = "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3";
+                                      e.currentTarget.src = "/unsplash-img/photo-1469854523086-cc02fe5d8800?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3";
                                       e.currentTarget.onerror = null;
                                     }}
                                   />

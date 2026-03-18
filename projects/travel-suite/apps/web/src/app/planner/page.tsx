@@ -408,7 +408,7 @@ export default function PlannerPage() {
                                                                                                                 className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-110"
                                                                                                                 loading="lazy"
                                                                                                                 referrerPolicy="no-referrer"
-                                                                                                                fallbackSrc="https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3"
+                                                                                                                fallbackSrc="/unsplash-img/photo-1469854523086-cc02fe5d8800?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3"
                                                                                                                 fill
                                                                                                                 sizes="(max-width: 768px) 100vw, 768px"
                                                                                                             />

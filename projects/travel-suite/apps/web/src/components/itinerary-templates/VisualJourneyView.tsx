@@ -23,11 +23,11 @@ export const VisualJourneyView: React.FC<ItineraryTemplateProps> = ({ itinerary,
                 {/* Fallback Hero Image from the first activity */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                    src={itinerary.days?.[0]?.activities?.[0]?.image || itinerary.days?.[0]?.activities?.[0]?.imageUrl || "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=2560&auto=format&fit=crop"}
+                    src={itinerary.days?.[0]?.activities?.[0]?.image || itinerary.days?.[0]?.activities?.[0]?.imageUrl || "/unsplash-img/photo-1507525428034-b723cf961d3e?q=80&w=2560&auto=format&fit=crop"}
                     alt="Destination"
                     className="absolute inset-0 w-full h-full object-cover transform scale-105 duration-[20s] ease-out hover:scale-110"
                     onError={(e) => {
-                        e.currentTarget.src = "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=2560&auto=format&fit=crop";
+                        e.currentTarget.src = "/unsplash-img/photo-1507525428034-b723cf961d3e?q=80&w=2560&auto=format&fit=crop";
                         e.currentTarget.onerror = null;
                     }}
                 />
@@ -201,11 +201,11 @@ export const VisualJourneyView: React.FC<ItineraryTemplateProps> = ({ itinerary,
                                             <div className="aspect-[4/5] md:aspect-square overflow-hidden rounded-3xl shadow-2xl">
                                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                                 <img
-                                                    src={activity.image || activity.imageUrl || "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?q=80&w=2021&auto=format&fit=crop"}
+                                                    src={activity.image || activity.imageUrl || "/unsplash-img/photo-1469854523086-cc02fe5d8800?q=80&w=2021&auto=format&fit=crop"}
                                                     alt={activity.title}
                                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-[2s] ease-out"
                                                     onError={(e) => {
-                                                        e.currentTarget.src = "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3";
+                                                        e.currentTarget.src = "/unsplash-img/photo-1469854523086-cc02fe5d8800?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3";
                                                         e.currentTarget.onerror = null;
                                                     }}
                                                 />

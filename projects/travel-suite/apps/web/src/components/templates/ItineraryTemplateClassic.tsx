@@ -156,7 +156,7 @@ export default function ItineraryTemplateClassic({ itineraryData, organizationNa
                                                         className="w-full h-full object-cover"
                                                         loading="lazy"
                                                         onError={(e) => {
-                                                            e.currentTarget.src = "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3";
+                                                            e.currentTarget.src = "/unsplash-img/photo-1469854523086-cc02fe5d8800?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3";
                                                             e.currentTarget.onerror = null;
                                                         }}
                                                     />

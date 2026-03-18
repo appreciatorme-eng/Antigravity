@@ -59,7 +59,7 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
         contactNumber: initialOrgData.phone || "+91 00000 00000",
         email: initialOrgData.email || "info@yourcompany.com",
         website: initialOrgData.website || "www.yourcompany.com",
-        heroImage: "https://images.unsplash.com/photo-1512100356356-de1b84283e18?auto=format&fit=crop&q=80&w=1080",
+        heroImage: "/unsplash-img/photo-1512100356356-de1b84283e18?auto=format&fit=crop&q=80&w=1080",
         services: ["Flights", "Hotels", "Holidays", "Visa"],
         bulletPoints: ["Airport Transfers", "City Tours", "Corporate Travel", "Night Out"],
         reviewText: "",

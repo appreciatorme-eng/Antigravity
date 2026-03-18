@@ -29,7 +29,7 @@ export const LuxuryResortView: React.FC<ItineraryTemplateProps> = ({ itinerary, 
             <div
                 className="absolute inset-0 z-0 transition-opacity duration-1000 ease-in-out"
                 style={{
-                    backgroundImage: `url(${currentBg || "https://images.unsplash.com/photo-1542314831-c6a4d1409322?q=80&w=2560&auto=format&fit=crop"})`,
+                    backgroundImage: `url(${currentBg || "/unsplash-img/photo-1542314831-c6a4d1409322?q=80&w=2560&auto=format&fit=crop"})`,
                     backgroundSize: 'cover',
                     backgroundPosition: 'center',
                     backgroundAttachment: 'fixed', // Keep the parallax feel inside the container 
@@ -173,7 +173,7 @@ export const LuxuryResortView: React.FC<ItineraryTemplateProps> = ({ itinerary, 
                                                         alt={activity.title}
                                                         className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-transform duration-700 group-hover:scale-105"
                                                         onError={(e) => {
-                                                            e.currentTarget.src = "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3";
+                                                            e.currentTarget.src = "/unsplash-img/photo-1469854523086-cc02fe5d8800?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3";
                                                             e.currentTarget.onerror = null;
                                                         }}
                                                     />
