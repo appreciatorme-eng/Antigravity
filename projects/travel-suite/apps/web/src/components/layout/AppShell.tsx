@@ -26,7 +26,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     const isMarketingPage = MARKETING_PATHS.some(
         (p) => pathname === p || pathname?.startsWith(p + "/")
     );
-    const isPublicPage = pathname === "/welcome" || pathname === "/auth" || isMarketingPage;
+    const isPublicPage =
+        pathname === "/welcome" ||
+        pathname === "/auth" ||
+        pathname?.startsWith("/onboarding") ||
+        isMarketingPage;
 
     if (!isMounted) return null;
 
