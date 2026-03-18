@@ -1,7 +1,7 @@
 import { test, expect } from '../fixtures/auth';
 import { gotoWithRetry } from '../fixtures/navigation';
 
-const BASE = process.env.BASE_URL || 'https://travelsuite-rust.vercel.app';
+const BASE = process.env.BASE_URL || 'https://tripbuilt.com';
 
 test.describe('Social Media Publishing E2E', () => {
   test('Full publishing flow: Create → Schedule → Calendar → Publish → Metrics', async ({ adminPage, browser }) => {

@@ -1,7 +1,7 @@
 import { test, expect } from '../fixtures/auth';
 import { gotoWithRetry } from '../fixtures/navigation';
 
-const BASE = process.env.BASE_URL || 'https://travelsuite-rust.vercel.app';
+const BASE = process.env.BASE_URL || 'https://tripbuilt.com';
 
 test.describe('WhatsApp → Proposal in 60 Seconds', () => {
   test('Create Proposal button appears in thread header', async ({ adminPage }) => {

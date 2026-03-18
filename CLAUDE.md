@@ -50,7 +50,24 @@ npm run qa            # playwright-cli (interactive browser)
 
 - Lines: 80% | Functions: 90% | Branches: 75%
 - Lint: zero warnings
-- E2E target: `https://travelsuite-rust.vercel.app`
+- E2E target: `https://tripbuilt.com`
+
+## Test Accounts (E2E)
+
+Four test users exist in Supabase for E2E and manual testing:
+
+| Role | Email | Profile `role` | Notes |
+|------|-------|----------------|-------|
+| Admin | `e2e-admin@tripbuilt.com` | `admin` | `onboarding_step = 0` (triggers onboarding wizard) |
+| Client | `e2e-client@tripbuilt.com` | `client` | Standard client user |
+| Driver | `e2e-driver@tripbuilt.com` | `driver` | Standard driver user |
+| Super Admin | `e2e-superadmin@tripbuilt.com` | `super_admin` | Full platform access |
+
+**Credentials**: stored in `e2e/.env` (gitignored). See `e2e/.env.example` for template.
+
+**Login endpoint**: `POST /api/auth/password-login` with `{ email, password }`.
+
+**When testing manually** (via preview or playwright-cli): use admin credentials from `e2e/.env` to log in at `/auth`.
 
 ## Vercel Constraints
 

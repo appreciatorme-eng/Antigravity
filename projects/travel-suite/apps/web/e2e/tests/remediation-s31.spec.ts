@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { test as authTest } from '../fixtures/auth';
 
-const BASE = process.env.BASE_URL || 'https://travelsuite-rust.vercel.app';
+const BASE = process.env.BASE_URL || 'https://tripbuilt.com';
 
 function attachClientErrorCapture(page: Page) {
   const errors: string[] = [];

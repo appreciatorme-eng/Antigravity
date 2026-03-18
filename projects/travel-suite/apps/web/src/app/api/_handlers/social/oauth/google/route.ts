@@ -5,7 +5,7 @@ import { safeErrorMessage } from '@/lib/security/safe-error';
 import { logError } from "@/lib/observability/logger";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://travelsuite-rust.vercel.app';
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://tripbuilt.com';
 const GOOGLE_REDIRECT_URI = `${APP_URL}/api/social/oauth/callback?provider=google`;
 
 const GOOGLE_SCOPES = [

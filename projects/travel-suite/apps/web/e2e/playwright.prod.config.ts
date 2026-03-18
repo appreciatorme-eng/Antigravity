@@ -15,7 +15,7 @@ export default defineConfig({
   reporter: [['list']],
   
   use: {
-    baseURL: process.env.BASE_URL || 'https://travelsuite-rust.vercel.app',
+    baseURL: process.env.BASE_URL || 'https://tripbuilt.com',
     // Keep disk usage tiny (prod runs happen in a constrained environment).
     // Override via CLI flags if you need artifacts for debugging.
     trace: 'off',
