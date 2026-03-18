@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import {
   Rocket,
@@ -14,10 +14,12 @@ import {
   MessageCircle,
   Send,
   PartyPopper,
+  Sparkles,
 } from 'lucide-react';
 import { GlassCard } from '@/components/glass/GlassCard';
 
 const LS_KEY = 'tripbuilt:setup_checklist_dismissed';
+const COMPLETED_KEY = 'tripbuilt:setup_completed_items';
 
 interface ChecklistItem {
   id: string;
@@ -44,6 +46,42 @@ const ICON_MAP: Record<string, React.ReactNode> = {
 export function SetupChecklist() {
   const [data, setData] = useState<SetupProgressData | null>(null);
   const [dismissed, setDismissed] = useState(true);
+  const [newlyCompleted, setNewlyCompleted] = useState<string | null>(null);
+  const previousCompletedRef = useRef<Set<string>>(new Set());
+
+  const fetchProgress = useCallback(async (signal?: AbortSignal) => {
+    try {
+      const res = await fetch('/api/admin/setup-progress', { signal });
+      if (!res.ok) return;
+      const json = await res.json();
+      if (!json?.data) return;
+
+      const newData = json.data as SetupProgressData;
+      const currentCompleted = new Set(
+        newData.items.filter((i: ChecklistItem) => i.completed).map((i: ChecklistItem) => i.id)
+      );
+
+      // Detect newly completed items (skip first load)
+      if (previousCompletedRef.current.size > 0) {
+        for (const id of currentCompleted) {
+          if (!previousCompletedRef.current.has(id)) {
+            setNewlyCompleted(id);
+            setTimeout(() => setNewlyCompleted(null), 3000);
+            break;
+          }
+        }
+      }
+
+      previousCompletedRef.current = currentCompleted;
+
+      // Persist known completed items so we detect changes next time
+      try {
+        localStorage.setItem(COMPLETED_KEY, JSON.stringify([...currentCompleted]));
+      } catch { /* ignore */ }
+
+      setData(newData);
+    } catch { /* fail silently */ }
+  }, []);
 
   useEffect(() => {
     try {
@@ -51,22 +89,40 @@ export function SetupChecklist() {
       if (wasDismissed) return;
       // eslint-disable-next-line react-hooks/set-state-in-effect -- SSR-safe: must read localStorage after mount
       setDismissed(false);
+
+      // Restore previous completed items for change detection
+      const saved = localStorage.getItem(COMPLETED_KEY);
+      if (saved) {
+        previousCompletedRef.current = new Set(JSON.parse(saved) as string[]);
+      }
     } catch {
       return;
     }
 
     const controller = new AbortController();
-    fetch('/api/admin/setup-progress', { signal: controller.signal })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((json) => {
-        if (json?.data) setData(json.data);
-      })
-      .catch(() => {
-        // fail silently
-      });
-
+    void fetchProgress(controller.signal);
     return () => controller.abort();
-  }, []);
+  }, [fetchProgress]);
+
+  // Re-fetch when page becomes visible (user returns from completing a task)
+  useEffect(() => {
+    if (dismissed) return;
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        void fetchProgress();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    // Also re-fetch on focus (covers same-tab navigation via back button)
+    const handleFocus = () => void fetchProgress();
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [dismissed, fetchProgress]);
 
   if (dismissed || !data) return null;
 
@@ -76,9 +132,7 @@ export function SetupChecklist() {
     setDismissed(true);
     try {
       localStorage.setItem(LS_KEY, 'true');
-    } catch {
-      // localStorage unavailable
-    }
+    } catch { /* localStorage unavailable */ }
   };
 
   return (
@@ -102,18 +156,33 @@ export function SetupChecklist() {
 
       {/* Items or All Done */}
       {allDone ? (
-        <div className="flex items-center gap-2 py-4 justify-center text-sm font-medium text-gray-700">
-          <PartyPopper className="w-5 h-5 text-[#00d084]" />
-          All done! You&apos;re all set up.
+        <div className="flex flex-col items-center gap-2 py-6 text-center">
+          <div className="flex items-center gap-2">
+            <PartyPopper className="w-6 h-6 text-[#00d084] animate-bounce" />
+            <Sparkles className="w-5 h-5 text-amber-400 animate-pulse" />
+          </div>
+          <p className="text-sm font-bold text-gray-900">
+            You&apos;re all set up!
+          </p>
+          <p className="text-xs text-gray-500">
+            Your workspace is fully configured. Time to grow your business.
+          </p>
         </div>
       ) : (
         <div className="space-y-1">
           {data.items.map((item) => {
             const isClickable = !item.completed && item.href !== '#';
+            const justCompleted = newlyCompleted === item.id;
             const rowContent = (
               <>
                 {item.completed ? (
-                  <CheckCircle2 className="w-5 h-5 text-[#00d084] shrink-0" />
+                  <CheckCircle2
+                    className={`w-5 h-5 shrink-0 ${
+                      justCompleted
+                        ? 'text-[#00d084] animate-bounce'
+                        : 'text-[#00d084]'
+                    }`}
+                  />
                 ) : (
                   <Circle className="w-5 h-5 text-gray-300 shrink-0" />
                 )}
@@ -121,14 +190,19 @@ export function SetupChecklist() {
                   {ICON_MAP[item.icon]}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
-                    {item.title}
+                  <p className={`text-sm font-medium truncate ${
+                    justCompleted ? 'text-[#00d084]' : 'text-gray-900'
+                  }`}>
+                    {justCompleted ? `${item.title} — Done!` : item.title}
                   </p>
                   <p className="text-xs text-gray-500 truncate">
-                    {item.description}
+                    {justCompleted ? 'Great job!' : item.description}
                   </p>
                 </div>
-                {isClickable && (
+                {justCompleted && (
+                  <Sparkles className="w-4 h-4 text-amber-400 animate-pulse shrink-0" />
+                )}
+                {isClickable && !justCompleted && (
                   <span className="shrink-0 p-1 text-gray-400">
                     <ArrowRight className="w-4 h-4" />
                   </span>
@@ -147,7 +221,9 @@ export function SetupChecklist() {
             ) : (
               <div
                 key={item.id}
-                className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors"
+                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors ${
+                  justCompleted ? 'bg-[#00d084]/5' : ''
+                }`}
               >
                 {rowContent}
               </div>
