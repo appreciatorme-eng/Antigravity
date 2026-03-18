@@ -107,7 +107,7 @@ export function PlannerHero({
                             <Globe className="w-3.5 h-3.5 text-emerald-500" />
                             Destination
                         </label>
-                        <div className="relative group">
+                        <div className="relative group" data-tour="destination-input">
                             <div className="absolute left-4 top-1/2 -translate-y-1/2 z-10">
                                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/20 group-focus-within:scale-110 transition-transform duration-300">
                                     <MapPin className="w-5 h-5 text-white" />
@@ -136,7 +136,7 @@ export function PlannerHero({
                     {/* Duration + Budget row */}
                     <div className="p-6 pb-5 grid grid-cols-5 gap-6">
                         {/* Duration */}
-                        <div className="col-span-2 space-y-3">
+                        <div className="col-span-2 space-y-3" data-tour="duration-selector">
                             <label className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500 flex items-center gap-2">
                                 <Calendar className="w-3.5 h-3.5 text-emerald-500" />
                                 Duration
@@ -159,7 +159,7 @@ export function PlannerHero({
                         </div>
 
                         {/* Budget */}
-                        <div className="col-span-3 space-y-3">
+                        <div className="col-span-3 space-y-3" data-tour="budget-selector">
                             <label className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500 flex items-center gap-2">
                                 <Wallet className="w-3.5 h-3.5 text-emerald-500" />
                                 Budget Style
@@ -202,7 +202,7 @@ export function PlannerHero({
                             Interests
                             <span className="text-[9px] font-black tracking-widest text-slate-300 dark:text-slate-600 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full ml-1">OPTIONAL</span>
                         </label>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-2" data-tour="interests-grid">
                             {INTEREST_OPTIONS.map((tag) => {
                                 const isActive = interests.includes(tag);
                                 return (
@@ -226,6 +226,7 @@ export function PlannerHero({
                     {/* Generate Button — Full width, inside card */}
                     <div className="p-6 pt-4 space-y-4">
                         <button
+                            data-tour="generate-button"
                             onClick={onGenerate}
                             disabled={loading || !prompt}
                             className={cn(

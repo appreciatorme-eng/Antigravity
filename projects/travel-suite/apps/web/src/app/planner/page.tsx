@@ -33,6 +33,7 @@ import { ItineraryFilterBar, matchesFilter } from "./ItineraryFilterBar";
 import { NeedsAttentionQueue } from "./NeedsAttentionQueue";
 import { SetupGuide } from "@/components/dashboard/SetupGuide";
 import { PlannerHero } from "./PlannerHero";
+import { GuidedTour } from '@/components/tour/GuidedTour';
 import type { ClientComment, ClientPreferences } from "@/types/feedback";
 import type { ItineraryLike, ItineraryStage } from "./planner.types";
 import { logError } from "@/lib/observability/logger";
@@ -240,6 +241,7 @@ export default function PlannerPage() {
 
     return (
         <main className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50/50 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 pb-24">
+            <GuidedTour />
 
             <div className="mx-auto max-w-7xl px-4 pt-4">
                 <SetupGuide />
@@ -276,7 +278,7 @@ export default function PlannerPage() {
                                 >
                                     ← Start Over
                                 </Button>
-                                <div className="flex gap-2 flex-wrap justify-end">
+                                <div className="flex gap-2 flex-wrap justify-end" data-tour="save-button">
                                     <SaveItineraryButton
                                         itineraryData={result}
                                         destination={prompt}
@@ -293,6 +295,7 @@ export default function PlannerPage() {
                                         {isEditing ? '👀 Preview Design' : '🖊️ Edit Itinerary'}
                                     </Button>
                                     <button
+                                        data-tour="share-button"
                                         onClick={() => setIsShareOpen(true)}
                                         className="px-4 py-2 bg-whatsapp hover:bg-whatsapp:hover text-white rounded-xl shadow-button flex items-center gap-2 transition-smooth text-sm font-bold"
                                     >

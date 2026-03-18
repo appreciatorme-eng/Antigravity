@@ -83,7 +83,7 @@ export function SettingsIntegrationsSection({
                 <div>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-3">Messaging</p>
                     <div className="space-y-3">
-                        <div className="p-5 border-2 border-[#25D366]/30 bg-[#25D366]/5 rounded-2xl flex items-start gap-4">
+                        <div data-tour="whatsapp-card" className="p-5 border-2 border-[#25D366]/30 bg-[#25D366]/5 rounded-2xl flex items-start gap-4">
                             <div className="w-11 h-11 rounded-xl bg-[#25D366] flex items-center justify-center shrink-0 shadow-lg shadow-[#25D366]/30">
                                 <MessageCircle className="w-6 h-6 text-white fill-current" />
                             </div>
@@ -105,6 +105,7 @@ export function SettingsIntegrationsSection({
                             </div>
                             <div className="flex flex-col gap-2 shrink-0">
                                 <GlassButton
+                                    data-tour="whatsapp-connect-btn"
                                     type="button"
                                     variant="primary"
                                     size="sm"
