@@ -22,6 +22,7 @@ import { GlassInput, GlassTextarea } from "@/components/glass/GlassInput";
 import { GlassModal } from "@/components/glass/GlassModal";
 import { useToast } from "@/components/ui/toast";
 import { GuidedTour } from "@/components/tour/GuidedTour";
+import ShareTripModal from "@/components/ShareTripModal";
 
 // ---------------------------------------------------------------------------
 // Trip Detail Page (thin shell)
@@ -45,6 +46,7 @@ export default function TripDetailPage() {
   const [notificationTitle, setNotificationTitle] = useState("Trip Update");
   const [notificationBody, setNotificationBody] = useState("");
   const [deletingTrip, setDeletingTrip] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
 
   // --- Derived data ---
   const trip = data?.trip ?? null;
@@ -87,6 +89,14 @@ export default function TripDetailPage() {
   };
 
   const handleNotify = () => setNotificationOpen(true);
+  const handleShare = () => setIsShareOpen(true);
+  const handleOptimizeRoute = () => {
+    toast({
+      title: "Coming Soon",
+      description: "AI Route Optimization will be available in a future update.",
+      variant: "info",
+    });
+  };
 
   const handleDeleteTrip = async () => {
     if (deletingTrip || !confirm("Delete this trip? All trip data will be permanently removed.")) {
@@ -189,6 +199,8 @@ export default function TripDetailPage() {
         onDuplicate={handleDuplicate}
         duplicating={cloneMutation.isPending}
         onNotify={handleNotify}
+        onShare={handleShare}
+        onOptimizeRoute={handleOptimizeRoute}
       />
 
       <TripDetailTabBar activeTab={activeTab} onTabChange={setActiveTab} />
@@ -224,6 +236,14 @@ export default function TripDetailPage() {
           </GlassButton>
         </div>
       </GlassModal>
+
+      {/* Share trip modal */}
+      <ShareTripModal
+        isOpen={isShareOpen}
+        onClose={() => setIsShareOpen(false)}
+        tripTitle={trip.itineraries?.trip_title || trip.destination || "Trip"}
+        itineraryId={trip.itineraries?.id}
+      />
     </div>
   );
 }
