@@ -24,6 +24,7 @@ import { TripKPIStats } from "./TripKPIStats";
 import { DepartingSoonSection } from "./DepartingSoonSection";
 import { TripListRow } from "./TripListRow";
 import { TripGridCard } from "./TripGridCard";
+import { SetupGuide } from "@/components/dashboard/SetupGuide";
 
 const SORT_OPTIONS: { value: TripSortKey; label: string }[] = [
     { value: "departure", label: "Departure Date" },
@@ -104,6 +105,8 @@ export default function TripsPage() {
 
     return (
         <div className="space-y-8 pb-20">
+            <SetupGuide />
+
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div className="space-y-2">

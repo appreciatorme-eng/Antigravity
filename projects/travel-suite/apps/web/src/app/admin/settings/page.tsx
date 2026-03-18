@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { Check, Settings, Save, Award } from "lucide-react";
 import { normalizeItineraryTemplateId } from "@/components/pdf/itinerary-types";
 import { createClient } from "@/lib/supabase/client";
@@ -10,6 +11,7 @@ import { GlassCard } from "@/components/glass/GlassCard";
 import { useToast } from "@/components/ui/toast";
 import { Badge } from "@/components/ui/badge";
 import { WhatsAppConnectModal } from "@/components/whatsapp/WhatsAppConnectModal";
+import { SetupGuide } from "@/components/dashboard/SetupGuide";
 import { BrandingThemeSection } from "./_components/BrandingThemeSection";
 import { OrganizationDetailsSection } from "./_components/OrganizationDetailsSection";
 import { SettingsIntegrationsSection } from "./_components/SettingsIntegrationsSection";
@@ -27,6 +29,7 @@ import { logError } from "@/lib/observability/logger";
 
 export default function SettingsPage() {
   const supabase = createClient();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
@@ -103,6 +106,17 @@ export default function SettingsPage() {
       }
     })();
   }, [supabase]);
+
+  useEffect(() => {
+    const setup = searchParams.get('setup');
+    if (!setup || loading) return;
+    const sectionId = setup === 'brand' ? 'section-branding' : setup === 'whatsapp' ? 'section-integrations' : null;
+    if (!sectionId) return;
+    const timer = setTimeout(() => {
+      document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchParams, loading]);
 
   const handleDisconnectWhatsApp = async () => {
     try {
@@ -386,9 +400,14 @@ export default function SettingsPage() {
         </GlassCard>
       )}
 
+      <SetupGuide />
+
       <form onSubmit={handleSave} className="space-y-6">
         <OrganizationDetailsSection organization={organization} setOrganization={setOrganization} updateBillingAddressField={updateBillingAddressField} />
-        <BrandingThemeSection organization={organization} setOrganization={setOrganization} />
+        <div id="section-branding">
+          <BrandingThemeSection organization={organization} setOrganization={setOrganization} />
+        </div>
+        <div id="section-integrations">
         <SettingsIntegrationsSection
           handleActivatePlaces={handleActivatePlaces}
           handleConnectTripAdvisor={handleConnectTripAdvisor}
@@ -414,6 +433,7 @@ export default function SettingsPage() {
           upiId={upiId}
           whatsAppProfile={whatsAppProfile}
         />
+        </div>
         <WorkflowRulesSection
           workflowRules={workflowRules}
           rulesSaving={rulesSaving}

@@ -31,6 +31,7 @@ import { useAnalytics } from "@/lib/analytics/events";
 import { PastItineraryCard } from "./PastItineraryCard";
 import { ItineraryFilterBar, matchesFilter } from "./ItineraryFilterBar";
 import { NeedsAttentionQueue } from "./NeedsAttentionQueue";
+import { SetupGuide } from "@/components/dashboard/SetupGuide";
 import { PlannerHero } from "./PlannerHero";
 import type { ClientComment, ClientPreferences } from "@/types/feedback";
 import type { ItineraryLike, ItineraryStage } from "./planner.types";
@@ -239,6 +240,10 @@ export default function PlannerPage() {
 
     return (
         <main className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50/50 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 pb-24">
+
+            <div className="mx-auto max-w-7xl px-4 pt-4">
+                <SetupGuide />
+            </div>
 
             {/* ═══ HERO + FORM — shown only when no result ═══ */}
             {!result && (

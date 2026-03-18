@@ -108,38 +108,51 @@ export function SetupChecklist() {
         </div>
       ) : (
         <div className="space-y-1">
-          {data.items.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-gray-50"
-            >
-              {item.completed ? (
-                <CheckCircle2 className="w-5 h-5 text-[#00d084] shrink-0" />
-              ) : (
-                <Circle className="w-5 h-5 text-gray-300 shrink-0" />
-              )}
-              <span className="text-gray-400 shrink-0">
-                {ICON_MAP[item.icon]}
-              </span>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {item.title}
-                </p>
-                <p className="text-xs text-gray-500 truncate">
-                  {item.description}
-                </p>
+          {data.items.map((item) => {
+            const isClickable = !item.completed && item.href !== '#';
+            const rowContent = (
+              <>
+                {item.completed ? (
+                  <CheckCircle2 className="w-5 h-5 text-[#00d084] shrink-0" />
+                ) : (
+                  <Circle className="w-5 h-5 text-gray-300 shrink-0" />
+                )}
+                <span className="text-gray-400 shrink-0">
+                  {ICON_MAP[item.icon]}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">
+                    {item.title}
+                  </p>
+                  <p className="text-xs text-gray-500 truncate">
+                    {item.description}
+                  </p>
+                </div>
+                {isClickable && (
+                  <span className="shrink-0 p-1 text-gray-400">
+                    <ArrowRight className="w-4 h-4" />
+                  </span>
+                )}
+              </>
+            );
+
+            return isClickable ? (
+              <Link
+                key={item.id}
+                href={item.href}
+                className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-gray-100 cursor-pointer"
+              >
+                {rowContent}
+              </Link>
+            ) : (
+              <div
+                key={item.id}
+                className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors"
+              >
+                {rowContent}
               </div>
-              {!item.completed && item.href !== '#' && (
-                <Link
-                  href={item.href}
-                  className="shrink-0 p-1 text-gray-400 hover:text-[#00d084] transition-colors"
-                  aria-label={`Go to ${item.title}`}
-                >
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
