@@ -50,8 +50,8 @@ export async function GET(request: Request): Promise<Response> {
           .maybeSingle(),
         adminClient
           .from("shared_itineraries")
-          .select("id", { count: "exact", head: true })
-          .eq("organization_id", organizationId),
+          .select("id, itineraries!inner(user_id)", { count: "exact", head: true })
+          .eq("itineraries.user_id", userId),
       ]);
 
     if (orgResult.error) {
