@@ -1,4 +1,4 @@
-import { Activity, History, MapPin, MessageSquare, Search } from 'lucide-react';
+import { History, MapPin, MessageSquare, Search } from 'lucide-react';
 import { GlassBadge } from '@/components/glass/GlassBadge';
 import { GlassButton } from '@/components/glass/GlassButton';
 import { GlassCard } from '@/components/glass/GlassCard';
@@ -21,8 +21,7 @@ function formatActivityTime(dateString: string) {
 
 export function AdminActivitySection({ loading, activities }: AdminActivitySectionProps) {
   return (
-    <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-      <div className="space-y-6 lg:col-span-2">
+    <div className="space-y-6">
         <div className="flex items-center justify-between px-2">
           <div className="flex items-center gap-2">
             <History className="h-5 w-5 text-secondary" />
@@ -108,73 +107,6 @@ export function AdminActivitySection({ loading, activities }: AdminActivitySecti
             </div>
           )}
         </div>
-      </div>
-
-      <div className="space-y-6">
-        <div className="mb-4 flex items-center gap-2 px-2">
-          <Activity className="h-5 w-5 text-emerald-500" />
-          <h2 className="text-xl font-serif tracking-tight text-secondary dark:text-white">System Status</h2>
-        </div>
-
-        <GlassCard padding="lg" className="divide-y divide-gray-100 border-gray-100">
-          <div className="space-y-4 pb-4">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                Database Node
-              </span>
-              <GlassBadge variant="success" className="text-[8px] font-black uppercase">
-                Online
-              </GlassBadge>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                Edge Workers
-              </span>
-              <GlassBadge variant="success" className="text-[8px] font-black uppercase">
-                Online
-              </GlassBadge>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                Notifications
-              </span>
-              <GlassBadge variant="warning" className="text-[8px] font-black uppercase">
-                Degraded
-              </GlassBadge>
-            </div>
-          </div>
-
-          <div className="pb-4 pt-4">
-            <h4 className="mb-4 text-[10px] font-black uppercase tracking-[0.2em] text-secondary dark:text-white">
-              System Load
-            </h4>
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <div className="flex items-center justify-between text-[9px] font-bold uppercase">
-                  <span className="text-text-muted">API Requests</span>
-                  <span className="text-secondary dark:text-white">84% Capacity</span>
-                </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
-                  <div className="h-full bg-primary" style={{ width: '84%' }} />
-                </div>
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center justify-between text-[9px] font-bold uppercase">
-                  <span className="text-text-muted">Background Jobs</span>
-                  <span className="text-secondary dark:text-white">31% Load</span>
-                </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
-                  <div className="h-full bg-violet-500" style={{ width: '31%' }} />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-4 text-center">
-            <p className="text-[10px] font-medium italic text-text-muted">Auto-refresh every 60 seconds</p>
-          </div>
-        </GlassCard>
-      </div>
     </div>
   );
 }

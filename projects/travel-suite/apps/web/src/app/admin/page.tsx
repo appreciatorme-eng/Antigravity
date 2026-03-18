@@ -29,19 +29,12 @@ export default function AdminDashboard() {
     topCustomers,
     topDestinations,
     loading,
-    health,
   } = useAdminDashboardData();
 
   return (
     <div className="space-y-10 pb-20">
       <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
         <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <div className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.2em] text-primary">
-              System Status: Operational
-            </div>
-            <div className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-          </div>
           <h1 className="text-5xl font-serif leading-none tracking-tight text-secondary dark:text-white">
             Dashboard
           </h1>
@@ -71,7 +64,6 @@ export default function AdminDashboard() {
       <AdminStatsGrid loading={loading} stats={stats} />
       <AdminAnalyticsSection
         loading={loading}
-        health={health}
         dateRange={dateRange}
         setDateRange={setDateRange}
         revenueSeries={revenueSeries}

@@ -4,8 +4,6 @@ import {
   Car,
   ChevronRight,
   Plus,
-  Server,
-  ShieldCheck,
   Sparkles,
   Store,
   TrendingUp,
@@ -14,15 +12,12 @@ import {
 } from 'lucide-react';
 import RevenueChart, { type RevenueChartPoint } from '@/components/analytics/RevenueChart';
 import { GlassCard } from '@/components/glass/GlassCard';
-import { GlassButton } from '@/components/glass/GlassButton';
 import { DateRangePicker } from '@/features/admin/dashboard/DateRangePicker';
 import type { AdminDateRangeSelection } from '@/lib/admin/date-range';
 import { ErrorSection } from '@/components/ui/ErrorSection';
-import type { HealthResponse } from './types';
 
 interface AdminAnalyticsSectionProps {
   loading: boolean;
-  health: HealthResponse | null;
   dateRange: AdminDateRangeSelection;
   setDateRange: Dispatch<SetStateAction<AdminDateRangeSelection>>;
   revenueSeries: RevenueChartPoint[];
@@ -78,7 +73,6 @@ const QUICK_ACTIONS = [
 
 export function AdminAnalyticsSection({
   loading,
-  health,
   dateRange,
   setDateRange,
   revenueSeries,
@@ -150,47 +144,6 @@ export function AdminAnalyticsSection({
           ))}
         </div>
 
-        <GlassCard padding="lg" className="relative overflow-hidden border-none bg-slate-900">
-          <div className="absolute -mr-16 -mt-16 h-32 w-32 rounded-full bg-primary/10 blur-3xl" />
-
-          <div className="relative z-10 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Server className="h-4 w-4 text-primary" />
-                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-white">System Health</h3>
-              </div>
-              <div className="flex items-center gap-1.5 rounded border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5">
-                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-                <span className="text-[8px] font-black uppercase text-emerald-500">Live</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <span className="block text-[9px] font-bold uppercase tracking-widest text-slate-400">
-                  Main Engine
-                </span>
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="h-3 w-3 text-emerald-500" />
-                  <span className="text-xs font-medium text-slate-200">Stable</span>
-                </div>
-              </div>
-              <div className="space-y-1">
-                <span className="block text-[9px] font-bold uppercase tracking-widest text-slate-400">
-                  API Latency
-                </span>
-                <div className="flex items-center gap-2">
-                  <Zap className="h-3 w-3 text-amber-500" />
-                  <span className="text-xs font-medium text-slate-200">{health?.duration_ms || 42}ms</span>
-                </div>
-              </div>
-            </div>
-
-            <GlassButton variant="primary" className="h-10 w-full rounded-xl border-none bg-white text-slate-900 hover:bg-slate-100">
-              <span className="text-[10px] font-black uppercase tracking-widest">Run Health Check</span>
-            </GlassButton>
-          </div>
-        </GlassCard>
       </div>
     </div>
   );
