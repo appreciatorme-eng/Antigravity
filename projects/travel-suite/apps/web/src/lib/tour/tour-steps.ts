@@ -166,9 +166,47 @@ export const SHARE_TOUR: TourConfig = {
   ],
 };
 
+/** Continuation tour for trip detail page (after clicking a trip from the share tour) */
+export const SHARE_DETAIL_TOUR: TourConfig = {
+  id: 'share-detail',
+  steps: [
+    {
+      element: '[data-tour="share-trip-btn"]',
+      popover: {
+        title: 'Share This Trip',
+        description:
+          'Click here to generate a shareable proposal link for your client.',
+        side: 'bottom',
+        align: 'center',
+      },
+    },
+    {
+      element: '[data-tour="notify-client-btn"]',
+      popover: {
+        title: 'Notify Your Client',
+        description:
+          'Send a WhatsApp or email notification to the client about this trip.',
+        side: 'bottom',
+        align: 'center',
+      },
+    },
+    {
+      element: '[data-tour="save-changes-btn"]',
+      popover: {
+        title: 'Save Changes',
+        description:
+          'Made any edits? Hit Save to keep everything in sync.',
+        side: 'bottom',
+        align: 'end',
+      },
+    },
+  ],
+};
+
 export const TOUR_MAP: Record<string, TourConfig> = {
   brand: BRAND_TOUR,
   itinerary: ITINERARY_TOUR,
   whatsapp: WHATSAPP_TOUR,
   share: SHARE_TOUR,
+  'share-detail': SHARE_DETAIL_TOUR,
 };

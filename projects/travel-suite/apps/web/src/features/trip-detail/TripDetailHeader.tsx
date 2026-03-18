@@ -152,6 +152,7 @@ export function TripDetailHeader({
         <GlassButton
           variant="outline"
           className="h-14 px-6 rounded-2xl hover:shadow-md"
+          data-tour="share-trip-btn"
         >
           <Share2 className="w-4 h-4" />
           Share Trip
@@ -169,6 +170,7 @@ export function TripDetailHeader({
           variant="outline"
           className="h-14 px-6 rounded-2xl hover:shadow-md border-amber-500 text-amber-600 hover:bg-amber-500 hover:text-white dark:border-amber-400 dark:text-amber-400"
           onClick={onNotify}
+          data-tour="notify-client-btn"
         >
           <Bell className="w-4 h-4" />
           Notify Client
@@ -179,6 +181,7 @@ export function TripDetailHeader({
           className="h-14 px-6 rounded-2xl hover:shadow-lg"
           onClick={onSave}
           loading={saving}
+          data-tour="save-changes-btn"
         >
           <Save className="w-4 h-4" />
           Save Changes
