@@ -27,6 +27,8 @@ interface TripDetailHeaderProps {
   onDuplicate: () => void;
   duplicating: boolean;
   onNotify: () => void;
+  onShare: () => void;
+  onOptimizeRoute: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -89,6 +91,8 @@ export function TripDetailHeader({
   onDuplicate,
   duplicating,
   onNotify,
+  onShare,
+  onOptimizeRoute,
 }: TripDetailHeaderProps) {
   const title =
     trip.itineraries?.trip_title || trip.destination || "Untitled Trip";
@@ -152,6 +156,7 @@ export function TripDetailHeader({
         <GlassButton
           variant="outline"
           className="h-14 px-6 rounded-2xl hover:shadow-md"
+          onClick={onShare}
           data-tour="share-trip-btn"
         >
           <Share2 className="w-4 h-4" />
@@ -161,6 +166,7 @@ export function TripDetailHeader({
         <GlassButton
           variant="outline"
           className="h-14 px-6 rounded-2xl hover:shadow-md"
+          onClick={onOptimizeRoute}
         >
           <Zap className="w-4 h-4" />
           AI Optimize Route
