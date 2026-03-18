@@ -342,7 +342,7 @@ export default function SettingsPage() {
     }
   };
 
-  if (loading || !organization) {
+  if (loading) {
     return (
       <div className="mx-auto max-w-4xl space-y-6">
         <div className="flex items-center gap-3">
@@ -355,6 +355,32 @@ export default function SettingsPage() {
           </div>
         </div>
         <GlassFormSkeleton />
+      </div>
+    );
+  }
+
+  if (!organization) {
+    return (
+      <div className="mx-auto max-w-4xl space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/30 bg-primary/20">
+            <Settings className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <span className="text-xs font-bold uppercase tracking-widest text-primary">Settings</span>
+            <h1 className="text-3xl font-serif text-secondary dark:text-white">Settings</h1>
+          </div>
+        </div>
+        <SetupGuide />
+        <GlassCard padding="lg">
+          <div className="text-center py-8">
+            <Settings className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+            <p className="text-sm font-medium text-gray-900">No organization found</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Complete onboarding to set up your organization, or refresh the page to try again.
+            </p>
+          </div>
+        </GlassCard>
       </div>
     );
   }
