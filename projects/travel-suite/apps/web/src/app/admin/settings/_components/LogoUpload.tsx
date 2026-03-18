@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Upload, X, Image as ImageIcon } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Upload, X, Image as ImageIcon, CheckCircle2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
 interface LogoUploadProps {
@@ -16,10 +17,14 @@ const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp'
 
 export function LogoUpload({ currentUrl, organizationId, onUploaded, onRemoved }: LogoUploadProps) {
   const [uploading, setUploading] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const isSetupMode = searchParams.get('setup') === 'brand';
 
   const handleFile = async (file: File) => {
     setError(null);
@@ -39,12 +44,13 @@ export function LogoUpload({ currentUrl, organizationId, onUploaded, onRemoved }
       const ext = file.name.split('.').pop() ?? 'png';
       const fileName = `${organizationId}/logos/logo-${Date.now()}.${ext}`;
 
+      let publicUrl: string | null = null;
+
       const { error: uploadError } = await supabase.storage
         .from('organization-assets')
         .upload(fileName, file, { upsert: true });
 
       if (uploadError) {
-        // Fallback: try social-media bucket
         const { error: fallbackError } = await supabase.storage
           .from('social-media')
           .upload(fileName, file, { upsert: true });
@@ -57,14 +63,40 @@ export function LogoUpload({ currentUrl, organizationId, onUploaded, onRemoved }
         const { data: fallbackData } = supabase.storage
           .from('social-media')
           .getPublicUrl(fileName);
-        onUploaded(fallbackData.publicUrl);
+        publicUrl = fallbackData.publicUrl;
+      } else {
+        const { data } = supabase.storage
+          .from('organization-assets')
+          .getPublicUrl(fileName);
+        publicUrl = data.publicUrl;
+      }
+
+      if (!publicUrl) {
+        setError('Upload failed. Please try again.');
         return;
       }
 
-      const { data } = supabase.storage
-        .from('organization-assets')
-        .getPublicUrl(fileName);
-      onUploaded(data.publicUrl);
+      // Auto-save logo_url to the organization
+      const { error: updateError } = await supabase
+        .from('organizations')
+        .update({ logo_url: publicUrl })
+        .eq('id', organizationId);
+
+      if (updateError) {
+        setError('Logo uploaded but failed to save. Click "Save Changes" to save manually.');
+        onUploaded(publicUrl);
+        return;
+      }
+
+      onUploaded(publicUrl);
+      setSaved(true);
+
+      // If arriving from setup checklist, redirect to dashboard after brief success state
+      if (isSetupMode) {
+        setTimeout(() => {
+          router.push('/admin');
+        }, 1500);
+      }
     } catch {
       setError('Upload failed. Please try again.');
     } finally {
@@ -90,14 +122,16 @@ export function LogoUpload({ currentUrl, organizationId, onUploaded, onRemoved }
       <label className="text-sm font-semibold text-secondary dark:text-white">Company Logo</label>
       <div
         className={`relative flex items-center gap-4 rounded-xl border-2 border-dashed p-4 transition-colors cursor-pointer ${
-          dragOver
+          saved
+            ? 'border-[#00d084] bg-[#00d084]/5'
+            : dragOver
             ? 'border-[#00d084] bg-[#00d084]/5'
             : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
         }`}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
-        onClick={() => inputRef.current?.click()}
+        onClick={() => !saved && inputRef.current?.click()}
       >
         {currentUrl ? (
           <div className="relative h-16 w-16 shrink-0 rounded-lg overflow-hidden bg-gray-100">
@@ -114,10 +148,18 @@ export function LogoUpload({ currentUrl, organizationId, onUploaded, onRemoved }
           </div>
         )}
         <div className="flex-1 min-w-0">
-          {uploading ? (
+          {saved ? (
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-[#00d084] animate-bounce" />
+              <p className="text-sm font-medium text-[#00d084]">Logo saved!</p>
+              {isSetupMode && (
+                <p className="text-xs text-gray-500">Returning to dashboard...</p>
+              )}
+            </div>
+          ) : uploading ? (
             <div className="flex items-center gap-2">
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#00d084]/30 border-t-[#00d084]" />
-              <p className="text-sm text-gray-600">Uploading...</p>
+              <p className="text-sm text-gray-600">Uploading & saving...</p>
             </div>
           ) : (
             <>
@@ -130,17 +172,17 @@ export function LogoUpload({ currentUrl, organizationId, onUploaded, onRemoved }
             </>
           )}
         </div>
-        <Upload className="h-5 w-5 text-gray-400 shrink-0" />
+        {!saved && <Upload className="h-5 w-5 text-gray-400 shrink-0" />}
         <input
           ref={inputRef}
           type="file"
           accept={ACCEPTED_TYPES.join(',')}
           className="hidden"
           onChange={handleChange}
-          disabled={uploading}
+          disabled={uploading || saved}
         />
       </div>
-      {currentUrl && (
+      {currentUrl && !saved && (
         <button
           type="button"
           onClick={(e) => {
