@@ -15,9 +15,13 @@ export const TOUR_START_EVENT = "tripbuilt:start-tour";
 const LS_KEY_COMPLETED = "tripbuilt:demo_tour_completed";
 const LS_KEY_ACTIVE = "tripbuilt:demo_tour_active";
 
+const LS_KEY_STEP = "tripbuilt:demo_tour_step";
+
 interface TourStep {
   /** Page path to navigate to */
   path: string;
+  /** Sidebar link href to highlight (when different from path, e.g. "/" vs "/admin") */
+  sidebarHref?: string;
   /** Sidebar label text to highlight */
   sidebarLabel: string;
   /** Title shown in tooltip */
@@ -30,7 +34,8 @@ interface TourStep {
 
 const STEPS: TourStep[] = [
   {
-    path: "/",
+    path: "/admin",
+    sidebarHref: "/",
     sidebarLabel: "Home",
     title: "Dashboard",
     description:
@@ -94,10 +99,20 @@ export default function DemoTour({ forceStart, onForceStartHandled }: DemoTourPr
   const [tooltipPos, setTooltipPos] = useState<{ top: number; left: number } | null>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
-  // SSR guard
+  // SSR guard + resume tour from localStorage (survives layout boundary crossings)
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- SSR-safe mount guard
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- SSR-safe mount guard + localStorage resume
     setMounted(true);
+    try {
+      const wasActive = localStorage.getItem(LS_KEY_ACTIVE) === "true";
+      const savedStep = parseInt(localStorage.getItem(LS_KEY_STEP) ?? "0", 10);
+      if (wasActive && !isNaN(savedStep) && savedStep >= 0 && savedStep < STEPS.length) {
+        setActive(true);
+        setCurrentStep(savedStep);
+      }
+    } catch {
+      // localStorage unavailable
+    }
   }, []);
 
   // Handle external force start (prop-based)
@@ -109,6 +124,7 @@ export default function DemoTour({ forceStart, onForceStartHandled }: DemoTourPr
       try {
         localStorage.removeItem(LS_KEY_COMPLETED);
         localStorage.setItem(LS_KEY_ACTIVE, "true");
+        localStorage.setItem(LS_KEY_STEP, "0");
       } catch {
         // localStorage unavailable
       }
@@ -124,6 +140,7 @@ export default function DemoTour({ forceStart, onForceStartHandled }: DemoTourPr
       try {
         localStorage.removeItem(LS_KEY_COMPLETED);
         localStorage.setItem(LS_KEY_ACTIVE, "true");
+        localStorage.setItem(LS_KEY_STEP, "0");
       } catch {
         // localStorage unavailable
       }
@@ -145,11 +162,12 @@ export default function DemoTour({ forceStart, onForceStartHandled }: DemoTourPr
     if (!step) return;
 
     const positionTooltip = () => {
-      // Find the sidebar link by matching href
+      // Find the sidebar link by matching href (sidebarHref overrides path for positioning)
+      const matchHref = step.sidebarHref ?? step.path;
       const links = document.querySelectorAll<HTMLAnchorElement>("aside a");
       let target: HTMLAnchorElement | null = null;
       for (const link of links) {
-        if (link.getAttribute("href") === step.path) {
+        if (link.getAttribute("href") === matchHref) {
           target = link;
           break;
         }
@@ -183,6 +201,7 @@ export default function DemoTour({ forceStart, onForceStartHandled }: DemoTourPr
     try {
       localStorage.setItem(LS_KEY_COMPLETED, "true");
       localStorage.removeItem(LS_KEY_ACTIVE);
+      localStorage.removeItem(LS_KEY_STEP);
     } catch {
       // localStorage unavailable
     }
@@ -192,6 +211,11 @@ export default function DemoTour({ forceStart, onForceStartHandled }: DemoTourPr
     (step: number) => {
       if (step < 0 || step >= STEPS.length) return;
       setCurrentStep(step);
+      try {
+        localStorage.setItem(LS_KEY_STEP, String(step));
+      } catch {
+        // localStorage unavailable
+      }
       router.push(STEPS[step].path);
     },
     [router]
@@ -211,11 +235,14 @@ export default function DemoTour({ forceStart, onForceStartHandled }: DemoTourPr
     }
   }, [currentStep, goToStep]);
 
-  // Navigate to the first step's page when tour starts
+  // Navigate to the current step's page if not already there
   useEffect(() => {
-    if (active && currentStep === 0 && pathname !== STEPS[0].path) {
-      router.push(STEPS[0].path);
-    }
+    if (!active) return;
+    const step = STEPS[currentStep];
+    if (!step) return;
+    // Skip navigation if already on the correct page
+    if (pathname === step.path || pathname?.startsWith(step.path + "/")) return;
+    router.push(step.path);
   }, [active, currentStep, pathname, router]);
 
   if (!active || !mounted) return null;
