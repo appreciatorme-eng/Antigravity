@@ -6,6 +6,7 @@ import { TOUR_MAP } from './tour-steps';
 import type { TourStepConfig } from './tour-types';
 
 const LS_KEY_SKIPPED = 'tripbuilt:tour_skipped';
+const SS_KEY_CONTINUE = 'tripbuilt:tour_continue';
 
 /** Poll for an element to appear in the DOM, resolving true if found */
 function waitForElement(
@@ -43,6 +44,14 @@ export function useGuidedTour() {
 
   const setupParam = searchParams.get('setup');
 
+  // Check for cross-page tour continuation (e.g. share tour → trip detail)
+  const continueTourId = typeof window !== 'undefined'
+    ? sessionStorage.getItem(SS_KEY_CONTINUE)
+    : null;
+
+  // Resolve which tour to run: URL param takes priority, then sessionStorage
+  const activeTourId = setupParam ?? continueTourId;
+
   const cleanup = useCallback(() => {
     if (driverRef.current) {
       driverRef.current.destroy();
@@ -51,16 +60,21 @@ export function useGuidedTour() {
   }, []);
 
   useEffect(() => {
-    if (!setupParam || startedRef.current) return;
+    if (!activeTourId || startedRef.current) return;
 
-    const tourConfig = TOUR_MAP[setupParam];
+    const tourConfig = TOUR_MAP[activeTourId];
     if (!tourConfig) return;
 
     // Check if user previously skipped this tour
     const skipped = JSON.parse(
       localStorage.getItem(LS_KEY_SKIPPED) || '{}',
     ) as Record<string, boolean>;
-    if (skipped[setupParam]) return;
+    if (skipped[activeTourId]) return;
+
+    // Clear the sessionStorage continuation flag once consumed
+    if (continueTourId) {
+      sessionStorage.removeItem(SS_KEY_CONTINUE);
+    }
 
     startedRef.current = true;
 
@@ -116,16 +130,30 @@ export function useGuidedTour() {
             ) as Record<string, boolean>;
             localStorage.setItem(
               LS_KEY_SKIPPED,
-              JSON.stringify({ ...existing, [setupParam]: true }),
+              JSON.stringify({ ...existing, [activeTourId]: true }),
             );
           }
 
           d.destroy();
 
-          // Only redirect back on completion (last step), not skip
+          // On completion, redirect back to dashboard
           if (isLastStep) {
             router.push('/admin');
           }
+        },
+        onNextClick: () => {
+          const activeIndex = d.getActiveIndex() ?? 0;
+          const isLastStep = activeIndex === validSteps.length - 1;
+
+          // For 'share' tour: last step tells user to click trip row
+          // Set continuation flag so trip detail page picks up the tour
+          if (activeTourId === 'share' && isLastStep) {
+            sessionStorage.setItem(SS_KEY_CONTINUE, 'share-detail');
+            d.destroy();
+            return;
+          }
+
+          d.moveNext();
         },
       });
 
@@ -146,7 +174,7 @@ export function useGuidedTour() {
       clearTimeout(timer);
       cleanup();
     };
-  }, [setupParam, router, cleanup]);
+  }, [activeTourId, continueTourId, router, cleanup]);
 
   // Cleanup on unmount
   useEffect(() => cleanup, [cleanup]);

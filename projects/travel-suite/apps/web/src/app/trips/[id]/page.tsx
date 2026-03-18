@@ -21,6 +21,7 @@ import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassInput, GlassTextarea } from "@/components/glass/GlassInput";
 import { GlassModal } from "@/components/glass/GlassModal";
 import { useToast } from "@/components/ui/toast";
+import { GuidedTour } from "@/components/tour/GuidedTour";
 
 // ---------------------------------------------------------------------------
 // Trip Detail Page (thin shell)
@@ -180,6 +181,7 @@ export default function TripDetailPage() {
 
   return (
     <div className="space-y-10 pb-20">
+      <GuidedTour />
       <TripDetailHeader
         trip={trip}
         onSave={handleSave}
