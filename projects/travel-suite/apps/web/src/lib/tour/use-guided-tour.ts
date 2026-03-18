@@ -65,11 +65,21 @@ export function useGuidedTour() {
     const tourConfig = TOUR_MAP[activeTourId];
     if (!tourConfig) return;
 
-    // Check if user previously skipped this tour
+    // Check if user previously skipped this tour.
+    // If ?setup= is in the URL, the user explicitly clicked from the setup wizard
+    // so always run the tour (clear the skip flag for this tour and any linked tours).
     const skipped = JSON.parse(
       localStorage.getItem(LS_KEY_SKIPPED) || '{}',
     ) as Record<string, boolean>;
-    if (skipped[activeTourId]) return;
+
+    if (setupParam) {
+      // User explicitly requested this tour — clear any previous skip
+      delete skipped[setupParam];
+      delete skipped['share-detail']; // Clear linked continuation tour too
+      localStorage.setItem(LS_KEY_SKIPPED, JSON.stringify(skipped));
+    } else if (skipped[activeTourId]) {
+      return;
+    }
 
     // Clear the sessionStorage continuation flag once consumed
     if (continueTourId) {
@@ -169,7 +179,7 @@ export function useGuidedTour() {
       clearTimeout(timer);
       cleanup();
     };
-  }, [activeTourId, continueTourId, router, cleanup]);
+  }, [activeTourId, setupParam, continueTourId, router, cleanup]);
 
   // Cleanup on unmount
   useEffect(() => cleanup, [cleanup]);
