@@ -11,7 +11,7 @@ interface BrandingThemeSectionProps {
 
 export function BrandingThemeSection({ organization, setOrganization }: BrandingThemeSectionProps) {
   return (
-    <GlassCard padding="none" rounded="2xl">
+    <GlassCard padding="none" rounded="2xl" data-tour="branding-section">
       <div className="flex items-center gap-3 border-b border-white/10 p-6">
         <Palette className="h-5 w-5 text-purple-500" />
         <h2 className="font-bold text-secondary dark:text-white">Branding & Theme</h2>
@@ -24,7 +24,7 @@ export function BrandingThemeSection({ organization, setOrganization }: Branding
           onRemoved={() => setOrganization((prev) => (prev ? { ...prev, logo_url: null } : null))}
         />
         <div className="flex items-center gap-6">
-          <div className="flex-1 space-y-2">
+          <div className="flex-1 space-y-2" data-tour="color-picker">
             <label className="text-sm font-semibold text-secondary dark:text-white">Primary Brand Color</label>
             <div className="flex gap-3">
               <input

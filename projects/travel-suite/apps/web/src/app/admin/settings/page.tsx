@@ -12,6 +12,7 @@ import { useToast } from "@/components/ui/toast";
 import { Badge } from "@/components/ui/badge";
 import { WhatsAppConnectModal } from "@/components/whatsapp/WhatsAppConnectModal";
 import { SetupGuide } from "@/components/dashboard/SetupGuide";
+import { GuidedTour } from '@/components/tour/GuidedTour';
 import { BrandingThemeSection } from "./_components/BrandingThemeSection";
 import { OrganizationDetailsSection } from "./_components/OrganizationDetailsSection";
 import { SettingsIntegrationsSection } from "./_components/SettingsIntegrationsSection";
@@ -391,6 +392,7 @@ export default function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
+      <GuidedTour />
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/30 bg-primary/20">
           <Settings className="h-5 w-5 text-primary" />

@@ -92,8 +92,8 @@ export function LogoUpload({ currentUrl, organizationId, onUploaded, onRemoved }
       onUploaded(publicUrl);
       setSaved(true);
 
-      // If arriving from setup checklist, redirect to dashboard after brief success state
-      if (isSetupMode) {
+      // If arriving from setup checklist and no guided tour is active, redirect to dashboard
+      if (isSetupMode && !document.querySelector('.driver-active-element')) {
         setTimeout(() => {
           router.push('/admin');
         }, 1500);
@@ -122,6 +122,7 @@ export function LogoUpload({ currentUrl, organizationId, onUploaded, onRemoved }
     <div className="space-y-2">
       <label className="text-sm font-semibold text-secondary dark:text-white">Company Logo</label>
       <div
+        data-tour="logo-upload"
         className={`relative flex items-center gap-4 rounded-xl border-2 border-dashed p-4 transition-colors cursor-pointer ${
           saved
             ? 'border-[#00d084] bg-[#00d084]/5'
