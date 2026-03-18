@@ -1,11 +1,10 @@
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 import {
-  Activity,
+  AlertCircle,
   MapPin,
   MessageSquare,
   TrendingUp,
-  Users,
 } from 'lucide-react';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { cn } from '@/lib/utils';
@@ -38,7 +37,7 @@ export function AdminStatsGrid({ loading, stats }: AdminStatsGridProps) {
 
   const statCards: StatCard[] = [
     {
-      label: 'Recovered Revenue',
+      label: "This Month's Revenue",
       value: loading ? '---' : compactCurrencyFormatter.format(stats.recoveredRevenue),
       trend: stats.paidLinks > 0 ? `${stats.paidLinks} paid links` : '',
       trendUp: true,
@@ -49,37 +48,15 @@ export function AdminStatsGrid({ loading, stats }: AdminStatsGridProps) {
       href: '/admin/invoices',
     },
     {
-      label: 'Active Operators',
-      value: stats.activeOperators,
-      trend: '',
-      trendUp: true,
-      icon: Activity,
-      color: 'text-indigo-600',
-      iconBg: 'bg-indigo-100/50',
-      description: 'Internal team members currently scoped to this org',
-      href: '/settings/team',
-    },
-    {
-      label: 'Client Directory',
-      value: stats.totalClients,
-      trend: '',
-      trendUp: true,
-      icon: Users,
-      color: 'text-violet-600',
-      iconBg: 'bg-violet-100/50',
-      description: 'Total registered clients',
-      href: '/clients',
-    },
-    {
-      label: 'Total Bookings',
-      value: stats.totalBookings,
+      label: 'Upcoming Departures',
+      value: stats.activeTrips,
       trend: '',
       trendUp: true,
       icon: MapPin,
       color: 'text-blue-600',
       iconBg: 'bg-blue-100/50',
-      description: 'Trips that reached a booking state in the last 12 months',
-      href: '/trips',
+      description: 'Trips departing in the next 48 hours',
+      href: '/admin/trips',
     },
     {
       label: 'Pending Proposals',
@@ -89,13 +66,24 @@ export function AdminStatsGrid({ loading, stats }: AdminStatsGridProps) {
       icon: MessageSquare,
       color: 'text-amber-600',
       iconBg: 'bg-amber-100/60',
-      description: 'Open proposals still awaiting a client decision',
+      description: 'Open proposals awaiting a client decision',
       href: '/proposals',
+    },
+    {
+      label: 'Overdue Payments',
+      value: stats.overduePayments,
+      trend: '',
+      trendUp: false,
+      icon: AlertCircle,
+      color: 'text-rose-600',
+      iconBg: 'bg-rose-100/50',
+      description: 'Invoices past their due date',
+      href: '/admin/invoices',
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-8 md:grid-cols-2 xl:grid-cols-5">
+    <div className="grid grid-cols-1 gap-8 md:grid-cols-2 xl:grid-cols-4">
       {statCards.map((stat) => (
         <Link key={stat.label} href={stat.href} className="group block">
           <GlassCard
@@ -136,9 +124,6 @@ export function AdminStatsGrid({ loading, stats }: AdminStatsGridProps) {
                 <div className="flex items-baseline gap-2">
                   <span className="text-4xl font-black tabular-nums text-secondary dark:text-white">
                     {stat.value}
-                  </span>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
-                    {typeof stat.value === 'number' ? 'Units' : 'INR'}
                   </span>
                 </div>
               </div>

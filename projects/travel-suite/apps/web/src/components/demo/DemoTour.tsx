@@ -8,7 +8,9 @@ import { useRouter, usePathname } from "next/navigation";
 import { createPortal } from "react-dom";
 import { X, ChevronRight, ChevronLeft, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useDemoMode } from "@/lib/demo/demo-mode-context";
+
+/** Custom event name used to trigger the tour from anywhere (e.g. sidebar button) */
+export const TOUR_START_EVENT = "tripbuilt:start-tour";
 
 const LS_KEY_COMPLETED = "tripbuilt:demo_tour_completed";
 const LS_KEY_ACTIVE = "tripbuilt:demo_tour_active";
@@ -84,35 +86,23 @@ interface DemoTourProps {
 }
 
 export default function DemoTour({ forceStart, onForceStartHandled }: DemoTourProps) {
-  const { isDemoMode, mounted } = useDemoMode();
   const router = useRouter();
   const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
   const [active, setActive] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [tooltipPos, setTooltipPos] = useState<{ top: number; left: number } | null>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
 
-  // Start tour on first demo enable (if not completed)
+  // SSR guard
   useEffect(() => {
-    if (!mounted || !isDemoMode) return;
-    try {
-      const completed = localStorage.getItem(LS_KEY_COMPLETED) === "true";
-      const wasActive = localStorage.getItem(LS_KEY_ACTIVE) === "true";
-      if (!completed && !wasActive) {
-        // Auto-start on first demo enable — needs useEffect for localStorage access
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- SSR-safe init from localStorage
-        setActive(true);
-        setCurrentStep(0);
-        localStorage.setItem(LS_KEY_ACTIVE, "true");
-      }
-    } catch {
-      // localStorage unavailable
-    }
-  }, [mounted, isDemoMode]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- SSR-safe mount guard
+    setMounted(true);
+  }, []);
 
-  // Handle external force start
+  // Handle external force start (prop-based)
   useEffect(() => {
-    if (forceStart && isDemoMode) {
+    if (forceStart) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- prop-driven activation
       setActive(true);
       setCurrentStep(0);
@@ -124,7 +114,23 @@ export default function DemoTour({ forceStart, onForceStartHandled }: DemoTourPr
       }
       onForceStartHandled?.();
     }
-  }, [forceStart, isDemoMode, onForceStartHandled]);
+  }, [forceStart, onForceStartHandled]);
+
+  // Listen for custom event trigger (from sidebar button, etc.)
+  useEffect(() => {
+    const handleStartEvent = () => {
+      setActive(true);
+      setCurrentStep(0);
+      try {
+        localStorage.removeItem(LS_KEY_COMPLETED);
+        localStorage.setItem(LS_KEY_ACTIVE, "true");
+      } catch {
+        // localStorage unavailable
+      }
+    };
+    window.addEventListener(TOUR_START_EVENT, handleStartEvent);
+    return () => window.removeEventListener(TOUR_START_EVENT, handleStartEvent);
+  }, []);
 
   // Position the tooltip next to the sidebar link
   useEffect(() => {
@@ -212,7 +218,7 @@ export default function DemoTour({ forceStart, onForceStartHandled }: DemoTourPr
     }
   }, [active, currentStep, pathname, router]);
 
-  if (!active || !isDemoMode || !mounted) return null;
+  if (!active || !mounted) return null;
 
   const step = STEPS[currentStep];
 

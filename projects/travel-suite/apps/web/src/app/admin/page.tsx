@@ -1,21 +1,18 @@
 /**
- * Admin Dashboard - Enterprise Overview
+ * Admin Dashboard - Operator Morning Briefing
  *
- * High-performance dashboard featuring real-time metrics,
- * performance analytics, and system health monitoring.
+ * Action-first dashboard: stats strip, urgent attention items,
+ * revenue trajectory, quick actions, and recent activity.
  */
 
 'use client';
 
 import { Calendar, Command } from 'lucide-react';
 import { GlassButton } from '@/components/glass/GlassButton';
-import { ErrorSection } from '@/components/ui/ErrorSection';
-import { FunnelWidget } from '@/features/admin/dashboard/FunnelWidget';
-import { TopCustomersWidget } from '@/features/admin/dashboard/TopCustomersWidget';
-import { TopDestinationsWidget } from '@/features/admin/dashboard/TopDestinationsWidget';
 import { AdminActivitySection } from './_components/AdminActivitySection';
 import { AdminAnalyticsSection } from './_components/AdminAnalyticsSection';
 import { AdminStatsGrid } from './_components/AdminStatsGrid';
+import { NeedsAttentionSection } from './_components/NeedsAttentionSection';
 import { useAdminDashboardData } from './_components/useAdminDashboardData';
 
 export default function AdminDashboard() {
@@ -25,9 +22,8 @@ export default function AdminDashboard() {
     revenueSeries,
     dateRange,
     setDateRange,
-    funnelStages,
-    topCustomers,
-    topDestinations,
+    attentionItems,
+    attentionTotalCount,
     loading,
   } = useAdminDashboardData();
 
@@ -62,23 +58,20 @@ export default function AdminDashboard() {
       </div>
 
       <AdminStatsGrid loading={loading} stats={stats} />
+
+      <NeedsAttentionSection
+        loading={loading}
+        items={attentionItems}
+        totalCount={attentionTotalCount}
+      />
+
       <AdminAnalyticsSection
         loading={loading}
         dateRange={dateRange}
         setDateRange={setDateRange}
         revenueSeries={revenueSeries}
       />
-      <div className="grid grid-cols-1 gap-8 xl:grid-cols-[1.25fr_0.9fr_0.85fr]">
-        <ErrorSection label="Admin conversion funnel">
-          <FunnelWidget stages={funnelStages} loading={loading} />
-        </ErrorSection>
-        <ErrorSection label="Top customers">
-          <TopCustomersWidget customers={topCustomers} loading={loading} />
-        </ErrorSection>
-        <ErrorSection label="Top destinations">
-          <TopDestinationsWidget destinations={topDestinations} loading={loading} />
-        </ErrorSection>
-      </div>
+
       <AdminActivitySection loading={loading} activities={activities} />
     </div>
   );

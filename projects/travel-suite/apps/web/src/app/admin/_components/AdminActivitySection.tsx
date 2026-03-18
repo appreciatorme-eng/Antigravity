@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { History, MapPin, MessageSquare, Search } from 'lucide-react';
 import { GlassBadge } from '@/components/glass/GlassBadge';
 import { GlassButton } from '@/components/glass/GlassButton';
@@ -29,12 +30,14 @@ export function AdminActivitySection({ loading, activities }: AdminActivitySecti
               Recent Activity
             </h2>
           </div>
-          <GlassButton
-            variant="ghost"
-            className="h-8 rounded-lg border-gray-100 text-[10px] font-black uppercase tracking-widest"
-          >
-            View All History
-          </GlassButton>
+          <Link href="/admin/operations">
+            <GlassButton
+              variant="ghost"
+              className="h-8 rounded-lg border-gray-100 text-[10px] font-black uppercase tracking-widest"
+            >
+              View All History
+            </GlassButton>
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 gap-3">

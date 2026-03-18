@@ -76,6 +76,7 @@ const routes = createCatchAllHandlers([
   ["notifications/schedule-followups", () => import("@/app/api/_handlers/notifications/schedule-followups/route")],
   ["notifications/send", () => import("@/app/api/_handlers/notifications/send/route")],
   ["onboarding/first-value", () => import("@/app/api/_handlers/onboarding/first-value/route")],
+  ["onboarding/load-sample-data", () => import("@/app/api/_handlers/onboarding/load-sample-data/route")],
   ["onboarding/setup", () => import("@/app/api/_handlers/onboarding/setup/route")],
   ["payments/create-order", () => import("@/app/api/_handlers/payments/create-order/route")],
   ["payments/links/:token", () => import("@/app/api/_handlers/payments/links/[token]/route")],

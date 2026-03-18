@@ -6,6 +6,7 @@ import TopBar from "./TopBar";
 import MobileNav from "./MobileNav";
 import CommandPalette from "./CommandPalette";
 import TourAssistantChat from "@/components/assistant/TourAssistantChat";
+import DemoTour from "@/components/demo/DemoTour";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -68,6 +69,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <CommandPalette />
             {/* Tour Operator AI Assistant — floating chat bubble (bottom-right, above MobileNav) */}
             <TourAssistantChat />
+            {/* App walkthrough tour — triggered via sidebar "Take a Tour" button */}
+            <DemoTour />
         </div>
     );
 }

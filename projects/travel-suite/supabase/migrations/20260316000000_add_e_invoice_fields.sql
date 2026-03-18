@@ -34,7 +34,9 @@ create table if not exists public.e_invoice_settings (
     organization_id uuid references public.organizations(id) on delete cascade not null,
     gstin text not null,
     irp_username text,
+    -- SECURITY: Application MUST encrypt values before storing (AES-256 via lib/security/encrypt.ts)
     irp_password_encrypted text,
+    -- SECURITY: Application MUST encrypt values before storing (AES-256 via lib/security/encrypt.ts)
     irp_api_key_encrypted text,
     threshold_amount numeric(12,2) not null default 0,
     auto_generate_enabled boolean not null default false,

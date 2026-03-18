@@ -1,13 +1,12 @@
 import type { Dispatch, SetStateAction } from 'react';
 import Link from 'next/link';
 import {
-  Car,
   ChevronRight,
+  MessageSquare,
   Plus,
   Sparkles,
   Store,
   TrendingUp,
-  Users,
   Zap,
 } from 'lucide-react';
 import RevenueChart, { type RevenueChartPoint } from '@/components/analytics/RevenueChart';
@@ -34,22 +33,13 @@ const QUICK_ACTIONS = [
     cardClass: 'hover:bg-primary/[0.03] group-hover:border-primary/30',
   },
   {
-    href: '/drivers',
-    label: 'Add Driver',
-    description: 'Add a new driver to your team.',
-    icon: Car,
+    href: '/admin/notifications',
+    label: 'Send Notification',
+    description: 'Send WhatsApp or push notification.',
+    icon: MessageSquare,
     iconWrap: 'bg-indigo-50',
     iconColor: 'text-indigo-600',
     cardClass: 'hover:bg-indigo-50/50 group-hover:border-indigo-200',
-  },
-  {
-    href: '/clients',
-    label: 'Manage Clients',
-    description: 'Manage existing client relationships.',
-    icon: Users,
-    iconWrap: 'bg-violet-50',
-    iconColor: 'text-violet-600',
-    cardClass: 'hover:bg-violet-50/50 group-hover:border-violet-200',
   },
   {
     href: '/admin/settings/marketplace',
@@ -62,7 +52,7 @@ const QUICK_ACTIONS = [
   },
   {
     href: '/admin/insights',
-    label: 'Insights Copilot',
+    label: 'AI Copilot',
     description: 'ROI, risk, and upsell recommendations.',
     icon: Sparkles,
     iconWrap: 'bg-emerald-50',

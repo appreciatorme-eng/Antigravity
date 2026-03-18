@@ -28,7 +28,9 @@ import {
     Gift,
     Receipt,
     Coins,
+    Compass,
 } from "lucide-react";
+import { TOUR_START_EVENT } from "@/components/demo/DemoTour";
 
 const SIDEBAR_PROFILE_SELECT = "full_name, role";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
@@ -418,8 +420,28 @@ export default function Sidebar({ className }: SidebarProps) {
                 </div>
             </div>
 
-            {/* ── Footer: User Profile ── */}
+            {/* ── Footer: Tour + User Profile ── */}
             <div className="p-3 border-t border-white/10 bg-slate-900/50 backdrop-blur-sm shrink-0">
+                {/* Take a Tour button */}
+                <button
+                    onClick={() => window.dispatchEvent(new CustomEvent(TOUR_START_EVENT))}
+                    className={cn(
+                        "flex items-center gap-3 px-3 py-2 rounded-xl transition-all w-full mb-2",
+                        "text-primary/80 hover:text-primary hover:bg-primary/10 group",
+                        isCollapsed ? "justify-center" : ""
+                    )}
+                >
+                    <Compass className="w-4 h-4 transition-transform group-hover:rotate-45" />
+                    {!isCollapsed && (
+                        <span className="text-xs font-medium">Take a Tour</span>
+                    )}
+                    {isCollapsed && (
+                        <div className="absolute left-[calc(100%+8px)] top-1/2 -translate-y-1/2 px-2 py-1 bg-slate-900 border border-slate-700/60 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-xl">
+                            Take a Tour
+                        </div>
+                    )}
+                </button>
+
                 {/* Collapse toggle (desktop) */}
                 <button
                     onClick={() => setIsCollapsed((c) => !c)}

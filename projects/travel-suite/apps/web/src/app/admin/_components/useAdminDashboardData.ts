@@ -1,10 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { RevenueChartPoint } from '@/components/analytics/RevenueChart';
-import type {
-  AdminDestinationMetric,
-  AdminFunnelStage,
-  AdminLtvCustomer,
-} from '@/features/admin/dashboard/types';
 import {
   createPresetRange,
   type AdminDateRangeSelection,
@@ -13,6 +8,8 @@ import { useDemoFetch } from '@/lib/demo/use-demo-fetch';
 import { createClient } from '@/lib/supabase/client';
 import type {
   ActivityItem,
+  AttentionItem,
+  CommandCenterPayload,
   DashboardStats,
   HealthResponse,
   RecentNotification,
@@ -20,28 +17,13 @@ import type {
   RevenueSnapshot,
 } from './types';
 
-interface MarketplaceStats {
-  views?: number;
-  inquiries?: number;
-  conversion_rate?: string;
-  recent_inquiries?: Array<{
-    id?: string;
-    created_at?: string;
-    organizations?: { name?: string };
-  }>;
-}
-
 const EMPTY_STATS: DashboardStats = {
-  activeOperators: 0,
-  totalClients: 0,
-  totalBookings: 0,
-  pendingProposals: 0,
   recoveredRevenue: 0,
   paidLinks: 0,
+  pendingProposals: 0,
   pendingNotifications: 0,
-  marketplaceViews: 0,
-  marketplaceInquiries: 0,
-  conversionRate: '0.0',
+  activeTrips: 0,
+  overduePayments: 0,
 };
 
 const EMPTY_HEALTH: HealthResponse = {
@@ -58,6 +40,105 @@ const EMPTY_HEALTH: HealthResponse = {
   },
 };
 
+function formatCompactCurrency(value: number): string {
+  if (value >= 100_000) {
+    return `₹${(value / 100_000).toFixed(1)}L`;
+  }
+  if (value >= 1_000) {
+    return `₹${(value / 1_000).toFixed(0)}K`;
+  }
+  return `₹${value.toLocaleString('en-IN')}`;
+}
+
+function deriveAttentionItems(payload: CommandCenterPayload): AttentionItem[] {
+  const items: AttentionItem[] = [];
+
+  for (const inv of payload.pending_payments) {
+    if (inv.is_overdue) {
+      items.push({
+        id: `pay-${inv.invoice_id}`,
+        type: 'payment',
+        title: `Invoice ${inv.invoice_number} overdue`,
+        subtitle: inv.client_name,
+        urgency: 'critical',
+        href: `/admin/invoices`,
+        actionLabel: 'View Invoice',
+        meta: `${formatCompactCurrency(inv.balance_amount)} overdue`,
+      });
+    }
+  }
+
+  for (const q of payload.expiring_quotes) {
+    if (typeof q.hours_to_expiry === 'number' && q.hours_to_expiry <= 24) {
+      items.push({
+        id: `quote-${q.proposal_id}`,
+        type: 'quote',
+        title: q.title,
+        subtitle: q.client_name,
+        urgency: 'critical',
+        href: `/proposals`,
+        actionLabel: 'Follow Up',
+        meta: `${q.hours_to_expiry}h left`,
+      });
+    }
+  }
+
+  for (const dep of payload.departures) {
+    const status = dep.status.toLowerCase();
+    const unconfirmed = status !== 'confirmed' && status !== 'active' && status !== 'in_progress';
+    if (unconfirmed && typeof dep.days_until_departure === 'number' && dep.days_until_departure <= 2) {
+      items.push({
+        id: `dep-${dep.trip_id}`,
+        type: 'departure',
+        title: `${dep.title} — ${dep.destination}`,
+        subtitle: dep.client_name,
+        urgency: 'critical',
+        href: `/admin/trips/${dep.trip_id}`,
+        actionLabel: 'View Trip',
+        meta: dep.days_until_departure <= 0 ? 'Today' : `D-${dep.days_until_departure}`,
+      });
+    }
+  }
+
+  for (const fu of payload.follow_ups) {
+    if (fu.overdue) {
+      items.push({
+        id: `fu-${fu.queue_id}`,
+        type: 'followup',
+        title: `Overdue: ${fu.notification_type.replace(/_/g, ' ')}`,
+        subtitle: fu.recipient || 'Unknown recipient',
+        urgency: 'warning',
+        href: '/admin/notifications',
+        actionLabel: 'Review',
+        meta: 'Overdue',
+      });
+    }
+  }
+
+  for (const q of payload.expiring_quotes) {
+    if (typeof q.hours_to_expiry === 'number' && q.hours_to_expiry > 24) {
+      items.push({
+        id: `quote-${q.proposal_id}`,
+        type: 'quote',
+        title: q.title,
+        subtitle: q.client_name,
+        urgency: 'warning',
+        href: `/proposals`,
+        actionLabel: 'Follow Up',
+        meta: `${Math.round(q.hours_to_expiry / 24)}d left`,
+      });
+    }
+  }
+
+  items.sort((a, b) => {
+    if (a.urgency === 'critical' && b.urgency !== 'critical') return -1;
+    if (a.urgency !== 'critical' && b.urgency === 'critical') return 1;
+    return 0;
+  });
+
+  return items;
+}
+
 export function useAdminDashboardData() {
   const supabase = useMemo(() => createClient(), []);
   const demoFetch = useDemoFetch();
@@ -65,9 +146,8 @@ export function useAdminDashboardData() {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [revenueSeries, setRevenueSeries] = useState<RevenueChartPoint[]>([]);
   const [dateRange, setDateRange] = useState<AdminDateRangeSelection>(() => createPresetRange('30d'));
-  const [funnelStages, setFunnelStages] = useState<AdminFunnelStage[]>([]);
-  const [topCustomers, setTopCustomers] = useState<AdminLtvCustomer[]>([]);
-  const [topDestinations, setTopDestinations] = useState<AdminDestinationMetric[]>([]);
+  const [attentionItems, setAttentionItems] = useState<AttentionItem[]>([]);
+  const [attentionTotalCount, setAttentionTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [health, setHealth] = useState<HealthResponse | null>(null);
 
@@ -92,20 +172,13 @@ export function useAdminDashboardData() {
           authHeaders.Authorization = `Bearer ${session.access_token}`;
         }
 
-        const [statsRes, revenueRes, marketRes, funnelRes, ltvRes, destinationsRes] = await Promise.allSettled([
+        const [statsRes, revenueRes, commandRes] = await Promise.allSettled([
           demoFetch('/api/admin/dashboard/stats', { headers: authHeaders }),
           demoFetch(`/api/admin/revenue?${rangeQuery}`, { headers: authHeaders }),
-          session?.access_token
-            ? fetch('/api/marketplace/stats', {
-                headers: { Authorization: `Bearer ${session.access_token}` },
-              })
-            : Promise.resolve(null),
-          demoFetch(`/api/admin/funnel?${rangeQuery}`, { headers: authHeaders }),
-          demoFetch(`/api/admin/ltv?${rangeQuery}`, { headers: authHeaders }),
-          demoFetch(`/api/admin/destinations?${rangeQuery}`, { headers: authHeaders }),
+          demoFetch('/api/admin/operations/command-center', { headers: authHeaders }),
         ]);
 
-        let dashStats = { totalClients: 0, pendingNotifications: 0 };
+        let dashStats = { pendingNotifications: 0 };
         if (statsRes.status === 'fulfilled' && statsRes.value.ok) {
           dashStats = await statsRes.value.json();
         }
@@ -125,50 +198,29 @@ export function useAdminDashboardData() {
           revenueSnapshot = payload?.data ?? payload;
         }
 
-        let marketStats: MarketplaceStats | null = null;
-        if (marketRes.status === 'fulfilled' && marketRes.value?.ok) {
-          marketStats = await marketRes.value.json();
-        } else if (marketRes.status === 'rejected') {
-          console.error('Marketplace stats fetch failed', marketRes.reason);
+        let commandData: CommandCenterPayload | null = null;
+        if (commandRes.status === 'fulfilled' && commandRes.value.ok) {
+          commandData = await commandRes.value.json();
         }
 
         setRevenueSeries(revenueSnapshot.series || []);
 
-        if (funnelRes.status === 'fulfilled' && funnelRes.value.ok) {
-          const payload = await funnelRes.value.json();
-          const funnelPayload = payload?.data ?? payload;
-          setFunnelStages(funnelPayload?.stages || []);
+        if (commandData) {
+          const derived = deriveAttentionItems(commandData);
+          setAttentionTotalCount(derived.length);
+          setAttentionItems(derived.slice(0, 5));
         } else {
-          setFunnelStages([]);
-        }
-
-        if (ltvRes.status === 'fulfilled' && ltvRes.value.ok) {
-          const payload = await ltvRes.value.json();
-          const ltvPayload = payload?.data ?? payload;
-          setTopCustomers(ltvPayload?.customers || []);
-        } else {
-          setTopCustomers([]);
-        }
-
-        if (destinationsRes.status === 'fulfilled' && destinationsRes.value.ok) {
-          const payload = await destinationsRes.value.json();
-          const destinationsPayload = payload?.data ?? payload;
-          setTopDestinations(destinationsPayload?.destinations || []);
-        } else {
-          setTopDestinations([]);
+          setAttentionItems([]);
+          setAttentionTotalCount(0);
         }
 
         setStats({
-          activeOperators: revenueSnapshot.totals.activeOperators || 0,
-          totalClients: dashStats.totalClients || 0,
-          totalBookings: revenueSnapshot.totals.totalBookings || 0,
-          pendingProposals: revenueSnapshot.totals.pendingProposals || 0,
           recoveredRevenue: revenueSnapshot.totals.recoveredRevenue || 0,
           paidLinks: revenueSnapshot.totals.paidLinks || 0,
+          pendingProposals: revenueSnapshot.totals.pendingProposals || 0,
           pendingNotifications: dashStats.pendingNotifications || 0,
-          marketplaceViews: marketStats?.views || 0,
-          marketplaceInquiries: marketStats?.inquiries || 0,
-          conversionRate: marketStats?.conversion_rate || '0.0',
+          activeTrips: commandData?.summary.departures_window || 0,
+          overduePayments: commandData?.summary.overdue_invoices || 0,
         });
 
         const [tripsRes, notifsRes] = await Promise.allSettled([
@@ -205,17 +257,9 @@ export function useAdminDashboardData() {
             timestamp: notif.sent_at || new Date().toISOString(),
             status: notif.status || 'sent',
           })),
-          ...(marketStats?.recent_inquiries || []).map((inq, index) => ({
-            id: inq.id || `inq-${inq.created_at || 'unknown'}-${inq.organizations?.name || 'partner'}-${index}`,
-            type: 'inquiry' as const,
-            title: 'Partner Inquiry',
-            description: `From ${inq.organizations?.name || 'Unknown Partner'}`,
-            timestamp: inq.created_at || new Date().toISOString(),
-            status: 'new',
-          })),
         ]
           .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-          .slice(0, 8);
+          .slice(0, 5);
 
         setActivities(formattedActivities);
       } catch (error) {
@@ -266,9 +310,8 @@ export function useAdminDashboardData() {
     revenueSeries,
     dateRange,
     setDateRange,
-    funnelStages,
-    topCustomers,
-    topDestinations,
+    attentionItems,
+    attentionTotalCount,
     loading,
     health,
   };
