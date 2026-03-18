@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import confetti from 'canvas-confetti';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -49,6 +50,7 @@ export function SetupChecklist() {
   const [dismissed, setDismissed] = useState(true);
   const [newlyCompleted, setNewlyCompleted] = useState<string | null>(null);
   const previousCompletedRef = useRef<Set<string>>(new Set());
+  const previousPctRef = useRef<number>(0);
   const pathname = usePathname();
   const mountedRef = useRef(false);
 
@@ -69,6 +71,13 @@ export function SetupChecklist() {
         for (const id of currentCompleted) {
           if (!previousCompletedRef.current.has(id)) {
             setNewlyCompleted(id);
+            confetti({
+              particleCount: 60,
+              spread: 55,
+              origin: { y: 0.7 },
+              colors: ['#00d084', '#00b37a', '#fbbf24', '#f59e0b'],
+              disableForReducedMotion: true,
+            });
             setTimeout(() => setNewlyCompleted(null), 3000);
             break;
           }
@@ -76,6 +85,36 @@ export function SetupChecklist() {
       }
 
       previousCompletedRef.current = currentCompleted;
+
+      // Big celebration when all steps complete
+      if (
+        newData.completionPct === 100 &&
+        previousPctRef.current < 100 &&
+        previousPctRef.current > 0
+      ) {
+        const end = Date.now() + 800;
+        const frame = () => {
+          confetti({
+            particleCount: 3,
+            angle: 60,
+            spread: 55,
+            origin: { x: 0 },
+            colors: ['#00d084', '#fbbf24'],
+            disableForReducedMotion: true,
+          });
+          confetti({
+            particleCount: 3,
+            angle: 120,
+            spread: 55,
+            origin: { x: 1 },
+            colors: ['#00d084', '#fbbf24'],
+            disableForReducedMotion: true,
+          });
+          if (Date.now() < end) requestAnimationFrame(frame);
+        };
+        frame();
+      }
+      previousPctRef.current = newData.completionPct;
 
       // Persist known completed items so we detect changes next time
       try {
