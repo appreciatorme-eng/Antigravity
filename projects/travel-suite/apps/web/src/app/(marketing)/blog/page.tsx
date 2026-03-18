@@ -24,7 +24,7 @@ const fallbackArticles: BlogPostSummary[] = [
     category: 'Proposals',
     tags: ['proposals'],
     cover_image:
-      'https://images.unsplash.com/photo-1454496522488-7a8e488e8606?q=80&w=800&auto=format&fit=crop',
+      '/unsplash-img/photo-1454496522488-7a8e488e8606?q=80&w=800&auto=format&fit=crop',
   },
   {
     id: 'fallback-2',
@@ -37,7 +37,7 @@ const fallbackArticles: BlogPostSummary[] = [
     category: 'Automation',
     tags: ['automation'],
     cover_image:
-      'https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=80&w=800&auto=format&fit=crop',
+      '/unsplash-img/photo-1611162617474-5b21e879e113?q=80&w=800&auto=format&fit=crop',
   },
   {
     id: 'fallback-3',
@@ -50,7 +50,7 @@ const fallbackArticles: BlogPostSummary[] = [
     category: 'Operations',
     tags: ['operations'],
     cover_image:
-      'https://images.unsplash.com/photo-1543286386-2e659306cd6c?q=80&w=800&auto=format&fit=crop',
+      '/unsplash-img/photo-1543286386-2e659306cd6c?q=80&w=800&auto=format&fit=crop',
   },
 ];
 

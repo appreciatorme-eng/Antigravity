@@ -13,7 +13,7 @@ const itineraryCards = [
     days: "7 Days / 6 Nights",
     rating: 4.9,
     image:
-      "https://images.unsplash.com/photo-1537996194471-e657df975ab4?q=80&w=600&auto=format&fit=crop",
+      "/unsplash-img/photo-1537996194471-e657df975ab4?q=80&w=600&auto=format&fit=crop",
     price: "₹1,25,000",
     tags: ["Couples", "Luxury", "Spa"],
     gradient: "from-[#A259FF]/80 to-[#00F0FF]/60",
@@ -25,7 +25,7 @@ const itineraryCards = [
     days: "5 Days / 4 Nights",
     rating: 4.8,
     image:
-      "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?q=80&w=600&auto=format&fit=crop",
+      "/unsplash-img/photo-1512453979798-5ea266f8880c?q=80&w=600&auto=format&fit=crop",
     price: "₹1,50,000",
     tags: ["Family", "Shopping", "Adventure"],
     gradient: "from-[#FF9933]/80 to-[#FF3366]/60",
@@ -37,7 +37,7 @@ const itineraryCards = [
     days: "8 Days / 7 Nights",
     rating: 4.9,
     image:
-      "https://images.unsplash.com/photo-1530122037265-a5f1f91d3b99?q=80&w=600&auto=format&fit=crop",
+      "/unsplash-img/photo-1530122037265-a5f1f91d3b99?q=80&w=600&auto=format&fit=crop",
     price: "₹2,10,000",
     tags: ["Adventure", "Snow", "Scenic"],
     gradient: "from-[#00F0FF]/80 to-[#A259FF]/60",
@@ -49,7 +49,7 @@ const itineraryCards = [
     days: "5 Days / 4 Nights",
     rating: 5.0,
     image:
-      "https://images.unsplash.com/photo-1514282401047-d79a71a590e8?q=80&w=600&auto=format&fit=crop",
+      "/unsplash-img/photo-1514282401047-d79a71a590e8?q=80&w=600&auto=format&fit=crop",
     price: "₹1,80,000",
     tags: ["Honeymoon", "Beach", "Overwater"],
     gradient: "from-[#00F0FF]/80 to-[#00FF88]/60",
@@ -61,7 +61,7 @@ const itineraryCards = [
     days: "6 Days / 5 Nights",
     rating: 4.7,
     image:
-      "https://images.unsplash.com/photo-1528181304800-259b08848526?q=80&w=600&auto=format&fit=crop",
+      "/unsplash-img/photo-1528181304800-259b08848526?q=80&w=600&auto=format&fit=crop",
     price: "₹85,000",
     tags: ["Budget", "Beach", "Nightlife"],
     gradient: "from-[#FF3366]/80 to-[#FF9933]/60",
@@ -124,6 +124,7 @@ function SwipeCard({
           fill
           sizes="(max-width: 768px) 80vw, 380px"
           className="object-cover"
+          unoptimized
         />
 
         {/* Gradient overlay */}

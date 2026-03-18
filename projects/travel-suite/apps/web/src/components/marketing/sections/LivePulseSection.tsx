@@ -188,7 +188,7 @@ function DemoVideo() {
           viewport={{ once: true }}
           className="relative aspect-video rounded-3xl border border-white/10 bg-gradient-to-br from-[#FF9933]/10 via-[#0A0A0A] to-[#00F0FF]/10 overflow-hidden flex items-center justify-center group cursor-pointer"
         >
-          <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=1600&auto=format&fit=crop')] bg-cover bg-center opacity-20 group-hover:opacity-30 transition-opacity"></div>
+          <div className="absolute inset-0 bg-[url('/unsplash-img/photo-1488646953014-85cb44e25828?q=80&w=1600&auto=format&fit=crop')] bg-cover bg-center opacity-20 group-hover:opacity-30 transition-opacity"></div>
           <div className="relative z-10 w-20 h-20 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center group-hover:scale-110 transition-transform shadow-[0_0_40px_rgba(255,255,255,0.2)]">
             <Play size={32} className="text-white ml-1" />
           </div>

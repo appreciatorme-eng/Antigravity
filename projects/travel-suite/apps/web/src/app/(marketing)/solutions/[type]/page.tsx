@@ -28,7 +28,7 @@ const solutionsData: Record<string, {
       "Automated magic link client portals",
       "Send professional GST-compliant invoices"
     ],
-    heroImg: "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?q=80&w=1600&auto=format&fit=crop"
+    heroImg: "/unsplash-img/photo-1542744173-8e7e53415bb0?q=80&w=1600&auto=format&fit=crop"
   },
   agency: {
     badge: "For Scaling Agencies",
@@ -40,7 +40,7 @@ const solutionsData: Record<string, {
       "Centralized client communication hub",
       "Markup standardisation across all agents"
     ],
-    heroImg: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?q=80&w=1600&auto=format&fit=crop"
+    heroImg: "/unsplash-img/photo-1522071820081-009f0129c71c?q=80&w=1600&auto=format&fit=crop"
   },
   tmc: {
     badge: "For Corporate TMCs",
@@ -52,7 +52,7 @@ const solutionsData: Record<string, {
       "Complex multi-level approval workflows",
       "API integrations with HRMS systems"
     ],
-    heroImg: "https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=1600&auto=format&fit=crop"
+    heroImg: "/unsplash-img/photo-1497366216548-37526070297c?q=80&w=1600&auto=format&fit=crop"
   }
 };
 

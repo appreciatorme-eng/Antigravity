@@ -49,11 +49,12 @@ function MagicLinkFeature() {
             {/* Header Image */}
             <div className="relative h-56 w-full shrink-0">
               <Image
-                src="https://images.unsplash.com/photo-1537996194471-e657df975ab4?q=80&w=800&auto=format&fit=crop"
+                src="/unsplash-img/photo-1537996194471-e657df975ab4?q=80&w=800&auto=format&fit=crop"
                 alt="Bali"
                 fill
                 sizes="260px"
                 className="object-cover"
+                unoptimized
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/20 to-transparent"></div>
               <div className="absolute bottom-4 left-4 right-4">
@@ -226,19 +227,19 @@ const addons = [
     title: "Airport Transfer",
     price: "\u20B92,500",
     image:
-      "https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?q=80&w=800&auto=format&fit=crop",
+      "/unsplash-img/photo-1449965408869-eaa3f722e40d?q=80&w=800&auto=format&fit=crop",
   },
   {
     title: "Candlelight Dinner",
     price: "\u20B98,000",
     image:
-      "https://images.unsplash.com/photo-1544148103-0773bf10d330?q=80&w=800&auto=format&fit=crop",
+      "/unsplash-img/photo-1544148103-0773bf10d330?q=80&w=800&auto=format&fit=crop",
   },
   {
     title: "Spa Package",
     price: "\u20B912,000",
     image:
-      "https://images.unsplash.com/photo-1540555700478-4be289fbecef?q=80&w=800&auto=format&fit=crop",
+      "/unsplash-img/photo-1540555700478-4be289fbecef?q=80&w=800&auto=format&fit=crop",
   },
 ];
 
@@ -284,6 +285,7 @@ function AddonsFeature() {
                     fill
                     sizes="320px"
                     className="object-cover transition-transform duration-700 group-hover:scale-110"
+                    unoptimized
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/50 to-transparent" />
                 </div>
@@ -346,11 +348,12 @@ function CRMFeature() {
           >
             <div className="relative w-12 h-12 rounded-full border-2 border-[#FF9933] overflow-hidden">
               <Image
-                src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&auto=format&fit=crop"
+                src="/unsplash-img/photo-1494790108377-be9c29b29330?q=80&w=200&auto=format&fit=crop"
                 alt="Priya"
                 width={48}
                 height={48}
                 className="object-cover"
+                unoptimized
               />
             </div>
             <div className="flex-1">

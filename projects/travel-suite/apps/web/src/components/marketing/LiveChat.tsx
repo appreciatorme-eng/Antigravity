@@ -44,7 +44,7 @@ export function LiveChat() {
                             <div className="flex items-center gap-3">
                                 <div className="relative">
                                     <div className="w-10 h-10 rounded-full bg-white/10 overflow-hidden">
-                                        <Image src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=200&auto=format&fit=crop" alt="Support" width={40} height={40} className="w-full h-full object-cover" />
+                                        <Image src="/unsplash-img/photo-1573496359142-b8d87734a5a2?q=80&w=200&auto=format&fit=crop" alt="Support" width={40} height={40} className="w-full h-full object-cover" unoptimized />
                                     </div>
                                     <div className="absolute bottom-0 right-0 w-3 h-3 bg-[#00FF88] border-2 border-[#0A0A0A] rounded-full"></div>
                                 </div>
@@ -62,7 +62,7 @@ export function LiveChat() {
                         <div className="p-4 h-[300px] overflow-y-auto bg-black/50 space-y-4">
                             <div className="flex gap-3">
                                 <div className="w-8 h-8 rounded-full bg-white/10 overflow-hidden shrink-0">
-                                    <Image src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=200&auto=format&fit=crop" alt="Support" width={32} height={32} className="w-full h-full object-cover" />
+                                    <Image src="/unsplash-img/photo-1573496359142-b8d87734a5a2?q=80&w=200&auto=format&fit=crop" alt="Support" width={32} height={32} className="w-full h-full object-cover" unoptimized />
                                 </div>
                                 <div className="bg-[#1A1A1A] p-3 rounded-2xl rounded-tl-none border border-white/5 text-sm text-gray-300">
                                     Hi there! 👋 How can we help you grow your travel business today?

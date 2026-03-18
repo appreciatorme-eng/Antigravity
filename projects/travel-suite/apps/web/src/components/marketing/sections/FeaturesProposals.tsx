@@ -39,11 +39,12 @@ function MagicLinkFeature() {
             {/* Header Image */}
             <div className="relative h-56 w-full shrink-0">
               <Image
-                src="https://images.unsplash.com/photo-1537996194471-e657df975ab4?q=80&w=800&auto=format&fit=crop"
+                src="/unsplash-img/photo-1537996194471-e657df975ab4?q=80&w=800&auto=format&fit=crop"
                 alt="Bali"
                 fill
                 sizes="260px"
                 className="object-cover"
+                unoptimized
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/20 to-transparent"></div>
               <div className="absolute bottom-4 left-4 right-4">

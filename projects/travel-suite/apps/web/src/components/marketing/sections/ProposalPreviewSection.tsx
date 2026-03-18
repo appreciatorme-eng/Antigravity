@@ -12,7 +12,7 @@ const proposalDays = [
     title: "Arrive in Bali",
     location: "Ubud, Bali",
     image:
-      "https://images.unsplash.com/photo-1537996194471-e657df975ab4?q=80&w=600&auto=format&fit=crop",
+      "/unsplash-img/photo-1537996194471-e657df975ab4?q=80&w=600&auto=format&fit=crop",
     description:
       "Private airport transfer to your luxury villa in Ubud. Welcome dinner at the resort.",
     tags: ["Transfer", "Dinner Included"],
@@ -22,7 +22,7 @@ const proposalDays = [
     title: "Sacred Temple Trail",
     location: "Tirta Empul & Tegallalang",
     image:
-      "https://images.unsplash.com/photo-1555400038-63f5ba517a47?q=80&w=600&auto=format&fit=crop",
+      "/unsplash-img/photo-1555400038-63f5ba517a47?q=80&w=600&auto=format&fit=crop",
     description:
       "Full-day guided tour of sacred water temples and the iconic rice terraces.",
     tags: ["Guided Tour", "Cultural"],
@@ -32,7 +32,7 @@ const proposalDays = [
     title: "Nusa Penida Island",
     location: "Nusa Penida",
     image:
-      "https://images.unsplash.com/photo-1544551763-46a013bb70d5?q=80&w=600&auto=format&fit=crop",
+      "/unsplash-img/photo-1544551763-46a013bb70d5?q=80&w=600&auto=format&fit=crop",
     description:
       "Speed boat to Nusa Penida. Snorkeling with manta rays and cliff-top photo spots.",
     tags: ["Adventure", "Snorkeling"],
@@ -214,6 +214,7 @@ export function ProposalPreviewSection() {
                         fill
                         sizes="(max-width: 768px) 100vw, 512px"
                         className="object-cover"
+                        unoptimized
                       />
                     </motion.div>
                   </motion.div>
