@@ -250,10 +250,11 @@ function ensureLeafletCSS() {
         }
         .leaflet-tile {
             filter: none !important;
-            visibility: visible !important;
         }
         /* Critical: Override Tailwind preflight img { max-width: 100%; height: auto; }
-           which breaks tile sizing — each 256x256 tile must render at full size */
+           which breaks tile sizing — each 256x256 tile must render at full size.
+           Also override mix-blend-mode: plus-lighter from Leaflet 1.9+ which makes
+           tiles invisible on dark backgrounds. */
         .leaflet-container img.leaflet-tile,
         .leaflet-tile-pane img,
         .leaflet-container .leaflet-tile {
@@ -263,6 +264,11 @@ function ensureLeafletCSS() {
             height: 256px !important;
             padding: 0 !important;
             margin: 0 !important;
+            mix-blend-mode: normal !important;
+        }
+        /* Tiles start hidden, become visible when loaded — don't force visibility */
+        .leaflet-tile-loaded {
+            visibility: visible !important;
         }
         .leaflet-tile-container { pointer-events: none; }
         .leaflet-control-container .leaflet-control-zoom { border-radius: 8px; border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
