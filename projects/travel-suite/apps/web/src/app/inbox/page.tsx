@@ -14,6 +14,7 @@ import type { WhatsAppTemplate } from '@/lib/whatsapp/india-templates';
 import { useNavCounts } from '@/components/layout/useNavCounts';
 import { BroadcastTab } from './BroadcastTab';
 import { TemplatesListView } from './TemplatesListView';
+import { GuidedTour } from '@/components/tour/GuidedTour';
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
@@ -46,6 +47,7 @@ export default function InboxPage() {
       className="flex flex-col min-h-[100dvh] overflow-hidden"
       style={{ background: 'linear-gradient(160deg, #0a1628 0%, #0d1f38 100%)' }}
     >
+      <GuidedTour />
       {/* ── Page Header ──────────────────────────────────────────────────── */}
       <div
         className="shrink-0 px-6 py-4 flex items-center justify-between border-b border-white/10"
@@ -92,6 +94,7 @@ export default function InboxPage() {
       <div
         className="shrink-0 flex gap-1 px-6 py-2 border-b border-white/10"
         style={{ background: 'rgba(10,22,40,0.6)' }}
+        data-tour="inbox-tabs"
       >
         {PAGE_TABS.map(({ key, label, icon }) => (
           <button
@@ -131,6 +134,7 @@ export default function InboxPage() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
               className="flex-1 overflow-hidden"
+              data-tour="inbox-messages"
             >
               <UnifiedInbox
                 pendingTemplate={pendingTemplate}
@@ -147,6 +151,7 @@ export default function InboxPage() {
               exit={{ opacity: 0, y: 8 }}
               transition={{ duration: 0.2 }}
               className="flex-1 overflow-hidden"
+              data-tour="inbox-automations"
             >
               <AutomationRules />
             </motion.div>

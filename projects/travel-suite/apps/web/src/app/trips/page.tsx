@@ -129,6 +129,7 @@ export default function TripsPage() {
                     variant="primary"
                     onClick={() => setIsCreateModalOpen(true)}
                     className="h-14 px-8 rounded-2xl shadow-xl shadow-primary/20 group"
+                    data-tour="create-trip-btn"
                 >
                     <Plus className="w-5 h-5 mr-3 transition-transform group-hover:rotate-90" />
                     <span className="text-xs font-black uppercase tracking-widest">Create New Trip</span>
@@ -136,7 +137,9 @@ export default function TripsPage() {
             </div>
 
             {/* KPI Stats */}
-            <TripKPIStats trips={trips} loading={loading} onDrillThrough={handleDrillThrough} />
+            <div data-tour="trip-kpi-stats">
+                <TripKPIStats trips={trips} loading={loading} onDrillThrough={handleDrillThrough} />
+            </div>
 
             {/* Drill-Through Banner */}
             {activeDrill && (
@@ -160,7 +163,7 @@ export default function TripsPage() {
             </div>
 
             {/* Command Bar */}
-            <div className="flex flex-col lg:flex-row gap-4 items-center">
+            <div className="flex flex-col lg:flex-row gap-4 items-center" data-tour="trip-search">
                 <GlassCard padding="none" className="flex-1 w-full overflow-hidden border-gray-100 dark:border-slate-800 shadow-sm">
                     <div className="flex items-center px-6 py-1">
                         <Search className="w-5 h-5 text-text-muted mr-4" />

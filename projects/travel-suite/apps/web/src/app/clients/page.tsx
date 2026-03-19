@@ -24,6 +24,7 @@ import { useClientPipeline } from "./hooks/useClientPipeline";
 import { useClientForm } from "./hooks/useClientForm";
 import { ClientKanbanBoard } from "./components/ClientKanbanBoard";
 import { ClientFormModal } from "./components/ClientFormModal";
+import { GuidedTour } from '@/components/tour/GuidedTour';
 
 export default function ClientsPage() {
     const pipeline = useClientPipeline();
@@ -70,6 +71,8 @@ export default function ClientsPage() {
 
     return (
         <div className="space-y-8 pb-20">
+            <GuidedTour />
+
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div className="space-y-2">
@@ -100,6 +103,7 @@ export default function ClientsPage() {
                         onClick={() => form.setModalOpen(true)}
                         variant="primary"
                         className="h-11 px-6 rounded-xl shadow-lg shadow-primary/20 group"
+                        data-tour="create-client-btn"
                     >
                         <Plus className="w-4 h-4 mr-2 transition-transform group-hover:rotate-90" />
                         <span className="text-xs font-black uppercase tracking-widest">Add Client</span>
@@ -108,7 +112,7 @@ export default function ClientsPage() {
             </div>
 
             {/* Stats Bar */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4" data-tour="client-stats">
                 {statsCards.map((stat) => (
                     <GlassCard key={stat.label} padding="lg" className={cn("group border transition-all duration-300 hover:shadow-lg", stat.border)}>
                         <div className="flex items-start justify-between">
@@ -155,6 +159,7 @@ export default function ClientsPage() {
             )}
 
             {/* Pipeline Kanban */}
+            <div data-tour="client-kanban">
             <ClientKanbanBoard
                 clientsByStage={pipeline.clientsByStage}
                 searchTerm={pipeline.searchTerm}
@@ -163,6 +168,7 @@ export default function ClientsPage() {
                 onLifecycleStageChange={pipeline.handleLifecycleStageChange}
                 onEditClient={form.handleEditClient}
             />
+            </div>
 
             {/* Add/Edit Client Modal */}
             <ClientFormModal

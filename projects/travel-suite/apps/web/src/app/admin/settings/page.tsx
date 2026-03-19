@@ -435,7 +435,9 @@ export default function SettingsPage() {
       <SetupGuide />
 
       <form onSubmit={handleSave} className="space-y-6">
-        <OrganizationDetailsSection organization={organization} setOrganization={setOrganization} updateBillingAddressField={updateBillingAddressField} />
+        <div data-tour="org-details">
+          <OrganizationDetailsSection organization={organization} setOrganization={setOrganization} updateBillingAddressField={updateBillingAddressField} />
+        </div>
         <div id="section-branding">
           <BrandingThemeSection organization={organization} setOrganization={setOrganization} />
         </div>
