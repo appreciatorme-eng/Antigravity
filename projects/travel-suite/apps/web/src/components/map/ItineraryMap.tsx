@@ -248,7 +248,22 @@ function ensureLeafletCSS() {
         .leaflet-tile, .leaflet-marker-icon, .leaflet-marker-shadow {
             -webkit-user-select: none; user-select: none; -webkit-user-drag: none;
         }
-        .leaflet-tile { filter: none !important; visibility: visible !important; }
+        .leaflet-tile {
+            filter: none !important;
+            visibility: visible !important;
+        }
+        /* Critical: Override Tailwind preflight img { max-width: 100%; height: auto; }
+           which breaks tile sizing — each 256x256 tile must render at full size */
+        .leaflet-container img.leaflet-tile,
+        .leaflet-tile-pane img,
+        .leaflet-container .leaflet-tile {
+            max-width: none !important;
+            max-height: none !important;
+            width: 256px !important;
+            height: 256px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
         .leaflet-tile-container { pointer-events: none; }
         .leaflet-control-container .leaflet-control-zoom { border-radius: 8px; border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
         .leaflet-control-zoom a { width: 32px; height: 32px; line-height: 32px; }

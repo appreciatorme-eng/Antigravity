@@ -156,6 +156,46 @@ async function buildFallbackItinerary(prompt: string, days: number) {
 }
 
 /**
+ * Validate that a cached itinerary matches the requested destination.
+ * Returns false if the destination doesn't match (prevents serving wrong results).
+ */
+function validateCachedDestination(
+    cached: Record<string, unknown>,
+    requestedDestination: string,
+): boolean {
+    const cachedDest = (typeof cached.destination === 'string'
+        ? cached.destination : '').toLowerCase().trim();
+    const requested = requestedDestination.toLowerCase().trim();
+    if (!requested || !cachedDest) return false;
+    return cachedDest.includes(requested) || requested.includes(cachedDest);
+}
+
+/**
+ * Ensure a cached itinerary has activity images populated.
+ * Runs populateItineraryImages() if any day has activities without images.
+ */
+async function ensureCachedImages(
+    itinerary: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+    const days = Array.isArray(itinerary.days) ? itinerary.days as Array<{ activities?: Array<Record<string, unknown>> }> : [];
+    const hasImages = days.some((day) =>
+        (Array.isArray(day.activities) ? day.activities : []).some(
+            (a: Record<string, unknown>) => !!a.image
+        )
+    );
+    if (hasImages) return itinerary;
+
+    try {
+        const withImages = await populateItineraryImages(
+            itinerary as unknown as Parameters<typeof populateItineraryImages>[0]
+        );
+        return { ...itinerary, ...withImages };
+    } catch {
+        return itinerary; // Non-blocking: return original if image fetch fails
+    }
+}
+
+/**
  * Geocode all activity locations in an itinerary
  * Adds accurate coordinates to activities that have locations but no/invalid coordinates
  */
@@ -286,26 +326,15 @@ async function handleGenerateItineraryPost(req: NextRequest) {
                 })
             );
 
-            // Verify the cached itinerary actually matches the requested destination
-            const cachedDest = (typeof cachedItinerary.destination === 'string'
-                ? cachedItinerary.destination : '').toLowerCase().trim();
-            const requestedDest = destination.toLowerCase().trim();
-            const destinationMatch = requestedDest.length > 0 && cachedDest.length > 0 &&
-                (cachedDest.includes(requestedDest) || requestedDest.includes(cachedDest));
+            const destinationMatch = validateCachedDestination(
+                cachedItinerary as unknown as Record<string, unknown>, destination
+            );
 
             if (!isFallback && hasValidCoordinates && destinationMatch) {
-                // Ensure cached itineraries have activity images
-                const hasImages = cachedDays.some((day) =>
-                    (Array.isArray(day.activities) ? day.activities : []).some(
-                        (a) => !!(a as unknown as { image?: string }).image
-                    )
+                const withImages = await ensureCachedImages(
+                    cachedItinerary as unknown as Record<string, unknown>
                 );
-                if (!hasImages) {
-                    const withImages = await populateItineraryImages(
-                        cachedItinerary as unknown as Parameters<typeof populateItineraryImages>[0]
-                    );
-                    Object.assign(cachedItinerary, withImages);
-                }
+                Object.assign(cachedItinerary, withImages);
 
                 void trackOrgAiUsage(user.id, "cache_hit", 0);
                 void trackSharedCacheSourceEvent({
@@ -333,20 +362,26 @@ async function handleGenerateItineraryPost(req: NextRequest) {
                 redisStore = Redis.fromEnv();
                 const cachedRedis = await redisStore.get(redisCacheKey);
                 if (cachedRedis) {
-                    void trackOrgAiUsage(user.id, "cache_hit", 0);
-                    void trackSharedCacheSourceEvent({
-                        eventType: "hit",
-                        cacheSource: "redis_exact",
-                        organizationId,
-                        destinationKey: destination.toLowerCase(),
-                        durationBucket: days <= 3 ? "1-3" : days <= 6 ? "4-6" : days <= 10 ? "7-10" : "11-14",
-                    });
-                    const redisPayload =
-                        typeof cachedRedis === 'string' ? JSON.parse(cachedRedis) : cachedRedis;
-                    return NextResponse.json({
-                        ...(redisPayload as Record<string, unknown>),
-                        cache_source: "redis_exact",
-                    });
+                    const redisPayload = (
+                        typeof cachedRedis === 'string' ? JSON.parse(cachedRedis) : cachedRedis
+                    ) as Record<string, unknown>;
+
+                    // Validate destination matches before returning cached result
+                    if (validateCachedDestination(redisPayload, destination)) {
+                        const withImages = await ensureCachedImages(redisPayload);
+                        void trackOrgAiUsage(user.id, "cache_hit", 0);
+                        void trackSharedCacheSourceEvent({
+                            eventType: "hit",
+                            cacheSource: "redis_exact",
+                            organizationId,
+                            destinationKey: destination.toLowerCase(),
+                            durationBucket: days <= 3 ? "1-3" : days <= 6 ? "4-6" : days <= 10 ? "7-10" : "11-14",
+                        });
+                        return NextResponse.json({
+                            ...withImages,
+                            cache_source: "redis_exact",
+                        });
+                    }
                 }
             }
         } catch {
@@ -356,12 +391,16 @@ async function handleGenerateItineraryPost(req: NextRequest) {
         try {
             const sharedMatch = await getSharedCachedItinerary(sharedCacheLookup);
             if (sharedMatch?.itinerary) {
-                void trackOrgAiUsage(user.id, "cache_hit", 0);
-                return NextResponse.json({
-                    ...(sharedMatch.itinerary as Record<string, unknown>),
-                    cache_source: sharedMatch.source,
-                    shared_cache_id: sharedMatch.cacheId,
-                });
+                const sharedPayload = sharedMatch.itinerary as Record<string, unknown>;
+                if (validateCachedDestination(sharedPayload, destination)) {
+                    const withImages = await ensureCachedImages(sharedPayload);
+                    void trackOrgAiUsage(user.id, "cache_hit", 0);
+                    return NextResponse.json({
+                        ...withImages,
+                        cache_source: sharedMatch.source,
+                        shared_cache_id: sharedMatch.cacheId,
+                    });
+                }
             }
         } catch (e) {
             logError('[TIER 0.75: SHARED CACHE ERROR]', e);
@@ -370,18 +409,22 @@ async function handleGenerateItineraryPost(req: NextRequest) {
         try {
             const semanticMatch = await getSemanticMatch(prompt, destination, days);
             if (semanticMatch) {
-                void trackOrgAiUsage(user.id, "cache_hit", 0);
-                void trackSharedCacheSourceEvent({
-                    eventType: "hit",
-                    cacheSource: "semantic",
-                    organizationId,
-                    destinationKey: destination.toLowerCase(),
-                    durationBucket: days <= 3 ? "1-3" : days <= 6 ? "4-6" : days <= 10 ? "7-10" : "11-14",
-                });
-                return NextResponse.json({
-                    ...(semanticMatch as Record<string, unknown>),
-                    cache_source: "semantic",
-                });
+                const semanticPayload = semanticMatch as Record<string, unknown>;
+                if (validateCachedDestination(semanticPayload, destination)) {
+                    const withImages = await ensureCachedImages(semanticPayload);
+                    void trackOrgAiUsage(user.id, "cache_hit", 0);
+                    void trackSharedCacheSourceEvent({
+                        eventType: "hit",
+                        cacheSource: "semantic",
+                        organizationId,
+                        destinationKey: destination.toLowerCase(),
+                        durationBucket: days <= 3 ? "1-3" : days <= 6 ? "4-6" : days <= 10 ? "7-10" : "11-14",
+                    });
+                    return NextResponse.json({
+                        ...withImages,
+                        cache_source: "semantic",
+                    });
+                }
             }
         } catch (e) {
             logError('[TIER 0.5: SEMANTIC CACHE ERROR]', e);
