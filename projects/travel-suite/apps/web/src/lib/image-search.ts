@@ -19,7 +19,7 @@ interface ItineraryForImages {
 }
 
 // Curated scenic fallback images — expanded to 20 for better hash distribution
-const LUXURY_FALLBACKS = [
+export const LUXURY_FALLBACKS = [
     "/unsplash-img/photo-1542314831-c6a4d1409322?q=80&w=2560&auto=format&fit=crop", // Luxury Resort pool
     "/unsplash-img/photo-1510798831971-661eb04b3739?q=80&w=2560&auto=format&fit=crop", // Sunset resort
     "/unsplash-img/photo-1507525428034-b723cf961d3e?q=80&w=2560&auto=format&fit=crop", // Pristine beach
@@ -46,7 +46,7 @@ const LUXURY_FALLBACKS = [
  * Deterministically pick a fallback using djb2 hash (character codes)
  * to distribute evenly — avoids collisions from the old length-only approach.
  */
-function getDeterministicFallback(title: string): string {
+export function getDeterministicFallback(title: string): string {
     let hash = 5381;
     for (let i = 0; i < title.length; i++) {
         hash = ((hash << 5) + hash + title.charCodeAt(i)) | 0;
