@@ -383,7 +383,8 @@ async function handleGenerateItineraryPost(req: NextRequest) {
                     const geocodedItinerary = await geocodeItineraryActivities(itinerary as unknown as ItineraryLike);
 
                     // POPULATE AMAZING IMAGES FOR PREMIUM TEMPLATES
-                    await populateItineraryImages(geocodedItinerary as unknown as Parameters<typeof populateItineraryImages>[0]);
+                    const withImages = await populateItineraryImages(geocodedItinerary as unknown as Parameters<typeof populateItineraryImages>[0]);
+                    Object.assign(geocodedItinerary, withImages);
 
                     // Extract cache params for consistency
                     const cacheParams = extractCacheParams(prompt, geocodedItinerary);
@@ -686,7 +687,8 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
         const geocodedItinerary = await geocodeItineraryActivities(itinerary);
 
         // POPULATE AMAZING IMAGES FOR PREMIUM TEMPLATES
-        await populateItineraryImages(geocodedItinerary as unknown as Parameters<typeof populateItineraryImages>[0]);
+        const withImages = await populateItineraryImages(geocodedItinerary as unknown as Parameters<typeof populateItineraryImages>[0]);
+        Object.assign(geocodedItinerary, withImages);
 
         // CACHE SAVE - Only cache AI-generated itineraries (not fallbacks)
         const isFallbackItinerary = typeof geocodedItinerary.summary === 'string' &&
