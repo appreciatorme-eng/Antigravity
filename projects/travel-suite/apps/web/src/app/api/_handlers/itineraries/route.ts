@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     // Fetch itineraries — select only columns guaranteed to exist
     let itinQuery = supabase
       .from("itineraries")
-      .select("id, trip_title, destination, duration_days, created_at, budget, interests, summary, client_id, template_id")
+      .select("id, trip_title, destination, duration_days, created_at, budget, interests, summary, client_id, template_id, raw_data")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
     if (cursor) {
@@ -132,8 +132,26 @@ export async function GET(request: NextRequest) {
       const id = itin.id as string;
       const clientId = itin.client_id as string | null;
       const share = shareMap[id];
+
+      // Extract first activity image from raw_data for tile hero
+      let heroImage: string | null = null;
+      const rawData = itin.raw_data as { days?: Array<{ activities?: Array<{ image?: string }> }> } | null;
+      if (rawData?.days) {
+        for (const day of rawData.days) {
+          for (const act of day.activities ?? []) {
+            if (act.image) { heroImage = act.image; break; }
+          }
+          if (heroImage) break;
+        }
+      }
+
+      // Strip raw_data from response (too large for list view)
+      const { raw_data: _rawData, ...itinWithoutRaw } = itin;
+      void _rawData;
+
       return {
-        ...itin,
+        ...itinWithoutRaw,
+        hero_image: heroImage,
         client: clientId ? { full_name: clientNameMap[clientId] ?? null } : null,
         share_code: share?.share_code ?? null,
         share_status: share?.status ?? null,

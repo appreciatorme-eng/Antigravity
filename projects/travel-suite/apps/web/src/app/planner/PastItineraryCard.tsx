@@ -29,6 +29,7 @@ interface PastItineraryCardProps {
         approved_by?: string | null;
         approved_at?: string | null;
         self_service_status?: string | null;
+        hero_image?: string | null;
     };
     compact?: boolean;
     onOpen?: (id: string) => void;
@@ -166,7 +167,7 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
 
     const stage = deriveStage(itinerary);
     const hasActivity = hasClientActivity(itinerary);
-    const heroImage = getDeterministicFallback(itinerary.destination || "travel");
+    const heroImage = itinerary.hero_image || getDeterministicFallback(itinerary.destination || "travel");
     const { value: budgetValue, isMuted: budgetMuted } = parseBudget(itinerary.budget);
     const [nowMs] = useState(() => Date.now());
     const daysSinceCreation = Math.floor((nowMs - new Date(itinerary.created_at).getTime()) / 86_400_000);
