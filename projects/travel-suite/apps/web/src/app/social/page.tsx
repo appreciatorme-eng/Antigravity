@@ -7,7 +7,7 @@ export default async function SocialStudioPage() {
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/auth/login");
+    redirect("/auth");
   }
 
   // Fetch the organization details to seed the templates
