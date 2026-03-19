@@ -229,6 +229,33 @@ function FitBounds({ positions, driverLocation }: { positions: [number, number][
     return null;
 }
 
+// ── Leaflet CSS runtime injection ─────────────────────────────────────────────
+// Bundler CSS imports can fail silently with turbopack. This guarantees
+// the critical tile-positioning rules are always present.
+const LEAFLET_CSS_ID = "leaflet-critical-css";
+function ensureLeafletCSS() {
+    if (typeof document === "undefined") return;
+    if (document.getElementById(LEAFLET_CSS_ID)) return;
+    const style = document.createElement("style");
+    style.id = LEAFLET_CSS_ID;
+    style.textContent = `
+        .leaflet-pane, .leaflet-tile, .leaflet-marker-icon, .leaflet-marker-shadow,
+        .leaflet-tile-container, .leaflet-pane > svg, .leaflet-pane > canvas,
+        .leaflet-zoom-box, .leaflet-image-layer, .leaflet-layer {
+            position: absolute; left: 0; top: 0;
+        }
+        .leaflet-container { overflow: hidden; }
+        .leaflet-tile, .leaflet-marker-icon, .leaflet-marker-shadow {
+            -webkit-user-select: none; user-select: none; -webkit-user-drag: none;
+        }
+        .leaflet-tile { filter: none !important; visibility: visible !important; }
+        .leaflet-tile-container { pointer-events: none; }
+        .leaflet-control-container .leaflet-control-zoom { border-radius: 8px; border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+        .leaflet-control-zoom a { width: 32px; height: 32px; line-height: 32px; }
+    `;
+    document.head.appendChild(style);
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function ItineraryMap({
     activities = [],
@@ -238,6 +265,8 @@ export default function ItineraryMap({
     driverLocation,
     className
 }: ItineraryMapProps) {
+    // Ensure Leaflet CSS is present on mount
+    useEffect(() => { ensureLeafletCSS(); }, []);
     const activeActivities = useMemo(() => {
         if (days.length > 0) {
             return days.find(d => d.day_number === activeDay)?.activities || [];
