@@ -147,6 +147,7 @@ async function loginAs(page: Page, userType: UserType) {
           email: user.email,
           password: user.password,
         },
+        headers: { origin: baseURL },
       });
 
       if (response.ok()) {

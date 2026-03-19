@@ -18,7 +18,7 @@ interface FeatureStats {
 interface TopOrg {
     [key: string]: unknown;
     org_id: string;
-    org_name: string;
+    name: string;
     tier: string;
     trips: number;
 }
@@ -37,7 +37,7 @@ interface AnalyticsData {
 interface DrillRow {
     [key: string]: unknown;
     org_id: string;
-    org_name: string;
+    name: string;
     tier: string;
     count: number;
     pct_of_total: number;
@@ -64,7 +64,7 @@ const TIER_CLASS: Record<string, string> = {
 };
 
 const TOP_ORG_COLS: TableColumn<TopOrg>[] = [
-    { key: "org_name", label: "Organization", render: (v) => <span className="font-medium text-white">{v as string}</span> },
+    { key: "name", label: "Organization", render: (v) => <span className="font-medium text-white">{v as string}</span> },
     {
         key: "tier", label: "Tier", render: (v) => (
             <span className={`text-xs font-semibold uppercase ${TIER_CLASS[v as string] ?? "text-gray-400"}`}>
@@ -79,7 +79,7 @@ const TOP_ORG_COLS: TableColumn<TopOrg>[] = [
 ];
 
 const DRILL_COLS: TableColumn<DrillRow>[] = [
-    { key: "org_name", label: "Organization", render: (v) => <span className="font-medium text-white">{v as string}</span> },
+    { key: "name", label: "Organization", render: (v) => <span className="font-medium text-white">{v as string}</span> },
     {
         key: "tier", label: "Tier", render: (v) => (
             <span className={`text-xs font-semibold uppercase ${TIER_CLASS[v as string] ?? "text-gray-400"}`}>
@@ -136,7 +136,7 @@ export default function AnalyticsPage() {
 
     // Build bar chart data from top orgs
     const chartData = data?.top_orgs.slice(0, 10).map((o) => ({
-        date: o.org_name.slice(0, 12),
+        date: (o.name || "Unknown").slice(0, 12),
         count: o.trips,
     })) ?? [];
 

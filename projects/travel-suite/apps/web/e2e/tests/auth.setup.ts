@@ -57,7 +57,10 @@ setup('create authenticated storage states', async ({ baseURL }, testInfo) => {
       continue;
     }
 
-    const api = await request.newContext({ baseURL });
+    const api = await request.newContext({
+      baseURL,
+      extraHTTPHeaders: { origin: baseURL! },
+    });
     let lastError = 'unknown error';
     let success = false;
 

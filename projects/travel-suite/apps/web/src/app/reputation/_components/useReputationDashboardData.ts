@@ -60,11 +60,17 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   });
 
   const payload = (await response.json().catch(() => ({}))) as {
+    data?: T;
     error?: string;
   };
 
   if (!response.ok) {
     throw new Error(payload.error || `Request failed with status ${response.status}`);
+  }
+
+  // Unwrap { data, error } envelope used by apiSuccess/apiError helpers
+  if ("data" in payload && payload.data !== undefined) {
+    return payload.data as T;
   }
 
   return payload as T;

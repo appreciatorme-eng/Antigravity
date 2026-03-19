@@ -1,9 +1,12 @@
 import { defineConfig, devices } from '@playwright/test';
+import { config as loadDotenv } from 'dotenv';
+import path from 'node:path';
 
 /**
  * Production Config
  * Extends basic settings but points to production URL and disables local web server.
  */
+loadDotenv({ path: path.join(__dirname, '.env'), override: false });
 process.env.E2E_TARGET ??= 'prod';
 
 export default defineConfig({
@@ -15,7 +18,7 @@ export default defineConfig({
   reporter: [['list']],
   
   use: {
-    baseURL: process.env.BASE_URL || 'https://tripbuilt.com',
+    baseURL: process.env.BASE_URL || 'https://www.tripbuilt.com',
     // Keep disk usage tiny (prod runs happen in a constrained environment).
     // Override via CLI flags if you need artifacts for debugging.
     trace: 'off',
