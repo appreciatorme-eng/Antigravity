@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
     Dialog,
@@ -16,6 +16,7 @@ import type { ItineraryResult } from "@/types/itinerary";
 import type { Json } from "@/lib/database.types";
 import { useToast } from "@/components/ui/toast";
 import { logError } from "@/lib/observability/logger";
+import ClientPicker from "@/components/ClientPicker";
 
 interface ShareTripModalProps {
     isOpen: boolean;
@@ -39,6 +40,7 @@ export default function ShareTripModal({
     const [shareLink, setShareLink] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
     const [error, setError] = useState("");
+    const resolvedIdRef = useRef<string | undefined>(itineraryId);
     const supabase = createClient();
     const { toast } = useToast();
 
@@ -88,15 +90,17 @@ export default function ShareTripModal({
                                 itinerary_id: resolvedItineraryId,
                                 client_id: userId,
                                 organization_id: profile?.organization_id ?? null,
-                                status: "pending",
+                                status: "draft",
                                 destination: rawItineraryData.destination,
                             });
-                    } catch (error) {
+                    } catch (tripErr) {
                         // Non-critical: trip creation can fail gracefully
-                        logError("Trip record creation failed during share", error);
+                        logError("Trip record creation failed during share", tripErr);
                     }
                 }
             }
+
+            resolvedIdRef.current = resolvedItineraryId;
 
             // Check if a share link already exists for this itinerary
             if (resolvedItineraryId) {
@@ -156,7 +160,7 @@ export default function ShareTripModal({
             setTimeout(() => setCopied(false), 2000);
 
             toast({
-                title: "Link Copied! 🔗",
+                title: "Link Copied!",
                 description: "Share this quote with your client to close the deal.",
                 durationMs: 4000,
             });
@@ -183,7 +187,7 @@ export default function ShareTripModal({
                                 <Loader2 className="w-8 h-8 text-primary animate-spin" />
                             )}
                             <p className="text-sm text-gray-500">
-                                {error ? error : "Generating your magic link…"}
+                                {error ? error : "Generating your magic link..."}
                             </p>
                             {error && (
                                 <Button size="sm" variant="outline" onClick={generateShareLink}>
@@ -215,6 +219,12 @@ export default function ShareTripModal({
                                     {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                                 </Button>
                             </div>
+
+                            {/* Client picker for assigning + sending */}
+                            <ClientPicker
+                                shareLink={shareLink}
+                                itineraryId={resolvedIdRef.current}
+                            />
 
                             <p className="text-xs text-gray-400 text-center">
                                 This link expires in 30 days. Anyone with the link can view the itinerary.
