@@ -3,7 +3,8 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { TOUR_MAP } from './tour-steps';
-import type { TourStepConfig } from './tour-types';
+import { APP_TOUR_MAP } from './app-tour-steps';
+import type { TourStepConfig, TourConfig } from './tour-types';
 
 const LS_KEY_SKIPPED = 'tripbuilt:tour_skipped';
 const SS_KEY_CONTINUE = 'tripbuilt:tour_continue';
@@ -34,6 +35,11 @@ function waitForElement(
   });
 }
 
+/** Look up a tour config from both setup tours and app tours */
+function findTourConfig(tourId: string): TourConfig | undefined {
+  return TOUR_MAP[tourId] ?? APP_TOUR_MAP[tourId];
+}
+
 export function useGuidedTour() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -42,6 +48,7 @@ export function useGuidedTour() {
   > | null>(null);
   const startedRef = useRef(false);
 
+  const tourParam = searchParams.get('tour');
   const setupParam = searchParams.get('setup');
 
   // Check for cross-page tour continuation (e.g. share tour → trip detail)
@@ -49,8 +56,11 @@ export function useGuidedTour() {
     ? sessionStorage.getItem(SS_KEY_CONTINUE)
     : null;
 
-  // Resolve which tour to run: URL param takes priority, then sessionStorage
-  const activeTourId = setupParam ?? continueTourId;
+  // Resolve which tour to run: ?tour= first, then ?setup=, then sessionStorage
+  const activeTourId = tourParam ?? setupParam ?? continueTourId;
+
+  // Whether this is an app tour (triggered via ?tour= param)
+  const isAppTour = tourParam !== null;
 
   const cleanup = useCallback(() => {
     if (driverRef.current) {
@@ -62,23 +72,27 @@ export function useGuidedTour() {
   useEffect(() => {
     if (!activeTourId || startedRef.current) return;
 
-    const tourConfig = TOUR_MAP[activeTourId];
+    const tourConfig = findTourConfig(activeTourId);
     if (!tourConfig) return;
 
-    // Check if user previously skipped this tour.
-    // If ?setup= is in the URL, the user explicitly clicked from the setup wizard
-    // so always run the tour (clear the skip flag for this tour and any linked tours).
-    const skipped = JSON.parse(
-      localStorage.getItem(LS_KEY_SKIPPED) || '{}',
-    ) as Record<string, boolean>;
+    // For app tours (?tour= param), skip localStorage skip-flag checks —
+    // they should always run when explicitly triggered.
+    if (!isAppTour) {
+      // Check if user previously skipped this tour.
+      // If ?setup= is in the URL, the user explicitly clicked from the setup wizard
+      // so always run the tour (clear the skip flag for this tour and any linked tours).
+      const skipped = JSON.parse(
+        localStorage.getItem(LS_KEY_SKIPPED) || '{}',
+      ) as Record<string, boolean>;
 
-    if (setupParam) {
-      // User explicitly requested this tour — clear any previous skip
-      delete skipped[setupParam];
-      delete skipped['share-detail']; // Clear linked continuation tour too
-      localStorage.setItem(LS_KEY_SKIPPED, JSON.stringify(skipped));
-    } else if (skipped[activeTourId]) {
-      return;
+      if (setupParam) {
+        // User explicitly requested this tour — clear any previous skip
+        delete skipped[setupParam];
+        delete skipped['share-detail']; // Clear linked continuation tour too
+        localStorage.setItem(LS_KEY_SKIPPED, JSON.stringify(skipped));
+      } else if (skipped[activeTourId]) {
+        return;
+      }
     }
 
     // Clear the sessionStorage continuation flag once consumed
@@ -131,7 +145,7 @@ export function useGuidedTour() {
         popoverClass: 'tripbuilt-tour-popover',
         nextBtnText: 'Next',
         prevBtnText: 'Back',
-        doneBtnText: 'Done',
+        doneBtnText: tourConfig.nextPage ? 'Continue →' : 'Done ✓',
         showButtons: ['next', 'previous', 'close'],
         steps: validSteps,
         onDestroyStarted: () => {
@@ -154,10 +168,13 @@ export function useGuidedTour() {
 
           d.destroy();
 
-          // On completion, redirect back to dashboard
-          // (but not for 'share' tour — user will navigate naturally to trip detail)
-          if (isLastStep && activeTourId !== 'share') {
-            router.push('/admin');
+          // On completion, navigate to next tour page or redirect to dashboard
+          if (isLastStep) {
+            if (tourConfig.nextPage) {
+              router.push(tourConfig.nextPage);
+            } else if (activeTourId !== 'share') {
+              router.push('/admin');
+            }
           }
         },
       });
@@ -205,7 +222,16 @@ export function useGuidedTour() {
       observerCleanup?.();
       cleanup();
     };
-  }, [activeTourId, setupParam, continueTourId, router, cleanup]);
+  }, [activeTourId, setupParam, isAppTour, continueTourId, router, cleanup]);
+
+  // Listen for tour re-run events (when already on the same page)
+  useEffect(() => {
+    const handleRerun = () => {
+      startedRef.current = false;
+    };
+    window.addEventListener('tripbuilt:tour-rerun', handleRerun);
+    return () => window.removeEventListener('tripbuilt:tour-rerun', handleRerun);
+  }, []);
 
   // Cleanup on unmount
   useEffect(() => cleanup, [cleanup]);

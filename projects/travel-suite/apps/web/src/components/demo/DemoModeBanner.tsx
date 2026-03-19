@@ -7,14 +7,11 @@ import { useState, useEffect } from "react";
 import { X, Sparkles, Navigation } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useDemoMode } from "@/lib/demo/demo-mode-context";
+import { TOUR_START_EVENT } from "@/components/demo/DemoTour";
 
 const DISMISS_KEY = "tripbuilt:demo_banner_dismissed";
 
-interface DemoModeBannerProps {
-  onStartTour?: () => void;
-}
-
-export default function DemoModeBanner({ onStartTour }: DemoModeBannerProps) {
+export default function DemoModeBanner() {
   const { isDemoMode, toggleDemoMode, mounted } = useDemoMode();
   const [dismissed, setDismissed] = useState(false);
 
@@ -71,15 +68,13 @@ export default function DemoModeBanner({ onStartTour }: DemoModeBannerProps) {
         anytime.
       </span>
 
-      {onStartTour && (
-        <button
-          onClick={onStartTour}
+      <button
+          onClick={() => window.dispatchEvent(new Event(TOUR_START_EVENT))}
           className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-[#00d084] bg-[#00d084]/10 hover:bg-[#00d084]/20 transition-colors flex-shrink-0"
         >
           <Navigation className="w-3 h-3" />
           Take a Tour
         </button>
-      )}
 
       <button
         onClick={handleDismiss}

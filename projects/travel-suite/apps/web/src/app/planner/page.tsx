@@ -548,7 +548,7 @@ export default function PlannerPage() {
             {/* ═══════════════════════════════════════════════════════════════
                 SAVED ITINERARIES — always at the bottom
             ════════════════════════════════════════════════════════════════ */}
-            <div id="saved-itineraries-section" className="max-w-7xl mx-auto px-6 mt-20">
+            <div id="saved-itineraries-section" className="max-w-7xl mx-auto px-6 mt-20" data-tour="past-itineraries">
                 {/* Section divider */}
                 <div className="flex items-center gap-4 mb-8">
                     <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-700 to-transparent" />

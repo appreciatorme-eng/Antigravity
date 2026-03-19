@@ -21,27 +21,36 @@ import { PipelineFunnel } from './_components/v2/PipelineFunnel';
 import { RevenueIntelligence } from './_components/v2/RevenueIntelligence';
 import { SmartActionQueue } from './_components/v2/SmartActionQueue';
 import { useDashboardV2 } from './_components/v2/useDashboardV2';
+import { GuidedTour } from '@/components/tour/GuidedTour';
 
 export default function AdminDashboard() {
   const data = useDashboardV2();
 
   return (
     <div className="space-y-8 pb-20">
+      <GuidedTour />
+
       {/* Setup Checklist — onboarding widget */}
-      <SetupChecklist />
+      <div data-tour="setup-checklist">
+        <SetupChecklist />
+      </div>
 
       {/* Zone 0: Morning Briefing */}
-      <MorningBriefing data={data} />
+      <div data-tour="morning-briefing">
+        <MorningBriefing data={data} />
+      </div>
 
       {/* Zone 1: KPI Ticker Strip */}
-      <KPITickerStrip data={data} />
+      <div data-tour="kpi-strip">
+        <KPITickerStrip data={data} />
+      </div>
 
       {/* Zone 2: Action Queue + Calendar */}
       <div className="grid grid-cols-1 gap-8 xl:grid-cols-12">
         <div className="xl:col-span-8">
           <SmartActionQueue data={data} />
         </div>
-        <div className="xl:col-span-4">
+        <div className="xl:col-span-4" data-tour="calendar-preview">
           <CalendarPreview data={data} />
         </div>
       </div>

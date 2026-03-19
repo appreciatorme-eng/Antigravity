@@ -13,4 +13,6 @@ export interface TourStepConfig {
 export interface TourConfig {
   readonly id: string;
   readonly steps: readonly TourStepConfig[];
+  /** URL to navigate to for the next tour in a chained sequence (e.g. "/planner?tour=tour-planner") */
+  readonly nextPage?: string;
 }
