@@ -286,7 +286,27 @@ async function handleGenerateItineraryPost(req: NextRequest) {
                 })
             );
 
-            if (!isFallback && hasValidCoordinates) {
+            // Verify the cached itinerary actually matches the requested destination
+            const cachedDest = (typeof cachedItinerary.destination === 'string'
+                ? cachedItinerary.destination : '').toLowerCase().trim();
+            const requestedDest = destination.toLowerCase().trim();
+            const destinationMatch = requestedDest.length > 0 && cachedDest.length > 0 &&
+                (cachedDest.includes(requestedDest) || requestedDest.includes(cachedDest));
+
+            if (!isFallback && hasValidCoordinates && destinationMatch) {
+                // Ensure cached itineraries have activity images
+                const hasImages = cachedDays.some((day) =>
+                    (Array.isArray(day.activities) ? day.activities : []).some(
+                        (a) => !!(a as unknown as { image?: string }).image
+                    )
+                );
+                if (!hasImages) {
+                    const withImages = await populateItineraryImages(
+                        cachedItinerary as unknown as Parameters<typeof populateItineraryImages>[0]
+                    );
+                    Object.assign(cachedItinerary, withImages);
+                }
+
                 void trackOrgAiUsage(user.id, "cache_hit", 0);
                 void trackSharedCacheSourceEvent({
                     eventType: "hit",
