@@ -18,19 +18,12 @@ export async function GET(request: Request): Promise<Response> {
       return apiError("Organization not configured", 400);
     }
 
+    // assistant_audit_log.user_id → auth.users (not profiles), so we can't
+    // use a PostgREST join to profiles. Fetch logs first, then look up names
+    // separately via the profiles table.
     const { data: rows, error } = await adminClient
       .from("assistant_audit_log")
-      .select(`
-        id,
-        event_type,
-        action_name,
-        action_params,
-        action_result,
-        channel,
-        created_at,
-        user_id,
-        profiles!assistant_audit_log_user_id_fkey(full_name, email)
-      `)
+      .select("id, event_type, action_name, action_params, action_result, channel, created_at, user_id")
       .eq("organization_id", organizationId)
       .order("created_at", { ascending: false })
       .limit(500);
@@ -40,24 +33,30 @@ export async function GET(request: Request): Promise<Response> {
       return apiError("Failed to fetch activity logs", 500);
     }
 
-    const activities = (rows || []).map((row) => {
-      const profileRecord = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
-      const userName = (profileRecord as { full_name?: string; email?: string } | null)?.full_name
-        ?? (profileRecord as { full_name?: string; email?: string } | null)?.email
-        ?? "Unknown user";
+    // Collect distinct user IDs and look up their display names
+    const userIds = [...new Set((rows ?? []).map((r) => r.user_id).filter(Boolean))] as string[];
+    const userNameMap = new Map<string, string>();
+    if (userIds.length > 0) {
+      const { data: profiles } = await adminClient
+        .from("profiles")
+        .select("id, full_name, email")
+        .in("id", userIds);
+      for (const p of profiles ?? []) {
+        userNameMap.set(p.id, (p.full_name ?? p.email ?? "Unknown user") as string);
+      }
+    }
 
-      return {
-        id: row.id,
-        eventType: row.event_type,
-        actionName: row.action_name,
-        actionParams: row.action_params,
-        actionResult: row.action_result,
-        channel: row.channel,
-        createdAt: row.created_at,
-        userId: row.user_id,
-        userName,
-      };
-    });
+    const activities = (rows ?? []).map((row) => ({
+      id: row.id,
+      eventType: row.event_type,
+      actionName: row.action_name,
+      actionParams: row.action_params,
+      actionResult: row.action_result,
+      channel: row.channel,
+      createdAt: row.created_at,
+      userId: row.user_id,
+      userName: row.user_id ? (userNameMap.get(row.user_id) ?? "Unknown user") : "Unknown user",
+    }));
 
     return NextResponse.json({ data: { activities } });
   } catch (error) {

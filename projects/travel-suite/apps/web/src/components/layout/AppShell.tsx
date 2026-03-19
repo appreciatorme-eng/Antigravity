@@ -30,6 +30,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     const isPublicPage =
         pathname === "/welcome" ||
         pathname === "/auth" ||
+        pathname === "/offline" ||
         pathname?.startsWith("/onboarding") ||
         isMarketingPage;
 

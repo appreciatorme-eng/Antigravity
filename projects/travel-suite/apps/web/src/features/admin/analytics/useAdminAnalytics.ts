@@ -335,7 +335,8 @@ export function useAdminAnalytics() {
 
         let tripsRes: QueryResult<TripRow> = (await supabase
           .from("trips")
-          .select("status,created_at,owner_id,client_id,itineraries(destination)")
+          // owner_id was removed from the trips table; client_id is used as fallback by matchOwner
+          .select("status,created_at,client_id,itineraries(destination)")
           .eq("organization_id", orgId)) as unknown as QueryResult<TripRow>;
 
         if (tripsRes.error && isColumnMissingError(tripsRes.error.message)) {

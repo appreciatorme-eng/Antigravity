@@ -145,8 +145,8 @@ export function BeforeAfterInteractive({ oldWayItems, newWayItems }: BeforeAfter
         className="absolute inset-0 bg-neutral-900 overflow-hidden"
         style={{ clipPath: clipPathBase }}
       >
-        {/* Distressed Background details */}
-        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "url('https://www.transparenttextures.com/patterns/black-paper.png')" }} />
+        {/* Distressed Background details — CSS noise pattern, no external dependency */}
+        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E\")" }} />
         <div className="absolute top-1/4 -left-20 w-80 h-80 bg-red-600/10 blur-[100px] pointer-events-none rounded-full mix-blend-screen" />
         
         <div className="w-full absolute inset-0 flex items-center pl-4 md:pl-8 lg:pl-16 pr-[52%] md:pr-[55%]">

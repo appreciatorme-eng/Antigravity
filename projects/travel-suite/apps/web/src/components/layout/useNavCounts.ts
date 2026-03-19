@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useDemoMode } from "@/lib/demo/demo-mode-context";
-import { logError } from "@/lib/observability/logger";
+import { logWarn } from "@/lib/observability/logger";
 
 export interface NavCounts {
   inboxUnread: number;
@@ -59,7 +59,10 @@ export function useNavCounts() {
         ) {
           return;
         }
-        logError("[useNavCounts] Failed to refresh navigation counts", error);
+        // Network failures (e.g. momentary offline, CORS preflight) are non-fatal:
+        // the sidebar just shows cached/zero counts. Warn rather than error to
+        // keep the browser console clean.
+        logWarn("[useNavCounts] Failed to refresh navigation counts", { details: String(error) });
       }
     };
 

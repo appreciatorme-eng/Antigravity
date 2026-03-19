@@ -100,7 +100,8 @@ interface TripRow {
   start_date: string | null;
   end_date: string | null;
   status: string | null;
-  clients: { full_name?: string } | null;
+  // trips.client_id → profiles.id (not clients table)
+  profiles: { full_name?: string } | null;
   itineraries: { trip_title?: string; destination?: string; duration_days?: number } | null;
 }
 
@@ -114,7 +115,8 @@ interface InvoiceRow {
   balance_amount: number | null;
   trip_id: string | null;
   currency: string | null;
-  clients: { full_name?: string } | null;
+  // invoices.client_id → profiles.id (not clients table)
+  profiles: { full_name?: string } | null;
 }
 
 interface PaymentRow {
@@ -176,7 +178,7 @@ async function fetchTrips(
   const { data, error } = await supabase
     .from("trips")
     .select(
-      "*, clients(full_name), itineraries(destination, trip_title, duration_days)",
+      "*, profiles(full_name), itineraries(destination, trip_title, duration_days)",
     )
     .eq("organization_id", orgId)
     .gte("end_date", windowStart)
@@ -185,7 +187,7 @@ async function fetchTrips(
   if (error) throw error;
 
   return ((data ?? []) as unknown as TripRow[]).map((trip) => {
-    const client = trip.clients;
+    const client = trip.profiles;
     const itinerary = trip.itineraries;
 
     const entityData: TripEventData = {
@@ -230,7 +232,7 @@ async function fetchInvoices(
 ): Promise<CalendarEvent[]> {
   const { data, error } = await supabase
     .from("invoices")
-    .select("*, clients(full_name)")
+    .select("*, profiles(full_name)")
     .eq("organization_id", orgId)
     .gte("due_date", windowStart)
     .lte("due_date", windowEnd);
@@ -238,7 +240,7 @@ async function fetchInvoices(
   if (error) throw error;
 
   return ((data ?? []) as unknown as InvoiceRow[]).map((invoice) => {
-    const client = invoice.clients;
+    const client = invoice.profiles;
 
     const entityData: InvoiceEventData = {
       type: "invoice",
