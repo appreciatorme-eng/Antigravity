@@ -164,19 +164,45 @@ export function useGuidedTour() {
 
       driverRef.current = d;
 
+      // Auto-dismiss tour when user clicks any highlighted element
+      // (e.g. clicking "Scan QR Code" opens a modal — tour should get out of the way)
+      const handleHighlightClick = () => {
+        setTimeout(() => {
+          if (driverRef.current) {
+            driverRef.current.destroy();
+          }
+        }, 150);
+      };
+
+      // Attach click listener whenever a new element is highlighted
+      const observer = new MutationObserver(() => {
+        const activeEl = document.querySelector('.driver-active-element');
+        if (activeEl && !activeEl.hasAttribute('data-tour-click-attached')) {
+          activeEl.setAttribute('data-tour-click-attached', 'true');
+          activeEl.addEventListener('click', handleHighlightClick, { once: true });
+        }
+      });
+      observer.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['class'] });
+
       // Small delay to let driver.js measure element positions after render
       requestAnimationFrame(() => {
         d.drive();
       });
+
+      // Return cleanup for the observer
+      return () => observer.disconnect();
     };
 
     // Delay slightly so the page has time to render all elements
+    let observerCleanup: (() => void) | undefined;
     const timer = setTimeout(() => {
-      void initTour();
+      const maybeCleanup = initTour();
+      void maybeCleanup.then((fn) => { observerCleanup = fn; });
     }, 600);
 
     return () => {
       clearTimeout(timer);
+      observerCleanup?.();
       cleanup();
     };
   }, [activeTourId, setupParam, continueTourId, router, cleanup]);
