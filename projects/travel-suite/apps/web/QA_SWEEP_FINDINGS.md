@@ -4,11 +4,27 @@ Generated: 2026-03-19 | Updated: 2026-03-19 | Target: https://www.tripbuilt.com
 
 ## Summary
 
-- **Total routes tested**: 80
-- **Passed**: 75 → **80** (all P0/P1 fixed)
+- **Total routes tested**: 81 (80 app routes + 1 auth setup)
+- **Passed**: 75 → **81** ✅ (all P0/P1/P2 fixed, Phase 6 verified)
 - **Failed**: 4 → **0**
 - **Flaky**: 2 → **0**
-- **Routes with console errors**: 28 → **~8** (after P2 fixes)
+- **Routes with console errors**: 28 → **~18** (remaining are pre-existing low-severity network noise)
+
+## Phase 6 Verification — 2026-03-19
+
+Smoke test re-run after all fixes deployed (`2480604f`): **81/81 passed** in 4.6 minutes.
+
+| Fix | Commit | Verified |
+|-----|--------|---------|
+| auth/password-login CSRF exempt | `2480604f` | ✅ auth setup passes |
+| /offline AppShell bypass | `3378cf1b` | ✅ 0 console errors |
+| useNavCounts logWarn | `3378cf1b` | ✅ no more network errors |
+| /calendar profiles join | `3378cf1b` | ✅ 2 errors (down from 4) |
+| /analytics owner_id removed | `3378cf1b` | ✅ passes cleanly |
+| /admin/settings contributor_badge_tier | `3378cf1b` | ✅ passes cleanly |
+| /admin/activity two-query | `3378cf1b` | ✅ passes cleanly |
+| /marketplace + /reputation P0 crashes | `fd1903f9` | ✅ loads correctly |
+| /god + /god/analytics P0 crashes | `fd1903f9` | ✅ loads correctly |
 
 ## Resolution Status
 
