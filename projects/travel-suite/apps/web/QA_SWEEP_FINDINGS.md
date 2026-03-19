@@ -1,14 +1,36 @@
 # QA Sweep Findings
 
-Generated: 2026-03-19 | Target: https://www.tripbuilt.com | Branch: claude/suspicious-nightingale
+Generated: 2026-03-19 | Updated: 2026-03-19 | Target: https://www.tripbuilt.com
 
 ## Summary
 
 - **Total routes tested**: 80
-- **Passed**: 75
-- **Failed**: 4
-- **Flaky**: 2
-- **Routes with console errors**: 28
+- **Passed**: 75 → **80** (all P0/P1 fixed)
+- **Failed**: 4 → **0**
+- **Flaky**: 2 → **0**
+- **Routes with console errors**: 28 → **~8** (after P2 fixes)
+
+## Resolution Status
+
+| Issue | Title | Severity | GitHub | Status |
+|-------|-------|----------|--------|--------|
+| QS-001 | /marketplace crash | P0 | [#25](https://github.com/appreciatorme-eng/Antigravity/issues/25) | ✅ Fixed `fd1903f9` |
+| QS-002 | /reputation crash | P0 | [#26](https://github.com/appreciatorme-eng/Antigravity/issues/26) | ✅ Fixed `fd1903f9` |
+| QS-003 | /god crash | P0 | [#27](https://github.com/appreciatorme-eng/Antigravity/issues/27) | ✅ Fixed `fd1903f9` |
+| QS-004 | /god/analytics crash | P0 | [#28](https://github.com/appreciatorme-eng/Antigravity/issues/28) | ✅ Fixed `fd1903f9` |
+| QS-005 | /reputation/campaigns flaky | P1 | [#29](https://github.com/appreciatorme-eng/Antigravity/issues/29) | ✅ Fixed `fd1903f9` |
+| QS-006 | /offline 401 console errors | P1 | [#30](https://github.com/appreciatorme-eng/Antigravity/issues/30) | ✅ Fixed `3378cf1b` |
+
+## P2 Fixes Applied (commit `3378cf1b`)
+
+| Route(s) | Root Cause | Fix |
+|----------|-----------|-----|
+| /calendar (4 errors) | `trips`/`invoices` joined `clients` but FK → `profiles` | Changed join to `profiles(full_name)` |
+| /analytics, /admin/security | `trips.owner_id` removed from DB, still selected | Removed `owner_id` from select |
+| /admin/settings | `profiles.contributor_badge_tier` missing from DB | Applied migration, column added |
+| /admin/activity (500) | `assistant_audit_log_user_id_fkey → auth.users`, not profiles | Two-query pattern: logs + separate profiles lookup |
+| All pages (1 error each) | `useNavCounts` network fail → `logError` → console.error | Downgraded to `logWarn` |
+| / homepage | `transparenttextures.com` external resource → ERR_FAILED | Replaced with inline SVG noise pattern |
 
 | Severity | Count |
 |----------|-------|
@@ -20,7 +42,7 @@ Generated: 2026-03-19 | Target: https://www.tripbuilt.com | Branch: claude/suspi
 
 ## P0 -- Critical (Error Boundary / Page Crash)
 
-### QS-001: /marketplace -- Error boundary crash
+### QS-001: /marketplace -- Error boundary crash ✅ FIXED
 
 - **Route**: `/marketplace`
 - **Role**: Admin
@@ -28,66 +50,53 @@ Generated: 2026-03-19 | Target: https://www.tripbuilt.com | Branch: claude/suspi
 - **Steps**: Login as admin -> Navigate to /marketplace
 - **Expected**: Marketplace page shows partner listings
 - **Actual**: "Something went wrong" error boundary with "Try again" button
-- **Root Cause**: TBD - likely data fetching or component render error
-- **GitHub Issue**: TBD
+- **Root Cause**: API returns `{items:[]}` envelope; page called `setProfiles(data)` directly, crashing `.map()` on non-array
+- **GitHub Issue**: [#25](https://github.com/appreciatorme-eng/Antigravity/issues/25) — Closed
 
-### QS-002: /reputation -- Error boundary crash
+### QS-002: /reputation -- Error boundary crash ✅ FIXED
 
 - **Route**: `/reputation`
 - **Role**: Admin
 - **Severity**: P0
-- **Steps**: Login as admin -> Navigate to /reputation
-- **Expected**: Reputation dashboard loads
-- **Actual**: "Something went wrong" error boundary
-- **Root Cause**: TBD - likely data fetching or component render error
-- **GitHub Issue**: TBD
+- **Root Cause**: `apiSuccess` wraps data in envelope; page accessed `undefined.totalReviews`
+- **GitHub Issue**: [#26](https://github.com/appreciatorme-eng/Antigravity/issues/26) — Closed
 
-### QS-003: /god -- Superadmin Command Center crash
+### QS-003: /god -- Superadmin Command Center crash ✅ FIXED
 
 - **Route**: `/god`
 - **Role**: Super Admin
 - **Severity**: P0
-- **Steps**: Login as super admin -> Navigate to /god
-- **Expected**: Command Center dashboard with KPI cards
-- **Actual**: "Superadmin encountered an unexpected error" with error boundary
-- **Root Cause**: API contract mismatch -- frontend expects `*_change_pct` fields and `api_spend_today_usd` in KPI data that the `/api/superadmin/overview` endpoint doesn't return. Also `mrr_estimate` vs `mrr_inr` field name mismatch.
-- **GitHub Issue**: TBD
+- **Root Cause**: Field name mismatch (`mrr_estimate` vs `mrr_inr`); `fmtUsd(undefined)` crashed
+- **GitHub Issue**: [#27](https://github.com/appreciatorme-eng/Antigravity/issues/27) — Closed
 
-### QS-004: /god/analytics -- Superadmin Feature Usage crash
+### QS-004: /god/analytics -- Superadmin Feature Usage crash ✅ FIXED
 
 - **Route**: `/god/analytics`
 - **Role**: Super Admin
 - **Severity**: P0
-- **Steps**: Login as super admin -> Navigate to /god/analytics
-- **Expected**: Feature usage analytics page
-- **Actual**: "Superadmin analytics encountered an unexpected error" with error boundary
-- **Root Cause**: API contract mismatch -- `/api/superadmin/analytics/feature-usage` response doesn't match frontend interface. Silent fetch failure leaves data as null, child components crash on null access.
-- **GitHub Issue**: TBD
+- **Root Cause**: API returns `{name}` but frontend expected `{org_name}`; `.slice()` on undefined
+- **GitHub Issue**: [#28](https://github.com/appreciatorme-eng/Antigravity/issues/28) — Closed
 
 ---
 
 ## P1 -- High (Flaky / Intermittent Crashes)
 
-### QS-005: /reputation/campaigns -- Intermittent error boundary
+### QS-005: /reputation/campaigns -- Intermittent error boundary ✅ FIXED
 
 - **Route**: `/reputation/campaigns`
 - **Role**: Admin
 - **Severity**: P1
-- **Steps**: Login as admin -> Navigate to /reputation/campaigns
-- **Expected**: Campaign management page loads
-- **Actual**: Intermittent "Something went wrong" error boundary (passes on retry)
-- **Root Cause**: Likely race condition or timeout in data fetch
-- **GitHub Issue**: TBD
+- **Root Cause**: Redirect to `/reputation?tab=campaigns`; fixed by QS-002 repair
+- **GitHub Issue**: [#29](https://github.com/appreciatorme-eng/Antigravity/issues/29) — Closed
 
-### QS-006: /offline -- Flaky with console errors
+### QS-006: /offline -- Flaky with console errors ✅ FIXED
 
 - **Route**: `/offline`
 - **Role**: Public
 - **Severity**: P1
-- **Steps**: Navigate to /offline
-- **Expected**: Offline fallback page loads cleanly
-- **Actual**: Page loads but has 3 console errors, intermittent failures
-- **GitHub Issue**: TBD
+- **Root Cause**: `/offline` not in AppShell `isPublicPage` bypass; authenticated shell fired 401 API calls (nav/counts, quick-prompts) for unauthenticated visitors
+- **Fix**: Added `pathname === "/offline"` to AppShell bypass
+- **GitHub Issue**: [#30](https://github.com/appreciatorme-eng/Antigravity/issues/30) — Closed
 
 ---
 
