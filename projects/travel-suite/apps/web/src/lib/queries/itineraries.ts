@@ -21,14 +21,10 @@ export function useItineraries() {
     return useQuery({
         queryKey: itinerariesKeys.lists(),
         queryFn: async () => {
-            const supabase = createClient();
-            const { data: { session } } = await supabase.auth.getSession();
-
-            const response = await fetch("/api/itineraries", {
-                headers: {
-                    "Authorization": `Bearer ${session?.access_token}`,
-                },
-            });
+            // Server-side createClient() reads auth from cookies automatically —
+            // no need to manually pass a Bearer token (which fails when session
+            // isn't hydrated yet, causing intermittent empty itinerary lists).
+            const response = await fetch("/api/itineraries");
 
             if (!response.ok) {
                 throw new Error("Failed to fetch itineraries");
@@ -36,7 +32,10 @@ export function useItineraries() {
 
             const payload = await response.json();
             return payload.itineraries;
-        }
+        },
+        retry: 2,
+        retryDelay: 1000,
+        refetchOnMount: true,
     });
 }
 
