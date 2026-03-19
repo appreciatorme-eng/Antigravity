@@ -141,7 +141,10 @@ export async function GET(request: Request) {
     const auth = await requireAdmin(request, { requireOrganization: true });
     if (!auth.ok) return auth.response;
 
-    const dashboardData = await getCachedReputationDashboard(auth.organizationId!);
+    if (!auth.organizationId) {
+      return apiError("Organization not configured", 400);
+    }
+    const dashboardData = await getCachedReputationDashboard(auth.organizationId);
     return apiSuccess(dashboardData);
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");
