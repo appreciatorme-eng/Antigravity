@@ -17,26 +17,28 @@ import type { HealthStatus } from "@/components/god-mode/StatusDot";
 interface OverviewData {
     kpis: {
         total_users: number;
-        total_users_change_pct: number;
+        total_users_change_pct?: number;
         total_orgs: number;
-        total_orgs_change_pct: number;
+        total_orgs_change_pct?: number;
         trips_this_month: number;
-        trips_this_month_change_pct: number;
-        mrr_estimate: number;
-        mrr_change_pct: number;
-        api_spend_today_usd: number;
-        spend_change_pct: number;
+        trips_this_month_change_pct?: number;
+        mrr_inr?: number;
+        mrr_estimate?: number;
+        mrr_change_pct?: number;
+        api_spend_today_usd?: number;
+        spend_change_pct?: number;
         open_tickets: number;
-        open_tickets_change_pct: number;
+        open_tickets_change_pct?: number;
     };
-    signup_trend_30d: { date: string; count: number }[];
+    signup_trend_30d: { date: string; signups: number }[];
     signup_sparkline_7d: number[];
     hrefs: {
         total_users: string;
         total_orgs: string;
         trips_this_month: string;
-        mrr_estimate: string;
-        api_spend_today_usd: string;
+        mrr_inr?: string;
+        mrr_estimate?: string;
+        api_spend_today_usd?: string;
         open_tickets: string;
     };
 }
@@ -71,11 +73,13 @@ export default function GodCommandCenter() {
 
     useEffect(() => { fetchOverview(); }, [fetchOverview]);
 
+    const mrr = data?.kpis.mrr_inr ?? data?.kpis.mrr_estimate ?? 0;
+
     const kpis: KpiCardProps[] = data ? [
         {
             label: "Total Users",
             value: fmt(data.kpis.total_users),
-            trend: data.kpis.total_users_change_pct,
+            trend: data.kpis.total_users_change_pct ?? 0,
             icon: Users,
             color: "blue",
             href: data.hrefs.total_users,
@@ -84,7 +88,7 @@ export default function GodCommandCenter() {
         {
             label: "Active Orgs",
             value: fmt(data.kpis.total_orgs),
-            trend: data.kpis.total_orgs_change_pct,
+            trend: data.kpis.total_orgs_change_pct ?? 0,
             icon: Building2,
             color: "emerald",
             href: data.hrefs.total_orgs,
@@ -92,31 +96,31 @@ export default function GodCommandCenter() {
         {
             label: "Trips This Month",
             value: fmt(data.kpis.trips_this_month),
-            trend: data.kpis.trips_this_month_change_pct,
+            trend: data.kpis.trips_this_month_change_pct ?? 0,
             icon: Map,
             color: "purple",
             href: data.hrefs.trips_this_month,
         },
         {
-            label: "MRR Estimate",
-            value: fmtUsd(data.kpis.mrr_estimate),
-            trend: data.kpis.mrr_change_pct,
+            label: "MRR (INR)",
+            value: fmt(mrr, "\u20B9"),
+            trend: data.kpis.mrr_change_pct ?? 0,
             icon: DollarSign,
             color: "amber",
-            href: data.hrefs.mrr_estimate,
+            href: data.hrefs.mrr_inr ?? data.hrefs.mrr_estimate ?? "/god/costs",
         },
         {
             label: "API Spend Today",
-            value: fmtUsd(data.kpis.api_spend_today_usd),
-            trend: data.kpis.spend_change_pct,
+            value: fmtUsd(data.kpis.api_spend_today_usd ?? 0),
+            trend: data.kpis.spend_change_pct ?? 0,
             icon: Zap,
             color: "red",
-            href: data.hrefs.api_spend_today_usd,
+            href: data.hrefs.api_spend_today_usd ?? "/god/costs",
         },
         {
             label: "Open Tickets",
             value: String(data.kpis.open_tickets),
-            trend: data.kpis.open_tickets_change_pct,
+            trend: data.kpis.open_tickets_change_pct ?? 0,
             icon: LifeBuoy,
             color: "purple",
             href: data.hrefs.open_tickets,
@@ -180,7 +184,7 @@ export default function GodCommandCenter() {
                     {data?.signup_trend_30d ? (
                         <TrendChart
                             data={data.signup_trend_30d}
-                            series={[{ key: "count", label: "Signups", color: "#f59e0b" }]}
+                            series={[{ key: "signups", label: "Signups", color: "#f59e0b" }]}
                             type="area"
                             height={200}
                             onClickBar={(entry) => {

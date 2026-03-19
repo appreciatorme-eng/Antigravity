@@ -79,7 +79,7 @@ export default function MarketplacePage() {
             if (!response.ok) throw new Error("Failed to fetch marketplace profiles");
 
             const data = await response.json();
-            setProfiles(data);
+            setProfiles(Array.isArray(data) ? data : (data.items ?? []));
         } catch (error) {
             logError("Error fetching marketplace", error);
         } finally {
