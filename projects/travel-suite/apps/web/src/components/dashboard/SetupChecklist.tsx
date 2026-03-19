@@ -16,6 +16,7 @@ import {
   MessageCircle,
   Send,
   PartyPopper,
+  RotateCcw,
   Sparkles,
 } from 'lucide-react';
 import { GlassCard } from '@/components/glass/GlassCard';
@@ -226,7 +227,7 @@ export function SetupChecklist() {
       ) : (
         <div className="space-y-1">
           {data.items.map((item) => {
-            const isClickable = !item.completed && item.href !== '#';
+            const isClickable = item.href !== '#';
             const justCompleted = newlyCompleted === item.id;
             const rowContent = (
               <>
@@ -258,8 +259,12 @@ export function SetupChecklist() {
                   <Sparkles className="w-4 h-4 text-amber-400 animate-pulse shrink-0" />
                 )}
                 {isClickable && !justCompleted && (
-                  <span className="shrink-0 p-1 text-gray-400">
-                    <ArrowRight className="w-4 h-4" />
+                  <span className="shrink-0 p-1 text-gray-400" title={item.completed ? 'Retake tour' : undefined}>
+                    {item.completed ? (
+                      <RotateCcw className="w-3.5 h-3.5" />
+                    ) : (
+                      <ArrowRight className="w-4 h-4" />
+                    )}
                   </span>
                 )}
               </>
