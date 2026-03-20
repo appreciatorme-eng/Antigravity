@@ -7,8 +7,8 @@ import { populateItineraryImages } from "@/lib/image-search";
 
 /**
  * POST /api/admin/repopulate-images
- * Re-runs populateItineraryImages on itineraries that have no activity images in raw_data.
- * One-time fix for itineraries created before image population was added.
+ * Re-runs populateItineraryImages on itineraries.
+ * ?force=true re-fetches even for itineraries that already have images.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -16,8 +16,10 @@ export async function POST(request: NextRequest) {
     if (!auth.ok) return auth.response;
 
     const { adminClient: supabase, userId } = auth;
+    const { searchParams } = new URL(request.url);
+    const force = searchParams.get("force") === "true";
 
-    // Fetch itineraries with raw_data that may be missing images
+    // Fetch itineraries with raw_data
     const { data: itineraries, error } = await supabase
       .from("itineraries")
       .select("id, destination, raw_data")
@@ -36,7 +38,7 @@ export async function POST(request: NextRequest) {
     for (const itin of itineraries ?? []) {
       const rawData = itin.raw_data as {
         destination?: string;
-        days?: Array<{ activities?: Array<{ image?: string; title: string }> }>;
+        days?: Array<{ activities?: Array<{ image?: string; imageUrl?: string; title: string }> }>;
       } | null;
 
       if (!rawData?.days) {
@@ -44,27 +46,35 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      // Check if any activity already has an image
-      const hasImages = rawData.days.some((day) =>
-        (day.activities ?? []).some((a) => !!a.image)
-      );
-
-      if (hasImages) {
-        skipped++;
-        continue;
+      // Skip if already has images (unless force mode)
+      if (!force) {
+        const hasImages = rawData.days.some((day) =>
+          (day.activities ?? []).some((a) => !!a.image)
+        );
+        if (hasImages) {
+          skipped++;
+          continue;
+        }
       }
 
-      // Re-populate images
+      // Re-populate images — clear existing images first if forcing
       try {
+        const daysForPopulation = rawData.days.map((day) => ({
+          ...day,
+          activities: (day.activities ?? []).map((a) => {
+            const base = { ...a, title: a.title ?? "Activity" };
+            if (force) {
+              // Clear existing images so populateItineraryImages re-fetches
+              delete base.image;
+              delete base.imageUrl;
+            }
+            return base;
+          }),
+        }));
+
         const withImages = await populateItineraryImages({
           destination: rawData.destination ?? itin.destination ?? "travel",
-          days: rawData.days.map((day) => ({
-            ...day,
-            activities: (day.activities ?? []).map((a) => ({
-              ...a,
-              title: a.title ?? "Activity",
-            })),
-          })),
+          days: daysForPopulation,
         });
 
         const updatedRawData = { ...rawData, days: withImages.days };
@@ -84,13 +94,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    logEvent("info", "Admin repopulate-images completed", { updated, skipped });
+    logEvent("info", "Admin repopulate-images completed", { updated, skipped, force });
 
     return NextResponse.json({
       success: true,
       updated,
       skipped,
       total: (itineraries ?? []).length,
+      force,
     });
   } catch (error) {
     return apiError(safeErrorMessage(error), 500);
