@@ -55,9 +55,16 @@ export function getDeterministicFallback(title: string): string {
     return LUXURY_FALLBACKS[idx];
 }
 
-/** Fetch Wikipedia thumbnail — checks up to 3 results for a suitable image. */
+/** Patterns that indicate a Wikipedia image is NOT a place/landmark photo. */
+const BAD_IMAGE_PATTERNS = [
+    '.svg', 'portrait', 'logo', 'coat_of_arms', 'flag_of', 'crest',
+    'signature', 'autograph', 'headshot', 'mugshot', 'album_cover',
+    'book_cover', 'movie_poster', 'seal_of', 'emblem', 'icon',
+];
+
+/** Fetch Wikipedia thumbnail — checks up to 5 results for a suitable landscape/place image. */
 async function fetchWikiThumbnail(q: string, ms = 4000): Promise<string | null> {
-    const url = `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(q)}&gsrlimit=3&prop=pageimages&pithumbsize=1200&format=json&origin=*`;
+    const url = `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(q)}&gsrlimit=5&prop=pageimages&pithumbsize=1200&format=json&origin=*`;
     const ctrl = new AbortController();
     const tid = setTimeout(() => ctrl.abort(), ms);
     try {
@@ -66,31 +73,65 @@ async function fetchWikiThumbnail(q: string, ms = 4000): Promise<string | null> 
         if (!res.ok) return null;
         const data = await res.json();
         if (!data?.query?.pages) return null;
-        const pages = Object.values(data.query.pages) as Array<{ thumbnail?: { source: string; width: number } }>;
+        const pages = Object.values(data.query.pages) as Array<{
+            thumbnail?: { source: string; width: number; height: number };
+            title?: string;
+        }>;
         for (const p of pages) {
             if (!p.thumbnail?.source) continue;
             const s = p.thumbnail.source.toLowerCase();
-            if (s.includes('.svg') || s.includes('portrait') || p.thumbnail.width < 300) continue;
+            // Filter out non-place images
+            if (BAD_IMAGE_PATTERNS.some((pat) => s.includes(pat))) continue;
+            if (p.thumbnail.width < 300) continue;
+            // Prefer landscape-ish images (width >= height) for cards
+            const h = p.thumbnail.height || p.thumbnail.width;
+            if (h > 0 && p.thumbnail.width / h < 0.6) continue; // skip very tall/portrait images
             return p.thumbnail.source;
         }
     } catch { /* timeout/network */ }
     return null;
 }
 
-/** Multi-strategy Wikipedia image search with verb-stripping fallback. */
+/** Prefixes to strip from activity titles for cleaner Wikipedia searches. */
+const ACTIVITY_VERB_PREFIX = /^(visit|explore|walk through|tour|experience|discover|head to|stop at|go to|check out|stroll through|wander|relax at|enjoy|take a)\s+/i;
+const DINING_PREFIX = /^(lunch at|dinner at|breakfast at|brunch at|morning at|afternoon at|evening at|drinks at|coffee at|tea at|eat at|dine at|meal at)\s+/i;
+
+/** Multi-strategy Wikipedia image search with smarter query construction. */
 export async function getWikiImage(query: string, titleStr: string): Promise<string> {
     if (!query?.trim()) return getDeterministicFallback(titleStr);
-    const r1 = await fetchWikiThumbnail(query);
-    if (r1) return r1;
-    if (titleStr && titleStr !== query) {
-        const r2 = await fetchWikiThumbnail(titleStr);
-        if (r2) return r2;
+
+    // For dining activities, search for the restaurant/place name + city rather than
+    // "Dinner at X City" which returns random people/unrelated results
+    const isDining = DINING_PREFIX.test(titleStr);
+    const cleanTitle = titleStr
+        .replace(DINING_PREFIX, '')
+        .replace(ACTIVITY_VERB_PREFIX, '')
+        .trim();
+
+    // Strategy 1: Clean title + destination (e.g., "The Kitchin Edinburgh")
+    if (cleanTitle && cleanTitle !== titleStr) {
+        const destination = query.replace(titleStr, '').trim();
+        const q1 = destination ? `${cleanTitle} ${destination}` : cleanTitle;
+        const r1 = await fetchWikiThumbnail(q1);
+        if (r1) return r1;
     }
-    const simple = titleStr.replace(/^(visit|explore|walk through|tour|experience|discover|head to|stop at|go to|check out|lunch at|dinner at|breakfast at|morning at|afternoon at|evening at)\s+/i, '').trim();
-    if (simple !== titleStr && simple.length > 2) {
-        const r3 = await fetchWikiThumbnail(simple);
+
+    // Strategy 2: Full query as-is (e.g., "Arthur's Seat Edinburgh, Scotland")
+    const r2 = await fetchWikiThumbnail(query);
+    if (r2) return r2;
+
+    // Strategy 3: For dining, search for the neighborhood/area instead
+    if (isDining && cleanTitle.length > 2) {
+        const r3 = await fetchWikiThumbnail(cleanTitle);
         if (r3) return r3;
     }
+
+    // Strategy 4: Just the title without verbs
+    if (cleanTitle !== titleStr && cleanTitle.length > 2) {
+        const r4 = await fetchWikiThumbnail(cleanTitle);
+        if (r4) return r4;
+    }
+
     return getDeterministicFallback(titleStr);
 }
 
@@ -139,7 +180,7 @@ export async function populateItineraryImages<T extends ItineraryForImages>(itin
 
                         const release = await semaphore();
                         try {
-                            const searchQuery = `${activity.title} ${destination}`;
+                            const searchQuery = `${activity.title} ${destination}`.trim();
                             const imgUrl = await getWikiImage(searchQuery, activity.title);
                             return imgUrl
                                 ? { ...activity, imageUrl: imgUrl, image: imgUrl }
