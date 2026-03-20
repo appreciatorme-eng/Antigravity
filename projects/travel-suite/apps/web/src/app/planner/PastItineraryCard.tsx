@@ -167,7 +167,9 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
 
     const stage = deriveStage(itinerary);
     const hasActivity = hasClientActivity(itinerary);
-    const heroImage = itinerary.hero_image || getDeterministicFallback(itinerary.destination || "travel");
+    const fallbackImage = getDeterministicFallback(itinerary.destination || "travel");
+    const [imgSrc, setImgSrc] = useState(itinerary.hero_image || fallbackImage);
+    const [imgErrored, setImgErrored] = useState(false);
     const { value: budgetValue, isMuted: budgetMuted } = parseBudget(itinerary.budget);
     const [nowMs] = useState(() => Date.now());
     const daysSinceCreation = Math.floor((nowMs - new Date(itinerary.created_at).getTime()) / 86_400_000);
@@ -207,10 +209,16 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
             <div className="relative h-44 overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                    src={heroImage}
+                    src={imgSrc}
                     alt={itinerary.destination || "Destination"}
                     className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     loading="lazy"
+                    onError={() => {
+                        if (!imgErrored) {
+                            setImgErrored(true);
+                            setImgSrc(fallbackImage);
+                        }
+                    }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
 

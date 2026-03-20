@@ -42,6 +42,24 @@ export default async function ReputationPage() {
 
   if (!user) redirect("/auth");
 
+  // Verify user has admin role + organization before rendering
+  try {
+    const supabase2 = await createClient();
+    const { data: profile } = await supabase2
+      .from("profiles")
+      .select("role, organization_id")
+      .eq("id", user.id)
+      .single();
+
+    if (!profile?.organization_id || !["admin", "super_admin"].includes(profile.role ?? "")) {
+      redirect("/dashboard");
+    }
+  } catch (error) {
+    logError("Failed to check role for reputation page", error);
+    redirect("/dashboard");
+  }
+
+
   const orgName = await getOrganizationName(user.id);
 
   return (

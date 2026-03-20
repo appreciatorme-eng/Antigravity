@@ -3,6 +3,7 @@ import { apiError } from "@/lib/api/response";
 import { createClient } from "@/lib/supabase/server";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import { logError, logWarn } from "@/lib/observability/logger";
+import { getDeterministicFallback } from "@/lib/image-search";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -144,6 +145,12 @@ export async function GET(request: NextRequest) {
           if (heroImage) break;
         }
       }
+
+      // Server-side fallback when raw_data has no activity images
+      if (!heroImage && itin.destination) {
+        heroImage = getDeterministicFallback(itin.destination as string);
+      }
+
 
       // Strip raw_data from response (too large for list view)
       const { raw_data: _rawData, ...itinWithoutRaw } = itin;
