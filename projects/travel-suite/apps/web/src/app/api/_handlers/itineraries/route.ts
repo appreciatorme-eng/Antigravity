@@ -3,7 +3,7 @@ import { apiError } from "@/lib/api/response";
 import { createClient } from "@/lib/supabase/server";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import { logError, logWarn } from "@/lib/observability/logger";
-import { getDeterministicFallback } from "@/lib/image-search";
+import { getDeterministicFallback, getWikiImage } from "@/lib/image-search";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -129,12 +129,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Merge share, trip & client info into itineraries
-    const enriched = (itineraries ?? []).map((itin: Record<string, unknown>) => {
-      const id = itin.id as string;
-      const clientId = itin.client_id as string | null;
-      const share = shareMap[id];
-
-      // Extract first activity image from raw_data for tile hero
+    // First pass: extract hero images from raw_data
+    const preEnriched = (itineraries ?? []).map((itin: Record<string, unknown>) => {
       let heroImage: string | null = null;
       const rawData = itin.raw_data as { days?: Array<{ activities?: Array<{ image?: string }> }> } | null;
       if (rawData?.days) {
@@ -145,11 +141,31 @@ export async function GET(request: NextRequest) {
           if (heroImage) break;
         }
       }
+      return { itin, heroImage };
+    });
 
-      // Server-side fallback when raw_data has no activity images
-      if (!heroImage && itin.destination) {
-        heroImage = getDeterministicFallback(itin.destination as string);
+    // Fetch destination-specific Wikipedia images for itineraries without hero images (in parallel)
+    const missingImageIdxs = preEnriched
+      .map((e, i) => (!e.heroImage && e.itin.destination ? i : -1))
+      .filter((i) => i !== -1);
+
+    if (missingImageIdxs.length > 0) {
+      const wikiResults = await Promise.all(
+        missingImageIdxs.map((idx) => {
+          const dest = preEnriched[idx].itin.destination as string;
+          return getWikiImage(dest, dest).catch(() => getDeterministicFallback(dest));
+        })
+      );
+      for (let j = 0; j < missingImageIdxs.length; j++) {
+        preEnriched[missingImageIdxs[j]].heroImage = wikiResults[j];
       }
+    }
+
+    // Second pass: build response objects
+    const enriched = preEnriched.map(({ itin, heroImage }) => {
+      const id = itin.id as string;
+      const clientId = itin.client_id as string | null;
+      const share = shareMap[id];
 
 
       // Strip raw_data from response (too large for list view)
