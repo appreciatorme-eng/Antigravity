@@ -97,6 +97,8 @@ export default function PlannerPage() {
 
             const itineraryData = data.raw_data as unknown as ItineraryResult;
             setResult(itineraryData);
+            setImages({}); // Reset images so shimmer shows while fetching
+            fetchImagesForItinerary(itineraryData); // Fetch fresh images from multiple sources
             setPrompt(data.destination || itineraryData.destination || "");
             setDays(data.duration_days || itineraryData.duration_days || 5);
             if (data.budget) setBudget(data.budget);
@@ -178,6 +180,23 @@ export default function PlannerPage() {
         }
         await Promise.all(Array.from({ length: Math.min(concurrency, jobs.length) }, () => worker()));
         setImages(imageMap);
+
+        // Merge fetched images into the itinerary data so templates see them via activity.image
+        setResult((prev) => {
+            if (!prev) return prev;
+            const updatedDays = prev.days.map((day) => ({
+                ...day,
+                activities: day.activities.map((act, idx) => {
+                    const key = activityImageKey(day.day_number, idx);
+                    const fetched = imageMap[key];
+                    if (fetched) {
+                        return { ...act, image: fetched, imageUrl: fetched };
+                    }
+                    return act;
+                }),
+            }));
+            return { ...prev, days: updatedDays };
+        });
     };
 
     const toggleInterest = (interest: string) => {
