@@ -59,10 +59,15 @@ export function AddOnsGrid({
         <GlassCard key={addon.id} padding="none" rounded="2xl">
           {/* Image */}
           {addon.image_url ? (
-            <div
-              className="h-48 bg-cover bg-center rounded-t-2xl"
-              style={{ backgroundImage: `url(${addon.image_url})` }}
-            />
+            <div className="h-48 rounded-t-2xl overflow-hidden bg-gray-100 dark:bg-slate-800">
+              <img
+                src={addon.image_url}
+                alt={addon.name}
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+                loading="lazy"
+              />
+            </div>
           ) : (
             <div className="h-48 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-t-2xl flex items-center justify-center">
               <Package className="w-12 h-12 text-primary/50" />
