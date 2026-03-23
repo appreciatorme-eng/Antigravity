@@ -240,11 +240,10 @@ export async function getWahaStatus(
                     token,
                 );
                 const contactJson = (await contactRes.json()) as {
-                    response?: { id?: { user?: string }; pushname?: string };
-                    wid?: string;
+                    response?: { phoneNumber?: string; pushname?: string; id?: string };
                 };
-                const userId =
-                    contactJson.response?.id?.user ?? contactJson.wid?.replace(/@c\.us$/, "");
+                const rawPhone = contactJson.response?.phoneNumber ?? contactJson.response?.id ?? "";
+                const userId = rawPhone.replace(/@c\.us$/, "");
                 if (userId) {
                     me = {
                         id: userId,
