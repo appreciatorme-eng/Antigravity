@@ -92,7 +92,7 @@ export async function POST(request: Request): Promise<Response> {
     if (event.event === "onStateChange") {
         const state = typeof event.response === "string" ? event.response : "";
 
-        if (state === "CONNECTED") {
+        if (state === "CONNECTED" || state === "inChat") {
             // Mark connected; phone_number is updated via DB poll or future onSession event
             await admin
                 .from("whatsapp_connections")
