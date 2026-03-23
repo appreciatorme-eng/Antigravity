@@ -44,7 +44,10 @@ export async function POST(request: Request) {
 
         const orgId = organizationId!;
         const sessionName = sessionNameFromOrgId(orgId);
-        const webhookUrl = `${appUrl}/api/webhooks/waha`;
+        const webhookSecret = process.env.WPPCONNECT_WEBHOOK_SECRET?.trim() ?? "";
+        const webhookUrl = webhookSecret
+            ? `${appUrl}/api/webhooks/waha?secret=${encodeURIComponent(webhookSecret)}`
+            : `${appUrl}/api/webhooks/waha`;
 
         const token = await createWahaSession(orgId, webhookUrl);
 
