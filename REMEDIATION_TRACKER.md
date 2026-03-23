@@ -13,7 +13,7 @@ All HIGH findings from S37 were resolved in S42.
 ## MEDIUM (2)
 | ID | Finding | File/Location | Action | Outcome | Status |
 |----|---------|---------------|--------|---------|--------|
-| M-01 | `auth_rls_initplan` on `e_invoice_settings` — `auth.uid()` evaluated per-row | Supabase RLS policy | Migration: wrap in `(select auth.uid())` | | ⏳ |
+| M-01 | `auth_rls_initplan` on `e_invoice_settings` — `auth.uid()` evaluated per-row | Supabase RLS policy | Migration: wrap in `(select auth.uid())` | Applied via Supabase MCP, verified policy updated | ✅ |
 | M-02 | Leaked password protection disabled | Supabase Auth dashboard | Dashboard toggle — not code | Requires manual toggle in Supabase dashboard | 📝 |
 
 ## LOW (2)
@@ -30,9 +30,14 @@ All HIGH findings from S37 were resolved in S42.
 | A-03 | `proposal_comments` RLS `WITH CHECK (true)` | Client portal — guests post comments on proposals |
 
 ## Test Suite Status
-- Vitest: pending
-- Playwright E2E: pending
+- Lint: ✅ 0 warnings
+- TypeCheck: ✅ 0 errors
+- Vitest: ⚠️ Skipped — rolldown native binding corruption (pre-existing, unrelated)
+- Playwright E2E: N/A — pure DB migration, no UI/API code changes
 
 ## Commit Log
 | Phase | Commit | Date | Summary |
 |-------|--------|------|---------|
+| Setup | faf266c6 | 2026-03-23 | Create remediation tracker s43 |
+| M-01 | (migration) | 2026-03-23 | Fix auth_rls_initplan on e_invoice_settings |
+| Final | — | 2026-03-23 | Finalize tracker, merge to main |
