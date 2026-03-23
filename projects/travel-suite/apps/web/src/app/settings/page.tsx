@@ -19,6 +19,7 @@ import { SecurityTab } from './_components/SecurityTab';
 import { TeamTab } from './_components/TeamTab';
 import { PlaceholderTab } from './_components/PlaceholderTab';
 import { EInvoicingTab } from './_components/EInvoicingTab';
+import { BillingOverviewTab } from './_components/BillingOverviewTab';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 
 export default function SettingsPage() {
@@ -240,7 +241,9 @@ export default function SettingsPage() {
 
                             {activeTab === 'team' && <TeamTab />}
 
-                            {['billing', 'notifications'].includes(activeTab) && <PlaceholderTab />}
+                            {activeTab === 'billing' && <BillingOverviewTab />}
+
+                            {activeTab === 'notifications' && <PlaceholderTab />}
 
                         </GlassCard>
                     </main>

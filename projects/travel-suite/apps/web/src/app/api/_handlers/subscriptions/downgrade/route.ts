@@ -8,9 +8,12 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const body = await req.json() as { reason?: string; cancel_immediately?: boolean };
+    const body = await req.json() as { target_plan_id: string };
 
-    // Get user's organization
+    if (!body.target_plan_id) {
+      return NextResponse.json({ error: "target_plan_id is required" }, { status: 400 });
+    }
+
     const { data: profile } = await supabase
       .from("profiles")
       .select("organization_id")
@@ -21,10 +24,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No organization found" }, { status: 404 });
     }
 
-    // Get active subscription
     const { data: subscription } = await supabase
       .from("subscriptions")
-      .select("id, razorpay_subscription_id, status, current_period_end")
+      .select("id, plan_id, current_period_end, status")
       .eq("organization_id", profile.organization_id)
       .in("status", ["active", "trialing"])
       .order("created_at", { ascending: false })
@@ -32,48 +34,43 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     if (!subscription) {
-      return NextResponse.json({ error: "No active subscription to cancel" }, { status: 404 });
+      return NextResponse.json({ error: "No active subscription to downgrade" }, { status: 404 });
     }
 
-    // Update subscription in DB
-    const cancelData: Record<string, unknown> = {
-      cancel_at_period_end: !body.cancel_immediately,
-      cancelled_at: new Date().toISOString(),
-      metadata: { cancellation_reason: body.reason || "not specified" },
-    };
-
-    if (body.cancel_immediately) {
-      cancelData.status = "cancelled";
-    }
-
+    // Schedule downgrade at period end
     const { error: updateError } = await supabase
       .from("subscriptions")
-      .update(cancelData)
+      .update({
+        cancel_at_period_end: true,
+        metadata: {
+          downgrade_to: body.target_plan_id,
+          downgrade_scheduled_at: new Date().toISOString(),
+        },
+      })
       .eq("id", subscription.id);
 
     if (updateError) throw updateError;
 
-    // Log the event
     await supabase.from("payment_events").insert({
       organization_id: profile.organization_id,
-      event_type: "subscription.cancelled",
+      event_type: "subscription.downgrade_scheduled",
       payload: {
         subscription_id: subscription.id,
-        reason: body.reason,
-        cancel_immediately: body.cancel_immediately ?? false,
-        period_end: subscription.current_period_end,
+        from_plan: subscription.plan_id,
+        to_plan: body.target_plan_id,
+        effective_date: subscription.current_period_end,
       },
     });
 
     return NextResponse.json({
       success: true,
-      cancel_at_period_end: !body.cancel_immediately,
-      access_until: body.cancel_immediately ? new Date().toISOString() : subscription.current_period_end,
+      downgrade_to: body.target_plan_id,
+      effective_date: subscription.current_period_end,
     });
   } catch (error) {
-    logError("Error cancelling subscription", error);
+    logError("Error scheduling downgrade", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to cancel subscription" },
+      { error: error instanceof Error ? error.message : "Failed to schedule downgrade" },
       { status: 500 }
     );
   }
