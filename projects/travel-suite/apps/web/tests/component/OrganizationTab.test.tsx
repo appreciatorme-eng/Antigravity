@@ -48,7 +48,7 @@ describe("OrganizationTab", () => {
     render(<OrganizationTab {...defaultProps} />);
     expect(screen.getByText("Website Domain")).toBeInTheDocument();
     expect(
-      screen.getByDisplayValue("www.travelsuite.app")
+      screen.getByDisplayValue("www.tripbuilt.app")
     ).toBeInTheDocument();
   });
 
