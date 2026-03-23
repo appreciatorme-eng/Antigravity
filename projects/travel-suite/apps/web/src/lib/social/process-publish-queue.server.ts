@@ -99,17 +99,20 @@ export async function processSocialPublishQueue(): Promise<ProcessQueueResult> {
     const results: Array<{ id: string; status: string; error?: string; retry_at?: string }> = [];
     const sentPostIds = new Set<string>();
 
-    for (const item of queueItems) {
-        const claimTime = new Date().toISOString();
-        const { data: claimedRows } = await supabaseAdmin
-            .from("social_post_queue")
-            .update({ status: "processing", updated_at: claimTime })
-            .eq("id", item.id)
-            .eq("status", "pending")
-            .select("id")
-            .limit(1);
+    // Batch-claim all pending items in a single round-trip (optimistic lock via status = "pending")
+    const claimTime = new Date().toISOString();
+    const allItemIds = queueItems.map((item) => item.id);
+    const { data: claimedRows } = await supabaseAdmin
+        .from("social_post_queue")
+        .update({ status: "processing", updated_at: claimTime })
+        .in("id", allItemIds)
+        .eq("status", "pending")
+        .select("id");
 
-        if (!claimedRows || claimedRows.length === 0) {
+    const claimedIds = new Set((claimedRows ?? []).map((r: { id: string }) => r.id));
+
+    for (const item of queueItems) {
+        if (!claimedIds.has(item.id)) {
             continue;
         }
 

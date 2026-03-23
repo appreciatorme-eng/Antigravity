@@ -33,7 +33,7 @@ export const GlassButton = forwardRef<HTMLButtonElement, GlassButtonProps>(
     ...props
   }, ref) => {
     const [submitting, setSubmitting] = useState(false);
-    const baseStyles = 'inline-flex items-center justify-center gap-2 font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed';
+    const baseStyles = 'inline-flex items-center justify-center gap-2 font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2';
 
     const variantStyles = {
       primary: 'bg-primary text-white hover:bg-opacity-90 shadow-button',

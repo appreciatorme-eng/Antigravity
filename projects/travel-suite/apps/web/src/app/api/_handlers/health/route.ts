@@ -11,6 +11,7 @@ import {
 } from "@/lib/observability/logger";
 import { isDiagnosticsTokenAuthorized } from "@/lib/security/diagnostics-auth";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import { enforcePublicRouteRateLimit, getRequestIp } from "@/lib/security/public-rate-limit";
 
 type CheckStatus = "healthy" | "degraded" | "down" | "unconfigured";
 
@@ -365,6 +366,15 @@ async function checkNotificationPipeline(): Promise<{
 }
 
 export async function GET(request: NextRequest) {
+    const rateLimitResult = await enforcePublicRouteRateLimit(request, {
+        identifier: getRequestIp(request),
+        limit: 30,
+        windowMs: 60_000,
+        prefix: "health",
+        message: "Health check rate limit exceeded",
+    });
+    if (rateLimitResult) return rateLimitResult;
+
     const startedAt = Date.now();
     const requestId = getRequestId(request);
     const requestContext = getRequestContext(request, requestId);

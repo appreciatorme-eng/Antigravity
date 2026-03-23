@@ -59,9 +59,9 @@ export function MessagingTab({
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                         <h4 className="font-bold text-secondary dark:text-white">WhatsApp</h4>
-                        <span className="text-[9px] bg-[#25D366]/20 text-[#25D366] px-2 py-0.5 rounded-full font-black uppercase tracking-widest">Recommended</span>
+                        <span className="text-[11px] bg-[#25D366]/20 text-[#25D366] px-2 py-0.5 rounded-full font-black uppercase tracking-widest">Recommended</span>
                         {isWhatsAppConnected && (
-                            <span className="text-[9px] bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 px-2 py-0.5 rounded-full font-bold">● Connected</span>
+                            <span className="text-[11px] bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 px-2 py-0.5 rounded-full font-bold">● Connected</span>
                         )}
                     </div>
                     {isWhatsAppConnected && whatsAppProfile ? (
@@ -108,7 +108,7 @@ export function MessagingTab({
                     <div className="flex items-center gap-2 mb-0.5">
                         <h4 className="font-bold text-secondary dark:text-white">Gmail</h4>
                         {isGmailConnected && (
-                            <span className="text-[9px] bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 px-2 py-0.5 rounded-full font-bold">● Connected</span>
+                            <span className="text-[11px] bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 px-2 py-0.5 rounded-full font-bold">● Connected</span>
                         )}
                     </div>
                     <p className="text-xs text-text-muted">Manage email enquiries and send confirmations directly from the unified inbox.</p>

@@ -202,7 +202,7 @@ export default async function DriverDetailsPage({
                             {/* Primary Vehicle (External Driver Data) */}
                             <div className="bg-white/40 dark:bg-white/5 p-4 rounded-lg border border-white/20">
                                 <div className="text-sm font-medium text-primary mb-2 uppercase tracking-wider">Primary Vehicle</div>
-                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                                     <div>
                                         <span className="block text-gray-500 text-xs">Type</span>
                                         <span className="font-medium capitalize text-secondary dark:text-white">{driver.vehicle_type || "N/A"}</span>
@@ -222,7 +222,7 @@ export default async function DriverDetailsPage({
                             {appDriverInfo?.vehicle_details && (
                                 <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
                                     <div className="text-sm font-medium text-blue-700 dark:text-blue-400 mb-2 uppercase tracking-wider">App Profile Details</div>
-                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                                         <div>
                                             <span className="block text-blue-400 text-xs">Make/Model</span>
                                             <span className="font-medium text-blue-900 dark:text-blue-300">

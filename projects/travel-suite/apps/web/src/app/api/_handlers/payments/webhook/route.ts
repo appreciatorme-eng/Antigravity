@@ -531,10 +531,11 @@ async function handleSubscriptionCancelled(payload: RazorpayWebhookPayload, requ
     .eq('razorpay_subscription_id', subscription.id);
 
   if (error) {
+    logError('Failed to update subscription to cancelled', error, requestContext);
     logWebhookHandlerEvent('warn', 'Failed to update subscription to cancelled', requestContext, {
       payment_event_type: 'subscription.cancelled',
       payment_subscription_id: subscription.id,
-      db_error: error.message,
+      db_error: "database_write_failed",
     });
   }
 }
@@ -561,10 +562,11 @@ async function handleSubscriptionPaused(payload: RazorpayWebhookPayload, request
     .eq('razorpay_subscription_id', subscription.id);
 
   if (error) {
+    logError('Failed to update subscription to paused', error, requestContext);
     logWebhookHandlerEvent('warn', 'Failed to update subscription to paused', requestContext, {
       payment_event_type: 'subscription.paused',
       payment_subscription_id: subscription.id,
-      db_error: error.message,
+      db_error: "database_write_failed",
     });
   }
 }
@@ -594,10 +596,11 @@ async function handleInvoicePaid(payload: RazorpayWebhookPayload, requestContext
     .eq('razorpay_invoice_id', invoice.id);
 
   if (error) {
+    logError('Failed to update invoice to paid', error, requestContext);
     logWebhookHandlerEvent('warn', 'Failed to update invoice to paid', requestContext, {
       payment_event_type: 'invoice.paid',
       payment_invoice_id: invoice.id,
-      db_error: error.message,
+      db_error: "database_write_failed",
     });
   }
 }
