@@ -40,6 +40,18 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "TripBuilt",
   },
+  openGraph: {
+    title: "TripBuilt | Premium Tour Operator Suite",
+    description: "AI-Powered Travel Planning and Operations Management for Tour Operators",
+    type: "website",
+    siteName: "TripBuilt",
+    url: "https://tripbuilt.com",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "TripBuilt | Premium Tour Operator Suite",
+    description: "AI-Powered Travel Planning and Operations Management for Tour Operators",
+  },
 };
 
 export const viewport: Viewport = {

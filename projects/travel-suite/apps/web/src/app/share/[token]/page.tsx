@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Clock, Plane } from "lucide-react";
@@ -8,6 +9,58 @@ import {
     shareSelectContainsPii,
 } from "@/lib/share/public-trip";
 import ShareTemplateRenderer from "./ShareTemplateRenderer";
+
+export async function generateMetadata({
+    params,
+}: {
+    params: Promise<{ token: string }>;
+}): Promise<Metadata> {
+    const { token } = await params;
+    const supabase = createAdminClient();
+
+    const { data: share } = await supabase
+        .from("shared_itineraries")
+        .select("itineraries(trip_title, destination, duration_days, summary, profiles(organizations(name)))")
+        .eq("share_code", token)
+        .single();
+
+    const itin = (share as unknown as {
+        itineraries?: {
+            trip_title?: string;
+            destination?: string;
+            duration_days?: number;
+            summary?: string;
+            profiles?: { organizations?: { name?: string } | { name?: string }[] };
+        };
+    })?.itineraries;
+
+    if (!itin) {
+        return { title: "Shared Itinerary — TripBuilt" };
+    }
+
+    const org = itin.profiles?.organizations;
+    const operatorName = (Array.isArray(org) ? org[0]?.name : org?.name) || "TripBuilt";
+    const title = `${itin.destination || "Trip"} ${itin.duration_days ? `${itin.duration_days}-Day` : ""} Itinerary — ${operatorName}`;
+    const description = itin.summary
+        ? itin.summary.slice(0, 160)
+        : `${itin.trip_title || "Travel itinerary"} for ${itin.destination || "your next adventure"}`;
+
+    return {
+        title,
+        description,
+        openGraph: {
+            title,
+            description,
+            type: "article",
+            siteName: operatorName,
+        },
+        twitter: {
+            card: "summary",
+            title,
+            description,
+        },
+    };
+}
 
 export default async function SharedTripPage({
     params,
