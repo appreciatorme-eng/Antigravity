@@ -1,5 +1,4 @@
 import { Palette } from 'lucide-react';
-import { GlassCard } from '@/components/glass/GlassCard';
 import { GlassInput } from '@/components/glass/GlassInput';
 import { LogoUpload } from './LogoUpload';
 import type { Organization } from '../shared';
@@ -11,12 +10,15 @@ interface BrandingThemeSectionProps {
 
 export function BrandingThemeSection({ organization, setOrganization }: BrandingThemeSectionProps) {
   return (
-    <GlassCard padding="none" rounded="2xl" data-tour="branding-section">
-      <div className="flex items-center gap-3 border-b border-white/10 p-6">
+    <div data-tour="branding-section">
+      <div className="flex items-center gap-3 mb-6">
         <Palette className="h-5 w-5 text-purple-500" />
-        <h2 className="font-bold text-secondary dark:text-white">Branding & Theme</h2>
+        <div>
+          <h2 className="text-lg font-bold text-secondary dark:text-white">Branding & Theme</h2>
+          <p className="text-sm text-text-secondary mt-0.5">Your logo and brand colors for client-facing documents.</p>
+        </div>
       </div>
-      <div className="space-y-6 p-6">
+      <div className="space-y-6">
         <LogoUpload
           currentUrl={organization.logo_url}
           organizationId={organization.id}
@@ -49,6 +51,6 @@ export function BrandingThemeSection({ organization, setOrganization }: Branding
           </div>
         </div>
       </div>
-    </GlassCard>
+    </div>
   );
 }

@@ -1,5 +1,4 @@
 import { Building2 } from 'lucide-react';
-import { GlassCard } from '@/components/glass/GlassCard';
 import { GlassInput } from '@/components/glass/GlassInput';
 import type { Organization } from '../shared';
 
@@ -15,12 +14,15 @@ export function OrganizationDetailsSection({
   updateBillingAddressField,
 }: OrganizationDetailsSectionProps) {
   return (
-    <GlassCard padding="none" rounded="2xl">
-      <div className="flex items-center gap-3 border-b border-white/10 p-6">
+    <div>
+      <div className="flex items-center gap-3 mb-6">
         <Building2 className="h-5 w-5 text-primary" />
-        <h2 className="font-bold text-secondary dark:text-white">Organization Details</h2>
+        <div>
+          <h2 className="text-lg font-bold text-secondary dark:text-white">Organization Details</h2>
+          <p className="text-sm text-text-secondary mt-0.5">Company information and billing address.</p>
+        </div>
       </div>
-      <div className="space-y-4 p-6">
+      <div className="space-y-4">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <label className="text-sm font-semibold text-secondary dark:text-white">Company Name</label>
@@ -125,6 +127,6 @@ export function OrganizationDetailsSection({
           </div>
         </div>
       </div>
-    </GlassCard>
+    </div>
   );
 }
