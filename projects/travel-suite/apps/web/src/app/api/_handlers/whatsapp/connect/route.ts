@@ -19,9 +19,13 @@ const WHATSAPP_CONNECT_RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 
 export async function POST(request: Request) {
     try {
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+        let appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
         if (!appUrl) {
             return apiError("App URL is not configured", 503);
+        }
+        // Ensure www prefix to avoid 307 redirect that breaks webhook POST callbacks
+        if (appUrl.includes("tripbuilt.com") && !appUrl.includes("www.")) {
+            appUrl = appUrl.replace("://tripbuilt.com", "://www.tripbuilt.com");
         }
 
         const auth = await requireAdmin(request, { requireOrganization: true });
