@@ -3,15 +3,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  AlertTriangle,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
+  Download,
   IndianRupee,
   Loader2,
   MessageSquare,
+  Receipt,
   Shield,
   Star,
   Users,
+  XCircle,
 } from "lucide-react";
 import { PricingCard } from "@/components/billing/PricingCard";
 import { GlassButton } from "@/components/glass/GlassButton";
@@ -55,7 +59,26 @@ interface BillingSnapshot {
   };
 }
 
+interface InvoiceItem {
+  id: string;
+  invoice_number: string | null;
+  date: string;
+  subtotal: number;
+  gst: number;
+  total: number;
+  status: string;
+  razorpay_invoice_id: string | null;
+}
+
 const TIER_ORDER: TierName[] = ["free", "pro", "business", "enterprise"];
+
+const CANCEL_REASONS = [
+  "Too expensive for current usage",
+  "Not using enough features",
+  "Switching to a different tool",
+  "Pausing operations temporarily",
+  "Other",
+];
 
 const FAQ_ITEMS = [
   {
@@ -133,6 +156,12 @@ export function BillingPageClient() {
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactMessage, setContactMessage] = useState("");
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelling, setCancelling] = useState(false);
+  const [isDowngrade, setIsDowngrade] = useState(false);
+  const [invoices, setInvoices] = useState<InvoiceItem[]>([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(true);
 
   async function loadBilling() {
     setLoading(true);
@@ -167,7 +196,23 @@ export function BillingPageClient() {
 
   useEffect(() => {
     void loadBilling();
+    void loadInvoices();
   }, []);
+
+  async function loadInvoices() {
+    setInvoicesLoading(true);
+    try {
+      const response = await fetch("/api/billing/invoices", { cache: "no-store" });
+      const payload = await response.json().catch(() => ({}));
+      if (response.ok && payload?.data?.invoices) {
+        setInvoices(payload.data.invoices as InvoiceItem[]);
+      }
+    } catch {
+      // Silently fail — invoices are supplementary
+    } finally {
+      setInvoicesLoading(false);
+    }
+  }
 
   const currentTier = (data?.current_tier || "free") as TierName;
   const selectedPlan = selectedTier ? TIERS[selectedTier] : null;
@@ -205,16 +250,13 @@ export function BillingPageClient() {
   async function handleSelectTier(tierName: TierName) {
     if (!data) return;
     if (tierName === currentTier) return;
-    if (tierName === "free" && currentTier !== "free") {
-      toast({
-        title: "Manage downgrades in admin billing",
-        description: "Use Admin Billing to cancel or step down a paid plan.",
-        variant: "info",
-      });
-      return;
-    }
+
+    const currentIndex = TIER_ORDER.indexOf(currentTier);
+    const targetIndex = TIER_ORDER.indexOf(tierName);
+    const downgrading = targetIndex < currentIndex;
 
     setSelectedTier(tierName);
+    setIsDowngrade(downgrading);
     setModalOpen(true);
   }
 
@@ -223,7 +265,25 @@ export function BillingPageClient() {
     setSubmitting(true);
 
     try {
-      if (!usesContactSales && selectedPlanId) {
+      if (isDowngrade) {
+        const targetPlanId = selectedTier === "free" ? "free" : selectedTier === "pro" ? (billing === "annual" ? "pro_annual" : "pro_monthly") : selectedTier;
+        const response = await fetch("/api/subscriptions/downgrade", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ target_plan_id: targetPlanId }),
+        });
+        const payload = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(payload?.error || "Failed to schedule downgrade");
+        }
+
+        toast({
+          title: "Downgrade scheduled",
+          description: `Your plan will change to ${TIERS[selectedTier].displayName} at the end of your current billing period.`,
+          variant: "success",
+        });
+      } else if (!usesContactSales && selectedPlanId) {
         const response = await fetch("/api/subscriptions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -280,6 +340,38 @@ export function BillingPageClient() {
       });
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleCancelSubscription(immediately: boolean) {
+    setCancelling(true);
+    try {
+      const response = await fetch("/api/subscriptions/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: cancelReason, cancel_immediately: immediately }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload?.error || "Failed to cancel");
+
+      toast({
+        title: immediately ? "Subscription cancelled" : "Cancellation scheduled",
+        description: immediately
+          ? "Your subscription has been cancelled immediately."
+          : `Access continues until ${data?.subscription?.current_period_end ? new Date(data.subscription.current_period_end).toLocaleDateString("en-IN") : "end of billing period"}.`,
+        variant: "success",
+      });
+      setCancelModalOpen(false);
+      setCancelReason("");
+      await loadBilling();
+    } catch (cancelError) {
+      toast({
+        title: "Cancellation failed",
+        description: cancelError instanceof Error ? cancelError.message : "Please try again.",
+        variant: "error",
+      });
+    } finally {
+      setCancelling(false);
     }
   }
 
@@ -356,6 +448,15 @@ export function BillingPageClient() {
                 {data.can_self_serve_checkout ? "Self-serve ready" : "Concierge upgrades"}
               </div>
             </div>
+            {currentTier !== "free" && (
+              <button
+                type="button"
+                onClick={() => setCancelModalOpen(true)}
+                className="mt-4 text-xs text-red-400/70 hover:text-red-400 transition-colors font-medium"
+              >
+                Cancel subscription
+              </button>
+            )}
           </GlassCard>
 
           <GlassCard className="border-white/10 bg-white/8">
@@ -445,6 +546,67 @@ export function BillingPageClient() {
           </div>
         </motion.div>
 
+        {/* Payment history */}
+        <motion.div className="mt-16" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <div className="mb-6 flex items-center gap-3">
+            <Receipt className="h-5 w-5 text-[#00d084]" />
+            <h3 className="text-lg font-bold text-white">Payment History</h3>
+          </div>
+          {invoicesLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-14 animate-pulse rounded-xl bg-white/8" />
+              ))}
+            </div>
+          ) : invoices.length === 0 ? (
+            <GlassCard className="border-white/10 bg-white/5 text-center py-8">
+              <Receipt className="h-8 w-8 text-white/20 mx-auto mb-3" />
+              <p className="text-sm text-white/50">No payment history yet</p>
+              <p className="text-xs text-white/30 mt-1">Invoices will appear here after your first payment.</p>
+            </GlassCard>
+          ) : (
+            <div className="space-y-2">
+              <div className="grid grid-cols-[1fr_100px_100px_80px] gap-4 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-white/40">
+                <span>Date</span>
+                <span className="text-right">Amount</span>
+                <span className="text-right">GST</span>
+                <span className="text-right">Status</span>
+              </div>
+              {invoices.map((inv) => (
+                <GlassCard key={inv.id} padding="none" className="border-white/10 bg-white/5">
+                  <div className="grid grid-cols-[1fr_100px_100px_80px] gap-4 items-center px-4 py-3">
+                    <div>
+                      <p className="text-sm font-medium text-white">
+                        {new Date(inv.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                      </p>
+                      {inv.invoice_number && (
+                        <p className="text-xs text-white/40">{inv.invoice_number}</p>
+                      )}
+                    </div>
+                    <p className="text-sm font-semibold text-white text-right">
+                      ₹{inv.total.toLocaleString("en-IN")}
+                    </p>
+                    <p className="text-xs text-white/50 text-right">
+                      ₹{inv.gst.toLocaleString("en-IN")}
+                    </p>
+                    <div className="flex justify-end">
+                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                        inv.status === "paid"
+                          ? "bg-emerald-500/20 text-emerald-400"
+                          : inv.status === "failed"
+                          ? "bg-red-500/20 text-red-400"
+                          : "bg-amber-500/20 text-amber-400"
+                      }`}>
+                        {inv.status}
+                      </span>
+                    </div>
+                  </div>
+                </GlassCard>
+              ))}
+            </div>
+          )}
+        </motion.div>
+
         <motion.div
           className="mt-16 rounded-3xl border border-[#00d084]/20 bg-[#00d084]/5 p-8 text-center backdrop-blur-xl"
           initial={{ opacity: 0, y: 12 }}
@@ -475,9 +637,11 @@ export function BillingPageClient() {
       <GlassModal
         isOpen={modalOpen}
         onClose={() => !submitting && setModalOpen(false)}
-        title={selectedPlan ? `${selectedPlan.displayName} plan` : "Upgrade plan"}
+        title={selectedPlan ? `${isDowngrade ? "Downgrade to" : ""} ${selectedPlan.displayName} plan` : "Change plan"}
         description={
-          usesContactSales
+          isDowngrade
+            ? "Your current plan continues until the end of this billing period, then switches to the selected tier."
+            : usesContactSales
             ? "This route creates a real upgrade request and follow-up instead of pretending checkout is already live."
             : "You can start a secure self-serve upgrade for this workspace."
         }
@@ -563,6 +727,8 @@ export function BillingPageClient() {
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Processing
                   </>
+                ) : isDowngrade ? (
+                  "Schedule downgrade"
                 ) : usesContactSales ? (
                   "Submit upgrade request"
                 ) : (
@@ -572,6 +738,77 @@ export function BillingPageClient() {
             </div>
           </div>
         ) : null}
+      </GlassModal>
+
+      {/* Cancel subscription modal */}
+      <GlassModal
+        isOpen={cancelModalOpen}
+        onClose={() => !cancelling && setCancelModalOpen(false)}
+        title="Cancel subscription"
+        description="We're sorry to see you go. Your access will continue until the end of your current billing period."
+        size="lg"
+      >
+        <div className="space-y-6">
+          <GlassCard className="border-amber-200/70 bg-amber-50/80">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-amber-900">What happens when you cancel</p>
+                <ul className="mt-2 space-y-1 text-sm text-amber-800/80">
+                  <li>Your access continues until {data?.subscription?.current_period_end ? new Date(data.subscription.current_period_end).toLocaleDateString("en-IN") : "end of billing period"}</li>
+                  <li>After that, your workspace moves to the free Starter plan</li>
+                  <li>No data is deleted — you can upgrade again anytime</li>
+                </ul>
+              </div>
+            </div>
+          </GlassCard>
+
+          <div className="space-y-3">
+            <p className="text-sm font-medium text-slate-700">Why are you cancelling?</p>
+            <div className="grid gap-2">
+              {CANCEL_REASONS.map((reason) => (
+                <button
+                  key={reason}
+                  type="button"
+                  onClick={() => setCancelReason(reason)}
+                  className={`text-left rounded-xl border px-4 py-3 text-sm transition-all ${
+                    cancelReason === reason
+                      ? "border-[#00d084] bg-[#00d084]/5 text-slate-900 font-medium"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                  }`}
+                >
+                  {reason}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <GlassButton
+              variant="ghost"
+              className="sm:flex-1"
+              onClick={() => setCancelModalOpen(false)}
+              disabled={cancelling}
+            >
+              Keep my plan
+            </GlassButton>
+            <GlassButton
+              variant="danger"
+              className="sm:flex-[1.4]"
+              onClick={() => void handleCancelSubscription(false)}
+              disabled={cancelling || !cancelReason}
+            >
+              {cancelling ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Processing
+                </>
+              ) : (
+                "Cancel at period end"
+              )}
+            </GlassButton>
+          </div>
+        </div>
       </GlassModal>
     </main>
   );

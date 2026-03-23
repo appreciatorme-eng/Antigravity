@@ -29,6 +29,7 @@ import {
     Receipt,
     Coins,
     Compass,
+    CreditCard,
 } from "lucide-react";
 import { TOUR_START_EVENT } from "@/components/demo/DemoTour";
 
@@ -90,6 +91,12 @@ const PRIMARY_ITEMS: NavItem[] = [
         label: "Settings",
         href: "/admin/settings",
         badgeColor: "#00d084",
+    },
+    {
+        icon: CreditCard,
+        label: "Billing",
+        href: "/billing",
+        badgeColor: "#8b5cf6",
     },
 ];
 
