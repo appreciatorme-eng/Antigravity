@@ -1,0 +1,202 @@
+{
+  "common": {
+    "loading": "లోడ్ అవుతోంది...",
+    "save": "సేవ్ చేయి",
+    "cancel": "రద్దు చేయి",
+    "delete": "తొలగించు",
+    "edit": "సవరించు",
+    "close": "మూసివేయి",
+    "confirm": "నిర్ధారించు",
+    "back": "వెనుకకు",
+    "next": "తదుపరి",
+    "submit": "సమర్పించు",
+    "search": "వెతుకు",
+    "filter": "ఫిల్టర్",
+    "clear": "క్లియర్",
+    "error": "లోపం",
+    "success": "విజయం",
+    "view": "చూడు",
+    "download": "డౌన్‌లోడ్",
+    "export": "ఎగుమతి",
+    "import": "దిగుమతి",
+    "refresh": "రిఫ్రెష్",
+    "print": "ప్రింట్",
+    "duplicate": "నకలు చేయి",
+    "archive": "ఆర్కైవ్ చేయి",
+    "restore": "పునరుద్ధరించు",
+    "send": "పంపు",
+    "resend": "మళ్ళీ పంపు",
+    "approve": "ఆమోదించు",
+    "reject": "తిరస్కరించు",
+    "add": "జోడించు",
+    "remove": "తొలగించు",
+    "update": "నవీకరించు",
+    "create": "సృష్టించు",
+    "status": {
+      "pending": "పెండింగ్‌లో ఉంది",
+      "confirmed": "నిర్ధారించబడింది",
+      "cancelled": "రద్దు చేయబడింది",
+      "completed": "పూర్తయింది",
+      "active": "యాక్టివ్",
+      "inactive": "ఇన్‌యాక్టివ్",
+      "processing": "ప్రాసెస్ అవుతోంది",
+      "approved": "ఆమోదించబడింది",
+      "rejected": "తిరస్కరించబడింది",
+      "paid": "చెల్లించబడింది",
+      "unpaid": "చెల్లించలేదు",
+      "refunded": "రీఫండ్ చేయబడింది",
+      "draft": "డ్రాఫ్ట్",
+      "sent": "పంపబడింది"
+    },
+    "labels": {
+      "total": "మొత్తం",
+      "items": "అంశాలు",
+      "showing": "చూపిస్తోంది",
+      "of": "లో",
+      "perPage": "పేజీకి",
+      "selectAll": "అన్నీ ఎంచుకో",
+      "deselectAll": "అన్నీ తీసివేయి",
+      "noData": "డేటా అందుబాటులో లేదు",
+      "noResults": "ఫలితాలు కనుగొనబడలేదు",
+      "showMore": "మరిన్ని చూపు",
+      "showLess": "తక్కువ చూపు",
+      "required": "తప్పనిసరి",
+      "optional": "ఐచ్ఛికం",
+      "actions": "చర్యలు",
+      "name": "పేరు",
+      "description": "వివరణ",
+      "date": "తేదీ",
+      "time": "సమయం",
+      "amount": "మొత్తం",
+      "notes": "గమనికలు"
+    }
+  },
+  "settings": {
+    "title": "సెట్టింగ్‌లు",
+    "description": "మీ సంస్థ ప్రాధాన్యతలు, ప్రొఫైల్ మరియు ఇంటిగ్రేషన్‌లను నిర్వహించండి",
+    "tabs": {
+      "organization": "సంస్థ",
+      "profile": "ప్రొఫైల్",
+      "notifications": "నోటిఫికేషన్‌లు",
+      "integrations": "ఇంటిగ్రేషన్‌లు",
+      "billing": "బిల్లింగ్",
+      "security": "భద్రత",
+      "team": "బృందం"
+    },
+    "messages": {
+      "whatsappDisconnected": "WhatsApp విజయవంతంగా డిస్‌కనెక్ట్ అయింది",
+      "whatsappDisconnectFailed": "WhatsApp డిస్‌కనెక్ట్ చేయడం విఫలమైంది",
+      "timezoneSaved": "టైమ్‌జోన్ సేవ్ చేయబడింది",
+      "timezoneSavedDescription": "మీ టైమ్‌జోన్ {timezone}కి నవీకరించబడింది",
+      "timezoneSaveFailed": "టైమ్‌జోన్ సేవ్ చేయడం విఫలమైంది",
+      "timezoneSaveFailedDescription": "దయచేసి మళ్ళీ ప్రయత్నించండి",
+      "settingsSaved": "సెట్టింగ్‌లు సేవ్ చేయబడ్డాయి",
+      "settingsSavedDescription": "మీ మార్పులు విజయవంతంగా సేవ్ చేయబడ్డాయి"
+    },
+    "profile": {
+      "title": "వ్యక్తిగత ఖాతా",
+      "description": "మీ ఆపరేషనల్ గుర్తింపు మరియు వ్యక్తిగత వివరాలను నిర్వహించండి.",
+      "avatar": {
+        "uploadButton": "అవతార్ అప్‌లోడ్ చేయండి",
+        "fileRequirements": "JPG లేదా PNG. గరిష్ట పరిమాణం 2MB."
+      },
+      "fields": {
+        "fullName": "పూర్తి పేరు",
+        "email": "ఇమెయిల్ చిరునామా"
+      },
+      "timezone": {
+        "label": "ఆపరేషనల్ టైమ్‌జోన్",
+        "description": "బుకింగ్‌లు, ప్రపోజల్ యాక్టివిటీ మరియు ఇన్‌బాక్స్ టైమ్‌స్టాంప్‌ల కోసం ఉపయోగించబడుతుంది.",
+        "save": "టైమ్‌జోన్ సేవ్ చేయి",
+        "saving": "టైమ్‌జోన్ సేవ్ అవుతోంది..."
+      },
+      "actions": {
+        "save": "కాన్ఫిగరేషన్ సేవ్ చేయి",
+        "saving": "సేవ్ అవుతోంది..."
+      }
+    }
+  },
+  "languageSwitcher": {
+    "label": "భాష",
+    "languages": {
+      "en": "English",
+      "hi": "हिन्दी",
+      "ta": "தமிழ்",
+      "te": "తెలుగు",
+      "mr": "मराठी"
+    }
+  },
+  "portal": {
+    "help": "సహాయం",
+    "footer": {
+      "safe": "మీ ట్రిప్ సురక్షితం",
+      "poweredBy": "TripBuilt ద్వారా ఆధారితం"
+    },
+    "loading": "మీ ట్రిప్ పోర్టల్ లోడ్ అవుతోంది...",
+    "errors": {
+      "notFound": {
+        "title": "పోర్టల్ కనుగొనబడలేదు",
+        "description": "ఈ పోర్టల్ లింక్ చెల్లదు. తాజా ట్రిప్ లింక్‌ను మళ్ళీ పంపమని మీ ట్రావెల్ ఆపరేటర్‌ను అడగండి."
+      },
+      "expired": {
+        "title": "ఈ ట్రిప్ లింక్ గడువు ముగిసింది",
+        "description": "ఈ ట్రిప్ లింక్ గడువు ముగిసింది. మళ్ళీ ప్రయత్నించే ముందు కొత్త లింక్ కోసం మీ ట్రావెల్ ఆపరేటర్‌ను సంప్రదించండి."
+      },
+      "unavailable": {
+        "title": "పోర్టల్ అందుబాటులో లేదు",
+        "description": "ట్రిప్ పోర్టల్ లోడ్ చేయడం సాధ్యం కాలేదు. కొత్త లింక్ కోసం మీ ట్రావెల్ ఆపరేటర్‌ను సంప్రదించండి."
+      },
+      "loadFailed": "ట్రిప్ పోర్టల్ లోడ్ చేయడం సాధ్యం కాలేదు."
+    },
+    "dates": {
+      "toBeConfirmed": "తేదీలు నిర్ధారించబడాలి"
+    },
+    "hero": {
+      "yourTripPortal": "మీ ట్రిప్ పోర్టల్",
+      "welcome": "స్వాగతం, {firstName}",
+      "needHelp": "సహాయం కావాలా? మీ ఆపరేటర్‌ను సంప్రదించండి",
+      "call": "{operatorName}కు కాల్ చేయండి"
+    },
+    "tripSummary": {
+      "title": "ట్రిప్ సారాంశం",
+      "destination": "గమ్యస్థానం",
+      "toBeConfirmed": "నిర్ధారించబడాలి",
+      "duration": "వ్యవధి",
+      "days": "{days} రోజులు",
+      "travellers": "ప్రయాణికులు",
+      "travellersCount": "{count} ప్రయాణికులు",
+      "travellersPending": "ప్రయాణికుల వివరాలు పెండింగ్‌లో ఉన్నాయి",
+      "tripStarts": "ట్రిప్ ప్రారంభం",
+      "paymentStatus": "చెల్లింపు స్థితి",
+      "awaitingLink": "లింక్ కోసం వేచి ఉంది",
+      "paid": "చెల్లించబడింది"
+    },
+    "itinerary": {
+      "title": "మీ ప్రయాణ ప్రణాళిక"
+    },
+    "driver": {
+      "title": "మీ డ్రైవర్",
+      "phoneWillBeShared": "బయలుదేరే ముందు ఫోన్ నంబర్ షేర్ చేయబడుతుంది",
+      "vehicle": "వాహనం",
+      "vehicleToBeConfirmed": "వాహన వివరాలు నిర్ధారించబడాలి",
+      "contact": "సంప్రదింపు",
+      "sharedInWhatsApp": "WhatsAppలో షేర్ చేయబడింది",
+      "reachOutBeforePickup": "ప్లాన్‌లు మారితే పికప్‌కు ముందు సంప్రదించండి.",
+      "callDriver": "డ్రైవర్‌కు కాల్ చేయండి",
+      "whatsappDriver": "డ్రైవర్‌కు WhatsApp చేయండి",
+      "whatsappMessage": "నమస్కారం {driverName}, నేను {clientName}. నేను {tripName}లో ప్రయాణిస్తున్నాను. దయచేసి అనుకూలమైన సమయంలో పికప్ వివరాలను నిర్ధారించండి."
+    },
+    "payment": {
+      "title": "చెల్లింపు"
+    },
+    "shareLocation": {
+      "title": "మీ లైవ్ లొకేషన్ షేర్ చేయండి",
+      "description": "మీ నియమిత డ్రైవర్ కోసం ముందుగా నిండిన లొకేషన్ మెసేజ్‌తో WhatsApp తెరవండి.",
+      "button": "డ్రైవర్‌తో లొకేషన్ షేర్ చేయండి",
+      "message": "నమస్కారం {driverName}, నేను {tripName} కోసం నా పికప్ లొకేషన్ షేర్ చేస్తున్నాను: https://maps.google.com/?q=my+location"
+    },
+    "review": {
+      "title": "మీ ట్రిప్‌ను రేట్ చేయండి"
+    }
+  }
+}

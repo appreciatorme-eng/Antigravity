@@ -13,7 +13,7 @@
  *   - International: Thai (th), Indonesian (id), Arabic (ar), Urdu (ur)
  * ------------------------------------------------------------------ */
 
-export const locales = ['en', 'hi'] as const;
+export const locales = ['en', 'hi', 'ta', 'te', 'mr'] as const;
 export type Locale = (typeof locales)[number];
 
 export const defaultLocale: Locale = 'en';
@@ -24,6 +24,9 @@ export const defaultLocale: Locale = 'en';
 export const localeNames: Record<Locale, string> = {
   en: 'English',
   hi: 'हिन्दी',
+  ta: 'தமிழ்',
+  te: 'తెలుగు',
+  mr: 'मराठी',
 };
 
 /**
@@ -34,6 +37,9 @@ export const localeNames: Record<Locale, string> = {
 export const localeDirections: Record<string, 'ltr' | 'rtl'> = {
   en: 'ltr',
   hi: 'ltr',
+  ta: 'ltr',
+  te: 'ltr',
+  mr: 'ltr',
   // Future RTL support:
   // ar: 'rtl',
   // ur: 'rtl',

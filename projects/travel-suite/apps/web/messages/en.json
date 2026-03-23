@@ -120,7 +120,10 @@
     "label": "Language",
     "languages": {
       "en": "English",
-      "hi": "हिन्दी"
+      "hi": "हिन्दी",
+      "ta": "தமிழ்",
+      "te": "తెలుగు",
+      "mr": "मराठी"
     }
   },
   "portal": {
