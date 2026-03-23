@@ -1,6 +1,5 @@
 import { Bell, Globe, Save, Shield } from 'lucide-react';
 import { GlassButton } from '@/components/glass/GlassButton';
-import { GlassCard } from '@/components/glass/GlassCard';
 import type { WorkflowRule } from '../shared';
 import { workflowStageLabels } from '../shared';
 
@@ -18,12 +17,15 @@ export function WorkflowRulesSection({
   saveWorkflowRules,
 }: WorkflowRulesSectionProps) {
   return (
-    <GlassCard padding="none" rounded="2xl">
-      <div className="flex items-center gap-3 border-b border-white/10 p-6">
+    <div>
+      <div className="flex items-center gap-3 mb-6">
         <Bell className="h-5 w-5 text-primary" />
-        <h2 className="font-bold text-secondary dark:text-white">Lifecycle Notification Rules</h2>
+        <div>
+          <h2 className="text-lg font-bold text-secondary dark:text-white">Lifecycle Notification Rules</h2>
+          <p className="text-sm text-text-secondary mt-0.5">Control automatic WhatsApp + app notifications per stage.</p>
+        </div>
       </div>
-      <div className="space-y-3 p-6">
+      <div className="space-y-3">
         <p className="text-sm text-text-secondary">
           Control whether clients receive automatic WhatsApp + app notifications when moved to each lifecycle stage.
         </p>
@@ -87,6 +89,6 @@ export function WorkflowRulesSection({
           </div>
         </div>
       </div>
-    </GlassCard>
+    </div>
   );
 }
