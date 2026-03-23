@@ -96,6 +96,12 @@ export default async function RootLayout({
       <body
         className={`${inter.variable} ${cormorant.variable} antialiased font-sans bg-white dark:bg-[#0a1628] text-slate-900 dark:text-slate-100`}
       >
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:bg-white focus:px-4 focus:py-2 focus:rounded focus:shadow-lg focus:text-sm focus:text-gray-900"
+        >
+          Skip to main content
+        </a>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <AppProviders>
             <Suspense fallback={null}>

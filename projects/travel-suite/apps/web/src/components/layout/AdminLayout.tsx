@@ -24,7 +24,7 @@ export default function AdminLayout({ children, className }: AdminLayoutProps) {
                 <TopBar />
                 <DemoModeBanner />
 
-                <main className={cn(
+                <main id="main-content" className={cn(
                     "flex-1 p-6 md:p-8 overflow-y-auto animate-in fade-in slide-in-from-bottom-2 duration-500",
                     className
                 )}>

@@ -47,7 +47,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 {/* Subtle background decorative bloom */}
                 <div className="pointer-events-none absolute -top-40 -right-40 w-96 h-96 bg-primary/5 dark:bg-primary/10 rounded-full blur-[100px]" />
                 <TopBar />
-                <main className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar pb-24 md:pb-8 relative z-10">
+                <main id="main-content" className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar pb-24 md:pb-8 relative z-10">
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={pathname}

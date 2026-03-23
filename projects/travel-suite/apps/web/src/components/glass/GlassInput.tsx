@@ -31,6 +31,12 @@ export const GlassInput = forwardRef<HTMLInputElement, GlassInputProps>(
   }, ref) => {
     const reactId = useId();
     const inputId = props.id ?? reactId;
+    const errorId = `${inputId}-error`;
+    const helperId = `${inputId}-helper`;
+    const describedBy = [
+      error ? errorId : null,
+      helperText && !error ? helperId : null,
+    ].filter(Boolean).join(' ') || undefined;
     const inputStyles = cn(
       'w-full px-4 py-3 rounded-xl',
       'bg-white/80 dark:bg-white/10',
@@ -65,16 +71,18 @@ export const GlassInput = forwardRef<HTMLInputElement, GlassInputProps>(
             id={inputId}
             className={inputStyles}
             aria-label={props["aria-label"] ?? label ?? props.placeholder ?? undefined}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={describedBy}
             {...props}
           />
         </div>
 
         {error && (
-          <p className="text-sm text-red-500">{error}</p>
+          <p id={errorId} className="text-sm text-red-500" role="alert">{error}</p>
         )}
 
         {helperText && !error && (
-          <p className="text-sm text-gray-500 dark:text-gray-400">{helperText}</p>
+          <p id={helperId} className="text-sm text-gray-500 dark:text-gray-400">{helperText}</p>
         )}
       </div>
     );
@@ -101,6 +109,12 @@ export const GlassTextarea = forwardRef<HTMLTextAreaElement, GlassTextareaProps>
   }, ref) => {
     const reactId = useId();
     const textareaId = props.id ?? reactId;
+    const errorId = `${textareaId}-error`;
+    const helperId = `${textareaId}-helper`;
+    const describedBy = [
+      error ? errorId : null,
+      helperText && !error ? helperId : null,
+    ].filter(Boolean).join(' ') || undefined;
     const textareaStyles = cn(
       'w-full px-4 py-3 rounded-xl',
       'bg-white/80 dark:bg-white/10',
@@ -129,15 +143,17 @@ export const GlassTextarea = forwardRef<HTMLTextAreaElement, GlassTextareaProps>
           id={textareaId}
           className={textareaStyles}
           aria-label={props["aria-label"] ?? label ?? props.placeholder ?? undefined}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={describedBy}
           {...props}
         />
 
         {error && (
-          <p className="text-sm text-red-500">{error}</p>
+          <p id={errorId} className="text-sm text-red-500" role="alert">{error}</p>
         )}
 
         {helperText && !error && (
-          <p className="text-sm text-gray-500 dark:text-gray-400">{helperText}</p>
+          <p id={helperId} className="text-sm text-gray-500 dark:text-gray-400">{helperText}</p>
         )}
       </div>
     );
@@ -166,6 +182,12 @@ export const GlassSelect = forwardRef<HTMLSelectElement, GlassSelectProps>(
   }, ref) => {
     const reactId = useId();
     const selectId = props.id ?? reactId;
+    const errorId = `${selectId}-error`;
+    const helperId = `${selectId}-helper`;
+    const describedBy = [
+      error ? errorId : null,
+      helperText && !error ? helperId : null,
+    ].filter(Boolean).join(' ') || undefined;
     const selectStyles = cn(
       'w-full px-4 py-3 rounded-xl',
       'bg-white/80 dark:bg-white/10',
@@ -194,6 +216,8 @@ export const GlassSelect = forwardRef<HTMLSelectElement, GlassSelectProps>(
             id={selectId}
             className={selectStyles}
             aria-label={props["aria-label"] ?? label ?? undefined}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={describedBy}
             {...props}
           >
             {options.map((option) => (
@@ -210,11 +234,11 @@ export const GlassSelect = forwardRef<HTMLSelectElement, GlassSelectProps>(
         </div>
 
         {error && (
-          <p className="text-sm text-red-500">{error}</p>
+          <p id={errorId} className="text-sm text-red-500" role="alert">{error}</p>
         )}
 
         {helperText && !error && (
-          <p className="text-sm text-gray-500 dark:text-gray-400">{helperText}</p>
+          <p id={helperId} className="text-sm text-gray-500 dark:text-gray-400">{helperText}</p>
         )}
       </div>
     );
