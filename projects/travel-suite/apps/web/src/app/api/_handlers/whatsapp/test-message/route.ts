@@ -6,7 +6,7 @@ import { apiError } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import { sendWahaText } from "@/lib/whatsapp-waha.server";
-import { logError } from "@/lib/observability/logger";
+import { logError, logEvent } from "@/lib/observability/logger";
 
 export async function POST(request: Request) {
     try {
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
             "✅ TripBuilt test — your WhatsApp inbox is live! Reply to verify two-way messaging.",
         );
 
-        console.info("[whatsapp/test-message] sent by admin", { userId, organizationId });
+        logEvent("info", "[whatsapp/test-message] sent by admin", { userId, organizationId });
 
         return NextResponse.json({
             success: true,
