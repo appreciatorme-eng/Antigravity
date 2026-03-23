@@ -1,6 +1,6 @@
 // GET /api/whatsapp/status
 // Returns the current WAHA session status mapped to a frontend shape.
-// WhatsApp: Meta Cloud API only. WPPConnect path removed — see CLAUDE.md.
+// Also syncs the DB when WPPConnect reports CONNECTED (webhook-independent).
 // Requires admin role — response includes phone number and display name.
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
@@ -41,10 +41,34 @@ export async function GET(request: NextRequest) {
         const wppSession = await getWahaStatus(sessionName, sessionToken);
 
         if (wppSession.status === "CONNECTED") {
+            // Sync DB when WPPConnect reports connected — don't rely solely on webhooks
+            let phoneNumber = connection?.phone_number ?? null;
+            let displayName = connection?.display_name ?? null;
+
+            if (dbStatus !== "connected" || !phoneNumber) {
+                // Fetch phone number from WPPConnect session info
+                const me = wppSession.me;
+                if (me?.id) {
+                    phoneNumber = "+" + me.id.replace(/@c\.us$/, "");
+                    displayName = me.pushName ?? displayName;
+                }
+
+                // Update DB — mark connected + store phone number
+                await adminClient
+                    .from("whatsapp_connections")
+                    .update({
+                        status: "connected",
+                        phone_number: phoneNumber,
+                        display_name: displayName,
+                        connected_at: new Date().toISOString(),
+                    })
+                    .eq("session_name", sessionName);
+            }
+
             return NextResponse.json({
                 status: "connected",
-                number: connection?.phone_number ?? null,
-                name: connection?.display_name ?? null,
+                number: phoneNumber,
+                name: displayName,
             });
         }
 

@@ -225,11 +225,41 @@ export async function getWahaStatus(
         // check-connection-session (returns {status: boolean}) — the boolean
         // form throws when passed to .toLowerCase(), making every call return FAILED.
         const res = await wppFetch(`/api/${sessionName}/status-session`, token);
-        const json = (await res.json()) as WppStatusResponse;
+        const json = (await res.json()) as WppStatusResponse & {
+            wid?: string;
+            pushName?: string;
+        };
         const isConnected = json.status === "CONNECTED";
+
+        // When connected, try to get the phone number from session info
+        let me: { id: string; pushName: string } | undefined;
+        if (isConnected) {
+            try {
+                const contactRes = await wppFetch(
+                    `/api/${sessionName}/host-device`,
+                    token,
+                );
+                const contactJson = (await contactRes.json()) as {
+                    response?: { id?: { user?: string }; pushname?: string };
+                    wid?: string;
+                };
+                const userId =
+                    contactJson.response?.id?.user ?? contactJson.wid?.replace(/@c\.us$/, "");
+                if (userId) {
+                    me = {
+                        id: userId,
+                        pushName: contactJson.response?.pushname ?? "",
+                    };
+                }
+            } catch {
+                // host-device not supported or failed — leave me undefined
+            }
+        }
+
         return {
             name: sessionName,
             status: isConnected ? "CONNECTED" : "DISCONNECTED",
+            me,
         };
     } catch {
         return { name: sessionName, status: "FAILED" };
