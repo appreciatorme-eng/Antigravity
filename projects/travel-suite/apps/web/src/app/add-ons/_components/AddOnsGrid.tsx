@@ -60,6 +60,7 @@ export function AddOnsGrid({
           {/* Image */}
           {addon.image_url ? (
             <div className="h-48 rounded-t-2xl overflow-hidden bg-gray-100 dark:bg-slate-800">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={addon.image_url}
                 alt={addon.name}

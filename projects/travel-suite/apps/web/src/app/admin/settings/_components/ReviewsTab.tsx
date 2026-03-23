@@ -52,7 +52,7 @@ export function ReviewsTab({
     return (
         <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-3">Reviews & Discovery</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="p-4 border border-white/10 rounded-2xl hover:border-primary/30 transition-colors bg-white/5 flex flex-col gap-3">
                     <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center">
                         <Building2 className="w-4 h-4 text-blue-400" />
@@ -79,7 +79,7 @@ export function ReviewsTab({
                         <h4 className="font-bold text-secondary dark:text-white text-sm">
                             TripAdvisor
                             {isTripAdvisorConnected && (
-                                <span className="ml-2 text-[9px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold">● Connected</span>
+                                <span className="ml-2 text-[11px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold">● Connected</span>
                             )}
                         </h4>
                         <p className="text-xs text-text-muted mt-1">

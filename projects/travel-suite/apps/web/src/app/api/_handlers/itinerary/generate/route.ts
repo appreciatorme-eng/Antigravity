@@ -763,8 +763,8 @@ Return ONLY valid raw JSON and absolutely nothing else.`;
                 try {
                     // Cache infinitely, Upstash allows max limit to naturally evict LRU items
                     await redisStore.set(redisCacheKey, JSON.stringify(geocodedItinerary));
-                } catch {
-                    logError("Failed to memorize to Redis", undefined);
+                } catch (redisError) {
+                    logError("Redis TTL error", redisError);
                 }
             }
 

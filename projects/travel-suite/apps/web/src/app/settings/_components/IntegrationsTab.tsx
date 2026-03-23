@@ -188,7 +188,7 @@ export function IntegrationsTab({
                             <div className="flex items-center gap-2 mb-0.5">
                                 <h4 className="font-bold text-secondary">UPI</h4>
                                 {isUpiSaved && (
-                                    <span className="text-[9px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">&#x25CF; Saved</span>
+                                    <span className="text-[11px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">&#x25CF; Saved</span>
                                 )}
                             </div>
                             <p className="text-xs text-text-muted">Add your UPI ID to include payment links in WhatsApp messages and proposals.</p>
@@ -218,7 +218,7 @@ export function IntegrationsTab({
             {/* Reviews & Discovery */}
             <div>
                 <h3 className="text-xs font-bold uppercase tracking-widest text-text-secondary mb-3">Reviews & Discovery</h3>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <IntegrationCard
                         icon={<Building2 className="w-4 h-4 text-blue-600" />}
                         iconBg="bg-blue-50"
@@ -236,7 +236,7 @@ export function IntegrationsTab({
                             <h4 className="font-bold text-secondary text-sm">
                                 TripAdvisor
                                 {isTripAdvisorConnected && (
-                                    <span className="ml-2 text-[9px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">&#x25CF; Connected</span>
+                                    <span className="ml-2 text-[11px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">&#x25CF; Connected</span>
                                 )}
                             </h4>
                             <p className="text-xs text-text-muted mt-1">
@@ -279,7 +279,7 @@ export function IntegrationsTab({
             {/* Social Media */}
             <div>
                 <h3 className="text-xs font-bold uppercase tracking-widest text-text-secondary mb-3">Social Media</h3>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <IntegrationCard
                         icon={<Instagram className="w-4 h-4 text-pink-600" />}
                         iconBg="bg-pink-50"

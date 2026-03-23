@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
-  Download,
   IndianRupee,
   Loader2,
   MessageSquare,
@@ -15,7 +14,6 @@ import {
   Shield,
   Star,
   Users,
-  XCircle,
 } from "lucide-react";
 import { PricingCard } from "@/components/billing/PricingCard";
 import { GlassButton } from "@/components/glass/GlassButton";

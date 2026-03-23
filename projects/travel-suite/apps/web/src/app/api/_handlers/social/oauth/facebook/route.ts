@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createSocialOAuthState } from '@/lib/security/social-oauth-state';
-import { safeErrorMessage } from '@/lib/security/safe-error';
 import { logError } from "@/lib/observability/logger";
 
 const META_APP_ID = process.env.META_APP_ID;

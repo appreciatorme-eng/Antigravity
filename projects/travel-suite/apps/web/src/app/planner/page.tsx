@@ -118,6 +118,7 @@ export default function PlannerPage() {
         } finally {
             setOpeningItineraryId(null);
         }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchImagesForItinerary reads current state; adding it would loop
     }, [supabase, toast]);
 
     const [images, setImages] = useState<Record<string, string | null>>({});

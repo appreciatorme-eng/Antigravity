@@ -40,7 +40,7 @@ export function SocialTab({
     return (
         <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-3">Social Media</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="p-4 border border-white/10 rounded-2xl hover:border-primary/30 transition-colors bg-white/5 flex flex-col gap-3">
                     <div className="w-9 h-9 rounded-xl bg-pink-500/10 flex items-center justify-center">
                         <Instagram className="w-4 h-4 text-pink-400" />
@@ -49,7 +49,7 @@ export function SocialTab({
                         <h4 className="font-bold text-secondary dark:text-white text-sm">
                             Instagram
                             {isInstagramConnected && (
-                                <span className="ml-2 text-[9px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold">● Connected</span>
+                                <span className="ml-2 text-[11px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold">● Connected</span>
                             )}
                         </h4>
                         <p className="text-xs text-text-muted mt-1">Import leads from DMs and comments into the CRM automatically.</p>
@@ -72,7 +72,7 @@ export function SocialTab({
                         <h4 className="font-bold text-secondary dark:text-white text-sm">
                             LinkedIn
                             {isLinkedInConnected && (
-                                <span className="ml-2 text-[9px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold">● Connected</span>
+                                <span className="ml-2 text-[11px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold">● Connected</span>
                             )}
                         </h4>
                         <p className="text-xs text-text-muted mt-1">Sync corporate travel enquiries and company contacts.</p>

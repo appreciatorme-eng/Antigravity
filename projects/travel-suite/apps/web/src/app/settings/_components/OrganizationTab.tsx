@@ -67,7 +67,7 @@ export function OrganizationTab({ draftTimezone, loading, onSave }: Organization
                         GST Identification Number for tax compliance and e-invoicing
                     </p>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <label className="text-xs font-bold uppercase tracking-widest text-text-secondary">Base Currency</label>
                         <select className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-secondary">

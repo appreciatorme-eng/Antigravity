@@ -219,7 +219,7 @@ function AuthPageInner() {
                         <h2 className="text-[1.6rem] font-bold text-white tracking-[-0.02em]">
                             {mode === "login" ? "Welcome back" : "Create your account"}
                         </h2>
-                        <p className="text-white/35 text-sm">
+                        <p className="text-white/60 text-sm">
                             {mode === "login"
                                 ? "Sign in to your TripBuilt workspace"
                                 : "Start managing your travel business today"}
@@ -240,7 +240,7 @@ function AuthPageInner() {
                                 className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
                                     mode === m
                                         ? "bg-white/[0.09] text-white shadow-sm"
-                                        : "text-white/35 hover:text-white/60"
+                                        : "text-white/60 hover:text-white/80"
                                 }`}
                             >
                                 {m === "login" ? "Sign in" : "Create account"}
@@ -254,7 +254,7 @@ function AuthPageInner() {
                             <div className="space-y-1.5">
                                 <label
                                     htmlFor="auth-full-name"
-                                    className="block text-[11px] font-medium text-white/40 uppercase tracking-[0.1em]"
+                                    className="block text-[11px] font-medium text-white/60 uppercase tracking-[0.1em]"
                                 >
                                     Full name
                                 </label>
@@ -276,7 +276,7 @@ function AuthPageInner() {
                         <div className="space-y-1.5">
                             <label
                                 htmlFor="auth-email"
-                                className="block text-[11px] font-medium text-white/40 uppercase tracking-[0.1em]"
+                                className="block text-[11px] font-medium text-white/60 uppercase tracking-[0.1em]"
                             >
                                 Email
                             </label>
@@ -297,7 +297,7 @@ function AuthPageInner() {
                         <div className="space-y-1.5">
                             <label
                                 htmlFor="auth-password"
-                                className="block text-[11px] font-medium text-white/40 uppercase tracking-[0.1em]"
+                                className="block text-[11px] font-medium text-white/60 uppercase tracking-[0.1em]"
                             >
                                 Password
                             </label>

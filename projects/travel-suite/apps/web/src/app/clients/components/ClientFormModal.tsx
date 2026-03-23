@@ -68,7 +68,7 @@ export function ClientFormModal({
                     placeholder="+91 98765 43210"
                 />
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="grid gap-2">
                         <label className="text-[10px] font-black uppercase tracking-widest text-text-muted flex items-center gap-1">
                             <Languages className="w-2.5 h-2.5" /> Language

@@ -297,7 +297,7 @@ export default function PortalPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             {[
               { label: t('tripSummary.destination'), value: portal.proposal.destination || t('tripSummary.toBeConfirmed'), icon: MapPin },
               {
@@ -364,7 +364,7 @@ export default function PortalPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="rounded-xl bg-gray-50 border border-gray-100 p-3">
                 <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">
                   {t('driver.vehicle')}
