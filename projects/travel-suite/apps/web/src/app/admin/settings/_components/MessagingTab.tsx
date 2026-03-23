@@ -115,7 +115,7 @@ export function MessagingTab({
                 </div>
                 <GlassButton
                     type="button"
-                    variant={isGmailConnected ? "outline" : "secondary"}
+                    variant={isGmailConnected ? "outline" : "primary"}
                     size="sm"
                     onClick={() => { if (!isGmailConnected) checkOAuthAndRedirect("google", "/api/social/oauth/google", toast); }}
                     className={cn("text-xs shrink-0", isGmailConnected ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10" : "")}
