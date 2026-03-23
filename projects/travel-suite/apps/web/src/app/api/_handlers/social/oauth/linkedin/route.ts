@@ -20,7 +20,7 @@ export async function GET(req: Request) {
         }
 
         if (!LINKEDIN_CLIENT_ID) {
-            return NextResponse.json({ error: 'LINKEDIN_CLIENT_ID not configured' }, { status: 500 });
+            return NextResponse.redirect(new URL('/admin/settings?oauth_error=linkedin_not_configured', req.url));
         }
 
         const state = createSocialOAuthState(user.id);
@@ -37,9 +37,6 @@ export async function GET(req: Request) {
         return NextResponse.redirect(oauthUrl);
     } catch (error: unknown) {
         logError('Error initiating LinkedIn OAuth', error);
-        return NextResponse.json(
-            { error: safeErrorMessage(error, 'Failed to initiate LinkedIn OAuth') },
-            { status: 500 }
-        );
+        return NextResponse.redirect(new URL('/admin/settings?oauth_error=linkedin_failed', req.url));
     }
 }
