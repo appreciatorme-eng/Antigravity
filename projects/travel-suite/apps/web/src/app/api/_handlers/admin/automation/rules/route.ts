@@ -4,6 +4,7 @@ import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { apiSuccess, apiError } from "@/lib/api-response";
 import { AUTOMATION_TEMPLATES, getTemplateById } from "@/lib/automation/templates";
+import { logError } from "@/lib/observability/logger";
 
 const AUTOMATION_RULES_RATE_LIMIT_MAX = 60;
 const AUTOMATION_RULES_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
@@ -84,7 +85,7 @@ export async function GET(req: NextRequest) {
     const { data: rules, error: rulesError } = await rulesQuery;
 
     if (rulesError) {
-      console.error("Error fetching automation rules:", rulesError);
+      logError("Error fetching automation rules", rulesError, { route: "/api/admin/automation/rules" });
       return apiError("Failed to fetch automation rules", 500);
     }
 
@@ -133,7 +134,7 @@ export async function GET(req: NextRequest) {
 
     return apiSuccess({ rules: enrichedRules, templates: AUTOMATION_TEMPLATES });
   } catch (error) {
-    console.error("Automation rules endpoint error:", error);
+    logError("Automation rules endpoint error", error, { route: "/api/admin/automation/rules" });
     return apiError("Internal server error", 500);
   }
 }

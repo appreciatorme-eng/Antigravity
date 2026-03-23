@@ -10,7 +10,7 @@ const eslintConfig = defineConfig([
     rules: {
       // Legacy debt is tracked in REMEDIATION_TRACKER; keep these visible while
       // preventing release-blocking failures during phased remediation.
-      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/no-require-imports": "warn",
       "react/no-unescaped-entities": "warn",
       "react-hooks/set-state-in-effect": "warn",
@@ -19,7 +19,7 @@ const eslintConfig = defineConfig([
       "react-hooks/immutability": "warn",
       "react-hooks/preserve-manual-memoization": "warn",
       "react-hooks/rules-of-hooks": "warn",
-      "prefer-const": "warn",
+      "prefer-const": "error",
     },
   },
   // Override default ignores of eslint-config-next.

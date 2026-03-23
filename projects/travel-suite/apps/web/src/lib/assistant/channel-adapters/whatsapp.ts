@@ -28,6 +28,7 @@ import { sendWhatsAppText } from "@/lib/whatsapp.server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { sanitizeText } from "@/lib/security/sanitize";
+import { logError } from "@/lib/observability/logger";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -233,10 +234,9 @@ export async function handleWhatsAppMessage(
         { role: "assistant" as const, content: confirmReply },
       ];
       await updateSessionHistory(ctx, session.id, updatedHistory).catch((historyError) => {
-        console.error("[assistant/whatsapp] failed to persist confirmation history", {
+        logError("[assistant/whatsapp] failed to persist confirmation history", historyError, {
           sessionId: session.id,
           organizationId: ctx.organizationId,
-          error: historyError instanceof Error ? historyError.message : String(historyError),
         });
       });
 
@@ -278,10 +278,9 @@ export async function handleWhatsAppMessage(
       { role: "assistant" as const, content: replyText },
     ];
     await updateSessionHistory(ctx, session.id, updatedHistory).catch((historyError) => {
-      console.error("[assistant/whatsapp] failed to persist conversation history", {
+      logError("[assistant/whatsapp] failed to persist conversation history", historyError, {
         sessionId: session.id,
         organizationId: ctx.organizationId,
-        error: historyError instanceof Error ? historyError.message : String(historyError),
       });
     });
 

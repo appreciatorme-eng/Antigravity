@@ -5,6 +5,7 @@ import { sanitizeText } from "@/lib/security/sanitize";
 import { blockDemoMutation } from "@/lib/auth/demo-org-resolver";
 import { passesMutationCsrfGuard } from "@/lib/security/admin-mutation-csrf";
 import { safeErrorMessage } from "@/lib/security/safe-error";
+import { logError } from "@/lib/observability/logger";
 
 const TEMPLATE_FORK_RATE_LIMIT_MAX = 20;
 const TEMPLATE_FORK_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
@@ -180,7 +181,7 @@ export async function POST(
 
     if (forkError) {
       // Log error but don't fail the request - fork tracking is non-critical
-      console.error("Failed to create template_fork record:", safeErrorMessage(forkError));
+      logError("Failed to create template_fork record", forkError, { route: "/api/admin/templates/fork" });
     }
 
     // Atomically increment template usage_count to avoid lost-update race conditions
@@ -195,7 +196,7 @@ export async function POST(
 
     if (updateError) {
       // Log error but don't fail the request - usage count update is non-critical
-      console.error("Failed to increment template usage_count:", safeErrorMessage(updateError));
+      logError("Failed to increment template usage_count", updateError, { route: "/api/admin/templates/fork" });
     }
 
     return NextResponse.json(

@@ -4,6 +4,7 @@ import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { apiSuccess, apiError } from "@/lib/api-response";
 import { getTemplateById, buildDefaultRuleConfig } from "@/lib/automation/templates";
+import { logError } from "@/lib/observability/logger";
 
 const AUTOMATION_TOGGLE_RATE_LIMIT_MAX = 30;
 const AUTOMATION_TOGGLE_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
@@ -83,7 +84,7 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     if (fetchError) {
-      console.error("Error fetching automation rule:", fetchError);
+      logError("Error fetching automation rule", fetchError, { route: "/api/admin/automation/toggle" });
       return apiError("Failed to fetch automation rule", 500);
     }
 
@@ -98,7 +99,7 @@ export async function POST(req: NextRequest) {
         .single();
 
       if (updateError) {
-        console.error("Error updating automation rule:", updateError);
+        logError("Error updating automation rule", updateError, { route: "/api/admin/automation/toggle" });
         return apiError("Failed to update automation rule", 500);
       }
 
@@ -128,7 +129,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (createError) {
-      console.error("Error creating automation rule:", createError);
+      logError("Error creating automation rule", createError, { route: "/api/admin/automation/toggle" });
       return apiError("Failed to create automation rule", 500);
     }
 
@@ -137,7 +138,7 @@ export async function POST(req: NextRequest) {
       message: `Automation rule created and ${enabled ? "enabled" : "disabled"} successfully`,
     }, 201);
   } catch (error) {
-    console.error("Automation toggle endpoint error:", error);
+    logError("Automation toggle endpoint error", error, { route: "/api/admin/automation/toggle" });
     return apiError("Internal server error", 500);
   }
 }
