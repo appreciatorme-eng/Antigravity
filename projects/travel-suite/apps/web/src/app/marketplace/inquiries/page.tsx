@@ -18,6 +18,7 @@ import { GlassButton } from "@/components/glass/GlassButton";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { logError } from "@/lib/observability/logger";
+import { useAnalytics } from "@/lib/analytics/events";
 
 interface Inquiry {
     id: string;
@@ -33,6 +34,7 @@ interface Inquiry {
 
 export default function MarketplaceInquiriesPage() {
     const supabase = createClient();
+    const analytics = useAnalytics();
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<"received" | "sent">("received");
     const [inquiries, setInquiries] = useState<{ received: Inquiry[], sent: Inquiry[] }>({ received: [], sent: [] });
@@ -68,6 +70,7 @@ export default function MarketplaceInquiriesPage() {
                 },
                 body: JSON.stringify({ id, mark_read: true })
             });
+            analytics.marketplaceInquiryResponded(id);
             void fetchInquiries();
         } catch (error) {
             logError("Error marking inquiry as read", error);

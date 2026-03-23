@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import posthog from "posthog-js";
 import { PostHogProvider as PostHogReactProvider } from "posthog-js/react";
+import { useWebVitalsReporter } from "@/lib/analytics/web-vitals";
 
 function PageViewTracker() {
   const pathname = usePathname();
@@ -29,6 +30,11 @@ function PageViewTracker() {
     });
   }, [pathname, searchParams]);
 
+  return null;
+}
+
+function WebVitalsReporter() {
+  useWebVitalsReporter();
   return null;
 }
 
@@ -60,6 +66,7 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
   return (
     <PostHogReactProvider client={posthog}>
       <PageViewTracker />
+      <WebVitalsReporter />
       {children}
     </PostHogReactProvider>
   );

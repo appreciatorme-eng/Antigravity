@@ -24,6 +24,7 @@ import {
     SERVICE_REGION_OPTIONS,
     SPECIALTY_OPTIONS,
 } from "@/lib/marketplace-options";
+import { useAnalytics } from "@/lib/analytics/events";
 
 interface MarketplaceProfile {
     id: string;
@@ -43,6 +44,7 @@ interface MarketplaceProfile {
 
 export default function MarketplacePage() {
     const supabase = createClient();
+    const analytics = useAnalytics();
     const [profiles, setProfiles] = useState<MarketplaceProfile[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -93,6 +95,11 @@ export default function MarketplacePage() {
         }, 300);
         return () => clearTimeout(timer);
     }, [fetchProfiles]);
+
+    useEffect(() => {
+        analytics.marketplaceBrowse();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     useEffect(() => {
         const loadMarketplaceOptions = async () => {

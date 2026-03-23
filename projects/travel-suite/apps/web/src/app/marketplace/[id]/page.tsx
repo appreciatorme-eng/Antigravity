@@ -29,6 +29,7 @@ import { GlassBadge } from "@/components/glass/GlassBadge";
 import { useToast } from "@/components/ui/toast";
 import { motion } from "framer-motion";
 import { logError } from "@/lib/observability/logger";
+import { useAnalytics } from "@/lib/analytics/events";
 
 interface RateCardItem {
     id: string;
@@ -92,6 +93,7 @@ export default function OperatorDetailPage() {
     const targetOrgId = params.id as string;
     const supabase = createClient();
     const { toast } = useToast();
+    const analytics = useAnalytics();
 
     const [profile, setProfile] = useState<MarketplaceProfile | null>(null);
     const [reviews, setReviews] = useState<Review[]>([]);
@@ -156,6 +158,14 @@ export default function OperatorDetailPage() {
         void fetchData();
     }, [fetchData]);
 
+    // Track listing viewed once profile data loads
+    useEffect(() => {
+        if (profile) {
+            analytics.marketplaceListingViewed(profile.organization_id, profile.organization_name);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [profile?.organization_id]);
+
     useEffect(() => {
         const recordView = async () => {
             try {
@@ -218,6 +228,7 @@ export default function OperatorDetailPage() {
             });
 
             if (!response.ok) throw new Error("Failed to send inquiry");
+            analytics.marketplaceInquirySent(targetOrgId);
             setInquirySent(true);
             setInquiryMessage("");
             setTimeout(() => { setShowInquiryModal(false); setInquirySent(false); }, 3000);

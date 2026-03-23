@@ -34,5 +34,22 @@ export function useAnalytics() {
       posthog.capture("wizard_dismissed", { step_number: stepNumber, step_name: stepName }),
     sampleDataLoaded: () =>
       posthog.capture("sample_data_loaded", {}),
+
+    // Marketplace funnel events
+    marketplaceBrowse: () =>
+      posthog.capture("marketplace_browse", {}),
+    marketplaceListingViewed: (organizationId: string, organizationName: string) =>
+      posthog.capture("marketplace_listing_viewed", {
+        organization_id: organizationId,
+        organization_name: organizationName,
+      }),
+    marketplaceInquirySent: (organizationId: string) =>
+      posthog.capture("marketplace_inquiry_sent", {
+        organization_id: organizationId,
+      }),
+    marketplaceInquiryResponded: (inquiryId: string) =>
+      posthog.capture("marketplace_inquiry_responded", {
+        inquiry_id: inquiryId,
+      }),
   };
 }
