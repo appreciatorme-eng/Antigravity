@@ -56,7 +56,7 @@ export async function POST(request: Request) {
                 status: "connecting",
                 session_token: token,
             },
-            { onConflict: "organization_id" },
+            { onConflict: "session_name" },
         );
 
         // QR may not be ready yet (Chrome takes 15-60s to boot on Fly.io).
