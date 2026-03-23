@@ -59,7 +59,14 @@ export async function POST(request: Request) {
             { onConflict: "organization_id" },
         );
 
-        const qrBase64 = await getWahaQR(sessionName, token);
+        // QR may not be ready yet (Chrome takes 15-60s to boot on Fly.io).
+        // Return success with null QR — the frontend polls /api/whatsapp/qr every 5s.
+        let qrBase64: string | null = null;
+        try {
+            qrBase64 = await getWahaQR(sessionName, token);
+        } catch {
+            // QR not ready yet — expected during cold start, frontend will poll
+        }
 
         return NextResponse.json({ success: true, sessionName, qrBase64 });
     } catch (error) {
