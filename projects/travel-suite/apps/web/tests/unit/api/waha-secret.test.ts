@@ -54,10 +54,21 @@ it("accepts valid secrets from the header", () => {
   ).toEqual({ ok: true });
 });
 
-it("rejects secrets passed via query string (logs exposure risk)", () => {
+it("accepts valid secrets passed via query string (WPPConnect fallback)", () => {
   expect(
     validateWahaWebhookSecret({
       requestUrl: "https://app.example.com/api/webhooks/waha?secret=secret-123",
+      configuredSecret: "secret-123",
+      allowUnsigned: false,
+      providedHeaderSecret: null,
+    })
+  ).toEqual({ ok: true });
+});
+
+it("rejects invalid secrets passed via query string", () => {
+  expect(
+    validateWahaWebhookSecret({
+      requestUrl: "https://app.example.com/api/webhooks/waha?secret=wrong",
       configuredSecret: "secret-123",
       allowUnsigned: false,
       providedHeaderSecret: null,
