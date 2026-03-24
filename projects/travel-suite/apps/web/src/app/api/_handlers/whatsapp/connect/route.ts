@@ -85,13 +85,19 @@ export async function POST(request: Request) {
             // Status check failed — instance still initializing, proceed to QR flow
         }
 
-        // QR may not be ready immediately.
-        // Return success with null QR -- the frontend polls /api/whatsapp/qr every 3s.
+        // QR may not be ready immediately — Baileys needs a few seconds to boot.
+        // Retry up to 3 times with 2s delays to catch the first QR in this request.
         let qrBase64: string | null = null;
-        try {
-            qrBase64 = await getEvolutionQR(instanceName);
-        } catch {
-            // QR not ready yet -- expected during cold start, frontend will poll
+        for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+                qrBase64 = await getEvolutionQR(instanceName);
+                if (qrBase64) break;
+            } catch {
+                // QR not ready yet — wait and retry
+            }
+            if (attempt < 2) {
+                await new Promise((resolve) => setTimeout(resolve, 2000));
+            }
         }
 
         return NextResponse.json({ success: true, sessionName, qrBase64 });
