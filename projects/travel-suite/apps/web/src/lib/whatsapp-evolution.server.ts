@@ -155,7 +155,7 @@ export async function createEvolutionInstance(
  * Fetch the current QR code as a raw base64 string.
  * Returns empty string if already connected or QR not ready.
  */
-export async function getEvolutionQR(instanceName: string): Promise<string> {
+export async function getEvolutionQR(instanceName: string): Promise<string | null> {
     const res = await evolutionFetch(`/instance/connect/${instanceName}`);
 
     if (!res.ok) {
@@ -169,7 +169,8 @@ export async function getEvolutionQR(instanceName: string): Promise<string> {
     // v2.3.7 nests QR in qrcode.base64; v2.2.x used top-level base64
     const raw = json.qrcode?.base64 ?? json.base64 ?? "";
     // Strip data URI prefix — the frontend component adds it back
-    return raw.replace(/^data:image\/png;base64,/, "");
+    const stripped = raw.replace(/^data:image\/png;base64,/, "");
+    return stripped || null;
 }
 
 /**
