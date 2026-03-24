@@ -67,6 +67,8 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
         isDemoMode={isDemoMode}
         isDisconnected={isDisconnected}
         totalUnread={inbox.totalUnread}
+        businessOnly={inbox.businessOnly}
+        onBusinessOnlyChange={inbox.setBusinessOnly}
         onSelect={inbox.handleSelect}
         onRetry={() => { void inbox.loadLiveConversations(); }}
         onConnectWhatsApp={() => inbox.setIsWaConnectOpen(true)}
