@@ -131,6 +131,7 @@ const routes = createCatchAllHandlers([
   ["whatsapp/test-message", () => import("@/app/api/_handlers/whatsapp/test-message/route")],
   ["whatsapp/webhook", () => import("@/app/api/_handlers/whatsapp/webhook/route")],
   ["webhooks/whatsapp", () => import("@/app/api/_handlers/whatsapp/webhook/route")],
+  ["webhooks/evolution", () => import("@/app/api/_handlers/webhooks/evolution/route")],
   ["webhooks/waha", () => import("@/app/api/_handlers/webhooks/waha/route")],
 ], { rateLimit: { limit: 200, windowMs: 5 * 60 * 1000, prefix: "api:main" } });
 

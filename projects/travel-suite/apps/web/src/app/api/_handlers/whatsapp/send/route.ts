@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
-import { sendWahaText } from "@/lib/whatsapp-waha.server";
+import { sendEvolutionText } from "@/lib/whatsapp-evolution.server";
 import { logError } from "@/lib/observability/logger";
 
 const SendWhatsAppSchema = z.object({
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
       ? `${parsed.data.subject}\n\n${parsed.data.message}`
       : parsed.data.message;
 
-    await sendWahaText(connection.session_name, connection.session_token, digits, text);
+    await sendEvolutionText(connection.session_name, digits, text);
 
     const sentAt = new Date().toISOString();
     const providerMessageId = crypto.randomUUID();

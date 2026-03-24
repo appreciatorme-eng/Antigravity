@@ -21,6 +21,10 @@ export const env = {
     baseUrl: firstDefined(rawEnv.WPPCONNECT_BASE_URL, rawEnv.WPPCONNECT_URL, rawEnv.WAHA_URL),
     token: firstDefined(rawEnv.WPPCONNECT_TOKEN, rawEnv.WHATSAPP_API_KEY),
   },
+  evolution: {
+    baseUrl: firstDefined(rawEnv.EVOLUTION_API_URL),
+    apiKey: firstDefined(rawEnv.EVOLUTION_API_KEY),
+  },
   resend: {
     apiKey: firstDefined(rawEnv.RESEND_API_KEY),
     fromEmail: firstDefined(rawEnv.RESEND_FROM_EMAIL, rawEnv.WELCOME_FROM_EMAIL),

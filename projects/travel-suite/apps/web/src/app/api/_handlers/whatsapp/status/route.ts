@@ -1,10 +1,10 @@
 // GET /api/whatsapp/status
-// Returns the current WAHA session status mapped to a frontend shape.
-// Also syncs the DB when WPPConnect reports CONNECTED (webhook-independent).
-// Requires admin role — response includes phone number and display name.
+// Returns the current Evolution API instance status mapped to a frontend shape.
+// Also syncs the DB when Evolution reports CONNECTED (webhook-independent).
+// Requires admin role -- response includes phone number and display name.
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
-import { getWahaStatus } from "@/lib/whatsapp-waha.server";
+import { getEvolutionStatus } from "@/lib/whatsapp-evolution.server";
 import { logError } from "@/lib/observability/logger";
 
 export async function GET(request: NextRequest) {
@@ -31,29 +31,25 @@ export async function GET(request: NextRequest) {
 
         const sessionName = requestedSessionName || connection?.session_name;
 
-        const sessionToken = connection?.session_token ?? "";
         const dbStatus = connection?.status ?? "disconnected";
 
-        if (!sessionToken || !sessionName) {
+        if (!sessionName) {
             return NextResponse.json({ status: "disconnected" });
         }
 
-        const wppSession = await getWahaStatus(sessionName, sessionToken);
+        const evoSession = await getEvolutionStatus(sessionName);
 
-        if (wppSession.status === "CONNECTED") {
-            // Sync DB when WPPConnect reports connected — don't rely solely on webhooks
+        if (evoSession.status === "CONNECTED") {
             let phoneNumber = connection?.phone_number ?? null;
             let displayName = connection?.display_name ?? null;
 
             if (dbStatus !== "connected" || !phoneNumber) {
-                // Fetch phone number from WPPConnect session info
-                const me = wppSession.me;
+                const me = evoSession.me;
                 if (me?.id) {
-                    phoneNumber = "+" + me.id.replace(/@c\.us$/, "");
+                    phoneNumber = "+" + me.id.replace(/@s\.whatsapp\.net$/, "");
                     displayName = me.pushName ?? displayName;
                 }
 
-                // Update DB — mark connected + store phone number
                 await adminClient
                     .from("whatsapp_connections")
                     .update({
@@ -72,7 +68,7 @@ export async function GET(request: NextRequest) {
             });
         }
 
-        // WAHA reports "DISCONNECTED" during both QR phase and truly disconnected.
+        // Evolution reports "DISCONNECTED" during both QR phase and truly disconnected.
         // Use the DB status to distinguish: "connecting" = QR is showing.
         if (dbStatus === "connecting") {
             return NextResponse.json({ status: "pending" });

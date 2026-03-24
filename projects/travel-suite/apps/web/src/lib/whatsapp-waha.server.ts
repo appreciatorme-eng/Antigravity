@@ -1,7 +1,9 @@
-// WPPConnect (wppconnect-server) client — server-only.
+// WPPConnect (wppconnect-server) client -- server-only.
 // Replaced WAHA Core (single-session only) with WPPConnect (unlimited sessions, free).
 // API reference: https://github.com/wppconnect-team/wppconnect-server
+/** @deprecated Use whatsapp-evolution.server.ts instead. WPPConnect is being replaced by Evolution API. */
 import "server-only";
+console.warn("[DEPRECATED] whatsapp-waha.server.ts -- use whatsapp-evolution.server.ts instead");
 import { env } from "@/lib/config/env";
 import { fetchWithRetry } from "@/lib/network/retry";
 

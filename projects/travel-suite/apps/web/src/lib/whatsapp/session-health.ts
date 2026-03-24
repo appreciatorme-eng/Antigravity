@@ -1,29 +1,26 @@
 import { env } from "@/lib/config/env";
-import { getWahaStatus } from "@/lib/whatsapp-waha.server";
+import { getEvolutionStatus } from "@/lib/whatsapp-evolution.server";
 
 interface SessionHealthInput {
   sessionName?: string | null;
-  token?: string | null;
 }
 
-export async function checkWPPConnectHealth(input: SessionHealthInput = {}): Promise<{
+export async function checkEvolutionHealth(input: SessionHealthInput = {}): Promise<{
   connected: boolean;
   sessionName: string | null;
   error?: string;
 }> {
-  if (!env.wppconnect.baseUrl) {
+  if (!env.evolution?.baseUrl) {
     return {
       connected: false,
       sessionName: input.sessionName ?? null,
-      error: "WPPConnect base URL is not configured",
+      error: "Evolution API base URL is not configured",
     };
   }
 
-  // WhatsApp: Meta Cloud API only. WPPConnect path removed — see CLAUDE.md.
   const sessionName = input.sessionName ?? null;
-  const token = input.token ?? null;
 
-  if (!sessionName || !token) {
+  if (!sessionName) {
     return {
       connected: false,
       sessionName,
@@ -31,12 +28,12 @@ export async function checkWPPConnectHealth(input: SessionHealthInput = {}): Pro
     };
   }
 
-  const status = await getWahaStatus(sessionName, token);
+  const status = await getEvolutionStatus(sessionName);
   if (status.status === "FAILED") {
     return {
       connected: false,
       sessionName,
-      error: "WPPConnect unreachable",
+      error: "Evolution API unreachable",
     };
   }
 

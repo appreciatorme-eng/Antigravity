@@ -10,7 +10,7 @@ import { isFeatureEnabled } from "@/lib/platform/settings";
 import { logError } from "@/lib/observability/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { upsertWhatsAppProposalDraftFromCollected, getProposalDraftSummariesForSessions } from "@/lib/whatsapp/proposal-drafts.server";
-import { sendWahaText } from "@/lib/whatsapp-waha.server";
+import { sendEvolutionText } from "@/lib/whatsapp-evolution.server";
 
 export type ChatbotState = "new" | "qualifying" | "proposal_ready" | "handed_off";
 
@@ -541,7 +541,7 @@ export async function sendChatbotReply(args: {
   const admin = createAdminClient();
   const sentAt = new Date().toISOString();
 
-  await sendWahaText(args.sessionName, args.sessionToken, args.waId, args.reply);
+  await sendEvolutionText(args.sessionName, args.waId, args.reply);
 
   await admin.from("whatsapp_webhook_events").insert({
     provider_message_id: crypto.randomUUID(),

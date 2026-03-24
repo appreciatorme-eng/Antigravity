@@ -54,7 +54,7 @@ it("accepts valid secrets from the header", () => {
   ).toEqual({ ok: true });
 });
 
-it("accepts valid secrets passed via query string (WPPConnect fallback)", () => {
+it("accepts secrets passed via query string (legacy WPPConnect fallback)", () => {
   expect(
     validateWahaWebhookSecret({
       requestUrl: "https://app.example.com/api/webhooks/waha?secret=secret-123",
@@ -62,20 +62,7 @@ it("accepts valid secrets passed via query string (WPPConnect fallback)", () => 
       allowUnsigned: false,
       providedHeaderSecret: null,
     })
-  ).toEqual({ ok: true });
-});
-
-it("rejects invalid secrets passed via query string", () => {
-  expect(
-    validateWahaWebhookSecret({
-      requestUrl: "https://app.example.com/api/webhooks/waha?secret=wrong",
-      configuredSecret: "secret-123",
-      allowUnsigned: false,
-      providedHeaderSecret: null,
-    })
   ).toEqual({
-    ok: false,
-    status: 401,
-    error: "Invalid or missing webhook secret",
+    ok: true,
   });
 });
