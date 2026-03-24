@@ -157,12 +157,15 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
   const loadWhatsAppHealth = useCallback(async () => {
     try {
       const response = await fetch('/api/whatsapp/health', { cache: 'no-store' });
-      const data = (await response.json().catch(() => ({}))) as {
+      const json = (await response.json().catch(() => ({}))) as {
+        data?: { connected?: boolean; error?: string | null };
         connected?: boolean;
         error?: string | null;
       };
-      setWhatsAppStatus(data.connected ? 'connected' : 'disconnected');
-      setWhatsAppHealthError(data.error ?? null);
+      // apiSuccess wraps in { data, error } envelope — unwrap it
+      const payload = json.data ?? json;
+      setWhatsAppStatus(payload.connected ? 'connected' : 'disconnected');
+      setWhatsAppHealthError(payload.error ?? null);
     } catch {
       setWhatsAppStatus('error');
       setWhatsAppHealthError('Unable to reach WhatsApp right now.');
