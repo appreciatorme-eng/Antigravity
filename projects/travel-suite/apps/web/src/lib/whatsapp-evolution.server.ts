@@ -33,6 +33,11 @@ interface EvolutionConnectionState {
 }
 
 interface EvolutionInstanceInfo {
+    readonly name?: string;
+    readonly ownerJid?: string;
+    readonly profileName?: string;
+    readonly profilePicUrl?: string;
+    readonly connectionStatus?: string;
     readonly instance?: {
         readonly instanceName?: string;
         readonly owner?: string;
@@ -209,12 +214,13 @@ export async function getEvolutionStatus(
                         | EvolutionInstanceInfo;
                     const instances = Array.isArray(infoJson) ? infoJson : [infoJson];
                     const instance = instances[0];
-                    const owner = instance?.instance?.owner ?? "";
-                    const userId = owner.replace(/@s\.whatsapp\.net$/, "");
+                    // v2.3.7: ownerJid + profileName at top level
+                    const ownerJid = instance?.ownerJid ?? instance?.instance?.owner ?? "";
+                    const userId = ownerJid.replace(/@s\.whatsapp\.net$/, "");
                     if (userId && userId.length >= 7) {
                         me = {
                             id: userId,
-                            pushName: instance?.instance?.instanceName ?? "",
+                            pushName: instance?.profileName ?? instance?.name ?? "",
                         };
                     }
                 }
