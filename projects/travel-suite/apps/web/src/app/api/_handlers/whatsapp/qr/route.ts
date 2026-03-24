@@ -17,7 +17,14 @@ export async function GET(request: NextRequest) {
 
         const sessionName = sessionNameFromOrgId(organizationId!);
 
-        const qrBase64 = await getEvolutionQR(sessionName);
+        // QR may not be ready yet (Baileys needs ~5-10s to boot).
+        // Return null instead of 500 so the frontend keeps polling.
+        let qrBase64: string | null = null;
+        try {
+            qrBase64 = await getEvolutionQR(sessionName);
+        } catch (qrError) {
+            logError("[whatsapp/qr] QR not ready yet", qrError);
+        }
         return NextResponse.json({ qrBase64 });
     } catch (error) {
         logError("[whatsapp/qr] error", error);
