@@ -68,17 +68,21 @@ export async function POST(request: Request) {
         );
 
         // Check if session already connected (auto-reconnect from previous QR scan)
-        const currentStatus = await getEvolutionStatus(instanceName);
-        if (currentStatus.status === "CONNECTED") {
-            await admin.from("whatsapp_connections").update({ status: "connected" })
-                .eq("session_name", sessionName);
-            return NextResponse.json({
-                success: true,
-                sessionName,
-                status: "connected",
-                number: currentStatus.me?.id?.replace(/@.*/, "") ?? null,
-                name: currentStatus.me?.pushName ?? null,
-            });
+        try {
+            const currentStatus = await getEvolutionStatus(instanceName);
+            if (currentStatus.status === "CONNECTED") {
+                await admin.from("whatsapp_connections").update({ status: "connected" })
+                    .eq("session_name", sessionName);
+                return NextResponse.json({
+                    success: true,
+                    sessionName,
+                    status: "connected",
+                    number: currentStatus.me?.id?.replace(/@.*/, "") ?? null,
+                    name: currentStatus.me?.pushName ?? null,
+                });
+            }
+        } catch {
+            // Status check failed — instance still initializing, proceed to QR flow
         }
 
         // QR may not be ready immediately.
