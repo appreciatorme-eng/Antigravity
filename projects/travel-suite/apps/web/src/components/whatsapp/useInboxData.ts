@@ -409,10 +409,12 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     const { contact } = selectedConversation;
 
     if (action === 'add-to-crm') {
+      // If name is just the phone number (no push name), leave it blank
+      const isPhoneName = /^\+?\d[\d\s-]+$/.test(contact.name || '');
       setAddToCrmModal({
         open: true,
         phone: contact.phone,
-        name: contact.name || '',
+        name: isPhoneName ? '' : (contact.name || ''),
       });
       return;
     }
