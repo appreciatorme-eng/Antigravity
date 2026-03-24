@@ -17,7 +17,7 @@ import {
   createPaymentLinkRecord,
   recordPaymentLinkEvent,
 } from "@/lib/payments/payment-links.server";
-import { sendWahaText } from "@/lib/whatsapp-waha.server";
+import { sendEvolutionText } from "@/lib/whatsapp-evolution.server";
 import {
   buildPublicPayload,
   getRequestIp,
@@ -412,9 +412,8 @@ export async function POST(
               ) {
                 const travelerName = clientName || approvedBy;
                 const amountLabel = `₹${(quotedAmount / 100).toLocaleString("en-IN")}`;
-                await sendWahaText(
+                await sendEvolutionText(
                   connection.session_name,
-                  connection.session_token,
                   clientPhone,
                   `Hi ${travelerName}, your proposal "${proposal.title}" has been approved.\n\nPay securely here: ${link.paymentUrl}\nAmount due: ${amountLabel}\n\nIf you need help before paying, reply to this message.`,
                 );

@@ -3,7 +3,7 @@ import { apiError } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { resolveScopedOrgWithDemo } from "@/lib/auth/demo-org-resolver";
 import { resolveAdminDateRange } from "@/lib/admin/date-range";
-import { sessionNameFromOrgId } from "@/lib/whatsapp-waha.server";
+import { sessionNameFromOrgId } from "@/lib/whatsapp-evolution.server";
 import { logError } from "@/lib/observability/logger";
 
 const APPROVED_STATUSES = ["approved", "accepted", "confirmed", "converted"];

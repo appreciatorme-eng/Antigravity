@@ -4,7 +4,7 @@ import { apiError, apiSuccess } from "@/lib/api/response";
 import type { Database } from "@/lib/database.types";
 import { requireAdmin } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendWahaText } from "@/lib/whatsapp-waha.server";
+import { sendEvolutionText } from "@/lib/whatsapp-evolution.server";
 import { logError } from "@/lib/observability/logger";
 
 type AdminProfileRow = Pick<
@@ -405,9 +405,8 @@ export async function POST(request: Request) {
 
     for (const recipient of recipients) {
       try {
-        await sendWahaText(
+        await sendEvolutionText(
           context.connection.session_name,
-          context.connection.session_token,
           recipient.phone,
           parsed.data.message,
         );

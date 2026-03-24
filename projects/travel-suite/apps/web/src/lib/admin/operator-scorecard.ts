@@ -2,7 +2,7 @@ import "server-only";
 
 import { resolveWindow } from "@/lib/analytics/adapters";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sessionNameFromOrgId } from "@/lib/whatsapp-waha.server";
+import { sessionNameFromOrgId } from "@/lib/whatsapp-evolution.server";
 import type { Database, Json } from "@/lib/database.types";
 
 type AdminClient = ReturnType<typeof createAdminClient>;

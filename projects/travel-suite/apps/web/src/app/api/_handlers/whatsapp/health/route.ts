@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { apiSuccess } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
-import { checkWPPConnectHealth } from "@/lib/whatsapp/session-health";
+import { checkEvolutionHealth } from "@/lib/whatsapp/session-health";
 import { logError } from "@/lib/observability/logger";
 
 export async function GET(request: Request) {
@@ -27,9 +27,8 @@ export async function GET(request: Request) {
       );
     }
 
-    const health = await checkWPPConnectHealth({
+    const health = await checkEvolutionHealth({
       sessionName: connection?.session_name ?? null,
-      token: connection?.session_token ?? null,
     });
 
     return apiSuccess(health);

@@ -54,7 +54,7 @@ it("accepts valid secrets from the header", () => {
   ).toEqual({ ok: true });
 });
 
-it("rejects secrets passed via query string (logs exposure risk)", () => {
+it("accepts secrets passed via query string (legacy WPPConnect fallback)", () => {
   expect(
     validateWahaWebhookSecret({
       requestUrl: "https://app.example.com/api/webhooks/waha?secret=secret-123",
@@ -63,8 +63,6 @@ it("rejects secrets passed via query string (logs exposure risk)", () => {
       providedHeaderSecret: null,
     })
   ).toEqual({
-    ok: false,
-    status: 401,
-    error: "Invalid or missing webhook secret",
+    ok: true,
   });
 });

@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
-import { sendWahaText } from "@/lib/whatsapp-waha.server";
+import { sendEvolutionText } from "@/lib/whatsapp-evolution.server";
 import { logError } from "@/lib/observability/logger";
 
 export async function POST(request: Request) {
@@ -34,11 +34,10 @@ export async function POST(request: Request) {
         }
 
         const phoneDigits = connection.phone_number.replace(/\D/g, "");
-        await sendWahaText(
+        await sendEvolutionText(
             connection.session_name,
-            connection.session_token,
             phoneDigits,
-            "✅ TripBuilt test — your WhatsApp inbox is live! Reply to verify two-way messaging.",
+            "TripBuilt test -- your WhatsApp inbox is live! Reply to verify two-way messaging.",
         );
 
         console.info("[whatsapp/test-message] sent by admin", { userId, organizationId });
