@@ -7,6 +7,7 @@ import { requireAdmin } from "@/lib/auth/admin";
 import {
     createEvolutionInstance,
     getEvolutionQR,
+    getEvolutionStatus,
     sessionNameFromOrgId,
 } from "@/lib/whatsapp-evolution.server";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
@@ -66,8 +67,22 @@ export async function POST(request: Request) {
             { onConflict: "session_name" },
         );
 
+        // Check if session already connected (auto-reconnect from previous QR scan)
+        const currentStatus = await getEvolutionStatus(instanceName);
+        if (currentStatus.status === "CONNECTED") {
+            await admin.from("whatsapp_connections").update({ status: "connected" })
+                .eq("session_name", sessionName);
+            return NextResponse.json({
+                success: true,
+                sessionName,
+                status: "connected",
+                number: currentStatus.me?.id?.replace(/@.*/, "") ?? null,
+                name: currentStatus.me?.pushName ?? null,
+            });
+        }
+
         // QR may not be ready immediately.
-        // Return success with null QR -- the frontend polls /api/whatsapp/qr every 5s.
+        // Return success with null QR -- the frontend polls /api/whatsapp/qr every 3s.
         let qrBase64: string | null = null;
         try {
             qrBase64 = await getEvolutionQR(instanceName);

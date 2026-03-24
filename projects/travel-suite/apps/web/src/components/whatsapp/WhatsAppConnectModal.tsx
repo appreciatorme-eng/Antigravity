@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import Image from "next/image";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { QRCodeSVG } from "qrcode.react";
 import {
@@ -63,12 +62,27 @@ export function WhatsAppConnectModal({
             const data = await res.json() as {
                 sessionName?: string;
                 qrBase64?: string;
+                status?: string;
+                number?: string;
+                name?: string;
                 error?: string;
             };
 
             if (!res.ok) throw new Error(data.error ?? "Failed to generate QR");
 
             setSessionName(data.sessionName ?? null);
+
+            // If session was already connected (auto-reconnect), skip QR
+            if (data.status === "connected") {
+                setBusinessProfile({
+                    number: data.number ?? "",
+                    name: data.name ?? "",
+                });
+                setStep("connected");
+                onConnected();
+                return;
+            }
+
             setQrBase64(data.qrBase64 ?? null);
             setStep("scanning");
         } catch {
@@ -131,7 +145,7 @@ export function WhatsAppConnectModal({
                 if (err instanceof DOMException && err.name === "AbortError") return;
                 logError("Error refreshing WhatsApp QR", err);
             }
-        }, 5000);
+        }, 3000);
 
         return () => {
             controller.abort();
@@ -279,13 +293,13 @@ export function WhatsAppConnectModal({
                                                 fgColor="#0f172a"
                                             />
                                         ) : qrBase64 ? (
-                                            <Image
+                                            /* eslint-disable-next-line @next/next/no-img-element */
+                                            <img
                                                 src={`data:image/png;base64,${qrBase64}`}
                                                 width={200}
                                                 height={200}
                                                 alt="WhatsApp QR code — scan with your phone"
                                                 className="rounded-sm"
-                                                unoptimized
                                             />
                                         ) : (
                                             <div className="w-[200px] h-[200px] bg-slate-100 dark:bg-slate-800 rounded-sm flex flex-col items-center justify-center gap-3 px-4 text-center">
