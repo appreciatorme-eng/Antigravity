@@ -30,6 +30,7 @@ import {
   ActionPickerModal,
 } from './ActionPickerModal';
 import type { ContextAction } from './unified-inbox-shared';
+import { LANGUAGES } from '@/app/clients/types';
 
 export type MessageType = 'text' | 'location' | 'image' | 'voice' | 'system' | 'document';
 export type MessageStatus = 'sent' | 'delivered' | 'read' | 'pending';
@@ -252,6 +253,7 @@ export function MessageThread({
   const [emailSubject, setEmailSubject] = useState('');
   const [showCanned, setShowCanned] = useState(false);
   const [modalMode, setModalMode] = useState<ActionMode | null>(null);
+  const [messageLang, setMessageLang] = useState('English');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isEmail = channel === 'email';
 
@@ -427,6 +429,18 @@ export function MessageThread({
             {label}
           </button>
         ))}
+
+        {/* Language selector */}
+        <select
+          value={messageLang}
+          onChange={(e) => setMessageLang(e.target.value)}
+          className="shrink-0 ml-auto px-2 py-1.5 rounded-lg bg-white/8 border border-white/10 text-slate-300 text-xs font-medium appearance-none cursor-pointer hover:bg-white/12 transition-all"
+          title="Message language"
+        >
+          {LANGUAGES.map((lang) => (
+            <option key={lang} value={lang} className="bg-slate-900 text-slate-200">{lang}</option>
+          ))}
+        </select>
       </div>
 
       {/* Input Area */}
