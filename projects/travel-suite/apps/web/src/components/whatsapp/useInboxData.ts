@@ -134,7 +134,8 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to load conversations');
       }
-      const convs = data.conversations ?? [];
+      const rawConvs = data.conversations ?? [];
+      const convs = applyReadTracking(rawConvs);
 
       // In demo mode with no real data, fall back to mock conversations
       if (isDemoMode && convs.length === 0) {
@@ -212,10 +213,39 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     };
   }, [isDemoMode, loadLiveConversations, loadWhatsAppHealth, supabase]);
 
+  // --- Read tracking (localStorage) ---
+
+  const READ_KEY = 'tripbuilt_inbox_read_at';
+
+  function getReadTimestamps(): Record<string, string> {
+    try {
+      return JSON.parse(localStorage.getItem(READ_KEY) || '{}');
+    } catch { return {}; }
+  }
+
+  function markConversationRead(convId: string) {
+    const map = getReadTimestamps();
+    map[convId] = new Date().toISOString();
+    localStorage.setItem(READ_KEY, JSON.stringify(map));
+  }
+
+  function applyReadTracking(convs: ChannelConversation[]): ChannelConversation[] {
+    const readMap = getReadTimestamps();
+    return convs.map((c) => {
+      const lastReadAt = readMap[c.id];
+      if (!lastReadAt) return c;
+      const unread = c.messages.filter(
+        (m) => m.direction === 'in' && m.timestamp > lastReadAt
+      ).length;
+      return { ...c, unreadCount: unread };
+    });
+  }
+
   // --- Actions ---
 
   function handleSelect(id: string) {
     setSelectedId(id);
+    markConversationRead(id);
     setConversations((prev) =>
       prev.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c))
     );

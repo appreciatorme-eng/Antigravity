@@ -63,7 +63,7 @@ export function ThreadPane({
 
   return (
     <div
-      className={`flex-1 flex flex-col overflow-hidden ${isDisconnected ? 'pt-20' : ''}`}
+      className={`flex-1 flex flex-col overflow-hidden min-h-0 ${isDisconnected ? 'pt-20' : ''}`}
       style={{
         background:
           'radial-gradient(ellipse at top, rgba(37,211,102,0.04) 0%, rgba(10,22,40,0.5) 60%)',
