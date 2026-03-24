@@ -13,7 +13,7 @@ export async function GET(request: Request) {
 
     const { data: connection, error } = await adminClient
       .from("whatsapp_connections")
-      .select("session_name, session_token")
+      .select("session_name, session_token, status, phone_number")
       .eq("organization_id", organizationId!)
       .order("updated_at", { ascending: false })
       .limit(1)
@@ -29,6 +29,7 @@ export async function GET(request: Request) {
 
     const health = await checkEvolutionHealth({
       sessionName: connection?.session_name ?? null,
+      dbStatus: connection?.status ?? null,
     });
 
     return apiSuccess(health);

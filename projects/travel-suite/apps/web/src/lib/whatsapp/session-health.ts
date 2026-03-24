@@ -3,6 +3,7 @@ import { getEvolutionStatus } from "@/lib/whatsapp-evolution.server";
 
 interface SessionHealthInput {
   sessionName?: string | null;
+  dbStatus?: string | null;
 }
 
 export async function checkEvolutionHealth(input: SessionHealthInput = {}): Promise<{
@@ -10,15 +11,20 @@ export async function checkEvolutionHealth(input: SessionHealthInput = {}): Prom
   sessionName: string | null;
   error?: string;
 }> {
+  const sessionName = input.sessionName ?? null;
+
+  // Trust the DB if it says connected — avoids slow/flaky Evolution API calls
+  if (input.dbStatus === "connected" && sessionName) {
+    return { connected: true, sessionName };
+  }
+
   if (!env.evolution?.baseUrl) {
     return {
       connected: false,
-      sessionName: input.sessionName ?? null,
+      sessionName,
       error: "Evolution API base URL is not configured",
     };
   }
-
-  const sessionName = input.sessionName ?? null;
 
   if (!sessionName) {
     return {
