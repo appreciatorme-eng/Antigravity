@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDemoMode } from '@/lib/demo/demo-mode-context';
 import { AlertTriangle } from 'lucide-react';
@@ -11,6 +12,8 @@ import { useInboxData } from './useInboxData';
 import { ConversationListPanel } from './ConversationListPanel';
 import { ThreadPane } from './ThreadPane';
 import { InboxModals } from './InboxModals';
+import { ClientFormModal } from '@/app/clients/components/ClientFormModal';
+import { useClientForm } from '@/app/clients/hooks/useClientForm';
 
 // ---- MAIN UNIFIED INBOX ----
 
@@ -25,6 +28,32 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
   const { isDemoMode } = useDemoMode();
 
   const inbox = useInboxData({ onSendMessage });
+
+  // Client form for "Add to CRM" action — reuses the full client form from /clients page
+  const clientForm = useClientForm({
+    onSaved: async () => {
+      inbox.setAddToCrmModal({ open: false, phone: '', name: '' });
+      clientForm.setModalOpen(false);
+      void inbox.loadLiveConversations();
+    },
+  });
+
+  // Sync: when inbox triggers add-to-crm, open the client form with pre-filled data
+  const prevCrmRef = useRef(false);
+  useEffect(() => {
+    if (inbox.addToCrmModal.open && !prevCrmRef.current) {
+      clientForm.resetForm();
+      clientForm.setFormData((prev) => ({
+        ...prev,
+        phone: inbox.addToCrmModal.phone,
+        full_name: inbox.addToCrmModal.name,
+        sourceChannel: 'whatsapp',
+        lifecycleStage: 'lead',
+      }));
+      clientForm.setModalOpen(true);
+    }
+    prevCrmRef.current = inbox.addToCrmModal.open;
+  }, [inbox.addToCrmModal, clientForm]);
 
   const isDisconnected = !isDemoMode && inbox.whatsAppStatus !== 'connected';
 
@@ -121,6 +150,21 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
         onCloseCtxAction={() => inbox.setCtxActionModal(null)}
         onCloseContextModal={() => inbox.setContextModal(null)}
         onCloseWaConnect={() => inbox.setIsWaConnectOpen(false)}
+      />
+
+      {/* Add to CRM modal — reuses full client form */}
+      <ClientFormModal
+        isOpen={clientForm.modalOpen}
+        onClose={() => {
+          clientForm.setModalOpen(false);
+          inbox.setAddToCrmModal({ open: false, phone: '', name: '' });
+        }}
+        formData={clientForm.formData}
+        onFormChange={clientForm.setFormData}
+        editingClientId={clientForm.editingClientId}
+        saving={clientForm.saving}
+        formError={clientForm.formError}
+        onSave={clientForm.handleSaveClient}
       />
     </div>
   );
