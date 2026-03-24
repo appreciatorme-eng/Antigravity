@@ -83,7 +83,7 @@ export function WhatsAppConnectModal({
                 return;
             }
 
-            setQrBase64(data.qrBase64 ?? null);
+            setQrBase64(data.qrBase64 || null);
             setStep("scanning");
         } catch {
             setStep("setup_required");
@@ -127,12 +127,12 @@ export function WhatsAppConnectModal({
         onConnected();
     }, [isDemoMode, step, onConnected]);
 
-    // Real mode: poll for QR every 5 s until received (Chrome needs ~20-30 s to boot)
+    // Real mode: poll for QR — run immediately, then every 3s
     useEffect(() => {
         if (isDemoMode || step !== "scanning" || !sessionName) return;
 
         const controller = new AbortController();
-        const interval = setInterval(async () => {
+        const fetchQR = async () => {
             try {
                 const res = await fetch(
                     `/api/whatsapp/qr?sessionName=${sessionName}`,
@@ -140,12 +140,14 @@ export function WhatsAppConnectModal({
                 );
                 if (!res.ok) return;
                 const data = await res.json() as { qrBase64?: string };
-                if (data.qrBase64) setQrBase64(data.qrBase64);
+                if (data.qrBase64) setQrBase64(data.qrBase64 || null);
             } catch (err) {
                 if (err instanceof DOMException && err.name === "AbortError") return;
                 logError("Error refreshing WhatsApp QR", err);
             }
-        }, 3000);
+        };
+        fetchQR(); // Run immediately — don't wait 3s for first poll
+        const interval = setInterval(fetchQR, 3000);
 
         return () => {
             controller.abort();
