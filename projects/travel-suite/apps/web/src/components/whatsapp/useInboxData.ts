@@ -371,21 +371,46 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     }
   }
 
-  function handleContextAction(action: ContextAction, tripName?: string) {
+  async function handleContextAction(action: ContextAction, tripName?: string) {
     if (!selectedConversation) return;
     const { contact } = selectedConversation;
 
     if (action === 'add-to-crm') {
-      const nameParam = encodeURIComponent(contact.name);
-      const phoneParam = encodeURIComponent(contact.phone);
-      const email = MOCK_CLIENT_DETAILS[contact.id]?.email ?? '';
-      toast.success(`${contact.name} added to CRM`, {
-        description: 'Navigating to client profile...',
-      });
-      setTimeout(
-        () => router.push(`/clients?name=${nameParam}&phone=${phoneParam}&email=${encodeURIComponent(email)}&source=inbox`),
-        900,
-      );
+      const waId = selectedConversation.messages?.[0]
+        ? (selectedConversation as ChannelConversation & { contact: { phone: string } }).contact.phone
+        : contact.phone;
+      const displayName = contact.name || waId;
+      const promptName = window.prompt('Add to CRM as lead\n\nName:', displayName);
+      if (!promptName) return; // cancelled
+
+      try {
+        const csrfMeta = document.querySelector<HTMLMetaElement>('meta[name="x-csrf-token"]');
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (csrfMeta?.content) headers['x-csrf-token'] = csrfMeta.content;
+
+        const res = await fetch('/api/admin/clients', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            full_name: promptName.trim(),
+            email: `${waId.replace(/[^0-9]/g, '')}@wa.lead`,
+            phone: contact.phone,
+            lifecycleStage: 'lead',
+            sourceChannel: 'whatsapp',
+            notes: `Added from WhatsApp inbox`,
+          }),
+        });
+
+        if (res.ok) {
+          toast.success(`${promptName} added as Lead`, { description: 'Contact saved to CRM' });
+          void loadLiveConversations(); // Refresh to show updated contact type
+        } else {
+          const data = await res.json().catch(() => ({ error: 'Failed' }));
+          toast.error('Could not add to CRM', { description: data.error || 'Please try again' });
+        }
+      } catch {
+        toast.error('Could not add to CRM', { description: 'Network error' });
+      }
       return;
     }
 
