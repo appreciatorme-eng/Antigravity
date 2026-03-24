@@ -295,13 +295,12 @@ export function WhatsAppConnectModal({
                                                 fgColor="#0f172a"
                                             />
                                         ) : qrBase64 ? (
-                                            /* eslint-disable-next-line @next/next/no-img-element */
-                                            <img
-                                                src={`data:image/png;base64,${qrBase64}`}
-                                                width={200}
-                                                height={200}
-                                                alt="WhatsApp QR code — scan with your phone"
-                                                className="rounded-sm"
+                                            <QRCodeSVG
+                                                value={qrBase64}
+                                                size={200}
+                                                level="M"
+                                                includeMargin={false}
+                                                fgColor="#0f172a"
                                             />
                                         ) : (
                                             <div className="w-[200px] h-[200px] bg-slate-100 dark:bg-slate-800 rounded-sm flex flex-col items-center justify-center gap-3 px-4 text-center">
