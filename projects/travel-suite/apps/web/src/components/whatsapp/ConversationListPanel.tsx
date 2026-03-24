@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Search, X, Mail, MessageCircle } from 'lucide-react';
+import { Search, X, Mail, MessageCircle, Building2 } from 'lucide-react';
 import type { ChannelConversation } from './inbox-mock-data';
 import { ErrorSection } from '@/components/ui/ErrorSection';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -20,6 +20,8 @@ interface ConversationListPanelProps {
   isDemoMode: boolean;
   isDisconnected: boolean;
   totalUnread: number;
+  businessOnly: boolean;
+  onBusinessOnlyChange: (value: boolean) => void;
   onSelect: (id: string) => void;
   onRetry: () => void;
   onConnectWhatsApp: () => void;
@@ -33,6 +35,8 @@ export function ConversationListPanel({
   isDemoMode,
   isDisconnected,
   totalUnread,
+  businessOnly,
+  onBusinessOnlyChange,
   onSelect,
   onRetry,
   onConnectWhatsApp,
@@ -110,6 +114,29 @@ export function ConversationListPanel({
             </button>
           )}
         </div>
+      </div>
+
+      {/* Business only toggle */}
+      <div className="shrink-0 flex items-center justify-between px-3 py-2 border-b border-white/10">
+        <div className="flex items-center gap-1.5">
+          <Building2 className="w-3 h-3 text-slate-500" />
+          <span className="text-[10px] font-semibold text-slate-400">Business Only</span>
+        </div>
+        <button
+          onClick={() => onBusinessOnlyChange(!businessOnly)}
+          className={`relative w-8 h-4 rounded-full transition-colors ${
+            businessOnly ? 'bg-[#25D366]' : 'bg-white/15'
+          }`}
+          role="switch"
+          aria-checked={businessOnly}
+          aria-label="Show only business conversations"
+        >
+          <span
+            className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow-sm transition-transform ${
+              businessOnly ? 'left-[18px]' : 'left-0.5'
+            }`}
+          />
+        </button>
       </div>
 
       {/* Channel filter */}

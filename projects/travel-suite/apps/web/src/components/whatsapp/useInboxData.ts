@@ -66,6 +66,8 @@ export interface InboxData {
   setIsWaConnectOpen: (open: boolean) => void;
   setWhatsAppStatus: (status: WhatsAppStatus) => void;
   loadLiveConversations: () => Promise<void>;
+  businessOnly: boolean;
+  setBusinessOnly: (value: boolean) => void;
 }
 
 export interface UseInboxDataOptions {
@@ -90,6 +92,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
   const [contextModal, setContextModal] = useState<{ type: ContextActionType; tripName?: string; waId?: string } | null>(null);
   const [ctxActionModal, setCtxActionModal] = useState<ActionMode | null>(null);
   const [isWaConnectOpen, setIsWaConnectOpen] = useState(false);
+  const [businessOnly, setBusinessOnly] = useState(true);
 
   const selectedConversation = conversations.find((c) => c.id === selectedId) ?? null;
   const selectedChannel: ChannelType = (selectedConversation as ChannelConversation | null)?.channel ?? 'whatsapp';
@@ -119,7 +122,8 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     setIsLoadingConvs(true);
     setConversationsError(null);
     try {
-      const response = await fetch('/api/whatsapp/conversations', { cache: 'no-store' });
+      const qp = businessOnly ? '' : '?business_only=false';
+      const response = await fetch(`/api/whatsapp/conversations${qp}`, { cache: 'no-store' });
       const data = (await response.json().catch(() => ({}))) as {
         conversations?: ChannelConversation[];
         error?: string;
@@ -170,7 +174,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
       setWhatsAppStatus('error');
       setWhatsAppHealthError('Unable to reach WhatsApp right now.');
     }
-  }, []);
+  }, [businessOnly]);
 
   useEffect(() => {
     // Always attempt to load real conversations first
@@ -436,5 +440,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     setIsWaConnectOpen,
     setWhatsAppStatus,
     loadLiveConversations,
+    businessOnly,
+    setBusinessOnly,
   };
 }
