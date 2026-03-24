@@ -51,6 +51,10 @@ export async function GET(request: Request): Promise<Response> {
       const { organizationId, adminClient } = auth;
       const orgId = organizationId!;
 
+      // Business-only filter: hide personal contacts (default: true)
+      const url = new URL(request.url);
+      const businessOnly = url.searchParams.get("business_only") !== "false";
+
       // Resolve caller timezone from their auth metadata for display formatting
       const supabase = await createClient();
       const { data: { user } } = await supabase.auth.getUser();
@@ -109,13 +113,37 @@ export async function GET(request: Request): Promise<Response> {
           }
       }
 
+      // Find wa_ids that have outbound messages (operator replied from TripBuilt)
+      const outboundWaIdSet = new Set<string>();
+      if (businessOnly && waIds.length > 0) {
+          const { data: outboundEvents } = await adminClient
+              .from("whatsapp_webhook_events")
+              .select("wa_id")
+              .filter("metadata->>session", "eq", sessionName)
+              .filter("metadata->>direction", "eq", "out")
+              .in("wa_id", waIds);
+          for (const ev of outboundEvents ?? []) {
+              if (ev.wa_id) outboundWaIdSet.add(ev.wa_id);
+          }
+      }
+
+      // Business filter: keep contacts that are saved profiles OR have outbound messages
+      const filteredWaIds = businessOnly
+          ? waIds.filter((waId) => {
+                const phone = "+" + waId;
+                const hasProfile = profileMap.has(phone) || profileMap.has(waId);
+                const hasOutbound = outboundWaIdSet.has(waId);
+                return hasProfile || hasOutbound;
+            })
+          : waIds;
+
       const chatbotSessions = await getChatbotSessionsForPhones(
         orgId,
-        waIds.map((waId) => `+${waId}`),
+        filteredWaIds.map((waId) => `+${waId}`),
       );
 
       // Build ChannelConversation array (one entry per unique wa_id)
-      const conversations = waIds.map((waId, idx) => {
+      const conversations = filteredWaIds.map((waId, idx) => {
           // Reverse so messages render oldest → newest in the thread view
           const evs = (grouped.get(waId) ?? []).slice().reverse();
           const phone = "+" + waId;
