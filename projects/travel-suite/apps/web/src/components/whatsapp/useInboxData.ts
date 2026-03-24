@@ -68,6 +68,8 @@ export interface InboxData {
   loadLiveConversations: () => Promise<void>;
   businessOnly: boolean;
   setBusinessOnly: (value: boolean) => void;
+  addToCrmModal: { open: boolean; phone: string; name: string };
+  setAddToCrmModal: (val: { open: boolean; phone: string; name: string }) => void;
 }
 
 export interface UseInboxDataOptions {
@@ -93,6 +95,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
   const [ctxActionModal, setCtxActionModal] = useState<ActionMode | null>(null);
   const [isWaConnectOpen, setIsWaConnectOpen] = useState(false);
   const [businessOnly, setBusinessOnly] = useState(true);
+  const [addToCrmModal, setAddToCrmModal] = useState<{ open: boolean; phone: string; name: string }>({ open: false, phone: '', name: '' });
 
   const selectedConversation = conversations.find((c) => c.id === selectedId) ?? null;
   const selectedChannel: ChannelType = (selectedConversation as ChannelConversation | null)?.channel ?? 'whatsapp';
@@ -376,41 +379,11 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     const { contact } = selectedConversation;
 
     if (action === 'add-to-crm') {
-      const waId = selectedConversation.messages?.[0]
-        ? (selectedConversation as ChannelConversation & { contact: { phone: string } }).contact.phone
-        : contact.phone;
-      const displayName = contact.name || waId;
-      const promptName = window.prompt('Add to CRM as lead\n\nName:', displayName);
-      if (!promptName) return; // cancelled
-
-      try {
-        const csrfMeta = document.querySelector<HTMLMetaElement>('meta[name="x-csrf-token"]');
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-        if (csrfMeta?.content) headers['x-csrf-token'] = csrfMeta.content;
-
-        const res = await fetch('/api/admin/clients', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            full_name: promptName.trim(),
-            email: `${waId.replace(/[^0-9]/g, '')}@wa.lead`,
-            phone: contact.phone,
-            lifecycleStage: 'lead',
-            sourceChannel: 'whatsapp',
-            notes: `Added from WhatsApp inbox`,
-          }),
-        });
-
-        if (res.ok) {
-          toast.success(`${promptName} added as Lead`, { description: 'Contact saved to CRM' });
-          void loadLiveConversations(); // Refresh to show updated contact type
-        } else {
-          const data = await res.json().catch(() => ({ error: 'Failed' }));
-          toast.error('Could not add to CRM', { description: data.error || 'Please try again' });
-        }
-      } catch {
-        toast.error('Could not add to CRM', { description: 'Network error' });
-      }
+      setAddToCrmModal({
+        open: true,
+        phone: contact.phone,
+        name: contact.name || '',
+      });
       return;
     }
 
@@ -467,5 +440,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     loadLiveConversations,
     businessOnly,
     setBusinessOnly,
+    addToCrmModal,
+    setAddToCrmModal,
   };
 }
