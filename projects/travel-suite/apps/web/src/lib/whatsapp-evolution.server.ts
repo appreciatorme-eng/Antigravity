@@ -43,6 +43,12 @@ interface EvolutionInstanceInfo {
 interface EvolutionConnectResponse {
     readonly base64?: string;
     readonly code?: string;
+    readonly qrcode?: {
+        readonly base64?: string;
+        readonly code?: string;
+        readonly pairingCode?: string | null;
+        readonly count?: number;
+    };
 }
 
 // ---------------------------------------------------------------------------
@@ -160,7 +166,10 @@ export async function getEvolutionQR(instanceName: string): Promise<string> {
     }
 
     const json = (await res.json()) as EvolutionConnectResponse;
-    return json.base64 ?? "";
+    // v2.3.7 nests QR in qrcode.base64; v2.2.x used top-level base64
+    const raw = json.qrcode?.base64 ?? json.base64 ?? "";
+    // Strip data URI prefix — the frontend component adds it back
+    return raw.replace(/^data:image\/png;base64,/, "");
 }
 
 /**
