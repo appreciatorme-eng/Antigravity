@@ -166,11 +166,10 @@ export async function getEvolutionQR(instanceName: string): Promise<string | nul
     }
 
     const json = (await res.json()) as EvolutionConnectResponse;
-    // v2.3.7 nests QR in qrcode.base64; v2.2.x used top-level base64
-    const raw = json.qrcode?.base64 ?? json.base64 ?? "";
-    // Strip data URI prefix — the frontend component adds it back
-    const stripped = raw.replace(/^data:image\/png;base64,/, "");
-    return stripped || null;
+    // Return the raw QR code string (not the PNG image which has white-on-white rendering issues).
+    // The frontend renders this with QRCodeSVG for reliable display.
+    const code = json.qrcode?.code ?? json.code ?? "";
+    return code || null;
 }
 
 /**
