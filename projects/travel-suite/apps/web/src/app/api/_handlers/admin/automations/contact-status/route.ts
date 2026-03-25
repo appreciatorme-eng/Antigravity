@@ -9,10 +9,18 @@ import { AUTOMATION_TEMPLATES } from "@/lib/automation/templates";
 import { logError } from "@/lib/observability/logger";
 
 const TEMPLATE_ICONS: Record<string, string> = {
+    welcome_message: "👋",
     proposal_followup: "📋",
+    itinerary_shared: "🗺️",
+    booking_confirmation: "🎉",
+    payment_received: "🧾",
     payment_reminder: "💰",
-    review_request: "⭐",
+    packing_reminder: "🧳",
+    departure_day: "🌟",
     trip_countdown: "✈️",
+    post_trip_thanks: "🏠",
+    review_request: "⭐",
+    anniversary_reminder: "🎂",
 };
 
 // ---------------------------------------------------------------------------
