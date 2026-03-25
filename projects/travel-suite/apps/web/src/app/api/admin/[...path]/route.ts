@@ -64,6 +64,7 @@ const routes = createCatchAllHandlers([
   ["security/diagnostics", () => import("@/app/api/_handlers/admin/security/diagnostics/route")],
   ["social/generate", () => import("@/app/api/_handlers/admin/social/generate/route")],
   ["tour-templates/extract", () => import("@/app/api/_handlers/admin/tour-templates/extract/route")],
+  ["trips/:id/portal-token", () => import("@/app/api/_handlers/admin/trips/[id]/portal-token/route")],
   ["trips/:id/clone", () => import("@/app/api/_handlers/admin/trips/[id]/clone/route")],
   ["trips/:id", () => import("@/app/api/_handlers/admin/trips/[id]/route")],
   ["trips", () => import("@/app/api/_handlers/admin/trips/route")],

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, MapPin, Search, Send } from "lucide-react";
+import { Check, Loader2, MapPin, Search, Send } from "lucide-react";
 
 import {
   fillTemplate,
@@ -25,6 +25,7 @@ export function ItineraryPicker({
   const { data: trips, loading, error } = useOrganizationTrips();
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Trip | null>(null);
+  const [sending, setSending] = useState(false);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -36,7 +37,7 @@ export function ItineraryPicker({
     );
   }, [search, trips]);
 
-  function buildMessage(): { body: string; subject?: string } {
+  function buildMessage(itineraryLink: string): { body: string; subject?: string } {
     if (!selected) return { body: "" };
 
     if (channel === "whatsapp") {
@@ -54,7 +55,7 @@ export function ItineraryPicker({
           duration: selected.duration,
           pax_count: String(selected.pax),
           itinerary_summary: selected.itinerarySummary,
-          itinerary_link: `https://tripbuilt.com/trips/${selected.id}`,
+          itinerary_link: itineraryLink,
           company_name: "TripBuilt",
         }),
       };
@@ -62,11 +63,36 @@ export function ItineraryPicker({
 
     return {
       subject: `Your ${selected.destination} Trip Itinerary — ${selected.startDate}–${selected.endDate}`,
-      body: `Dear ${contact.name},\n\nWe are pleased to share your day-wise itinerary for the upcoming trip.\n\n📋 Trip: ${selected.name}\n📅 Dates: ${selected.startDate} – ${selected.endDate} (${selected.duration})\n👥 Guests: ${selected.pax} person${selected.pax > 1 ? "s" : ""}\n🏨 Stay: ${selected.hotel}\n🔖 Booking ID: ${selected.bookingId}\n\n━━━━━━━━━━━━━━━━━━━━━\nDAY-WISE ITINERARY\n━━━━━━━━━━━━━━━━━━━━━\n${selected.itinerarySummary}\n\nYour full itinerary with vouchers is available at:\nhttps://tripbuilt.com/trips/${selected.id}\n\nPlease review and let us know if you need any changes. We are happy to customise!\n\nWarm regards,\nTeam TripBuilt\n📞 +91 98765 00000 | tripbuilt.com`,
+      body: `Dear ${contact.name},\n\nWe are pleased to share your day-wise itinerary for the upcoming trip.\n\n📋 Trip: ${selected.name}\n📅 Dates: ${selected.startDate} – ${selected.endDate} (${selected.duration})\n👥 Guests: ${selected.pax} person${selected.pax > 1 ? "s" : ""}\n🏨 Stay: ${selected.hotel}\n🔖 Booking ID: ${selected.bookingId}\n\n━━━━━━━━━━━━━━━━━━━━━\nDAY-WISE ITINERARY\n━━━━━━━━━━━━━━━━━━━━━\n${selected.itinerarySummary}\n\nYour full itinerary with vouchers is available at:\n${itineraryLink}\n\nPlease review and let us know if you need any changes. We are happy to customise!\n\nWarm regards,\nTeam TripBuilt\n📞 +91 98765 00000 | tripbuilt.com`,
     };
   }
 
-  const { body, subject } = buildMessage();
+  async function handleSend() {
+    if (!selected) return;
+    setSending(true);
+    try {
+      // Look up the portal token for this trip's client
+      const res = await fetch(`/api/admin/trips/${selected.id}/portal-token`);
+      const json = await res.json() as { data?: { portalToken?: string }; error?: string };
+      const portalToken = json.data?.portalToken;
+
+      const itineraryLink = portalToken
+        ? `https://tripbuilt.com/portal/${portalToken}`
+        : `https://tripbuilt.com/trips/${selected.id}`;
+
+      const { body, subject } = buildMessage(itineraryLink);
+      onSend(body, subject);
+    } catch {
+      // Fallback to authenticated link if portal lookup fails
+      const { body, subject } = buildMessage(`https://tripbuilt.com/trips/${selected.id}`);
+      onSend(body, subject);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  // Preview uses placeholder
+  const previewMessage = selected ? buildMessage("https://tripbuilt.com/portal/...") : { body: "" };
 
   if (loading) {
     return (
@@ -144,18 +170,24 @@ export function ItineraryPicker({
             Preview
           </p>
           <pre className="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed max-h-32 overflow-y-auto custom-scrollbar font-sans">
-            {body}
+            {previewMessage.body}
           </pre>
         </div>
       )}
 
       <button
-        onClick={() => selected && onSend(body, subject)}
-        disabled={!selected}
+        onClick={() => { void handleSend(); }}
+        disabled={!selected || sending}
         className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-[#25D366] hover:bg-[#1FAF54] disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-sm transition-colors"
       >
-        <Send className="w-4 h-4" />
-        {channel === "email" ? "Send Itinerary Email" : "Send via WhatsApp"}
+        {sending ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : (
+          <Send className="w-4 h-4" />
+        )}
+        {sending
+          ? "Generating link..."
+          : channel === "email" ? "Send Itinerary Email" : "Send via WhatsApp"}
       </button>
     </div>
   );
