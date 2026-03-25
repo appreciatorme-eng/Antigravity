@@ -59,11 +59,11 @@ interface ApiAutomationRule {
 }
 
 interface ApiResponse {
-  success: boolean;
   data: {
     rules: ApiAutomationRule[];
     templates: unknown[];
   };
+  error: string | null;
 }
 
 // Map API category to UI category
@@ -619,8 +619,8 @@ export function AutomationRules() {
         const res = await fetch('/api/admin/automation/rules');
         const data = await res.json() as ApiResponse;
 
-        if (!res.ok || !data.success) {
-          throw new Error('Failed to fetch automation rules');
+        if (!res.ok || data.error) {
+          throw new Error(data.error ?? 'Failed to fetch automation rules');
         }
 
         // Map API rules to UI format
