@@ -1,6 +1,8 @@
 // GET /api/whatsapp/status
 // Returns the current Evolution API instance status mapped to a frontend shape.
-// Also syncs the DB when Evolution reports CONNECTED (webhook-independent).
+// Only reports "connected" when DB already says "connected" (set by webhook).
+// During "connecting" phase (QR flow), Evolution's CONNECTED status is ignored
+// because it may be stale cached auth from a previous session.
 // Requires admin role -- response includes phone number and display name.
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
@@ -40,32 +42,21 @@ export async function GET(request: NextRequest) {
         const evoSession = await getEvolutionStatus(sessionName);
 
         if (evoSession.status === "CONNECTED") {
-            let phoneNumber = connection?.phone_number ?? null;
-            let displayName = connection?.display_name ?? null;
-
-            if (dbStatus !== "connected" || !phoneNumber) {
-                const me = evoSession.me;
-                if (me?.id) {
-                    phoneNumber = "+" + me.id.replace(/@s\.whatsapp\.net$/, "");
-                    displayName = me.pushName ?? displayName;
-                }
-
-                await adminClient
-                    .from("whatsapp_connections")
-                    .update({
-                        status: "connected",
-                        phone_number: phoneNumber,
-                        display_name: displayName,
-                        connected_at: new Date().toISOString(),
-                    })
-                    .eq("session_name", sessionName);
+            // Only trust Evolution's CONNECTED when DB already says "connected".
+            // During "connecting" (QR flow), Evolution may report CONNECTED from
+            // stale cached Baileys auth — the webhook is the only reliable source
+            // for the connecting → connected transition.
+            if (dbStatus === "connected") {
+                return NextResponse.json({
+                    status: "connected",
+                    number: connection?.phone_number ?? null,
+                    name: connection?.display_name ?? null,
+                });
             }
 
-            return NextResponse.json({
-                status: "connected",
-                number: phoneNumber,
-                name: displayName,
-            });
+            // DB says "connecting" but Evolution says CONNECTED — stale cache.
+            // Return "pending" so the frontend keeps showing the QR code.
+            return NextResponse.json({ status: "pending" });
         }
 
         // Evolution reports "DISCONNECTED" during both QR phase and truly disconnected.
