@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { MessageCircle, Mail, Download, CheckCircle2, Loader2 } from 'lucide-react';
+import { MessageCircle, Mail, Download, Loader2 } from 'lucide-react';
 import { GlassButton } from '@/components/glass/GlassButton';
 import { cn } from '@/lib/utils';
 import { IntegrationCard } from './IntegrationCard';
@@ -27,20 +27,19 @@ export function MessagingSection({
     onDisconnectWhatsApp,
 }: MessagingSectionProps) {
     const [importing, setImporting] = useState(false);
-    const [importResult, setImportResult] = useState<{ imported: number } | null>(null);
     const [importError, setImportError] = useState<string | null>(null);
 
-    async function handleImportHistory() {
+    async function handleRelinkForImport() {
         setImporting(true);
         setImportError(null);
-        setImportResult(null);
         try {
-            const res = await fetch('/api/admin/whatsapp/import-history', { method: 'POST' });
-            const data = await res.json() as { imported?: number; error?: string };
-            if (!res.ok) throw new Error(data.error ?? 'Import failed');
-            setImportResult({ imported: data.imported ?? 0 });
+            const res = await fetch('/api/admin/whatsapp/relink', { method: 'POST' });
+            const data = await res.json() as { success?: boolean; error?: string };
+            if (!res.ok) throw new Error(data.error ?? 'Re-link failed');
+            // Open the QR connect modal so user can scan
+            onOpenWhatsAppConnect();
         } catch (err) {
-            setImportError(err instanceof Error ? err.message : 'Import failed');
+            setImportError(err instanceof Error ? err.message : 'Re-link failed');
         } finally {
             setImporting(false);
         }
@@ -90,22 +89,18 @@ export function MessagingSection({
                                 <GlassButton
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => { void handleImportHistory(); }}
+                                    onClick={() => { void handleRelinkForImport(); }}
                                     disabled={importing}
                                     className="text-xs font-bold border-blue-500/30 text-blue-500 hover:bg-blue-500/10"
                                 >
                                     {importing ? (
                                         <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                                    ) : importResult ? (
-                                        <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
                                     ) : (
                                         <Download className="w-3.5 h-3.5 mr-1.5" />
                                     )}
                                     {importing
-                                        ? 'Importing...'
-                                        : importResult
-                                        ? `${importResult.imported} imported`
-                                        : 'Import History'}
+                                        ? 'Re-linking...'
+                                        : 'Re-link to Import History'}
                                 </GlassButton>
                                 <button
                                     onClick={onDisconnectWhatsApp}

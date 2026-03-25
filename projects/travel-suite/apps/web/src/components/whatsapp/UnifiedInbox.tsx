@@ -68,7 +68,6 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
   // History import banner state
   const [showImportBanner, setShowImportBanner] = useState(false);
   const [importingHistory, setImportingHistory] = useState(false);
-  const [importDone, setImportDone] = useState(false);
   const importCheckedRef = useRef(false);
 
   useEffect(() => {
@@ -89,11 +88,11 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
   async function handleImportFromBanner() {
     setImportingHistory(true);
     try {
-      const res = await fetch('/api/admin/whatsapp/import-history', { method: 'POST' });
+      const res = await fetch('/api/admin/whatsapp/relink', { method: 'POST' });
       if (res.ok) {
-        setImportDone(true);
-        void inbox.loadLiveConversations();
-        setTimeout(() => setShowImportBanner(false), 3000);
+        // Open the WhatsApp connect modal for QR scan
+        inbox.setIsWaConnectOpen(true);
+        setShowImportBanner(false);
       }
     } catch { /* silent */ }
     setImportingHistory(false);
@@ -138,16 +137,14 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
             <Download className="mt-0.5 h-4 w-4 shrink-0 text-blue-300" />
             <div>
               <p className="text-sm font-semibold text-blue-100">
-                {importDone ? 'History imported!' : 'Import your WhatsApp conversations'}
+                Import your WhatsApp conversations
               </p>
               <p className="text-xs text-blue-100/75">
-                {importDone
-                  ? 'Your existing conversations are now visible in the inbox.'
-                  : 'Bring in your existing chats so you can continue conversations here.'}
+                Re-link your WhatsApp to bring in existing chats. Quick QR scan — takes 10 seconds.
               </p>
             </div>
           </div>
-          {importDone ? null : (
+          {(
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -161,7 +158,7 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
                     Importing...
                   </span>
                 ) : (
-                  'Import Now'
+                  'Re-link & Import'
                 )}
               </button>
               <button

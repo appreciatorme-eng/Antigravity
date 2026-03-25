@@ -446,6 +446,22 @@ export async function sendEvolutionPresence(
 }
 
 /**
+ * Delete an Evolution instance entirely. Must be recreated to reconnect.
+ * Used for re-linking: delete → create → QR scan → MESSAGES_SET fires with full history.
+ */
+export async function deleteEvolutionInstance(
+    instanceName: string,
+): Promise<void> {
+    try {
+        await evolutionFetch(`/instance/delete/${instanceName}`, {
+            method: "DELETE",
+        });
+    } catch {
+        // Instance may already be gone
+    }
+}
+
+/**
  * Disconnect an Evolution instance. Errors are swallowed -- session may already be gone.
  */
 export async function disconnectEvolution(
