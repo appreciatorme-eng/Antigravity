@@ -272,6 +272,7 @@ interface MessageThreadProps {
   onUseSmartReply?: (suggestion: string) => void;
   onRefreshSmartReplies?: () => void;
   onContextAction?: (action: ContextAction, tripName?: string) => void;
+  contactPresence?: string | null;
 }
 
 export function MessageThread({
@@ -285,6 +286,7 @@ export function MessageThread({
   onUseSmartReply,
   onRefreshSmartReplies,
   onContextAction,
+  contactPresence,
 }: MessageThreadProps) {
   const [inputText, setInputText] = useState('');
   const [emailSubject, setEmailSubject] = useState('');
@@ -380,7 +382,7 @@ export function MessageThread({
             >
               {initials}
             </div>
-            {contact.isOnline && (
+            {(contact.isOnline || contactPresence === 'available' || contactPresence === 'composing') && (
               <span className="absolute bottom-0 right-0 w-3 h-3 bg-[#25D366] border-2 border-[#0a1628] rounded-full" />
             )}
           </div>
@@ -397,7 +399,15 @@ export function MessageThread({
               {detectedLabel && <AutoLabelChip label={detectedLabel} />}
             </div>
             <div className="flex items-center gap-2 text-[11px] text-slate-400">
-              <span>{isEmail && contact.email ? contact.email : contact.phone}</span>
+              {contactPresence === 'composing' ? (
+                <span className="text-[#25D366] font-medium animate-pulse">typing...</span>
+              ) : contactPresence === 'recording' ? (
+                <span className="text-[#25D366] font-medium animate-pulse">recording audio...</span>
+              ) : contactPresence === 'available' ? (
+                <span className="text-[#25D366] font-medium">online</span>
+              ) : (
+                <span>{isEmail && contact.email ? contact.email : contact.phone}</span>
+              )}
               {contact.trip && (
                 <>
                   <span>·</span>

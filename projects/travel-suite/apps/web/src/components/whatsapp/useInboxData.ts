@@ -22,6 +22,11 @@ import { useSmartReplySuggestions } from './useSmartReplySuggestions';
 
 export type WhatsAppStatus = 'connected' | 'pending' | 'disconnected' | 'error';
 
+export interface PresenceState {
+  readonly presence: string; // composing, recording, available, unavailable
+  readonly lastSeenAt: string | null;
+}
+
 export interface InboxData {
   // Conversation state
   conversations: ChannelConversation[];
@@ -31,6 +36,7 @@ export interface InboxData {
   isLoadingConvs: boolean;
   conversationsError: string | null;
   totalUnread: number;
+  presenceMap: Map<string, PresenceState>;
 
   // WhatsApp status
   whatsAppStatus: WhatsAppStatus;
@@ -123,6 +129,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
   const [isWaConnectOpen, setIsWaConnectOpen] = useState(false);
   const [businessOnly, setBusinessOnly] = useState(true);
   const [addToCrmModal, setAddToCrmModal] = useState<{ open: boolean; phone: string; name: string }>({ open: false, phone: '', name: '' });
+  const [presenceMap, setPresenceMap] = useState<Map<string, PresenceState>>(new Map());
 
   const selectedConversation = conversations.find((c) => c.id === selectedId) ?? null;
   const selectedChannel: ChannelType = (selectedConversation as ChannelConversation | null)?.channel ?? 'whatsapp';
@@ -231,6 +238,23 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
         { event: '*', schema: 'public', table: 'whatsapp_connections' },
         () => {
           void loadWhatsAppHealth();
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'whatsapp_presence' },
+        (payload) => {
+          const row = payload.new as { wa_id?: string; presence?: string; last_seen_at?: string | null } | undefined;
+          if (row?.wa_id) {
+            setPresenceMap((prev) => {
+              const next = new Map(prev);
+              next.set(row.wa_id!, {
+                presence: row.presence ?? 'unavailable',
+                lastSeenAt: row.last_seen_at ?? null,
+              });
+              return next;
+            });
+          }
         },
       )
       .subscribe();
@@ -445,6 +469,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     isLoadingConvs,
     conversationsError,
     totalUnread,
+    presenceMap,
     whatsAppStatus,
     whatsAppHealthError,
     activeChatbotSession,

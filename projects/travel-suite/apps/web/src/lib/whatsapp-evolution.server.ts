@@ -129,8 +129,10 @@ export async function createEvolutionInstance(
                 base64: true,
                 events: [
                     "MESSAGES_UPSERT",
+                    "MESSAGES_UPDATE",
                     "MESSAGES_SET",
                     "SEND_MESSAGE",
+                    "PRESENCE_UPDATE",
                     "CONNECTION_UPDATE",
                     "QRCODE_UPDATED",
                 ],
@@ -420,6 +422,27 @@ export async function sendEvolutionPoll(
             `Evolution POST /message/sendPoll/${instanceName} -> ${res.status}: ${body}`,
         );
     }
+}
+
+/**
+ * Send a presence update (typing, recording, available) to a contact.
+ * Shows "typing..." or "recording audio..." in the client's WhatsApp.
+ */
+export async function sendEvolutionPresence(
+    instanceName: string,
+    phoneDigits: string,
+    presence: "composing" | "recording" | "paused",
+): Promise<void> {
+    const digits = phoneDigits.replace(/\D/g, "");
+    await evolutionFetch(`/chat/sendPresence/${instanceName}`, {
+        method: "POST",
+        body: JSON.stringify({
+            number: `${digits}@s.whatsapp.net`,
+            presence,
+        }),
+    }).catch(() => {
+        // Best-effort — don't fail on presence errors
+    });
 }
 
 /**

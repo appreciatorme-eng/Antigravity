@@ -6095,6 +6095,33 @@ export type Database = {
           },
         ]
       }
+      whatsapp_presence: {
+        Row: {
+          id: string
+          session_name: string
+          wa_id: string
+          presence: string
+          last_seen_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          session_name: string
+          wa_id: string
+          presence?: string
+          last_seen_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          session_name?: string
+          wa_id?: string
+          presence?: string
+          last_seen_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       whatsapp_chatbot_sessions: {
         Row: {
           ai_reply_count: number

@@ -472,5 +472,84 @@ export async function POST(request: Request): Promise<Response> {
             }], { onConflict: "provider_message_id", ignoreDuplicates: true });
     }
 
+    // -----------------------------------------------------------------------
+    // presence.update -- typing, recording, available, unavailable
+    // -----------------------------------------------------------------------
+    else if (event.event === "presence.update") {
+        const data = event.data as {
+            readonly id?: string;
+            readonly presences?: Record<string, { readonly lastKnownPresence?: string; readonly lastSeen?: number }>;
+        };
+
+        const jid = data.id ?? "";
+        if (!jid.includes("@s.whatsapp.net")) {
+            return NextResponse.json({ ok: true });
+        }
+
+        const waId = jid.replace(/@s\.whatsapp\.net$/, "");
+        const presenceEntries = data.presences ?? {};
+        const firstEntry = Object.values(presenceEntries)[0];
+        const presence = firstEntry?.lastKnownPresence ?? "unavailable";
+        const lastSeen = firstEntry?.lastSeen
+            ? new Date(firstEntry.lastSeen * 1000).toISOString()
+            : null;
+
+        await admin
+            .from("whatsapp_presence")
+            .upsert({
+                session_name: event.instance,
+                wa_id: waId,
+                presence,
+                last_seen_at: lastSeen,
+                updated_at: new Date().toISOString(),
+            }, { onConflict: "session_name,wa_id" });
+    }
+
+    // -----------------------------------------------------------------------
+    // messages.update -- delivery/read status changes
+    // -----------------------------------------------------------------------
+    else if (event.event === "messages.update") {
+        const updates = Array.isArray(event.data)
+            ? event.data as ReadonlyArray<{
+                readonly key?: { readonly id?: string; readonly remoteJid?: string };
+                readonly update?: { readonly status?: number };
+              }>
+            : [];
+
+        for (const upd of updates) {
+            const msgId = upd.key?.id;
+            const status = upd.update?.status;
+            if (!msgId || !status) continue;
+
+            // WhatsApp status codes: 1=pending, 2=sent(server), 3=delivered, 4=read, 5=played
+            const statusMap: Record<number, string> = {
+                2: "sent",
+                3: "delivered",
+                4: "read",
+                5: "read",
+            };
+            const statusLabel = statusMap[status];
+            if (!statusLabel) continue;
+
+            // Update the stored message's status in metadata
+            const providerId = "evo_" + msgId;
+            const { data: existing } = await admin
+                .from("whatsapp_webhook_events")
+                .select("id, metadata")
+                .eq("provider_message_id", providerId)
+                .maybeSingle();
+
+            if (existing) {
+                const meta = (existing.metadata ?? {}) as Record<string, unknown>;
+                await admin
+                    .from("whatsapp_webhook_events")
+                    .update({
+                        metadata: { ...meta, status: statusLabel, status_updated_at: new Date().toISOString() },
+                    })
+                    .eq("id", existing.id);
+            }
+        }
+    }
+
     return NextResponse.json({ ok: true });
 }

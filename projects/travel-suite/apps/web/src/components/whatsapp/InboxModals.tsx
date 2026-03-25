@@ -47,6 +47,9 @@ export function InboxModals({
                   payment: 'Payment request',
                   driver: 'Driver details',
                   location: 'Location request',
+                  'send-document': 'Document',
+                  'send-location': 'Location pin',
+                  'send-poll': 'Poll',
                 };
                 toast.success(`${labels[ctxActionModal]} sent to ${selectedConversation.contact.name}`);
               }

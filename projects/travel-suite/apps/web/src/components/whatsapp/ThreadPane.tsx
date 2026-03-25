@@ -37,6 +37,9 @@ interface ThreadPaneProps {
   smartReplySuggestions: string[];
   smartReplyLoading: boolean;
   onRefreshSmartReplies: () => void;
+
+  // Presence
+  contactPresence?: string | null;
 }
 
 export function ThreadPane({
@@ -57,6 +60,7 @@ export function ThreadPane({
   smartReplySuggestions,
   smartReplyLoading,
   onRefreshSmartReplies,
+  contactPresence,
 }: ThreadPaneProps) {
   const analytics = useAnalytics();
   const isDisconnected = !isDemoMode && whatsAppStatus !== 'connected';
@@ -187,6 +191,7 @@ export function ThreadPane({
           smartRepliesLoading={smartReplyLoading}
           onUseSmartReply={() => analytics.aiSuggestionUsed('reply')}
           onRefreshSmartReplies={onRefreshSmartReplies}
+          contactPresence={contactPresence}
         />
       </ErrorSection>
     </div>

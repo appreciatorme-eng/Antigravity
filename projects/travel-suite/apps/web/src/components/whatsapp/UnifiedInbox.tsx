@@ -211,6 +211,10 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
         smartReplySuggestions={inbox.smartReplySuggestions}
         smartReplyLoading={inbox.smartReplyLoading}
         onRefreshSmartReplies={() => { void inbox.refreshSmartReplySuggestions(); }}
+        contactPresence={(() => {
+          const waId = inbox.selectedConversation?.contact.phone.replace(/\D/g, '') ?? '';
+          return inbox.presenceMap.get(waId)?.presence ?? null;
+        })()}
       />
 
       {/* RIGHT: Context Panel */}
