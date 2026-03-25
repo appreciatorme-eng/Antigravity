@@ -136,6 +136,7 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
           const waId = inbox.selectedConversation?.contact.phone.replace(/\D/g, '') ?? '';
           return inbox.presenceMap.get(waId)?.presence ?? null;
         })()}
+        onContextAction={inbox.handleContextAction}
       />
 
       {/* RIGHT: Context Panel */}

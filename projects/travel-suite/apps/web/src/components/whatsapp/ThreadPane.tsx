@@ -10,6 +10,7 @@ import type { ChannelConversation, ChannelType } from './inbox-mock-data';
 import type { ChatbotSessionSummary } from './whatsapp.types';
 import type { WhatsAppTemplate } from '@/lib/whatsapp/india-templates';
 import type { WhatsAppStatus } from './useInboxData';
+import type { ContextAction } from './unified-inbox-shared';
 
 interface ThreadPaneProps {
   selectedConversation: ChannelConversation | null;
@@ -40,6 +41,9 @@ interface ThreadPaneProps {
 
   // Presence
   contactPresence?: string | null;
+
+  // Context actions (create proposal, etc.)
+  onContextAction?: (action: ContextAction, tripName?: string) => void;
 }
 
 export function ThreadPane({
@@ -61,6 +65,7 @@ export function ThreadPane({
   smartReplyLoading,
   onRefreshSmartReplies,
   contactPresence,
+  onContextAction,
 }: ThreadPaneProps) {
   const analytics = useAnalytics();
   const isDisconnected = !isDemoMode && whatsAppStatus !== 'connected';
@@ -192,6 +197,7 @@ export function ThreadPane({
           onUseSmartReply={() => analytics.aiSuggestionUsed('reply')}
           onRefreshSmartReplies={onRefreshSmartReplies}
           contactPresence={contactPresence}
+          onContextAction={onContextAction}
         />
       </ErrorSection>
     </div>
