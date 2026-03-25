@@ -31,6 +31,8 @@ import {
 import { isUnsignedWebhookAllowed } from "@/lib/security/whatsapp-webhook-config";
 import { validateWahaWebhookSecret } from "../waha/secret";
 import { logError, logEvent, logWarn } from "@/lib/observability/logger";
+import { getEvolutionMediaBase64 } from "@/lib/whatsapp-evolution.server";
+import { transcribeVoiceMessage } from "@/lib/whatsapp/voice-transcription";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -47,6 +49,11 @@ interface EvolutionMessageData {
     readonly message?: {
         readonly conversation?: string;
         readonly extendedTextMessage?: { readonly text?: string };
+        readonly audioMessage?: {
+            readonly mimetype?: string;
+            readonly seconds?: number;
+            readonly ptt?: boolean;
+        };
     };
     readonly pushName?: string;
     readonly messageTimestamp?: number | string;
@@ -76,6 +83,16 @@ function extractMessageText(msg: EvolutionMessageData): string {
 
 function isGroupJid(jid: string): boolean {
     return jid.includes("@g.us");
+}
+
+function isVoiceMessage(msg: EvolutionMessageData): boolean {
+    return !!msg.message?.audioMessage;
+}
+
+function formatDuration(seconds: number): string {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -153,7 +170,10 @@ export async function POST(request: Request): Promise<Response> {
         }
 
         const messageText = extractMessageText(payload);
-        if (!messageText) {
+        const isVoice = isVoiceMessage(payload);
+
+        // Skip messages with neither text nor voice content
+        if (!messageText && !isVoice) {
             return NextResponse.json({ ok: true });
         }
 
@@ -176,7 +196,55 @@ export async function POST(request: Request): Promise<Response> {
             .update(rawBody)
             .digest("hex");
 
-        // Store both inbound AND outbound messages
+        // Voice message: transcribe via Whisper, then store with transcript
+        if (isVoice) {
+            const audioInfo = payload.message?.audioMessage;
+            const duration = audioInfo?.seconds ?? 0;
+            let transcript = "";
+            let intentData = null;
+
+            // Attempt transcription (best-effort — store message even if transcription fails)
+            try {
+                const base64Audio = await getEvolutionMediaBase64(event.instance, payload.key.id);
+                if (base64Audio) {
+                    const result = await transcribeVoiceMessage(
+                        base64Audio,
+                        audioInfo?.mimetype ?? "audio/ogg",
+                    );
+                    if (result) {
+                        transcript = result.text;
+                        intentData = result.intent;
+                    }
+                }
+            } catch (err) {
+                logError("[webhooks/evolution] voice transcription error", err);
+            }
+
+            const voiceMetadata = {
+                session: event.instance,
+                body_preview: transcript.slice(0, 500) || "[Voice message]",
+                direction: isFromMe ? "out" : "in",
+                pushName: payload.pushName ?? null,
+                voice_duration: formatDuration(duration),
+                voice_duration_seconds: duration,
+                transcript: transcript || null,
+                trip_intent: intentData ? JSON.parse(JSON.stringify(intentData)) : null,
+            };
+
+            await admin.from("whatsapp_webhook_events").insert({
+                provider_message_id: providerId,
+                wa_id: waId,
+                event_type: "voice",
+                payload_hash: payloadHash,
+                processing_status: "received",
+                metadata: voiceMetadata,
+            });
+
+            // Voice messages don't trigger chatbot (yet) — just store and return
+            return NextResponse.json({ ok: true });
+        }
+
+        // Store both inbound AND outbound text messages
         await admin.from("whatsapp_webhook_events").insert({
             provider_message_id: providerId,
             wa_id: waId,

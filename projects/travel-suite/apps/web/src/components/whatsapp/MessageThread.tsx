@@ -55,6 +55,14 @@ export interface Message {
   imageCaption?: string;
   // voice
   voiceDuration?: string;
+  transcript?: string;
+  tripIntent?: {
+    destination?: string | null;
+    dates?: string | null;
+    paxCount?: number | null;
+    budget?: string | null;
+    summary?: string;
+  };
   // document
   docName?: string;
   docSize?: string;
@@ -145,16 +153,43 @@ function MessageBubble({ msg, isEmailChannel }: { msg: Message; isEmailChannel?:
         )}
 
         {msg.type === 'voice' && (
-          <div className="flex items-center gap-2 min-w-[140px]">
-            <div className="w-8 h-8 rounded-full bg-[#25D366]/30 flex items-center justify-center shrink-0">
-              <Mic className="w-4 h-4 text-[#25D366]" />
-            </div>
-            <div className="flex-1">
-              <div className="h-1.5 bg-white/20 rounded-full">
-                <div className="h-full w-2/3 bg-[#25D366]/60 rounded-full" />
+          <div className="min-w-[200px] max-w-[280px]">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-[#25D366]/30 flex items-center justify-center shrink-0">
+                <Mic className="w-4 h-4 text-[#25D366]" />
               </div>
+              <div className="flex-1">
+                <div className="h-1.5 bg-white/20 rounded-full">
+                  <div className="h-full w-2/3 bg-[#25D366]/60 rounded-full" />
+                </div>
+              </div>
+              <span className="text-xs text-slate-400 font-mono shrink-0">{msg.voiceDuration ?? '0:12'}</span>
             </div>
-            <span className="text-xs text-slate-400 font-mono shrink-0">{msg.voiceDuration ?? '0:12'}</span>
+            {msg.transcript && (
+              <p className="mt-2 text-xs text-slate-300 leading-relaxed italic border-l-2 border-[#25D366]/30 pl-2">
+                {msg.transcript}
+              </p>
+            )}
+            {msg.tripIntent?.summary && (
+              <div className="mt-2 p-2 rounded-lg bg-violet-500/10 border border-violet-500/20">
+                <p className="text-[10px] font-bold text-violet-300 uppercase tracking-wider mb-1">Trip Intent Detected</p>
+                <p className="text-xs text-violet-200">{msg.tripIntent.summary}</p>
+                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                  {msg.tripIntent.destination && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300">{msg.tripIntent.destination}</span>
+                  )}
+                  {msg.tripIntent.paxCount && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300">{msg.tripIntent.paxCount} pax</span>
+                  )}
+                  {msg.tripIntent.budget && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300">{msg.tripIntent.budget}</span>
+                  )}
+                  {msg.tripIntent.dates && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300">{msg.tripIntent.dates}</span>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

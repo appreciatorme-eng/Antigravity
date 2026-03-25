@@ -64,12 +64,12 @@ export async function GET(request: Request): Promise<Response> {
 
       const sessionName = `org_${orgId.replace(/-/g, "").slice(0, 8)}`;
 
-      // Fetch the last 1000 text events for this org's session (newest first)
+      // Fetch the last 1000 text + voice events for this org's session (newest first)
       const { data: events, error } = await adminClient
           .from("whatsapp_webhook_events")
           .select("id, received_at, wa_id, event_type, metadata")
           .filter("metadata->>session", "eq", sessionName)
-          .eq("event_type", "text")
+          .in("event_type", ["text", "voice"])
           .order("received_at", { ascending: false })
           .limit(1000);
 
@@ -161,14 +161,23 @@ export async function GET(request: Request): Promise<Response> {
                   ? `+${waId.slice(0, 2)} ${waId.slice(2, 7)} ${waId.slice(7)}`
                   : phone;
 
-          const messages = evs.map((ev) => ({
-              id: ev.id,
-              type: "text" as const,
-              direction: (ev.metadata?.direction ?? "in") as "in" | "out",
-              body: ev.metadata?.body_preview ?? "",
-              timestamp: formatLocalTime(ev.received_at, userTimezone),
-              status: "delivered" as const,
-          }));
+          const messages = evs.map((ev) => {
+              const isVoice = ev.event_type === "voice";
+              const meta = ev.metadata as Record<string, unknown> | null;
+              return {
+                  id: ev.id,
+                  type: (isVoice ? "voice" : "text") as "text" | "voice",
+                  direction: (meta?.direction ?? "in") as "in" | "out",
+                  body: (meta?.body_preview as string) ?? "",
+                  timestamp: formatLocalTime(ev.received_at, userTimezone),
+                  status: "delivered" as const,
+                  ...(isVoice ? {
+                      voiceDuration: (meta?.voice_duration as string) ?? undefined,
+                      transcript: (meta?.transcript as string) ?? undefined,
+                      tripIntent: meta?.trip_intent ?? undefined,
+                  } : {}),
+              };
+          });
 
           // Unread = all inbound messages (no read-tracking yet)
           const unreadCount = messages.filter((m) => m.direction === "in").length;

@@ -266,6 +266,28 @@ export async function sendEvolutionText(
 }
 
 /**
+ * Download media from a message as a base64 string.
+ * Uses POST /chat/getBase64FromMediaMessage/{instance}.
+ */
+export async function getEvolutionMediaBase64(
+    instanceName: string,
+    messageId: string,
+): Promise<string | null> {
+    const res = await evolutionFetch(`/chat/getBase64FromMediaMessage/${instanceName}`, {
+        method: "POST",
+        body: JSON.stringify({
+            message: { key: { id: messageId } },
+            convertToMp4: false,
+        }),
+    });
+
+    if (!res.ok) return null;
+
+    const json = await res.json() as { base64?: string; data?: string };
+    return json.base64 ?? json.data ?? null;
+}
+
+/**
  * Fetch all messages from an Evolution instance's local message store.
  * Uses POST /chat/findMessages/{instance} to pull cached messages.
  * Returns raw message array — caller is responsible for storage.
