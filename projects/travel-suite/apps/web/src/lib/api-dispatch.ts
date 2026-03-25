@@ -113,7 +113,6 @@ async function dispatch(
     }
 
     const isMutation = method === "POST" || method === "PATCH" || method === "PUT" || method === "DELETE";
-    const routePath = pathParts.join("/");
     const csrfExempt =
       routePath.startsWith("cron/") ||
       routePath === "auth/password-login" ||
