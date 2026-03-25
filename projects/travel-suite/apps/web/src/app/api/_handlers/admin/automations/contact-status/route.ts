@@ -33,8 +33,8 @@ export async function GET(request: Request): Promise<Response> {
             return NextResponse.json({ error: "phone parameter required" }, { status: 400 });
         }
 
-        // Fetch per-contact overrides
-        const { data: overrides } = await adminClient
+        // Fetch per-contact overrides (table not in generated types yet)
+        const { data: overrides } = await (adminClient as any)
             .from("automation_contact_overrides")
             .select("rule_type, enabled")
             .eq("organization_id", orgId)
@@ -90,8 +90,8 @@ export async function POST(request: Request): Promise<Response> {
             return NextResponse.json({ error: "Invalid rule_type" }, { status: 400 });
         }
 
-        // Upsert override
-        const { error } = await adminClient
+        // Upsert override (table not in generated types yet)
+        const { error } = await (adminClient as any)
             .from("automation_contact_overrides")
             .upsert(
                 {
