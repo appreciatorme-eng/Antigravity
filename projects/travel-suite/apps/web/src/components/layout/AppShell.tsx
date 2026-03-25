@@ -32,6 +32,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         pathname === "/auth" ||
         pathname === "/offline" ||
         pathname?.startsWith("/onboarding") ||
+        pathname?.startsWith("/share") ||
+        pathname?.startsWith("/portal") ||
+        pathname?.startsWith("/pay") ||
+        pathname?.startsWith("/live") ||
+        pathname?.startsWith("/p/") ||
         isMarketingPage;
 
     if (!isMounted) return null;
