@@ -431,8 +431,11 @@ export function MessageThread({
           </button>
         ))}
 
-        {/* Language selector */}
-        <div className="shrink-0 ml-auto flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-white/8 border border-white/10 text-slate-300 text-xs font-medium hover:bg-white/12 transition-all">
+      </div>
+
+      {/* Language selector — own row so it's always visible */}
+      <div className="shrink-0 px-4 pb-1 flex justify-end">
+        <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/8 border border-white/10 text-slate-300 text-xs font-medium hover:bg-white/12 transition-all">
           <Globe className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
           <select
             value={messageLang}
