@@ -105,8 +105,9 @@ export async function GET(request: Request): Promise<Response> {
           // evs are ordered newest first; find first with push_name
           for (const ev of evs) {
               const meta = ev.metadata as Record<string, unknown> | null;
-              if (meta?.push_name && typeof meta.push_name === "string") {
-                  pushNameMap.set(waId, meta.push_name);
+              const pn = (meta?.push_name ?? meta?.pushName) as string | undefined;
+              if (pn && typeof pn === "string") {
+                  pushNameMap.set(waId, pn);
                   break;
               }
           }
