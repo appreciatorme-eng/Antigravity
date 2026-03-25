@@ -6150,9 +6150,12 @@ export type Database = {
           connected_at: string | null
           created_at: string
           display_name: string | null
+          history_imported: boolean
           id: string
+          instance_name: string | null
           organization_id: string
           phone_number: string | null
+          provider: string | null
           session_name: string
           session_token: string | null
           status: string
@@ -6162,9 +6165,12 @@ export type Database = {
           connected_at?: string | null
           created_at?: string
           display_name?: string | null
+          history_imported?: boolean
           id?: string
+          instance_name?: string | null
           organization_id: string
           phone_number?: string | null
+          provider?: string | null
           session_name: string
           session_token?: string | null
           status?: string
@@ -6174,9 +6180,12 @@ export type Database = {
           connected_at?: string | null
           created_at?: string
           display_name?: string | null
+          history_imported?: boolean
           id?: string
+          instance_name?: string | null
           organization_id?: string
           phone_number?: string | null
+          provider?: string | null
           session_name?: string
           session_token?: string | null
           status?: string

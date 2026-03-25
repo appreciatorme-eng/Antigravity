@@ -64,14 +64,14 @@ export async function GET(request: Request): Promise<Response> {
 
       const sessionName = `org_${orgId.replace(/-/g, "").slice(0, 8)}`;
 
-      // Fetch the last 300 text events for this org's session (newest first)
+      // Fetch the last 1000 text events for this org's session (newest first)
       const { data: events, error } = await adminClient
           .from("whatsapp_webhook_events")
           .select("id, received_at, wa_id, event_type, metadata")
           .filter("metadata->>session", "eq", sessionName)
           .eq("event_type", "text")
           .order("received_at", { ascending: false })
-          .limit(300);
+          .limit(1000);
 
       if (error) {
           // table may not exist in all environments
