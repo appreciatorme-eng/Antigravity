@@ -6,6 +6,7 @@ import { apiError } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import {
+    deleteEvolutionInstance,
     disconnectEvolution,
     sessionNameFromOrgId,
 } from "@/lib/whatsapp-evolution.server";
@@ -21,6 +22,7 @@ export async function POST(request: Request) {
         const sessionName = sessionNameFromOrgId(organizationId!);
 
         await disconnectEvolution(sessionName);
+        await deleteEvolutionInstance(sessionName);
 
         const { error: updateError } = await adminClient
             .from("whatsapp_connections")
@@ -30,7 +32,8 @@ export async function POST(request: Request) {
                 display_name: null,
                 connected_at: null,
                 session_token: null,
-            })
+                assistant_group_jid: null,
+            } as Record<string, unknown>)
             .eq("organization_id", organizationId!);
 
         if (updateError) {
