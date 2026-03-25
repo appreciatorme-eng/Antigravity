@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Car,
-  CheckCircle2,
   ChevronRight,
   CreditCard,
   ExternalLink,
@@ -258,22 +257,25 @@ interface AutomationItem {
 
 function AutomationsPanel({ phone }: { phone: string }) {
   const [automations, setAutomations] = useState<AutomationItem[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const loadAutomations = useCallback(async () => {
-    if (!phone) { setLoading(false); return; }
-    try {
-      const res = await fetch(`/api/admin/automations/contact-status?phone=${encodeURIComponent(phone)}`);
-      const data = await res.json().catch(() => ({}));
-      setAutomations(data.automations ?? []);
-    } catch { /* silent */ }
-    setLoading(false);
-  }, [phone]);
+  const [loading, setLoading] = useState(!!phone);
 
   useEffect(() => {
-    setLoading(true);
-    void loadAutomations();
-  }, [loadAutomations]);
+    if (!phone) return;
+    let cancelled = false;
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/admin/automations/contact-status?phone=${encodeURIComponent(phone)}`,
+          { signal: controller.signal },
+        );
+        const data = await res.json().catch(() => ({}));
+        if (!cancelled) setAutomations(data.automations ?? []);
+      } catch { /* silent */ }
+      if (!cancelled) setLoading(false);
+    })();
+    return () => { cancelled = true; controller.abort(); };
+  }, [phone]);
 
   const handleToggle = async (ruleType: string, currentEnabled: boolean) => {
     const newEnabled = !currentEnabled;

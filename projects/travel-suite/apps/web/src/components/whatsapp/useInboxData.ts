@@ -14,7 +14,6 @@ import {
   type ChannelConversation,
   type ChannelType,
   ALL_MOCK_CONVERSATIONS,
-  MOCK_CLIENT_DETAILS,
 } from './inbox-mock-data';
 import type { ContextAction } from './unified-inbox-shared';
 import type { ContextActionType } from './ContextActionModal';
@@ -74,6 +73,34 @@ export interface InboxData {
 
 export interface UseInboxDataOptions {
   onSendMessage?: (convId: string, message: string) => void;
+}
+
+// --- Read tracking helpers (pure, no hook state) ---
+
+const READ_KEY = 'tripbuilt_inbox_read_at';
+
+function getReadTimestamps(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(READ_KEY) || '{}');
+  } catch { return {}; }
+}
+
+function markConversationRead(convId: string) {
+  const map = getReadTimestamps();
+  const updated = { ...map, [convId]: new Date().toISOString() };
+  localStorage.setItem(READ_KEY, JSON.stringify(updated));
+}
+
+function applyReadTracking(convs: ChannelConversation[]): ChannelConversation[] {
+  const readMap = getReadTimestamps();
+  return convs.map((c) => {
+    const lastReadAt = readMap[c.id];
+    if (!lastReadAt) return c;
+    const unread = c.messages.filter(
+      (m) => m.direction === 'in' && m.timestamp > lastReadAt
+    ).length;
+    return { ...c, unreadCount: unread };
+  });
 }
 
 export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData {
@@ -160,7 +187,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     } finally {
       setIsLoadingConvs(false);
     }
-  }, [isDemoMode]);
+  }, [isDemoMode, businessOnly]);
 
   const loadWhatsAppHealth = useCallback(async () => {
     try {
@@ -178,7 +205,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
       setWhatsAppStatus('error');
       setWhatsAppHealthError('Unable to reach WhatsApp right now.');
     }
-  }, [businessOnly]);
+  }, []);
 
   useEffect(() => {
     // Always attempt to load real conversations first
@@ -212,34 +239,6 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
       void supabase.removeChannel(channel);
     };
   }, [isDemoMode, loadLiveConversations, loadWhatsAppHealth, supabase]);
-
-  // --- Read tracking (localStorage) ---
-
-  const READ_KEY = 'tripbuilt_inbox_read_at';
-
-  function getReadTimestamps(): Record<string, string> {
-    try {
-      return JSON.parse(localStorage.getItem(READ_KEY) || '{}');
-    } catch { return {}; }
-  }
-
-  function markConversationRead(convId: string) {
-    const map = getReadTimestamps();
-    map[convId] = new Date().toISOString();
-    localStorage.setItem(READ_KEY, JSON.stringify(map));
-  }
-
-  function applyReadTracking(convs: ChannelConversation[]): ChannelConversation[] {
-    const readMap = getReadTimestamps();
-    return convs.map((c) => {
-      const lastReadAt = readMap[c.id];
-      if (!lastReadAt) return c;
-      const unread = c.messages.filter(
-        (m) => m.direction === 'in' && m.timestamp > lastReadAt
-      ).length;
-      return { ...c, unreadCount: unread };
-    });
-  }
 
   // --- Actions ---
 
