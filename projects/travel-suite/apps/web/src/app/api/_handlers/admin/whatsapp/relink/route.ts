@@ -41,7 +41,16 @@ export async function POST(request: Request): Promise<Response> {
             .eq("session_name", sessionName);
 
         // 3. Recreate the instance with updated webhook events
-        const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://tripbuilt.com"}/api/webhooks/evolution`;
+        let appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "https://tripbuilt.com").trim();
+        if (appUrl.includes("tripbuilt.com") && !appUrl.includes("www.")) {
+            appUrl = appUrl.replace("://tripbuilt.com", "://www.tripbuilt.com");
+        }
+        const webhookSecret =
+            process.env.EVOLUTION_WEBHOOK_SECRET?.trim() ??
+            process.env.WPPCONNECT_WEBHOOK_SECRET?.trim() ?? "";
+        const webhookUrl = webhookSecret
+            ? `${appUrl}/api/webhooks/evolution?secret=${encodeURIComponent(webhookSecret)}`
+            : `${appUrl}/api/webhooks/evolution`;
         await createEvolutionInstance(orgId, webhookUrl);
 
         // 4. Get the QR code for scanning
