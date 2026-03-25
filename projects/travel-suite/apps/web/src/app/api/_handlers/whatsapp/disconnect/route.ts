@@ -6,9 +6,7 @@ import { apiError } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import {
-    deleteEvolutionInstance,
-    disconnectEvolution,
-    getEvolutionStatus,
+    logoutAndDeleteInstance,
     sessionNameFromOrgId,
 } from "@/lib/whatsapp-evolution.server";
 import { logError } from "@/lib/observability/logger";
@@ -22,18 +20,8 @@ export async function POST(request: Request) {
 
         const sessionName = sessionNameFromOrgId(organizationId!);
 
-        await disconnectEvolution(sessionName);
-        await deleteEvolutionInstance(sessionName);
-
-        // Verify deletion — retry if Evolution still reports connected (cached state)
-        try {
-            const postDeleteStatus = await getEvolutionStatus(sessionName);
-            if (postDeleteStatus.status === "CONNECTED") {
-                await deleteEvolutionInstance(sessionName);
-            }
-        } catch {
-            // Instance gone — expected after successful deletion
-        }
+        // Logout first (clears Baileys auth keys) then delete instance
+        await logoutAndDeleteInstance(sessionName);
 
         const { error: updateError } = await adminClient
             .from("whatsapp_connections")

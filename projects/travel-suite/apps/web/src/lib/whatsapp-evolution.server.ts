@@ -476,6 +476,42 @@ export async function disconnectEvolution(
     }
 }
 
+/**
+ * Logout (clear Baileys auth keys) then delete the instance.
+ * This ensures a subsequent create with the same name cannot auto-reconnect
+ * using cached session credentials.
+ */
+export async function logoutAndDeleteInstance(
+    instanceName: string,
+): Promise<void> {
+    // Step 1: Logout — clears Baileys auth state (session keys) on the Evolution server
+    try {
+        const logoutRes = await evolutionFetch(`/instance/logout/${instanceName}`, {
+            method: "DELETE",
+        });
+        // 404 = instance not found, which is fine
+        if (!logoutRes.ok && logoutRes.status !== 404) {
+            console.warn(
+                `[evolution] logout ${instanceName} returned ${logoutRes.status}`,
+            );
+        }
+    } catch {
+        // Instance may not exist — continue to delete
+    }
+
+    // Brief pause so logout propagates before delete
+    await new Promise((r) => setTimeout(r, 1000));
+
+    // Step 2: Delete the instance
+    try {
+        await evolutionFetch(`/instance/delete/${instanceName}`, {
+            method: "DELETE",
+        });
+    } catch {
+        // Instance may already be gone
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Group management -- for TripBuilt Assistant WhatsApp group
 // ---------------------------------------------------------------------------

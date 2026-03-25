@@ -6,9 +6,9 @@ import { apiError } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import {
     createEvolutionInstance,
-    deleteEvolutionInstance,
     getEvolutionQR,
     getEvolutionStatus,
+    logoutAndDeleteInstance,
     sessionNameFromOrgId,
 } from "@/lib/whatsapp-evolution.server";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
@@ -49,16 +49,19 @@ export async function POST(request: Request) {
         const orgId = organizationId!;
         const sessionName = sessionNameFromOrgId(orgId);
 
-        // Purge any lingering Evolution instance if DB shows disconnected
-        // This prevents reconnecting from picking up cached/stale session state
+        // Check DB status to decide whether this is a fresh connect or a mid-scan resume
         const { data: existingConn } = await adminClient
             .from("whatsapp_connections")
             .select("status")
             .eq("organization_id", orgId)
             .maybeSingle();
 
-        if (!existingConn || existingConn.status === "disconnected") {
-            await deleteEvolutionInstance(sessionName);
+        const isReconnect = !existingConn || existingConn.status === "disconnected";
+
+        if (isReconnect) {
+            // Fresh connect after explicit disconnect — logout + delete to purge
+            // Baileys auth keys so the new instance cannot auto-reconnect
+            await logoutAndDeleteInstance(sessionName);
         }
 
         const webhookSecret =
@@ -81,22 +84,26 @@ export async function POST(request: Request) {
             { onConflict: "session_name" },
         );
 
-        // Check if session already connected (auto-reconnect from previous QR scan)
-        try {
-            const currentStatus = await getEvolutionStatus(instanceName);
-            if (currentStatus.status === "CONNECTED") {
-                await admin.from("whatsapp_connections").update({ status: "connected" })
-                    .eq("session_name", sessionName);
-                return NextResponse.json({
-                    success: true,
-                    sessionName,
-                    status: "connected",
-                    number: currentStatus.me?.id?.replace(/@.*/, "") ?? null,
-                    name: currentStatus.me?.pushName ?? null,
-                });
+        // Only check auto-reconnect when resuming a mid-scan session (status was "connecting").
+        // On fresh reconnect (after disconnect), skip this — force QR flow even if
+        // Evolution reports CONNECTED from stale cached auth.
+        if (!isReconnect) {
+            try {
+                const currentStatus = await getEvolutionStatus(instanceName);
+                if (currentStatus.status === "CONNECTED") {
+                    await admin.from("whatsapp_connections").update({ status: "connected" })
+                        .eq("session_name", sessionName);
+                    return NextResponse.json({
+                        success: true,
+                        sessionName,
+                        status: "connected",
+                        number: currentStatus.me?.id?.replace(/@.*/, "") ?? null,
+                        name: currentStatus.me?.pushName ?? null,
+                    });
+                }
+            } catch {
+                // Status check failed — instance still initializing, proceed to QR flow
             }
-        } catch {
-            // Status check failed — instance still initializing, proceed to QR flow
         }
 
         // QR may not be ready immediately — Baileys needs a few seconds to boot.
