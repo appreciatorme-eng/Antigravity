@@ -25,25 +25,24 @@ export function ItineraryPicker({
   const { data: trips, loading, error } = useOrganizationTrips();
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Trip | null>(null);
-  const [portalUrl, setPortalUrl] = useState<string | null>(null);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
 
-  // Fetch portal token when a trip is selected
+  // Fetch or create a public share link when a trip is selected
   const selectedId = selected?.id ?? null;
   useEffect(() => {
     if (!selectedId) return;
     let cancelled = false;
     const controller = new AbortController();
     (async () => {
-      if (!cancelled) setPortalUrl(null);
+      if (!cancelled) setShareUrl(null);
       try {
-        const res = await fetch(`/api/admin/trips/${selectedId}/portal-token`, {
+        const res = await fetch(`/api/admin/trips/${selectedId}/share-link`, {
           signal: controller.signal,
         });
-        const json = await res.json() as { data?: { portalToken?: string } };
-        const token = json.data?.portalToken;
-        if (!cancelled) setPortalUrl(token ? `https://tripbuilt.com/portal/${token}` : null);
+        const json = await res.json() as { data?: { shareUrl?: string } };
+        if (!cancelled) setShareUrl(json.data?.shareUrl ?? null);
       } catch {
-        if (!cancelled) setPortalUrl(null);
+        if (!cancelled) setShareUrl(null);
       }
     })();
     return () => { cancelled = true; controller.abort(); };
@@ -91,7 +90,7 @@ export function ItineraryPicker({
 
   function getItineraryLink() {
     if (!selected) return "";
-    return portalUrl ?? `https://tripbuilt.com/trips/${selected.id}`;
+    return shareUrl ?? `https://tripbuilt.com/trips/${selected.id}`;
   }
 
   function handleSend() {
