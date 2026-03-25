@@ -317,6 +317,32 @@ Is itinerary mein koi changes chahiye? Batayein, hum customize kar denge! ✏️
     preview: 'Aapka Kerala 6-day itinerary ready hai! Full plan dekho: tripbuilt.com/trip/KL2024',
     emoji: '🗺️',
   },
+  {
+    id: 'itinerary_share_english',
+    name: 'Itinerary Share (English)',
+    category: 'ITINERARY_SHARE',
+    language: 'en',
+    body: `Hi {{client_name}}! 🗺️
+
+Your *{{destination}}* itinerary is ready!
+
+*Trip: {{trip_name}}*
+📅 {{start_date}} — {{end_date}} ({{duration}})
+👥 {{pax_count}} persons
+
+📋 *Day-by-Day Plan:*
+{{itinerary_summary}}
+
+🔗 Full interactive itinerary:
+{{itinerary_link}}
+
+Need any changes to this itinerary? Let us know and we'll customise it for you! ✏️
+
+— {{company_name}}`,
+    variables: ['client_name', 'destination', 'trip_name', 'start_date', 'end_date', 'duration', 'pax_count', 'itinerary_summary', 'itinerary_link', 'company_name'],
+    preview: 'Your Kerala 6-day itinerary is ready! View the full plan: tripbuilt.com/trip/KL2024',
+    emoji: '🗺️',
+  },
 
   // ─── REVIEW REQUEST ──────────────────────────────────────────────────────────
   {
@@ -724,6 +750,7 @@ export function getPreferredTemplate(
   const categoryTemplates = WHATSAPP_TEMPLATES.filter((t) => t.category === category);
   return (
     categoryTemplates.find((t) => t.language === preferredLanguage) ??
+    categoryTemplates.find((t) => t.language === 'en') ??
     categoryTemplates.find((t) => t.language === 'hinglish') ??
     categoryTemplates[0]
   );
@@ -738,10 +765,9 @@ export function mapDisplayLangToTemplateCode(
   displayLang: string,
 ): WhatsAppTemplate['language'] {
   const lower = displayLang.toLowerCase();
-  if (lower === 'english') return 'en';
   if (lower.startsWith('हिंदी') || lower.startsWith('hindi')) return 'hi';
-  // All other Indian regional languages fall back to hinglish
-  return 'hinglish';
+  // English and all regional languages (Telugu, Tamil, etc.) use English templates
+  return 'en';
 }
 
 export const LANGUAGE_LABELS: Record<WhatsAppTemplate['language'] | 'all', string> = {
