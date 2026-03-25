@@ -6,8 +6,10 @@ import {
   ChevronRight,
   CreditCard,
   IndianRupee,
+  Loader2,
   Search,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import {
   fillTemplate,
@@ -37,6 +39,7 @@ export function PaymentPicker({
   >("advance");
   const [search, setSearch] = useState("");
   const [showTripList, setShowTripList] = useState(true);
+  const [sending, setSending] = useState(false);
 
   const filteredTrips = useMemo(() => {
     const q = search.toLowerCase();
@@ -60,7 +63,7 @@ export function PaymentPicker({
     return parseInt(customAmount.replace(/\D/g, ""), 10) || 0;
   }
 
-  function buildMessage(): { body: string; subject?: string } {
+  function buildMessage(paymentUrl: string): { body: string; subject?: string } {
     if (!selectedTrip) return { body: "" };
 
     const amount = getAmount();
@@ -81,7 +84,7 @@ export function PaymentPicker({
           due_date: formattedDue,
           booking_id: bookingId,
           upi_id: "tripbuilt@paytm",
-          payment_link: `https://tripbuilt.com/pay/${bookingId.toLowerCase()}`,
+          payment_link: paymentUrl,
           bank_account: "50200012345678",
           bank_ifsc: "HDFC0001234",
           company_name: "TripBuilt",
@@ -100,12 +103,44 @@ export function PaymentPicker({
 
     return {
       subject: `Payment Request — ${selectedTrip.name} — ${formattedAmount}`,
-      body: `Dear ${contact.name},\n\nThis is a payment request for your upcoming trip with TripBuilt.\n\n📋 Trip: ${selectedTrip.name}\n🔖 Booking ID: ${bookingId}\n💰 Amount: ${formattedAmount} (${paymentLabel})\n📅 Due By: ${formattedDue}\n\n━━━━━━━━━━━━━━━━━━━━━\nPAYMENT OPTIONS\n━━━━━━━━━━━━━━━━━━━━━\n\n🏦 Bank Transfer:\nAccount: 50200012345678\nIFSC: HDFC0001234\nName: TripBuilt\n\n📱 UPI: tripbuilt@paytm\n\n🔗 Pay Online: https://tripbuilt.com/pay/${bookingId.toLowerCase()}\n\nKindly share the payment screenshot after transfer. For any queries, reply to this email or call +91 98765 00000.\n\nThank you!\nTeam TripBuilt`,
+      body: `Dear ${contact.name},\n\nThis is a payment request for your upcoming trip with TripBuilt.\n\n📋 Trip: ${selectedTrip.name}\n🔖 Booking ID: ${bookingId}\n💰 Amount: ${formattedAmount} (${paymentLabel})\n📅 Due By: ${formattedDue}\n\n━━━━━━━━━━━━━━━━━━━━━\nPAYMENT OPTIONS\n━━━━━━━━━━━━━━━━━━━━━\n\n🏦 Bank Transfer:\nAccount: 50200012345678\nIFSC: HDFC0001234\nName: TripBuilt\n\n📱 UPI: tripbuilt@paytm\n\n🔗 Pay Online: ${paymentUrl}\n\nKindly share the payment screenshot after transfer. For any queries, reply to this email or call +91 98765 00000.\n\nThank you!\nTeam TripBuilt`,
     };
   }
 
-  const { body, subject } = buildMessage();
+  // Preview uses a placeholder URL — real URL is created on send
+  const previewMessage = selectedTrip ? buildMessage("https://tripbuilt.com/pay/...") : { body: "" };
   const amount = getAmount();
+
+  async function handleSend() {
+    if (!selectedTrip || amount <= 0) return;
+    setSending(true);
+    try {
+      const res = await fetch("/api/admin/payments/links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: amount * 100, // API expects paise
+          currency: "INR",
+          description: `Payment for ${selectedTrip.name}`,
+          clientName: contact.name,
+          clientPhone: contact.phone,
+          bookingId: selectedTrip.id,
+        }),
+      });
+      const json = await res.json() as { data?: { paymentUrl?: string }; error?: string };
+      if (!res.ok) throw new Error(json.error ?? "Failed to create payment link");
+
+      const paymentUrl = json.data?.paymentUrl ?? "";
+      if (!paymentUrl) throw new Error("No payment URL returned");
+
+      const { body, subject } = buildMessage(paymentUrl);
+      onSend(body, subject);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to create payment link");
+    } finally {
+      setSending(false);
+    }
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -262,20 +297,26 @@ export function PaymentPicker({
                 Preview
               </p>
               <pre className="text-xs text-slate-300 whitespace-pre-wrap leading-relaxed max-h-28 overflow-y-auto custom-scrollbar font-sans">
-                {body}
+                {previewMessage.body}
               </pre>
             </div>
           )}
 
           <button
-            onClick={() => amount > 0 && onSend(body, subject)}
-            disabled={amount <= 0}
+            onClick={() => { void handleSend(); }}
+            disabled={amount <= 0 || sending}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-pink-600 hover:bg-pink-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-sm transition-colors"
           >
-            <CreditCard className="w-4 h-4" />
-            {channel === "email"
-              ? `Send Payment Request — ${amount > 0 ? formatCurrency(amount) : "—"}`
-              : `Request ${amount > 0 ? formatCurrency(amount) : "—"} via WhatsApp`}
+            {sending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <CreditCard className="w-4 h-4" />
+            )}
+            {sending
+              ? "Creating payment link..."
+              : channel === "email"
+                ? `Send Payment Request — ${amount > 0 ? formatCurrency(amount) : "—"}`
+                : `Request ${amount > 0 ? formatCurrency(amount) : "—"} via WhatsApp`}
           </button>
         </>
       )}
