@@ -326,6 +326,103 @@ export interface EvolutionHistoryMessage {
 }
 
 /**
+ * Send a media message (image, document, audio, video) from an Evolution instance.
+ * mediaType: "image" | "document" | "audio" | "video"
+ * media: URL to the file or base64 content
+ */
+export async function sendEvolutionMedia(
+    instanceName: string,
+    phoneDigits: string,
+    media: string,
+    mediaType: "image" | "document" | "audio" | "video",
+    options?: { caption?: string; fileName?: string; mimetype?: string },
+): Promise<void> {
+    const digits = phoneDigits.replace(/\D/g, "");
+
+    const res = await evolutionFetch(`/message/sendMedia/${instanceName}`, {
+        method: "POST",
+        body: JSON.stringify({
+            number: digits,
+            mediatype: mediaType === "image" ? "image" : mediaType === "video" ? "video" : "document",
+            media,
+            caption: options?.caption ?? "",
+            fileName: options?.fileName ?? `file.${mediaType === "image" ? "jpg" : "pdf"}`,
+            mimetype: options?.mimetype ?? (mediaType === "document" ? "application/pdf" : `${mediaType}/jpeg`),
+        }),
+    });
+
+    if (!res.ok) {
+        const body = await res.text().catch(() => "(no body)");
+        throw new Error(
+            `Evolution POST /message/sendMedia/${instanceName} -> ${res.status}: ${body}`,
+        );
+    }
+}
+
+/**
+ * Send a location pin from an Evolution instance.
+ */
+export async function sendEvolutionLocation(
+    instanceName: string,
+    phoneDigits: string,
+    latitude: number,
+    longitude: number,
+    name?: string,
+    address?: string,
+): Promise<void> {
+    const digits = phoneDigits.replace(/\D/g, "");
+
+    const res = await evolutionFetch(`/message/sendLocation/${instanceName}`, {
+        method: "POST",
+        body: JSON.stringify({
+            number: digits,
+            latitude,
+            longitude,
+            name: name ?? "Location",
+            address: address ?? "",
+        }),
+    });
+
+    if (!res.ok) {
+        const body = await res.text().catch(() => "(no body)");
+        throw new Error(
+            `Evolution POST /message/sendLocation/${instanceName} -> ${res.status}: ${body}`,
+        );
+    }
+}
+
+/**
+ * Send a poll from an Evolution instance.
+ * selectableCount: how many options the recipient can choose (1 = single choice)
+ */
+export async function sendEvolutionPoll(
+    instanceName: string,
+    phoneDigits: string,
+    question: string,
+    options: readonly string[],
+    selectableCount: number = 1,
+): Promise<void> {
+    const digits = phoneDigits.replace(/\D/g, "");
+
+    const res = await evolutionFetch(`/message/sendPoll/${instanceName}`, {
+        method: "POST",
+        body: JSON.stringify({
+            number: digits,
+            name: question,
+            selectableCount,
+            values: options,
+        }),
+    });
+
+    if (!res.ok) {
+        const body = await res.text().catch(() => "(no body)");
+        throw new Error(
+            `Evolution POST /message/sendPoll/${instanceName} -> ${res.status}: ${body}`,
+        );
+    }
+}
+
+/**
  * Disconnect an Evolution instance. Errors are swallowed -- session may already be gone.
  */
 export async function disconnectEvolution(

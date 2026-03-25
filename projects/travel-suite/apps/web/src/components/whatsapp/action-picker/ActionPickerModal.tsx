@@ -2,18 +2,24 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  BarChart3,
   CreditCard,
   FileText,
+  MapPin,
   Navigation,
+  Paperclip,
   UserCheck,
   X,
 } from "lucide-react";
 
 import type { ActionMode, ConversationContact } from "../whatsapp.types";
+import { DocumentPicker } from "./DocumentPicker";
 import { DriverPicker } from "./DriverPicker";
 import { ItineraryPicker } from "./ItineraryPicker";
+import { LocationPinPicker } from "./LocationPinPicker";
 import { LocationRequestPicker } from "./LocationRequestPicker";
 import { PaymentPicker } from "./PaymentPicker";
+import { PollPicker } from "./PollPicker";
 import type { ActionPickerChannel, ActionPickerSendHandler } from "./shared";
 
 export interface ActionPickerModalProps {
@@ -57,6 +63,24 @@ const ACTION_CONFIG: Record<
     icon: <Navigation className="w-4 h-4" />,
     color: "text-blue-400",
     bgColor: "bg-blue-500/15",
+  },
+  "send-document": {
+    title: "Send Document",
+    icon: <Paperclip className="w-4 h-4" />,
+    color: "text-emerald-400",
+    bgColor: "bg-emerald-500/15",
+  },
+  "send-location": {
+    title: "Send Location Pin",
+    icon: <MapPin className="w-4 h-4" />,
+    color: "text-cyan-400",
+    bgColor: "bg-cyan-500/15",
+  },
+  "send-poll": {
+    title: "Send Poll",
+    icon: <BarChart3 className="w-4 h-4" />,
+    color: "text-violet-400",
+    bgColor: "bg-violet-500/15",
   },
 };
 
@@ -151,6 +175,27 @@ export function ActionPickerModal({
               )}
               {mode === "location" && (
                 <LocationRequestPicker
+                  contact={contact}
+                  channel={channel}
+                  onSend={handleSend}
+                />
+              )}
+              {mode === "send-document" && (
+                <DocumentPicker
+                  contact={contact}
+                  channel={channel}
+                  onSend={handleSend}
+                />
+              )}
+              {mode === "send-location" && (
+                <LocationPinPicker
+                  contact={contact}
+                  channel={channel}
+                  onSend={handleSend}
+                />
+              )}
+              {mode === "send-poll" && (
+                <PollPicker
                   contact={contact}
                   channel={channel}
                   onSend={handleSend}

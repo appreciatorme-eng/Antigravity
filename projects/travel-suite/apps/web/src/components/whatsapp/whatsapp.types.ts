@@ -1,4 +1,4 @@
-export type ActionMode = "itinerary" | "payment" | "driver" | "location";
+export type ActionMode = "itinerary" | "payment" | "driver" | "location" | "send-document" | "send-location" | "send-poll";
 
 export type ContactType = "client" | "driver" | "lead";
 

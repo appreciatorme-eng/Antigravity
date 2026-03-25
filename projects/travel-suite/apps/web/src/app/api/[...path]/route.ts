@@ -128,6 +128,7 @@ const routes = createCatchAllHandlers([
   ["whatsapp/health", () => import("@/app/api/_handlers/whatsapp/health/route")],
   ["whatsapp/qr", () => import("@/app/api/_handlers/whatsapp/qr/route")],
   ["whatsapp/send", () => import("@/app/api/_handlers/whatsapp/send/route")],
+  ["whatsapp/send-rich", () => import("@/app/api/_handlers/whatsapp/send-rich/route")],
   ["whatsapp/status", () => import("@/app/api/_handlers/whatsapp/status/route")],
   ["whatsapp/test-message", () => import("@/app/api/_handlers/whatsapp/test-message/route")],
   ["whatsapp/webhook", () => import("@/app/api/_handlers/whatsapp/webhook/route")],

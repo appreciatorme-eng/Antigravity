@@ -22,6 +22,7 @@ import {
   AtSign,
   Globe,
   Sparkles,
+  BarChart3,
 } from 'lucide-react';
 import Image from 'next/image';
 import { toast } from 'sonner';
@@ -338,6 +339,9 @@ export function MessageThread({
       payment: 'Payment request',
       driver: 'Driver details',
       location: 'Location request',
+      'send-document': 'Document',
+      'send-location': 'Location pin',
+      'send-poll': 'Poll',
     };
     toast.success(`${labels[modalMode ?? 'itinerary']} sent to ${conversation.contact.name}`);
   }
@@ -455,6 +459,9 @@ export function MessageThread({
           { mode: 'payment' as ActionMode, label: 'Payment Link', icon: <CreditCard className="w-3.5 h-3.5" />, accent: 'hover:border-pink-500/40 hover:text-pink-300' },
           { mode: 'location' as ActionMode, label: 'Request Location', icon: <Navigation className="w-3.5 h-3.5" />, accent: 'hover:border-blue-500/40 hover:text-blue-300' },
           { mode: 'driver' as ActionMode, label: 'Driver Details', icon: <UserCheck className="w-3.5 h-3.5" />, accent: 'hover:border-amber-500/40 hover:text-amber-300' },
+          { mode: 'send-document' as ActionMode, label: 'Send PDF', icon: <Paperclip className="w-3.5 h-3.5" />, accent: 'hover:border-emerald-500/40 hover:text-emerald-300' },
+          { mode: 'send-location' as ActionMode, label: 'Send Location', icon: <MapPin className="w-3.5 h-3.5" />, accent: 'hover:border-cyan-500/40 hover:text-cyan-300' },
+          { mode: 'send-poll' as ActionMode, label: 'Send Poll', icon: <BarChart3 className="w-3.5 h-3.5" />, accent: 'hover:border-violet-500/40 hover:text-violet-300' },
         ]).map(({ mode, label, icon, accent }) => (
           <button
             key={mode}
