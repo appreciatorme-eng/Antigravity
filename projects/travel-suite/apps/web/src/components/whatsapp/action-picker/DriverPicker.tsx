@@ -19,6 +19,7 @@ import {
 import {
   ActionPickerProps,
   type Driver,
+  useOrgName,
   useOrganizationDrivers,
 } from "./shared";
 
@@ -28,6 +29,7 @@ export function DriverPicker({
   onSend,
 }: ActionPickerProps) {
   const { data: drivers, loading, error } = useOrganizationDrivers();
+  const orgName = useOrgName();
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Driver | null>(null);
   const [pickupTime, setPickupTime] = useState("06:00");
@@ -65,7 +67,7 @@ export function DriverPicker({
           vehicle_number: selected.vehicleNumber,
           pickup_time: time,
           pickup_location: pickup,
-          company_name: "TripBuilt",
+          company_name: orgName,
         }),
       };
     }

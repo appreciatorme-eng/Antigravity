@@ -21,7 +21,7 @@ export interface WhatsAppTemplate {
   id: string;
   name: string;
   category: TemplateCategory;
-  language: 'en' | 'hi' | 'hinglish';
+  language: 'en' | 'hi' | 'hinglish' | 'te' | 'ta' | 'kn' | 'ml' | 'bn' | 'mr' | 'gu' | 'pa';
   body: string;
   variables: string[];
   preview: string;
@@ -342,6 +342,252 @@ Need any changes to this itinerary? Let us know and we'll customise it for you! 
     variables: ['client_name', 'destination', 'trip_name', 'start_date', 'end_date', 'duration', 'pax_count', 'itinerary_summary', 'itinerary_link', 'company_name'],
     preview: 'Your Kerala 6-day itinerary is ready! View the full plan: tripbuilt.com/trip/KL2024',
     emoji: '🗺️',
+  },
+
+  // ─── ITINERARY SHARE (REGIONAL LANGUAGES) ──────────────────────────────────
+  {
+    id: 'itinerary_share_telugu',
+    name: 'Itinerary Share (Telugu)',
+    category: 'ITINERARY_SHARE',
+    language: 'te',
+    body: `నమస్కారం {{client_name}} గారు! 🗺️\n\nమీ *{{destination}}* ప్రయాణ ప్రణాళిక సిద్ధంగా ఉంది!\n\n*ట్రిప్: {{trip_name}}*\n📅 {{start_date}} — {{end_date}} ({{duration}})\n👥 {{pax_count}} మంది\n\n📋 *రోజువారీ ప్రణాళిక:*\n{{itinerary_summary}}\n\n🔗 పూర్తి ప్రయాణ ప్రణాళిక:\n{{itinerary_link}}\n\nఏవైనా మార్పులు కావాలా? చెప్పండి, మేము మీ కోసం కస్టమైజ్ చేస్తాము! ✏️\n\n— {{company_name}}`,
+    variables: ['client_name', 'destination', 'trip_name', 'start_date', 'end_date', 'duration', 'pax_count', 'itinerary_summary', 'itinerary_link', 'company_name'],
+    preview: 'మీ Kerala ప్రయాణ ప్రణాళిక సిద్ధంగా ఉంది!',
+    emoji: '🗺️',
+  },
+  {
+    id: 'itinerary_share_tamil',
+    name: 'Itinerary Share (Tamil)',
+    category: 'ITINERARY_SHARE',
+    language: 'ta',
+    body: `வணக்கம் {{client_name}}! 🗺️\n\nஉங்கள் *{{destination}}* பயண திட்டம் தயாராக உள்ளது!\n\n*பயணம்: {{trip_name}}*\n📅 {{start_date}} — {{end_date}} ({{duration}})\n👥 {{pax_count}} பேர்\n\n📋 *நாள்வாரி திட்டம்:*\n{{itinerary_summary}}\n\n🔗 முழு பயண திட்டம்:\n{{itinerary_link}}\n\nஏதேனும் மாற்றங்கள் வேண்டுமா? சொல்லுங்கள், நாங்கள் தனிப்பயனாக்குவோம்! ✏️\n\n— {{company_name}}`,
+    variables: ['client_name', 'destination', 'trip_name', 'start_date', 'end_date', 'duration', 'pax_count', 'itinerary_summary', 'itinerary_link', 'company_name'],
+    preview: 'உங்கள் Kerala பயண திட்டம் தயாராக உள்ளது!',
+    emoji: '🗺️',
+  },
+  {
+    id: 'itinerary_share_kannada',
+    name: 'Itinerary Share (Kannada)',
+    category: 'ITINERARY_SHARE',
+    language: 'kn',
+    body: `ನಮಸ್ಕಾರ {{client_name}} ಅವರೇ! 🗺️\n\nನಿಮ್ಮ *{{destination}}* ಪ್ರವಾಸ ಯೋಜನೆ ಸಿದ್ಧವಾಗಿದೆ!\n\n*ಪ್ರವಾಸ: {{trip_name}}*\n📅 {{start_date}} — {{end_date}} ({{duration}})\n👥 {{pax_count}} ಜನರು\n\n📋 *ದಿನವಾರ ಯೋಜನೆ:*\n{{itinerary_summary}}\n\n🔗 ಸಂಪೂರ್ಣ ಪ್ರವಾಸ ಯೋಜನೆ:\n{{itinerary_link}}\n\nಯಾವುದೇ ಬದಲಾವಣೆಗಳು ಬೇಕಾ? ಹೇಳಿ, ನಾವು ನಿಮಗಾಗಿ ಕಸ್ಟಮೈಜ್ ಮಾಡುತ್ತೇವೆ! ✏️\n\n— {{company_name}}`,
+    variables: ['client_name', 'destination', 'trip_name', 'start_date', 'end_date', 'duration', 'pax_count', 'itinerary_summary', 'itinerary_link', 'company_name'],
+    preview: 'ನಿಮ್ಮ Kerala ಪ್ರವಾಸ ಯೋಜನೆ ಸಿದ್ಧವಾಗಿದೆ!',
+    emoji: '🗺️',
+  },
+  {
+    id: 'itinerary_share_malayalam',
+    name: 'Itinerary Share (Malayalam)',
+    category: 'ITINERARY_SHARE',
+    language: 'ml',
+    body: `നമസ്കാരം {{client_name}}! 🗺️\n\nനിങ്ങളുടെ *{{destination}}* യാത്രാ പദ്ധതി തയ്യാറാണ്!\n\n*ട്രിപ്പ്: {{trip_name}}*\n📅 {{start_date}} — {{end_date}} ({{duration}})\n👥 {{pax_count}} പേർ\n\n📋 *ദിവസം തിരിച്ചുള്ള പദ്ധതി:*\n{{itinerary_summary}}\n\n🔗 പൂർണ്ണ യാത്രാ പദ്ധതി:\n{{itinerary_link}}\n\nഎന്തെങ്കിലും മാറ്റങ്ങൾ വേണോ? പറയൂ, ഞങ്ങൾ നിങ്ങൾക്കായി ക്രമീകരിക്കാം! ✏️\n\n— {{company_name}}`,
+    variables: ['client_name', 'destination', 'trip_name', 'start_date', 'end_date', 'duration', 'pax_count', 'itinerary_summary', 'itinerary_link', 'company_name'],
+    preview: 'നിങ്ങളുടെ Kerala യാത്രാ പദ്ധതി തയ്യാറാണ്!',
+    emoji: '🗺️',
+  },
+  {
+    id: 'itinerary_share_bengali',
+    name: 'Itinerary Share (Bengali)',
+    category: 'ITINERARY_SHARE',
+    language: 'bn',
+    body: `নমস্কার {{client_name}}! 🗺️\n\nআপনার *{{destination}}* ভ্রমণ পরিকল্পনা প্রস্তুত!\n\n*ট্রিপ: {{trip_name}}*\n📅 {{start_date}} — {{end_date}} ({{duration}})\n👥 {{pax_count}} জন\n\n📋 *দিনভিত্তিক পরিকল্পনা:*\n{{itinerary_summary}}\n\n🔗 সম্পূর্ণ ভ্রমণ পরিকল্পনা:\n{{itinerary_link}}\n\nকোনো পরিবর্তন দরকার? জানান, আমরা আপনার জন্য কাস্টমাইজ করব! ✏️\n\n— {{company_name}}`,
+    variables: ['client_name', 'destination', 'trip_name', 'start_date', 'end_date', 'duration', 'pax_count', 'itinerary_summary', 'itinerary_link', 'company_name'],
+    preview: 'আপনার Kerala ভ্রমণ পরিকল্পনা প্রস্তুত!',
+    emoji: '🗺️',
+  },
+  {
+    id: 'itinerary_share_marathi',
+    name: 'Itinerary Share (Marathi)',
+    category: 'ITINERARY_SHARE',
+    language: 'mr',
+    body: `नमस्कार {{client_name}}! 🗺️\n\nतुमचा *{{destination}}* प्रवास कार्यक्रम तयार आहे!\n\n*ट्रिप: {{trip_name}}*\n📅 {{start_date}} — {{end_date}} ({{duration}})\n👥 {{pax_count}} जण\n\n📋 *दिवसनिहाय कार्यक्रम:*\n{{itinerary_summary}}\n\n🔗 संपूर्ण प्रवास कार्यक्रम:\n{{itinerary_link}}\n\nकाही बदल हवेत का? सांगा, आम्ही तुमच्यासाठी कस्टमाइझ करू! ✏️\n\n— {{company_name}}`,
+    variables: ['client_name', 'destination', 'trip_name', 'start_date', 'end_date', 'duration', 'pax_count', 'itinerary_summary', 'itinerary_link', 'company_name'],
+    preview: 'तुमचा Kerala प्रवास कार्यक्रम तयार आहे!',
+    emoji: '🗺️',
+  },
+  {
+    id: 'itinerary_share_gujarati',
+    name: 'Itinerary Share (Gujarati)',
+    category: 'ITINERARY_SHARE',
+    language: 'gu',
+    body: `નમસ્તે {{client_name}}! 🗺️\n\nતમારો *{{destination}}* પ્રવાસ કાર્યક્રમ તૈયાર છે!\n\n*ટ્રિપ: {{trip_name}}*\n📅 {{start_date}} — {{end_date}} ({{duration}})\n👥 {{pax_count}} વ્યક્તિ\n\n📋 *દિવસ પ્રમાણે કાર્યક્રમ:*\n{{itinerary_summary}}\n\n🔗 સંપૂર્ણ પ્રવાસ કાર્યક્રમ:\n{{itinerary_link}}\n\nકોઈ ફેરફાર જોઈએ? જણાવો, અમે તમારા માટે કસ્ટમાઈઝ કરીશું! ✏️\n\n— {{company_name}}`,
+    variables: ['client_name', 'destination', 'trip_name', 'start_date', 'end_date', 'duration', 'pax_count', 'itinerary_summary', 'itinerary_link', 'company_name'],
+    preview: 'તમારો Kerala પ્રવાસ કાર્યક્રમ તૈયાર છે!',
+    emoji: '🗺️',
+  },
+  {
+    id: 'itinerary_share_punjabi',
+    name: 'Itinerary Share (Punjabi)',
+    category: 'ITINERARY_SHARE',
+    language: 'pa',
+    body: `ਸਤ ਸ੍ਰੀ ਅਕਾਲ {{client_name}} ਜੀ! 🗺️\n\nਤੁਹਾਡਾ *{{destination}}* ਯਾਤਰਾ ਪ੍ਰੋਗਰਾਮ ਤਿਆਰ ਹੈ!\n\n*ਟ੍ਰਿਪ: {{trip_name}}*\n📅 {{start_date}} — {{end_date}} ({{duration}})\n👥 {{pax_count}} ਵਿਅਕਤੀ\n\n📋 *ਦਿਨ ਅਨੁਸਾਰ ਪ੍ਰੋਗਰਾਮ:*\n{{itinerary_summary}}\n\n🔗 ਪੂਰਾ ਯਾਤਰਾ ਪ੍ਰੋਗਰਾਮ:\n{{itinerary_link}}\n\nਕੋਈ ਬਦਲਾਅ ਚਾਹੀਦੇ ਹਨ? ਦੱਸੋ, ਅਸੀਂ ਤੁਹਾਡੇ ਲਈ ਕਸਟਮਾਈਜ਼ ਕਰਾਂਗੇ! ✏️\n\n— {{company_name}}`,
+    variables: ['client_name', 'destination', 'trip_name', 'start_date', 'end_date', 'duration', 'pax_count', 'itinerary_summary', 'itinerary_link', 'company_name'],
+    preview: 'ਤੁਹਾਡਾ Kerala ਯਾਤਰਾ ਪ੍ਰੋਗਰਾਮ ਤਿਆਰ ਹੈ!',
+    emoji: '🗺️',
+  },
+
+  // ─── PAYMENT REQUEST (REGIONAL LANGUAGES) ────────────────────────────────
+  {
+    id: 'payment_request_telugu',
+    name: 'Payment Request (Telugu)',
+    category: 'PAYMENT_REQUEST',
+    language: 'te',
+    body: `నమస్కారం {{client_name}} గారు! 🙏\n\n*{{trip_name}}* కోసం చెల్లింపు అభ్యర్థన:\n\n💰 మొత్తం: *₹{{amount}}*\n📅 చెల్లింపు తేదీ: {{due_date}}\n🆔 బుకింగ్ ID: {{booking_id}}\n\n*చెల్లింపు ఎంపికలు:*\n📱 UPI: {{upi_id}}\n🔗 ఆన్‌లైన్ చెల్లింపు: {{payment_link}}\n🏦 బ్యాంక్ ట్రాన్స్‌ఫర్:\n   ఖాతా: {{bank_account}}\n   IFSC: {{bank_ifsc}}\n   పేరు: {{company_name}}\n\nచెల్లింపు తర్వాత స్క్రీన్‌షాట్ పంపండి. GST ఇన్‌వాయిస్ ఈమెయిల్‌కు వెళ్తుంది. ✅\n\nఏవైనా ప్రశ్నలు? రిప్లై చేయండి! 😊`,
+    variables: ['client_name', 'trip_name', 'amount', 'due_date', 'booking_id', 'upi_id', 'payment_link', 'bank_account', 'bank_ifsc', 'company_name'],
+    preview: '₹45,000 చెల్లింపు Rajasthan Tour కోసం. UPI ద్వారా చెల్లించండి.',
+    emoji: '💰',
+  },
+  {
+    id: 'payment_request_tamil',
+    name: 'Payment Request (Tamil)',
+    category: 'PAYMENT_REQUEST',
+    language: 'ta',
+    body: `வணக்கம் {{client_name}}! 🙏\n\n*{{trip_name}}* க்கான பணம் செலுத்துதல் கோரிக்கை:\n\n💰 தொகை: *₹{{amount}}*\n📅 கெடு தேதி: {{due_date}}\n🆔 புக்கிங் ID: {{booking_id}}\n\n*பணம் செலுத்தும் வழிகள்:*\n📱 UPI: {{upi_id}}\n🔗 ஆன்லைன் பணம்: {{payment_link}}\n🏦 வங்கி பரிமாற்றம்:\n   கணக்கு: {{bank_account}}\n   IFSC: {{bank_ifsc}}\n   பெயர்: {{company_name}}\n\nபணம் செலுத்திய பின் ஸ்கிரீன்ஷாட் அனுப்புங்கள். GST பில் ஈமெயிலுக்கு அனுப்பப்படும். ✅\n\nகேள்விகள் உள்ளதா? பதிலளியுங்கள்! 😊`,
+    variables: ['client_name', 'trip_name', 'amount', 'due_date', 'booking_id', 'upi_id', 'payment_link', 'bank_account', 'bank_ifsc', 'company_name'],
+    preview: '₹45,000 பணம் Rajasthan Tour க்கு. UPI வழியாக செலுத்துங்கள்.',
+    emoji: '💰',
+  },
+  {
+    id: 'payment_request_kannada',
+    name: 'Payment Request (Kannada)',
+    category: 'PAYMENT_REQUEST',
+    language: 'kn',
+    body: `ನಮಸ್ಕಾರ {{client_name}} ಅವರೇ! 🙏\n\n*{{trip_name}}* ಗಾಗಿ ಪಾವತಿ ವಿನಂತಿ:\n\n💰 ಮೊತ್ತ: *₹{{amount}}*\n📅 ಕೊನೆಯ ದಿನಾಂಕ: {{due_date}}\n🆔 ಬುಕ್ಕಿಂಗ್ ID: {{booking_id}}\n\n*ಪಾವತಿ ಆಯ್ಕೆಗಳು:*\n📱 UPI: {{upi_id}}\n🔗 ಆನ್‌ಲೈನ್ ಪಾವತಿ: {{payment_link}}\n🏦 ಬ್ಯಾಂಕ್ ವರ್ಗಾವಣೆ:\n   ಖಾತೆ: {{bank_account}}\n   IFSC: {{bank_ifsc}}\n   ಹೆಸರು: {{company_name}}\n\nಪಾವತಿ ನಂತರ ಸ್ಕ್ರೀನ್‌ಶಾಟ್ ಕಳುಹಿಸಿ. GST ಇನ್‌ವಾಯ್ಸ್ ಈಮೇಲ್‌ಗೆ ಕಳುಹಿಸಲಾಗುವುದು. ✅\n\nಏನಾದರೂ ಪ್ರಶ್ನೆಗಳು? ಉತ್ತರಿಸಿ! 😊`,
+    variables: ['client_name', 'trip_name', 'amount', 'due_date', 'booking_id', 'upi_id', 'payment_link', 'bank_account', 'bank_ifsc', 'company_name'],
+    preview: '₹45,000 ಪಾವತಿ Rajasthan Tour ಗಾಗಿ. UPI ಮೂಲಕ ಪಾವತಿಸಿ.',
+    emoji: '💰',
+  },
+  {
+    id: 'payment_request_malayalam',
+    name: 'Payment Request (Malayalam)',
+    category: 'PAYMENT_REQUEST',
+    language: 'ml',
+    body: `നമസ്കാരം {{client_name}}! 🙏\n\n*{{trip_name}}* നുള്ള പേയ്‌മെന്റ് അഭ്യർത്ഥന:\n\n💰 തുക: *₹{{amount}}*\n📅 അവസാന തീയതി: {{due_date}}\n🆔 ബുക്കിംഗ് ID: {{booking_id}}\n\n*പേയ്‌മെന്റ് ഓപ്ഷനുകൾ:*\n📱 UPI: {{upi_id}}\n🔗 ഓൺലൈൻ പേയ്‌മെന്റ്: {{payment_link}}\n🏦 ബാങ്ക് ട്രാൻസ്ഫർ:\n   അക്കൗണ്ട്: {{bank_account}}\n   IFSC: {{bank_ifsc}}\n   പേര്: {{company_name}}\n\nപേയ്‌മെന്റിന് ശേഷം സ്ക്രീൻഷോട്ട് അയക്കുക. GST ഇൻവോയ്സ് ഇമെയിലിലേക്ക് അയക്കും. ✅\n\nചോദ്യങ്ങൾ ഉണ്ടോ? മറുപടി അയക്കൂ! 😊`,
+    variables: ['client_name', 'trip_name', 'amount', 'due_date', 'booking_id', 'upi_id', 'payment_link', 'bank_account', 'bank_ifsc', 'company_name'],
+    preview: '₹45,000 പേയ്‌മെന്റ് Rajasthan Tour നുള്ളത്. UPI വഴി അടയ്ക്കുക.',
+    emoji: '💰',
+  },
+  {
+    id: 'payment_request_bengali',
+    name: 'Payment Request (Bengali)',
+    category: 'PAYMENT_REQUEST',
+    language: 'bn',
+    body: `নমস্কার {{client_name}}! 🙏\n\n*{{trip_name}}* এর জন্য পেমেন্ট অনুরোধ:\n\n💰 পরিমাণ: *₹{{amount}}*\n📅 শেষ তারিখ: {{due_date}}\n🆔 বুকিং ID: {{booking_id}}\n\n*পেমেন্টের উপায়:*\n📱 UPI: {{upi_id}}\n🔗 অনলাইন পেমেন্ট: {{payment_link}}\n🏦 ব্যাংক ট্রান্সফার:\n   অ্যাকাউন্ট: {{bank_account}}\n   IFSC: {{bank_ifsc}}\n   নাম: {{company_name}}\n\nপেমেন্টের পর স্ক্রিনশট পাঠান। GST ইনভয়েস ইমেইলে পাঠানো হবে। ✅\n\nকোনো প্রশ্ন? রিপ্লাই করুন! 😊`,
+    variables: ['client_name', 'trip_name', 'amount', 'due_date', 'booking_id', 'upi_id', 'payment_link', 'bank_account', 'bank_ifsc', 'company_name'],
+    preview: '₹45,000 পেমেন্ট Rajasthan Tour এর জন্য। UPI দিয়ে পেমেন্ট করুন।',
+    emoji: '💰',
+  },
+  {
+    id: 'payment_request_marathi',
+    name: 'Payment Request (Marathi)',
+    category: 'PAYMENT_REQUEST',
+    language: 'mr',
+    body: `नमस्कार {{client_name}}! 🙏\n\n*{{trip_name}}* साठी पेमेंट विनंती:\n\n💰 रक्कम: *₹{{amount}}*\n📅 देय तारीख: {{due_date}}\n🆔 बुकिंग ID: {{booking_id}}\n\n*पेमेंट पर्याय:*\n📱 UPI: {{upi_id}}\n🔗 ऑनलाइन पेमेंट: {{payment_link}}\n🏦 बँक ट्रान्सफर:\n   खाते: {{bank_account}}\n   IFSC: {{bank_ifsc}}\n   नाव: {{company_name}}\n\nपेमेंट केल्यानंतर स्क्रीनशॉट पाठवा. GST इन्व्हॉइस ईमेलवर पाठवले जाईल. ✅\n\nकाही प्रश्न? रिप्लाय करा! 😊`,
+    variables: ['client_name', 'trip_name', 'amount', 'due_date', 'booking_id', 'upi_id', 'payment_link', 'bank_account', 'bank_ifsc', 'company_name'],
+    preview: '₹45,000 पेमेंट Rajasthan Tour साठी. UPI ने पेमेंट करा.',
+    emoji: '💰',
+  },
+  {
+    id: 'payment_request_gujarati',
+    name: 'Payment Request (Gujarati)',
+    category: 'PAYMENT_REQUEST',
+    language: 'gu',
+    body: `નમસ્તે {{client_name}}! 🙏\n\n*{{trip_name}}* માટે ચુકવણી વિનંતી:\n\n💰 રકમ: *₹{{amount}}*\n📅 અંતિમ તારીખ: {{due_date}}\n🆔 બુકિંગ ID: {{booking_id}}\n\n*ચુકવણી વિકલ્પો:*\n📱 UPI: {{upi_id}}\n🔗 ઓનલાઈન ચુકવણી: {{payment_link}}\n🏦 બેંક ટ્રાન્સફર:\n   ખાતું: {{bank_account}}\n   IFSC: {{bank_ifsc}}\n   નામ: {{company_name}}\n\nચુકવણી પછી સ્ક્રીનશોટ મોકલો. GST ઈન્વોઈસ ઈમેલ પર મોકલવામાં આવશે. ✅\n\nકોઈ પ્રશ્ન? જવાબ આપો! 😊`,
+    variables: ['client_name', 'trip_name', 'amount', 'due_date', 'booking_id', 'upi_id', 'payment_link', 'bank_account', 'bank_ifsc', 'company_name'],
+    preview: '₹45,000 ચુકવણી Rajasthan Tour માટે. UPI દ્વારા ચુકવણી કરો.',
+    emoji: '💰',
+  },
+  {
+    id: 'payment_request_punjabi',
+    name: 'Payment Request (Punjabi)',
+    category: 'PAYMENT_REQUEST',
+    language: 'pa',
+    body: `ਸਤ ਸ੍ਰੀ ਅਕਾਲ {{client_name}} ਜੀ! 🙏\n\n*{{trip_name}}* ਲਈ ਭੁਗਤਾਨ ਬੇਨਤੀ:\n\n💰 ਰਕਮ: *₹{{amount}}*\n📅 ਅੰਤਿਮ ਤਾਰੀਖ: {{due_date}}\n🆔 ਬੁਕਿੰਗ ID: {{booking_id}}\n\n*ਭੁਗਤਾਨ ਵਿਕਲਪ:*\n📱 UPI: {{upi_id}}\n🔗 ਔਨਲਾਈਨ ਭੁਗਤਾਨ: {{payment_link}}\n🏦 ਬੈਂਕ ਟ੍ਰਾਂਸਫਰ:\n   ਖਾਤਾ: {{bank_account}}\n   IFSC: {{bank_ifsc}}\n   ਨਾਮ: {{company_name}}\n\nਭੁਗਤਾਨ ਤੋਂ ਬਾਅਦ ਸਕ੍ਰੀਨਸ਼ਾਟ ਭੇਜੋ। GST ਇਨਵੌਇਸ ਈਮੇਲ ਤੇ ਭੇਜਿਆ ਜਾਵੇਗਾ। ✅\n\nਕੋਈ ਸਵਾਲ? ਜਵਾਬ ਦਿਓ! 😊`,
+    variables: ['client_name', 'trip_name', 'amount', 'due_date', 'booking_id', 'upi_id', 'payment_link', 'bank_account', 'bank_ifsc', 'company_name'],
+    preview: '₹45,000 ਭੁਗਤਾਨ Rajasthan Tour ਲਈ। UPI ਰਾਹੀਂ ਭੁਗਤਾਨ ਕਰੋ।',
+    emoji: '💰',
+  },
+
+  // ─── DRIVER ASSIGNMENT (REGIONAL LANGUAGES) ──────────────────────────────
+  {
+    id: 'driver_assign_telugu',
+    name: 'Driver Assignment (Telugu)',
+    category: 'DRIVER_ASSIGNMENT',
+    language: 'te',
+    body: `నమస్కారం {{client_name}} గారు! 🚗\n\nమీ {{destination}} ట్రిప్ కోసం డ్రైవర్ వివరాలు:\n\n👤 డ్రైవర్: *{{driver_name}}*\n📞 మొబైల్: {{driver_phone}}\n🚙 వాహనం: {{vehicle_type}} ({{vehicle_number}})\n⏰ పికప్ సమయం: {{pickup_time}}\n📍 పికప్ ప్రదేశం: {{pickup_location}}\n\nడ్రైవర్ నంబర్ సేవ్ చేసుకోండి. పికప్ కు 30 నిమిషాల ముందు కాల్ చేస్తారు.\n\nసురక్షితమైన ప్రయాణం! 🙏\n{{company_name}}`,
+    variables: ['client_name', 'destination', 'driver_name', 'driver_phone', 'vehicle_type', 'vehicle_number', 'pickup_time', 'pickup_location', 'company_name'],
+    preview: 'నమస్కారం! మీ Jaipur ట్రిప్ డ్రైవర్ Ramesh పికప్ కు వస్తారు.',
+    emoji: '🚗',
+  },
+  {
+    id: 'driver_assign_tamil',
+    name: 'Driver Assignment (Tamil)',
+    category: 'DRIVER_ASSIGNMENT',
+    language: 'ta',
+    body: `வணக்கம் {{client_name}}! 🚗\n\nஉங்கள் {{destination}} பயணத்திற்கான ஓட்டுநர் விவரங்கள்:\n\n👤 ஓட்டுநர்: *{{driver_name}}*\n📞 மொபைல்: {{driver_phone}}\n🚙 வாகனம்: {{vehicle_type}} ({{vehicle_number}})\n⏰ பிக்அப் நேரம்: {{pickup_time}}\n📍 பிக்அப் இடம்: {{pickup_location}}\n\nஓட்டுநர் எண்ணை சேமித்துக் கொள்ளுங்கள். பிக்அப்புக்கு 30 நிமிடங்களுக்கு முன் அழைப்பார்.\n\nநல்ல பயணம்! 🙏\n{{company_name}}`,
+    variables: ['client_name', 'destination', 'driver_name', 'driver_phone', 'vehicle_type', 'vehicle_number', 'pickup_time', 'pickup_location', 'company_name'],
+    preview: 'வணக்கம்! உங்கள் Jaipur பயண ஓட்டுநர் Ramesh வருவார்.',
+    emoji: '🚗',
+  },
+  {
+    id: 'driver_assign_kannada',
+    name: 'Driver Assignment (Kannada)',
+    category: 'DRIVER_ASSIGNMENT',
+    language: 'kn',
+    body: `ನಮಸ್ಕಾರ {{client_name}} ಅವರೇ! 🚗\n\nನಿಮ್ಮ {{destination}} ಪ್ರವಾಸಕ್ಕಾಗಿ ಚಾಲಕ ವಿವರಗಳು:\n\n👤 ಚಾಲಕ: *{{driver_name}}*\n📞 ಮೊಬೈಲ್: {{driver_phone}}\n🚙 ವಾಹನ: {{vehicle_type}} ({{vehicle_number}})\n⏰ ಪಿಕಪ್ ಸಮಯ: {{pickup_time}}\n📍 ಪಿಕಪ್ ಸ್ಥಳ: {{pickup_location}}\n\nಚಾಲಕರ ನಂಬರ್ ಉಳಿಸಿಕೊಳ್ಳಿ. ಪಿಕಪ್‌ಗೆ 30 ನಿಮಿಷ ಮೊದಲು ಕರೆ ಮಾಡುತ್ತಾರೆ.\n\nಶುಭ ಪ್ರಯಾಣ! 🙏\n{{company_name}}`,
+    variables: ['client_name', 'destination', 'driver_name', 'driver_phone', 'vehicle_type', 'vehicle_number', 'pickup_time', 'pickup_location', 'company_name'],
+    preview: 'ನಮಸ್ಕಾರ! ನಿಮ್ಮ Jaipur ಪ್ರವಾಸದ ಚಾಲಕ Ramesh ಬರುತ್ತಾರೆ.',
+    emoji: '🚗',
+  },
+  {
+    id: 'driver_assign_malayalam',
+    name: 'Driver Assignment (Malayalam)',
+    category: 'DRIVER_ASSIGNMENT',
+    language: 'ml',
+    body: `നമസ്കാരം {{client_name}}! 🚗\n\nനിങ്ങളുടെ {{destination}} യാത്രയ്ക്കുള്ള ഡ്രൈവർ വിശദാംശങ്ങൾ:\n\n👤 ഡ്രൈവർ: *{{driver_name}}*\n📞 മൊബൈൽ: {{driver_phone}}\n🚙 വാഹനം: {{vehicle_type}} ({{vehicle_number}})\n⏰ പിക്കപ്പ് സമയം: {{pickup_time}}\n📍 പിക്കപ്പ് സ്ഥലം: {{pickup_location}}\n\nഡ്രൈവറുടെ നമ്പർ സേവ് ചെയ്യുക. പിക്കപ്പിന് 30 മിനിറ്റ് മുമ്പ് വിളിക്കും.\n\nസുരക്ഷിതമായ യാത്ര! 🙏\n{{company_name}}`,
+    variables: ['client_name', 'destination', 'driver_name', 'driver_phone', 'vehicle_type', 'vehicle_number', 'pickup_time', 'pickup_location', 'company_name'],
+    preview: 'നമസ്കാരം! നിങ്ങളുടെ Jaipur യാത്രയ്ക്ക് ഡ്രൈവർ Ramesh വരും.',
+    emoji: '🚗',
+  },
+  {
+    id: 'driver_assign_bengali',
+    name: 'Driver Assignment (Bengali)',
+    category: 'DRIVER_ASSIGNMENT',
+    language: 'bn',
+    body: `নমস্কার {{client_name}}! 🚗\n\nআপনার {{destination}} ট্রিপের জন্য ড্রাইভারের বিবরণ:\n\n👤 ড্রাইভার: *{{driver_name}}*\n📞 মোবাইল: {{driver_phone}}\n🚙 গাড়ি: {{vehicle_type}} ({{vehicle_number}})\n⏰ পিকআপ সময়: {{pickup_time}}\n📍 পিকআপ স্থান: {{pickup_location}}\n\nড্রাইভারের নম্বর সেভ করে রাখুন। পিকআপের 30 মিনিট আগে কল করবেন।\n\nশুভ যাত্রা! 🙏\n{{company_name}}`,
+    variables: ['client_name', 'destination', 'driver_name', 'driver_phone', 'vehicle_type', 'vehicle_number', 'pickup_time', 'pickup_location', 'company_name'],
+    preview: 'নমস্কার! আপনার Jaipur ট্রিপের ড্রাইভার Ramesh আসবেন।',
+    emoji: '🚗',
+  },
+  {
+    id: 'driver_assign_marathi',
+    name: 'Driver Assignment (Marathi)',
+    category: 'DRIVER_ASSIGNMENT',
+    language: 'mr',
+    body: `नमस्कार {{client_name}}! 🚗\n\nतुमच्या {{destination}} ट्रिपसाठी ड्रायव्हर तपशील:\n\n👤 ड्रायव्हर: *{{driver_name}}*\n📞 मोबाईल: {{driver_phone}}\n🚙 वाहन: {{vehicle_type}} ({{vehicle_number}})\n⏰ पिकअप वेळ: {{pickup_time}}\n📍 पिकअप ठिकाण: {{pickup_location}}\n\nड्रायव्हरचा नंबर सेव्ह करा. पिकअपच्या 30 मिनिटे आधी कॉल करतील.\n\nशुभ प्रवास! 🙏\n{{company_name}}`,
+    variables: ['client_name', 'destination', 'driver_name', 'driver_phone', 'vehicle_type', 'vehicle_number', 'pickup_time', 'pickup_location', 'company_name'],
+    preview: 'नमस्कार! तुमच्या Jaipur ट्रिपचे ड्रायव्हर Ramesh येतील.',
+    emoji: '🚗',
+  },
+  {
+    id: 'driver_assign_gujarati',
+    name: 'Driver Assignment (Gujarati)',
+    category: 'DRIVER_ASSIGNMENT',
+    language: 'gu',
+    body: `નમસ્તે {{client_name}}! 🚗\n\nતમારી {{destination}} ટ્રિપ માટે ડ્રાઈવર વિગતો:\n\n👤 ડ્રાઈવર: *{{driver_name}}*\n📞 મોબાઈલ: {{driver_phone}}\n🚙 વાહન: {{vehicle_type}} ({{vehicle_number}})\n⏰ પિકઅપ સમય: {{pickup_time}}\n📍 પિકઅપ સ્થળ: {{pickup_location}}\n\nડ્રાઈવરનો નંબર સેવ કરો. પિકઅપના 30 મિનિટ પહેલાં કૉલ કરશે.\n\nશુભ યાત્રા! 🙏\n{{company_name}}`,
+    variables: ['client_name', 'destination', 'driver_name', 'driver_phone', 'vehicle_type', 'vehicle_number', 'pickup_time', 'pickup_location', 'company_name'],
+    preview: 'નમસ્તે! તમારી Jaipur ટ્રિપના ડ્રાઈવર Ramesh આવશે.',
+    emoji: '🚗',
+  },
+  {
+    id: 'driver_assign_punjabi',
+    name: 'Driver Assignment (Punjabi)',
+    category: 'DRIVER_ASSIGNMENT',
+    language: 'pa',
+    body: `ਸਤ ਸ੍ਰੀ ਅਕਾਲ {{client_name}} ਜੀ! 🚗\n\nਤੁਹਾਡੀ {{destination}} ਟ੍ਰਿਪ ਲਈ ਡਰਾਈਵਰ ਵੇਰਵੇ:\n\n👤 ਡਰਾਈਵਰ: *{{driver_name}}*\n📞 ਮੋਬਾਈਲ: {{driver_phone}}\n🚙 ਵਾਹਨ: {{vehicle_type}} ({{vehicle_number}})\n⏰ ਪਿਕਅੱਪ ਸਮਾਂ: {{pickup_time}}\n📍 ਪਿਕਅੱਪ ਥਾਂ: {{pickup_location}}\n\nਡਰਾਈਵਰ ਦਾ ਨੰਬਰ ਸੇਵ ਕਰੋ। ਪਿਕਅੱਪ ਤੋਂ 30 ਮਿੰਟ ਪਹਿਲਾਂ ਕਾਲ ਕਰੇਗਾ।\n\nਸ਼ੁਭ ਯਾਤਰਾ! 🙏\n{{company_name}}`,
+    variables: ['client_name', 'destination', 'driver_name', 'driver_phone', 'vehicle_type', 'vehicle_number', 'pickup_time', 'pickup_location', 'company_name'],
+    preview: 'ਸਤ ਸ੍ਰੀ ਅਕਾਲ! ਤੁਹਾਡੀ Jaipur ਟ੍ਰਿਪ ਦਾ ਡਰਾਈਵਰ Ramesh ਆਵੇਗਾ।',
+    emoji: '🚗',
   },
 
   // ─── REVIEW REQUEST ──────────────────────────────────────────────────────────
@@ -775,7 +1021,32 @@ export const LANGUAGE_LABELS: Record<WhatsAppTemplate['language'] | 'all', strin
   en: '🇬🇧 English',
   hi: '🇮🇳 Hindi',
   hinglish: '🤝 Hinglish',
+  te: 'తెలుగు Telugu',
+  ta: 'தமிழ் Tamil',
+  kn: 'ಕನ್ನಡ Kannada',
+  ml: 'മലയാളം Malayalam',
+  bn: 'বাংলা Bengali',
+  mr: 'मराठी Marathi',
+  gu: 'ગુજરાતી Gujarati',
+  pa: 'ਪੰਜਾਬੀ Punjabi',
 };
+
+/**
+ * Map a display language name (native script or English) to a template language code.
+ */
+export function mapDisplayLangToTemplateCode(displayLang: string): WhatsAppTemplate['language'] {
+  const lower = displayLang.toLowerCase();
+  if (lower.startsWith('हिंदी') || lower === 'hindi') return 'hi';
+  if (lower.startsWith('తెలుగు') || lower === 'telugu') return 'te';
+  if (lower.startsWith('தமிழ்') || lower === 'tamil') return 'ta';
+  if (lower.startsWith('ಕನ್ನಡ') || lower === 'kannada') return 'kn';
+  if (lower.startsWith('മലയാളം') || lower === 'malayalam') return 'ml';
+  if (lower.startsWith('বাংলা') || lower === 'bengali') return 'bn';
+  if (lower.startsWith('मराठी') || lower === 'marathi') return 'mr';
+  if (lower.startsWith('ગુજરાતી') || lower === 'gujarati') return 'gu';
+  if (lower.startsWith('ਪੰਜਾਬੀ') || lower === 'punjabi') return 'pa';
+  return 'en';
+}
 
 // ─── QUICK REPLIES ───────────────────────────────────────────────────────────
 

@@ -21,6 +21,7 @@ import {
   ActionPickerProps,
   formatCurrency,
   type Trip,
+  useOrgName,
   useOrganizationTrips,
 } from "./shared";
 
@@ -31,6 +32,7 @@ export function PaymentPicker({
   language,
 }: ActionPickerProps) {
   const { data: trips, loading, error } = useOrganizationTrips();
+  const orgName = useOrgName();
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   const [customAmount, setCustomAmount] = useState("");
   const [dueDate, setDueDate] = useState("");
@@ -87,7 +89,7 @@ export function PaymentPicker({
           payment_link: paymentUrl,
           bank_account: "50200012345678",
           bank_ifsc: "HDFC0001234",
-          company_name: "TripBuilt",
+          company_name: orgName,
         }),
       };
     }

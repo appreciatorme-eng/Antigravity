@@ -13,6 +13,7 @@ import {
   ActionPickerProps,
   formatCurrency,
   type Trip,
+  useOrgName,
   useOrganizationTrips,
 } from "./shared";
 
@@ -23,6 +24,7 @@ export function ItineraryPicker({
   language,
 }: ActionPickerProps) {
   const { data: trips, loading, error } = useOrganizationTrips();
+  const orgName = useOrgName();
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Trip | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
@@ -77,7 +79,7 @@ export function ItineraryPicker({
           pax_count: String(selected.pax),
           itinerary_summary: selected.itinerarySummary,
           itinerary_link: itineraryLink,
-          company_name: "TripBuilt",
+          company_name: orgName,
         }),
       };
     }

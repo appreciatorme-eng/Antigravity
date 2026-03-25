@@ -135,6 +135,24 @@ export function useOrganizationTrips(): UseDataResult<Trip> {
   return { data, loading, error };
 }
 
+export function useOrgName(): string {
+  const [orgName, setOrgName] = useState("Your Company");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/org");
+        const data = await res.json();
+        if (data?.data?.name) setOrgName(data.data.name);
+      } catch {
+        /* silent — falls back to "Your Company" */
+      }
+    })();
+  }, []);
+
+  return orgName;
+}
+
 export function useOrganizationDrivers(): UseDataResult<Driver> {
   const [data, setData] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
