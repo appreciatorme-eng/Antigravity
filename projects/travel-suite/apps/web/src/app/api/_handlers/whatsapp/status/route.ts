@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { getEvolutionStatus } from "@/lib/whatsapp-evolution.server";
+import { ensureAssistantGroup } from "@/lib/whatsapp/ensure-assistant-group";
 import { logError } from "@/lib/observability/logger";
 
 export async function GET(request: NextRequest) {
@@ -64,6 +65,12 @@ export async function GET(request: NextRequest) {
                             display_name: displayName,
                         })
                         .eq("session_name", sessionName);
+
+                    // Now that phone_number is set, create the assistant group
+                    // (the webhook tried but bailed because phone was null)
+                    void ensureAssistantGroup(sessionName).catch((err) =>
+                        logError("[whatsapp/status] assistant group creation failed", err),
+                    );
                 }
 
                 return NextResponse.json({
