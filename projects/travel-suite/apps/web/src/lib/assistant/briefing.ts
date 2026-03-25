@@ -18,6 +18,7 @@ import type { ContextSnapshot } from "./types";
 import { buildContextSnapshot } from "./context-engine";
 import { formatCurrency } from "./prompts/system";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { notifyOperator } from "@/lib/whatsapp/assistant-notifications";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -268,6 +269,9 @@ export async function generateAndQueueBriefings(): Promise<BriefingResult> {
         }
       } else {
         queued += 1;
+
+        // Also send to WhatsApp Assistant group (best-effort)
+        void notifyOperator(entry.organizationId, message);
       }
     } catch {
       errors += 1;

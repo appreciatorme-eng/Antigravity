@@ -475,3 +475,89 @@ export async function disconnectEvolution(
         // Intentional: safe to ignore -- session already gone
     }
 }
+
+// ---------------------------------------------------------------------------
+// Group management -- for TripBuilt Assistant WhatsApp group
+// ---------------------------------------------------------------------------
+
+interface CreateGroupResponse {
+    readonly id?: string;
+    readonly groupJid?: string;
+    readonly jid?: string;
+}
+
+/**
+ * Create a WhatsApp group via Evolution API.
+ * participantDigits -- array of E.164 phone numbers (digits only).
+ * Returns the groupJid (e.g. "120363xxxx@g.us").
+ */
+export async function createEvolutionGroup(
+    instanceName: string,
+    subject: string,
+    participantDigits: readonly string[],
+): Promise<string> {
+    const participants = participantDigits.map((d) => d.replace(/\D/g, ""));
+
+    const res = await evolutionFetch(`/group/create/${instanceName}`, {
+        method: "POST",
+        body: JSON.stringify({
+            subject,
+            participants,
+        }),
+    });
+
+    if (!res.ok) {
+        const body = await res.text().catch(() => "(no body)");
+        throw new Error(
+            `Evolution POST /group/create/${instanceName} -> ${res.status}: ${body}`,
+        );
+    }
+
+    const json = (await res.json()) as CreateGroupResponse;
+    const groupJid = json.groupJid ?? json.jid ?? json.id ?? "";
+
+    if (!groupJid) {
+        throw new Error("Evolution group/create returned no groupJid");
+    }
+
+    return groupJid;
+}
+
+/**
+ * Update a WhatsApp group's profile picture.
+ * imageBase64 -- base64-encoded image (PNG or JPEG).
+ */
+export async function updateEvolutionGroupPicture(
+    instanceName: string,
+    groupJid: string,
+    imageBase64: string,
+): Promise<void> {
+    await evolutionFetch(`/group/updateGroupPicture/${instanceName}`, {
+        method: "POST",
+        body: JSON.stringify({
+            groupJid,
+            image: imageBase64,
+        }),
+    }).catch(() => {
+        // Best-effort -- don't fail if picture update fails
+    });
+}
+
+/**
+ * Update a WhatsApp group's description.
+ */
+export async function updateEvolutionGroupDescription(
+    instanceName: string,
+    groupJid: string,
+    description: string,
+): Promise<void> {
+    await evolutionFetch(`/group/updateGroupDescription/${instanceName}`, {
+        method: "POST",
+        body: JSON.stringify({
+            groupJid,
+            description,
+        }),
+    }).catch(() => {
+        // Best-effort
+    });
+}
