@@ -90,7 +90,7 @@ export function WhatsAppConnectModal({
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [onConnected]);
 
     const startConnection = useCallback(() => {
         if (isDemoMode) {

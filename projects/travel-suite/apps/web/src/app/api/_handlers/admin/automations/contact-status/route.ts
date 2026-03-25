@@ -42,6 +42,7 @@ export async function GET(request: Request): Promise<Response> {
         }
 
         // Fetch per-contact overrides (table not in generated types yet)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: overrides } = await (adminClient as any)
             .from("automation_contact_overrides")
             .select("rule_type, enabled")
@@ -99,6 +100,7 @@ export async function POST(request: Request): Promise<Response> {
         }
 
         // Upsert override (table not in generated types yet)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { error } = await (adminClient as any)
             .from("automation_contact_overrides")
             .upsert(
