@@ -12,7 +12,7 @@ import "server-only";
 // Types
 
 export interface TriggerConfig {
-  readonly entity_type: "proposal" | "payment" | "trip" | "booking";
+  readonly entity_type: "proposal" | "payment" | "trip" | "booking" | "client" | "itinerary";
   readonly delay_hours: number;
   readonly trigger_event: "created" | "updated" | "status_changed" | "date_approaching";
   readonly status_filter?: readonly string[];
@@ -33,8 +33,13 @@ export interface StopCondition {
   readonly description: string;
 }
 
+export type AutomationTemplateId =
+  | "proposal_followup" | "payment_reminder" | "review_request" | "trip_countdown"
+  | "welcome_message" | "itinerary_shared" | "booking_confirmation" | "packing_reminder"
+  | "departure_day" | "post_trip_thanks" | "anniversary_reminder" | "payment_received";
+
 export interface AutomationTemplate {
-  readonly id: "proposal_followup" | "payment_reminder" | "review_request" | "trip_countdown";
+  readonly id: AutomationTemplateId;
   readonly name: string;
   readonly description: string;
   readonly category: "sales" | "operations" | "customer_success";
@@ -193,13 +198,151 @@ const tripCountdownTemplate: AutomationTemplate = {
   priority: 4,
 };
 
+// ── New templates ────────────────────────────────────────────────────────────
+
+const welcomeMessageTemplate: AutomationTemplate = {
+  id: "welcome_message",
+  name: "Welcome Message",
+  description: "Send a warm welcome when a new client is added to your CRM",
+  category: "sales",
+  trigger_config: { entity_type: "client", delay_hours: 0, trigger_event: "created" },
+  action_config: {
+    channel: "whatsapp",
+    message_template: "Hi {{client_name}}! 👋 Welcome aboard! I'm {{operator_name}}, your personal travel consultant. I'll help you plan unforgettable trips. Feel free to message me anytime with your travel ideas!",
+    message_variables: ["client_name", "operator_name"],
+  },
+  stop_conditions: [],
+  enabled_by_default: true,
+  priority: 1,
+};
+
+const itinerarySharedTemplate: AutomationTemplate = {
+  id: "itinerary_shared",
+  name: "Itinerary Shared",
+  description: "Confirm when an itinerary link is shared with a client",
+  category: "sales",
+  trigger_config: { entity_type: "itinerary", delay_hours: 0, trigger_event: "status_changed", status_filter: ["shared"] },
+  action_config: {
+    channel: "whatsapp",
+    message_template: "Hi {{client_name}}! ✈️ Your {{destination}} itinerary is ready! Check it out and let me know if you'd like any changes. I'm here to make it perfect for you!",
+    message_variables: ["client_name", "destination"],
+  },
+  stop_conditions: [{ field: "status", operator: "equals", value: "approved", description: "Client already approved" }],
+  enabled_by_default: true,
+  priority: 2,
+};
+
+const bookingConfirmationTemplate: AutomationTemplate = {
+  id: "booking_confirmation",
+  name: "Booking Confirmation",
+  description: "Celebrate when a trip is confirmed with the client",
+  category: "operations",
+  trigger_config: { entity_type: "trip", delay_hours: 0, trigger_event: "status_changed", status_filter: ["confirmed"] },
+  action_config: {
+    channel: "whatsapp",
+    message_template: "Great news, {{client_name}}! 🎉 Your {{destination}} trip is confirmed for {{trip_date}}. We'll keep you updated as the departure date approaches. Get excited!",
+    message_variables: ["client_name", "destination", "trip_date"],
+  },
+  stop_conditions: [],
+  enabled_by_default: true,
+  priority: 3,
+};
+
+const packingReminderTemplate: AutomationTemplate = {
+  id: "packing_reminder",
+  name: "Packing Reminder",
+  description: "Friendly reminder 3 days before trip to start packing",
+  category: "operations",
+  trigger_config: { entity_type: "trip", delay_hours: 0, trigger_event: "date_approaching", date_field: "start_date", days_before: 3 },
+  action_config: {
+    channel: "whatsapp",
+    message_template: "Hi {{client_name}}! 🧳 Your {{destination}} trip is in 3 days! Time to start packing. Don't forget your passport, travel insurance docs, and comfortable shoes. Need any last-minute help?",
+    message_variables: ["client_name", "destination"],
+  },
+  stop_conditions: [{ field: "status", operator: "equals", value: "cancelled", description: "Trip was cancelled" }],
+  enabled_by_default: true,
+  priority: 6,
+};
+
+const departureDayTemplate: AutomationTemplate = {
+  id: "departure_day",
+  name: "Day-of Departure",
+  description: "Wish safe travels on the departure day",
+  category: "operations",
+  trigger_config: { entity_type: "trip", delay_hours: 0, trigger_event: "date_approaching", date_field: "start_date", days_before: 0 },
+  action_config: {
+    channel: "whatsapp",
+    message_template: "Today's the day, {{client_name}}! 🌟 Safe travels to {{destination}}! If you need anything during your trip, I'm just a message away. Have an amazing time!",
+    message_variables: ["client_name", "destination"],
+  },
+  stop_conditions: [{ field: "status", operator: "equals", value: "cancelled", description: "Trip was cancelled" }],
+  enabled_by_default: true,
+  priority: 7,
+};
+
+const postTripThanksTemplate: AutomationTemplate = {
+  id: "post_trip_thanks",
+  name: "Post-Trip Thank You",
+  description: "Thank the client 2 days after their trip ends",
+  category: "customer_success",
+  trigger_config: { entity_type: "trip", delay_hours: 48, trigger_event: "status_changed", status_filter: ["completed"] },
+  action_config: {
+    channel: "whatsapp",
+    message_template: "Welcome back, {{client_name}}! 🏠 Hope you had an amazing time in {{destination}}! I'd love to hear about your favorite moments. When you have a minute, a quick review would mean the world to us! ⭐",
+    message_variables: ["client_name", "destination"],
+  },
+  stop_conditions: [],
+  enabled_by_default: true,
+  priority: 9,
+};
+
+const anniversaryReminderTemplate: AutomationTemplate = {
+  id: "anniversary_reminder",
+  name: "Anniversary Reminder",
+  description: "Reach out 1 year after their trip for repeat business",
+  category: "customer_success",
+  trigger_config: { entity_type: "trip", delay_hours: 0, trigger_event: "date_approaching", date_field: "start_date", days_before: -365 },
+  action_config: {
+    channel: "whatsapp",
+    message_template: "Hi {{client_name}}! 🎂 Can you believe it's been a year since your {{destination}} trip? Time flies! Ready for another adventure? I have some amazing destinations in mind for you!",
+    message_variables: ["client_name", "destination"],
+  },
+  stop_conditions: [],
+  enabled_by_default: false,
+  priority: 12,
+};
+
+const paymentReceivedTemplate: AutomationTemplate = {
+  id: "payment_received",
+  name: "Payment Received",
+  description: "Confirm payment and mention GST invoice",
+  category: "operations",
+  trigger_config: { entity_type: "payment", delay_hours: 0, trigger_event: "status_changed", status_filter: ["paid", "captured"] },
+  action_config: {
+    channel: "whatsapp",
+    message_template: "Payment of ₹{{amount}} received! 🧾 Thank you, {{client_name}}! Your GST invoice will be sent to your email shortly. Your {{destination}} trip is all set!",
+    message_variables: ["client_name", "amount", "destination"],
+  },
+  stop_conditions: [],
+  enabled_by_default: true,
+  priority: 4,
+};
+
 // Template Registry
 
 export const AUTOMATION_TEMPLATES: readonly AutomationTemplate[] = [
+  welcomeMessageTemplate,
   proposalFollowupTemplate,
+  itinerarySharedTemplate,
+  bookingConfirmationTemplate,
+  paymentReceivedTemplate,
   paymentReminderTemplate,
-  reviewRequestTemplate,
+  packingReminderTemplate,
+  departureDayTemplate,
   tripCountdownTemplate,
+  postTripThanksTemplate,
+  reviewRequestTemplate,
+  anniversaryReminderTemplate,
 ] as const;
 
 // Helper Functions
@@ -208,7 +351,7 @@ export const AUTOMATION_TEMPLATES: readonly AutomationTemplate[] = [
  * Get template by ID
  */
 export function getTemplateById(
-  id: AutomationTemplate["id"]
+  id: AutomationTemplateId
 ): AutomationTemplate | undefined {
   return AUTOMATION_TEMPLATES.find((t) => t.id === id);
 }
