@@ -11,7 +11,8 @@ import {
 
 import {
   fillTemplate,
-  WHATSAPP_TEMPLATES,
+  getPreferredTemplate,
+  mapDisplayLangToTemplateCode,
 } from "@/lib/whatsapp/india-templates";
 
 import {
@@ -25,6 +26,7 @@ export function PaymentPicker({
   contact,
   channel,
   onSend,
+  language,
 }: ActionPickerProps) {
   const { data: trips, loading, error } = useOrganizationTrips();
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
@@ -67,9 +69,8 @@ export function PaymentPicker({
     const formattedDue = dueDate || "Within 24 hours";
 
     if (channel === "whatsapp") {
-      const template = WHATSAPP_TEMPLATES.find(
-        (entry) => entry.id === "payment_request_upi"
-      );
+      const langCode = mapDisplayLangToTemplateCode(language ?? 'English');
+      const template = getPreferredTemplate('PAYMENT_REQUEST', langCode);
       if (!template) return { body: "" };
 
       return {

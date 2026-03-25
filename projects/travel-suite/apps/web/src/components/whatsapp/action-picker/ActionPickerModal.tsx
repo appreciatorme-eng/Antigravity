@@ -29,6 +29,7 @@ export interface ActionPickerModalProps {
   channel: ActionPickerChannel;
   onSend: ActionPickerSendHandler;
   onClose: () => void;
+  language?: string;
 }
 
 const ACTION_CONFIG: Record<
@@ -91,6 +92,7 @@ export function ActionPickerModal({
   channel,
   onSend,
   onClose,
+  language,
 }: ActionPickerModalProps) {
   const config = ACTION_CONFIG[mode];
 
@@ -157,6 +159,7 @@ export function ActionPickerModal({
                   contact={contact}
                   channel={channel}
                   onSend={handleSend}
+                  language={language}
                 />
               )}
               {mode === "payment" && (
@@ -164,6 +167,7 @@ export function ActionPickerModal({
                   contact={contact}
                   channel={channel}
                   onSend={handleSend}
+                  language={language}
                 />
               )}
               {mode === "driver" && (
@@ -171,6 +175,7 @@ export function ActionPickerModal({
                   contact={contact}
                   channel={channel}
                   onSend={handleSend}
+                  language={language}
                 />
               )}
               {mode === "location" && (
@@ -178,6 +183,7 @@ export function ActionPickerModal({
                   contact={contact}
                   channel={channel}
                   onSend={handleSend}
+                  language={language}
                 />
               )}
               {mode === "send-document" && (
@@ -185,6 +191,7 @@ export function ActionPickerModal({
                   contact={contact}
                   channel={channel}
                   onSend={handleSend}
+                  language={language}
                 />
               )}
               {mode === "send-location" && (
@@ -192,6 +199,7 @@ export function ActionPickerModal({
                   contact={contact}
                   channel={channel}
                   onSend={handleSend}
+                  language={language}
                 />
               )}
               {mode === "send-poll" && (
@@ -199,6 +207,7 @@ export function ActionPickerModal({
                   contact={contact}
                   channel={channel}
                   onSend={handleSend}
+                  language={language}
                 />
               )}
             </div>

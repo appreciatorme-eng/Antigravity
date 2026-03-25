@@ -19,6 +19,7 @@ const SuggestReplySchema = z.object({
     .min(1)
     .max(8),
   threadContext: z.string().trim().max(500).optional(),
+  language: z.string().trim().max(50).optional(),
 });
 
 function buildSuggestReplyPrompt(input: z.infer<typeof SuggestReplySchema>) {
@@ -26,10 +27,14 @@ function buildSuggestReplyPrompt(input: z.infer<typeof SuggestReplySchema>) {
     .map((message) => `${message.role.toUpperCase()}: ${message.content}`)
     .join("\n");
 
+  const langInstruction = input.language && input.language !== 'English'
+    ? `\nIMPORTANT: Reply in ${input.language}. Use the natural script and tone of that language.`
+    : '';
+
   return `You are an assistant for a professional travel operator.
 Given the last few WhatsApp messages from a traveler, suggest exactly 3 short reply options.
 Each reply must be under 15 words, professional, and contextually relevant.
-Avoid placeholders, signatures, bullet points, and emojis.
+Avoid placeholders, signatures, bullet points, and emojis.${langInstruction}
 Return only a JSON array of 3 strings. No explanation.
 
 ${input.threadContext ? `Thread context: ${input.threadContext}\n` : ""}Conversation:

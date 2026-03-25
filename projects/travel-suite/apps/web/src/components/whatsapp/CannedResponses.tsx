@@ -16,6 +16,7 @@ interface CannedResponsesProps {
   isOpen: boolean;
   onClose: () => void;
   onSelect: (message: string) => void;
+  defaultLanguage?: string;
 }
 
 type TabType = 'english' | 'hindi';
@@ -110,8 +111,18 @@ function TemplateCard({
   );
 }
 
-export function CannedResponses({ isOpen, onClose, onSelect }: CannedResponsesProps) {
-  const [tab, setTab] = useState<TabType>('english');
+export function CannedResponses({ isOpen, onClose, onSelect, defaultLanguage }: CannedResponsesProps) {
+  // Derive tab from language — no need for separate state sync
+  const derivedTab: TabType = defaultLanguage && defaultLanguage !== 'English' ? 'hindi' : 'english';
+  const [tabOverride, setTabOverride] = useState<TabType | null>(null);
+  const [prevLang, setPrevLang] = useState(defaultLanguage);
+  // Reset override when language changes externally
+  if (defaultLanguage !== prevLang) {
+    setPrevLang(defaultLanguage);
+    setTabOverride(null);
+  }
+  const tab = tabOverride ?? derivedTab;
+  const setTab = setTabOverride;
   const [subTab, setSubTab] = useState<SubTab>('quick');
   const [search, setSearch] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);

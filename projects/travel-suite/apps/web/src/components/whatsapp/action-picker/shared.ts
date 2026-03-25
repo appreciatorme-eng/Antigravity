@@ -13,6 +13,7 @@ export interface ActionPickerProps {
   contact: ConversationContact;
   channel: ActionPickerChannel;
   onSend: ActionPickerSendHandler;
+  language?: string;
 }
 
 export interface Trip {

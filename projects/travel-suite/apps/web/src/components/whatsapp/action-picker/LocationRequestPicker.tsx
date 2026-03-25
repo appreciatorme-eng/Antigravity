@@ -17,10 +17,13 @@ import {
   type LocationType,
 } from "./shared";
 
+import { mapDisplayLangToTemplateCode } from "@/lib/whatsapp/india-templates";
+
 export function LocationRequestPicker({
   contact,
   channel,
   onSend,
+  language,
 }: ActionPickerProps) {
   const [locationType, setLocationType] = useState<LocationType>("hotel");
   const [customAddress, setCustomAddress] = useState("");
@@ -63,30 +66,42 @@ export function LocationRequestPicker({
     const name = contact.name;
     const dateStr = pickupDate ? ` on ${pickupDate}` : "";
     const timeStr = pickupTime ? ` at ${pickupTime}` : "";
+    const langCode = mapDisplayLangToTemplateCode(language ?? 'English');
+    const useEnglish = langCode === 'en';
 
     if (channel === "whatsapp") {
       if (locationType === "hotel") {
         return {
-          body: `${name} Ji 🙏\n\nAapka pickup${dateStr}${timeStr} schedule hai. Kripya apne hotel ka naam aur room number share karein taaki driver accurately locate kar sake.\n\n📋 Hotel Name:\n🔢 Room Number:\n📍 Hotel Address (agar nahin pata):\n\nThank you! TripBuilt 🚗`,
+          body: useEnglish
+            ? `Hi ${name} 🙏\n\nYour pickup is scheduled${dateStr}${timeStr}. Please share your hotel name and room number so the driver can reach you accurately.\n\n📋 Hotel Name:\n🔢 Room Number:\n📍 Hotel Address (if available):\n\nThank you! TripBuilt 🚗`
+            : `${name} Ji 🙏\n\nAapka pickup${dateStr}${timeStr} schedule hai. Kripya apne hotel ka naam aur room number share karein taaki driver accurately locate kar sake.\n\n📋 Hotel Name:\n🔢 Room Number:\n📍 Hotel Address (agar nahin pata):\n\nThank you! TripBuilt 🚗`,
         };
       }
       if (locationType === "airport") {
         return {
-          body: `${name} Ji 🙏\n\nAapka airport pickup${dateStr}${timeStr} schedule hai. Kripya yeh details share karein:\n\n✈️ Flight Number:\n🏢 Terminal: (T1 / T2 / T3)\n⏰ Landing Time:\n📍 Arrival Gate (agar pata ho):\n\nDriver gate pe waiting karega aapki name board ke saath. TripBuilt 🚗`,
+          body: useEnglish
+            ? `Hi ${name} 🙏\n\nYour airport pickup is scheduled${dateStr}${timeStr}. Please share these details:\n\n✈️ Flight Number:\n🏢 Terminal: (T1 / T2 / T3)\n⏰ Landing Time:\n📍 Arrival Gate (if known):\n\nYour driver will be waiting at the gate with a name board. TripBuilt 🚗`
+            : `${name} Ji 🙏\n\nAapka airport pickup${dateStr}${timeStr} schedule hai. Kripya yeh details share karein:\n\n✈️ Flight Number:\n🏢 Terminal: (T1 / T2 / T3)\n⏰ Landing Time:\n📍 Arrival Gate (agar pata ho):\n\nDriver gate pe waiting karega aapki name board ke saath. TripBuilt 🚗`,
         };
       }
       if (locationType === "railway") {
         return {
-          body: `${name} Ji 🙏\n\nAapka railway station pickup${dateStr}${timeStr} schedule hai. Kripya yeh details share karein:\n\n🚂 Train Number & Name:\n🚉 Station Name:\n🔢 Platform Number (agar pata ho):\n⏰ Arrival Time:\n\nDriver platform pe waiting karega. TripBuilt 🚗`,
+          body: useEnglish
+            ? `Hi ${name} 🙏\n\nYour railway station pickup is scheduled${dateStr}${timeStr}. Please share these details:\n\n🚂 Train Number & Name:\n🚉 Station Name:\n🔢 Platform Number (if known):\n⏰ Arrival Time:\n\nYour driver will be waiting at the platform. TripBuilt 🚗`
+            : `${name} Ji 🙏\n\nAapka railway station pickup${dateStr}${timeStr} schedule hai. Kripya yeh details share karein:\n\n🚂 Train Number & Name:\n🚉 Station Name:\n🔢 Platform Number (agar pata ho):\n⏰ Arrival Time:\n\nDriver platform pe waiting karega. TripBuilt 🚗`,
         };
       }
       if (locationType === "home") {
         return {
-          body: `${name} Ji 🙏\n\nAapka home pickup${dateStr}${timeStr} hai. Kripya apna complete address share karein taaki driver GPS pe set kar sake:\n\n🏠 House/Flat No.:\n🏘️ Colony/Society:\n🗺️ Landmark:\n🏙️ City & PIN:\n\nYa Google Maps location share kar sakte hain. TripBuilt 🚗`,
+          body: useEnglish
+            ? `Hi ${name} 🙏\n\nYour home pickup is scheduled${dateStr}${timeStr}. Please share your complete address so the driver can set it on GPS:\n\n🏠 House/Flat No.:\n🏘️ Colony/Society:\n🗺️ Landmark:\n🏙️ City & PIN:\n\nOr you can share your Google Maps location. TripBuilt 🚗`
+            : `${name} Ji 🙏\n\nAapka home pickup${dateStr}${timeStr} hai. Kripya apna complete address share karein taaki driver GPS pe set kar sake:\n\n🏠 House/Flat No.:\n🏘️ Colony/Society:\n🗺️ Landmark:\n🏙️ City & PIN:\n\nYa Google Maps location share kar sakte hain. TripBuilt 🚗`,
         };
       }
       return {
-        body: `${name} Ji 🙏\n\nAapka pickup${dateStr}${timeStr} schedule hai.\n\n📍 Pickup Location: ${customAddress || "[Address needed]"}\n\nKripya confirm karein ya apna exact location share karein. Driver coordinates pe directly navigate karega.\n\nTripBuilt 🚗`,
+        body: useEnglish
+          ? `Hi ${name} 🙏\n\nYour pickup is scheduled${dateStr}${timeStr}.\n\n📍 Pickup Location: ${customAddress || "[Address needed]"}\n\nPlease confirm or share your exact location. The driver will navigate directly to you.\n\nTripBuilt 🚗`
+          : `${name} Ji 🙏\n\nAapka pickup${dateStr}${timeStr} schedule hai.\n\n📍 Pickup Location: ${customAddress || "[Address needed]"}\n\nKripya confirm karein ya apna exact location share karein. Driver coordinates pe directly navigate karega.\n\nTripBuilt 🚗`,
       };
     }
 

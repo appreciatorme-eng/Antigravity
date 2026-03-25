@@ -5,7 +5,8 @@ import { Check, MapPin, Search, Send } from "lucide-react";
 
 import {
   fillTemplate,
-  WHATSAPP_TEMPLATES,
+  getPreferredTemplate,
+  mapDisplayLangToTemplateCode,
 } from "@/lib/whatsapp/india-templates";
 
 import {
@@ -19,6 +20,7 @@ export function ItineraryPicker({
   contact,
   channel,
   onSend,
+  language,
 }: ActionPickerProps) {
   const { data: trips, loading, error } = useOrganizationTrips();
   const [search, setSearch] = useState("");
@@ -38,9 +40,8 @@ export function ItineraryPicker({
     if (!selected) return { body: "" };
 
     if (channel === "whatsapp") {
-      const template = WHATSAPP_TEMPLATES.find(
-        (entry) => entry.id === "itinerary_share"
-      );
+      const langCode = mapDisplayLangToTemplateCode(language ?? 'English');
+      const template = getPreferredTemplate('ITINERARY_SHARE', langCode);
       if (!template) return { body: "" };
 
       return {

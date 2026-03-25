@@ -9,6 +9,7 @@ type SmartReplyPayload = {
     content: string;
   }>;
   threadContext?: string;
+  language?: string;
 };
 
 function buildPayload(conversation: Conversation): SmartReplyPayload | null {
@@ -46,6 +47,7 @@ function buildPayload(conversation: Conversation): SmartReplyPayload | null {
 export function useSmartReplySuggestions(
   conversation: Conversation | null,
   enabled: boolean,
+  language?: string,
 ) {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -84,10 +86,13 @@ export function useSmartReplySuggestions(
     setLoading(true);
 
     try {
+      const payloadWithLang = language && language !== 'English'
+        ? { ...payload, language }
+        : payload;
       const response = await fetch("/api/ai/suggest-reply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(payloadWithLang),
         signal: controller.signal,
       });
 
@@ -105,7 +110,7 @@ export function useSmartReplySuggestions(
     } finally {
       setLoading(false);
     }
-  }, [conversation, enabled]);
+  }, [conversation, enabled, language]);
 
   useEffect(() => {
     void refresh();

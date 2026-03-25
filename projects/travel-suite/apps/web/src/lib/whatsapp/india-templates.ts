@@ -729,6 +729,21 @@ export function getPreferredTemplate(
   );
 }
 
+/**
+ * Map display language names (from LANGUAGES array) to template language codes.
+ * Regional Indian languages fall back to 'hinglish' since templates aren't available
+ * in every regional language yet.
+ */
+export function mapDisplayLangToTemplateCode(
+  displayLang: string,
+): WhatsAppTemplate['language'] {
+  const lower = displayLang.toLowerCase();
+  if (lower === 'english') return 'en';
+  if (lower.startsWith('हिंदी') || lower.startsWith('hindi')) return 'hi';
+  // All other Indian regional languages fall back to hinglish
+  return 'hinglish';
+}
+
 export const LANGUAGE_LABELS: Record<WhatsAppTemplate['language'] | 'all', string> = {
   all: '🌐 All',
   en: '🇬🇧 English',

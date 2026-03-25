@@ -618,6 +618,7 @@ export function MessageThread({
         isOpen={showCanned}
         onClose={() => setShowCanned(false)}
         onSelect={handleCannedSelect}
+        defaultLanguage={messageLang}
       />
 
       {modalMode && conversation && (
@@ -628,6 +629,7 @@ export function MessageThread({
           channel={isEmail ? 'email' : 'whatsapp'}
           onSend={handleModalSend}
           onClose={() => setModalMode(null)}
+          language={messageLang}
         />
       )}
     </div>
