@@ -639,7 +639,7 @@ export function AutomationRules() {
           timeSaved: undefined,
         }));
 
-        setRules(mappedRules);
+        setRules(mappedRules.length > 0 ? mappedRules : FALLBACK_RULES);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load rules');
         setRules(FALLBACK_RULES);
