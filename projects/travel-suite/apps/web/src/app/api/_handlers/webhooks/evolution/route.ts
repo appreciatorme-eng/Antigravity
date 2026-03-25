@@ -41,6 +41,13 @@ import { transcribeVoiceMessage } from "@/lib/whatsapp/voice-transcription";
 import { notifyNewLead } from "@/lib/whatsapp/assistant-notifications";
 
 // ---------------------------------------------------------------------------
+// In-memory lock: prevent duplicate assistant group creation during reconnect
+// (connection.update fires multiple times in quick succession)
+// ---------------------------------------------------------------------------
+
+const groupCreationInProgress = new Set<string>();
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -307,7 +314,10 @@ export async function POST(request: Request): Promise<Response> {
                 .eq("session_name", event.instance);
 
             // Auto-create TripBuilt Assistant WhatsApp group (best-effort, non-blocking)
+            // Uses in-memory lock to prevent duplicates from concurrent connection.update events
             void (async () => {
+                if (groupCreationInProgress.has(event.instance)) return;
+                groupCreationInProgress.add(event.instance);
                 try {
                     const { data: rawConn2 } = await admin
                         .from("whatsapp_connections")
@@ -353,6 +363,8 @@ export async function POST(request: Request): Promise<Response> {
                     logEvent("info", `[webhooks/evolution] Created assistant group ${groupJid} for ${event.instance}`);
                 } catch (err) {
                     logError("[webhooks/evolution] Failed to create assistant group", err);
+                } finally {
+                    groupCreationInProgress.delete(event.instance);
                 }
             })();
         } else if (state === "close") {
