@@ -3,6 +3,7 @@ import { apiSuccess } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { checkEvolutionHealth } from "@/lib/whatsapp/session-health";
 import { logError } from "@/lib/observability/logger";
+import { ensureAssistantGroup } from "@/lib/whatsapp/ensure-assistant-group";
 
 export async function GET(request: Request) {
   try {
@@ -13,7 +14,7 @@ export async function GET(request: Request) {
 
     const { data: connection, error } = await adminClient
       .from("whatsapp_connections")
-      .select("session_name, session_token, status, phone_number")
+      .select("session_name, session_token, status, phone_number, assistant_group_jid")
       .eq("organization_id", organizationId!)
       .order("updated_at", { ascending: false })
       .limit(1)
@@ -31,6 +32,14 @@ export async function GET(request: Request) {
       sessionName: connection?.session_name ?? null,
       dbStatus: connection?.status ?? null,
     });
+
+    // Auto-create assistant group if connected but group doesn't exist (non-blocking)
+    const connRecord = connection as { session_name?: string; assistant_group_jid?: string } | null;
+    if (health.connected && connRecord?.session_name && !connRecord?.assistant_group_jid) {
+      void ensureAssistantGroup(connRecord.session_name).catch((err) => {
+        logError("[whatsapp/health] failed to ensure assistant group", err);
+      });
+    }
 
     return apiSuccess(health);
   } catch (error) {

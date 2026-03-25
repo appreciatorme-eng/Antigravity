@@ -33,12 +33,11 @@ import { validateWahaWebhookSecret } from "../waha/secret";
 import { logError, logEvent, logWarn } from "@/lib/observability/logger";
 import {
     getEvolutionMediaBase64,
-    createEvolutionGroup,
-    updateEvolutionGroupDescription,
     sendEvolutionText,
 } from "@/lib/whatsapp-evolution.server";
 import { transcribeVoiceMessage } from "@/lib/whatsapp/voice-transcription";
 import { notifyNewLead } from "@/lib/whatsapp/assistant-notifications";
+import { ensureAssistantGroup } from "@/lib/whatsapp/ensure-assistant-group";
 
 // ---------------------------------------------------------------------------
 // In-memory lock: prevent duplicate assistant group creation during reconnect
@@ -319,48 +318,7 @@ export async function POST(request: Request): Promise<Response> {
                 if (groupCreationInProgress.has(event.instance)) return;
                 groupCreationInProgress.add(event.instance);
                 try {
-                    const { data: rawConn2 } = await admin
-                        .from("whatsapp_connections")
-                        .select("assistant_group_jid, phone_number")
-                        .eq("session_name", event.instance)
-                        .maybeSingle();
-                    const conn = rawConn2 as { assistant_group_jid?: string; phone_number?: string } | null;
-
-                    // Skip if group already exists or no phone number
-                    if (conn?.assistant_group_jid || !conn?.phone_number) return;
-
-                    const operatorDigits = conn.phone_number.replace(/\D/g, "");
-                    const groupJid = await createEvolutionGroup(
-                        event.instance,
-                        "\u{1F916} TripBuilt Assistant",
-                        [operatorDigits],
-                    );
-
-                    await admin
-                        .from("whatsapp_connections")
-                        .update({ assistant_group_jid: groupJid } as Record<string, unknown>)
-                        .eq("session_name", event.instance);
-
-                    await updateEvolutionGroupDescription(
-                        event.instance,
-                        groupJid,
-                        "Your private TripBuilt notification channel. Daily briefings, new leads, payments, and driver updates — all here.",
-                    );
-
-                    // Send welcome message
-                    await sendEvolutionText(event.instance, groupJid, [
-                        "\u{1F916} *TripBuilt Assistant is ready!*",
-                        "",
-                        "I'll send you:",
-                        "\u{1F4CB} Daily briefings at 6:30 AM",
-                        "\u{1F514} New lead alerts",
-                        "\u{1F4B0} Payment notifications",
-                        "\u{1F697} Driver updates",
-                        "",
-                        'Reply "help" anytime for commands.',
-                    ].join("\n"));
-
-                    logEvent("info", `[webhooks/evolution] Created assistant group ${groupJid} for ${event.instance}`);
+                    await ensureAssistantGroup(event.instance);
                 } catch (err) {
                     logError("[webhooks/evolution] Failed to create assistant group", err);
                 } finally {
