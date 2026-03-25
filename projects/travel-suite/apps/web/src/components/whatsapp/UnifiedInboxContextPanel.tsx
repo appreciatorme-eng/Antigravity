@@ -7,6 +7,7 @@ import {
   CreditCard,
   ExternalLink,
   FileText,
+  Loader2,
   Mail,
   MapPin,
   Phone,
@@ -19,14 +20,108 @@ import { toast } from 'sonner';
 import type { Conversation } from './MessageThread';
 import type { ChannelConversation } from './inbox-mock-data';
 import {
-  MOCK_CLIENT_DETAILS,
-  MOCK_DRIVER_DETAILS,
-} from './inbox-mock-data';
-import {
   AVATAR_COLORS,
   type ContextAction,
   getInitials,
 } from './unified-inbox-shared';
+
+// ---------------------------------------------------------------------------
+// Types for live CRM data
+// ---------------------------------------------------------------------------
+
+interface ContactDetails {
+  readonly profileId: string;
+  readonly name: string | null;
+  readonly email: string | null;
+  readonly role: string | null;
+  readonly avatarUrl: string | null;
+  readonly client: {
+    readonly email: string | null;
+    readonly ltv: string;
+    readonly ltvRaw: number;
+    readonly trips: number;
+    readonly stage: string;
+    readonly tag: string | null;
+    readonly recentTrips: ReadonlyArray<{
+      readonly id: string;
+      readonly name: string;
+      readonly destination: string | null;
+      readonly status: string | null;
+      readonly startDate: string | null;
+      readonly endDate: string | null;
+    }>;
+    readonly payment: {
+      readonly total: string;
+      readonly paid: string;
+      readonly balance: string;
+      readonly balanceRaw: number;
+      readonly status: string;
+    };
+    readonly proposals: ReadonlyArray<{
+      readonly id: string;
+      readonly title: string;
+      readonly status: string | null;
+      readonly viewedAt: string | null;
+      readonly totalPrice: number | null;
+    }>;
+  } | null;
+  readonly driver: {
+    readonly vehicle: string;
+    readonly vehicleNumber: string;
+    readonly rating: number | null;
+    readonly currentTrip: string | null;
+    readonly totalTrips: number;
+  } | null;
+  readonly activeTrip: {
+    readonly id: string;
+    readonly name: string | null;
+    readonly destination: string | null;
+    readonly status: string | null;
+    readonly startDate: string | null;
+    readonly endDate: string | null;
+    readonly paxCount: number | null;
+  } | null;
+}
+
+// ---------------------------------------------------------------------------
+// Hook: fetch live contact details
+// ---------------------------------------------------------------------------
+
+function useContactDetails(phone: string) {
+  const [details, setDetails] = useState<ContactDetails | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!phone) {
+      return;
+    }
+
+    let cancelled = false;
+    const controller = new AbortController();
+
+    (async () => {
+      setLoading(true);
+      try {
+        const digits = phone.replace(/\D/g, '');
+        const res = await fetch(
+          `/api/admin/whatsapp/contact-details?phone=${encodeURIComponent(digits)}`,
+          { signal: controller.signal },
+        );
+        const json = await res.json().catch(() => ({}));
+        if (!cancelled) setDetails((json.data as ContactDetails) ?? null);
+      } catch { /* silent */ }
+      if (!cancelled) setLoading(false);
+    })();
+
+    return () => { cancelled = true; controller.abort(); };
+  }, [phone]);
+
+  return { details, loading };
+}
+
+// ---------------------------------------------------------------------------
+// Context Panel
+// ---------------------------------------------------------------------------
 
 interface ContextPanelProps {
   conversation: Conversation | null;
@@ -38,6 +133,8 @@ export function UnifiedInboxContextPanel({
   onContextAction,
 }: ContextPanelProps) {
   const [ctxTab, setCtxTab] = useState<'info' | 'automations'>('info');
+  const contactPhone = conversation?.contact.phone ?? '';
+  const { details, loading } = useContactDetails(contactPhone);
 
   if (!conversation) {
     return (
@@ -53,8 +150,7 @@ export function UnifiedInboxContextPanel({
   const { contact } = conversation;
   const initials = getInitials(contact.name);
   const avatarColor = contact.avatarColor ?? AVATAR_COLORS[contact.type];
-  const clientDetail = MOCK_CLIENT_DETAILS[contact.id];
-  const driverDetail = MOCK_DRIVER_DETAILS[contact.id];
+  const contactEmail = details?.email ?? details?.client?.email ?? null;
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -78,7 +174,7 @@ export function UnifiedInboxContextPanel({
                   : 'bg-pink-500/20 text-pink-300'
               }`}
             >
-              {contact.type}
+              {details?.client?.stage ?? details?.role ?? contact.type}
             </span>
           </div>
         </div>
@@ -91,9 +187,9 @@ export function UnifiedInboxContextPanel({
             <Phone className="w-3 h-3" /> Call
           </a>
           <a
-            href={`mailto:${clientDetail?.email ?? ''}`}
+            href={`mailto:${contactEmail ?? ''}`}
             onClick={(e) => {
-              if (!clientDetail?.email) {
+              if (!contactEmail) {
                 e.preventDefault();
                 toast.error('No email on file for this contact');
               }
@@ -104,7 +200,7 @@ export function UnifiedInboxContextPanel({
           </a>
           <button
             onClick={() => {
-              const profilePath = contact.type === 'driver' ? `/drivers` : `/clients/${contact.id}`;
+              const profilePath = contact.type === 'driver' ? `/drivers` : `/clients/${details?.profileId ?? contact.id}`;
               window.open(profilePath, '_blank');
             }}
             className="flex items-center justify-center gap-1 py-2 px-2 rounded-lg bg-white/8 hover:bg-white/15 text-xs text-slate-300 transition-colors border border-white/10 active:scale-95"
@@ -133,31 +229,136 @@ export function UnifiedInboxContextPanel({
       <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-3">
         {ctxTab === 'info' && (
           <>
-            {clientDetail && (
-              <div className="space-y-1.5">
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Client Info</p>
-                {[
-                  { label: 'Email', val: clientDetail.email },
-                  { label: 'Lifetime Value', val: clientDetail.ltv },
-                  { label: 'Total Trips', val: `${clientDetail.trips} trips` },
-                  { label: 'Stage', val: clientDetail.stage },
-                ].map(({ label, val }) => (
-                  <div key={label} className="flex items-center justify-between text-xs">
-                    <span className="text-slate-500">{label}</span>
-                    <span className="text-slate-200 font-medium text-right max-w-[120px] truncate">{val}</span>
-                  </div>
-                ))}
+            {loading && (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="w-5 h-5 text-slate-500 animate-spin" />
               </div>
             )}
 
-            {driverDetail && (
+            {!loading && details?.client && (
+              <>
+                {/* Client Info */}
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Client Info</p>
+                  {[
+                    { label: 'Email', val: details.client.email ?? '—' },
+                    { label: 'Lifetime Value', val: details.client.ltv },
+                    { label: 'Total Trips', val: `${details.client.trips} trips` },
+                    { label: 'Stage', val: details.client.stage },
+                    ...(details.client.tag ? [{ label: 'Tag', val: details.client.tag }] : []),
+                  ].map(({ label, val }) => (
+                    <div key={label} className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500">{label}</span>
+                      <span className="text-slate-200 font-medium text-right max-w-[120px] truncate">{val}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Payment Status */}
+                {details.client.payment.balanceRaw > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Payment</p>
+                    <div className="p-2.5 rounded-xl border border-amber-500/20 bg-amber-500/5">
+                      <div className="flex items-center justify-between text-xs mb-1.5">
+                        <span className="text-amber-400 font-semibold">Balance Due</span>
+                        <span className="text-amber-300 font-bold">{details.client.payment.balance}</span>
+                      </div>
+                      <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-[#25D366]"
+                          style={{ width: `${Math.min(100, ((details.client.ltvRaw - details.client.payment.balanceRaw) / details.client.ltvRaw) * 100)}%` }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] mt-1 text-slate-500">
+                        <span>Paid: {details.client.payment.paid}</span>
+                        <span>Total: {details.client.payment.total}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Active Trip */}
+                {details.activeTrip && (
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Active Trip</p>
+                    <div className="p-2.5 rounded-xl border border-[#25D366]/20 bg-[#25D366]/5">
+                      <p className="text-xs font-semibold text-white">{details.activeTrip.name}</p>
+                      {details.activeTrip.destination && (
+                        <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
+                          <MapPin className="w-3 h-3" /> {details.activeTrip.destination}
+                        </p>
+                      )}
+                      {details.activeTrip.startDate && (
+                        <p className="text-[10px] text-[#25D366] font-medium mt-1">
+                          {new Date(details.activeTrip.startDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                          {details.activeTrip.endDate && ` — ${new Date(details.activeTrip.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`}
+                          {details.activeTrip.paxCount && ` · ${details.activeTrip.paxCount} pax`}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Recent Trips */}
+                {details.client.recentTrips.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Recent Trips</p>
+                    {details.client.recentTrips.map((trip) => (
+                      <button
+                        key={trip.id}
+                        onClick={() => onContextAction?.('trip-detail', trip.name)}
+                        className="w-full flex items-center gap-2 p-2 rounded-lg bg-white/5 border border-white/8 hover:bg-white/10 transition-colors active:scale-[0.98]"
+                      >
+                        <div className="w-6 h-6 rounded-md bg-[#25D366]/15 flex items-center justify-center shrink-0">
+                          <MapPin className="w-3 h-3 text-[#25D366]" />
+                        </div>
+                        <div className="flex-1 text-left min-w-0">
+                          <p className="text-xs text-slate-300 truncate">{trip.name}</p>
+                          {trip.status && (
+                            <p className="text-[9px] text-slate-500">{trip.status}</p>
+                          )}
+                        </div>
+                        <ChevronRight className="w-3 h-3 text-slate-600 shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Proposals */}
+                {details.client.proposals.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Proposals</p>
+                    {details.client.proposals.map((p) => (
+                      <div key={p.id} className="flex items-center justify-between text-xs p-2 rounded-lg bg-white/5 border border-white/8">
+                        <div className="min-w-0">
+                          <p className="text-slate-300 font-medium truncate">{p.title}</p>
+                          <p className="text-[10px] text-slate-500">
+                            {p.status === 'sent' && !p.viewedAt ? 'Sent — not viewed' :
+                             p.status === 'sent' && p.viewedAt ? 'Viewed' :
+                             p.status ?? 'draft'}
+                          </p>
+                        </div>
+                        {p.totalPrice && (
+                          <span className="text-slate-400 font-medium shrink-0 ml-2">
+                            ₹{p.totalPrice.toLocaleString('en-IN')}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {!loading && details?.driver && (
               <div className="space-y-1.5">
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Driver Info</p>
                 {[
-                  { label: 'Vehicle', val: driverDetail.vehicle },
-                  { label: 'Number', val: driverDetail.vehicleNumber },
-                  { label: 'Current Trip', val: driverDetail.currentTrip },
-                  { label: 'Rating', val: `${driverDetail.rating} ⭐` },
+                  { label: 'Vehicle', val: details.driver.vehicle },
+                  { label: 'Number', val: details.driver.vehicleNumber },
+                  { label: 'Current Trip', val: details.driver.currentTrip ?? 'No active trip' },
+                  ...(details.driver.rating ? [{ label: 'Rating', val: `${details.driver.rating} ⭐` }] : []),
+                  { label: 'Total Trips', val: `${details.driver.totalTrips}` },
                 ].map(({ label, val }) => (
                   <div key={label} className="flex items-center justify-between text-xs">
                     <span className="text-slate-500">{label}</span>
@@ -167,7 +368,7 @@ export function UnifiedInboxContextPanel({
               </div>
             )}
 
-            {!clientDetail && !driverDetail && (
+            {!loading && !details && (
               <div className="space-y-1.5">
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Lead Info</p>
                 <div className="flex items-center justify-between text-xs">
@@ -185,25 +386,7 @@ export function UnifiedInboxContextPanel({
               </div>
             )}
 
-            {clientDetail?.recentTrips && (
-              <div className="space-y-1.5">
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Recent Trips</p>
-                {clientDetail.recentTrips.slice(0, 3).map((trip) => (
-                  <button
-                    key={trip}
-                    onClick={() => onContextAction?.('trip-detail', trip)}
-                    className="w-full flex items-center gap-2 p-2 rounded-lg bg-white/5 border border-white/8 hover:bg-white/10 transition-colors active:scale-[0.98]"
-                  >
-                    <div className="w-6 h-6 rounded-md bg-[#25D366]/15 flex items-center justify-center shrink-0">
-                      <MapPin className="w-3 h-3 text-[#25D366]" />
-                    </div>
-                    <p className="text-xs text-slate-300 truncate flex-1 text-left">{trip}</p>
-                    <ChevronRight className="w-3 h-3 text-slate-600 shrink-0" />
-                  </button>
-                ))}
-              </div>
-            )}
-
+            {/* Quick Actions — always visible */}
             <div className="space-y-1.5">
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Quick Actions</p>
               {[
@@ -297,7 +480,6 @@ function AutomationsPanel({ phone }: { phone: string }) {
 
   const handleToggle = async (ruleType: string, currentEnabled: boolean) => {
     const newEnabled = !currentEnabled;
-    // Optimistic update
     setAutomations((prev) =>
       prev.map((a) => (a.rule_type === ruleType ? { ...a, enabled: newEnabled } : a))
     );
@@ -308,7 +490,6 @@ function AutomationsPanel({ phone }: { phone: string }) {
         body: JSON.stringify({ phone, rule_type: ruleType, enabled: newEnabled }),
       });
     } catch {
-      // Revert on error
       setAutomations((prev) =>
         prev.map((a) => (a.rule_type === ruleType ? { ...a, enabled: currentEnabled } : a))
       );
@@ -325,7 +506,6 @@ function AutomationsPanel({ phone }: { phone: string }) {
     );
   }
 
-  // Group by category for better organization
   const categories = [
     { key: 'sales', label: 'Sales & Outreach' },
     { key: 'operations', label: 'Trip Operations' },
