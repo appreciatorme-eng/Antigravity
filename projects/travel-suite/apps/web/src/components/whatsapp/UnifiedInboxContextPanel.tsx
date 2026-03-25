@@ -311,10 +311,22 @@ function AutomationsPanel({ phone }: { phone: string }) {
     return <p className="text-xs text-slate-500 text-center py-4">No automations configured</p>;
   }
 
+  // Group by category for better organization
+  const categories = [
+    { key: 'sales', label: 'Sales & Outreach' },
+    { key: 'operations', label: 'Trip Operations' },
+    { key: 'customer_success', label: 'Customer Success' },
+  ] as const;
+
   return (
-    <div className="space-y-2">
-      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Automations for this contact</p>
-      {automations.map((a) => (
+    <div className="space-y-3">
+      {categories.map(({ key, label }) => {
+        const items = automations.filter((a) => a.category === key);
+        if (items.length === 0) return null;
+        return (
+          <div key={key} className="space-y-1.5">
+            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{label}</p>
+            {items.map((a) => (
         <div key={a.rule_type} className="flex items-center gap-2.5 p-2.5 rounded-xl border border-white/10 bg-white/5">
           <span className="text-base shrink-0">{a.icon}</span>
           <div className="min-w-0 flex-1">
@@ -338,7 +350,10 @@ function AutomationsPanel({ phone }: { phone: string }) {
             />
           </button>
         </div>
-      ))}
+            ))}
+          </div>
+        );
+      })}
     </div>
   );
 }

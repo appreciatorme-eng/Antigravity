@@ -20,6 +20,7 @@ import {
   Image as ImageIcon,
   Mail,
   AtSign,
+  Globe,
   Sparkles,
 } from 'lucide-react';
 import Image from 'next/image';
@@ -431,16 +432,19 @@ export function MessageThread({
         ))}
 
         {/* Language selector */}
-        <select
-          value={messageLang}
-          onChange={(e) => setMessageLang(e.target.value)}
-          className="shrink-0 ml-auto px-2 py-1.5 rounded-lg bg-white/8 border border-white/10 text-slate-300 text-xs font-medium appearance-none cursor-pointer hover:bg-white/12 transition-all"
-          title="Message language"
-        >
+        <div className="shrink-0 ml-auto flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-white/8 border border-white/10 text-slate-300 text-xs font-medium hover:bg-white/12 transition-all">
+          <Globe className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+          <select
+            value={messageLang}
+            onChange={(e) => setMessageLang(e.target.value)}
+            className="bg-transparent text-slate-300 text-xs font-medium appearance-none cursor-pointer outline-none"
+            title="Message language"
+          >
           {LANGUAGES.map((lang) => (
             <option key={lang} value={lang} className="bg-slate-900 text-slate-200">{lang}</option>
           ))}
-        </select>
+          </select>
+        </div>
       </div>
 
       {/* Input Area */}
