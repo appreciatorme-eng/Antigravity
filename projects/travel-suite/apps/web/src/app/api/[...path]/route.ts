@@ -11,6 +11,7 @@ const routes = createCatchAllHandlers([
   ["add-ons/stats", () => import("@/app/api/_handlers/add-ons/stats/route")],
   ["add-ons/:id", () => import("@/app/api/_handlers/add-ons/[id]/route")],
   ["add-ons", () => import("@/app/api/_handlers/add-ons/route")],
+  ["automation/execute-scheduled", () => import("@/app/api/_handlers/automation/execute-scheduled/route")],
   ["auth/password-login", () => import("@/app/api/_handlers/auth/password-login/route")],
   ["availability", () => import("@/app/api/_handlers/availability/route")],
   ["bookings/flights/search", () => import("@/app/api/_handlers/bookings/flights/search/route")],
