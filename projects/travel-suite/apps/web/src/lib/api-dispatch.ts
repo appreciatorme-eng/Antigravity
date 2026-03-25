@@ -76,7 +76,13 @@ async function dispatch(
   rl?: DispatcherRateLimitConfig
 ): Promise<Response> {
   try {
-    if (rl) {
+    // Exempt webhooks and cron routes from rate limiting — they are
+    // authenticated via secrets and can burst during WhatsApp reconnects.
+    const routePath = pathParts.join("/");
+    const rateLimitExempt =
+      routePath.startsWith("webhooks/") || routePath.startsWith("cron/");
+
+    if (rl && !rateLimitExempt) {
         const identifier = extractRateLimitIdentifier(req);
         const result = await enforceRateLimit({
             identifier,
