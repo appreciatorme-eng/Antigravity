@@ -617,7 +617,7 @@ export async function POST(request: Request): Promise<Response> {
 
             const rows = batch.map((msg) => {
                 const waId = (msg.key?.remoteJid ?? "").replace(/@s\.whatsapp\.net$/, "");
-                const providerId = "evo_hist_" + msg.key.id;
+                const providerId = "evo_" + msg.key.id;
                 const messageText = extractMessageText(msg);
                 const isFromMe = msg.key?.fromMe === true;
 
@@ -682,7 +682,7 @@ export async function POST(request: Request): Promise<Response> {
         }
 
         const waId = remoteJid.replace(/@s\.whatsapp\.net$/, "");
-        const providerId = "evo_out_" + payload.key.id;
+        const providerId = "evo_" + payload.key.id;
 
         // Insert outbound message (skip if duplicate)
         await admin
