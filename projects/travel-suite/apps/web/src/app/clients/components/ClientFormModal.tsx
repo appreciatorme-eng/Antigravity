@@ -55,7 +55,7 @@ export function ClientFormModal({
                     placeholder="Rahul Sharma"
                 />
                 <GlassInput
-                    label="Email *"
+                    label="Email"
                     type="email"
                     value={formData.email}
                     onChange={(e) => onFormChange(prev => ({ ...prev, email: e.target.value }))}

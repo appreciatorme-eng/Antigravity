@@ -77,8 +77,8 @@ export function useClientForm({ onSaved }: UseClientFormOptions): UseClientFormR
 
     const handleSaveClient = useCallback(async () => {
         if (saving) return;
-        if (!formData.full_name.trim() || !formData.email.trim()) {
-            setFormError("Name and email are required.");
+        if (!formData.full_name.trim()) {
+            setFormError("Name is required.");
             return;
         }
         if (formData.email.trim() && !EMAIL_REGEX.test(formData.email.trim())) {
