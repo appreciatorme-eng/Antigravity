@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDemoMode } from '@/lib/demo/demo-mode-context';
 import { AlertTriangle } from 'lucide-react';
@@ -21,9 +21,10 @@ interface UnifiedInboxProps {
   onSendMessage?: (convId: string, message: string) => void;
   pendingTemplate?: WhatsAppTemplate | null;
   onClearPendingTemplate?: () => void;
+  onUnreadChange?: (count: number) => void;
 }
 
-export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTemplate }: UnifiedInboxProps) {
+export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTemplate, onUnreadChange }: UnifiedInboxProps) {
   const router = useRouter();
   const { isDemoMode } = useDemoMode();
 
@@ -54,6 +55,15 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
     }
     prevCrmRef.current = inbox.addToCrmModal.open;
   }, [inbox.addToCrmModal, clientForm]);
+
+  // Sync local unread count to parent
+  const stableOnUnreadChange = useCallback(
+    (count: number) => onUnreadChange?.(count),
+    [onUnreadChange],
+  );
+  useEffect(() => {
+    stableOnUnreadChange(inbox.totalUnread);
+  }, [inbox.totalUnread, stableOnUnreadChange]);
 
   const isDisconnected = !isDemoMode && inbox.whatsAppStatus !== 'connected';
 

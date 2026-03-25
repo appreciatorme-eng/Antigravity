@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageSquare,
@@ -35,7 +35,10 @@ export default function InboxPage() {
   const [activeTab, setActiveTab] = useState<PageTab>('inbox');
   const [pendingTemplate, setPendingTemplate] = useState<WhatsAppTemplate | null>(null);
   const counts = useNavCounts();
-  const unreadCount = counts.inboxUnread;
+  const [localUnread, setLocalUnread] = useState<number | null>(null);
+  const handleUnreadChange = useCallback((count: number) => setLocalUnread(count), []);
+  // Use local count (synced from UnifiedInbox) when available, fall back to server count
+  const unreadCount = localUnread ?? counts.inboxUnread;
 
   function handleUseTemplate(template: WhatsAppTemplate) {
     setPendingTemplate(template);
@@ -44,7 +47,7 @@ export default function InboxPage() {
 
   return (
     <div
-      className="flex flex-col min-h-[100dvh] overflow-hidden"
+      className="flex flex-col h-[100dvh] overflow-hidden"
       style={{ background: 'linear-gradient(160deg, #0a1628 0%, #0d1f38 100%)' }}
     >
       <GuidedTour />
@@ -124,7 +127,7 @@ export default function InboxPage() {
       </div>
 
       {/* ── Tab Content ──────────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-hidden flex flex-col">
+      <div className="flex-1 overflow-hidden flex flex-col min-h-0">
         <AnimatePresence mode="wait">
           {activeTab === 'inbox' && (
             <motion.div
@@ -133,12 +136,13 @@ export default function InboxPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
-              className="flex-1 overflow-hidden"
+              className="flex-1 overflow-hidden min-h-0"
               data-tour="inbox-messages"
             >
               <UnifiedInbox
                 pendingTemplate={pendingTemplate}
                 onClearPendingTemplate={() => setPendingTemplate(null)}
+                onUnreadChange={handleUnreadChange}
               />
             </motion.div>
           )}

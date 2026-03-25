@@ -255,6 +255,21 @@ interface AutomationItem {
   lastSent: string | null;
 }
 
+const DEFAULT_AUTOMATIONS: AutomationItem[] = [
+  { rule_type: 'new_lead_auto_response', name: 'New Lead Auto-Response', icon: '🆕', description: 'Instantly reply with welcome message + packages', category: 'sales', enabled: true, lastSent: null },
+  { rule_type: 'proposal_followup', name: 'Proposal Follow-Up', icon: '👋', description: 'Follow-up 24h after proposal if not viewed', category: 'sales', enabled: true, lastSent: null },
+  { rule_type: 'justdial_nurture', name: 'JustDial Lead Nurture', icon: '📱', description: '3-day drip: welcome, testimonials, offer', category: 'sales', enabled: true, lastSent: null },
+  { rule_type: 'auto_confirm_booking', name: 'Auto-confirm Booking', icon: '✅', description: 'Send confirmation + itinerary on full payment', category: 'operations', enabled: true, lastSent: null },
+  { rule_type: 'reminder_48h', name: 'Pre-Trip — 48 Hours', icon: '🎒', description: 'Packing tips, weather, emergency contacts', category: 'operations', enabled: true, lastSent: null },
+  { rule_type: 'reminder_24h', name: 'Pre-Trip — 24 Hours', icon: '🌅', description: 'Driver details, pickup time, hotel info', category: 'operations', enabled: true, lastSent: null },
+  { rule_type: 'reminder_2h', name: 'Pre-Trip — 2 Hours', icon: '🚗', description: "Driver's live location + final confirmation", category: 'operations', enabled: true, lastSent: null },
+  { rule_type: 'driver_morning_brief', name: "Driver's Morning Brief", icon: '🌄', description: "Daily trip assignments at 5 AM in Hindi", category: 'operations', enabled: true, lastSent: null },
+  { rule_type: 'post_trip_review', name: 'Post-Trip Review', icon: '⭐', description: 'Ask for Google Review 2h after trip', category: 'customer_success', enabled: true, lastSent: null },
+  { rule_type: 'payment_reminder_3d', name: 'Payment Reminder', icon: '🔔', description: 'Gentle reminder if advance pending after 3 days', category: 'customer_success', enabled: true, lastSent: null },
+  { rule_type: 'trip_countdown', name: 'Trip Countdown', icon: '📅', description: 'Countdown messages before trip start', category: 'customer_success', enabled: true, lastSent: null },
+  { rule_type: 'review_request', name: 'Review Request', icon: '⭐', description: 'Request review 24h after trip completion', category: 'customer_success', enabled: true, lastSent: null },
+];
+
 function AutomationsPanel({ phone }: { phone: string }) {
   const [automations, setAutomations] = useState<AutomationItem[]>([]);
   const [loading, setLoading] = useState(!!phone);
@@ -270,8 +285,11 @@ function AutomationsPanel({ phone }: { phone: string }) {
           { signal: controller.signal },
         );
         const data = await res.json().catch(() => ({}));
-        if (!cancelled) setAutomations(data.automations ?? []);
-      } catch { /* silent */ }
+        const fetched = (data.automations ?? []) as AutomationItem[];
+        if (!cancelled) setAutomations(fetched.length > 0 ? fetched : DEFAULT_AUTOMATIONS);
+      } catch {
+        if (!cancelled) setAutomations(DEFAULT_AUTOMATIONS);
+      }
       if (!cancelled) setLoading(false);
     })();
     return () => { cancelled = true; controller.abort(); };
@@ -305,10 +323,6 @@ function AutomationsPanel({ phone }: { phone: string }) {
         ))}
       </div>
     );
-  }
-
-  if (automations.length === 0) {
-    return <p className="text-xs text-slate-500 text-center py-4">No automations configured</p>;
   }
 
   // Group by category for better organization
