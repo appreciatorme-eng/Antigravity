@@ -6,6 +6,7 @@ import { apiError } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import {
     createEvolutionInstance,
+    deleteEvolutionInstance,
     getEvolutionQR,
     getEvolutionStatus,
     sessionNameFromOrgId,
@@ -47,6 +48,19 @@ export async function POST(request: Request) {
 
         const orgId = organizationId!;
         const sessionName = sessionNameFromOrgId(orgId);
+
+        // Purge any lingering Evolution instance if DB shows disconnected
+        // This prevents reconnecting from picking up cached/stale session state
+        const { data: existingConn } = await adminClient
+            .from("whatsapp_connections")
+            .select("status")
+            .eq("organization_id", orgId)
+            .maybeSingle();
+
+        if (!existingConn || existingConn.status === "disconnected") {
+            await deleteEvolutionInstance(sessionName);
+        }
+
         const webhookSecret =
             process.env.EVOLUTION_WEBHOOK_SECRET?.trim() ??
             process.env.WPPCONNECT_WEBHOOK_SECRET?.trim() ?? "";

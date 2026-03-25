@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "web-dev",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--prefix", "projects/travel-suite/apps/web"],
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd projects/travel-suite/apps/web && ./node_modules/.bin/next dev"],
       "port": 3000
     }
   ]

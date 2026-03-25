@@ -8,6 +8,7 @@ import { safeErrorMessage } from "@/lib/security/safe-error";
 import {
     deleteEvolutionInstance,
     disconnectEvolution,
+    getEvolutionStatus,
     sessionNameFromOrgId,
 } from "@/lib/whatsapp-evolution.server";
 import { logError } from "@/lib/observability/logger";
@@ -23,6 +24,16 @@ export async function POST(request: Request) {
 
         await disconnectEvolution(sessionName);
         await deleteEvolutionInstance(sessionName);
+
+        // Verify deletion — retry if Evolution still reports connected (cached state)
+        try {
+            const postDeleteStatus = await getEvolutionStatus(sessionName);
+            if (postDeleteStatus.status === "CONNECTED") {
+                await deleteEvolutionInstance(sessionName);
+            }
+        } catch {
+            // Instance gone — expected after successful deletion
+        }
 
         const { error: updateError } = await adminClient
             .from("whatsapp_connections")
