@@ -229,6 +229,22 @@ export async function POST(request: Request): Promise<Response> {
             return NextResponse.json({ ok: true });
         }
 
+        // Skip chatbot for personal contacts — only auto-reply to business contacts.
+        // A personal contact has imported message history but is NOT in the CRM.
+        if (!internalProfile) {
+            const { count: historyCount } = await admin
+                .from("whatsapp_webhook_events")
+                .select("id", { count: "exact", head: true })
+                .eq("wa_id", waId)
+                .filter("metadata->>session", "eq", event.instance)
+                .filter("metadata->>imported", "eq", "true");
+
+            if ((historyCount ?? 0) > 0) {
+                // Has chat history but not in CRM — likely a friend/family member
+                return NextResponse.json({ ok: true });
+            }
+        }
+
         const chatbotEnabled = await isWhatsAppChatbotEnabled().catch((error) => {
             logError("[webhooks/evolution] failed to resolve chatbot flag", error);
             return false;
