@@ -1,6 +1,7 @@
 'use client';
 
-import { MessageCircle, Mail } from 'lucide-react';
+import { useState } from 'react';
+import { MessageCircle, Mail, Download, CheckCircle2, Loader2 } from 'lucide-react';
 import { GlassButton } from '@/components/glass/GlassButton';
 import { cn } from '@/lib/utils';
 import { IntegrationCard } from './IntegrationCard';
@@ -25,6 +26,26 @@ export function MessagingSection({
     onOpenWhatsAppConnect,
     onDisconnectWhatsApp,
 }: MessagingSectionProps) {
+    const [importing, setImporting] = useState(false);
+    const [importResult, setImportResult] = useState<{ imported: number } | null>(null);
+    const [importError, setImportError] = useState<string | null>(null);
+
+    async function handleImportHistory() {
+        setImporting(true);
+        setImportError(null);
+        setImportResult(null);
+        try {
+            const res = await fetch('/api/admin/whatsapp/import-history', { method: 'POST' });
+            const data = await res.json() as { imported?: number; error?: string };
+            if (!res.ok) throw new Error(data.error ?? 'Import failed');
+            setImportResult({ imported: data.imported ?? 0 });
+        } catch (err) {
+            setImportError(err instanceof Error ? err.message : 'Import failed');
+        } finally {
+            setImporting(false);
+        }
+    }
+
     return (
         <div>
             <h3 className="text-xs font-bold uppercase tracking-widest text-text-secondary mb-3">Messaging</h3>
@@ -65,12 +86,37 @@ export function MessagingSection({
                             {isWhatsAppConnected ? 'Manage' : 'Scan QR Code'}
                         </GlassButton>
                         {isWhatsAppConnected && (
-                            <button
-                                onClick={onDisconnectWhatsApp}
-                                className="text-[10px] text-red-500 hover:text-red-700 transition-colors font-medium"
-                            >
-                                Disconnect
-                            </button>
+                            <>
+                                <GlassButton
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => { void handleImportHistory(); }}
+                                    disabled={importing}
+                                    className="text-xs font-bold border-blue-500/30 text-blue-500 hover:bg-blue-500/10"
+                                >
+                                    {importing ? (
+                                        <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                                    ) : importResult ? (
+                                        <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+                                    ) : (
+                                        <Download className="w-3.5 h-3.5 mr-1.5" />
+                                    )}
+                                    {importing
+                                        ? 'Importing...'
+                                        : importResult
+                                        ? `${importResult.imported} imported`
+                                        : 'Import History'}
+                                </GlassButton>
+                                <button
+                                    onClick={onDisconnectWhatsApp}
+                                    className="text-[10px] text-red-500 hover:text-red-700 transition-colors font-medium"
+                                >
+                                    Disconnect
+                                </button>
+                            </>
+                        )}
+                        {importError && (
+                            <p className="text-[10px] text-red-500 font-medium">{importError}</p>
                         )}
                     </div>
                 </div>

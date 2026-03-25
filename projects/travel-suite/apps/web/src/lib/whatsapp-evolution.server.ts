@@ -266,6 +266,44 @@ export async function sendEvolutionText(
 }
 
 /**
+ * Fetch all messages from an Evolution instance's local message store.
+ * Uses POST /chat/findMessages/{instance} to pull cached messages.
+ * Returns raw message array — caller is responsible for storage.
+ */
+export async function fetchEvolutionMessages(
+    instanceName: string,
+): Promise<readonly EvolutionHistoryMessage[]> {
+    const res = await evolutionFetch(`/chat/findMessages/${instanceName}`, {
+        method: "POST",
+        body: JSON.stringify({ where: {} }),
+    });
+
+    if (!res.ok) {
+        const body = await res.text().catch(() => "(no body)");
+        throw new Error(
+            `Evolution POST /chat/findMessages/${instanceName} -> ${res.status}: ${body}`,
+        );
+    }
+
+    const json = await res.json() as readonly EvolutionHistoryMessage[];
+    return Array.isArray(json) ? json : [];
+}
+
+export interface EvolutionHistoryMessage {
+    readonly key: {
+        readonly remoteJid: string;
+        readonly id: string;
+        readonly fromMe?: boolean;
+    };
+    readonly message?: {
+        readonly conversation?: string;
+        readonly extendedTextMessage?: { readonly text?: string };
+    };
+    readonly pushName?: string;
+    readonly messageTimestamp?: number | string;
+}
+
+/**
  * Disconnect an Evolution instance. Errors are swallowed -- session may already be gone.
  */
 export async function disconnectEvolution(
