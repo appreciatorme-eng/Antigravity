@@ -47,10 +47,29 @@ export async function GET(request: NextRequest) {
             // stale cached Baileys auth — the webhook is the only reliable source
             // for the connecting → connected transition.
             if (dbStatus === "connected") {
+                let phoneNumber = connection?.phone_number ?? null;
+                let displayName = connection?.display_name ?? null;
+
+                // Backfill phone/name from Evolution if webhook didn't provide them
+                if (!phoneNumber) {
+                    const me = evoSession.me;
+                    if (me?.id) {
+                        phoneNumber = "+" + me.id.replace(/@s\.whatsapp\.net$/, "");
+                        displayName = me.pushName ?? displayName;
+                    }
+                    await adminClient
+                        .from("whatsapp_connections")
+                        .update({
+                            phone_number: phoneNumber,
+                            display_name: displayName,
+                        })
+                        .eq("session_name", sessionName);
+                }
+
                 return NextResponse.json({
                     status: "connected",
-                    number: connection?.phone_number ?? null,
-                    name: connection?.display_name ?? null,
+                    number: phoneNumber,
+                    name: displayName,
                 });
             }
 
