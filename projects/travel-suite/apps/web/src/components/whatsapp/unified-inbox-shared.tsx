@@ -10,7 +10,7 @@ import type { ContextActionType } from './ContextActionModal';
 import type { ConversationContact } from './whatsapp.types';
 import type { ChannelConversation } from './inbox-mock-data';
 
-export type FilterTab = 'all' | 'clients' | 'drivers' | 'leads' | 'unread';
+export type FilterTab = 'all' | 'clients' | 'drivers' | 'leads';
 export type ChannelFilter = 'all' | 'whatsapp' | 'email';
 export type SortMode = 'recent' | 'unread' | 'priority';
 export type ContextAction = ContextActionType | 'assign-driver' | 'request-payment' | 'add-to-crm';

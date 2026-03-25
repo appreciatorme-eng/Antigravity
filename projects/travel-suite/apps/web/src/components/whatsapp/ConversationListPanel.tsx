@@ -19,7 +19,6 @@ interface ConversationListPanelProps {
   conversationsError: string | null;
   isDemoMode: boolean;
   isDisconnected: boolean;
-  totalUnread: number;
   businessOnly: boolean;
   onBusinessOnlyChange: (value: boolean) => void;
   onSelect: (id: string) => void;
@@ -34,7 +33,6 @@ export function ConversationListPanel({
   conversationsError,
   isDemoMode,
   isDisconnected,
-  totalUnread,
   businessOnly,
   onBusinessOnlyChange,
   onSelect,
@@ -57,8 +55,6 @@ export function ConversationListPanel({
     if (filterTab === 'clients') list = list.filter((c) => c.contact.type === 'client');
     else if (filterTab === 'drivers') list = list.filter((c) => c.contact.type === 'driver');
     else if (filterTab === 'leads') list = list.filter((c) => c.contact.type === 'lead');
-    else if (filterTab === 'unread') list = list.filter((c) => c.unreadCount > 0);
-
     // Search filter
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -88,7 +84,6 @@ export function ConversationListPanel({
     { key: 'clients', label: 'Clients', count: conversations.filter((c) => c.contact.type === 'client').length },
     { key: 'drivers', label: 'Drivers', count: conversations.filter((c) => c.contact.type === 'driver').length },
     { key: 'leads', label: 'Leads', count: conversations.filter((c) => c.contact.type === 'lead').length },
-    { key: 'unread', label: 'Unread', count: totalUnread },
   ];
 
   return (

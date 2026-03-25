@@ -105,7 +105,6 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
         conversationsError={inbox.conversationsError}
         isDemoMode={isDemoMode}
         isDisconnected={isDisconnected}
-        totalUnread={inbox.totalUnread}
         businessOnly={inbox.businessOnly}
         onBusinessOnlyChange={inbox.setBusinessOnly}
         onSelect={inbox.handleSelect}
