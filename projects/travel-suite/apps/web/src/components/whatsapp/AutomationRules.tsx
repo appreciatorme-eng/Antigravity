@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Zap,
@@ -20,7 +20,6 @@ import {
   Timer,
   Bell,
   ArrowRight,
-  TrendingUp,
   Loader2,
   AlertCircle,
 } from 'lucide-react';
@@ -159,11 +158,8 @@ const FALLBACK_RULES: AutomationRule[] = [
     trigger: 'Payment fully received',
     action: 'Send confirmation + itinerary',
     enabled: true,
-    lastTriggered: '2 hours ago',
-    triggerCount: 142,
     category: 'booking',
     icon: '✅',
-    timeSaved: '45 min',
   },
   {
     id: 'reminder_48h',
@@ -172,11 +168,8 @@ const FALLBACK_RULES: AutomationRule[] = [
     trigger: '48 hours before trip start',
     action: 'Send reminder + packing checklist + weather',
     enabled: true,
-    lastTriggered: 'Yesterday, 8:00 AM',
-    triggerCount: 98,
     category: 'trip',
     icon: '🎒',
-    timeSaved: '30 min',
   },
   {
     id: 'reminder_24h',
@@ -185,11 +178,8 @@ const FALLBACK_RULES: AutomationRule[] = [
     trigger: '24 hours before trip start',
     action: 'Send driver details + hotel info',
     enabled: true,
-    lastTriggered: 'Today, 6:00 AM',
-    triggerCount: 97,
     category: 'trip',
     icon: '🌅',
-    timeSaved: '30 min',
   },
   {
     id: 'reminder_2h',
@@ -198,11 +188,8 @@ const FALLBACK_RULES: AutomationRule[] = [
     trigger: '2 hours before trip start',
     action: "Send live driver location + final confirmation",
     enabled: true,
-    lastTriggered: 'Today, 4:00 AM',
-    triggerCount: 95,
     category: 'trip',
     icon: '🚗',
-    timeSaved: '20 min',
   },
   {
     id: 'driver_morning_brief',
@@ -211,11 +198,8 @@ const FALLBACK_RULES: AutomationRule[] = [
     trigger: 'Daily at 5:00 AM',
     action: "Send today's assignments to each driver",
     enabled: true,
-    lastTriggered: 'Today, 5:00 AM',
-    triggerCount: 365,
     category: 'driver',
     icon: '🌄',
-    timeSaved: '60 min',
   },
   {
     id: 'post_trip_review',
@@ -224,11 +208,8 @@ const FALLBACK_RULES: AutomationRule[] = [
     trigger: '2 hours after trip end',
     action: 'Send Google Review request',
     enabled: true,
-    lastTriggered: 'Yesterday, 9:00 PM',
-    triggerCount: 88,
     category: 'booking',
     icon: '⭐',
-    timeSaved: '20 min',
   },
   {
     id: 'payment_reminder_3d',
@@ -237,11 +218,8 @@ const FALLBACK_RULES: AutomationRule[] = [
     trigger: 'Payment pending for 3 days',
     action: 'Send gentle payment reminder',
     enabled: false,
-    lastTriggered: '3 days ago',
-    triggerCount: 34,
     category: 'payment',
     icon: '🔔',
-    timeSaved: '15 min',
   },
   {
     id: 'new_lead_auto_response',
@@ -250,11 +228,8 @@ const FALLBACK_RULES: AutomationRule[] = [
     trigger: 'New number sends first message',
     action: 'Send welcome + package catalogue link',
     enabled: false,
-    lastTriggered: '1 week ago',
-    triggerCount: 210,
     category: 'lead',
     icon: '🆕',
-    timeSaved: '45 min',
   },
   {
     id: 'justdial_nurture',
@@ -263,11 +238,8 @@ const FALLBACK_RULES: AutomationRule[] = [
     trigger: 'Lead source = JustDial',
     action: '3-day nurture sequence (automated)',
     enabled: false,
-    lastTriggered: '2 days ago',
-    triggerCount: 67,
     category: 'lead',
     icon: '📲',
-    timeSaved: '2 hrs',
   },
   {
     id: 'unanswered_followup',
@@ -276,11 +248,8 @@ const FALLBACK_RULES: AutomationRule[] = [
     trigger: 'Lead no reply for 24 hours',
     action: 'Send follow-up + special offer',
     enabled: false,
-    lastTriggered: '5 days ago',
-    triggerCount: 43,
     category: 'lead',
     icon: '👋',
-    timeSaved: '30 min',
   },
   {
     id: 'visa_reminder',
@@ -289,11 +258,8 @@ const FALLBACK_RULES: AutomationRule[] = [
     trigger: '30 days before international trip',
     action: 'Send visa checklist + document reminder',
     enabled: true,
-    lastTriggered: '5 days ago',
-    triggerCount: 28,
     category: 'trip',
     icon: '🛂',
-    timeSaved: '25 min',
   },
   {
     id: 'balance_due_7d',
@@ -302,11 +268,8 @@ const FALLBACK_RULES: AutomationRule[] = [
     trigger: 'Trip starts in 7 days, balance unpaid',
     action: 'Send final balance reminder + payment link',
     enabled: true,
-    lastTriggered: '2 days ago',
-    triggerCount: 19,
     category: 'payment',
     icon: '💳',
-    timeSaved: '20 min',
   },
   {
     id: 'bon_voyage',
@@ -315,11 +278,8 @@ const FALLBACK_RULES: AutomationRule[] = [
     trigger: 'Trip start day at 6:00 AM',
     action: 'Send bon voyage + emergency contacts',
     enabled: true,
-    lastTriggered: 'Today, 6:00 AM',
-    triggerCount: 87,
     category: 'booking',
     icon: '✈️',
-    timeSaved: '15 min',
   },
   {
     id: 'welcome_home',
@@ -328,11 +288,8 @@ const FALLBACK_RULES: AutomationRule[] = [
     trigger: '3 hours after trip end',
     action: 'Send welcome home + photo sharing request',
     enabled: false,
-    lastTriggered: '1 week ago',
-    triggerCount: 74,
     category: 'trip',
     icon: '🏠',
-    timeSaved: '15 min',
   },
   {
     id: 'referral_ask',
@@ -341,11 +298,8 @@ const FALLBACK_RULES: AutomationRule[] = [
     trigger: 'Client leaves 4+ star review',
     action: 'Send referral offer + cashback voucher',
     enabled: false,
-    lastTriggered: '3 days ago',
-    triggerCount: 31,
     category: 'lead',
     icon: '🎁',
-    timeSaved: '20 min',
   },
   {
     id: 'anniversary_offer',
@@ -354,11 +308,8 @@ const FALLBACK_RULES: AutomationRule[] = [
     trigger: '1-year anniversary of first booking',
     action: 'Send anniversary greeting + 10% loyalty discount',
     enabled: false,
-    lastTriggered: '1 month ago',
-    triggerCount: 12,
     category: 'booking',
     icon: '🎂',
-    timeSaved: '30 min',
   },
   {
     id: 'weather_alert',
@@ -367,11 +318,8 @@ const FALLBACK_RULES: AutomationRule[] = [
     trigger: 'Severe weather forecast 48h before trip',
     action: 'Send weather alert + safety tips + helpline',
     enabled: true,
-    lastTriggered: '1 week ago',
-    triggerCount: 7,
     category: 'trip',
     icon: '🌦️',
-    timeSaved: '20 min',
   },
   {
     id: 'group_daily_update',
@@ -380,11 +328,8 @@ const FALLBACK_RULES: AutomationRule[] = [
     trigger: 'Daily at 8:00 PM during active group tour',
     action: "Broadcast next-day schedule to all group members",
     enabled: false,
-    lastTriggered: '2 days ago',
-    triggerCount: 45,
     category: 'trip',
     icon: '👥',
-    timeSaved: '40 min',
   },
 ];
 
@@ -667,9 +612,7 @@ export function AutomationRules() {
   const [error, setError] = useState<string | null>(null);
   const [toggling, setToggling] = useState<string | null>(null);
 
-  // Fetch rules from API
-  useEffect(() => {
-    async function fetchRules() {
+  const fetchRules = useCallback(async () => {
       try {
         setLoading(true);
         setError(null);
@@ -703,10 +646,11 @@ export function AutomationRules() {
       } finally {
         setLoading(false);
       }
-    }
-
-    void fetchRules();
   }, []);
+
+  useEffect(() => {
+    void fetchRules();
+  }, [fetchRules]);
 
   async function handleToggle(id: string) {
     const rule = rules.find((r) => r.id === id);
@@ -743,20 +687,6 @@ export function AutomationRules() {
   }
 
   const enabledCount = rules.filter((r) => r.enabled).length;
-  const totalSaved = rules
-    .filter((r) => r.enabled)
-    .reduce((acc, r) => {
-      if (!r.timeSaved) return acc;
-      const num = parseFloat(r.timeSaved);
-      const isHr = r.timeSaved.includes('hr');
-      return acc + (isHr ? num * 60 : num);
-    }, 0);
-
-  const displaySaved =
-    totalSaved >= 60
-      ? `${(totalSaved / 60).toFixed(1)} hours`
-      : `${Math.round(totalSaved)} minutes`;
-
   const filtered = rules.filter(
     (r) => filterCategory === 'all' || r.category === filterCategory
   );
@@ -791,7 +721,7 @@ export function AutomationRules() {
             <p className="text-xs text-red-400/80 mt-1">{error}</p>
           </div>
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => void fetchRules()}
             className="text-xs text-red-400 hover:text-red-300 font-medium"
           >
             Retry
@@ -803,28 +733,12 @@ export function AutomationRules() {
       {!loading && (
         <>
           {/* Stats bar */}
-          <div className="shrink-0 grid grid-cols-3 gap-3 p-4 border-b border-white/10">
-        <div className="rounded-xl bg-[#25D366]/10 border border-[#25D366]/20 p-3 text-center">
-          <p className="text-2xl font-black text-[#25D366]">{enabledCount}</p>
-          <p className="text-[10px] text-slate-400 font-medium mt-0.5">Active Rules</p>
-        </div>
-        <div className="rounded-xl bg-white/5 border border-white/10 p-3 text-center">
-          <p className="text-2xl font-black text-white">{rules.reduce((a, r) => a + (r.triggerCount ?? 0), 0)}</p>
-          <p className="text-[10px] text-slate-400 font-medium mt-0.5">Total Runs</p>
-        </div>
-        <div className="rounded-xl bg-purple-500/10 border border-purple-500/20 p-3 text-center">
-          <p className="text-lg font-black text-purple-400 leading-tight">{displaySaved}</p>
-          <p className="text-[10px] text-slate-400 font-medium mt-0.5">Saved/Week</p>
-        </div>
-      </div>
-
-      {/* Savings banner */}
-      <div className="shrink-0 mx-4 mt-3 mb-1 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#25D366]/8 border border-[#25D366]/20">
-        <TrendingUp className="w-4 h-4 text-[#25D366] shrink-0" />
-        <p className="text-xs text-[#25D366] font-medium">
-          Active automations are saving you approximately <strong>{displaySaved} this week</strong>
-        </p>
-      </div>
+          <div className="shrink-0 p-4 border-b border-white/10">
+            <div className="rounded-xl bg-[#25D366]/10 border border-[#25D366]/20 p-3 text-center">
+              <p className="text-2xl font-black text-[#25D366]">{enabledCount}</p>
+              <p className="text-[10px] text-slate-400 font-medium mt-0.5">Active Rules</p>
+            </div>
+          </div>
 
       {/* Filters + create button */}
       <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-3">
