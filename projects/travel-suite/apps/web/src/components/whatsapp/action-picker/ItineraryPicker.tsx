@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Check, Loader2, MapPin, Search, Send } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Check, MapPin, Search, Send } from "lucide-react";
 
 import {
   fillTemplate,
@@ -25,7 +25,29 @@ export function ItineraryPicker({
   const { data: trips, loading, error } = useOrganizationTrips();
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Trip | null>(null);
-  const [sending, setSending] = useState(false);
+  const [portalUrl, setPortalUrl] = useState<string | null>(null);
+
+  // Fetch portal token when a trip is selected
+  const selectedId = selected?.id ?? null;
+  useEffect(() => {
+    if (!selectedId) return;
+    let cancelled = false;
+    const controller = new AbortController();
+    (async () => {
+      if (!cancelled) setPortalUrl(null);
+      try {
+        const res = await fetch(`/api/admin/trips/${selectedId}/portal-token`, {
+          signal: controller.signal,
+        });
+        const json = await res.json() as { data?: { portalToken?: string } };
+        const token = json.data?.portalToken;
+        if (!cancelled) setPortalUrl(token ? `https://tripbuilt.com/portal/${token}` : null);
+      } catch {
+        if (!cancelled) setPortalUrl(null);
+      }
+    })();
+    return () => { cancelled = true; controller.abort(); };
+  }, [selectedId]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -67,32 +89,18 @@ export function ItineraryPicker({
     };
   }
 
-  async function handleSend() {
-    if (!selected) return;
-    setSending(true);
-    try {
-      // Look up the portal token for this trip's client
-      const res = await fetch(`/api/admin/trips/${selected.id}/portal-token`);
-      const json = await res.json() as { data?: { portalToken?: string }; error?: string };
-      const portalToken = json.data?.portalToken;
-
-      const itineraryLink = portalToken
-        ? `https://tripbuilt.com/portal/${portalToken}`
-        : `https://tripbuilt.com/trips/${selected.id}`;
-
-      const { body, subject } = buildMessage(itineraryLink);
-      onSend(body, subject);
-    } catch {
-      // Fallback to authenticated link if portal lookup fails
-      const { body, subject } = buildMessage(`https://tripbuilt.com/trips/${selected.id}`);
-      onSend(body, subject);
-    } finally {
-      setSending(false);
-    }
+  function getItineraryLink() {
+    if (!selected) return "";
+    return portalUrl ?? `https://tripbuilt.com/trips/${selected.id}`;
   }
 
-  // Preview uses placeholder
-  const previewMessage = selected ? buildMessage("https://tripbuilt.com/portal/...") : { body: "" };
+  function handleSend() {
+    if (!selected) return;
+    const { body, subject } = buildMessage(getItineraryLink());
+    onSend(body, subject);
+  }
+
+  const previewMessage = selected ? buildMessage(getItineraryLink()) : { body: "" };
 
   if (loading) {
     return (
@@ -176,18 +184,12 @@ export function ItineraryPicker({
       )}
 
       <button
-        onClick={() => { void handleSend(); }}
-        disabled={!selected || sending}
+        onClick={handleSend}
+        disabled={!selected}
         className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-[#25D366] hover:bg-[#1FAF54] disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-sm transition-colors"
       >
-        {sending ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
-        ) : (
-          <Send className="w-4 h-4" />
-        )}
-        {sending
-          ? "Generating link..."
-          : channel === "email" ? "Send Itinerary Email" : "Send via WhatsApp"}
+        <Send className="w-4 h-4" />
+        {channel === "email" ? "Send Itinerary Email" : "Send via WhatsApp"}
       </button>
     </div>
   );
