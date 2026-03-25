@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { MessageCircle, Mail, Download, Loader2 } from 'lucide-react';
+import { MessageCircle, Mail } from 'lucide-react';
 import { GlassButton } from '@/components/glass/GlassButton';
 import { cn } from '@/lib/utils';
 import { IntegrationCard } from './IntegrationCard';
@@ -26,25 +25,6 @@ export function MessagingSection({
     onOpenWhatsAppConnect,
     onDisconnectWhatsApp,
 }: MessagingSectionProps) {
-    const [importing, setImporting] = useState(false);
-    const [importError, setImportError] = useState<string | null>(null);
-
-    async function handleRelinkForImport() {
-        setImporting(true);
-        setImportError(null);
-        try {
-            const res = await fetch('/api/admin/whatsapp/relink', { method: 'POST' });
-            const data = await res.json() as { success?: boolean; error?: string };
-            if (!res.ok) throw new Error(data.error ?? 'Re-link failed');
-            // Open the QR connect modal so user can scan
-            onOpenWhatsAppConnect();
-        } catch (err) {
-            setImportError(err instanceof Error ? err.message : 'Re-link failed');
-        } finally {
-            setImporting(false);
-        }
-    }
-
     return (
         <div>
             <h3 className="text-xs font-bold uppercase tracking-widest text-text-secondary mb-3">Messaging</h3>
@@ -85,33 +65,12 @@ export function MessagingSection({
                             {isWhatsAppConnected ? 'Manage' : 'Scan QR Code'}
                         </GlassButton>
                         {isWhatsAppConnected && (
-                            <>
-                                <GlassButton
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => { void handleRelinkForImport(); }}
-                                    disabled={importing}
-                                    className="text-xs font-bold border-blue-500/30 text-blue-500 hover:bg-blue-500/10"
-                                >
-                                    {importing ? (
-                                        <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                                    ) : (
-                                        <Download className="w-3.5 h-3.5 mr-1.5" />
-                                    )}
-                                    {importing
-                                        ? 'Re-linking...'
-                                        : 'Re-link to Import History'}
-                                </GlassButton>
-                                <button
-                                    onClick={onDisconnectWhatsApp}
-                                    className="text-[10px] text-red-500 hover:text-red-700 transition-colors font-medium"
-                                >
-                                    Disconnect
-                                </button>
-                            </>
-                        )}
-                        {importError && (
-                            <p className="text-[10px] text-red-500 font-medium">{importError}</p>
+                            <button
+                                onClick={onDisconnectWhatsApp}
+                                className="text-[10px] text-red-500 hover:text-red-700 transition-colors font-medium"
+                            >
+                                Disconnect
+                            </button>
                         )}
                     </div>
                 </div>

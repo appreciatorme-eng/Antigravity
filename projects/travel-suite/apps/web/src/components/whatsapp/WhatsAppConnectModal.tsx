@@ -393,21 +393,6 @@ export function WhatsAppConnectModal({
                                         </p>
                                     </div>
 
-                                    {/* History import notice */}
-                                    <div className="w-full px-1">
-                                        <div className="flex items-start gap-3 p-3 rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-200/50 dark:border-blue-500/20">
-                                            <MessageCircle className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
-                                            <div className="text-left">
-                                                <p className="text-xs font-bold text-blue-800 dark:text-blue-200">
-                                                    Importing conversation history
-                                                </p>
-                                                <p className="text-[11px] text-blue-600 dark:text-blue-400 mt-0.5">
-                                                    Your existing WhatsApp conversations are being synced to TripBuilt. This happens automatically and may take a few minutes.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-
                                     <GlassButton
                                         variant="primary"
                                         className="w-full bg-[#25D366] hover:bg-[#20bd5a] text-white shadow-xl shadow-[#25D366]/20 group border-transparent mt-2"

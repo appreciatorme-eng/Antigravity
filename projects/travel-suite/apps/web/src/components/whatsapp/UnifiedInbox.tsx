@@ -1,9 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDemoMode } from '@/lib/demo/demo-mode-context';
-import { AlertTriangle, Download, Loader2, X } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { ErrorSection } from '@/components/ui/ErrorSection';
 import { InboxSkeleton } from '@/components/ui/skeletons/InboxSkeleton';
 import { type WhatsAppTemplate } from '@/lib/whatsapp/india-templates';
@@ -65,39 +65,6 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
     stableOnUnreadChange(inbox.totalUnread);
   }, [inbox.totalUnread, stableOnUnreadChange]);
 
-  // History import banner state
-  const [showImportBanner, setShowImportBanner] = useState(false);
-  const [importingHistory, setImportingHistory] = useState(false);
-  const importCheckedRef = useRef(false);
-
-  useEffect(() => {
-    if (isDemoMode || importCheckedRef.current) return;
-    importCheckedRef.current = true;
-    (async () => {
-      try {
-        const res = await fetch('/api/admin/whatsapp/import-history');
-        if (!res.ok) return;
-        const data = await res.json() as { connected: boolean; historyImported: boolean };
-        if (data.connected && !data.historyImported) {
-          setShowImportBanner(true);
-        }
-      } catch { /* silent */ }
-    })();
-  }, [isDemoMode]);
-
-  async function handleImportFromBanner() {
-    setImportingHistory(true);
-    try {
-      const res = await fetch('/api/admin/whatsapp/relink', { method: 'POST' });
-      if (res.ok) {
-        // Open the WhatsApp connect modal for QR scan
-        inbox.setIsWaConnectOpen(true);
-        setShowImportBanner(false);
-      }
-    } catch { /* silent */ }
-    setImportingHistory(false);
-  }
-
   const isDisconnected = !isDemoMode && inbox.whatsAppStatus !== 'connected';
 
   if (inbox.isLoadingConvs && !isDemoMode && inbox.conversations.length === 0) {
@@ -127,49 +94,6 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
           >
             Reconnect
           </button>
-        </div>
-      )}
-
-      {/* Import history banner — shown when connected but history not yet imported */}
-      {showImportBanner && !isDisconnected && (
-        <div className="absolute inset-x-4 top-4 z-20 flex items-center justify-between gap-4 rounded-2xl border border-blue-300/25 bg-blue-500/10 px-4 py-3 backdrop-blur">
-          <div className="flex items-start gap-3">
-            <Download className="mt-0.5 h-4 w-4 shrink-0 text-blue-300" />
-            <div>
-              <p className="text-sm font-semibold text-blue-100">
-                Import your WhatsApp conversations
-              </p>
-              <p className="text-xs text-blue-100/75">
-                Re-link your WhatsApp to bring in existing chats. Quick QR scan — takes 10 seconds.
-              </p>
-            </div>
-          </div>
-          {(
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => { void handleImportFromBanner(); }}
-                disabled={importingHistory}
-                className="shrink-0 rounded-xl border border-blue-200/20 bg-blue-100/10 px-3 py-2 text-xs font-semibold text-blue-50 transition hover:bg-blue-100/20 active:scale-[0.98] disabled:opacity-50"
-              >
-                {importingHistory ? (
-                  <span className="flex items-center gap-1.5">
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    Importing...
-                  </span>
-                ) : (
-                  'Re-link & Import'
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowImportBanner(false)}
-                className="shrink-0 rounded-lg p-1 text-blue-300 hover:bg-blue-100/10 transition"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          )}
         </div>
       )}
 
