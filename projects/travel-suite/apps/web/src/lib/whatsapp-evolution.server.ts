@@ -57,11 +57,22 @@ interface EvolutionConnectResponse {
 }
 
 // ---------------------------------------------------------------------------
-// Session naming -- deterministic, stable per org, <= 20 chars
+// Session naming -- deterministic base, optional unique suffix for reconnects
 // ---------------------------------------------------------------------------
 
 export function sessionNameFromOrgId(orgId: string): string {
     return "org_" + orgId.replace(/-/g, "").slice(0, 8);
+}
+
+/**
+ * Generate a unique session name for reconnection.
+ * Appends a short random suffix so Evolution API cannot reuse cached
+ * Baileys auth credentials stored under the old deterministic name.
+ */
+export function uniqueSessionName(orgId: string): string {
+    const base = sessionNameFromOrgId(orgId);
+    const suffix = Math.random().toString(36).slice(2, 6);
+    return `${base}_${suffix}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -107,15 +118,17 @@ async function evolutionFetch(
 // ---------------------------------------------------------------------------
 
 /**
- * Create (or resume) an Evolution API instance for an org.
+ * Create (or resume) an Evolution API instance.
  * Returns the instance name (used as session identifier).
  * Idempotent: if the instance already exists, returns the name directly.
+ *
+ * @param instanceName - The instance name to create (use uniqueSessionName() for reconnects)
+ * @param webhookUrl - Webhook URL for Evolution events
  */
 export async function createEvolutionInstance(
-    orgId: string,
+    instanceName: string,
     webhookUrl: string,
 ): Promise<string> {
-    const instanceName = sessionNameFromOrgId(orgId);
 
     const res = await evolutionFetch("/instance/create", {
         method: "POST",

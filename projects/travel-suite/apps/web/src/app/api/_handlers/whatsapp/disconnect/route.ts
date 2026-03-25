@@ -18,7 +18,14 @@ export async function POST(request: Request) {
 
         const { organizationId, adminClient } = auth;
 
-        const sessionName = sessionNameFromOrgId(organizationId!);
+        // Read actual session_name from DB (may include a unique suffix)
+        const { data: conn } = await adminClient
+            .from("whatsapp_connections")
+            .select("session_name")
+            .eq("organization_id", organizationId!)
+            .maybeSingle();
+
+        const sessionName = conn?.session_name ?? sessionNameFromOrgId(organizationId!);
 
         // Logout first (clears Baileys auth keys) then delete instance
         await logoutAndDeleteInstance(sessionName);

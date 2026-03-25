@@ -1,6 +1,7 @@
 // POST /api/whatsapp/connect
 // Creates (or resumes) an Evolution API instance for the caller's org, returns the QR code.
-// Idempotent: safe to call multiple times -- existing instances are reused.
+// On reconnect (after disconnect), uses a unique instance name so Evolution
+// cannot reuse cached Baileys auth credentials from the old session.
 import { NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
@@ -10,6 +11,7 @@ import {
     getEvolutionStatus,
     logoutAndDeleteInstance,
     sessionNameFromOrgId,
+    uniqueSessionName,
 } from "@/lib/whatsapp-evolution.server";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { logError } from "@/lib/observability/logger";
@@ -47,22 +49,28 @@ export async function POST(request: Request) {
         }
 
         const orgId = organizationId!;
-        const sessionName = sessionNameFromOrgId(orgId);
 
         // Check DB status to decide whether this is a fresh connect or a mid-scan resume
         const { data: existingConn } = await adminClient
             .from("whatsapp_connections")
-            .select("status")
+            .select("status, session_name")
             .eq("organization_id", orgId)
             .maybeSingle();
 
         const isReconnect = !existingConn || existingConn.status === "disconnected";
 
         if (isReconnect) {
-            // Fresh connect after explicit disconnect — logout + delete to purge
-            // Baileys auth keys so the new instance cannot auto-reconnect
-            await logoutAndDeleteInstance(sessionName);
+            // Delete old instance using the name stored in DB (may differ from deterministic name)
+            const oldSessionName = existingConn?.session_name ?? sessionNameFromOrgId(orgId);
+            await logoutAndDeleteInstance(oldSessionName);
         }
+
+        // On reconnect: use a unique instance name so Evolution cannot reuse
+        // cached Baileys auth stored under the old name on disk.
+        // On resume (mid-scan): keep the same name to preserve QR session.
+        const sessionName = isReconnect
+            ? uniqueSessionName(orgId)
+            : (existingConn?.session_name ?? sessionNameFromOrgId(orgId));
 
         const webhookSecret =
             process.env.EVOLUTION_WEBHOOK_SECRET?.trim() ??
@@ -71,28 +79,34 @@ export async function POST(request: Request) {
             ? `${appUrl}/api/webhooks/evolution?secret=${encodeURIComponent(webhookSecret)}`
             : `${appUrl}/api/webhooks/evolution`;
 
-        const instanceName = await createEvolutionInstance(orgId, webhookUrl);
+        const instanceName = await createEvolutionInstance(sessionName, webhookUrl);
 
-        const admin = adminClient;
-        await admin.from("whatsapp_connections").upsert(
-            {
+        // Update or insert the connection row with the new session name.
+        // Use update-then-insert pattern because the unique constraint is on
+        // session_name (which changes on reconnect), not organization_id.
+        if (existingConn) {
+            await adminClient.from("whatsapp_connections").update({
+                session_name: sessionName,
+                status: "connecting",
+                session_token: instanceName,
+            }).eq("organization_id", orgId);
+        } else {
+            await adminClient.from("whatsapp_connections").insert({
                 organization_id: orgId,
                 session_name: sessionName,
                 status: "connecting",
                 session_token: instanceName,
-            },
-            { onConflict: "session_name" },
-        );
+            });
+        }
 
         // Only check auto-reconnect when resuming a mid-scan session (status was "connecting").
-        // On fresh reconnect (after disconnect), skip this — force QR flow even if
-        // Evolution reports CONNECTED from stale cached auth.
+        // On fresh reconnect (after disconnect), skip this — force QR flow.
         if (!isReconnect) {
             try {
                 const currentStatus = await getEvolutionStatus(instanceName);
                 if (currentStatus.status === "CONNECTED") {
-                    await admin.from("whatsapp_connections").update({ status: "connected" })
-                        .eq("session_name", sessionName);
+                    await adminClient.from("whatsapp_connections").update({ status: "connected" })
+                        .eq("organization_id", orgId);
                     return NextResponse.json({
                         success: true,
                         sessionName,
