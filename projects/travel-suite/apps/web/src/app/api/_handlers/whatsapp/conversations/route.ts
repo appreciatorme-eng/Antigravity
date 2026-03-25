@@ -99,12 +99,13 @@ export async function GET(request: Request): Promise<Response> {
           }
       }
 
-      // Build pushName map from most recent event metadata for each waId
+      // Build pushName map from most recent INBOUND event metadata for each waId
+      // (outbound messages have the operator's pushName, not the contact's)
       const pushNameMap = new Map<string, string>();
       for (const [waId, evs] of grouped) {
-          // evs are ordered newest first; find first with push_name
           for (const ev of evs) {
               const meta = ev.metadata as Record<string, unknown> | null;
+              if (meta?.direction !== "in") continue;
               const pn = (meta?.push_name ?? meta?.pushName) as string | undefined;
               if (pn && typeof pn === "string") {
                   pushNameMap.set(waId, pn);
