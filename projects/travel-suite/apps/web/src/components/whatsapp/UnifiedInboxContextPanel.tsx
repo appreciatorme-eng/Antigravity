@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Car,
   CheckCircle2,
@@ -235,26 +235,108 @@ export function UnifiedInboxContextPanel({
         )}
 
         {ctxTab === 'automations' && (
-          <div className="space-y-2">
-            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Active for this contact</p>
-            {[
-              { icon: '✅', name: 'Booking Confirmed', status: 'Sent 2 days ago' },
-              { icon: '🎒', name: '48H Reminder', status: 'Scheduled — Mar 2' },
-              { icon: '🌅', name: '24H Reminder', status: 'Scheduled — Mar 3' },
-              { icon: '🚗', name: '2H Reminder', status: 'Scheduled — Mar 4' },
-            ].map(({ icon, name, status }) => (
-              <div key={name} className="flex items-center gap-2.5 p-2.5 rounded-xl border border-white/10 bg-white/5">
-                <span className="text-base shrink-0">{icon}</span>
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold text-white">{name}</p>
-                  <p className="text-[10px] text-slate-500">{status}</p>
-                </div>
-                <CheckCircle2 className="w-3.5 h-3.5 text-[#25D366] shrink-0 ml-auto" />
-              </div>
-            ))}
-          </div>
+          <AutomationsPanel phone={conversation?.contact.phone ?? ''} />
         )}
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// AutomationsPanel — fetches real automation state per contact
+// ---------------------------------------------------------------------------
+
+interface AutomationItem {
+  rule_type: string;
+  name: string;
+  icon: string;
+  description: string;
+  category: string;
+  enabled: boolean;
+  lastSent: string | null;
+}
+
+function AutomationsPanel({ phone }: { phone: string }) {
+  const [automations, setAutomations] = useState<AutomationItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadAutomations = useCallback(async () => {
+    if (!phone) { setLoading(false); return; }
+    try {
+      const res = await fetch(`/api/admin/automations/contact-status?phone=${encodeURIComponent(phone)}`);
+      const data = await res.json().catch(() => ({}));
+      setAutomations(data.automations ?? []);
+    } catch { /* silent */ }
+    setLoading(false);
+  }, [phone]);
+
+  useEffect(() => {
+    setLoading(true);
+    void loadAutomations();
+  }, [loadAutomations]);
+
+  const handleToggle = async (ruleType: string, currentEnabled: boolean) => {
+    const newEnabled = !currentEnabled;
+    // Optimistic update
+    setAutomations((prev) =>
+      prev.map((a) => (a.rule_type === ruleType ? { ...a, enabled: newEnabled } : a))
+    );
+    try {
+      await fetch('/api/admin/automations/contact-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone, rule_type: ruleType, enabled: newEnabled }),
+      });
+    } catch {
+      // Revert on error
+      setAutomations((prev) =>
+        prev.map((a) => (a.rule_type === ruleType ? { ...a, enabled: currentEnabled } : a))
+      );
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-2">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="h-14 rounded-xl bg-white/5 animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  if (automations.length === 0) {
+    return <p className="text-xs text-slate-500 text-center py-4">No automations configured</p>;
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Automations for this contact</p>
+      {automations.map((a) => (
+        <div key={a.rule_type} className="flex items-center gap-2.5 p-2.5 rounded-xl border border-white/10 bg-white/5">
+          <span className="text-base shrink-0">{a.icon}</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-white">{a.name}</p>
+            <p className="text-[10px] text-slate-500">
+              {!a.enabled ? 'Disabled' : a.lastSent ? `Sent ${a.lastSent}` : 'Active — not sent yet'}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void handleToggle(a.rule_type, a.enabled)}
+            className={`shrink-0 w-8 h-4.5 rounded-full relative transition-colors ${
+              a.enabled ? 'bg-[#25D366]' : 'bg-slate-600'
+            }`}
+            title={a.enabled ? 'Disable automation' : 'Enable automation'}
+          >
+            <span
+              className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white shadow transition-transform ${
+                a.enabled ? 'translate-x-4' : 'translate-x-0.5'
+              }`}
+            />
+          </button>
+        </div>
+      ))}
     </div>
   );
 }
