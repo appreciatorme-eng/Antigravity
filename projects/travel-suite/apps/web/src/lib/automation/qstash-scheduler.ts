@@ -27,7 +27,7 @@ interface QStashPublishResponse {
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
-const QSTASH_API_URL = "https://qstash.upstash.io/v2/publish";
+const QSTASH_API_URL = `${process.env.QSTASH_URL || "https://qstash.upstash.io"}/v2/publish`;
 const TARGET_URL = "https://www.tripbuilt.com/api/automation/execute-scheduled";
 
 // ─── Main Export ────────────────────────────────────────────────────────────
