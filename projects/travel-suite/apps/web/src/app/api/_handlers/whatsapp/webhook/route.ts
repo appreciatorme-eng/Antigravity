@@ -292,7 +292,26 @@ async function processWhatsAppTextMessages(
         text_messages: textMessages.length,
     });
 
+    // Extract pushName from contacts array in the Meta Cloud API payload
+    const pushNameMap = new Map<string, string>();
+    const payloadObj = payload as Record<string, unknown>;
+    for (const entry of ((payloadObj as Record<string, unknown[]>)?.entry ?? [])) {
+        const entryObj = entry as Record<string, unknown[]>;
+        for (const change of (entryObj?.changes ?? [])) {
+            const changeObj = change as Record<string, Record<string, unknown[]>>;
+            for (const contact of (changeObj?.value?.contacts ?? [])) {
+                const c = contact as Record<string, unknown>;
+                const profile = c?.profile as Record<string, unknown> | undefined;
+                if (c?.wa_id && profile?.name) {
+                    pushNameMap.set(c.wa_id as string, profile.name as string);
+                }
+            }
+        }
+    }
+
     for (const textMsg of textMessages) {
+        const pushName = pushNameMap.get(textMsg.waId) ?? undefined;
+
         // 1. Log event for deduplication
         const { error: eventError } = await supabaseAdmin
             .from("whatsapp_webhook_events")
@@ -305,6 +324,7 @@ async function processWhatsAppTextMessages(
                 metadata: {
                     body_preview: textMsg.body.slice(0, 100),
                     signature_verified: signatureValid,
+                    push_name: pushName,
                 },
             });
 
@@ -328,6 +348,7 @@ async function processWhatsAppTextMessages(
                         body_preview: textMsg.body.slice(0, 100),
                         signature_verified: signatureValid,
                         reply_sent: result.replySent,
+                        push_name: pushName,
                     },
                 },
                 requestContext,
@@ -341,6 +362,45 @@ async function processWhatsAppTextMessages(
                 },
                 requestContext,
             );
+        }
+
+        // AI auto-classification: classify new contacts as personal/business
+        // Only on first message from an unknown number, fire-and-forget
+        if (textMsg.body.length > 3) {
+            try {
+                // Table pending type generation -- use untyped access
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const { data: existingContact } = await (supabaseAdmin as any)
+                    .from("whatsapp_contact_names")
+                    .select("id")
+                    .eq("wa_id", textMsg.waId)
+                    .maybeSingle();
+
+                if (!existingContact) {
+                    const { getGeminiModel } = await import("@/lib/ai/gemini.server");
+                    const model = getGeminiModel();
+                    const result = await model.generateContent(
+                        `Is this WhatsApp message from a potential travel/tourism customer or a personal contact? Message: "${textMsg.body.slice(0, 200)}". Reply with ONLY one word: BUSINESS or PERSONAL`,
+                    );
+                    const classification = result.response.text().trim().toUpperCase();
+                    const isPersonal = classification.includes("PERSONAL");
+
+                    await updateWebhookEvent(
+                        textMsg.messageId,
+                        {
+                            metadata: {
+                                body_preview: textMsg.body.slice(0, 100),
+                                signature_verified: signatureValid,
+                                push_name: pushName,
+                                ai_classification: isPersonal ? "personal" : "business",
+                            },
+                        },
+                        requestContext,
+                    );
+                }
+            } catch {
+                // Classification is best-effort — silent failure
+            }
         }
     }
 }

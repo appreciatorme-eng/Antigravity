@@ -26,4 +26,5 @@ export interface ConversationContact {
   trip?: string;
   label?: "lead" | "payment" | "location" | "confirmed";
   preferredLanguage?: "en" | "hi" | "hinglish";
+  isPersonal?: boolean;
 }

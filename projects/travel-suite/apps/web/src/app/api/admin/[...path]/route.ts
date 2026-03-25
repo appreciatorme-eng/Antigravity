@@ -74,6 +74,7 @@ const routes = createCatchAllHandlers([
   ["trash/restore", () => import("@/app/api/_handlers/admin/trash/restore/route")],
   ["trash/delete", () => import("@/app/api/_handlers/admin/trash/delete/route")],
   ["whatsapp/contact-details", () => import("@/app/api/_handlers/admin/whatsapp/contact-details/route")],
+  ["whatsapp/contact-names", () => import("@/app/api/_handlers/admin/whatsapp/contact-names/route")],
   ["whatsapp/health", () => import("@/app/api/_handlers/admin/whatsapp/health/route")],
   ["whatsapp/import-history", () => import("@/app/api/_handlers/admin/whatsapp/import-history/route")],
   ["whatsapp/relink", () => import("@/app/api/_handlers/admin/whatsapp/relink/route")],

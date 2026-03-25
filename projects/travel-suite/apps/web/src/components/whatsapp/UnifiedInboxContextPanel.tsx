@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Car,
+  Check,
   ChevronRight,
   CreditCard,
   ExternalLink,
@@ -10,10 +11,12 @@ import {
   Loader2,
   Mail,
   MapPin,
+  Pencil,
   Phone,
   Sparkles,
   TrendingUp,
   UserPlus,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -133,8 +136,61 @@ export function UnifiedInboxContextPanel({
   onContextAction,
 }: ContextPanelProps) {
   const [ctxTab, setCtxTab] = useState<'info' | 'automations'>('info');
+  const prevConversationId = useRef(conversation?.id);
+  const [editingName, setEditingName] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [localName, setLocalName] = useState<string | null>(null);
+  const [localIsPersonal, setLocalIsPersonal] = useState<boolean | null>(null);
+
+  // Reset local overrides when conversation changes (render-time reset)
+  if (prevConversationId.current !== conversation?.id) {
+    prevConversationId.current = conversation?.id;
+    setEditingName(false);
+    setLocalName(null);
+    setLocalIsPersonal(null);
+  }
+
   const contactPhone = conversation?.contact.phone ?? '';
   const { details, loading } = useContactDetails(contactPhone);
+
+  const handleSaveName = async () => {
+    if (!conversation) return;
+    const trimmed = editName.trim();
+    if (!trimmed) return;
+    const digits = conversation.contact.phone.replace(/\D/g, '');
+    setLocalName(trimmed);
+    setEditingName(false);
+    try {
+      await fetch('/api/admin/whatsapp/contact-names', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wa_id: digits, custom_name: trimmed }),
+      });
+      toast.success('Contact name updated');
+    } catch {
+      toast.error('Failed to update name');
+      setLocalName(null);
+    }
+  };
+
+  const handleTogglePersonal = async () => {
+    if (!conversation) return;
+    const currentValue = localIsPersonal ?? conversation.contact.isPersonal ?? false;
+    const newValue = !currentValue;
+    const digits = conversation.contact.phone.replace(/\D/g, '');
+    setLocalIsPersonal(newValue);
+    try {
+      await fetch('/api/admin/whatsapp/contact-names', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ wa_id: digits, is_personal: newValue }),
+      });
+      toast.success(newValue ? 'Marked as personal' : 'Marked as business');
+    } catch {
+      toast.error('Failed to update classification');
+      setLocalIsPersonal(currentValue);
+    }
+  };
 
   if (!conversation) {
     return (
@@ -163,19 +219,68 @@ export function UnifiedInboxContextPanel({
             {initials}
           </div>
           <div>
-            <p className="text-sm font-bold text-white">{contact.name}</p>
+            <div className="flex items-center justify-center gap-1">
+              {editingName ? (
+                <div className="flex items-center gap-1">
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') void handleSaveName();
+                      if (e.key === 'Escape') setEditingName(false);
+                    }}
+                    className="bg-white/10 text-sm font-bold text-white rounded px-2 py-0.5 w-32 outline-none focus:ring-1 focus:ring-[#25D366]"
+                    autoFocus
+                  />
+                  <button onClick={() => void handleSaveName()} className="text-[#25D366] hover:text-green-300">
+                    <Check className="w-3.5 h-3.5" />
+                  </button>
+                  <button onClick={() => setEditingName(false)} className="text-slate-400 hover:text-white">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <p className="text-sm font-bold text-white">{localName ?? contact.name}</p>
+                  <button
+                    onClick={() => {
+                      setEditName(localName ?? contact.name);
+                      setEditingName(true);
+                    }}
+                    className="text-slate-500 hover:text-white transition-colors"
+                    title="Rename contact"
+                  >
+                    <Pencil className="w-3 h-3" />
+                  </button>
+                </>
+              )}
+            </div>
             <p className="text-xs text-slate-400">{contact.phone}</p>
-            <span
-              className={`inline-block mt-1 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase ${
-                contact.type === 'client'
-                  ? 'bg-indigo-500/20 text-indigo-300'
-                  : contact.type === 'driver'
-                  ? 'bg-yellow-500/20 text-yellow-300'
-                  : 'bg-pink-500/20 text-pink-300'
-              }`}
-            >
-              {details?.client?.stage ?? details?.role ?? contact.type}
-            </span>
+            <div className="flex items-center justify-center gap-1.5 mt-1">
+              <span
+                className={`inline-block text-[9px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                  contact.type === 'client'
+                    ? 'bg-indigo-500/20 text-indigo-300'
+                    : contact.type === 'driver'
+                    ? 'bg-yellow-500/20 text-yellow-300'
+                    : 'bg-pink-500/20 text-pink-300'
+                }`}
+              >
+                {details?.client?.stage ?? details?.role ?? contact.type}
+              </span>
+              <button
+                onClick={() => void handleTogglePersonal()}
+                className={`text-[9px] font-bold px-2 py-0.5 rounded-full uppercase transition-colors ${
+                  (localIsPersonal ?? contact.isPersonal)
+                    ? 'bg-gray-500/20 text-gray-300 hover:bg-gray-500/30'
+                    : 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30'
+                }`}
+                title="Toggle personal/business"
+              >
+                {(localIsPersonal ?? contact.isPersonal) ? 'Personal' : 'Business'}
+              </button>
+            </div>
           </div>
         </div>
 

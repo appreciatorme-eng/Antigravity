@@ -25,6 +25,8 @@ interface WhatsAppEvent {
         readonly session?: string;
         readonly body_preview?: string;
         readonly direction?: string;
+        readonly push_name?: string;
+        readonly ai_classification?: string;
     } | null;
 }
 
@@ -97,9 +99,67 @@ export async function GET(request: Request): Promise<Response> {
           }
       }
 
+      // Build pushName map from most recent event metadata for each waId
+      const pushNameMap = new Map<string, string>();
+      for (const [waId, evs] of grouped) {
+          // evs are ordered newest first; find first with push_name
+          for (const ev of evs) {
+              const meta = ev.metadata as Record<string, unknown> | null;
+              if (meta?.push_name && typeof meta.push_name === "string") {
+                  pushNameMap.set(waId, meta.push_name);
+                  break;
+              }
+          }
+      }
+
       // Look up contact profiles for all unique wa_ids
       const waIds = Array.from(grouped.keys());
       const phones = Array.from(new Set(waIds.flatMap((id) => phoneCandidates(id))));
+
+      // Load custom names and stored pushNames from contact_names table
+      // Table pending type generation -- use untyped access until `npx supabase gen types` runs
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const untypedClient = adminClient as any;
+      const { data: contactNames } = await untypedClient
+          .from("whatsapp_contact_names")
+          .select("wa_id, custom_name, push_name, is_personal")
+          .eq("org_id", orgId)
+          .in("wa_id", waIds) as { data: ReadonlyArray<{ wa_id: string; custom_name: string | null; push_name: string | null; is_personal: boolean }> | null };
+
+      const customNameMap = new Map<string, string>();
+      const storedPushNameMap = new Map<string, string>();
+      const personalSet = new Set<string>();
+      for (const cn of contactNames ?? []) {
+          if (cn.custom_name) customNameMap.set(cn.wa_id, cn.custom_name);
+          if (cn.push_name) storedPushNameMap.set(cn.wa_id, cn.push_name);
+          if (cn.is_personal) personalSet.add(cn.wa_id);
+      }
+
+      // Also check AI classification from webhook metadata for contacts not manually classified
+      for (const [waId, evs] of grouped) {
+          if (personalSet.has(waId)) continue;
+          for (const ev of evs) {
+              const meta = ev.metadata as Record<string, unknown> | null;
+              if (meta?.ai_classification === "personal") {
+                  personalSet.add(waId);
+                  break;
+              }
+          }
+      }
+
+      // Upsert pushNames to contact_names table for persistence
+      const pushNameUpserts = Array.from(pushNameMap.entries()).map(([waId, pn]) => ({
+          org_id: orgId,
+          wa_id: waId,
+          push_name: pn,
+          updated_at: new Date().toISOString(),
+      }));
+      if (pushNameUpserts.length > 0) {
+          await untypedClient
+              .from("whatsapp_contact_names")
+              .upsert(pushNameUpserts, { onConflict: "org_id,wa_id", ignoreDuplicates: false })
+              .select();
+      }
 
       const { data: profiles } = await adminClient
           .from("profiles")
@@ -128,8 +188,10 @@ export async function GET(request: Request): Promise<Response> {
       }
 
       // Business filter: keep contacts that are saved profiles OR have outbound messages
+      // Exclude contacts classified as personal
       const filteredWaIds = businessOnly
           ? waIds.filter((waId) => {
+                if (personalSet.has(waId)) return false;
                 const phone = "+" + waId;
                 const hasProfile = profileMap.has(phone) || profileMap.has(waId);
                 const hasOutbound = outboundWaIdSet.has(waId);
@@ -170,7 +232,7 @@ export async function GET(request: Request): Promise<Response> {
                   direction: (meta?.direction ?? "in") as "in" | "out",
                   body: (meta?.body_preview as string) ?? "",
                   timestamp: formatLocalTime(ev.received_at, userTimezone),
-                  status: "delivered" as const,
+                  status: ((meta?.status as string) ?? "delivered") as "sent" | "delivered" | "read" | "pending",
                   ...(isVoice ? {
                       voiceDuration: (meta?.voice_duration as string) ?? undefined,
                       transcript: (meta?.transcript as string) ?? undefined,
@@ -188,9 +250,14 @@ export async function GET(request: Request): Promise<Response> {
               chatbotSession,
               contact: {
                   id: contactProfile?.id ?? `unknown_${waId}`,
-                  name: contactProfile?.full_name ?? displayPhone,
+                  name: contactProfile?.full_name
+                      ?? customNameMap.get(waId)
+                      ?? pushNameMap.get(waId)
+                      ?? storedPushNameMap.get(waId)
+                      ?? displayPhone,
                   phone: displayPhone,
                   type: contactType,
+                  isPersonal: personalSet.has(waId),
               },
               messages,
               unreadCount,
