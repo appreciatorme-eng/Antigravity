@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
 
     const range = resolveAdminDateRange(request.nextUrl.searchParams);
     const db = admin.adminClient;
-    const sessionName = sessionNameFromOrgId(organizationId);
+    const baseSessionName = sessionNameFromOrgId(organizationId);
 
     const [
       inquiriesResult,
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       db
         .from("whatsapp_webhook_events")
         .select("id", { count: "exact", head: true })
-        .filter("metadata->>session", "eq", sessionName)
+        .filter("metadata->>session", "like", `${baseSessionName}%`)
         .eq("event_type", "text")
         .filter("metadata->>direction", "eq", "in")
         .gte("received_at", range.fromISO)

@@ -80,13 +80,13 @@ export async function POST(request: Request): Promise<Response> {
         }
         const { waId, contactName, contactPhone, clientId } = parsed.data;
 
-        const sessionName = `org_${organizationId.replace(/-/g, "").slice(0, 8)}`;
+        const baseSessionName = `org_${organizationId.replace(/-/g, "").slice(0, 8)}`;
 
         // Fetch last 25 messages for this contact
         const { data: events, error: eventsError } = await adminClient
             .from("whatsapp_webhook_events")
             .select("metadata, received_at")
-            .filter("metadata->>session", "eq", sessionName)
+            .filter("metadata->>session", "like", `${baseSessionName}%`)
             .filter("metadata->>wa_id", "eq", waId)
             .eq("event_type", "text")
             .order("received_at", { ascending: false })

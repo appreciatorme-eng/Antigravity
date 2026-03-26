@@ -7,10 +7,8 @@ import { createHmac } from "node:crypto";
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
-import {
-    fetchEvolutionMessages,
-    sessionNameFromOrgId,
-} from "@/lib/whatsapp-evolution.server";
+import { fetchEvolutionMessages } from "@/lib/whatsapp-evolution.server";
+import { apiError } from "@/lib/api/response";
 import { logError, logEvent } from "@/lib/observability/logger";
 
 export async function POST(request: Request): Promise<Response> {
@@ -19,14 +17,13 @@ export async function POST(request: Request): Promise<Response> {
 
     const { organizationId } = auth;
     const orgId = organizationId!;
-    const sessionName = sessionNameFromOrgId(orgId);
     const admin = createAdminClient();
 
     // Check connection exists and is connected
     const { data: connection } = await admin
         .from("whatsapp_connections")
-        .select("id, status, history_imported")
-        .eq("session_name", sessionName)
+        .select("id, status, history_imported, session_name")
+        .eq("organization_id", orgId)
         .maybeSingle();
 
     if (!connection) {
@@ -35,6 +32,9 @@ export async function POST(request: Request): Promise<Response> {
             { status: 400 },
         );
     }
+
+    const sessionName = (connection as { session_name?: string }).session_name;
+    if (!sessionName) return apiError("No active WhatsApp session", 404);
 
     if (connection.status !== "connected") {
         return NextResponse.json(
@@ -148,24 +148,25 @@ export async function GET(request: Request): Promise<Response> {
 
     const { organizationId } = auth;
     const orgId = organizationId!;
-    const sessionName = sessionNameFromOrgId(orgId);
     const admin = createAdminClient();
 
     const { data: connection } = await admin
         .from("whatsapp_connections")
-        .select("status, history_imported")
-        .eq("session_name", sessionName)
+        .select("status, history_imported, session_name")
+        .eq("organization_id", orgId)
         .maybeSingle();
 
     if (!connection) {
         return NextResponse.json({ connected: false, historyImported: false });
     }
 
+    const baseSessionName = `org_${orgId.replace(/-/g, "").slice(0, 8)}`;
+
     // Count imported messages
     const { count } = await admin
         .from("whatsapp_webhook_events")
         .select("id", { count: "exact", head: true })
-        .filter("metadata->>session", "eq", sessionName)
+        .filter("metadata->>session", "like", `${baseSessionName}%`)
         .filter("metadata->>imported", "eq", "true");
 
     return NextResponse.json({

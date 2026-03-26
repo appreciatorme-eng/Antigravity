@@ -25,14 +25,14 @@ const CLOSED_PROPOSAL_STATUSES = new Set([
 ]);
 
 const getCachedNavCounts = unstable_cache(
-  async (organizationId: string, sessionName: string, today: string) => {
+  async (organizationId: string, baseSessionName: string, today: string) => {
     const admin = createAdminClient();
 
     const [inboxUnreadResult, proposalsResult, bookingsTodayResult, reviewsResult] = await Promise.all([
       admin
         .from("whatsapp_webhook_events")
         .select("id", { count: "exact", head: true })
-        .filter("metadata->>session", "eq", sessionName)
+        .filter("metadata->>session", "like", `${baseSessionName}%`)
         .eq("event_type", "text")
         .filter("metadata->>direction", "eq", "in"),
       admin
@@ -109,10 +109,10 @@ export async function GET(request: Request) {
       });
     }
 
-    const sessionName = sessionNameFromOrgId(organizationId);
+    const baseSessionName = sessionNameFromOrgId(organizationId);
     const today = new Date().toISOString().slice(0, 10);
 
-    const counts = await getCachedNavCounts(organizationId, sessionName, today);
+    const counts = await getCachedNavCounts(organizationId, baseSessionName, today);
     return apiSuccess(counts);
   } catch (error) {
     logError("[/api/nav/counts:GET] Unhandled error", error);

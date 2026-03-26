@@ -410,11 +410,11 @@ async function loadCacheEvents(admin: AdminClient, organizationId: string, start
 }
 
 async function loadWhatsAppEvents(admin: AdminClient, organizationId: string, startISO: string, endISO: string) {
-  const sessionName = sessionNameFromOrgId(organizationId);
+  const baseSessionName = sessionNameFromOrgId(organizationId);
   const { data, error } = await admin
     .from("whatsapp_webhook_events")
     .select("wa_id, received_at, metadata")
-    .filter("metadata->>session", "eq", sessionName)
+    .filter("metadata->>session", "like", `${baseSessionName}%`)
     .eq("event_type", "text")
     .gte("received_at", startISO)
     .lt("received_at", endISO);
