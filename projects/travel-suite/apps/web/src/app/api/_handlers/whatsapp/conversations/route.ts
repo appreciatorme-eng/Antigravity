@@ -64,13 +64,14 @@ export async function GET(request: Request): Promise<Response> {
         typeof user?.user_metadata?.timezone === "string" ? user.user_metadata.timezone : null
       );
 
-      const sessionName = `org_${orgId.replace(/-/g, "").slice(0, 8)}`;
+      // Match all session names for this org (old deterministic + unique suffixed)
+      const baseSessionName = `org_${orgId.replace(/-/g, "").slice(0, 8)}`;
 
       // Fetch the last 1000 text + voice events for this org's session (newest first)
       const { data: events, error } = await adminClient
           .from("whatsapp_webhook_events")
           .select("id, received_at, wa_id, event_type, metadata")
-          .filter("metadata->>session", "eq", sessionName)
+          .filter("metadata->>session", "like", `${baseSessionName}%`)
           .in("event_type", ["text", "voice"])
           .order("received_at", { ascending: false })
           .limit(1000);
@@ -181,7 +182,7 @@ export async function GET(request: Request): Promise<Response> {
           const { data: outboundEvents } = await adminClient
               .from("whatsapp_webhook_events")
               .select("wa_id")
-              .filter("metadata->>session", "eq", sessionName)
+              .filter("metadata->>session", "like", `${baseSessionName}%`)
               .filter("metadata->>direction", "eq", "out")
               .in("wa_id", waIds);
           for (const ev of outboundEvents ?? []) {
