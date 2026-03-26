@@ -63,7 +63,7 @@ export async function GET(
     let proposalsQuery = admin.adminClient
       .from("proposals")
       .select("id")
-      .eq("trip_id", tripId)
+      .eq("trip_id" as any, tripId)
       .limit(100);
 
     if (!admin.isSuperAdmin) {
@@ -177,7 +177,7 @@ export async function PATCH(
       .from("proposals")
       .select("id")
       .eq("id", addOnRow.proposal_id)
-      .eq("trip_id", tripId);
+      .eq("trip_id" as any, tripId);
 
     if (!admin.isSuperAdmin) {
       proposalScopeQuery = proposalScopeQuery.eq("organization_id", admin.organizationId ?? "");

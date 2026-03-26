@@ -22,7 +22,7 @@ export async function GET(
                 .select("*, organizations(id, name, slug, subscription_tier, created_at)")
                 .eq("id", id)
                 .single(),
-            adminClient.from("trips").select("id", { count: "exact", head: true }).eq("created_by", id),
+            adminClient.from("trips").select("id", { count: "exact", head: true }).eq("created_by" as any, id),
             adminClient.from("proposals").select("id", { count: "exact", head: true }).eq("created_by", id),
             adminClient
                 .from("support_tickets")

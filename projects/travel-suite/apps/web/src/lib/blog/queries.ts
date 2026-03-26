@@ -28,7 +28,7 @@ export type BlogPostSummary = Pick<
 export async function getAllPublishedPosts(): Promise<{ data: BlogPostSummary[] | null; error: string | null }> {
   try {
     const supabase = await createClient();
-    const { data, error } = await (supabase.from as (t: string) => ReturnType<typeof supabase.from>)('blog_posts')
+    const { data, error } = await (supabase as any).from('blog_posts')
       .select('id, slug, title, excerpt, cover_image, author_name, category, tags, published_at')
       .eq('published', true)
       .order('published_at', { ascending: false });
@@ -47,7 +47,7 @@ export async function getAllPublishedPosts(): Promise<{ data: BlogPostSummary[] 
 export async function getPostBySlug(slug: string): Promise<{ data: BlogPost | null; error: string | null }> {
   try {
     const supabase = await createClient();
-    const { data, error } = await (supabase.from as (t: string) => ReturnType<typeof supabase.from>)('blog_posts')
+    const { data, error } = await (supabase as any).from('blog_posts')
       .select('*')
       .eq('slug', slug)
       .eq('published', true)
@@ -67,7 +67,7 @@ export async function getPostBySlug(slug: string): Promise<{ data: BlogPost | nu
 export async function getPostsByCategory(category: string): Promise<{ data: BlogPostSummary[] | null; error: string | null }> {
   try {
     const supabase = await createClient();
-    const { data, error } = await (supabase.from as (t: string) => ReturnType<typeof supabase.from>)('blog_posts')
+    const { data, error } = await (supabase as any).from('blog_posts')
       .select('id, slug, title, excerpt, cover_image, author_name, category, tags, published_at')
       .eq('published', true)
       .eq('category', category)

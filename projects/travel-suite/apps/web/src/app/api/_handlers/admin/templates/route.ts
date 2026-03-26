@@ -239,7 +239,7 @@ export async function POST(req: NextRequest) {
                 daily_plans
             `)
             .eq("id", itineraryId)
-            .eq("organization_id", admin.organizationId)
+            .eq("organization_id" as any, admin.organizationId)
             .single();
 
         if (itineraryError || !itinerary) {

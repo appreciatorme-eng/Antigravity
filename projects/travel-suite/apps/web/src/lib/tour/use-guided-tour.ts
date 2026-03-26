@@ -104,7 +104,6 @@ export function useGuidedTour() {
 
     const initTour = async () => {
       const { driver } = await import('driver.js');
-      // @ts-expect-error -- CSS import handled by Next.js bundler at runtime
       await import('driver.js/dist/driver.css');
 
       // Build steps, filtering out those whose elements don't exist (for async ones)

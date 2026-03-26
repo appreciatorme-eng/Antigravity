@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
         const { data, error } = await admin.adminClient
             .from("itineraries")
             .select("id")
-            .eq("organization_id", organizationId)
+            .eq("organization_id" as any, organizationId)
             .gte("created_at", range.fromISO)
             .lt("created_at", range.toExclusiveISO);
 

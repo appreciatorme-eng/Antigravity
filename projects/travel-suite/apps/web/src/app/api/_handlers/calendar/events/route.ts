@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
             supabase
                 .from("itineraries")
                 .select("id", { count: "exact", head: true })
-                .eq("organization_id", orgId)
+                .eq("organization_id" as any, orgId)
                 .gte("start_date", from.slice(0, 10))
                 .lt("start_date", to.slice(0, 10)),
             supabase

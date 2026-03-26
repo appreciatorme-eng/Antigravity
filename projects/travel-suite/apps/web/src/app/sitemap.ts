@@ -46,7 +46,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const supabase = await createClient();
     // blog_posts not yet in generated types — cast .from to bypass
-    const { data: posts } = await (supabase.from as (t: string) => ReturnType<typeof supabase.from>)("blog_posts")
+    const { data: posts } = await (supabase as any).from("blog_posts")
       .select("slug, updated_at, published_at")
       .eq("published", true)
       .order("published_at", { ascending: false });
