@@ -42,6 +42,9 @@ export interface InboxData {
   whatsAppStatus: WhatsAppStatus;
   whatsAppHealthError: string | null;
 
+  // Gmail status
+  gmailConnected: boolean;
+
   // Chatbot
   activeChatbotSession: ChatbotSessionSummary | null;
   showChatbotBanner: boolean;
@@ -130,6 +133,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
   const [businessOnly, setBusinessOnly] = useState(true);
   const [addToCrmModal, setAddToCrmModal] = useState<{ open: boolean; phone: string; name: string }>({ open: false, phone: '', name: '' });
   const [presenceMap, setPresenceMap] = useState<Map<string, PresenceState>>(new Map());
+  const [gmailConnected, setGmailConnected] = useState(false);
 
   const selectedConversation = conversations.find((c) => c.id === selectedId) ?? null;
   const selectedChannel: ChannelType = (selectedConversation as ChannelConversation | null)?.channel ?? 'whatsapp';
@@ -160,15 +164,32 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     setConversationsError(null);
     try {
       const qp = businessOnly ? '' : '?business_only=false';
-      const response = await fetch(`/api/whatsapp/conversations${qp}`, { cache: 'no-store' });
-      const data = (await response.json().catch(() => ({}))) as {
+
+      // Fetch WhatsApp and email conversations in parallel
+      const [waResponse, emailResponse] = await Promise.all([
+        fetch(`/api/whatsapp/conversations${qp}`, { cache: 'no-store' }),
+        fetch('/api/admin/email/conversations', { cache: 'no-store' }).catch(() => null),
+      ]);
+
+      const waData = (await waResponse.json().catch(() => ({}))) as {
         conversations?: ChannelConversation[];
         error?: string;
       };
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to load conversations');
+      if (!waResponse.ok) {
+        throw new Error(waData.error || 'Failed to load conversations');
       }
-      const rawConvs = data.conversations ?? [];
+
+      // Parse email conversations (non-blocking — email failure shouldn't break inbox)
+      let emailConvs: ChannelConversation[] = [];
+      if (emailResponse?.ok) {
+        const emailData = (await emailResponse.json().catch(() => ({}))) as {
+          data?: { conversations?: ChannelConversation[]; gmailConnected?: boolean };
+        };
+        emailConvs = emailData.data?.conversations ?? [];
+        setGmailConnected(emailData.data?.gmailConnected ?? false);
+      }
+
+      const rawConvs = [...(waData.conversations ?? []), ...emailConvs];
       const convs = applyReadTracking(rawConvs);
 
       // In demo mode with no real data, fall back to mock conversations
@@ -340,24 +361,70 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     const conversation = conversations.find((item) => item.id === convId);
     if (!conversation) return false;
 
-    if (conversation.channel !== 'whatsapp') {
+    if (conversation.channel === 'email') {
+      const optimisticId = `pending_email_${Date.now()}`;
+      const optimisticMsg: Message = {
+        id: optimisticId,
+        type: 'text',
+        direction: 'out',
+        body: message,
+        subject,
+        timestamp: formatLocalTime(new Date(), timezone),
+        status: 'pending',
+      };
+
       setConversations((prev) =>
-        prev.map((c) => {
-          if (c.id !== convId) return c;
-          const localMsg: Message = {
-            id: `m_${Date.now()}`,
-            type: 'text',
-            direction: 'out',
-            body: message,
-            subject,
-            timestamp: formatLocalTime(new Date(), timezone),
-            status: 'sent',
-          };
-          return { ...c, messages: [...c.messages, localMsg] };
-        }),
+        prev.map((c) => (c.id === convId ? { ...c, messages: [...c.messages, optimisticMsg] } : c)),
       );
-      onSendMessage?.(convId, message);
-      return true;
+
+      try {
+        // Extract thread metadata for replies
+        const emailConv = conversation as ChannelConversation & {
+          threadId?: string;
+          lastMessageIdHeader?: string | null;
+        };
+
+        const response = await fetch('/api/admin/email/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: conversation.contact.email ?? '',
+            subject: subject ?? '',
+            body: message,
+            threadId: emailConv.threadId,
+            inReplyTo: emailConv.lastMessageIdHeader,
+          }),
+        });
+        const payload = (await response.json().catch(() => ({}))) as {
+          data?: { message?: Message };
+          error?: string;
+        };
+
+        if (!response.ok || !payload.data?.message) {
+          throw new Error(payload.error || 'Failed to send email');
+        }
+
+        const sentMsg = payload.data.message;
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === convId
+              ? { ...c, messages: c.messages.map((m) => (m.id === optimisticId ? sentMsg : m)) }
+              : c,
+          ),
+        );
+        onSendMessage?.(convId, message);
+        return true;
+      } catch (error) {
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === convId
+              ? { ...c, messages: c.messages.filter((m) => m.id !== optimisticId) }
+              : c,
+          ),
+        );
+        toast.error(error instanceof Error ? error.message : 'Failed to send email');
+        return false;
+      }
     }
 
     if (whatsAppStatus !== 'connected') {
@@ -472,6 +539,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     presenceMap,
     whatsAppStatus,
     whatsAppHealthError,
+    gmailConnected,
     activeChatbotSession,
     showChatbotBanner,
     isTakingOverChatbot,

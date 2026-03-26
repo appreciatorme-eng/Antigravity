@@ -300,6 +300,17 @@ export function MessageThread({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [conversation?.messages.length]);
 
+  // Pre-fill email subject from the conversation's last subject (for replies)
+  useEffect(() => {
+    if (!isEmail || !conversation) return;
+    const lastSubject = [...conversation.messages].reverse().find((m) => m.subject)?.subject ?? '';
+    const replySubject = lastSubject && !lastSubject.startsWith('Re:')
+      ? `Re: ${lastSubject}`
+      : lastSubject;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setEmailSubject(replySubject);
+  }, [isEmail, conversation?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (externalInput && externalInput.trim()) {
       // eslint-disable-next-line react-hooks/set-state-in-effect

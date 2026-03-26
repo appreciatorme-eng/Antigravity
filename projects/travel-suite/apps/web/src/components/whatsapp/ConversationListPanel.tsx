@@ -20,6 +20,7 @@ interface ConversationListPanelProps {
   isDemoMode: boolean;
   isDisconnected: boolean;
   businessOnly: boolean;
+  gmailConnected?: boolean;
   onBusinessOnlyChange: (value: boolean) => void;
   onSelect: (id: string) => void;
   onRetry: () => void;
@@ -34,6 +35,7 @@ export function ConversationListPanel({
   isDemoMode,
   isDisconnected,
   businessOnly,
+  gmailConnected = false,
   onBusinessOnlyChange,
   onSelect,
   onRetry,
@@ -230,8 +232,12 @@ export function ConversationListPanel({
             ) : channelFilter === 'email' ? (
               <EmptyState
                 icon="📧"
-                title="No emails yet"
-                description="Email integration coming soon. Connect Gmail or Outlook to manage client emails here."
+                title={gmailConnected ? "No emails found" : "Gmail not connected"}
+                description={
+                  gmailConnected
+                    ? "No emails found in your inbox from the last 30 days."
+                    : "Connect Gmail in Settings → Integrations to manage client emails here."
+                }
                 className="py-8"
               />
             ) : (

@@ -35,7 +35,7 @@ async function routeEmail(params: {
       attachments: params.attachments,
     });
   }
-  return routeEmail({
+  return sendEmail({
     to: params.to,
     subject: params.subject,
     react: params.react,

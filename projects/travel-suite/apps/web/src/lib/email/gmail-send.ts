@@ -7,9 +7,7 @@
  */
 import "server-only";
 
-import { createAdminClient } from "@/lib/supabase/admin";
-import { decryptSocialToken, encryptSocialToken } from "@/lib/security/social-token-crypto";
-import { refreshGoogleToken } from "@/lib/external/google.server";
+import { getGmailConnection, getValidAccessToken } from "@/lib/email/gmail-auth";
 import { logError, logEvent } from "@/lib/observability/logger";
 import type { EmailAttachment } from "./send";
 
@@ -17,76 +15,10 @@ import type { EmailAttachment } from "./send";
 // Types
 // ---------------------------------------------------------------------------
 
-interface GmailConnection {
-    readonly accessToken: string;
-    readonly refreshToken: string | null;
-    readonly email: string;
-    readonly expiresAt: Date;
-    readonly connectionId: string;
-}
-
-// ---------------------------------------------------------------------------
-// Token management
-// ---------------------------------------------------------------------------
-
-async function getGmailConnection(orgId: string): Promise<GmailConnection | null> {
-    const admin = createAdminClient();
-    const { data } = await admin
-        .from("social_connections")
-        .select("id, access_token_encrypted, refresh_token_encrypted, platform_page_id, token_expires_at")
-        .eq("organization_id", orgId)
-        .eq("platform", "google")
-        .maybeSingle();
-
-    if (!data?.access_token_encrypted) return null;
-
-    const row = data as {
-        id: string;
-        access_token_encrypted: string;
-        refresh_token_encrypted: string | null;
-        platform_page_id: string;
-        token_expires_at: string | null;
-    };
-
-    return {
-        connectionId: row.id,
-        accessToken: decryptSocialToken(row.access_token_encrypted),
-        refreshToken: row.refresh_token_encrypted
-            ? decryptSocialToken(row.refresh_token_encrypted)
-            : null,
-        email: row.platform_page_id,
-        expiresAt: row.token_expires_at ? new Date(row.token_expires_at) : new Date(0),
-    };
-}
-
-async function getValidAccessToken(conn: GmailConnection): Promise<string> {
-    // Token still valid (with 5-min buffer)
-    if (conn.expiresAt.getTime() > Date.now() + 5 * 60 * 1000) {
-        return conn.accessToken;
-    }
-
-    // Need refresh
-    if (!conn.refreshToken) {
-        throw new Error("Gmail token expired and no refresh token available");
-    }
-
-    const newAccessToken = await refreshGoogleToken(conn.refreshToken);
-
-    // Update stored token
-    const admin = createAdminClient();
-    const expiresAt = new Date();
-    expiresAt.setSeconds(expiresAt.getSeconds() + 3600);
-
-    await admin
-        .from("social_connections")
-        .update({
-            access_token_encrypted: encryptSocialToken(newAccessToken),
-            token_expires_at: expiresAt.toISOString(),
-            updated_at: new Date().toISOString(),
-        })
-        .eq("id", conn.connectionId);
-
-    return newAccessToken;
+export interface GmailReplyHeaders {
+    readonly inReplyTo?: string;
+    readonly references?: string;
+    readonly threadId?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -99,6 +31,7 @@ function buildMimeMessage(
     subject: string,
     htmlBody: string,
     attachments?: readonly EmailAttachment[],
+    replyHeaders?: GmailReplyHeaders,
 ): string {
     const boundary = `boundary_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
@@ -108,6 +41,13 @@ function buildMimeMessage(
         `Subject: =?UTF-8?B?${Buffer.from(subject).toString("base64")}?=`,
         "MIME-Version: 1.0",
     ];
+
+    if (replyHeaders?.inReplyTo) {
+        headers.push(`In-Reply-To: ${replyHeaders.inReplyTo}`);
+    }
+    if (replyHeaders?.references) {
+        headers.push(`References: ${replyHeaders.references}`);
+    }
 
     if (!attachments || attachments.length === 0) {
         headers.push("Content-Type: text/html; charset=UTF-8");
@@ -157,7 +97,7 @@ function buildMimeMessage(
 
 /**
  * Send an email via the operator's connected Gmail account.
- * Returns true if sent successfully, false if Gmail not connected or send failed.
+ * Returns the Gmail message ID if sent successfully, null if Gmail not connected or send failed.
  */
 export async function sendViaGmail(
     orgId: string,
@@ -165,13 +105,14 @@ export async function sendViaGmail(
     subject: string,
     htmlBody: string,
     attachments?: readonly EmailAttachment[],
-): Promise<boolean> {
+    replyHeaders?: GmailReplyHeaders,
+): Promise<string | null> {
     try {
         const conn = await getGmailConnection(orgId);
-        if (!conn) return false;
+        if (!conn) return null;
 
         const accessToken = await getValidAccessToken(conn);
-        const mimeMessage = buildMimeMessage(conn.email, to, subject, htmlBody, attachments);
+        const mimeMessage = buildMimeMessage(conn.email, to, subject, htmlBody, attachments, replyHeaders);
 
         // Gmail API requires base64url-encoded MIME message
         const encodedMessage = Buffer.from(mimeMessage)
@@ -180,26 +121,32 @@ export async function sendViaGmail(
             .replace(/\//g, "_")
             .replace(/=+$/, "");
 
+        const body: Record<string, string> = { raw: encodedMessage };
+        if (replyHeaders?.threadId) {
+            body.threadId = replyHeaders.threadId;
+        }
+
         const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
             method: "POST",
             headers: {
                 Authorization: `Bearer ${accessToken}`,
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({ raw: encodedMessage }),
+            body: JSON.stringify(body),
         });
 
         if (!res.ok) {
             const errText = await res.text();
             logError(`[gmail-send] Gmail API error ${res.status}`, errText);
-            return false;
+            return null;
         }
 
+        const result = (await res.json()) as { id?: string };
         logEvent("info", `[gmail-send] Sent email from ${conn.email} to ${to}: ${subject}`);
-        return true;
+        return result.id ?? null;
     } catch (err) {
         logError("[gmail-send] Failed to send via Gmail", err);
-        return false;
+        return null;
     }
 }
 

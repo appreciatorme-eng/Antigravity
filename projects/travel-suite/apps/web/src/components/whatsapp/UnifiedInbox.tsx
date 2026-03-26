@@ -106,6 +106,7 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
         isDemoMode={isDemoMode}
         isDisconnected={isDisconnected}
         businessOnly={inbox.businessOnly}
+        gmailConnected={inbox.gmailConnected}
         onBusinessOnlyChange={inbox.setBusinessOnly}
         onSelect={inbox.handleSelect}
         onRetry={() => { void inbox.loadLiveConversations(); }}
