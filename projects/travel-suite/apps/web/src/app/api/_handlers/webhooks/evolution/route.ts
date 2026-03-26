@@ -33,11 +33,11 @@ import { validateWahaWebhookSecret } from "../waha/secret";
 import { logError, logEvent, logWarn } from "@/lib/observability/logger";
 import {
     getEvolutionMediaBase64,
-    sendEvolutionText,
 } from "@/lib/whatsapp-evolution.server";
 import { transcribeVoiceMessage } from "@/lib/whatsapp/voice-transcription";
 import { notifyNewLead } from "@/lib/whatsapp/assistant-notifications";
 import { ensureAssistantGroup } from "@/lib/whatsapp/ensure-assistant-group";
+import { routeAssistantCommand } from "@/lib/whatsapp/assistant-commands";
 
 // ---------------------------------------------------------------------------
 // In-memory lock: prevent duplicate assistant group creation during reconnect
@@ -107,154 +107,9 @@ function formatDuration(seconds: number): string {
     return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
-// ---------------------------------------------------------------------------
-// Assistant group command handler
-// ---------------------------------------------------------------------------
-
-type SupabaseAdmin = ReturnType<typeof createAdminClient>;
-
-async function handleAssistantGroupCommand(
-    admin: SupabaseAdmin,
-    instanceName: string,
-    groupJid: string,
-    command: string,
-): Promise<boolean> {
-    // Verify this is actually the assistant group
-    const { data: rawConn } = await admin
-        .from("whatsapp_connections")
-        .select("organization_id, assistant_group_jid")
-        .eq("session_name", instanceName)
-        .maybeSingle();
-    const conn = rawConn as { organization_id?: string; assistant_group_jid?: string } | null;
-
-    if (!conn?.assistant_group_jid || conn.assistant_group_jid !== groupJid) {
-        return false; // Not the assistant group — skip
-    }
-
-    const orgId = conn.organization_id as string;
-    let reply = "";
-
-    switch (command) {
-        case "help":
-        case "?":
-            reply = [
-                "🤖 *TripBuilt Assistant Commands*",
-                "",
-                "📋 *pickups* — Today's pickup schedule",
-                "💰 *payments* — Pending payments",
-                "🆕 *leads* — Recent unresponded leads",
-                "📊 *brief* — Re-send today's daily briefing",
-                "❓ *help* — Show this menu",
-            ].join("\n");
-            break;
-
-        case "pickups":
-        case "pickup":
-        case "trips today": {
-            const today = new Date().toISOString().slice(0, 10);
-            const { data: trips } = await admin
-                .from("trips")
-                .select("id, destination, start_date, pax_count, status, itineraries(trip_title)")
-                .eq("organization_id", orgId)
-                .eq("start_date", today)
-                .limit(10);
-
-            if (!trips || trips.length === 0) {
-                reply = "📋 *Today's Pickups*\n\nNo trips scheduled for today.";
-            } else {
-                const lines = trips.map((t, i) => {
-                    const title = (t.itineraries as { trip_title?: string } | null)?.trip_title ?? t.destination ?? "Untitled";
-                    return `${i + 1}. ${title} — ${t.pax_count ?? "?"} pax (${t.status ?? "active"})`;
-                });
-                reply = `📋 *Today's Pickups (${trips.length})*\n\n${lines.join("\n")}`;
-            }
-            break;
-        }
-
-        case "payments":
-        case "payment":
-        case "pending": {
-            const { data: rawLinks } = await admin
-                .from("payment_links")
-                .select("client_name, amount_paise, status, created_at")
-                .eq("organization_id", orgId)
-                .eq("status", "pending")
-                .order("created_at", { ascending: false })
-                .limit(10);
-            const links = (rawLinks ?? []) as ReadonlyArray<{ client_name: string | null; amount_paise: number; status: string; created_at: string }>;
-
-            if (links.length === 0) {
-                reply = "💰 *Pending Payments*\n\nNo pending payments. All clear! ✅";
-            } else {
-                const total = links.reduce((sum, l) => sum + (l.amount_paise ?? 0), 0);
-                const lines = links.map((l) => {
-                    const amt = `₹${((l.amount_paise ?? 0) / 100).toLocaleString("en-IN")}`;
-                    return `• ${l.client_name ?? "Unknown"} — ${amt}`;
-                });
-                reply = [
-                    `💰 *Pending Payments (${links.length})*`,
-                    `Total: ₹${(total / 100).toLocaleString("en-IN")}`,
-                    "",
-                    ...lines,
-                ].join("\n");
-            }
-            break;
-        }
-
-        case "leads":
-        case "lead":
-        case "new": {
-            const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-            const { data: rawEvents } = await admin
-                .from("whatsapp_webhook_events")
-                .select("wa_id, metadata")
-                .filter("metadata->>direction", "eq", "in")
-                .gte("created_at", yesterday)
-                .order("created_at", { ascending: false })
-                .limit(15);
-            const events = (rawEvents ?? []) as ReadonlyArray<{ wa_id: string; metadata: Record<string, unknown> | null }>;
-
-            // Deduplicate by wa_id
-            const seen = new Set<string>();
-            const unique = events.filter((e) => {
-                if (seen.has(e.wa_id)) return false;
-                seen.add(e.wa_id);
-                return true;
-            });
-
-            if (unique.length === 0) {
-                reply = "🆕 *Recent Leads*\n\nNo new inbound messages in the last 24 hours.";
-            } else {
-                const lines = unique.slice(0, 8).map((e) => {
-                    const meta = e.metadata as { body_preview?: string; pushName?: string } | null;
-                    const name = meta?.pushName ?? `+${e.wa_id}`;
-                    const preview = (meta?.body_preview ?? "").slice(0, 40);
-                    return `• ${name}: "${preview}"`;
-                });
-                reply = `🆕 *Recent Leads (${unique.length})*\n\n${lines.join("\n")}`;
-            }
-            break;
-        }
-
-        case "brief":
-        case "briefing":
-        case "summary":
-            reply = "📊 Generating your daily briefing...\n\n(Full briefing is sent automatically at 6:30 AM IST)";
-            // TODO: call the briefing generator and send the full brief
-            break;
-
-        default:
-            return false; // Unknown command — don't consume the message
-    }
-
-    if (reply) {
-        await sendEvolutionText(instanceName, groupJid, reply).catch((err) => {
-            logError("[webhooks/evolution] Failed to send assistant command reply", err);
-        });
-    }
-
-    return true;
-}
+// Assistant group commands are handled by routeAssistantCommand()
+// from "@/lib/whatsapp/assistant-commands" — supports keyword commands,
+// natural language AI queries, and rich formatted responses.
 
 // ---------------------------------------------------------------------------
 // POST -- main handler
@@ -342,10 +197,9 @@ export async function POST(request: Request): Promise<Response> {
 
         // Handle assistant group commands (operator replies in the TripBuilt group)
         if (isGroupJid(remoteJid) && payload.key?.fromMe) {
-            const cmdText = extractMessageText(payload).trim().toLowerCase();
+            const cmdText = extractMessageText(payload).trim();
             if (cmdText) {
-                const handled = await handleAssistantGroupCommand(
-                    admin,
+                const handled = await routeAssistantCommand(
                     event.instance,
                     remoteJid,
                     cmdText,
