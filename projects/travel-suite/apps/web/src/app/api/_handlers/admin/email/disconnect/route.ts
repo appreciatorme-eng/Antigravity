@@ -1,6 +1,6 @@
 /* ------------------------------------------------------------------
  * POST /api/admin/email/disconnect
- * Removes the Gmail (Google) social connection for the org.
+ * Removes the email connection (Google OAuth or IMAP/SMTP) for the org.
  * Requires admin role with organization.
  * ------------------------------------------------------------------ */
 
@@ -21,16 +21,16 @@ export async function POST(request: Request): Promise<Response> {
             .from("social_connections")
             .delete()
             .eq("organization_id", orgId)
-            .eq("platform", "google");
+            .in("platform", ["google", "imap"]);
 
         if (error) {
             logError("[email/disconnect] Delete failed", error);
-            return apiError("Failed to disconnect Gmail", 500);
+            return apiError("Failed to disconnect email", 500);
         }
 
         return apiSuccess({ disconnected: true });
     } catch (err) {
         logError("[email/disconnect] Failed", err);
-        return apiError("Failed to disconnect Gmail", 500);
+        return apiError("Failed to disconnect email", 500);
     }
 }
