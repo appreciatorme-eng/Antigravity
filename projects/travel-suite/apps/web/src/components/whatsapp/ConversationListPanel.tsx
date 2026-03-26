@@ -227,6 +227,13 @@ export function ConversationListPanel({
                 action={{ label: 'Retry', onClick: onRetry }}
                 className="py-8"
               />
+            ) : channelFilter === 'email' ? (
+              <EmptyState
+                icon="📧"
+                title="No emails yet"
+                description="Email integration coming soon. Connect Gmail or Outlook to manage client emails here."
+                className="py-8"
+              />
             ) : (
               <EmptyState
                 icon="💬"
