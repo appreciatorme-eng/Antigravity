@@ -12,10 +12,11 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
+import type { ContextSnapshot } from "@/lib/assistant/types";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendEvolutionText, sendEvolutionPresence } from "@/lib/whatsapp-evolution.server";
-import { buildContextSnapshot } from "@/lib/assistant/context-engine";
+import { sendEvolutionText } from "@/lib/whatsapp-evolution.server";
+import { getCachedContextSnapshot } from "@/lib/assistant/context-engine";
 import { formatBriefingMessage } from "@/lib/assistant/briefing";
 import {
     formatDashboard,
@@ -39,6 +40,21 @@ interface CommandContext {
     readonly instanceName: string;
     readonly groupJid: string;
 }
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const MONTH_NAMES = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+] as const;
+
+/** Minimum message length to trigger AI fallback (skip "ok", "👍", etc.) */
+const MIN_AI_MESSAGE_LENGTH = 4;
+
+/** Pattern for messages that are just emoji / reactions */
+const EMOJI_ONLY_RE = /^[\p{Emoji_Presentation}\p{Emoji}\s]+$/u;
 
 // ---------------------------------------------------------------------------
 // Keyword map
@@ -130,10 +146,11 @@ export async function routeAssistantCommand(
     try {
         if (command) {
             reply = await handleKeywordCommand(ctx, command);
-        } else {
-            // Natural language — show typing indicator, then ask AI
-            await sendEvolutionPresence(instanceName, groupJid, "composing");
+        } else if (shouldTriggerAI(normalised)) {
             reply = await handleNaturalLanguage(ctx, message);
+        } else {
+            // Short / emoji / casual message — don't respond
+            return true;
         }
     } catch (err) {
         logError("[assistant-commands] command failed", err);
@@ -145,6 +162,29 @@ export async function routeAssistantCommand(
             logError("[assistant-commands] Failed to send reply", err);
         });
     }
+
+    return true;
+}
+
+// ---------------------------------------------------------------------------
+// AI trigger filter — avoid firing on casual chat
+// ---------------------------------------------------------------------------
+
+/** Determine if a message warrants an AI response. */
+function shouldTriggerAI(normalised: string): boolean {
+    // Too short — likely "ok", "ya", "no"
+    if (normalised.length < MIN_AI_MESSAGE_LENGTH) return false;
+
+    // Emoji-only
+    if (EMOJI_ONLY_RE.test(normalised)) return false;
+
+    // Common acknowledgements that shouldn't trigger AI
+    const skipPhrases = [
+        "ok", "okay", "fine", "thanks", "thank you", "noted",
+        "done", "yes", "no", "sure", "alright", "cool", "great",
+        "good", "nice", "perfect", "awesome", "got it",
+    ];
+    if (skipPhrases.includes(normalised)) return false;
 
     return true;
 }
@@ -238,82 +278,43 @@ async function handleLeadsCommand(ctx: CommandContext): Promise<string> {
 
 async function handleRevenueCommand(ctx: CommandContext): Promise<string> {
     const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
-    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59).toISOString();
+    const monthName = MONTH_NAMES[now.getMonth()] ?? "";
+    const lastMonthName = MONTH_NAMES[(now.getMonth() - 1 + 12) % 12] ?? "";
 
-    const monthNames = [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-    ];
-    const monthName = monthNames[now.getMonth()] ?? "";
-    const lastMonthName = monthNames[(now.getMonth() - 1 + 12) % 12] ?? "";
+    const { totalRupees: currentTotal, count: currentCount } =
+        await getMonthlyRevenue(ctx.admin, ctx.orgId, now.getFullYear(), now.getMonth());
 
-    // Current month paid invoices
-    const { data: currentPaid } = await ctx.admin
-        .from("invoices")
-        .select("total_amount")
-        .eq("organization_id", ctx.orgId)
-        .eq("status", "paid")
-        .gte("updated_at", monthStart);
+    const lastMonth = now.getMonth() === 0
+        ? { year: now.getFullYear() - 1, month: 11 }
+        : { year: now.getFullYear(), month: now.getMonth() - 1 };
+    const { totalRupees: lastTotal } =
+        await getMonthlyRevenue(ctx.admin, ctx.orgId, lastMonth.year, lastMonth.month);
 
-    // Last month paid invoices
-    const { data: lastPaid } = await ctx.admin
-        .from("invoices")
-        .select("total_amount")
-        .eq("organization_id", ctx.orgId)
-        .eq("status", "paid")
-        .gte("updated_at", lastMonthStart)
-        .lte("updated_at", lastMonthEnd);
-
-    const currentTotal = (currentPaid ?? []).reduce((s, r) => s + (r.total_amount ?? 0), 0);
-    const lastTotal = (lastPaid ?? []).reduce((s, r) => s + (r.total_amount ?? 0), 0);
-
-    return formatRevenue(
-        currentTotal * 100,
-        lastTotal * 100,
-        monthName,
-        lastMonthName,
-        (currentPaid ?? []).length,
-    );
+    return formatRevenue(currentTotal, lastTotal, monthName, lastMonthName, currentCount);
 }
 
 async function handleStatsCommand(ctx: CommandContext): Promise<string> {
-    const snapshot = await getSnapshot(ctx);
-
-    // Quick revenue query for dashboard
     const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-    const monthNames = [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-    ];
-    const monthName = monthNames[now.getMonth()] ?? "";
+    const monthName = MONTH_NAMES[now.getMonth()] ?? "";
 
-    const { data: paidInvoices } = await ctx.admin
-        .from("invoices")
-        .select("total_amount")
-        .eq("organization_id", ctx.orgId)
-        .eq("status", "paid")
-        .gte("updated_at", monthStart);
+    const [snapshot, { totalRupees }] = await Promise.all([
+        getSnapshot(ctx),
+        getMonthlyRevenue(ctx.admin, ctx.orgId, now.getFullYear(), now.getMonth()),
+    ]);
 
-    const monthRevenue = (paidInvoices ?? []).reduce(
-        (s, r) => s + (r.total_amount ?? 0),
-        0,
-    );
-
-    return formatDashboard(snapshot, monthRevenue * 100, monthName);
+    return formatDashboard(snapshot, totalRupees, monthName);
 }
 
 async function handleBriefCommand(ctx: CommandContext): Promise<string> {
-    const snapshot = await getSnapshot(ctx);
-
-    // Get org name
-    const { data: org } = await ctx.admin
-        .from("organizations")
-        .select("name")
-        .eq("id", ctx.orgId)
-        .maybeSingle();
+    const [snapshot, org] = await Promise.all([
+        getSnapshot(ctx),
+        ctx.admin
+            .from("organizations")
+            .select("name")
+            .eq("id", ctx.orgId)
+            .maybeSingle()
+            .then((r) => r.data),
+    ]);
 
     return formatBriefingMessage(snapshot, (org?.name as string) ?? "Your Business");
 }
@@ -326,7 +327,6 @@ async function handleNaturalLanguage(
     ctx: CommandContext,
     message: string,
 ): Promise<string> {
-    // Dynamically import to avoid loading Gemini SDK when not needed
     const { getGeminiModel } = await import("@/lib/ai/gemini.server");
     const snapshot = await getSnapshot(ctx);
 
@@ -391,14 +391,38 @@ function buildNLSystemPrompt(snapshot: ContextSnapshot): string {
 }
 
 // ---------------------------------------------------------------------------
-// Shared snapshot builder
+// Shared helpers
 // ---------------------------------------------------------------------------
 
+/** Cached context snapshot — reuses 5-min TTL cache, avoids 4 DB queries per command. */
 async function getSnapshot(ctx: CommandContext) {
-    return buildContextSnapshot({
+    return getCachedContextSnapshot({
         organizationId: ctx.orgId,
         userId: "system",
         channel: "whatsapp",
         supabase: ctx.admin,
     });
+}
+
+/** Monthly revenue from paid invoices, using `paid_at` for accurate date attribution. */
+async function getMonthlyRevenue(
+    admin: AdminClient,
+    orgId: string,
+    year: number,
+    month: number,
+): Promise<{ totalRupees: number; count: number }> {
+    const monthStart = new Date(year, month, 1).toISOString();
+    const monthEnd = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
+
+    const { data } = await admin
+        .from("invoices")
+        .select("total_amount")
+        .eq("organization_id", orgId)
+        .eq("status", "paid")
+        .gte("paid_at", monthStart)
+        .lte("paid_at", monthEnd);
+
+    const rows = (data ?? []) as ReadonlyArray<{ total_amount: number }>;
+    const totalRupees = rows.reduce((s, r) => s + (r.total_amount ?? 0), 0);
+    return { totalRupees, count: rows.length };
 }

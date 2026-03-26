@@ -60,7 +60,8 @@ export async function notifyNewLead(
         `📱 ${masked}`,
         `💬 "${preview.slice(0, 100)}"`,
         "",
-        "Open TripBuilt inbox to respond.",
+        "Reply *leads* to see all recent leads",
+        "Or open TripBuilt inbox to respond.",
     ].join("\n"));
 }
 

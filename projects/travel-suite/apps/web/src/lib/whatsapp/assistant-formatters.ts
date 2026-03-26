@@ -3,6 +3,8 @@
  *
  * All functions are pure — they take data and return formatted strings.
  * Uses WhatsApp-compatible *bold*, _italic_, and monospace markers.
+ *
+ * All monetary amounts are in RUPEES (not paise) — matching the invoices table.
  */
 import "server-only";
 
@@ -12,9 +14,9 @@ import type { ContextSnapshot } from "@/lib/assistant/types";
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Format paise as ₹ INR with Indian locale. */
-function inr(paise: number): string {
-    return `₹${(paise / 100).toLocaleString("en-IN")}`;
+/** Format rupees as ₹ INR with Indian locale. */
+function inr(rupees: number): string {
+    return `₹${rupees.toLocaleString("en-IN")}`;
 }
 
 /** Mask a phone number for privacy: +91 ••••3428 */
@@ -35,7 +37,7 @@ function takeMax<T>(items: readonly T[], max: number): readonly T[] {
 
 export function formatDashboard(
     snapshot: ContextSnapshot,
-    monthRevenuePaise: number,
+    monthRevenueRupees: number,
     monthName: string,
 ): string {
     const trips = snapshot.todayTrips.length;
@@ -51,9 +53,9 @@ export function formatDashboard(
         "",
         `┌───────────────────────`,
         `│ 🎯 Trips Today       ${trips}`,
-        `│ 💰 Revenue (${monthName})  ${inr(monthRevenuePaise)}`,
+        `│ 💰 Revenue (${monthName})  ${inr(monthRevenueRupees)}`,
         `│ ⏳ Pending Payments   ${invoices}`,
-        `│    Total Due          ${inr(pendingTotal * 100)}`,
+        `│    Total Due          ${inr(pendingTotal)}`,
         `│ 👥 Active Clients     ${clients}`,
         `└───────────────────────`,
         "",
@@ -100,12 +102,12 @@ export function formatPendingPayments(
     const lines = takeMax(invoices, 8).map((inv) => {
         const overdue = inv.dueDate && new Date(inv.dueDate) < new Date();
         const tag = overdue ? " 🔴 OVERDUE" : "";
-        return `• ${inv.clientName ?? "Unknown"} — ${inr(inv.balanceAmount * 100)}${tag}`;
+        return `• ${inv.clientName ?? "Unknown"} — ${inr(inv.balanceAmount)}${tag}`;
     });
 
     return [
         `💰 *Pending Payments (${invoices.length})*`,
-        `Total due: ${inr(total * 100)}`,
+        `Total due: ${inr(total)}`,
         "",
         ...lines,
     ].join("\n");
@@ -116,23 +118,23 @@ export function formatPendingPayments(
 // ---------------------------------------------------------------------------
 
 export function formatRevenue(
-    monthRevenuePaise: number,
-    lastMonthRevenuePaise: number,
+    monthRevenueRupees: number,
+    lastMonthRevenueRupees: number,
     monthName: string,
     lastMonthName: string,
     paidCount: number,
 ): string {
-    const diff = monthRevenuePaise - lastMonthRevenuePaise;
-    const pctChange = lastMonthRevenuePaise > 0
-        ? Math.round((diff / lastMonthRevenuePaise) * 100)
+    const diff = monthRevenueRupees - lastMonthRevenueRupees;
+    const pctChange = lastMonthRevenueRupees > 0
+        ? Math.round((diff / lastMonthRevenueRupees) * 100)
         : 0;
     const trend = diff > 0 ? `📈 +${pctChange}%` : diff < 0 ? `📉 ${pctChange}%` : "➡️ 0%";
 
     return [
         `💵 *Revenue Summary*`,
         "",
-        `*${monthName}:* ${inr(monthRevenuePaise)}`,
-        `*${lastMonthName}:* ${inr(lastMonthRevenuePaise)}`,
+        `*${monthName}:* ${inr(monthRevenueRupees)}`,
+        `*${lastMonthName}:* ${inr(lastMonthRevenueRupees)}`,
         `*Trend:* ${trend}`,
         `*Payments received:* ${paidCount} this month`,
     ].join("\n");

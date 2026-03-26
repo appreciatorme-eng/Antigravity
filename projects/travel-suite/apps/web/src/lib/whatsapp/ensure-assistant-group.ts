@@ -61,7 +61,14 @@ export async function ensureAssistantGroup(
     "\u{1F4B0} Payment notifications",
     "\u{1F697} Driver updates",
     "",
-    'Reply "help" anytime for commands.',
+    "*Quick commands you can type:*",
+    "  \u{1F4CA} *stats* — Dashboard overview",
+    "  \u{1F4CB} *today* — Today's trips",
+    "  \u{1F195} *leads* — Recent leads",
+    "  \u{1F4B0} *payments* — Pending payments",
+    "  \u{1F4B5} *revenue* — Revenue summary",
+    "",
+    "Or just ask me anything in plain English!",
   ].join("\n"));
 
   logEvent("info", `[ensure-assistant-group] Created group ${groupJid} for ${sessionName}`);
