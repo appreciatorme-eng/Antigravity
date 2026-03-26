@@ -1,7 +1,5 @@
 import "server-only";
 
-import crypto from "node:crypto";
-
 import { z } from "zod";
 
 import { getGeminiModel, parseGeminiJson } from "@/lib/ai/gemini.server";
@@ -538,37 +536,10 @@ export async function sendChatbotReply(args: {
   chatbotSessionId: string;
   reply: string;
 }) {
-  const admin = createAdminClient();
-  const sentAt = new Date().toISOString();
-
   await sendEvolutionText(args.sessionName, args.waId, args.reply);
 
-  await admin.from("whatsapp_webhook_events").insert({
-    provider_message_id: crypto.randomUUID(),
-    payload_hash: crypto
-      .createHash("sha256")
-      .update(
-        JSON.stringify({
-          session: args.sessionName,
-          organization_id: args.organizationId,
-          wa_id: args.waId,
-          sent_at: sentAt,
-          chatbot_session_id: args.chatbotSessionId,
-          body_preview: args.reply,
-        }),
-      )
-      .digest("hex"),
-    event_type: "text",
-    wa_id: args.waId,
-    processing_status: "processed",
-    processed_at: sentAt,
-    received_at: sentAt,
-    metadata: {
-      session: args.sessionName,
-      direction: "out",
-      source: "chatbot",
-      chatbot_session_id: args.chatbotSessionId,
-      body_preview: args.reply,
-    },
-  });
+  // Don't store the reply here — the send.message / messages.upsert webhook
+  // will store it with the real WhatsApp message ID, avoiding duplicates.
+  // The chatbot metadata (source, session_id) is tracked in the
+  // whatsapp_chatbot_sessions table instead.
 }
