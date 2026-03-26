@@ -88,7 +88,7 @@ const proposalFollowupTemplate: AutomationTemplate = {
       description: "Stop if proposal was rejected",
     },
   ],
-  enabled_by_default: false,
+  enabled_by_default: true,
   priority: 1,
 };
 
@@ -124,7 +124,7 @@ const paymentReminderTemplate: AutomationTemplate = {
       description: "Stop if payment was cancelled",
     },
   ],
-  enabled_by_default: false,
+  enabled_by_default: true,
   priority: 2,
 };
 
@@ -158,7 +158,7 @@ const reviewRequestTemplate: AutomationTemplate = {
       description: "Stop if trip was cancelled",
     },
   ],
-  enabled_by_default: false,
+  enabled_by_default: true,
   priority: 3,
 };
 
@@ -194,7 +194,7 @@ const tripCountdownTemplate: AutomationTemplate = {
       description: "Stop if trip already completed",
     },
   ],
-  enabled_by_default: false,
+  enabled_by_default: true,
   priority: 4,
 };
 
@@ -308,7 +308,7 @@ const anniversaryReminderTemplate: AutomationTemplate = {
     message_variables: ["client_name", "destination"],
   },
   stop_conditions: [],
-  enabled_by_default: false,
+  enabled_by_default: true,
   priority: 12,
 };
 
