@@ -12,13 +12,43 @@ import { ProposalSentEmail } from "@/emails/ProposalSent";
 import { ReferralPromoterEmail } from "@/emails/ReferralPromoterEmail";
 import { TeamInviteEmail } from "@/emails/TeamInvite";
 import { WelcomeEmail } from "@/emails/WelcomeEmail";
-import { sendEmail, type EmailAttachment } from "@/lib/email/send";
+import { sendEmail, sendEmailForOrg, type EmailAttachment } from "@/lib/email/send";
+import type { ReactElement } from "react";
+
+/**
+ * Route email through Gmail (if orgId provided and connected) or Resend.
+ * Drop-in replacement for sendEmail that supports optional org context.
+ */
+async function routeEmail(params: {
+  orgId?: string;
+  to: string;
+  subject: string;
+  react: ReactElement;
+  attachments?: EmailAttachment[];
+}): Promise<boolean> {
+  if (params.orgId) {
+    return sendEmailForOrg({
+      orgId: params.orgId,
+      to: params.to,
+      subject: params.subject,
+      react: params.react,
+      attachments: params.attachments,
+    });
+  }
+  return routeEmail({
+    to: params.to,
+    subject: params.subject,
+    react: params.react,
+    attachments: params.attachments,
+  });
+}
 
 export function formatInr(amountPaise: number) {
   return `₹${Math.round(amountPaise / 100).toLocaleString("en-IN")}`;
 }
 
 export async function sendBookingConfirmation(params: {
+  orgId?: string;
   to: string;
   recipientName: string;
   destination: string;
@@ -29,7 +59,8 @@ export async function sendBookingConfirmation(params: {
   operatorEmail?: string | null;
   tripUrl?: string | null;
 }) {
-  return sendEmail({
+  return routeEmail({
+    orgId: params.orgId,
     to: params.to,
     subject: `✈️ Booking Confirmed — ${params.destination} | ${params.startDate}`,
     react: <BookingConfirmationEmail {...params} />,
@@ -37,6 +68,7 @@ export async function sendBookingConfirmation(params: {
 }
 
 export async function sendProposalSentNotification(params: {
+  orgId?: string;
   to: string;
   travelerName: string;
   proposalTitle: string;
@@ -44,7 +76,8 @@ export async function sendProposalSentNotification(params: {
   priceLabel?: string | null;
   proposalUrl: string;
 }) {
-  return sendEmail({
+  return routeEmail({
+    orgId: params.orgId,
     to: params.to,
     subject: "Your personalised trip proposal is ready",
     react: <ProposalSentEmail {...params} />,
@@ -58,7 +91,7 @@ export async function sendProposalApprovedNotification(params: {
   proposalTitle: string;
   paymentUrl?: string | null;
 }) {
-  return sendEmail({
+  return routeEmail({
     to: params.to,
     subject: `${params.travelerName} approved your proposal`,
     react: <ProposalApprovedEmail {...params} />,
@@ -71,7 +104,7 @@ export async function sendProposalRejectedNotification(params: {
   travelerName: string;
   proposalTitle: string;
 }) {
-  return sendEmail({
+  return routeEmail({
     to: params.to,
     subject: `${params.travelerName} passed on your proposal`,
     react: <ProposalRejectedEmail {...params} />,
@@ -79,6 +112,7 @@ export async function sendProposalRejectedNotification(params: {
 }
 
 export async function sendPaymentReceipt(params: {
+  orgId?: string;
   to: string;
   recipientName: string;
   amountLabel: string;
@@ -89,7 +123,8 @@ export async function sendPaymentReceipt(params: {
   gstLabel?: string | null;
   invoiceUrl?: string | null;
 }) {
-  return sendEmail({
+  return routeEmail({
+    orgId: params.orgId,
     to: params.to,
     subject: `Payment receipt — ${params.bookingReference}`,
     react: <PaymentReceiptEmail {...params} />,
@@ -103,7 +138,7 @@ export async function sendTeamInviteNotification(params: {
   role: string;
   inviteUrl: string;
 }) {
-  return sendEmail({
+  return routeEmail({
     to: params.to,
     subject: `You're invited to join ${params.organizationName} on TripBuilt`,
     react: <TeamInviteEmail {...params} />,
@@ -124,7 +159,7 @@ export async function sendOperatorScorecardNotification(params: {
   approvalRateLabel: string;
   attachment: EmailAttachment;
 }) {
-  return sendEmail({
+  return routeEmail({
     to: params.to,
     subject: `${params.organizationName} scorecard — ${params.monthLabel}`,
     react: (
@@ -152,7 +187,7 @@ export async function sendWelcomeNotification(params: {
   recipientName: string;
   loginUrl: string;
 }) {
-  return sendEmail({
+  return routeEmail({
     to: params.to,
     subject: "Welcome to TripBuilt",
     react: <WelcomeEmail {...params} />,
@@ -165,7 +200,7 @@ export async function sendInvoicePdfNotification(params: {
   organizationName: string;
   attachment: EmailAttachment;
 }) {
-  return sendEmail({
+  return routeEmail({
     to: params.to,
     subject: `Invoice ${params.invoiceNumber} from ${params.organizationName}`,
     react: (
@@ -184,7 +219,7 @@ export async function sendProposalPdfNotification(params: {
   recipientName?: string | null;
   attachment: EmailAttachment;
 }) {
-  return sendEmail({
+  return routeEmail({
     to: params.to,
     subject: `Your Travel Proposal: ${params.proposalTitle}`,
     react: (
@@ -204,7 +239,7 @@ export async function sendMarketplaceInquiryNotification(params: {
   message: string;
   inquiryUrl: string;
 }) {
-  return sendEmail({
+  return routeEmail({
     to: params.to,
     subject: `[Marketplace] New Inquiry from ${params.senderOrgName}`,
     react: <MarketplaceInquiryEmail {...params} />,
@@ -217,7 +252,7 @@ export async function sendMarketplaceVerificationNotification(params: {
   status: "verified" | "rejected";
   settingsUrl: string;
 }) {
-  return sendEmail({
+  return routeEmail({
     to: params.to,
     subject: `[Marketplace] Verification Status: ${params.status}`,
     react: <MarketplaceVerificationEmail {...params} />,
@@ -231,7 +266,7 @@ export async function sendReferralPromoterNotification(params: {
   referralUrl: string;
   rewardAmountInr: number;
 }) {
-  return sendEmail({
+  return routeEmail({
     to: params.to,
     subject: `Thank you! Earn ₹${params.rewardAmountInr.toLocaleString("en-IN")} by referring a friend`,
     react: <ReferralPromoterEmail {...params} />,
@@ -244,7 +279,7 @@ export async function sendContactSalesConfirmation(params: {
   targetTier: string;
   organizationName: string;
 }) {
-  return sendEmail({
+  return routeEmail({
     to: params.to,
     subject: `TripBuilt ${params.targetTier} upgrade request received`,
     react: <ContactSalesConfirmationEmail {...params} />,
