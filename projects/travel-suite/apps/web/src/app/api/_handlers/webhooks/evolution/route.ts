@@ -282,21 +282,23 @@ export async function POST(request: Request): Promise<Response> {
                 trip_intent: intentData ? JSON.parse(JSON.stringify(intentData)) : null,
             };
 
-            await admin.from("whatsapp_webhook_events").insert({
+            await admin.from("whatsapp_webhook_events").upsert([{
                 provider_message_id: providerId,
                 wa_id: waId,
                 event_type: "voice",
                 payload_hash: payloadHash,
                 processing_status: "received",
                 metadata: voiceMetadata,
-            });
+            }], { onConflict: "provider_message_id", ignoreDuplicates: true });
 
             // Voice messages don't trigger chatbot (yet) — just store and return
             return NextResponse.json({ ok: true });
         }
 
         // Store both inbound AND outbound text messages
-        await admin.from("whatsapp_webhook_events").insert({
+        // Use upsert with ignoreDuplicates to handle race conditions and
+        // duplicate events (messages.upsert + send.message fire for the same msg)
+        await admin.from("whatsapp_webhook_events").upsert([{
             provider_message_id: providerId,
             wa_id: waId,
             event_type: "text",
@@ -308,7 +310,7 @@ export async function POST(request: Request): Promise<Response> {
                 direction: isFromMe ? "out" : "in",
                 pushName: payload.pushName ?? null,
             },
-        });
+        }], { onConflict: "provider_message_id", ignoreDuplicates: true });
 
         // Outbound messages: store only, no chatbot processing
         if (isFromMe) {
