@@ -13,6 +13,13 @@ import { logError } from "@/lib/observability/logger";
 // Types
 // ---------------------------------------------------------------------------
 
+export interface GmailAttachmentMeta {
+    readonly attachmentId: string;
+    readonly filename: string;
+    readonly mimeType: string;
+    readonly size: number;
+}
+
 export interface GmailMessageParsed {
     readonly id: string;
     readonly threadId: string;
@@ -26,6 +33,7 @@ export interface GmailMessageParsed {
     readonly date: string;
     readonly messageIdHeader: string | null;
     readonly labelIds: readonly string[];
+    readonly attachments: readonly GmailAttachmentMeta[];
 }
 
 export interface GmailThread {
@@ -75,7 +83,8 @@ interface GmailApiHeader {
 
 interface GmailApiPart {
     mimeType: string;
-    body?: { data?: string; size?: number };
+    filename?: string;
+    body?: { data?: string; size?: number; attachmentId?: string };
     parts?: GmailApiPart[];
 }
 
@@ -125,6 +134,26 @@ function extractBody(payload: GmailApiPayload, mimeType: string): string {
     return "";
 }
 
+function extractAttachments(payload: GmailApiPayload): GmailAttachmentMeta[] {
+    const attachments: GmailAttachmentMeta[] = [];
+    function walk(parts: GmailApiPart[] | undefined) {
+        if (!parts) return;
+        for (const part of parts) {
+            if (part.filename && part.body?.attachmentId) {
+                attachments.push({
+                    attachmentId: part.body.attachmentId,
+                    filename: part.filename,
+                    mimeType: part.mimeType,
+                    size: part.body.size ?? 0,
+                });
+            }
+            walk(part.parts);
+        }
+    }
+    walk(payload.parts);
+    return attachments;
+}
+
 function parseMessage(msg: GmailApiMessage): GmailMessageParsed {
     const headers = msg.payload.headers;
     const from = getHeader(headers, "From");
@@ -143,6 +172,7 @@ function parseMessage(msg: GmailApiMessage): GmailMessageParsed {
         date: new Date(Number(msg.internalDate)).toISOString(),
         messageIdHeader: getHeader(headers, "Message-ID") || null,
         labelIds: msg.labelIds ?? [],
+        attachments: extractAttachments(msg.payload),
     };
 }
 

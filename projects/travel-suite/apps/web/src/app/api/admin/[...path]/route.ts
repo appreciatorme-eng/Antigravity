@@ -40,6 +40,7 @@ const routes = createCatchAllHandlers([
   ["insights/win-loss", () => import("@/app/api/_handlers/admin/insights/win-loss/route")],
   ["marketplace/verify", () => import("@/app/api/_handlers/admin/marketplace/verify/route")],
   ["destinations", () => import("@/app/api/_handlers/admin/destinations/route")],
+  ["email/attachment", () => import("@/app/api/_handlers/admin/email/attachment/route")],
   ["email/conversations", () => import("@/app/api/_handlers/admin/email/conversations/route")],
   ["email/disconnect", () => import("@/app/api/_handlers/admin/email/disconnect/route")],
   ["email/read", () => import("@/app/api/_handlers/admin/email/read/route")],

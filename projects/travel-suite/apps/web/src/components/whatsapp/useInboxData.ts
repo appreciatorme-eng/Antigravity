@@ -66,7 +66,7 @@ export interface InboxData {
 
   // Actions
   handleSelect: (id: string) => void;
-  handleSendMessage: (convId: string, message: string, subject?: string) => Promise<boolean>;
+  handleSendMessage: (convId: string, message: string, subject?: string, files?: File[]) => Promise<boolean>;
   handleTakeOverChatbot: (session: ChatbotSessionSummary) => Promise<void>;
   handleOpenProposalDraft: (draftId: string) => void;
   handleRefreshProposalDraft: (draftId: string) => Promise<void>;
@@ -429,7 +429,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     }
   }
 
-  async function handleSendMessage(convId: string, message: string, subject?: string): Promise<boolean> {
+  async function handleSendMessage(convId: string, message: string, subject?: string, files?: File[]): Promise<boolean> {
     const conversation = conversations.find((item) => item.id === convId);
     if (!conversation) return false;
 
@@ -463,6 +463,18 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
           lastMessageIdHeader?: string | null;
         };
 
+        // Convert files to base64 for API
+        let attachmentPayload: Array<{ filename: string; content: string; contentType: string }> | undefined;
+        if (files && files.length > 0) {
+          attachmentPayload = await Promise.all(
+            files.map(async (f) => {
+              const buffer = await f.arrayBuffer();
+              const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+              return { filename: f.name, content: base64, contentType: f.type || 'application/octet-stream' };
+            }),
+          );
+        }
+
         const response = await fetch('/api/admin/email/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -472,6 +484,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
             body: message,
             threadId: emailConv.threadId,
             inReplyTo: emailConv.lastMessageIdHeader,
+            attachments: attachmentPayload,
           }),
         });
         const payload = (await response.json().catch(() => ({}))) as {

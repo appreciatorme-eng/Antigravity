@@ -32,7 +32,7 @@ interface ThreadPaneProps {
   onClearPendingTemplate?: () => void;
 
   // Message sending
-  onSendMessage: (convId: string, message: string, subject?: string) => Promise<boolean>;
+  onSendMessage: (convId: string, message: string, subject?: string, files?: File[]) => Promise<boolean>;
 
   // Smart replies
   smartReplySuggestions: string[];

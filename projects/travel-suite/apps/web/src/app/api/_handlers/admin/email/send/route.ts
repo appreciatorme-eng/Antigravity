@@ -14,6 +14,12 @@ import { logError } from "@/lib/observability/logger";
 // POST
 // ---------------------------------------------------------------------------
 
+interface SendEmailAttachment {
+    filename: string;
+    content: string; // base64-encoded
+    contentType: string;
+}
+
 interface SendEmailBody {
     to: string;
     subject: string;
@@ -21,6 +27,7 @@ interface SendEmailBody {
     threadId?: string;
     inReplyTo?: string;
     references?: string;
+    attachments?: SendEmailAttachment[];
 }
 
 function isValidEmail(email: string): boolean {
@@ -73,7 +80,14 @@ export async function POST(request: Request): Promise<Response> {
             ? `<div style="margin-top:24px;padding-top:12px;border-top:1px solid #e5e7eb;font-family:sans-serif;font-size:12px;color:#6b7280">${escapeHtml(orgName)}${orgName && senderEmail ? "<br/>" : ""}${escapeHtml(senderEmail)}</div>`
             : "";
 
-        const messageId = await sendViaGmail(orgId, raw.to, raw.subject, htmlBody + signatureHtml, undefined, replyHeaders);
+        // Convert base64 attachments to EmailAttachment format
+        const emailAttachments = raw.attachments?.map((att) => ({
+            filename: att.filename,
+            content: att.content, // already base64
+            contentType: att.contentType,
+        }));
+
+        const messageId = await sendViaGmail(orgId, raw.to, raw.subject, htmlBody + signatureHtml, emailAttachments, replyHeaders);
 
         if (!messageId) {
             return apiError("Gmail not connected or send failed. Connect Gmail in Settings.", 422);

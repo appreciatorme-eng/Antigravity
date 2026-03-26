@@ -67,6 +67,13 @@ export interface Message {
   // document
   docName?: string;
   docSize?: string;
+  // email attachments
+  attachments?: Array<{
+    attachmentId: string;
+    filename: string;
+    mimeType: string;
+    size: number;
+  }>;
 }
 
 export interface Conversation {
@@ -225,6 +232,27 @@ function MessageBubble({ msg, isEmailChannel }: { msg: Message; isEmailChannel?:
           <p className="text-sm text-slate-100 leading-relaxed whitespace-pre-wrap">{msg.body}</p>
         )}
 
+        {/* Attachment chips */}
+        {msg.attachments && msg.attachments.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {msg.attachments.map((att) => (
+              <a
+                key={att.attachmentId}
+                href={`/api/admin/email/attachment?messageId=${msg.id}&attachmentId=${encodeURIComponent(att.attachmentId)}&filename=${encodeURIComponent(att.filename)}&mimeType=${encodeURIComponent(att.mimeType)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/8 border border-white/15 hover:bg-white/15 transition-colors text-xs text-slate-200"
+              >
+                <Paperclip className="w-3 h-3 text-slate-400 shrink-0" />
+                <span className="truncate max-w-[140px]">{att.filename}</span>
+                <span className="text-[10px] text-slate-500 shrink-0">
+                  {att.size < 1024 ? `${att.size}B` : att.size < 1048576 ? `${Math.round(att.size / 1024)}KB` : `${(att.size / 1048576).toFixed(1)}MB`}
+                </span>
+              </a>
+            ))}
+          </div>
+        )}
+
         {/* Footer */}
         <div className={`flex items-center gap-1 mt-1 ${isOut ? 'justify-end' : 'justify-start'}`}>
           {msg.isAutomated && (
@@ -263,7 +291,8 @@ interface MessageThreadProps {
   onSendMessage?: (
     conversationId: string,
     message: string,
-    subject?: string
+    subject?: string,
+    files?: File[],
   ) => boolean | void | Promise<boolean | void>;
   externalInput?: string;
   onExternalInputConsumed?: () => void;
@@ -296,6 +325,8 @@ export function MessageThread({
   const [modalMode, setModalMode] = useState<ActionMode | null>(null);
   const [messageLang, setMessageLang] = useState('English');
   const [composeToEmail, setComposeToEmail] = useState('');
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isEmail = channel === 'email';
   const isCompose = conversation?.id.startsWith('compose_email_') ?? false;
@@ -313,7 +344,6 @@ export function MessageThread({
       : lastSubject;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setEmailSubject(replySubject);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setComposeToEmail(conversation.contact.email ?? '');
   }, [isEmail, conversation?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -328,9 +358,12 @@ export function MessageThread({
   function handleSend() {
     const text = inputText.trim();
     if (!text || !conversation) return;
-    void onSendMessage?.(conversation.id, text, isEmail ? emailSubject || undefined : undefined);
+    void onSendMessage?.(conversation.id, text, isEmail ? emailSubject || undefined : undefined, isEmail ? attachedFiles : undefined);
     setInputText('');
-    if (isEmail) setEmailSubject('');
+    if (isEmail) {
+      setEmailSubject('');
+      setAttachedFiles([]);
+    }
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) {
@@ -596,9 +629,44 @@ export function MessageThread({
                 rows={4}
                 className="w-full bg-transparent text-sm text-white placeholder-slate-500 outline-none resize-none leading-relaxed"
               />
+              {/* Attached files */}
+              {attachedFiles.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-2">
+                  {attachedFiles.map((f, i) => (
+                    <span key={`${f.name}-${i}`} className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-blue-500/10 border border-blue-500/20 text-[11px] text-blue-300">
+                      <Paperclip className="w-3 h-3" />
+                      <span className="truncate max-w-[120px]">{f.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => setAttachedFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                        className="ml-0.5 text-blue-400 hover:text-white"
+                      >
+                        &times;
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
               <div className="flex items-center justify-between pt-2 border-t border-white/10 mt-1">
                 <div className="flex items-center gap-1">
-                  <button className="p-1 hover:bg-white/10 rounded-lg transition-colors">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files) {
+                        setAttachedFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
+                      }
+                      e.target.value = '';
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-1 hover:bg-white/10 rounded-lg transition-colors"
+                    title="Attach files"
+                  >
                     <Paperclip className="w-4 h-4 text-slate-400" />
                   </button>
                 </div>

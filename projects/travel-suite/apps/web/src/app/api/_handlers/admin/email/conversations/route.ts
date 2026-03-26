@@ -14,6 +14,13 @@ import { logError } from "@/lib/observability/logger";
 // Gmail → Inbox mapping
 // ---------------------------------------------------------------------------
 
+interface InboxAttachment {
+    readonly attachmentId: string;
+    readonly filename: string;
+    readonly mimeType: string;
+    readonly size: number;
+}
+
 interface InboxMessage {
     readonly id: string;
     readonly type: "text";
@@ -23,6 +30,7 @@ interface InboxMessage {
     readonly timestamp: string;
     readonly status: "sent" | "delivered" | "read";
     readonly messageIdHeader?: string | null;
+    readonly attachments?: readonly InboxAttachment[];
 }
 
 interface InboxContact {
@@ -86,6 +94,7 @@ function mapMessage(
         timestamp: msg.date,
         status: "read",
         messageIdHeader: msg.messageIdHeader,
+        attachments: msg.attachments.length > 0 ? msg.attachments : undefined,
     };
 }
 
