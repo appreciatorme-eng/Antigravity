@@ -5,6 +5,7 @@
  * ------------------------------------------------------------------ */
 
 import { requireAdmin } from "@/lib/auth/admin";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchGmailThreads, type GmailMessageParsed } from "@/lib/email/gmail-read";
 import { apiSuccess, apiError } from "@/lib/api/response";
 import { logError } from "@/lib/observability/logger";
@@ -28,9 +29,17 @@ interface InboxContact {
     readonly id: string;
     readonly name: string;
     readonly phone: string;
-    readonly type: "client";
+    readonly type: "client" | "driver" | "lead";
     readonly email?: string;
     readonly avatarColor?: string;
+}
+
+interface CrmProfile {
+    readonly id: string;
+    readonly full_name: string | null;
+    readonly email: string | null;
+    readonly phone_normalized: string | null;
+    readonly role: string | null;
 }
 
 interface InboxConversation {
@@ -83,6 +92,7 @@ function mapMessage(
 function threadsToConversations(
     threads: readonly import("@/lib/email/gmail-read").GmailThread[],
     connectedEmail: string,
+    profileMap: ReadonlyMap<string, CrmProfile>,
 ): InboxConversation[] {
     return threads.map((thread) => {
         const messages = thread.messages.map((m) => mapMessage(m, connectedEmail));
@@ -93,6 +103,11 @@ function threadsToConversations(
         );
         const contactEmail = counterpart?.fromEmail ?? thread.messages[0].fromEmail;
         const contactName = counterpart?.from ?? thread.messages[0].from;
+
+        // Match against CRM profiles by email
+        const profile = profileMap.get(contactEmail.toLowerCase());
+        const contactType: "client" | "driver" | "lead" =
+            profile?.role === "driver" ? "driver" : profile ? "client" : "lead";
 
         const unreadCount = thread.messages.filter(
             (m) => m.labelIds.includes("UNREAD") && m.fromEmail.toLowerCase() !== connectedEmail.toLowerCase(),
@@ -109,10 +124,10 @@ function threadsToConversations(
             subject,
             lastMessageIdHeader: lastMsg?.messageIdHeader ?? null,
             contact: {
-                id: `email_contact_${contactEmail}`,
-                name: contactName || contactEmail,
-                phone: "",
-                type: "client" as const,
+                id: profile?.id ?? `email_contact_${contactEmail}`,
+                name: profile?.full_name ?? contactName ?? contactEmail,
+                phone: profile?.phone_normalized ?? "",
+                type: contactType,
                 email: contactEmail,
                 avatarColor: hashColor(contactEmail),
             },
@@ -154,7 +169,32 @@ export async function GET(request: Request): Promise<Response> {
         const { getGmailEmail } = await import("@/lib/email/gmail-send");
         const connectedEmail = await getGmailEmail(orgId) ?? "";
 
-        const conversations = threadsToConversations(result.threads, connectedEmail);
+        // Collect unique counterpart emails for CRM matching
+        const contactEmails = new Set<string>();
+        for (const thread of result.threads) {
+            const counterpart = thread.messages.find(
+                (m) => m.fromEmail.toLowerCase() !== connectedEmail.toLowerCase(),
+            );
+            const email = counterpart?.fromEmail ?? thread.messages[0]?.fromEmail;
+            if (email) contactEmails.add(email.toLowerCase());
+        }
+
+        // Match email senders to CRM profiles
+        const profileMap = new Map<string, CrmProfile>();
+        if (contactEmails.size > 0) {
+            const admin = createAdminClient();
+            const { data: profiles } = await admin
+                .from("profiles")
+                .select("id, full_name, email, phone_normalized, role")
+                .in("email", Array.from(contactEmails))
+                .eq("organization_id", orgId);
+
+            for (const p of (profiles ?? []) as CrmProfile[]) {
+                if (p.email) profileMap.set(p.email.toLowerCase(), p);
+            }
+        }
+
+        const conversations = threadsToConversations(result.threads, connectedEmail, profileMap);
 
         return apiSuccess({
             conversations,
