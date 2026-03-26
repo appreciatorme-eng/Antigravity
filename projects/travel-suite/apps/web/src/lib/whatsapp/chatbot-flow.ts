@@ -8,7 +8,7 @@ import { isFeatureEnabled } from "@/lib/platform/settings";
 import { logError } from "@/lib/observability/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { upsertWhatsAppProposalDraftFromCollected, getProposalDraftSummariesForSessions } from "@/lib/whatsapp/proposal-drafts.server";
-import { sendEvolutionText } from "@/lib/whatsapp-evolution.server";
+import { guardedSendText } from "@/lib/whatsapp-evolution.server";
 
 export type ChatbotState = "new" | "qualifying" | "proposal_ready" | "handed_off";
 
@@ -536,7 +536,7 @@ export async function sendChatbotReply(args: {
   chatbotSessionId: string;
   reply: string;
 }) {
-  await sendEvolutionText(args.sessionName, args.waId, args.reply);
+  await guardedSendText(args.sessionName, args.waId, args.reply);
 
   // Don't store the reply here — the send.message / messages.upsert webhook
   // will store it with the real WhatsApp message ID, avoiding duplicates.

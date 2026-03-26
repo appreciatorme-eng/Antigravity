@@ -9,7 +9,7 @@
 import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendEvolutionText } from "@/lib/whatsapp-evolution.server";
+import { guardedSendText } from "@/lib/whatsapp-evolution.server";
 import { logError } from "@/lib/observability/logger";
 import { sendPoll, LEAD_NOTIFICATION_POLL, PAYMENT_NOTIFICATION_POLL } from "./assistant-polls";
 
@@ -64,7 +64,7 @@ export async function notifyOperator(
         const target = await resolveTarget(orgId);
         if (!target) return null;
 
-        await sendEvolutionText(target.instanceName, target.groupJid, message);
+        await guardedSendText(target.instanceName, target.groupJid, message);
         return target;
     } catch (err) {
         logError("[assistant-notifications] Failed to notify operator", err);

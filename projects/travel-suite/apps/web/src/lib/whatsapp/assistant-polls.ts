@@ -11,7 +11,7 @@
  */
 import "server-only";
 
-import { sendEvolutionPoll } from "@/lib/whatsapp-evolution.server";
+import { guardedSendPoll } from "@/lib/whatsapp-evolution.server";
 import { logError } from "@/lib/observability/logger";
 
 // ---------------------------------------------------------------------------
@@ -117,7 +117,7 @@ export function sendFollowUpPoll(
     void (async () => {
         try {
             await new Promise((r) => setTimeout(r, FOLLOW_UP_DELAY_MS));
-            await sendEvolutionPoll(
+            await guardedSendPoll(
                 instanceName,
                 groupJid,
                 poll.question,
@@ -143,7 +143,7 @@ export async function sendPoll(
     if (delayMs > 0) {
         await new Promise((r) => setTimeout(r, delayMs));
     }
-    await sendEvolutionPoll(
+    await guardedSendPoll(
         instanceName,
         groupJid,
         poll.question,

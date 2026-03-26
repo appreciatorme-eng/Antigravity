@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   createEvolutionGroup,
-  sendEvolutionText,
+  guardedSendText,
   updateEvolutionGroupDescription,
 } from "@/lib/whatsapp-evolution.server";
 import { logError, logEvent } from "@/lib/observability/logger";
@@ -88,7 +88,7 @@ export async function ensureAssistantGroup(
     "Your private TripBuilt notification channel. Daily briefings, new leads, payments, and driver updates — all here.",
   );
 
-  await sendEvolutionText(sessionName, groupJid, [
+  await guardedSendText(sessionName, groupJid, [
     "\u{1F916} *TripBuilt Assistant is ready!*",
     "",
     "I'll send you:",

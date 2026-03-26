@@ -9,9 +9,9 @@ import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import {
-    sendEvolutionMedia,
+    guardedSendMedia,
+    guardedSendPoll,
     sendEvolutionLocation,
-    sendEvolutionPoll,
 } from "@/lib/whatsapp-evolution.server";
 import { logError } from "@/lib/observability/logger";
 
@@ -88,7 +88,7 @@ export async function POST(request: Request) {
 
         if (parsed.data.type === "media") {
             const { mediaUrl, mediaType, caption, fileName, mimetype } = parsed.data;
-            await sendEvolutionMedia(sessionName, digits, mediaUrl, mediaType, {
+            await guardedSendMedia(sessionName, digits, mediaUrl, mediaType, {
                 caption, fileName, mimetype,
             });
             bodyPreview = caption || `[${mediaType === "document" ? "Document" : mediaType === "image" ? "Image" : "Media"}: ${fileName ?? "file"}]`;
@@ -100,7 +100,7 @@ export async function POST(request: Request) {
             eventType = "location";
         } else if (parsed.data.type === "poll") {
             const { question, options, selectableCount } = parsed.data;
-            await sendEvolutionPoll(sessionName, digits, question, options, selectableCount ?? 1);
+            await guardedSendPoll(sessionName, digits, question, options, selectableCount ?? 1);
             bodyPreview = `📊 Poll: ${question}\n${options.map((o, i) => `${i + 1}. ${o}`).join("\n")}`;
             eventType = "text";
         }

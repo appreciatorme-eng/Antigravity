@@ -4,7 +4,7 @@ import { apiError, apiSuccess } from "@/lib/api/response";
 import type { Database } from "@/lib/database.types";
 import { requireAdmin } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendEvolutionText } from "@/lib/whatsapp-evolution.server";
+import { guardedSendText } from "@/lib/whatsapp-evolution.server";
 import { logError } from "@/lib/observability/logger";
 
 type AdminProfileRow = Pick<
@@ -405,7 +405,7 @@ export async function POST(request: Request) {
 
     for (const recipient of recipients) {
       try {
-        await sendEvolutionText(
+        await guardedSendText(
           context.connection.session_name,
           recipient.phone,
           parsed.data.message,
@@ -454,9 +454,8 @@ export async function POST(request: Request) {
         });
       }
 
-      await new Promise((resolve) => {
-        setTimeout(resolve, 500);
-      });
+      // Extra broadcast spacing (3-5s) on top of the 1-3s guard delay
+      await new Promise((r) => setTimeout(r, 3000 + Math.random() * 2000));
     }
 
     // Batch-insert all send audit records in a single round-trip instead of N serial inserts

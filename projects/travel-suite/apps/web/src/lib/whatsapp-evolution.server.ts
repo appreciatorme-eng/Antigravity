@@ -610,3 +610,77 @@ export async function updateEvolutionGroupDescription(
         // Best-effort
     });
 }
+
+// ---------------------------------------------------------------------------
+// Guarded send wrappers — rate-limited via send-guard
+// ---------------------------------------------------------------------------
+
+import { checkSendGuard, applyDelay } from "@/lib/whatsapp/send-guard";
+import { logWarn } from "@/lib/observability/logger";
+
+/** Resolve orgId from an Evolution instance name. */
+async function resolveOrgId(instanceName: string): Promise<string | null> {
+    const { createAdminClient } = await import("@/lib/supabase/admin");
+    const admin = createAdminClient();
+    const { data } = await admin
+        .from("whatsapp_connections")
+        .select("organization_id")
+        .eq("session_name", instanceName)
+        .maybeSingle();
+    return (data as { organization_id?: string } | null)?.organization_id ?? null;
+}
+
+export async function guardedSendText(
+    instanceName: string,
+    phoneDigits: string,
+    text: string,
+): Promise<void> {
+    const orgId = await resolveOrgId(instanceName);
+    if (orgId) {
+        const guard = checkSendGuard(orgId, phoneDigits);
+        if (!guard.allowed) {
+            logWarn(`[send-guard] BLOCKED text to ${phoneDigits}: ${guard.reason}`);
+            return;
+        }
+        await applyDelay(guard.delayMs);
+    }
+    await sendEvolutionText(instanceName, phoneDigits, text);
+}
+
+export async function guardedSendMedia(
+    instanceName: string,
+    phoneDigits: string,
+    media: string,
+    mediaType: "image" | "document" | "audio" | "video",
+    options?: { caption?: string; fileName?: string; mimetype?: string },
+): Promise<void> {
+    const orgId = await resolveOrgId(instanceName);
+    if (orgId) {
+        const guard = checkSendGuard(orgId, phoneDigits);
+        if (!guard.allowed) {
+            logWarn(`[send-guard] BLOCKED media to ${phoneDigits}: ${guard.reason}`);
+            return;
+        }
+        await applyDelay(guard.delayMs);
+    }
+    await sendEvolutionMedia(instanceName, phoneDigits, media, mediaType, options);
+}
+
+export async function guardedSendPoll(
+    instanceName: string,
+    phoneDigits: string,
+    question: string,
+    pollOptions: readonly string[],
+    selectableCount: number = 1,
+): Promise<void> {
+    const orgId = await resolveOrgId(instanceName);
+    if (orgId) {
+        const guard = checkSendGuard(orgId, phoneDigits);
+        if (!guard.allowed) {
+            logWarn(`[send-guard] BLOCKED poll to ${phoneDigits}: ${guard.reason}`);
+            return;
+        }
+        await applyDelay(guard.delayMs);
+    }
+    await sendEvolutionPoll(instanceName, phoneDigits, question, pollOptions, selectableCount);
+}

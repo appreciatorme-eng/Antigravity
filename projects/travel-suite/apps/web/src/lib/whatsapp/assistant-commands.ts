@@ -15,7 +15,7 @@ import type { Database } from "@/lib/database.types";
 import type { ContextSnapshot } from "@/lib/assistant/types";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendEvolutionText } from "@/lib/whatsapp-evolution.server";
+import { guardedSendText } from "@/lib/whatsapp-evolution.server";
 import { getCachedContextSnapshot } from "@/lib/assistant/context-engine";
 import { formatBriefingMessage } from "@/lib/assistant/briefing";
 import {
@@ -165,7 +165,7 @@ export async function routeAssistantCommand(
     }
 
     if (reply) {
-        await sendEvolutionText(instanceName, groupJid, reply).catch((err) => {
+        await guardedSendText(instanceName, groupJid, reply).catch((err) => {
             logError("[assistant-commands] Failed to send reply", err);
         });
 
