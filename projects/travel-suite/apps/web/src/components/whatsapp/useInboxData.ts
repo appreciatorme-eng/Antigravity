@@ -78,6 +78,8 @@ export interface InboxData {
   setBusinessOnly: (value: boolean) => void;
   addToCrmModal: { open: boolean; phone: string; name: string };
   setAddToCrmModal: (val: { open: boolean; phone: string; name: string }) => void;
+  startNewEmail: () => void;
+  updateComposeRecipient: (email: string) => void;
 }
 
 export interface UseInboxDataOptions {
@@ -241,6 +243,35 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     void loadWhatsAppHealth();
   }, [loadLiveConversations, loadWhatsAppHealth]);
 
+  // Silent email-only refresh — merges fresh Gmail data without touching WhatsApp
+  const refreshEmailConversations = useCallback(async () => {
+    if (isDemoMode || !gmailConnected) return;
+    try {
+      const response = await fetch('/api/admin/email/conversations', { cache: 'no-store' });
+      if (!response.ok) return;
+      const data = (await response.json()) as {
+        data?: { conversations?: ChannelConversation[]; gmailConnected?: boolean };
+      };
+      const freshEmail = data.data?.conversations ?? [];
+      setGmailConnected(data.data?.gmailConnected ?? false);
+
+      setConversations((prev) => {
+        const waConvs = prev.filter((c) => c.channel !== 'email');
+        const merged = [...waConvs, ...freshEmail];
+        return applyReadTracking(merged);
+      });
+    } catch {
+      // Silent failure — email polling shouldn't disrupt inbox
+    }
+  }, [isDemoMode, gmailConnected]);
+
+  // Poll Gmail every 60 seconds (no realtime subscription available for email)
+  useEffect(() => {
+    if (isDemoMode || !gmailConnected) return;
+    const interval = setInterval(() => { void refreshEmailConversations(); }, 60_000);
+    return () => clearInterval(interval);
+  }, [isDemoMode, gmailConnected, refreshEmailConversations]);
+
   useEffect(() => {
     if (isDemoMode) return;
 
@@ -362,6 +393,13 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     if (!conversation) return false;
 
     if (conversation.channel === 'email') {
+      const isCompose = convId.startsWith('compose_email_');
+
+      if (isCompose && !conversation.contact.email) {
+        toast.error('Enter a recipient email address');
+        return false;
+      }
+
       const optimisticId = `pending_email_${Date.now()}`;
       const optimisticMsg: Message = {
         id: optimisticId,
@@ -405,14 +443,24 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
         }
 
         const sentMsg = payload.data.message;
-        setConversations((prev) =>
-          prev.map((c) =>
-            c.id === convId
-              ? { ...c, messages: c.messages.map((m) => (m.id === optimisticId ? sentMsg : m)) }
-              : c,
-          ),
-        );
+
+        if (isCompose) {
+          // Remove compose draft — real thread will appear after refresh
+          setConversations((prev) => prev.filter((c) => c.id !== convId));
+          setSelectedId(null);
+          toast.success('Email sent');
+        } else {
+          setConversations((prev) =>
+            prev.map((c) =>
+              c.id === convId
+                ? { ...c, messages: c.messages.map((m) => (m.id === optimisticId ? sentMsg : m)) }
+                : c,
+            ),
+          );
+        }
         onSendMessage?.(convId, message);
+        // Refresh email threads after a short delay so Gmail reflects the sent message
+        setTimeout(() => { void refreshEmailConversations(); }, 3_000);
         return true;
       } catch (error) {
         setConversations((prev) =>
@@ -528,6 +576,45 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     setContextModal({ type: action as ContextActionType, tripName });
   }
 
+  const COMPOSE_ID_PREFIX = 'compose_email_';
+
+  function startNewEmail() {
+    const composeId = `${COMPOSE_ID_PREFIX}${Date.now()}`;
+    const composeConv: ChannelConversation = {
+      id: composeId,
+      channel: 'email',
+      unreadCount: 0,
+      contact: {
+        id: `compose_contact_${Date.now()}`,
+        name: 'New Email',
+        phone: '',
+        type: 'client',
+        email: '',
+      },
+      messages: [],
+    };
+
+    setConversations((prev) => [composeConv, ...prev]);
+    setSelectedId(composeId);
+  }
+
+  function updateComposeRecipient(email: string) {
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === selectedId && c.id.startsWith(COMPOSE_ID_PREFIX)
+          ? {
+              ...c,
+              contact: {
+                ...c.contact,
+                name: email || 'New Email',
+                email,
+              },
+            }
+          : c,
+      ),
+    );
+  }
+
   return {
     conversations,
     selectedId,
@@ -566,5 +653,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     setBusinessOnly,
     addToCrmModal,
     setAddToCrmModal,
+    startNewEmail,
+    updateComposeRecipient,
   };
 }

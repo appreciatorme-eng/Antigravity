@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Search, X, Mail, MessageCircle, Building2 } from 'lucide-react';
+import { Search, X, Mail, MessageCircle, Building2, PenSquare } from 'lucide-react';
 import type { ChannelConversation } from './inbox-mock-data';
 import { ErrorSection } from '@/components/ui/ErrorSection';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -25,6 +25,7 @@ interface ConversationListPanelProps {
   onSelect: (id: string) => void;
   onRetry: () => void;
   onConnectWhatsApp: () => void;
+  onNewEmail?: () => void;
 }
 
 export function ConversationListPanel({
@@ -40,6 +41,7 @@ export function ConversationListPanel({
   onSelect,
   onRetry,
   onConnectWhatsApp,
+  onNewEmail,
 }: ConversationListPanelProps) {
   const [search, setSearch] = useState('');
   const [filterTab, setFilterTab] = useState<FilterTab>('all');
@@ -160,6 +162,16 @@ export function ConversationListPanel({
             {label}
           </button>
         ))}
+        {channelFilter === 'email' && gmailConnected && onNewEmail && (
+          <button
+            type="button"
+            onClick={onNewEmail}
+            className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 transition-colors"
+            title="Compose new email"
+          >
+            <PenSquare className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
 
       {/* Filter tabs */}

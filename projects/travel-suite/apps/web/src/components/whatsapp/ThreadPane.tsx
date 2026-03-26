@@ -44,6 +44,9 @@ interface ThreadPaneProps {
 
   // Context actions (create proposal, etc.)
   onContextAction?: (action: ContextAction, tripName?: string) => void;
+
+  // Email compose
+  onRecipientChange?: (email: string) => void;
 }
 
 export function ThreadPane({
@@ -66,6 +69,7 @@ export function ThreadPane({
   onRefreshSmartReplies,
   contactPresence,
   onContextAction,
+  onRecipientChange,
 }: ThreadPaneProps) {
   const analytics = useAnalytics();
   const isDisconnected = !isDemoMode && whatsAppStatus !== 'connected';
@@ -198,6 +202,7 @@ export function ThreadPane({
           onRefreshSmartReplies={onRefreshSmartReplies}
           contactPresence={contactPresence}
           onContextAction={onContextAction}
+          onRecipientChange={onRecipientChange}
         />
       </ErrorSection>
     </div>

@@ -273,6 +273,7 @@ interface MessageThreadProps {
   onRefreshSmartReplies?: () => void;
   onContextAction?: (action: ContextAction, tripName?: string) => void;
   contactPresence?: string | null;
+  onRecipientChange?: (email: string) => void;
 }
 
 export function MessageThread({
@@ -287,14 +288,17 @@ export function MessageThread({
   onRefreshSmartReplies,
   onContextAction,
   contactPresence,
+  onRecipientChange,
 }: MessageThreadProps) {
   const [inputText, setInputText] = useState('');
   const [emailSubject, setEmailSubject] = useState('');
   const [showCanned, setShowCanned] = useState(false);
   const [modalMode, setModalMode] = useState<ActionMode | null>(null);
   const [messageLang, setMessageLang] = useState('English');
+  const [composeToEmail, setComposeToEmail] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isEmail = channel === 'email';
+  const isCompose = conversation?.id.startsWith('compose_email_') ?? false;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -309,6 +313,8 @@ export function MessageThread({
       : lastSubject;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setEmailSubject(replySubject);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setComposeToEmail(conversation.contact.email ?? '');
   }, [isEmail, conversation?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -555,6 +561,22 @@ export function MessageThread({
 
         {isEmail ? (
           <div className="space-y-2">
+            {isCompose && (
+              <div className="flex items-center gap-2 bg-white/8 border border-white/15 rounded-xl px-3 py-2">
+                <Mail className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                <input
+                  type="email"
+                  value={composeToEmail}
+                  onChange={(e) => {
+                    setComposeToEmail(e.target.value);
+                    onRecipientChange?.(e.target.value);
+                  }}
+                  placeholder="To: recipient@example.com"
+                  className="flex-1 bg-transparent text-sm text-white placeholder-slate-500 outline-none min-w-0"
+                  autoFocus
+                />
+              </div>
+            )}
             <div className="flex items-center gap-2 bg-white/8 border border-white/15 rounded-xl px-3 py-2">
               <AtSign className="w-3.5 h-3.5 text-blue-400 shrink-0" />
               <input

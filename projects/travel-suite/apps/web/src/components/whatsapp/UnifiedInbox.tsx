@@ -111,6 +111,7 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
         onSelect={inbox.handleSelect}
         onRetry={() => { void inbox.loadLiveConversations(); }}
         onConnectWhatsApp={() => inbox.setIsWaConnectOpen(true)}
+        onNewEmail={inbox.startNewEmail}
       />
 
       {/* MIDDLE: Message Thread */}
@@ -137,6 +138,7 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
           return inbox.presenceMap.get(waId)?.presence ?? null;
         })()}
         onContextAction={inbox.handleContextAction}
+        onRecipientChange={inbox.updateComposeRecipient}
       />
 
       {/* RIGHT: Context Panel */}
