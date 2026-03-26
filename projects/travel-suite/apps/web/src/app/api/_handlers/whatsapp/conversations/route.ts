@@ -41,6 +41,20 @@ function phoneCandidates(waId: string): string[] {
     return Array.from(new Set([waId, `+${waId}`]));
 }
 
+/** Reject push names that are just phone numbers, "Você", "You", etc. */
+function isValidPushName(name: string, waId: string): boolean {
+    const trimmed = name.trim();
+    if (!trimmed) return false;
+    // Reject if it's the contact's own phone number
+    if (trimmed === waId || trimmed === `+${waId}`) return false;
+    // Reject common garbage values from Baileys
+    const garbage = ["você", "you", "unknown", "null", "undefined"];
+    if (garbage.includes(trimmed.toLowerCase())) return false;
+    // Reject if it's all digits (another phone number variant)
+    if (/^\+?\d[\d\s-]+$/.test(trimmed)) return false;
+    return true;
+}
+
 // ---------------------------------------------------------------------------
 // GET
 // ---------------------------------------------------------------------------
@@ -108,7 +122,7 @@ export async function GET(request: Request): Promise<Response> {
               const meta = ev.metadata as Record<string, unknown> | null;
               if (meta?.direction !== "in") continue;
               const pn = (meta?.push_name ?? meta?.pushName) as string | undefined;
-              if (pn && typeof pn === "string") {
+              if (pn && typeof pn === "string" && isValidPushName(pn, waId)) {
                   pushNameMap.set(waId, pn);
                   break;
               }
