@@ -1,1 +1,844 @@
-PLACEHOLDER
+'use client';
+
+import { useState, useRef, useEffect } from 'react';
+import {
+  Phone,
+  MoreVertical,
+  Paperclip,
+  Smile,
+  Send,
+  RefreshCw,
+  MapPin,
+  FileText,
+  CreditCard,
+  Navigation,
+  UserCheck,
+  Zap,
+  Check,
+  CheckCheck,
+  Mic,
+  Image as ImageIcon,
+  Mail,
+  AtSign,
+  Globe,
+  Sparkles,
+  BarChart3,
+  Loader2,
+  Wand2,
+} from 'lucide-react';
+import Image from 'next/image';
+import { toast } from 'sonner';
+import { CannedResponses } from './CannedResponses';
+import type { ActionMode, ConversationContact } from './whatsapp.types';
+import {
+  ActionPickerModal,
+} from './ActionPickerModal';
+import type { ContextAction } from './unified-inbox-shared';
+import { LANGUAGES } from '@/app/clients/types';
+
+export type MessageType = 'text' | 'location' | 'image' | 'voice' | 'system' | 'document';
+export type MessageStatus = 'sent' | 'delivered' | 'read' | 'pending';
+export type MessageDirection = 'in' | 'out';
+
+export interface Message {
+  id: string;
+  type: MessageType;
+  direction: MessageDirection;
+  body?: string;
+  timestamp: string; // e.g. "10:42 AM"
+  status?: MessageStatus;
+  subject?: string;
+  isAutomated?: boolean;
+  // location
+  lat?: number;
+  lng?: number;
+  locationLabel?: string;
+  // image
+  imageUrl?: string;
+  imageCaption?: string;
+  // voice
+  voiceDuration?: string;
+  transcript?: string;
+  tripIntent?: {
+    destination?: string | null;
+    dates?: string | null;
+    paxCount?: number | null;
+    budget?: string | null;
+    summary?: string;
+  };
+  // document
+  docName?: string;
+  docSize?: string;
+  // email attachments
+  attachments?: Array<{
+    attachmentId: string;
+    filename: string;
+    mimeType: string;
+    size: number;
+  }>;
+}
+
+export interface Conversation {
+  id: string;
+  contact: ConversationContact;
+  messages: Message[];
+  unreadCount: number;
+}
+
+const AVATAR_COLORS: Record<string, string> = {
+  client: '#6366f1',
+  driver: '#f59e0b',
+  lead: '#ec4899',
+};
+
+function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .slice(0, 2)
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase();
+}
+
+function ReadReceipt({ status }: { status?: MessageStatus }) {
+  if (!status || status === 'pending') return null;
+  if (status === 'sent') return <Check className="w-3 h-3 text-slate-400" />;
+  if (status === 'delivered') return <CheckCheck className="w-3 h-3 text-slate-400" />;
+  if (status === 'read') return <CheckCheck className="w-3 h-3 text-blue-400" />;
+  return null;
+}
+
+function detectLabel(messages: Message[]): ConversationContact['label'] | null {
+  const recentText = messages
+    .slice(-5)
+    .map((m) => m.body?.toLowerCase() ?? '')
+    .join(' ');
+
+  if (recentText.includes('payment') || recentText.includes('pay') || recentText.includes('invoice') || recentText.includes('gst')) return 'payment';
+  if (messages.some((m) => m.type === 'location')) return 'location';
+  if (recentText.includes('confirm') || recentText.includes('book')) return 'confirmed';
+  return null;
+}
+
+function MessageBubble({ msg, isEmailChannel }: { msg: Message; isEmailChannel?: boolean }) {
+  const isOut = msg.direction === 'out';
+
+  if (msg.type === 'system') {
+    return (
+      <div className="flex justify-center my-2">
+        <span className="text-[10px] text-slate-500 bg-white/5 border border-white/10 rounded-full px-3 py-1">
+          {msg.body}
+        </span>
+      </div>
+    );
+  }
+
+  const outBg = isEmailChannel
+    ? 'rounded-tr-sm bg-blue-500/15 border border-blue-500/25'
+    : 'rounded-tr-sm bg-[#25D366]/15 border border-[#25D366]/25';
+
+  return (
+    <div className={`flex ${isOut ? 'justify-end' : 'justify-start'} mb-1`}>
+      <div
+        className={`max-w-[75%] rounded-2xl px-3 py-2 shadow-sm ${
+          isOut ? outBg : 'rounded-tl-sm bg-white/8 border border-white/10'
+        }`}
+      >
+        {msg.subject && (
+          <p className="text-xs font-bold text-blue-300 mb-1 flex items-center gap-1">
+            <Mail className="w-3 h-3" />
+            {msg.subject}
+          </p>
+        )}
+        {msg.type === 'location' && (
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center shrink-0">
+              <MapPin className="w-4 h-4 text-blue-400" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-white">{msg.locationLabel ?? 'Location Shared'}</p>
+              <button className="text-xs text-blue-400 hover:underline">View Location</button>
+            </div>
+          </div>
+        )}
+
+        {msg.type === 'voice' && (
+          <div className="min-w-[200px] max-w-[280px]">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-[#25D366]/30 flex items-center justify-center shrink-0">
+                <Mic className="w-4 h-4 text-[#25D366]" />
+              </div>
+              <div className="flex-1">
+                <div className="h-1.5 bg-white/20 rounded-full">
+                  <div className="h-full w-2/3 bg-[#25D366]/60 rounded-full" />
+                </div>
+              </div>
+              <span className="text-xs text-slate-400 font-mono shrink-0">{msg.voiceDuration ?? '0:12'}</span>
+            </div>
+            {msg.transcript && (
+              <p className="mt-2 text-xs text-slate-300 leading-relaxed italic border-l-2 border-[#25D366]/30 pl-2">
+                {msg.transcript}
+              </p>
+            )}
+            {msg.tripIntent?.summary && (
+              <div className="mt-2 p-2 rounded-lg bg-violet-500/10 border border-violet-500/20">
+                <p className="text-[10px] font-bold text-violet-300 uppercase tracking-wider mb-1">Trip Intent Detected</p>
+                <p className="text-xs text-violet-200">{msg.tripIntent.summary}</p>
+                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                  {msg.tripIntent.destination && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300">{msg.tripIntent.destination}</span>
+                  )}
+                  {msg.tripIntent.paxCount && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300">{msg.tripIntent.paxCount} pax</span>
+                  )}
+                  {msg.tripIntent.budget && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300">{msg.tripIntent.budget}</span>
+                  )}
+                  {msg.tripIntent.dates && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-violet-500/20 text-violet-300">{msg.tripIntent.dates}</span>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {msg.type === 'image' && (
+          <div className="mb-1">
+            <div className="relative w-48 h-32 rounded-lg bg-slate-700 flex items-center justify-center overflow-hidden">
+              {msg.imageUrl ? (
+                <Image src={msg.imageUrl} alt={msg.imageCaption || "Shared image"} fill className="object-cover" />
+              ) : (
+                <ImageIcon className="w-8 h-8 text-slate-500" />
+              )}
+            </div>
+            {msg.imageCaption && (
+              <p className="text-xs text-slate-300 mt-1">{msg.imageCaption}</p>
+            )}
+          </div>
+        )}
+
+        {msg.type === 'document' && (
+          <div className="flex items-center gap-2 min-w-[160px]">
+            <div className="w-8 h-8 rounded-lg bg-slate-600 flex items-center justify-center shrink-0">
+              <FileText className="w-4 h-4 text-slate-300" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-white truncate">{msg.docName ?? 'Document'}</p>
+              <p className="text-[10px] text-slate-400">{msg.docSize ?? '—'}</p>
+            </div>
+          </div>
+        )}
+
+        {msg.type === 'text' && msg.body && (
+          <p className="text-sm text-slate-100 leading-relaxed whitespace-pre-wrap">{msg.body}</p>
+        )}
+
+        {/* Attachment chips */}
+        {msg.attachments && msg.attachments.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {msg.attachments.map((att) => (
+              <a
+                key={att.attachmentId}
+                href={`/api/admin/email/attachment?messageId=${msg.id}&attachmentId=${encodeURIComponent(att.attachmentId)}&filename=${encodeURIComponent(att.filename)}&mimeType=${encodeURIComponent(att.mimeType)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/8 border border-white/15 hover:bg-white/15 transition-colors text-xs text-slate-200"
+              >
+                <Paperclip className="w-3 h-3 text-slate-400 shrink-0" />
+                <span className="truncate max-w-[140px]">{att.filename}</span>
+                <span className="text-[10px] text-slate-500 shrink-0">
+                  {att.size < 1024 ? `${att.size}B` : att.size < 1048576 ? `${Math.round(att.size / 1024)}KB` : `${(att.size / 1048576).toFixed(1)}MB`}
+                </span>
+              </a>
+            ))}
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className={`flex items-center gap-1 mt-1 ${isOut ? 'justify-end' : 'justify-start'}`}>
+          {msg.isAutomated && (
+            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+              Auto
+            </span>
+          )}
+          <span className="text-[9px] text-slate-500 font-medium">{msg.timestamp}</span>
+          {isOut && !isEmailChannel && <ReadReceipt status={msg.status} />}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AutoLabelChip({ label }: { label: ConversationContact['label'] }) {
+  if (!label) return null;
+  const configs = {
+    lead: { icon: '🆕', text: 'Lead', bg: 'bg-purple-500/20 text-purple-300 border-purple-500/30' },
+    payment: { icon: '💰', text: 'Payment', bg: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30' },
+    location: { icon: '📍', text: 'Location', bg: 'bg-blue-500/20 text-blue-300 border-blue-500/30' },
+    confirmed: { icon: '✅', text: 'Confirmed', bg: 'bg-green-500/20 text-green-300 border-green-500/30' },
+  };
+  const c = configs[label];
+  if (!c) return null;
+  return (
+    <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${c.bg}`}>
+      {c.icon} {c.text}
+    </span>
+  );
+}
+
+interface MessageThreadProps {
+  conversation: Conversation | null;
+  channel?: 'whatsapp' | 'email';
+  onSendMessage?: (
+    conversationId: string,
+    message: string,
+    subject?: string,
+    files?: File[],
+    ccBcc?: { cc?: string; bcc?: string },
+  ) => boolean | void | Promise<boolean | void>;
+  externalInput?: string;
+  onExternalInputConsumed?: () => void;
+  smartReplies?: string[];
+  smartRepliesLoading?: boolean;
+  onUseSmartReply?: (suggestion: string) => void;
+  onRefreshSmartReplies?: () => void;
+  onContextAction?: (action: ContextAction, tripName?: string) => void;
+  contactPresence?: string | null;
+  onRecipientChange?: (email: string) => void;
+}
+
+export function MessageThread({
+  conversation,
+  channel = 'whatsapp',
+  onSendMessage,
+  externalInput,
+  onExternalInputConsumed,
+  smartReplies = [],
+  smartRepliesLoading = false,
+  onUseSmartReply,
+  onRefreshSmartReplies,
+  onContextAction,
+  contactPresence,
+  onRecipientChange,
+}: MessageThreadProps) {
+  const [inputText, setInputText] = useState('');
+  const [emailSubject, setEmailSubject] = useState('');
+  const [showCanned, setShowCanned] = useState(false);
+  const [modalMode, setModalMode] = useState<ActionMode | null>(null);
+  const [messageLang, setMessageLang] = useState('English');
+  const [composeToEmail, setComposeToEmail] = useState('');
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const [showCcBcc, setShowCcBcc] = useState(false);
+  const [ccField, setCcField] = useState('');
+  const [bccField, setBccField] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isEmail = channel === 'email';
+  const isCompose = conversation?.id.startsWith('compose_email_') ?? false;
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [conversation?.messages.length]);
+
+  // Pre-fill email subject from the conversation's last subject (for replies)
+  useEffect(() => {
+    if (!isEmail || !conversation) return;
+    const lastSubject = [...conversation.messages].reverse().find((m) => m.subject)?.subject ?? '';
+    const replySubject = lastSubject && !lastSubject.startsWith('Re:')
+      ? `Re: ${lastSubject}`
+      : lastSubject;
+    setEmailSubject(replySubject);
+    setComposeToEmail(conversation.contact.email ?? '');
+  }, [isEmail, conversation?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (externalInput && externalInput.trim()) {
+      setInputText(externalInput);
+      onExternalInputConsumed?.();
+    }
+  }, [externalInput, onExternalInputConsumed]);
+
+  function handleSend() {
+    const text = inputText.trim();
+    if (!text || !conversation) return;
+    void onSendMessage?.(conversation.id, text, isEmail ? emailSubject || undefined : undefined, isEmail ? attachedFiles : undefined, isEmail ? { cc: ccField.trim() || undefined, bcc: bccField.trim() || undefined } : undefined);
+    setInputText('');
+    if (isEmail) {
+      setEmailSubject('');
+      setAttachedFiles([]);
+      setCcField('');
+      setBccField('');
+      setShowCcBcc(false);
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) {
+    if (e.key === 'Enter' && !e.shiftKey && !isEmail) {
+      e.preventDefault();
+      handleSend();
+    }
+  }
+
+  function handleCannedSelect(msg: string) {
+    setInputText(msg);
+    setShowCanned(false);
+  }
+
+  const [extractingTrip, setExtractingTrip] = useState(false);
+
+  async function handleExtractTripIntent() {
+    if (!conversation || extractingTrip) return;
+    setExtractingTrip(true);
+    try {
+      const emailMessages = conversation.messages
+        .filter((m) => m.body?.trim())
+        .slice(-25)
+        .map((m) => ({
+          direction: m.direction,
+          body: m.body!.trim(),
+          subject: m.subject,
+        }));
+      if (emailMessages.length === 0) {
+        toast.error('No messages to extract trip details from');
+        return;
+      }
+      const res = await fetch('/api/admin/email/extract-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: emailMessages,
+          contactEmail: conversation.contact.email,
+          contactName: conversation.contact.name,
+          contactPhone: conversation.contact.phone || undefined,
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        toast.error(result?.error || 'Failed to extract trip intent');
+        return;
+      }
+      const { draftId, extracted } = result.data ?? {};
+      const parts = [
+        extracted?.destination && `Destination: ${extracted.destination}`,
+        extracted?.travel_dates && `Dates: ${extracted.travel_dates}`,
+        extracted?.group_size && `Group: ${extracted.group_size} pax`,
+        extracted?.budget_inr && `Budget: ₹${extracted.budget_inr.toLocaleString('en-IN')}`,
+      ].filter(Boolean);
+      toast.success(
+        parts.length > 0
+          ? `Trip extracted — ${parts.join(', ')}`
+          : 'Draft created (no trip details found in emails)',
+      );
+      if (draftId) {
+        onContextAction?.('create-proposal', extracted?.destination ?? undefined);
+      }
+    } catch {
+      toast.error('Failed to extract trip intent');
+    } finally {
+      setExtractingTrip(false);
+    }
+  }
+
+  function handleUseSuggestion(suggestion: string) {
+    setInputText(suggestion);
+    onUseSmartReply?.(suggestion);
+  }
+
+  function handleModalSend(message: string, subject?: string) {
+    if (!conversation) return;
+    onSendMessage?.(conversation.id, message, subject);
+    const labels: Record<ActionMode, string> = {
+      itinerary: 'Itinerary',
+      payment: 'Payment request',
+      driver: 'Driver details',
+      location: 'Location request',
+      'send-document': 'Document',
+      'send-location': 'Location pin',
+      'send-poll': 'Poll',
+    };
+    toast.success(`${labels[modalMode ?? 'itinerary']} sent to ${conversation.contact.name}`);
+  }
+
+  if (!conversation) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-4 bg-white/2">
+        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#25D366]/10 to-blue-500/10 flex items-center justify-center">
+          <Mail className="w-10 h-10 text-slate-500" />
+        </div>
+        <div className="text-center">
+          <p className="text-slate-300 font-semibold text-lg">Select a conversation</p>
+          <p className="text-slate-500 text-sm mt-1">Pick a chat from the left to start messaging</p>
+        </div>
+      </div>
+    );
+  }
+
+  const { contact, messages } = conversation;
+  const detectedLabel = detectLabel(messages) ?? contact.label;
+  const avatarColor = AVATAR_COLORS[contact.type] ?? '#6366f1';
+  const initials = getInitials(contact.name);
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Chat Header */}
+      <div
+        className="shrink-0 h-16 flex items-center justify-between px-4 border-b border-white/10"
+        style={{ background: 'rgba(10,22,40,0.8)', backdropFilter: 'blur(12px)' }}
+      >
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white"
+              style={{ background: avatarColor }}
+            >
+              {initials}
+            </div>
+            {(contact.isOnline || contactPresence === 'available' || contactPresence === 'composing') && (
+              <span className="absolute bottom-0 right-0 w-3 h-3 bg-[#25D366] border-2 border-[#0a1628] rounded-full" />
+            )}
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              {isEmail ? (
+                <Mail className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+              ) : (
+                <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-[#25D366] shrink-0">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                </svg>
+              )}
+              <h2 className="text-sm font-bold text-white">{contact.name}</h2>
+              {detectedLabel && <AutoLabelChip label={detectedLabel} />}
+            </div>
+            <div className="flex items-center gap-2 text-[11px] text-slate-400">
+              {contactPresence === 'composing' ? (
+                <span className="text-[#25D366] font-medium animate-pulse">typing...</span>
+              ) : contactPresence === 'recording' ? (
+                <span className="text-[#25D366] font-medium animate-pulse">recording audio...</span>
+              ) : contactPresence === 'available' ? (
+                <span className="text-[#25D366] font-medium">online</span>
+              ) : (
+                <span>{isEmail && contact.email ? contact.email : contact.phone}</span>
+              )}
+              {contact.trip && (
+                <>
+                  <span>·</span>
+                  <span className="text-[#25D366]">{contact.trip}</span>
+                </>
+              )}
+              {contact.isOnline ? (
+                <span className="text-[#25D366]">· Online</span>
+              ) : contact.lastSeen ? (
+                <span>· Last seen {contact.lastSeen}</span>
+              ) : null}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-1">
+          {isEmail && (
+            <button
+              onClick={handleExtractTripIntent}
+              disabled={extractingTrip}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-500/15 border border-violet-500/25 hover:bg-violet-500/25 text-violet-300 text-xs font-semibold transition-colors active:scale-95 disabled:opacity-50"
+              title="Extract trip details from this email thread using AI"
+            >
+              {extractingTrip ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
+              <span>Extract Trip</span>
+            </button>
+          )}
+          <button
+            onClick={() => onContextAction?.('create-proposal')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors active:scale-95 ${
+              isEmail
+                ? 'bg-blue-500/15 border border-blue-500/25 hover:bg-blue-500/25 text-blue-300'
+                : 'bg-[#25D366]/15 border border-[#25D366]/25 hover:bg-[#25D366]/25 text-[#25D366]'
+            }`}
+            title="Create Proposal"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Create Proposal</span>
+          </button>
+          <button className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors">
+            <Phone className="w-4 h-4 text-slate-400" />
+          </button>
+          <button className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors">
+            <MoreVertical className="w-4 h-4 text-slate-400" />
+          </button>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto px-4 py-3 custom-scrollbar space-y-0.5">
+        {messages.map((msg, i) => {
+          const prevMsg = messages[i - 1];
+          const showDateSep =
+            i === 0 || (prevMsg && prevMsg.timestamp.includes('Yesterday') !== msg.timestamp.includes('Yesterday'));
+          return (
+            <div key={msg.id}>
+              {showDateSep && i === 0 && (
+                <div className="flex justify-center my-3">
+                  <span className="text-[10px] font-semibold text-slate-500 bg-white/5 border border-white/10 rounded-full px-3 py-1 uppercase tracking-wider">
+                    Today
+                  </span>
+                </div>
+              )}
+              <MessageBubble msg={msg} isEmailChannel={isEmail} />
+            </div>
+          );
+        })}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Trip Actions Bar — all channels */}
+      <div className="shrink-0 px-4 pt-2 pb-1 flex items-center gap-2 overflow-x-auto">
+        {([
+          { mode: 'itinerary' as ActionMode, label: 'Send Itinerary', icon: <FileText className="w-3.5 h-3.5" />, accent: 'hover:border-indigo-500/40 hover:text-indigo-300' },
+          { mode: 'payment' as ActionMode, label: 'Payment Link', icon: <CreditCard className="w-3.5 h-3.5" />, accent: 'hover:border-pink-500/40 hover:text-pink-300' },
+          { mode: 'location' as ActionMode, label: 'Request Location', icon: <Navigation className="w-3.5 h-3.5" />, accent: 'hover:border-blue-500/40 hover:text-blue-300' },
+          { mode: 'driver' as ActionMode, label: 'Driver Details', icon: <UserCheck className="w-3.5 h-3.5" />, accent: 'hover:border-amber-500/40 hover:text-amber-300' },
+          { mode: 'send-document' as ActionMode, label: 'Send PDF', icon: <Paperclip className="w-3.5 h-3.5" />, accent: 'hover:border-emerald-500/40 hover:text-emerald-300' },
+          { mode: 'send-location' as ActionMode, label: 'Send Location', icon: <MapPin className="w-3.5 h-3.5" />, accent: 'hover:border-cyan-500/40 hover:text-cyan-300' },
+          { mode: 'send-poll' as ActionMode, label: 'Send Poll', icon: <BarChart3 className="w-3.5 h-3.5" />, accent: 'hover:border-violet-500/40 hover:text-violet-300' },
+        ]).map(({ mode, label, icon, accent }) => (
+          <button
+            key={mode}
+            onClick={() => setModalMode(mode)}
+            className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/8 hover:bg-white/12 border border-white/10 text-slate-300 text-xs font-medium transition-all active:scale-95 ${accent}`}
+          >
+            {icon}
+            {label}
+          </button>
+        ))}
+
+      </div>
+
+      {/* Language selector — own row so it's always visible */}
+      <div className="shrink-0 px-4 pb-1 flex justify-end">
+        <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/8 border border-white/10 text-slate-300 text-xs font-medium hover:bg-white/12 transition-all">
+          <Globe className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+          <select
+            value={messageLang}
+            onChange={(e) => setMessageLang(e.target.value)}
+            className="bg-transparent text-slate-300 text-xs font-medium appearance-none cursor-pointer outline-none"
+            title="Message language"
+          >
+          {LANGUAGES.map((lang) => (
+            <option key={lang} value={lang} className="bg-slate-900 text-slate-200">{lang}</option>
+          ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Input Area */}
+      <div className="shrink-0 px-4 pb-4 pt-2 border-t border-white/10">
+        {(smartRepliesLoading || smartReplies.length > 0) && (
+          <div className="mb-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Smart Replies
+              </p>
+              <button
+                type="button"
+                onClick={onRefreshSmartReplies}
+                className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-medium text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
+              >
+                <RefreshCw className={`h-3 w-3 ${smartRepliesLoading ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {smartRepliesLoading
+                ? Array.from({ length: 3 }, (_, index) => (
+                    <div
+                      key={`smart-reply-skeleton-${index}`}
+                      className="h-9 w-32 animate-pulse rounded-full bg-white/10"
+                    />
+                  ))
+                : smartReplies.map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      type="button"
+                      onClick={() => handleUseSuggestion(suggestion)}
+                      className={`rounded-full border border-white/10 bg-white/10 px-3 py-2 text-left text-xs font-medium text-slate-200 transition-all ${isEmail ? 'hover:border-blue-500/40 hover:bg-blue-500/10' : 'hover:border-[#25D366]/40 hover:bg-[#25D366]/10'} hover:text-white`}
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+            </div>
+          </div>
+        )}
+
+        {isEmail ? (
+          <div className="space-y-2">
+            {isCompose && (
+              <div className="flex items-center gap-2 bg-white/8 border border-white/15 rounded-xl px-3 py-2">
+                <Mail className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                <input
+                  type="email"
+                  value={composeToEmail}
+                  onChange={(e) => {
+                    setComposeToEmail(e.target.value);
+                    onRecipientChange?.(e.target.value);
+                  }}
+                  placeholder="To: recipient@example.com"
+                  className="flex-1 bg-transparent text-sm text-white placeholder-slate-500 outline-none min-w-0"
+                  autoFocus
+                />
+              </div>
+            )}
+            <div className="flex items-center gap-2 bg-white/8 border border-white/15 rounded-xl px-3 py-2">
+              <AtSign className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+              <input
+                type="text"
+                value={emailSubject}
+                onChange={(e) => setEmailSubject(e.target.value)}
+                placeholder="Subject..."
+                className="flex-1 bg-transparent text-sm text-white placeholder-slate-500 outline-none min-w-0"
+              />
+              {!showCcBcc && (
+                <button
+                  type="button"
+                  onClick={() => setShowCcBcc(true)}
+                  className="text-[10px] text-slate-500 hover:text-slate-300 font-medium shrink-0"
+                >
+                  CC/BCC
+                </button>
+              )}
+            </div>
+            {showCcBcc && (
+              <div className="flex gap-2">
+                <div className="flex-1 flex items-center gap-2 bg-white/8 border border-white/15 rounded-xl px-3 py-1.5">
+                  <span className="text-[10px] text-slate-500 font-semibold shrink-0">CC</span>
+                  <input type="email" value={ccField} onChange={(e) => setCcField(e.target.value)} placeholder="cc@example.com" className="flex-1 bg-transparent text-xs text-white placeholder-slate-500 outline-none min-w-0" />
+                </div>
+                <div className="flex-1 flex items-center gap-2 bg-white/8 border border-white/15 rounded-xl px-3 py-1.5">
+                  <span className="text-[10px] text-slate-500 font-semibold shrink-0">BCC</span>
+                  <input type="email" value={bccField} onChange={(e) => setBccField(e.target.value)} placeholder="bcc@example.com" className="flex-1 bg-transparent text-xs text-white placeholder-slate-500 outline-none min-w-0" />
+                </div>
+              </div>
+            )}
+            <div className="bg-white/8 border border-white/15 rounded-xl px-3 py-2">
+              <textarea
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Compose your email..."
+                rows={4}
+                className="w-full bg-transparent text-sm text-white placeholder-slate-500 outline-none resize-none leading-relaxed"
+              />
+              {/* Attached files */}
+              {attachedFiles.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-2">
+                  {attachedFiles.map((f, i) => (
+                    <span key={`${f.name}-${i}`} className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-blue-500/10 border border-blue-500/20 text-[11px] text-blue-300">
+                      <Paperclip className="w-3 h-3" />
+                      <span className="truncate max-w-[120px]">{f.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => setAttachedFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                        className="ml-0.5 text-blue-400 hover:text-white"
+                      >
+                        &times;
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-center justify-between pt-2 border-t border-white/10 mt-1">
+                <div className="flex items-center gap-1">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files) {
+                        setAttachedFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
+                      }
+                      e.target.value = '';
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-1 hover:bg-white/10 rounded-lg transition-colors"
+                    title="Attach files"
+                  >
+                    <Paperclip className="w-4 h-4 text-slate-400" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setModalMode('payment')}
+                    className="p-1 hover:bg-white/10 rounded-lg transition-colors"
+                    title="Insert Payment Link"
+                  >
+                    <CreditCard className="w-4 h-4 text-pink-400" />
+                  </button>
+                </div>
+                <button
+                  onClick={handleSend}
+                  disabled={!inputText.trim()}
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold transition-colors"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  Send Email
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 bg-white/8 border border-white/15 rounded-2xl px-3 py-2">
+            <button className="p-1 hover:bg-white/10 rounded-lg transition-colors shrink-0">
+              <Paperclip className="w-4 h-4 text-slate-400" />
+            </button>
+            <input
+              type="text"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Type a message..."
+              className="flex-1 bg-transparent text-sm text-white placeholder-slate-500 outline-none min-w-0"
+            />
+            <button className="p-1 hover:bg-white/10 rounded-lg transition-colors shrink-0">
+              <Smile className="w-4 h-4 text-slate-400" />
+            </button>
+            <button
+              onClick={() => setShowCanned(true)}
+              className="p-1 hover:bg-white/10 rounded-lg transition-colors shrink-0"
+              title="Canned Responses"
+            >
+              <Zap className="w-4 h-4 text-[#25D366]" />
+            </button>
+            <button
+              onClick={handleSend}
+              disabled={!inputText.trim()}
+              className="w-8 h-8 rounded-full bg-[#25D366] hover:bg-[#1FAF54] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-colors shrink-0"
+            >
+              <Send className="w-3.5 h-3.5 text-white" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      <CannedResponses
+        isOpen={showCanned}
+        onClose={() => setShowCanned(false)}
+        onSelect={handleCannedSelect}
+        defaultLanguage={messageLang}
+      />
+
+      {modalMode && conversation && (
+        <ActionPickerModal
+          isOpen={!!modalMode}
+          mode={modalMode}
+          contact={conversation.contact}
+          channel={isEmail ? 'email' : 'whatsapp'}
+          onSend={handleModalSend}
+          onClose={() => setModalMode(null)}
+          language={messageLang}
+        />
+      )}
+    </div>
+  );
+}
