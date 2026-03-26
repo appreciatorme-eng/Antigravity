@@ -169,6 +169,12 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
 
   const totalUnread = conversations.reduce((a, c) => a + c.unreadCount, 0);
 
+  const emailApiParams = useMemo(() => {
+    const params = new URLSearchParams({ folder: emailFolder });
+    if (emailSearchQuery) params.set('q', emailSearchQuery);
+    return params.toString();
+  }, [emailFolder, emailSearchQuery]);
+
   // --- Data loading ---
 
   const loadLiveConversations = useCallback(async () => {
@@ -656,12 +662,6 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     setEmailNextPageToken(null);
     // Trigger re-fetch by updating state — loadLiveConversations depends on emailSearchQuery
   }
-
-  const emailApiParams = useMemo(() => {
-    const params = new URLSearchParams({ folder: emailFolder });
-    if (emailSearchQuery) params.set('q', emailSearchQuery);
-    return params.toString();
-  }, [emailFolder, emailSearchQuery]);
 
   function startNewEmail() {
     const composeId = `${COMPOSE_ID_PREFIX}${Date.now()}`;
