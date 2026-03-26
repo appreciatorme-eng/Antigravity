@@ -46,10 +46,15 @@ export function useUpdateItinerary() {
         mutationFn: async ({ id, updates }: { id: string; updates: { client_id?: string | null; budget?: string } }) => {
             const supabase = createClient();
             const { data: { session } } = await supabase.auth.getSession();
+
+            if (!session?.access_token) {
+                throw new Error("Not authenticated");
+            }
+
             const response = await fetch(`/api/itineraries/${id}`, {
                 method: "PATCH",
                 headers: {
-                    "Authorization": `Bearer ${session?.access_token}`,
+                    "Authorization": `Bearer ${session.access_token}`,
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify(updates),
@@ -113,10 +118,15 @@ export function useFeedbackAction() {
         }: FeedbackAction & { itineraryId: string }) => {
             const supabase = createClient();
             const { data: { session } } = await supabase.auth.getSession();
+
+            if (!session?.access_token) {
+                throw new Error("Not authenticated");
+            }
+
             const response = await fetch(`/api/itineraries/${itineraryId}/feedback`, {
                 method: "POST",
                 headers: {
-                    "Authorization": `Bearer ${session?.access_token}`,
+                    "Authorization": `Bearer ${session.access_token}`,
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify(action),

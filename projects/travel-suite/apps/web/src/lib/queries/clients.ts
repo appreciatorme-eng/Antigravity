@@ -27,9 +27,13 @@ export function useClients() {
             const supabase = createClient();
             const { data: { session } } = await supabase.auth.getSession();
 
+            if (!session?.access_token) {
+                throw new Error("Not authenticated");
+            }
+
             const response = await fetch("/api/admin/clients", {
                 headers: {
-                    "Authorization": `Bearer ${session?.access_token}`
+                    "Authorization": `Bearer ${session.access_token}`
                 }
             });
 
@@ -50,9 +54,13 @@ export function useClient(id: string) {
             const supabase = createClient();
             const { data: { session } } = await supabase.auth.getSession();
 
+            if (!session?.access_token) {
+                throw new Error("Not authenticated");
+            }
+
             const response = await fetch(`/api/admin/clients/${id}`, {
                 headers: {
-                    "Authorization": `Bearer ${session?.access_token}`
+                    "Authorization": `Bearer ${session.access_token}`
                 }
             });
 

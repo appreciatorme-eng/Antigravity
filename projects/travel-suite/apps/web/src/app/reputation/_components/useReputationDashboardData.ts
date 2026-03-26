@@ -51,29 +51,37 @@ interface CampaignResponse {
 }
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10_000);
 
-  const payload = (await response.json().catch(() => ({}))) as {
-    data?: T;
-    error?: string;
-  };
+  try {
+    const response = await fetch(url, {
+      ...init,
+      signal: controller.signal,
+      headers: {
+        "Content-Type": "application/json",
+        ...(init?.headers ?? {}),
+      },
+    });
 
-  if (!response.ok) {
-    throw new Error(payload.error || `Request failed with status ${response.status}`);
+    const payload = (await response.json().catch(() => ({}))) as {
+      data?: T;
+      error?: string;
+    };
+
+    if (!response.ok) {
+      throw new Error(payload.error || `Request failed with status ${response.status}`);
+    }
+
+    // Unwrap { data, error } envelope used by apiSuccess/apiError helpers
+    if ("data" in payload && payload.data !== undefined) {
+      return payload.data as T;
+    }
+
+    return payload as T;
+  } finally {
+    clearTimeout(timeout);
   }
-
-  // Unwrap { data, error } envelope used by apiSuccess/apiError helpers
-  if ("data" in payload && payload.data !== undefined) {
-    return payload.data as T;
-  }
-
-  return payload as T;
 }
 
 export function useReputationDashboardData() {
@@ -98,15 +106,7 @@ export function useReputationDashboardData() {
       setError(null);
 
       try {
-        const [
-          dashboardData,
-          trendsData,
-          topicsData,
-          campaignsData,
-          connectionsData,
-          brandVoiceData,
-          widgetsData,
-        ] = await Promise.all([
+        const results = await Promise.allSettled([
           fetchJson<ReputationDashboardData>("/api/reputation/dashboard"),
           fetchJson<TrendsResponse>("/api/reputation/analytics/trends?period=30d"),
           fetchJson<TopicsResponse>("/api/reputation/analytics/topics?period=30d"),
@@ -116,13 +116,32 @@ export function useReputationDashboardData() {
           fetchJson<WidgetsResponse>("/api/reputation/widget/config"),
         ]);
 
-        setDashboard(dashboardData);
-        setTrends(trendsData.trends ?? []);
-        setTopics(topicsData.topics ?? []);
-        setCampaigns(campaignsData.campaigns ?? []);
-        setConnections(connectionsData.connections ?? []);
-        setBrandVoice(brandVoiceData.brandVoice ?? null);
-        setWidgets(widgetsData.widgets ?? []);
+        const [
+          dashboardResult,
+          trendsResult,
+          topicsResult,
+          campaignsResult,
+          connectionsResult,
+          brandVoiceResult,
+          widgetsResult,
+        ] = results;
+
+        if (dashboardResult.status === "fulfilled") setDashboard(dashboardResult.value);
+        setTrends(trendsResult.status === "fulfilled" ? trendsResult.value.trends ?? [] : []);
+        setTopics(topicsResult.status === "fulfilled" ? topicsResult.value.topics ?? [] : []);
+        setCampaigns(campaignsResult.status === "fulfilled" ? campaignsResult.value.campaigns ?? [] : []);
+        setConnections(connectionsResult.status === "fulfilled" ? connectionsResult.value.connections ?? [] : []);
+        setBrandVoice(brandVoiceResult.status === "fulfilled" ? brandVoiceResult.value.brandVoice ?? null : null);
+        setWidgets(widgetsResult.status === "fulfilled" ? widgetsResult.value.widgets ?? [] : []);
+
+        // Only show error if the primary dashboard endpoint failed
+        if (dashboardResult.status === "rejected") {
+          const message =
+            dashboardResult.reason instanceof Error
+              ? dashboardResult.reason.message
+              : "Failed to load dashboard";
+          setError(message);
+        }
       } catch (loadError) {
         const message =
           loadError instanceof Error ? loadError.message : "Failed to load dashboard";

@@ -42,7 +42,8 @@ export async function GET() {
       .from("reputation_review_campaigns")
       .select(REPUTATION_REVIEW_CAMPAIGN_SELECT)
       .eq("organization_id", profile.organization_id)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(200);
     const campaigns = campaignsData as unknown as CampaignRow[] | null;
 
     if (error) {

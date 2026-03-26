@@ -42,9 +42,13 @@ export function useTrips(statusFilter: string = 'all', searchQuery: string = '')
             const supabase = createClient();
             const { data: { session } } = await supabase.auth.getSession();
 
+            if (!session?.access_token) {
+                throw new Error("Not authenticated");
+            }
+
             const response = await fetch(`/api/trips?status=${encodeURIComponent(statusFilter)}&search=${encodeURIComponent(searchQuery)}`, {
                 headers: {
-                    "Authorization": `Bearer ${session?.access_token}`,
+                    "Authorization": `Bearer ${session.access_token}`,
                 },
             });
 
@@ -64,9 +68,14 @@ export function useTrip(id: string) {
         queryFn: async () => {
             const supabase = createClient();
             const { data: { session } } = await supabase.auth.getSession();
+
+            if (!session?.access_token) {
+                throw new Error("Not authenticated");
+            }
+
             const response = await fetch(`/api/trips/${id}`, {
                 headers: {
-                    "Authorization": `Bearer ${session?.access_token}`,
+                    "Authorization": `Bearer ${session.access_token}`,
                 },
             });
             if (!response.ok) throw new Error("Failed to fetch trip details");
@@ -109,10 +118,15 @@ export function useCloneTrip() {
         mutationFn: async (id: string) => {
             const supabase = createClient();
             const { data: { session } } = await supabase.auth.getSession();
+
+            if (!session?.access_token) {
+                throw new Error("Not authenticated");
+            }
+
             const response = await fetch(`/api/trips/${id}/clone`, {
                 method: "POST",
                 headers: {
-                    "Authorization": `Bearer ${session?.access_token}`,
+                    "Authorization": `Bearer ${session.access_token}`,
                 },
             });
 
