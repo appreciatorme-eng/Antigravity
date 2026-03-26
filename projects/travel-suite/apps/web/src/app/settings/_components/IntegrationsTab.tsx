@@ -72,16 +72,17 @@ export function IntegrationsTab({
                 supabase
                     .from('social_connections')
                     .select('platform, platform_page_id')
-                    .in('platform', ['google', 'linkedin', 'instagram', 'facebook']),
+                    .in('platform', ['google', 'imap', 'linkedin', 'instagram', 'facebook']),
                 fetch('/api/settings/upi'),
                 fetch('/api/integrations/places'),
             ]);
 
             if (connections) {
                 const platforms = new Set(connections.map((c: { platform: string }) => c.platform));
-                setIsGmailConnected(platforms.has('google'));
-                const googleConn = connections.find((c: { platform: string; platform_page_id?: string }) => c.platform === 'google') as { platform_page_id?: string } | undefined;
-                if (googleConn?.platform_page_id) setGmailEmail(googleConn.platform_page_id);
+                const hasEmail = platforms.has('google') || platforms.has('imap');
+                setIsGmailConnected(hasEmail);
+                const emailConn = connections.find((c: { platform: string; platform_page_id?: string }) => c.platform === 'google' || c.platform === 'imap') as { platform_page_id?: string } | undefined;
+                if (emailConn?.platform_page_id) setGmailEmail(emailConn.platform_page_id);
                 setIsLinkedInConnected(platforms.has('linkedin'));
                 setIsInstagramConnected(platforms.has('instagram') || platforms.has('facebook'));
             }
@@ -182,10 +183,16 @@ export function IntegrationsTab({
                     const res = await fetch('/api/admin/email/disconnect', { method: 'POST' });
                     if (res.ok) {
                         setIsGmailConnected(false);
-                        toast({ title: 'Gmail disconnected', description: 'You can reconnect anytime.' });
+                        setGmailEmail('');
+                        toast({ title: 'Email disconnected', description: 'You can reconnect anytime.' });
                     } else {
                         toast({ title: 'Failed to disconnect', description: 'Please try again.', variant: 'error' });
                     }
+                }}
+                onEmailConnected={(connectedEmail) => {
+                    setIsGmailConnected(true);
+                    setGmailEmail(connectedEmail);
+                    toast({ title: 'Email connected!', description: `${connectedEmail} is now linked.`, variant: 'success' });
                 }}
             />
 

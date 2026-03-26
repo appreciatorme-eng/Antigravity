@@ -1,13 +1,14 @@
 /* ------------------------------------------------------------------
  * GET /api/admin/email/conversations
- * Returns Gmail threads as ChannelConversation[] for the unified inbox.
+ * Returns email threads as ChannelConversation[] for the unified inbox.
+ * Supports both Gmail API (OAuth) and IMAP/SMTP (app password).
  * Requires admin role with organization.
  * ------------------------------------------------------------------ */
 
 import { requireAdmin } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { fetchGmailThreads, type GmailMessageParsed } from "@/lib/email/gmail-read";
-import { GmailAuthExpiredError } from "@/lib/email/gmail-auth";
+import { GmailAuthExpiredError, getEmailProvider } from "@/lib/email/gmail-auth";
+import type { EmailMessage } from "@/lib/email/provider";
 import { apiSuccess, apiError } from "@/lib/api/response";
 import { logError } from "@/lib/observability/logger";
 
@@ -76,7 +77,7 @@ function hashColor(str: string): string {
 }
 
 function mapMessage(
-    msg: GmailMessageParsed,
+    msg: EmailMessage,
     connectedEmail: string,
 ): InboxMessage {
     const isOutbound = msg.fromEmail.toLowerCase() === connectedEmail.toLowerCase();
@@ -100,7 +101,7 @@ function mapMessage(
 }
 
 function threadsToConversations(
-    threads: readonly import("@/lib/email/gmail-read").GmailThread[],
+    threads: readonly import("@/lib/email/provider").EmailThread[],
     connectedEmail: string,
     profileMap: ReadonlyMap<string, CrmProfile>,
 ): InboxConversation[] {
@@ -165,18 +166,17 @@ export async function GET(request: Request): Promise<Response> {
             50,
         );
 
-        const folder = url.searchParams.get("folder") ?? "inbox";
+        const folder = (url.searchParams.get("folder") ?? "inbox") as "inbox" | "sent" | "starred";
         const searchQuery = url.searchParams.get("q") ?? "";
-        const FOLDER_QUERIES: Record<string, string> = {
-            inbox: "in:inbox newer_than:30d",
-            sent: "in:sent newer_than:30d",
-            starred: "is:starred newer_than:30d",
-        };
-        const baseQuery = FOLDER_QUERIES[folder] ?? FOLDER_QUERIES.inbox;
-        const query = searchQuery ? `${baseQuery} ${searchQuery}` : baseQuery;
 
-        const result = await fetchGmailThreads(orgId, {
-            query,
+        const provider = await getEmailProvider(orgId);
+        if (!provider) {
+            return apiSuccess({ conversations: [], gmailConnected: false });
+        }
+
+        const result = await provider.fetchThreads({
+            folder,
+            query: searchQuery || undefined,
             maxResults,
             pageToken,
         });
@@ -185,9 +185,7 @@ export async function GET(request: Request): Promise<Response> {
             return apiSuccess({ conversations: [], gmailConnected: false });
         }
 
-        // Get the connected email to determine in/out direction
-        const { getGmailEmail } = await import("@/lib/email/gmail-send");
-        const connectedEmail = await getGmailEmail(orgId) ?? "";
+        const connectedEmail = provider.getEmail();
 
         // Collect unique counterpart emails for CRM matching
         const contactEmails = new Set<string>();

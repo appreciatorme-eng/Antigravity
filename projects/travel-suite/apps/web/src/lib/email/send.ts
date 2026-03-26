@@ -3,7 +3,7 @@ import { render } from "@react-email/render";
 import type { ReactElement } from "react";
 import { logError, logEvent } from "@/lib/observability/logger";
 import { FROM_ADDRESS, FROM_NAME, resend } from "@/lib/email/resend";
-import { sendViaGmail } from "@/lib/email/gmail-send";
+import { getEmailProvider } from "@/lib/email/gmail-auth";
 
 export interface EmailAttachment {
   filename: string;
@@ -51,7 +51,8 @@ export async function sendEmail(params: {
 
 /**
  * Send an email on behalf of an operator's organization.
- * Tries Gmail first (if connected), falls back to Resend.
+ * Tries the operator's connected email first (Gmail or IMAP/SMTP),
+ * falls back to Resend.
  *
  * This ensures emails come from the operator's own address when possible,
  * not from noreply@tripbuilt.com.
@@ -66,22 +67,28 @@ export async function sendEmailForOrg(params: {
   try {
     const html = await render(params.react);
 
-    // Try Gmail first
-    const gmailSent = await sendViaGmail(
-      params.orgId,
-      params.to,
-      params.subject,
-      html,
-      params.attachments,
-    );
+    // Try operator's connected email first (Gmail OAuth or IMAP/SMTP)
+    const provider = await getEmailProvider(params.orgId);
+    if (provider) {
+      const messageId = await provider.sendEmail({
+        to: params.to,
+        subject: params.subject,
+        htmlBody: html,
+        attachments: params.attachments?.map((att) => ({
+          filename: att.filename,
+          content: typeof att.content === "string" ? att.content : Buffer.from(att.content).toString("base64"),
+          contentType: att.contentType ?? "application/octet-stream",
+        })),
+      });
 
-    if (gmailSent) {
-      logEvent("info", `[email] Sent via Gmail for org ${params.orgId} to ${params.to}`);
-      return true;
+      if (messageId) {
+        logEvent("info", `[email] Sent via ${provider.constructor.name} for org ${params.orgId} to ${params.to}`);
+        return true;
+      }
     }
 
     // Fall back to Resend
-    logEvent("info", `[email] Gmail not available for org ${params.orgId}, falling back to Resend`);
+    logEvent("info", `[email] Operator email not available for org ${params.orgId}, falling back to Resend`);
     return sendEmail({
       to: params.to,
       subject: params.subject,

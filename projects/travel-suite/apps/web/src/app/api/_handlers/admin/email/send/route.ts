@@ -1,13 +1,13 @@
 /* ------------------------------------------------------------------
  * POST /api/admin/email/send
- * Send an email via the operator's connected Gmail account.
- * Requires admin role with organization + connected Gmail.
+ * Send an email via the operator's connected email account.
+ * Supports Gmail API (OAuth) and IMAP/SMTP (app password).
+ * Requires admin role with organization + connected email.
  * ------------------------------------------------------------------ */
 
 import { requireAdmin } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendViaGmail } from "@/lib/email/gmail-send";
-import { getGmailConnection } from "@/lib/email/gmail-auth";
+import { getEmailProvider } from "@/lib/email/gmail-auth";
 import { apiSuccess, apiError } from "@/lib/api/response";
 import { logError } from "@/lib/observability/logger";
 
@@ -78,6 +78,12 @@ export async function POST(request: Request): Promise<Response> {
             }
             : undefined;
 
+        // Get email provider
+        const provider = await getEmailProvider(orgId);
+        if (!provider) {
+            return apiError("Email not connected. Connect your email in Settings.", 422);
+        }
+
         // Append org signature
         const admin = createAdminClient();
         const { data: org } = await admin
@@ -85,28 +91,28 @@ export async function POST(request: Request): Promise<Response> {
             .select("name")
             .eq("id", orgId)
             .single();
-        const gmailConn = await getGmailConnection(orgId);
-        const senderEmail = gmailConn?.email ?? "";
+        const senderEmail = provider.getEmail();
         const orgName = org?.name ?? "";
         const signatureHtml = orgName || senderEmail
             ? `<div style="margin-top:24px;padding-top:12px;border-top:1px solid #e5e7eb;font-family:sans-serif;font-size:12px;color:#6b7280">${escapeHtml(orgName)}${orgName && senderEmail ? "<br/>" : ""}${escapeHtml(senderEmail)}</div>`
             : "";
 
-        // Convert base64 attachments to EmailAttachment format
-        const emailAttachments = raw.attachments?.map((att) => ({
-            filename: att.filename,
-            content: att.content, // already base64
-            contentType: att.contentType,
-        }));
-
-        const recipients = raw.cc || raw.bcc
-            ? { to: raw.to, cc: raw.cc, bcc: raw.bcc }
-            : raw.to;
-
-        const messageId = await sendViaGmail(orgId, recipients, raw.subject, htmlBody + signatureHtml, emailAttachments, replyHeaders);
+        const messageId = await provider.sendEmail({
+            to: raw.to,
+            cc: raw.cc,
+            bcc: raw.bcc,
+            subject: raw.subject,
+            htmlBody: htmlBody + signatureHtml,
+            attachments: raw.attachments?.map((att) => ({
+                filename: att.filename,
+                content: att.content,
+                contentType: att.contentType,
+            })),
+            replyHeaders,
+        });
 
         if (!messageId) {
-            return apiError("Gmail not connected or send failed. Connect Gmail in Settings.", 422);
+            return apiError("Failed to send email. Please try again.", 422);
         }
 
         return apiSuccess({
