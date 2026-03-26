@@ -256,10 +256,13 @@ async function loadBroadcastContacts(
   const sessionName = connectionResult.data?.session_name;
   if (!sessionName) return [] as BroadcastContact[];
 
+  // Use prefix match to include contacts from all sessions (before/after reconnect)
+  const baseSessionName = sessionName.replace(/_[a-z0-9]{4}$/, "");
+
   const { data, error } = await admin
     .from("whatsapp_webhook_events")
     .select("wa_id, metadata, received_at")
-    .filter("metadata->>session", "eq", sessionName)
+    .filter("metadata->>session", "like", `${baseSessionName}%`)
     .not("wa_id", "is", null)
     .order("received_at", { ascending: false })
     .limit(300);
