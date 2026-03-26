@@ -23,9 +23,9 @@ const contactCounters = new Map<string, ContactCounter>();
 // Limits
 // ---------------------------------------------------------------------------
 
-const HOURLY_LIMIT = 50;
-const DAILY_LIMIT = 200;
-const PER_CONTACT_DAILY_LIMIT = 10;
+const HOURLY_LIMIT = 80;
+const DAILY_LIMIT = 500;
+const PER_CONTACT_DAILY_LIMIT = 30;
 const MIN_DELAY_MS = 1000;
 const MAX_DELAY_MS = 3000;
 const NEW_CONTACT_EXTRA_DELAY_MS = 5000;
@@ -101,10 +101,14 @@ function getOrResetContactCounter(
 /**
  * Check whether a message to the given recipient is allowed under rate limits.
  * Increments counters on success. Returns delay to apply before sending.
+ *
+ * @param automated - true for bot/chatbot/broadcast sends (adds human-like delays),
+ *                    false for manual operator replies from inbox (no delay, no penalty)
  */
 export function checkSendGuard(
     orgId: string,
     recipientWaId: string,
+    automated: boolean = true,
 ): SendGuardResult {
     const now = Date.now();
     const orgCounter = getOrResetOrgCounter(orgId, now);
@@ -112,7 +116,8 @@ export function checkSendGuard(
     const contactKey = `${orgId}:${recipientWaId}`;
     const contactCounter = getOrResetContactCounter(contactKey, now);
     const isNewContact = contactCounter.dailyCount === 0;
-    const weight = isNewContact && !isGroup ? NEW_CONTACT_WEIGHT : 1;
+    // Only penalise new contacts for automated sends
+    const weight = automated && isNewContact && !isGroup ? NEW_CONTACT_WEIGHT : 1;
 
     // --- Org hourly check ---
     if (orgCounter.hourlyCount + weight > HOURLY_LIMIT) {
@@ -157,6 +162,11 @@ export function checkSendGuard(
     contactCounters.set(contactKey, nextContactCounter);
 
     // --- Calculate delay ---
+    // Manual sends (automated=false) get zero delay — operator shouldn't wait
+    if (!automated) {
+        return { allowed: true, delayMs: 0 };
+    }
+
     const baseDelay = randomDelay();
     const extraDelay = isNewContact && !isGroup ? NEW_CONTACT_EXTRA_DELAY_MS : 0;
 

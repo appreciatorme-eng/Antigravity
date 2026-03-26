@@ -60,7 +60,7 @@ export async function POST(request: Request) {
       ? `${parsed.data.subject}\n\n${parsed.data.message}`
       : parsed.data.message;
 
-    await guardedSendText(connection.session_name, digits, text);
+    await guardedSendText(connection.session_name, digits, text, false);
 
     const sentAt = new Date().toISOString();
     const providerMessageId = crypto.randomUUID();

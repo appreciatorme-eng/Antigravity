@@ -634,10 +634,11 @@ export async function guardedSendText(
     instanceName: string,
     phoneDigits: string,
     text: string,
+    automated: boolean = true,
 ): Promise<void> {
     const orgId = await resolveOrgId(instanceName);
     if (orgId) {
-        const guard = checkSendGuard(orgId, phoneDigits);
+        const guard = checkSendGuard(orgId, phoneDigits, automated);
         if (!guard.allowed) {
             logWarn(`[send-guard] BLOCKED text to ${phoneDigits}: ${guard.reason}`);
             return;
@@ -653,10 +654,11 @@ export async function guardedSendMedia(
     media: string,
     mediaType: "image" | "document" | "audio" | "video",
     options?: { caption?: string; fileName?: string; mimetype?: string },
+    automated: boolean = true,
 ): Promise<void> {
     const orgId = await resolveOrgId(instanceName);
     if (orgId) {
-        const guard = checkSendGuard(orgId, phoneDigits);
+        const guard = checkSendGuard(orgId, phoneDigits, automated);
         if (!guard.allowed) {
             logWarn(`[send-guard] BLOCKED media to ${phoneDigits}: ${guard.reason}`);
             return;
@@ -672,10 +674,11 @@ export async function guardedSendPoll(
     question: string,
     pollOptions: readonly string[],
     selectableCount: number = 1,
+    automated: boolean = true,
 ): Promise<void> {
     const orgId = await resolveOrgId(instanceName);
     if (orgId) {
-        const guard = checkSendGuard(orgId, phoneDigits);
+        const guard = checkSendGuard(orgId, phoneDigits, automated);
         if (!guard.allowed) {
             logWarn(`[send-guard] BLOCKED poll to ${phoneDigits}: ${guard.reason}`);
             return;

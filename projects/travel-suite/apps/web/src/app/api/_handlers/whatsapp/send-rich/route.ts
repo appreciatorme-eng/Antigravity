@@ -90,7 +90,7 @@ export async function POST(request: Request) {
             const { mediaUrl, mediaType, caption, fileName, mimetype } = parsed.data;
             await guardedSendMedia(sessionName, digits, mediaUrl, mediaType, {
                 caption, fileName, mimetype,
-            });
+            }, false);
             bodyPreview = caption || `[${mediaType === "document" ? "Document" : mediaType === "image" ? "Image" : "Media"}: ${fileName ?? "file"}]`;
             eventType = mediaType === "document" ? "document" : mediaType === "image" ? "image" : "text";
         } else if (parsed.data.type === "location") {
@@ -100,7 +100,7 @@ export async function POST(request: Request) {
             eventType = "location";
         } else if (parsed.data.type === "poll") {
             const { question, options, selectableCount } = parsed.data;
-            await guardedSendPoll(sessionName, digits, question, options, selectableCount ?? 1);
+            await guardedSendPoll(sessionName, digits, question, options, selectableCount ?? 1, false);
             bodyPreview = `📊 Poll: ${question}\n${options.map((o, i) => `${i + 1}. ${o}`).join("\n")}`;
             eventType = "text";
         }
