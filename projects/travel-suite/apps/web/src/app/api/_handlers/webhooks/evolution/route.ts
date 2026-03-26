@@ -47,6 +47,13 @@ import { routeAssistantCommand } from "@/lib/whatsapp/assistant-commands";
 const groupCreationInProgress = new Set<string>();
 
 // ---------------------------------------------------------------------------
+// In-memory cooldown: notify operator once per contact, not per message
+// ---------------------------------------------------------------------------
+
+const leadNotificationCooldown = new Map<string, number>();
+const LEAD_NOTIFY_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -343,12 +350,17 @@ export async function POST(request: Request): Promise<Response> {
         }
 
         // Notify operator about new inbound message (best-effort, non-blocking)
+        // Cooldown: only notify once per contact per 30 minutes to avoid spam
         if ((connection as { assistant_group_jid?: string }).assistant_group_jid) {
-            void notifyNewLead(
-                organizationId,
-                senderPhone,
-                messageText,
-            );
+            const lastNotified = leadNotificationCooldown.get(waId) ?? 0;
+            if (Date.now() - lastNotified > LEAD_NOTIFY_COOLDOWN_MS) {
+                leadNotificationCooldown.set(waId, Date.now());
+                void notifyNewLead(
+                    organizationId,
+                    senderPhone,
+                    messageText,
+                );
+            }
         }
 
         // Skip chatbot for personal contacts — only auto-reply to business contacts.
