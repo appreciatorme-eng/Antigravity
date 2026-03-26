@@ -222,7 +222,7 @@ export async function GET(request: Request): Promise<Response> {
       );
 
       // Build ChannelConversation array (one entry per unique wa_id)
-      const conversations = filteredWaIds.map((waId, idx) => {
+      const conversations = filteredWaIds.map((waId) => {
           // Reverse so messages render oldest → newest in the thread view
           const evs = (grouped.get(waId) ?? []).slice().reverse();
           const phone = "+" + waId;
@@ -262,7 +262,7 @@ export async function GET(request: Request): Promise<Response> {
           const unreadCount = messages.filter((m) => m.direction === "in").length;
 
           return {
-              id: `wpp_${waId}_${idx}`,
+              id: `wpp_${waId}`,
               channel: "whatsapp" as const,
               chatbotSession,
               contact: {
