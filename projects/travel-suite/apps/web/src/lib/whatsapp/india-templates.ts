@@ -1066,6 +1066,19 @@ export const HINDI_QUICK_REPLIES: string[] = [
   'Aapki madad karne ke liye hum hain! 🙏',
 ];
 
+// ─── EMAIL QUICK REPLIES ─────────────────────────────────────────────────────
+
+export const EMAIL_QUICK_REPLIES: string[] = [
+  'Thank you for your inquiry! I will get back to you with a customized itinerary within 24 hours.',
+  'Please find attached the detailed itinerary for your upcoming trip. Let me know if you need any changes.',
+  'Your booking has been confirmed. Please find the details below.',
+  'Just following up on the proposal I sent earlier. Would love to know your thoughts!',
+  'Thank you for choosing us! We hope you had a wonderful trip. We would appreciate your feedback.',
+  'We have received your payment. A confirmation receipt has been sent to your email.',
+  'Could you please share the passport copies for all travellers at your earliest convenience?',
+  'Here is the updated quote as discussed. Let me know if everything looks good to proceed.',
+];
+
 export const TEMPLATE_CATEGORIES_DISPLAY: Record<TemplateCategory, string> = {
   BOOKING_CONFIRMATION: 'Booking Confirmation',
   DRIVER_ASSIGNMENT: 'Driver Assignment',

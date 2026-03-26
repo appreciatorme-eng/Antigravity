@@ -1,6 +1,6 @@
 'use client';
 
-import { Mail, MessageCircle } from 'lucide-react';
+import { Clock, Mail, MessageCircle } from 'lucide-react';
 
 import {
   type Conversation,
@@ -12,7 +12,7 @@ import type { ChannelConversation } from './inbox-mock-data';
 
 export type FilterTab = 'all' | 'clients' | 'drivers' | 'leads';
 export type ChannelFilter = 'all' | 'whatsapp' | 'email';
-export type SortMode = 'recent' | 'unread' | 'priority';
+export type SortMode = 'recent' | 'unread' | 'priority' | 'needs-followup';
 export type ContextAction = ContextActionType | 'assign-driver' | 'request-payment' | 'add-to-crm';
 
 export const AVATAR_COLORS: Record<ConversationContact['type'], string> = {
@@ -28,6 +28,23 @@ export function getInitials(name: string): string {
     .map((n) => n[0])
     .join('')
     .toUpperCase();
+}
+
+/**
+ * Returns true when the last message in the conversation is inbound
+ * and appears to be older than 24 hours (heuristic based on timestamp strings).
+ */
+export function needsFollowUp(conv: { messages: Message[] }): boolean {
+  const lastMsg = conv.messages[conv.messages.length - 1];
+  if (!lastMsg || lastMsg.direction !== 'in') return false;
+
+  const ts = lastMsg.timestamp;
+  // Timestamps containing "Yesterday", "ago", or a date-like pattern indicate 24h+
+  if (ts.includes('Yesterday') || ts.includes('ago')) return true;
+  // Match date patterns like "Mar 12" or "12/03" that indicate older messages
+  if (/\b\d{1,2}[/\-]\d{1,2}\b/.test(ts) || /\b[A-Z][a-z]{2}\s+\d{1,2}\b/.test(ts)) return true;
+
+  return false;
 }
 
 export function getLastMessage(conv: Conversation): Message | undefined {
@@ -126,7 +143,15 @@ export function UnifiedInboxConversationItem({
           {preview}
         </p>
         <div className="flex items-center justify-between mt-1.5">
-          <LabelChip label={conv.contact.label} />
+          <div className="flex items-center gap-1.5">
+            <LabelChip label={conv.contact.label} />
+            {needsFollowUp(conv) && (
+              <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-full">
+                <Clock className="w-2.5 h-2.5" />
+                Follow up
+              </span>
+            )}
+          </div>
           {isUnread && (
             <span
               className="text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center shrink-0"

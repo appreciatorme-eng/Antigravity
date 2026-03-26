@@ -7,6 +7,7 @@ import {
   WHATSAPP_TEMPLATES,
   QUICK_REPLIES,
   HINDI_QUICK_REPLIES,
+  EMAIL_QUICK_REPLIES,
   TEMPLATE_CATEGORIES_DISPLAY,
   type WhatsAppTemplate,
   type TemplateCategory,
@@ -17,6 +18,7 @@ interface CannedResponsesProps {
   onClose: () => void;
   onSelect: (message: string) => void;
   defaultLanguage?: string;
+  channel?: 'whatsapp' | 'email';
 }
 
 type TabType = 'english' | 'hindi';
@@ -111,9 +113,24 @@ function TemplateCard({
   );
 }
 
-export function CannedResponses({ isOpen, onClose, onSelect, defaultLanguage }: CannedResponsesProps) {
+export function CannedResponses({
+  isOpen,
+  onClose,
+  onSelect,
+  defaultLanguage,
+  channel = 'whatsapp',
+}: CannedResponsesProps) {
+  const isEmail = channel === 'email';
+
+  // Accent color helpers
+  const accentColor = isEmail ? 'bg-blue-500' : 'bg-[#25D366]';
+  const accentHover = isEmail ? 'hover:bg-blue-600' : 'hover:bg-[#1FAF54]';
+  const accentIconColor = isEmail ? 'text-blue-400' : 'text-[#25D366]';
+  const accentBg = isEmail ? 'bg-blue-500/20' : 'bg-[#25D366]/20';
+
   // Derive tab from language — no need for separate state sync
-  const derivedTab: TabType = defaultLanguage && defaultLanguage !== 'English' ? 'hindi' : 'english';
+  const derivedTab: TabType =
+    defaultLanguage && defaultLanguage !== 'English' ? 'hindi' : 'english';
   const [tabOverride, setTabOverride] = useState<TabType | null>(null);
   const [prevLang, setPrevLang] = useState(defaultLanguage);
   // Reset override when language changes externally
@@ -145,15 +162,19 @@ export function CannedResponses({ isOpen, onClose, onSelect, defaultLanguage }: 
         (q === '' ||
           t.name.toLowerCase().includes(q) ||
           t.body.toLowerCase().includes(q) ||
-          t.preview.toLowerCase().includes(q))
+          t.preview.toLowerCase().includes(q)),
     );
   }, [search, tab]);
 
   const filteredQuickReplies = useMemo(() => {
     const q = search.toLowerCase();
-    const replies = tab === 'hindi' ? HINDI_QUICK_REPLIES : QUICK_REPLIES;
+    const replies = isEmail
+      ? EMAIL_QUICK_REPLIES
+      : tab === 'hindi'
+        ? HINDI_QUICK_REPLIES
+        : QUICK_REPLIES;
     return q === '' ? replies : replies.filter((r) => r.toLowerCase().includes(q));
-  }, [search, tab]);
+  }, [search, tab, isEmail]);
 
   const groupedTemplates = useMemo(() => {
     const groups: Partial<Record<TemplateCategory, WhatsAppTemplate[]>> = {};
@@ -170,6 +191,9 @@ export function CannedResponses({ isOpen, onClose, onSelect, defaultLanguage }: 
     setCopiedId(key);
     setTimeout(() => setCopiedId(null), 1500);
   }
+
+  // For email channel, always show quick replies (no templates sub-tab)
+  const effectiveSubTab: SubTab = isEmail ? 'quick' : subTab;
 
   return (
     <AnimatePresence>
@@ -195,7 +219,8 @@ export function CannedResponses({ isOpen, onClose, onSelect, defaultLanguage }: 
             <div
               className="rounded-t-2xl border border-white/10 border-b-0 overflow-hidden flex flex-col"
               style={{
-                background: 'linear-gradient(135deg, rgba(15,23,42,0.97) 0%, rgba(10,22,40,0.99) 100%)',
+                background:
+                  'linear-gradient(135deg, rgba(15,23,42,0.97) 0%, rgba(10,22,40,0.99) 100%)',
                 backdropFilter: 'blur(24px)',
                 maxHeight: '80vh',
               }}
@@ -208,8 +233,10 @@ export function CannedResponses({ isOpen, onClose, onSelect, defaultLanguage }: 
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-[#25D366]/20 flex items-center justify-center">
-                    <Zap className="w-4 h-4 text-[#25D366]" />
+                  <div
+                    className={`w-8 h-8 rounded-lg ${accentBg} flex items-center justify-center`}
+                  >
+                    <Zap className={`w-4 h-4 ${accentIconColor}`} />
                   </div>
                   <h2 className="text-base font-bold text-white">Quick Replies</h2>
                 </div>
@@ -221,23 +248,28 @@ export function CannedResponses({ isOpen, onClose, onSelect, defaultLanguage }: 
                 </button>
               </div>
 
-              {/* Language Tabs */}
-              <div className="flex gap-1 px-5 pb-3">
-                {(['english', 'hindi'] as TabType[]).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => { setTab(t); setSearch(''); }}
-                    className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      tab === t
-                        ? 'bg-[#25D366] text-white shadow-lg shadow-[#25D366]/20'
-                        : 'bg-white/8 text-slate-400 hover:text-white hover:bg-white/12'
-                    }`}
-                  >
-                    <Globe className="w-3.5 h-3.5" />
-                    {t === 'english' ? 'English' : 'Hindi / Hinglish'}
-                  </button>
-                ))}
-              </div>
+              {/* Language Tabs — hidden for email (English only) */}
+              {!isEmail && (
+                <div className="flex gap-1 px-5 pb-3">
+                  {(['english', 'hindi'] as TabType[]).map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => {
+                        setTab(t);
+                        setSearch('');
+                      }}
+                      className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        tab === t
+                          ? 'bg-[#25D366] text-white shadow-lg shadow-[#25D366]/20'
+                          : 'bg-white/8 text-slate-400 hover:text-white hover:bg-white/12'
+                      }`}
+                    >
+                      <Globe className="w-3.5 h-3.5" />
+                      {t === 'english' ? 'English' : 'Hindi / Hinglish'}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {/* Search */}
               <div className="px-5 pb-3">
@@ -247,7 +279,9 @@ export function CannedResponses({ isOpen, onClose, onSelect, defaultLanguage }: 
                     ref={searchRef}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search replies and templates..."
+                    placeholder={
+                      isEmail ? 'Search email replies...' : 'Search replies and templates...'
+                    }
                     className="flex-1 bg-transparent text-sm text-white placeholder-slate-500 outline-none"
                   />
                   {search && (
@@ -258,34 +292,37 @@ export function CannedResponses({ isOpen, onClose, onSelect, defaultLanguage }: 
                 </div>
               </div>
 
-              {/* Sub Tabs */}
-              <div className="flex gap-1 px-5 pb-3">
-                {(['quick', 'templates'] as SubTab[]).map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setSubTab(s)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                      subTab === s
-                        ? 'bg-white/15 text-white'
-                        : 'text-slate-500 hover:text-slate-300 hover:bg-white/8'
-                    }`}
-                  >
-                    {s === 'quick' ? (
-                      <span className="flex items-center gap-1">
-                        <Zap className="w-3 h-3" /> Quick Replies
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1">
-                        <MessageSquare className="w-3 h-3" /> Templates ({filteredTemplates.length})
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
+              {/* Sub Tabs — email only has quick replies */}
+              {!isEmail && (
+                <div className="flex gap-1 px-5 pb-3">
+                  {(['quick', 'templates'] as SubTab[]).map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => setSubTab(s)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                        subTab === s
+                          ? 'bg-white/15 text-white'
+                          : 'text-slate-500 hover:text-slate-300 hover:bg-white/8'
+                      }`}
+                    >
+                      {s === 'quick' ? (
+                        <span className="flex items-center gap-1">
+                          <Zap className="w-3 h-3" /> Quick Replies
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1">
+                          <MessageSquare className="w-3 h-3" /> Templates (
+                          {filteredTemplates.length})
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {/* Content */}
               <div className="flex-1 overflow-y-auto custom-scrollbar px-5 pb-5">
-                {subTab === 'quick' ? (
+                {effectiveSubTab === 'quick' ? (
                   <div className="grid grid-cols-2 gap-2">
                     {filteredQuickReplies.length === 0 ? (
                       <p className="col-span-2 text-center text-slate-500 text-sm py-8">
@@ -305,7 +342,9 @@ export function CannedResponses({ isOpen, onClose, onSelect, defaultLanguage }: 
                                 onClick={() => handleCopy(reply)}
                                 className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
                                   isCopied
-                                    ? 'border-[#25D366]/40 bg-[#25D366]/10 text-[#25D366]'
+                                    ? isEmail
+                                      ? 'border-blue-500/40 bg-blue-500/10 text-blue-400'
+                                      : 'border-[#25D366]/40 bg-[#25D366]/10 text-[#25D366]'
                                     : 'border-white/15 text-slate-400 hover:bg-white/10 hover:text-white'
                                 }`}
                               >
@@ -314,10 +353,10 @@ export function CannedResponses({ isOpen, onClose, onSelect, defaultLanguage }: 
                               </button>
                               <button
                                 onClick={() => onSelect(reply)}
-                                className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-semibold bg-[#25D366] hover:bg-[#1FAF54] text-white transition-colors"
+                                className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-semibold ${accentColor} ${accentHover} text-white transition-colors`}
                               >
                                 <Send className="w-3 h-3" />
-                                Send
+                                Use
                               </button>
                             </div>
                           </div>
@@ -340,7 +379,10 @@ export function CannedResponses({ isOpen, onClose, onSelect, defaultLanguage }: 
                               <TemplateCard
                                 key={t.id}
                                 template={t}
-                                onSelect={(msg) => { onSelect(msg); onClose(); }}
+                                onSelect={(msg) => {
+                                  onSelect(msg);
+                                  onClose();
+                                }}
                                 onCopy={(msg) => handleCopy(msg, t.id)}
                               />
                             ))}

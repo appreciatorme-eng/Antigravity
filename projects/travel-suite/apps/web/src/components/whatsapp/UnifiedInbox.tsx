@@ -144,6 +144,7 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
         })()}
         onContextAction={inbox.handleContextAction}
         onRecipientChange={inbox.updateComposeRecipient}
+        onChannelHandoff={inbox.handleChannelHandoff}
       />
 
       {/* RIGHT: Context Panel */}

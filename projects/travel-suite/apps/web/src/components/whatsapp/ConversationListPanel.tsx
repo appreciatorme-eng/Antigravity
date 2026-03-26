@@ -10,6 +10,7 @@ import {
   type FilterTab,
   type SortMode,
   UnifiedInboxConversationItem,
+  needsFollowUp,
 } from './unified-inbox-shared';
 
 interface ConversationListPanelProps {
@@ -100,6 +101,12 @@ export function ConversationListPanel({
       list = [...list].sort((a, b) => {
         const score = (c: ChannelConversation) => (c.unreadCount > 0 ? 10 : 0) + (c.contact.label === 'payment' ? 5 : 0);
         return score(b) - score(a);
+      });
+    } else if (sortMode === 'needs-followup') {
+      list = [...list].sort((a, b) => {
+        const aNeeds = needsFollowUp(a) ? 1 : 0;
+        const bNeeds = needsFollowUp(b) ? 1 : 0;
+        return bNeeds - aNeeds;
       });
     }
 
@@ -253,15 +260,24 @@ export function ConversationListPanel({
       <div className="shrink-0 flex items-center justify-between px-3 py-1.5">
         <p className="text-[10px] text-slate-300 font-medium">{filteredAndSorted.length} conversations</p>
         <div className="flex gap-1">
-          {(['recent', 'unread', 'priority'] as SortMode[]).map((s) => (
+          {([
+            { key: 'recent' as SortMode, label: 'Recent' },
+            { key: 'unread' as SortMode, label: 'Unread' },
+            { key: 'priority' as SortMode, label: 'Priority' },
+            { key: 'needs-followup' as SortMode, label: 'Follow-up' },
+          ]).map(({ key, label }) => (
             <button
-              key={s}
-              onClick={() => setSortMode(s)}
+              key={key}
+              onClick={() => setSortMode(key)}
               className={`px-2 py-1 rounded-md text-[9px] font-bold uppercase transition-colors ${
-                sortMode === s ? 'bg-white/15 text-white' : 'text-slate-600 hover:text-slate-400'
+                sortMode === key
+                  ? key === 'needs-followup'
+                    ? 'bg-amber-500/20 text-amber-400'
+                    : 'bg-white/15 text-white'
+                  : 'text-slate-600 hover:text-slate-400'
               }`}
             >
-              {s}
+              {label}
             </button>
           ))}
         </div>

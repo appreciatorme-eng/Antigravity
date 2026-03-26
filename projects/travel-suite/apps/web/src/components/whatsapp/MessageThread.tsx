@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Phone,
   MoreVertical,
@@ -19,10 +19,12 @@ import {
   Mic,
   Image as ImageIcon,
   Mail,
+  MessageCircle,
   AtSign,
   Globe,
   Sparkles,
   BarChart3,
+  Clock,
 } from 'lucide-react';
 import Image from 'next/image';
 import { toast } from 'sonner';
@@ -31,7 +33,7 @@ import type { ActionMode, ConversationContact } from './whatsapp.types';
 import {
   ActionPickerModal,
 } from './ActionPickerModal';
-import type { ContextAction } from './unified-inbox-shared';
+import { type ContextAction, needsFollowUp } from './unified-inbox-shared';
 import { LANGUAGES } from '@/app/clients/types';
 
 export type MessageType = 'text' | 'location' | 'image' | 'voice' | 'system' | 'document';
@@ -304,6 +306,7 @@ interface MessageThreadProps {
   onContextAction?: (action: ContextAction, tripName?: string) => void;
   contactPresence?: string | null;
   onRecipientChange?: (email: string) => void;
+  onChannelHandoff?: (targetChannel: 'whatsapp' | 'email', context: { contactPhone?: string; contactEmail?: string; subject?: string; lastMessage?: string }) => void;
 }
 
 export function MessageThread({
@@ -319,6 +322,7 @@ export function MessageThread({
   onContextAction,
   contactPresence,
   onRecipientChange,
+  onChannelHandoff,
 }: MessageThreadProps) {
   const [inputText, setInputText] = useState('');
   const [emailSubject, setEmailSubject] = useState('');
@@ -330,10 +334,38 @@ export function MessageThread({
   const [showCcBcc, setShowCcBcc] = useState(false);
   const [ccField, setCcField] = useState('');
   const [bccField, setBccField] = useState('');
+  const [snoozedConvs, setSnoozedConvs] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set<string>();
+    try {
+      const stored = localStorage.getItem('snoozed_followups');
+      return stored ? new Set(JSON.parse(stored) as string[]) : new Set<string>();
+    } catch {
+      return new Set<string>();
+    }
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isEmail = channel === 'email';
   const isCompose = conversation?.id.startsWith('compose_email_') ?? false;
+
+  const showFollowUpBanner = conversation
+    && needsFollowUp(conversation)
+    && !snoozedConvs.has(conversation.id);
+
+  const snoozeFollowUp = useCallback(() => {
+    if (!conversation) return;
+    const next = new Set(snoozedConvs);
+    next.add(conversation.id);
+    setSnoozedConvs(next);
+    try {
+      localStorage.setItem('snoozed_followups', JSON.stringify([...next]));
+    } catch { /* localStorage full — ignore */ }
+  }, [conversation, snoozedConvs]);
+
+  const focusInput = useCallback(() => {
+    inputRef.current?.focus();
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -519,8 +551,55 @@ export function MessageThread({
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Follow-up reminder banner */}
+      {showFollowUpBanner && (
+        <div className="shrink-0 mx-4 mb-2 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-xs text-amber-300">
+            <Clock className="w-3.5 h-3.5 shrink-0" />
+            <span>No reply sent — client is waiting</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={focusInput}
+              className="text-[10px] font-semibold text-amber-400 hover:text-amber-300 px-2 py-1 rounded-lg hover:bg-amber-500/10 transition-colors"
+            >
+              Reply Now
+            </button>
+            <button
+              type="button"
+              onClick={snoozeFollowUp}
+              className="text-[10px] font-semibold text-slate-500 hover:text-slate-400 px-2 py-1 rounded-lg hover:bg-white/5 transition-colors"
+            >
+              Snooze
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Trip Actions Bar — all channels */}
       <div className="shrink-0 px-4 pt-2 pb-1 flex items-center gap-2 overflow-x-auto">
+        {/* Channel handoff — only when contact has both phone and email */}
+        {conversation?.contact.phone && conversation?.contact.email && onChannelHandoff && (() => {
+          const { phone, email } = conversation.contact;
+          const msgs = conversation.messages ?? [];
+          if (isEmail) {
+            const subj = emailSubject || [...msgs].reverse().find((m) => m.subject)?.subject;
+            return (
+              <button onClick={() => onChannelHandoff('whatsapp', { contactPhone: phone, contactEmail: email, subject: subj })} className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#25D366]/15 hover:bg-[#25D366]/25 border border-[#25D366]/30 text-[#25D366] text-xs font-medium transition-all active:scale-95">
+                <MessageCircle className="w-3.5 h-3.5" />
+                Continue on WhatsApp
+              </button>
+            );
+          }
+          const lastMsg = [...msgs].reverse().find((m) => m.direction === 'in')?.body;
+          return (
+            <button onClick={() => onChannelHandoff('email', { contactPhone: phone, contactEmail: email, lastMessage: lastMsg })} className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/30 text-blue-300 text-xs font-medium transition-all active:scale-95">
+              <Mail className="w-3.5 h-3.5" />
+              Move to Email
+            </button>
+          );
+        })()}
         {([
           { mode: 'itinerary' as ActionMode, label: 'Send Itinerary', icon: <FileText className="w-3.5 h-3.5" />, accent: 'hover:border-indigo-500/40 hover:text-indigo-300' },
           { mode: 'payment' as ActionMode, label: 'Payment Link', icon: <CreditCard className="w-3.5 h-3.5" />, accent: 'hover:border-pink-500/40 hover:text-pink-300' },
@@ -697,6 +776,14 @@ export function MessageThread({
                   >
                     <Paperclip className="w-4 h-4 text-slate-400" />
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowCanned(true)}
+                    className="p-1 hover:bg-white/10 rounded-lg transition-colors"
+                    title="Canned Responses"
+                  >
+                    <Zap className="w-4 h-4 text-blue-400" />
+                  </button>
                 </div>
                 <button
                   onClick={handleSend}
@@ -715,6 +802,7 @@ export function MessageThread({
               <Paperclip className="w-4 h-4 text-slate-400" />
             </button>
             <input
+              ref={inputRef}
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
@@ -748,6 +836,7 @@ export function MessageThread({
         onClose={() => setShowCanned(false)}
         onSelect={handleCannedSelect}
         defaultLanguage={messageLang}
+        channel={isEmail ? 'email' : 'whatsapp'}
       />
 
       {modalMode && conversation && (

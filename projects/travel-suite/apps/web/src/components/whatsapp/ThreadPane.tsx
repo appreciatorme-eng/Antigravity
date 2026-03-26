@@ -47,6 +47,9 @@ interface ThreadPaneProps {
 
   // Email compose
   onRecipientChange?: (email: string) => void;
+
+  // Channel handoff
+  onChannelHandoff?: (targetChannel: 'whatsapp' | 'email', context: { contactPhone?: string; contactEmail?: string; subject?: string; lastMessage?: string }) => void;
 }
 
 export function ThreadPane({
@@ -70,6 +73,7 @@ export function ThreadPane({
   contactPresence,
   onContextAction,
   onRecipientChange,
+  onChannelHandoff,
 }: ThreadPaneProps) {
   const analytics = useAnalytics();
   const isDisconnected = !isDemoMode && whatsAppStatus !== 'connected';
@@ -203,6 +207,7 @@ export function ThreadPane({
           contactPresence={contactPresence}
           onContextAction={onContextAction}
           onRecipientChange={onRecipientChange}
+          onChannelHandoff={onChannelHandoff}
         />
       </ErrorSection>
     </div>

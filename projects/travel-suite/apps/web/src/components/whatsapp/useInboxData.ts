@@ -85,6 +85,7 @@ export interface InboxData {
   setAddToCrmModal: (val: { open: boolean; phone: string; name: string }) => void;
   startNewEmail: () => void;
   updateComposeRecipient: (email: string) => void;
+  handleChannelHandoff: (targetChannel: 'whatsapp' | 'email', context: { contactPhone?: string; contactEmail?: string; subject?: string; lastMessage?: string }) => void;
 }
 
 export interface UseInboxDataOptions {
@@ -681,6 +682,31 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     setSelectedId(composeId);
   }
 
+  function handleChannelHandoff(
+    targetChannel: 'whatsapp' | 'email',
+    context: { contactPhone?: string; contactEmail?: string; subject?: string; lastMessage?: string },
+  ) {
+    if (targetChannel === 'whatsapp' && context.contactPhone) {
+      const waConv = conversations.find(
+        (c) => c.channel === 'whatsapp' && c.contact.phone === context.contactPhone,
+      );
+      if (waConv) {
+        setSelectedId(waConv.id);
+        toast.success(`Switched to WhatsApp conversation with ${waConv.contact.name}`);
+      } else {
+        toast.info('No WhatsApp conversation found with this contact. Send a message to start one.');
+      }
+    } else if (targetChannel === 'email' && context.contactEmail) {
+      // Create a compose email pre-filled with the contact's email
+      startNewEmail();
+      // Pre-fill the recipient after the compose conversation is created
+      setTimeout(() => {
+        updateComposeRecipient(context.contactEmail!);
+      }, 0);
+      toast.success(`Composing email to ${context.contactEmail}`);
+    }
+  }
+
   function updateComposeRecipient(email: string) {
     setConversations((prev) =>
       prev.map((c) =>
@@ -743,5 +769,6 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     setAddToCrmModal,
     startNewEmail,
     updateComposeRecipient,
+    handleChannelHandoff,
   };
 }
