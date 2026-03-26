@@ -38,7 +38,8 @@ export async function POST(request: Request) {
                 display_name: null,
                 connected_at: null,
                 session_token: null,
-                assistant_group_jid: null,
+                // Keep assistant_group_jid — the WhatsApp group persists
+                // and should be reused on reconnect (not recreated)
             } as Record<string, unknown>)
             .eq("organization_id", organizationId!);
 
