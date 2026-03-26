@@ -44,6 +44,8 @@ export interface InboxData {
 
   // Gmail status
   gmailConnected: boolean;
+  emailNextPageToken: string | null;
+  loadMoreEmails: () => Promise<void>;
 
   // Chatbot
   activeChatbotSession: ChatbotSessionSummary | null;
@@ -136,6 +138,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
   const [addToCrmModal, setAddToCrmModal] = useState<{ open: boolean; phone: string; name: string }>({ open: false, phone: '', name: '' });
   const [presenceMap, setPresenceMap] = useState<Map<string, PresenceState>>(new Map());
   const [gmailConnected, setGmailConnected] = useState(false);
+  const [emailNextPageToken, setEmailNextPageToken] = useState<string | null>(null);
 
   const selectedConversation = conversations.find((c) => c.id === selectedId) ?? null;
   const selectedChannel: ChannelType = (selectedConversation as ChannelConversation | null)?.channel ?? 'whatsapp';
@@ -185,10 +188,11 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
       let emailConvs: ChannelConversation[] = [];
       if (emailResponse?.ok) {
         const emailData = (await emailResponse.json().catch(() => ({}))) as {
-          data?: { conversations?: ChannelConversation[]; gmailConnected?: boolean };
+          data?: { conversations?: ChannelConversation[]; gmailConnected?: boolean; nextPageToken?: string | null };
         };
         emailConvs = emailData.data?.conversations ?? [];
         setGmailConnected(emailData.data?.gmailConnected ?? false);
+        setEmailNextPageToken(emailData.data?.nextPageToken ?? null);
       }
 
       const rawConvs = [...(waData.conversations ?? []), ...emailConvs];
@@ -264,6 +268,30 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
       // Silent failure — email polling shouldn't disrupt inbox
     }
   }, [isDemoMode, gmailConnected]);
+
+  // Load more email threads (pagination)
+  const loadMoreEmails = useCallback(async () => {
+    if (!emailNextPageToken || !gmailConnected) return;
+    try {
+      const response = await fetch(`/api/admin/email/conversations?pageToken=${encodeURIComponent(emailNextPageToken)}`, { cache: 'no-store' });
+      if (!response.ok) return;
+      const data = (await response.json()) as {
+        data?: { conversations?: ChannelConversation[]; nextPageToken?: string | null };
+      };
+      const moreEmails = data.data?.conversations ?? [];
+      setEmailNextPageToken(data.data?.nextPageToken ?? null);
+
+      if (moreEmails.length > 0) {
+        setConversations((prev) => {
+          const existingIds = new Set(prev.map((c) => c.id));
+          const newOnes = moreEmails.filter((c) => !existingIds.has(c.id));
+          return applyReadTracking([...prev, ...newOnes]);
+        });
+      }
+    } catch {
+      // Silent — pagination failure shouldn't disrupt inbox
+    }
+  }, [emailNextPageToken, gmailConnected]);
 
   // Poll Gmail every 60 seconds (no realtime subscription available for email)
   useEffect(() => {
@@ -640,6 +668,8 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     whatsAppStatus,
     whatsAppHealthError,
     gmailConnected,
+    emailNextPageToken,
+    loadMoreEmails,
     activeChatbotSession,
     showChatbotBanner,
     isTakingOverChatbot,

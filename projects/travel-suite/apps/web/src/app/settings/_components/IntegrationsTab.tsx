@@ -174,6 +174,15 @@ export function IntegrationsTab({
                 isGmailConnected={isGmailConnected}
                 onOpenWhatsAppConnect={onOpenWhatsAppConnect}
                 onDisconnectWhatsApp={onDisconnectWhatsApp}
+                onDisconnectGmail={async () => {
+                    const res = await fetch('/api/admin/email/disconnect', { method: 'POST' });
+                    if (res.ok) {
+                        setIsGmailConnected(false);
+                        toast({ title: 'Gmail disconnected', description: 'You can reconnect anytime.' });
+                    } else {
+                        toast({ title: 'Failed to disconnect', description: 'Please try again.', variant: 'destructive' });
+                    }
+                }}
             />
 
             {/* Payments */}

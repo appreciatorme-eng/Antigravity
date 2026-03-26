@@ -26,6 +26,8 @@ interface ConversationListPanelProps {
   onRetry: () => void;
   onConnectWhatsApp: () => void;
   onNewEmail?: () => void;
+  emailNextPageToken?: string | null;
+  onLoadMoreEmails?: () => void;
 }
 
 export function ConversationListPanel({
@@ -42,6 +44,8 @@ export function ConversationListPanel({
   onRetry,
   onConnectWhatsApp,
   onNewEmail,
+  emailNextPageToken,
+  onLoadMoreEmails,
 }: ConversationListPanelProps) {
   const [search, setSearch] = useState('');
   const [filterTab, setFilterTab] = useState<FilterTab>('all');
@@ -266,14 +270,25 @@ export function ConversationListPanel({
             )}
           </div>
         ) : (
-          filteredAndSorted.map((conv) => (
-            <UnifiedInboxConversationItem
-              key={conv.id}
-              conv={conv}
-              selected={selectedId === conv.id}
-              onClick={() => onSelect(conv.id)}
-            />
-          ))
+          <>
+            {filteredAndSorted.map((conv) => (
+              <UnifiedInboxConversationItem
+                key={conv.id}
+                conv={conv}
+                selected={selectedId === conv.id}
+                onClick={() => onSelect(conv.id)}
+              />
+            ))}
+            {emailNextPageToken && channelFilter === 'email' && onLoadMoreEmails && (
+              <button
+                type="button"
+                onClick={onLoadMoreEmails}
+                className="w-full py-3 text-[11px] font-semibold text-blue-400 hover:text-blue-300 hover:bg-white/5 transition-colors"
+              >
+                Load older emails...
+              </button>
+            )}
+          </>
           )}
         </ErrorSection>
       </div>

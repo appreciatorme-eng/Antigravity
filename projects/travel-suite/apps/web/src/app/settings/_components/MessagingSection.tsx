@@ -16,6 +16,7 @@ export interface MessagingSectionProps {
     readonly isGmailConnected: boolean;
     readonly onOpenWhatsAppConnect: () => void;
     readonly onDisconnectWhatsApp: () => void;
+    readonly onDisconnectGmail?: () => void;
 }
 
 export function MessagingSection({
@@ -24,6 +25,7 @@ export function MessagingSection({
     isGmailConnected,
     onOpenWhatsAppConnect,
     onDisconnectWhatsApp,
+    onDisconnectGmail,
 }: MessagingSectionProps) {
     return (
         <div>
@@ -76,17 +78,29 @@ export function MessagingSection({
                 </div>
 
                 {/* Gmail */}
-                <IntegrationCard
-                    icon={<Mail className="w-5 h-5 text-red-500" />}
-                    iconBg="bg-red-50"
-                    title="Gmail"
-                    description="Manage email enquiries and send confirmations directly from the unified inbox."
-                    isConnected={isGmailConnected}
-                    connectedLabel="Connected"
-                    buttonLabel={isGmailConnected ? 'Connected' : 'Connect Google'}
-                    onConnect={() => { if (!isGmailConnected) window.location.href = '/api/social/oauth/google'; }}
-                    large
-                />
+                <div>
+                    <IntegrationCard
+                        icon={<Mail className="w-5 h-5 text-red-500" />}
+                        iconBg="bg-red-50"
+                        title="Gmail"
+                        description="Manage email enquiries and send confirmations directly from the unified inbox."
+                        isConnected={isGmailConnected}
+                        connectedLabel="Connected"
+                        buttonLabel={isGmailConnected ? 'Connected' : 'Connect Google'}
+                        onConnect={() => { if (!isGmailConnected) window.location.href = '/api/social/oauth/google'; }}
+                        large
+                    />
+                    {isGmailConnected && onDisconnectGmail && (
+                        <div className="flex justify-end mt-1 mr-1">
+                            <button
+                                onClick={onDisconnectGmail}
+                                className="text-[10px] text-red-500 hover:text-red-700 transition-colors font-medium"
+                            >
+                                Disconnect Gmail
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

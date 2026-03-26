@@ -112,6 +112,8 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
         onRetry={() => { void inbox.loadLiveConversations(); }}
         onConnectWhatsApp={() => inbox.setIsWaConnectOpen(true)}
         onNewEmail={inbox.startNewEmail}
+        emailNextPageToken={inbox.emailNextPageToken}
+        onLoadMoreEmails={() => { void inbox.loadMoreEmails(); }}
       />
 
       {/* MIDDLE: Message Thread */}

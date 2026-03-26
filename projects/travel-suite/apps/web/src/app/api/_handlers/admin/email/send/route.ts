@@ -5,7 +5,8 @@
  * ------------------------------------------------------------------ */
 
 import { requireAdmin } from "@/lib/auth/admin";
-import { sendViaGmail } from "@/lib/email/gmail-send";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { sendViaGmail, getGmailEmail } from "@/lib/email/gmail-send";
 import { apiSuccess, apiError } from "@/lib/api/response";
 import { logError } from "@/lib/observability/logger";
 
@@ -59,7 +60,20 @@ export async function POST(request: Request): Promise<Response> {
             }
             : undefined;
 
-        const messageId = await sendViaGmail(orgId, raw.to, raw.subject, htmlBody, undefined, replyHeaders);
+        // Append org signature
+        const admin = createAdminClient();
+        const { data: org } = await admin
+            .from("organizations")
+            .select("name")
+            .eq("id", orgId)
+            .single();
+        const senderEmail = await getGmailEmail(orgId) ?? "";
+        const orgName = org?.name ?? "";
+        const signatureHtml = orgName || senderEmail
+            ? `<div style="margin-top:24px;padding-top:12px;border-top:1px solid #e5e7eb;font-family:sans-serif;font-size:12px;color:#6b7280">${escapeHtml(orgName)}${orgName && senderEmail ? "<br/>" : ""}${escapeHtml(senderEmail)}</div>`
+            : "";
+
+        const messageId = await sendViaGmail(orgId, raw.to, raw.subject, htmlBody + signatureHtml, undefined, replyHeaders);
 
         if (!messageId) {
             return apiError("Gmail not connected or send failed. Connect Gmail in Settings.", 422);
