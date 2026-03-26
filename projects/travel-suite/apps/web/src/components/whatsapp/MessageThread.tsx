@@ -348,14 +348,12 @@ export function MessageThread({
     const replySubject = lastSubject && !lastSubject.startsWith('Re:')
       ? `Re: ${lastSubject}`
       : lastSubject;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setEmailSubject(replySubject);
     setComposeToEmail(conversation.contact.email ?? '');
   }, [isEmail, conversation?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (externalInput && externalInput.trim()) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setInputText(externalInput);
       onExternalInputConsumed?.();
     }
