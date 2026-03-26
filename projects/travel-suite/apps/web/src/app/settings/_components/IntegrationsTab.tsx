@@ -184,7 +184,7 @@ export function IntegrationsTab({
                         setIsGmailConnected(false);
                         toast({ title: 'Gmail disconnected', description: 'You can reconnect anytime.' });
                     } else {
-                        toast({ title: 'Failed to disconnect', description: 'Please try again.', variant: 'destructive' });
+                        toast({ title: 'Failed to disconnect', description: 'Please try again.', variant: 'error' });
                     }
                 }}
             />
