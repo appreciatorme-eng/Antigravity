@@ -324,6 +324,19 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     setConversations((prev) =>
       prev.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c))
     );
+
+    // Mark email thread as read in Gmail (fire-and-forget)
+    const conv = conversations.find((c) => c.id === id);
+    if (conv?.channel === 'email' && conv.unreadCount > 0) {
+      const emailConv = conv as ChannelConversation & { threadId?: string };
+      if (emailConv.threadId) {
+        void fetch('/api/admin/email/read', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ threadId: emailConv.threadId }),
+        }).catch(() => { /* silent — local read state already updated */ });
+      }
+    }
   }
 
   async function handleTakeOverChatbot(session: ChatbotSessionSummary) {

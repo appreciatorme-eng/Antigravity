@@ -41,6 +41,7 @@ const routes = createCatchAllHandlers([
   ["marketplace/verify", () => import("@/app/api/_handlers/admin/marketplace/verify/route")],
   ["destinations", () => import("@/app/api/_handlers/admin/destinations/route")],
   ["email/conversations", () => import("@/app/api/_handlers/admin/email/conversations/route")],
+  ["email/read", () => import("@/app/api/_handlers/admin/email/read/route")],
   ["email/send", () => import("@/app/api/_handlers/admin/email/send/route")],
   ["export/trips", () => import("@/app/api/_handlers/admin/export/trips/route")],
   ["export/clients", () => import("@/app/api/_handlers/admin/export/clients/route")],
