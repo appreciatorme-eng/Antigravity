@@ -167,6 +167,12 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
 
   const totalUnread = conversations.reduce((a, c) => a + c.unreadCount, 0);
 
+  const emailApiParams = useMemo(() => {
+    const params = new URLSearchParams({ folder: emailFolder });
+    if (emailSearchQuery) params.set('q', emailSearchQuery);
+    return params.toString();
+  }, [emailFolder, emailSearchQuery]);
+
   // --- Data loading ---
 
   const loadLiveConversations = useCallback(async () => {
@@ -178,7 +184,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
       // Fetch WhatsApp and email conversations in parallel
       const [waResponse, emailResponse] = await Promise.all([
         fetch(`/api/whatsapp/conversations${qp}`, { cache: 'no-store' }),
-        fetch(`/api/admin/email/conversations?${emailApiParams()}`, { cache: 'no-store' }).catch(() => null),
+        fetch(`/api/admin/email/conversations?${emailApiParams}`, { cache: 'no-store' }).catch(() => null),
       ]);
 
       const waData = (await waResponse.json().catch(() => ({}))) as {
@@ -256,7 +262,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
   const refreshEmailConversations = useCallback(async () => {
     if (isDemoMode || !gmailConnected) return;
     try {
-      const response = await fetch(`/api/admin/email/conversations?${emailApiParams()}`, { cache: 'no-store' });
+      const response = await fetch(`/api/admin/email/conversations?${emailApiParams}`, { cache: 'no-store' });
       if (!response.ok) return;
       const data = (await response.json()) as {
         data?: { conversations?: ChannelConversation[]; gmailConnected?: boolean };
@@ -278,7 +284,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
   const loadMoreEmails = useCallback(async () => {
     if (!emailNextPageToken || !gmailConnected) return;
     try {
-      const response = await fetch(`/api/admin/email/conversations?${emailApiParams()}&pageToken=${encodeURIComponent(emailNextPageToken)}`, { cache: 'no-store' });
+      const response = await fetch(`/api/admin/email/conversations?${emailApiParams}&pageToken=${encodeURIComponent(emailNextPageToken)}`, { cache: 'no-store' });
       if (!response.ok) return;
       const data = (await response.json()) as {
         data?: { conversations?: ChannelConversation[]; nextPageToken?: string | null };
@@ -654,12 +660,6 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     setEmailNextPageToken(null);
     // Trigger re-fetch by updating state — loadLiveConversations depends on emailSearchQuery
   }
-
-  const emailApiParams = useMemo(() => {
-    const params = new URLSearchParams({ folder: emailFolder });
-    if (emailSearchQuery) params.set('q', emailSearchQuery);
-    return params.toString();
-  }, [emailFolder, emailSearchQuery]);
 
   function startNewEmail() {
     const composeId = `${COMPOSE_ID_PREFIX}${Date.now()}`;

@@ -82,10 +82,11 @@ export async function GET(req: NextRequest) {
         .eq("organization_id", orgId)
         .order("created_at", { ascending: false })
         .limit(5),
-      db
+      // notification_logs has no organization_id — filter via trips FK
+      (db as unknown as SupabaseClient)
         .from("notification_logs")
-        .select("id, title, body, sent_at, status")
-        .eq("organization_id", orgId)
+        .select("id, title, body, sent_at, status, trips!inner(organization_id)")
+        .eq("trips.organization_id", orgId)
         .order("sent_at", { ascending: false })
         .limit(5),
       db
