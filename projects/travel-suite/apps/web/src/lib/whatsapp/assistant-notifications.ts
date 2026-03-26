@@ -3,12 +3,49 @@
  *
  * Sends notifications to the operator's private "🤖 TripBuilt Assistant" WhatsApp group.
  * Uses the already-connected Evolution API session — no extra numbers or Meta API needed.
+ *
+ * Each notification can optionally include a follow-up poll for quick actions.
  */
 import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendEvolutionText } from "@/lib/whatsapp-evolution.server";
 import { logError } from "@/lib/observability/logger";
+import { sendPoll, LEAD_NOTIFICATION_POLL, PAYMENT_NOTIFICATION_POLL } from "./assistant-polls";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+interface NotificationTarget {
+    readonly instanceName: string;
+    readonly groupJid: string;
+}
+
+// ---------------------------------------------------------------------------
+// Core: resolve operator's assistant group
+// ---------------------------------------------------------------------------
+
+async function resolveTarget(orgId: string): Promise<NotificationTarget | null> {
+    const admin = createAdminClient();
+    const { data: rawConn } = await admin
+        .from("whatsapp_connections")
+        .select("instance_name, session_name, assistant_group_jid")
+        .eq("organization_id", orgId)
+        .eq("status", "connected")
+        .maybeSingle();
+    const conn = rawConn as {
+        instance_name?: string;
+        session_name?: string;
+        assistant_group_jid?: string;
+    } | null;
+
+    const instanceName = conn?.instance_name ?? conn?.session_name;
+    const groupJid = conn?.assistant_group_jid;
+
+    if (!instanceName || !groupJid) return null;
+    return { instanceName, groupJid };
+}
 
 // ---------------------------------------------------------------------------
 // Core: send notification to operator's assistant group
@@ -17,29 +54,21 @@ import { logError } from "@/lib/observability/logger";
 /**
  * Send a notification message to the operator's TripBuilt Assistant WhatsApp group.
  * Best-effort: errors are logged but never thrown to the caller.
+ * Returns the target info so callers can send follow-up polls.
  */
 export async function notifyOperator(
     orgId: string,
     message: string,
-): Promise<void> {
+): Promise<NotificationTarget | null> {
     try {
-        const admin = createAdminClient();
-        const { data: rawConn } = await admin
-            .from("whatsapp_connections")
-            .select("instance_name, session_name, assistant_group_jid")
-            .eq("organization_id", orgId)
-            .eq("status", "connected")
-            .maybeSingle();
-        const conn = rawConn as { instance_name?: string; session_name?: string; assistant_group_jid?: string } | null;
+        const target = await resolveTarget(orgId);
+        if (!target) return null;
 
-        const instanceName = conn?.instance_name ?? conn?.session_name;
-        const groupJid = conn?.assistant_group_jid;
-
-        if (!instanceName || !groupJid) return;
-
-        await sendEvolutionText(instanceName, groupJid, message);
+        await sendEvolutionText(target.instanceName, target.groupJid, message);
+        return target;
     } catch (err) {
         logError("[assistant-notifications] Failed to notify operator", err);
+        return null;
     }
 }
 
@@ -55,14 +84,18 @@ export async function notifyNewLead(
     const masked = phone.length > 6
         ? phone.slice(0, -4).replace(/\d/g, "•") + phone.slice(-4)
         : phone;
-    await notifyOperator(orgId, [
+    const target = await notifyOperator(orgId, [
         `🆕 *New Lead*`,
         `📱 ${masked}`,
         `💬 "${preview.slice(0, 100)}"`,
-        "",
-        "Reply *leads* to see all recent leads",
-        "Or open TripBuilt inbox to respond.",
     ].join("\n"));
+
+    // Follow-up poll so operator can act without typing
+    if (target) {
+        void sendPoll(target.instanceName, target.groupJid, LEAD_NOTIFICATION_POLL).catch((err) => {
+            logError("[assistant-notifications] Failed to send lead poll", err);
+        });
+    }
 }
 
 export async function notifyPaymentReceived(
@@ -70,13 +103,19 @@ export async function notifyPaymentReceived(
     clientName: string,
     amount: string,
 ): Promise<void> {
-    await notifyOperator(orgId, [
+    const target = await notifyOperator(orgId, [
         `💰 *Payment Received*`,
         `👤 ${clientName}`,
         `💵 ${amount}`,
         "",
         "Payment confirmed and recorded.",
     ].join("\n"));
+
+    if (target) {
+        void sendPoll(target.instanceName, target.groupJid, PAYMENT_NOTIFICATION_POLL).catch((err) => {
+            logError("[assistant-notifications] Failed to send payment poll", err);
+        });
+    }
 }
 
 export async function notifyAutomationSent(

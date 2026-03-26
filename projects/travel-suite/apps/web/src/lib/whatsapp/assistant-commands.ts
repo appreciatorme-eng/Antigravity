@@ -27,6 +27,7 @@ import {
     formatTripsToday,
 } from "./assistant-formatters";
 import { logError } from "@/lib/observability/logger";
+import { POLL_OPTION_TO_COMMAND, sendFollowUpPoll } from "./assistant-polls";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -138,16 +139,22 @@ export async function routeAssistantCommand(
     const orgId = conn.organization_id as string;
     const ctx: CommandContext = { admin, orgId, instanceName, groupJid };
 
-    const normalised = message.trim().toLowerCase();
-    const command = KEYWORD_ALIASES[normalised];
+    const trimmed = message.trim();
+    const normalised = trimmed.toLowerCase();
+
+    // Check poll vote first (option text from a tapped poll), then keyword aliases
+    const pollCommand = POLL_OPTION_TO_COMMAND[trimmed];
+    const command = pollCommand ?? KEYWORD_ALIASES[normalised];
 
     let reply: string;
+    let resolvedCommand: string | undefined = command;
 
     try {
         if (command) {
             reply = await handleKeywordCommand(ctx, command);
         } else if (shouldTriggerAI(normalised)) {
-            reply = await handleNaturalLanguage(ctx, message);
+            resolvedCommand = undefined; // AI — no follow-up poll
+            reply = await handleNaturalLanguage(ctx, trimmed);
         } else {
             // Short / emoji / casual message — don't respond
             return true;
@@ -161,6 +168,11 @@ export async function routeAssistantCommand(
         await sendEvolutionText(instanceName, groupJid, reply).catch((err) => {
             logError("[assistant-commands] Failed to send reply", err);
         });
+
+        // Send a contextual follow-up poll (fire-and-forget, 1.2s delay)
+        if (resolvedCommand) {
+            sendFollowUpPoll(instanceName, groupJid, resolvedCommand);
+        }
     }
 
     return true;

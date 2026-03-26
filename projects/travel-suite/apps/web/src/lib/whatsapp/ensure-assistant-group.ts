@@ -4,7 +4,8 @@ import {
   sendEvolutionText,
   updateEvolutionGroupDescription,
 } from "@/lib/whatsapp-evolution.server";
-import { logEvent } from "@/lib/observability/logger";
+import { logError, logEvent } from "@/lib/observability/logger";
+import { sendPoll, WELCOME_POLL } from "./assistant-polls";
 
 /**
  * Ensure the TripBuilt Assistant WhatsApp group exists for an instance.
@@ -70,6 +71,11 @@ export async function ensureAssistantGroup(
     "",
     "Or just ask me anything in plain English!",
   ].join("\n"));
+
+  // Send a welcome poll so operator can try it immediately
+  void sendPoll(sessionName, groupJid, WELCOME_POLL).catch((err) => {
+    logError("[ensure-assistant-group] Failed to send welcome poll", err);
+  });
 
   logEvent("info", `[ensure-assistant-group] Created group ${groupJid} for ${sessionName}`);
   return groupJid;
