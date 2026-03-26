@@ -23,7 +23,11 @@ function redirectWithError(req: Request, errorCode: string) {
     return NextResponse.redirect(new URL(`/social?error=${encodeURIComponent(errorCode)}`, req.url));
 }
 
-function redirectWithSuccess(req: Request) {
+function redirectWithSuccess(req: Request, platform?: string) {
+    // Gmail connects redirect to settings page, not social page
+    if (platform === "google") {
+        return NextResponse.redirect(new URL('/admin/settings?setup=gmail&gmail=connected', req.url));
+    }
     return NextResponse.redirect(new URL('/social?success=oauth_complete', req.url));
 }
 
@@ -193,7 +197,7 @@ async function handleGoogleCallback(req: Request, code: string, userId: string):
         { onConflict: 'organization_id,platform,platform_page_id' }
     );
 
-    return redirectWithSuccess(req);
+    return redirectWithSuccess(req, "google");
 }
 
 async function handleLinkedInCallback(req: Request, code: string, userId: string): Promise<Response> {
