@@ -6,7 +6,8 @@
 
 import { requireAdmin } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { sendViaGmail, getGmailEmail } from "@/lib/email/gmail-send";
+import { sendViaGmail } from "@/lib/email/gmail-send";
+import { getGmailConnection } from "@/lib/email/gmail-auth";
 import { apiSuccess, apiError } from "@/lib/api/response";
 import { logError } from "@/lib/observability/logger";
 
@@ -22,6 +23,8 @@ interface SendEmailAttachment {
 
 interface SendEmailBody {
     to: string;
+    cc?: string;
+    bcc?: string;
     subject: string;
     body: string;
     threadId?: string;
@@ -54,6 +57,14 @@ export async function POST(request: Request): Promise<Response> {
             return apiError("'body' is required", 400);
         }
 
+        // Reject oversized attachments (Gmail limit: 25MB; base64 inflates ~33%)
+        if (raw.attachments && raw.attachments.length > 0) {
+            const totalBytes = raw.attachments.reduce((sum, att) => sum + (att.content?.length ?? 0) * 0.75, 0);
+            if (totalBytes > 20 * 1024 * 1024) {
+                return apiError("Attachments exceed 20MB limit. Remove some files and try again.", 413);
+            }
+        }
+
         // Wrap plain text in minimal HTML
         const htmlBody = raw.body.startsWith("<")
             ? raw.body
@@ -74,7 +85,8 @@ export async function POST(request: Request): Promise<Response> {
             .select("name")
             .eq("id", orgId)
             .single();
-        const senderEmail = await getGmailEmail(orgId) ?? "";
+        const gmailConn = await getGmailConnection(orgId);
+        const senderEmail = gmailConn?.email ?? "";
         const orgName = org?.name ?? "";
         const signatureHtml = orgName || senderEmail
             ? `<div style="margin-top:24px;padding-top:12px;border-top:1px solid #e5e7eb;font-family:sans-serif;font-size:12px;color:#6b7280">${escapeHtml(orgName)}${orgName && senderEmail ? "<br/>" : ""}${escapeHtml(senderEmail)}</div>`
@@ -87,7 +99,11 @@ export async function POST(request: Request): Promise<Response> {
             contentType: att.contentType,
         }));
 
-        const messageId = await sendViaGmail(orgId, raw.to, raw.subject, htmlBody + signatureHtml, emailAttachments, replyHeaders);
+        const recipients = raw.cc || raw.bcc
+            ? { to: raw.to, cc: raw.cc, bcc: raw.bcc }
+            : raw.to;
+
+        const messageId = await sendViaGmail(orgId, recipients, raw.subject, htmlBody + signatureHtml, emailAttachments, replyHeaders);
 
         if (!messageId) {
             return apiError("Gmail not connected or send failed. Connect Gmail in Settings.", 422);

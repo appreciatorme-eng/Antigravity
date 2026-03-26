@@ -116,6 +116,7 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
         emailFolder={inbox.emailFolder}
         onEmailFolderChange={inbox.setEmailFolder}
         onLoadMoreEmails={() => { void inbox.loadMoreEmails(); }}
+        onEmailSearch={inbox.searchEmails}
       />
 
       {/* MIDDLE: Message Thread */}

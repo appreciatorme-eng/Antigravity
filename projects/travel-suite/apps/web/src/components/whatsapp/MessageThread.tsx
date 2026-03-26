@@ -293,6 +293,7 @@ interface MessageThreadProps {
     message: string,
     subject?: string,
     files?: File[],
+    ccBcc?: { cc?: string; bcc?: string },
   ) => boolean | void | Promise<boolean | void>;
   externalInput?: string;
   onExternalInputConsumed?: () => void;
@@ -326,6 +327,9 @@ export function MessageThread({
   const [messageLang, setMessageLang] = useState('English');
   const [composeToEmail, setComposeToEmail] = useState('');
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const [showCcBcc, setShowCcBcc] = useState(false);
+  const [ccField, setCcField] = useState('');
+  const [bccField, setBccField] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isEmail = channel === 'email';
@@ -358,11 +362,14 @@ export function MessageThread({
   function handleSend() {
     const text = inputText.trim();
     if (!text || !conversation) return;
-    void onSendMessage?.(conversation.id, text, isEmail ? emailSubject || undefined : undefined, isEmail ? attachedFiles : undefined);
+    void onSendMessage?.(conversation.id, text, isEmail ? emailSubject || undefined : undefined, isEmail ? attachedFiles : undefined, isEmail ? { cc: ccField.trim() || undefined, bcc: bccField.trim() || undefined } : undefined);
     setInputText('');
     if (isEmail) {
       setEmailSubject('');
       setAttachedFiles([]);
+      setCcField('');
+      setBccField('');
+      setShowCcBcc(false);
     }
   }
 
@@ -619,7 +626,28 @@ export function MessageThread({
                 placeholder="Subject..."
                 className="flex-1 bg-transparent text-sm text-white placeholder-slate-500 outline-none min-w-0"
               />
+              {!showCcBcc && (
+                <button
+                  type="button"
+                  onClick={() => setShowCcBcc(true)}
+                  className="text-[10px] text-slate-500 hover:text-slate-300 font-medium shrink-0"
+                >
+                  CC/BCC
+                </button>
+              )}
             </div>
+            {showCcBcc && (
+              <div className="flex gap-2">
+                <div className="flex-1 flex items-center gap-2 bg-white/8 border border-white/15 rounded-xl px-3 py-1.5">
+                  <span className="text-[10px] text-slate-500 font-semibold shrink-0">CC</span>
+                  <input type="email" value={ccField} onChange={(e) => setCcField(e.target.value)} placeholder="cc@example.com" className="flex-1 bg-transparent text-xs text-white placeholder-slate-500 outline-none min-w-0" />
+                </div>
+                <div className="flex-1 flex items-center gap-2 bg-white/8 border border-white/15 rounded-xl px-3 py-1.5">
+                  <span className="text-[10px] text-slate-500 font-semibold shrink-0">BCC</span>
+                  <input type="email" value={bccField} onChange={(e) => setBccField(e.target.value)} placeholder="bcc@example.com" className="flex-1 bg-transparent text-xs text-white placeholder-slate-500 outline-none min-w-0" />
+                </div>
+              </div>
+            )}
             <div className="bg-white/8 border border-white/15 rounded-xl px-3 py-2">
               <textarea
                 value={inputText}

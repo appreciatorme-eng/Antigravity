@@ -14,6 +14,7 @@ export interface MessagingSectionProps {
     readonly isWhatsAppConnected: boolean;
     readonly whatsAppProfile: WhatsAppProfile | null;
     readonly isGmailConnected: boolean;
+    readonly gmailEmail?: string;
     readonly onOpenWhatsAppConnect: () => void;
     readonly onDisconnectWhatsApp: () => void;
     readonly onDisconnectGmail?: () => void;
@@ -23,6 +24,7 @@ export function MessagingSection({
     isWhatsAppConnected,
     whatsAppProfile,
     isGmailConnected,
+    gmailEmail,
     onOpenWhatsAppConnect,
     onDisconnectWhatsApp,
     onDisconnectGmail,
@@ -83,7 +85,7 @@ export function MessagingSection({
                         icon={<Mail className="w-5 h-5 text-red-500" />}
                         iconBg="bg-red-50"
                         title="Gmail"
-                        description="Manage email enquiries and send confirmations directly from the unified inbox."
+                        description={isGmailConnected && gmailEmail ? gmailEmail : "Manage email enquiries and send confirmations directly from the unified inbox."}
                         isConnected={isGmailConnected}
                         connectedLabel="Connected"
                         buttonLabel={isGmailConnected ? 'Connected' : 'Connect Google'}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Search, X, Mail, MessageCircle, Building2, PenSquare, Inbox, Send, Star } from 'lucide-react';
 import type { ChannelConversation } from './inbox-mock-data';
 import { ErrorSection } from '@/components/ui/ErrorSection';
@@ -30,6 +30,7 @@ interface ConversationListPanelProps {
   emailFolder?: string;
   onEmailFolderChange?: (folder: string) => void;
   onLoadMoreEmails?: () => void;
+  onEmailSearch?: (query: string) => void;
 }
 
 export function ConversationListPanel({
@@ -50,11 +51,25 @@ export function ConversationListPanel({
   emailFolder = 'inbox',
   onEmailFolderChange,
   onLoadMoreEmails,
+  onEmailSearch,
 }: ConversationListPanelProps) {
   const [search, setSearch] = useState('');
   const [filterTab, setFilterTab] = useState<FilterTab>('all');
   const [channelFilter, setChannelFilter] = useState<ChannelFilter>('all');
   const [sortMode, setSortMode] = useState<SortMode>('recent');
+
+  // Debounced server-side email search
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => {
+    if (channelFilter !== 'email' || !onEmailSearch) return;
+    clearTimeout(searchTimerRef.current);
+    if (search.trim().length >= 2) {
+      searchTimerRef.current = setTimeout(() => onEmailSearch(search.trim()), 500);
+    } else if (search.trim().length === 0) {
+      onEmailSearch('');
+    }
+    return () => clearTimeout(searchTimerRef.current);
+  }, [search, channelFilter, onEmailSearch]);
 
   const filteredAndSorted = useMemo(() => {
     let list = conversations;

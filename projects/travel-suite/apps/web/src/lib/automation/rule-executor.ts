@@ -2,6 +2,7 @@ import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendWhatsAppText } from "@/lib/whatsapp.server";
+import { sendViaGmail } from "@/lib/email/gmail-send";
 import { logError, logEvent } from "@/lib/observability/logger";
 import type {
   AutomationTemplate,
@@ -218,7 +219,8 @@ async function sendMessage(
   channel: "whatsapp" | "email" | "both",
   recipientPhone: string | undefined,
   recipientEmail: string | undefined,
-  messageContent: string
+  messageContent: string,
+  orgId?: string,
 ): Promise<ExecutionResult> {
   const results: ExecutionResult[] = [];
 
@@ -244,20 +246,25 @@ async function sendMessage(
   }
 
   // Send via email
-  if ((channel === "email" || channel === "both") && recipientEmail) {
-    // TODO: Implement email sending once we have proper email templates
-    // For now, we'll skip email and log a warning
-    logEvent("info", "[automation-executor] Email sending not yet implemented", {
-      recipientEmail,
-      channel,
-    });
+  if ((channel === "email" || channel === "both") && recipientEmail && orgId) {
+    const htmlBody = `<div style="font-family:sans-serif;font-size:14px;line-height:1.5;white-space:pre-wrap">${messageContent.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>`;
+    const emailMsgId = await sendViaGmail(orgId, recipientEmail, "Notification from TripBuilt", htmlBody);
 
-    results.push({
-      success: false,
-      action: "skipped",
-      channel: "email",
-      skipReason: "Email automation not yet implemented",
-    });
+    if (emailMsgId) {
+      results.push({
+        success: true,
+        action: "sent",
+        channel: "email",
+        messageId: emailMsgId,
+      });
+    } else {
+      results.push({
+        success: false,
+        action: "failed",
+        channel: "email",
+        error: "Gmail not connected or send failed",
+      });
+    }
   }
 
   // If no valid recipient, skip
@@ -445,7 +452,8 @@ export async function executeAutomationRule(
       template.action_config.channel,
       recipientPhone,
       recipientEmail,
-      messageContent
+      messageContent,
+      organizationId,
     );
 
     // ─── Step 8: Log Execution ─────────────────────────────────────────────

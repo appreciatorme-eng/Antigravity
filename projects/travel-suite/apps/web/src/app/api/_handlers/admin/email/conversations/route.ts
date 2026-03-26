@@ -7,6 +7,7 @@
 import { requireAdmin } from "@/lib/auth/admin";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchGmailThreads, type GmailMessageParsed } from "@/lib/email/gmail-read";
+import { GmailAuthExpiredError } from "@/lib/email/gmail-auth";
 import { apiSuccess, apiError } from "@/lib/api/response";
 import { logError } from "@/lib/observability/logger";
 
@@ -165,12 +166,14 @@ export async function GET(request: Request): Promise<Response> {
         );
 
         const folder = url.searchParams.get("folder") ?? "inbox";
+        const searchQuery = url.searchParams.get("q") ?? "";
         const FOLDER_QUERIES: Record<string, string> = {
             inbox: "in:inbox newer_than:30d",
             sent: "in:sent newer_than:30d",
             starred: "is:starred newer_than:30d",
         };
-        const query = FOLDER_QUERIES[folder] ?? FOLDER_QUERIES.inbox;
+        const baseQuery = FOLDER_QUERIES[folder] ?? FOLDER_QUERIES.inbox;
+        const query = searchQuery ? `${baseQuery} ${searchQuery}` : baseQuery;
 
         const result = await fetchGmailThreads(orgId, {
             query,
@@ -219,6 +222,9 @@ export async function GET(request: Request): Promise<Response> {
             nextPageToken: result.nextPageToken,
         });
     } catch (err) {
+        if (err instanceof GmailAuthExpiredError) {
+            return apiSuccess({ conversations: [], gmailConnected: false, gmailAuthExpired: true });
+        }
         logError("[email/conversations] Failed", err);
         return apiError("Failed to load email conversations", 500);
     }

@@ -47,6 +47,7 @@ export interface InboxData {
   emailNextPageToken: string | null;
   emailFolder: string;
   setEmailFolder: (folder: string) => void;
+  searchEmails: (query: string) => void;
   loadMoreEmails: () => Promise<void>;
 
   // Chatbot
@@ -68,7 +69,7 @@ export interface InboxData {
 
   // Actions
   handleSelect: (id: string) => void;
-  handleSendMessage: (convId: string, message: string, subject?: string, files?: File[]) => Promise<boolean>;
+  handleSendMessage: (convId: string, message: string, subject?: string, files?: File[], ccBcc?: { cc?: string; bcc?: string }) => Promise<boolean>;
   handleTakeOverChatbot: (session: ChatbotSessionSummary) => Promise<void>;
   handleOpenProposalDraft: (draftId: string) => void;
   handleRefreshProposalDraft: (draftId: string) => Promise<void>;
@@ -142,6 +143,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
   const [gmailConnected, setGmailConnected] = useState(false);
   const [emailNextPageToken, setEmailNextPageToken] = useState<string | null>(null);
   const [emailFolder, setEmailFolderState] = useState('inbox');
+  const [emailSearchQuery, setEmailSearchQuery] = useState('');
 
   const selectedConversation = conversations.find((c) => c.id === selectedId) ?? null;
   const selectedChannel: ChannelType = (selectedConversation as ChannelConversation | null)?.channel ?? 'whatsapp';
@@ -176,7 +178,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
       // Fetch WhatsApp and email conversations in parallel
       const [waResponse, emailResponse] = await Promise.all([
         fetch(`/api/whatsapp/conversations${qp}`, { cache: 'no-store' }),
-        fetch(`/api/admin/email/conversations?folder=${emailFolder}`, { cache: 'no-store' }).catch(() => null),
+        fetch(`/api/admin/email/conversations?${emailApiParams()}`, { cache: 'no-store' }).catch(() => null),
       ]);
 
       const waData = (await waResponse.json().catch(() => ({}))) as {
@@ -224,7 +226,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     } finally {
       setIsLoadingConvs(false);
     }
-  }, [isDemoMode, businessOnly, emailFolder]);
+  }, [isDemoMode, businessOnly, emailApiParams]);
 
   const loadWhatsAppHealth = useCallback(async () => {
     try {
@@ -254,7 +256,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
   const refreshEmailConversations = useCallback(async () => {
     if (isDemoMode || !gmailConnected) return;
     try {
-      const response = await fetch(`/api/admin/email/conversations?folder=${emailFolder}`, { cache: 'no-store' });
+      const response = await fetch(`/api/admin/email/conversations?${emailApiParams()}`, { cache: 'no-store' });
       if (!response.ok) return;
       const data = (await response.json()) as {
         data?: { conversations?: ChannelConversation[]; gmailConnected?: boolean };
@@ -270,13 +272,13 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     } catch {
       // Silent failure — email polling shouldn't disrupt inbox
     }
-  }, [isDemoMode, gmailConnected, emailFolder]);
+  }, [isDemoMode, gmailConnected, emailApiParams]);
 
   // Load more email threads (pagination)
   const loadMoreEmails = useCallback(async () => {
     if (!emailNextPageToken || !gmailConnected) return;
     try {
-      const response = await fetch(`/api/admin/email/conversations?folder=${emailFolder}&pageToken=${encodeURIComponent(emailNextPageToken)}`, { cache: 'no-store' });
+      const response = await fetch(`/api/admin/email/conversations?${emailApiParams()}&pageToken=${encodeURIComponent(emailNextPageToken)}`, { cache: 'no-store' });
       if (!response.ok) return;
       const data = (await response.json()) as {
         data?: { conversations?: ChannelConversation[]; nextPageToken?: string | null };
@@ -294,12 +296,17 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     } catch {
       // Silent — pagination failure shouldn't disrupt inbox
     }
-  }, [emailNextPageToken, gmailConnected, emailFolder]);
+  }, [emailNextPageToken, gmailConnected, emailApiParams]);
 
-  // Poll Gmail every 60 seconds (no realtime subscription available for email)
+  // Poll Gmail every 60 seconds — only when page is visible (saves API quota)
   useEffect(() => {
     if (isDemoMode || !gmailConnected) return;
-    const interval = setInterval(() => { void refreshEmailConversations(); }, 60_000);
+    const tick = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshEmailConversations();
+      }
+    };
+    const interval = setInterval(tick, 60_000);
     return () => clearInterval(interval);
   }, [isDemoMode, gmailConnected, refreshEmailConversations]);
 
@@ -432,7 +439,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     }
   }
 
-  async function handleSendMessage(convId: string, message: string, subject?: string, files?: File[]): Promise<boolean> {
+  async function handleSendMessage(convId: string, message: string, subject?: string, files?: File[], ccBcc?: { cc?: string; bcc?: string }): Promise<boolean> {
     const conversation = conversations.find((item) => item.id === convId);
     if (!conversation) return false;
 
@@ -483,6 +490,8 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             to: conversation.contact.email ?? '',
+            cc: ccBcc?.cc,
+            bcc: ccBcc?.bcc,
             subject: subject ?? '',
             body: message,
             threadId: emailConv.threadId,
@@ -640,6 +649,18 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     setEmailNextPageToken(null);
   }
 
+  function searchEmails(query: string) {
+    setEmailSearchQuery(query);
+    setEmailNextPageToken(null);
+    // Trigger re-fetch by updating state — loadLiveConversations depends on emailSearchQuery
+  }
+
+  const emailApiParams = useMemo(() => {
+    const params = new URLSearchParams({ folder: emailFolder });
+    if (emailSearchQuery) params.set('q', emailSearchQuery);
+    return params.toString();
+  }, [emailFolder, emailSearchQuery]);
+
   function startNewEmail() {
     const composeId = `${COMPOSE_ID_PREFIX}${Date.now()}`;
     const composeConv: ChannelConversation = {
@@ -692,6 +713,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     emailNextPageToken,
     emailFolder,
     setEmailFolder,
+    searchEmails,
     loadMoreEmails,
     activeChatbotSession,
     showChatbotBanner,

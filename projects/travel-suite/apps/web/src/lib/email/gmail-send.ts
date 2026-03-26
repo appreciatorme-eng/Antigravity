@@ -25,15 +25,24 @@ export interface GmailReplyHeaders {
 // MIME message builder
 // ---------------------------------------------------------------------------
 
+export interface GmailRecipients {
+    readonly to: string;
+    readonly cc?: string;
+    readonly bcc?: string;
+}
+
 function buildMimeMessage(
     from: string,
-    to: string,
+    recipients: string | GmailRecipients,
     subject: string,
     htmlBody: string,
     attachments?: readonly EmailAttachment[],
     replyHeaders?: GmailReplyHeaders,
 ): string {
     const boundary = `boundary_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const to = typeof recipients === "string" ? recipients : recipients.to;
+    const cc = typeof recipients === "string" ? undefined : recipients.cc;
+    const bcc = typeof recipients === "string" ? undefined : recipients.bcc;
 
     const headers = [
         `From: ${from}`,
@@ -41,6 +50,9 @@ function buildMimeMessage(
         `Subject: =?UTF-8?B?${Buffer.from(subject).toString("base64")}?=`,
         "MIME-Version: 1.0",
     ];
+
+    if (cc) headers.push(`Cc: ${cc}`);
+    if (bcc) headers.push(`Bcc: ${bcc}`);
 
     if (replyHeaders?.inReplyTo) {
         headers.push(`In-Reply-To: ${replyHeaders.inReplyTo}`);
@@ -101,7 +113,7 @@ function buildMimeMessage(
  */
 export async function sendViaGmail(
     orgId: string,
-    to: string,
+    to: string | GmailRecipients,
     subject: string,
     htmlBody: string,
     attachments?: readonly EmailAttachment[],

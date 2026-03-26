@@ -49,6 +49,7 @@ export function IntegrationsTab({
 
     // Integration connection state (co-located -- only used here)
     const [isGmailConnected, setIsGmailConnected] = useState(false);
+    const [gmailEmail, setGmailEmail] = useState('');
     const [isLinkedInConnected, setIsLinkedInConnected] = useState(false);
     const [isInstagramConnected, setIsInstagramConnected] = useState(false);
     const [isTripAdvisorConnected, setIsTripAdvisorConnected] = useState(false);
@@ -70,7 +71,7 @@ export function IntegrationsTab({
             const [{ data: connections }, upiRes, placesRes] = await Promise.all([
                 supabase
                     .from('social_connections')
-                    .select('platform')
+                    .select('platform, platform_page_id')
                     .in('platform', ['google', 'linkedin', 'instagram', 'facebook']),
                 fetch('/api/settings/upi'),
                 fetch('/api/integrations/places'),
@@ -79,6 +80,8 @@ export function IntegrationsTab({
             if (connections) {
                 const platforms = new Set(connections.map((c: { platform: string }) => c.platform));
                 setIsGmailConnected(platforms.has('google'));
+                const googleConn = connections.find((c: { platform: string; platform_page_id?: string }) => c.platform === 'google') as { platform_page_id?: string } | undefined;
+                if (googleConn?.platform_page_id) setGmailEmail(googleConn.platform_page_id);
                 setIsLinkedInConnected(platforms.has('linkedin'));
                 setIsInstagramConnected(platforms.has('instagram') || platforms.has('facebook'));
             }
@@ -172,6 +175,7 @@ export function IntegrationsTab({
                 isWhatsAppConnected={isWhatsAppConnected}
                 whatsAppProfile={whatsAppProfile}
                 isGmailConnected={isGmailConnected}
+                gmailEmail={gmailEmail}
                 onOpenWhatsAppConnect={onOpenWhatsAppConnect}
                 onDisconnectWhatsApp={onDisconnectWhatsApp}
                 onDisconnectGmail={async () => {

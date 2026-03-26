@@ -60,6 +60,13 @@ export async function getGmailConnection(orgId: string): Promise<GmailConnection
 // Token refresh
 // ---------------------------------------------------------------------------
 
+export class GmailAuthExpiredError extends Error {
+    constructor() {
+        super("Gmail access has been revoked or expired. Please reconnect in Settings.");
+        this.name = "GmailAuthExpiredError";
+    }
+}
+
 export async function getValidAccessToken(conn: GmailConnection): Promise<string> {
     // Token still valid (with 5-min buffer)
     if (conn.expiresAt.getTime() > Date.now() + 5 * 60 * 1000) {
@@ -67,24 +74,40 @@ export async function getValidAccessToken(conn: GmailConnection): Promise<string
     }
 
     if (!conn.refreshToken) {
-        throw new Error("Gmail token expired and no refresh token available");
+        // No refresh token — auto-disconnect stale connection
+        await disconnectStaleConnection(conn.connectionId);
+        throw new GmailAuthExpiredError();
     }
 
-    const newAccessToken = await refreshGoogleToken(conn.refreshToken);
+    try {
+        const newAccessToken = await refreshGoogleToken(conn.refreshToken);
 
-    // Update stored token
+        // Update stored token
+        const admin = createAdminClient();
+        const expiresAt = new Date();
+        expiresAt.setSeconds(expiresAt.getSeconds() + 3600);
+
+        await admin
+            .from("social_connections")
+            .update({
+                access_token_encrypted: encryptSocialToken(newAccessToken),
+                token_expires_at: expiresAt.toISOString(),
+                updated_at: new Date().toISOString(),
+            })
+            .eq("id", conn.connectionId);
+
+        return newAccessToken;
+    } catch {
+        // Refresh failed (token revoked, invalid_grant, etc.) — auto-disconnect
+        await disconnectStaleConnection(conn.connectionId);
+        throw new GmailAuthExpiredError();
+    }
+}
+
+async function disconnectStaleConnection(connectionId: string): Promise<void> {
     const admin = createAdminClient();
-    const expiresAt = new Date();
-    expiresAt.setSeconds(expiresAt.getSeconds() + 3600);
-
     await admin
         .from("social_connections")
-        .update({
-            access_token_encrypted: encryptSocialToken(newAccessToken),
-            token_expires_at: expiresAt.toISOString(),
-            updated_at: new Date().toISOString(),
-        })
-        .eq("id", conn.connectionId);
-
-    return newAccessToken;
+        .delete()
+        .eq("id", connectionId);
 }
