@@ -43,6 +43,7 @@ const routes = createCatchAllHandlers([
   ["email/attachment", () => import("@/app/api/_handlers/admin/email/attachment/route")],
   ["email/conversations", () => import("@/app/api/_handlers/admin/email/conversations/route")],
   ["email/disconnect", () => import("@/app/api/_handlers/admin/email/disconnect/route")],
+  ["email/extract-intent", () => import("@/app/api/_handlers/admin/email/extract-intent/route")],
   ["email/read", () => import("@/app/api/_handlers/admin/email/read/route")],
   ["email/send", () => import("@/app/api/_handlers/admin/email/send/route")],
   ["export/trips", () => import("@/app/api/_handlers/admin/export/trips/route")],

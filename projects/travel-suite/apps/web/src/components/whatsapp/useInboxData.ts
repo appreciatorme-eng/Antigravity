@@ -162,7 +162,9 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     refresh: refreshSmartReplySuggestions,
   } = useSmartReplySuggestions(
     selectedConversation,
-    !isDemoMode && selectedChannel === 'whatsapp',
+    !isDemoMode && (selectedChannel === 'whatsapp' || selectedChannel === 'email'),
+    undefined,
+    selectedChannel === 'email' ? 'email' : 'whatsapp',
   );
 
   const totalUnread = conversations.reduce((a, c) => a + c.unreadCount, 0);

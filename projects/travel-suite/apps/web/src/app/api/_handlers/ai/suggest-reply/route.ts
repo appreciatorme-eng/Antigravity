@@ -20,6 +20,7 @@ const SuggestReplySchema = z.object({
     .max(8),
   threadContext: z.string().trim().max(500).optional(),
   language: z.string().trim().max(50).optional(),
+  channel: z.enum(["whatsapp", "email"]).optional(),
 });
 
 function buildSuggestReplyPrompt(input: z.infer<typeof SuggestReplySchema>) {
@@ -31,9 +32,13 @@ function buildSuggestReplyPrompt(input: z.infer<typeof SuggestReplySchema>) {
     ? `\nIMPORTANT: Reply in ${input.language}. Use the natural script and tone of that language.`
     : '';
 
+  const isEmail = input.channel === 'email';
+  const channelLabel = isEmail ? 'email messages' : 'WhatsApp messages';
+  const wordLimit = isEmail ? 25 : 15;
+
   return `You are an assistant for a professional travel operator.
-Given the last few WhatsApp messages from a traveler, suggest exactly 3 short reply options.
-Each reply must be under 15 words, professional, and contextually relevant.
+Given the last few ${channelLabel} from a traveler, suggest exactly 3 short reply options.
+Each reply must be under ${wordLimit} words, professional, and contextually relevant.
 Avoid placeholders, signatures, bullet points, and emojis.${langInstruction}
 Return only a JSON array of 3 strings. No explanation.
 

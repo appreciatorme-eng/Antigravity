@@ -23,6 +23,8 @@ import {
   Globe,
   Sparkles,
   BarChart3,
+  Loader2,
+  Wand2,
 } from 'lucide-react';
 import Image from 'next/image';
 import { toast } from 'sonner';
@@ -385,6 +387,61 @@ export function MessageThread({
     setShowCanned(false);
   }
 
+  const [extractingTrip, setExtractingTrip] = useState(false);
+
+  async function handleExtractTripIntent() {
+    if (!conversation || extractingTrip) return;
+    setExtractingTrip(true);
+    try {
+      const emailMessages = conversation.messages
+        .filter((m) => m.body?.trim())
+        .slice(-25)
+        .map((m) => ({
+          direction: m.direction,
+          body: m.body!.trim(),
+          subject: m.subject,
+        }));
+      if (emailMessages.length === 0) {
+        toast.error('No messages to extract trip details from');
+        return;
+      }
+      const res = await fetch('/api/admin/email/extract-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: emailMessages,
+          contactEmail: conversation.contact.email,
+          contactName: conversation.contact.name,
+          contactPhone: conversation.contact.phone || undefined,
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        toast.error(result?.error || 'Failed to extract trip intent');
+        return;
+      }
+      const { draftId, extracted } = result.data ?? {};
+      const parts = [
+        extracted?.destination && `Destination: ${extracted.destination}`,
+        extracted?.travel_dates && `Dates: ${extracted.travel_dates}`,
+        extracted?.group_size && `Group: ${extracted.group_size} pax`,
+        extracted?.budget_inr && `Budget: ₹${extracted.budget_inr.toLocaleString('en-IN')}`,
+      ].filter(Boolean);
+      toast.success(
+        parts.length > 0
+          ? `Trip extracted — ${parts.join(', ')}`
+          : 'Draft created (no trip details found in emails)',
+      );
+      if (draftId) {
+        onContextAction?.('create-proposal', extracted?.destination ?? undefined);
+      }
+    } catch {
+      toast.error('Failed to extract trip intent');
+    } finally {
+      setExtractingTrip(false);
+    }
+  }
+
   function handleUseSuggestion(suggestion: string) {
     setInputText(suggestion);
     onUseSmartReply?.(suggestion);
@@ -480,9 +537,24 @@ export function MessageThread({
           </div>
         </div>
         <div className="flex items-center gap-1">
+          {isEmail && (
+            <button
+              onClick={handleExtractTripIntent}
+              disabled={extractingTrip}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-500/15 border border-violet-500/25 hover:bg-violet-500/25 text-violet-300 text-xs font-semibold transition-colors active:scale-95 disabled:opacity-50"
+              title="Extract trip details from this email thread using AI"
+            >
+              {extractingTrip ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
+              <span>Extract Trip</span>
+            </button>
+          )}
           <button
             onClick={() => onContextAction?.('create-proposal')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#25D366]/15 border border-[#25D366]/25 hover:bg-[#25D366]/25 text-[#25D366] text-xs font-semibold transition-colors active:scale-95"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors active:scale-95 ${
+              isEmail
+                ? 'bg-blue-500/15 border border-blue-500/25 hover:bg-blue-500/25 text-blue-300'
+                : 'bg-[#25D366]/15 border border-[#25D366]/25 hover:bg-[#25D366]/25 text-[#25D366]'
+            }`}
             title="Create Proposal"
           >
             <Sparkles className="w-3.5 h-3.5" />
@@ -561,7 +633,7 @@ export function MessageThread({
 
       {/* Input Area */}
       <div className="shrink-0 px-4 pb-4 pt-2 border-t border-white/10">
-        {!isEmail && (smartRepliesLoading || smartReplies.length > 0) && (
+        {(smartRepliesLoading || smartReplies.length > 0) && (
           <div className="mb-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
             <div className="mb-2 flex items-center justify-between gap-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -590,7 +662,7 @@ export function MessageThread({
                       key={suggestion}
                       type="button"
                       onClick={() => handleUseSuggestion(suggestion)}
-                      className="rounded-full border border-white/10 bg-white/10 px-3 py-2 text-left text-xs font-medium text-slate-200 transition-all hover:border-[#25D366]/40 hover:bg-[#25D366]/10 hover:text-white"
+                      className={`rounded-full border border-white/10 bg-white/10 px-3 py-2 text-left text-xs font-medium text-slate-200 transition-all ${isEmail ? 'hover:border-blue-500/40 hover:bg-blue-500/10' : 'hover:border-[#25D366]/40 hover:bg-[#25D366]/10'} hover:text-white`}
                     >
                       {suggestion}
                     </button>
@@ -696,6 +768,14 @@ export function MessageThread({
                     title="Attach files"
                   >
                     <Paperclip className="w-4 h-4 text-slate-400" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setModalMode('payment')}
+                    className="p-1 hover:bg-white/10 rounded-lg transition-colors"
+                    title="Insert Payment Link"
+                  >
+                    <CreditCard className="w-4 h-4 text-pink-400" />
                   </button>
                 </div>
                 <button

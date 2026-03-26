@@ -10,9 +10,10 @@ type SmartReplyPayload = {
   }>;
   threadContext?: string;
   language?: string;
+  channel?: "whatsapp" | "email";
 };
 
-function buildPayload(conversation: Conversation): SmartReplyPayload | null {
+function buildPayload(conversation: Conversation, channel?: "whatsapp" | "email"): SmartReplyPayload | null {
   const lastMessages = conversation.messages
     .filter((message) => Boolean(message.body?.trim()))
     .slice(-6)
@@ -41,6 +42,7 @@ function buildPayload(conversation: Conversation): SmartReplyPayload | null {
   return {
     lastMessages,
     threadContext: threadContext || undefined,
+    channel,
   };
 }
 
@@ -48,6 +50,7 @@ export function useSmartReplySuggestions(
   conversation: Conversation | null,
   enabled: boolean,
   language?: string,
+  channel?: "whatsapp" | "email",
 ) {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -74,7 +77,7 @@ export function useSmartReplySuggestions(
       return;
     }
 
-    const payload = buildPayload(conversation);
+    const payload = buildPayload(conversation, channel);
     if (!payload) {
       setSuggestions([]);
       return;
@@ -110,7 +113,7 @@ export function useSmartReplySuggestions(
     } finally {
       setLoading(false);
     }
-  }, [conversation, enabled, language]);
+  }, [conversation, enabled, language, channel]);
 
   useEffect(() => {
     void refresh();
