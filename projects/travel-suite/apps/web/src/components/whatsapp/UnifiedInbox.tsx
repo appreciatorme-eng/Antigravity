@@ -113,6 +113,8 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
         onConnectWhatsApp={() => inbox.setIsWaConnectOpen(true)}
         onNewEmail={inbox.startNewEmail}
         emailNextPageToken={inbox.emailNextPageToken}
+        emailFolder={inbox.emailFolder}
+        onEmailFolderChange={inbox.setEmailFolder}
         onLoadMoreEmails={() => { void inbox.loadMoreEmails(); }}
       />
 

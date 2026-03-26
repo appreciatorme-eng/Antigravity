@@ -45,6 +45,8 @@ export interface InboxData {
   // Gmail status
   gmailConnected: boolean;
   emailNextPageToken: string | null;
+  emailFolder: string;
+  setEmailFolder: (folder: string) => void;
   loadMoreEmails: () => Promise<void>;
 
   // Chatbot
@@ -139,6 +141,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
   const [presenceMap, setPresenceMap] = useState<Map<string, PresenceState>>(new Map());
   const [gmailConnected, setGmailConnected] = useState(false);
   const [emailNextPageToken, setEmailNextPageToken] = useState<string | null>(null);
+  const [emailFolder, setEmailFolderState] = useState('inbox');
 
   const selectedConversation = conversations.find((c) => c.id === selectedId) ?? null;
   const selectedChannel: ChannelType = (selectedConversation as ChannelConversation | null)?.channel ?? 'whatsapp';
@@ -173,7 +176,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
       // Fetch WhatsApp and email conversations in parallel
       const [waResponse, emailResponse] = await Promise.all([
         fetch(`/api/whatsapp/conversations${qp}`, { cache: 'no-store' }),
-        fetch('/api/admin/email/conversations', { cache: 'no-store' }).catch(() => null),
+        fetch(`/api/admin/email/conversations?folder=${emailFolder}`, { cache: 'no-store' }).catch(() => null),
       ]);
 
       const waData = (await waResponse.json().catch(() => ({}))) as {
@@ -221,7 +224,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     } finally {
       setIsLoadingConvs(false);
     }
-  }, [isDemoMode, businessOnly]);
+  }, [isDemoMode, businessOnly, emailFolder]);
 
   const loadWhatsAppHealth = useCallback(async () => {
     try {
@@ -251,7 +254,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
   const refreshEmailConversations = useCallback(async () => {
     if (isDemoMode || !gmailConnected) return;
     try {
-      const response = await fetch('/api/admin/email/conversations', { cache: 'no-store' });
+      const response = await fetch(`/api/admin/email/conversations?folder=${emailFolder}`, { cache: 'no-store' });
       if (!response.ok) return;
       const data = (await response.json()) as {
         data?: { conversations?: ChannelConversation[]; gmailConnected?: boolean };
@@ -267,13 +270,13 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     } catch {
       // Silent failure — email polling shouldn't disrupt inbox
     }
-  }, [isDemoMode, gmailConnected]);
+  }, [isDemoMode, gmailConnected, emailFolder]);
 
   // Load more email threads (pagination)
   const loadMoreEmails = useCallback(async () => {
     if (!emailNextPageToken || !gmailConnected) return;
     try {
-      const response = await fetch(`/api/admin/email/conversations?pageToken=${encodeURIComponent(emailNextPageToken)}`, { cache: 'no-store' });
+      const response = await fetch(`/api/admin/email/conversations?folder=${emailFolder}&pageToken=${encodeURIComponent(emailNextPageToken)}`, { cache: 'no-store' });
       if (!response.ok) return;
       const data = (await response.json()) as {
         data?: { conversations?: ChannelConversation[]; nextPageToken?: string | null };
@@ -291,7 +294,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     } catch {
       // Silent — pagination failure shouldn't disrupt inbox
     }
-  }, [emailNextPageToken, gmailConnected]);
+  }, [emailNextPageToken, gmailConnected, emailFolder]);
 
   // Poll Gmail every 60 seconds (no realtime subscription available for email)
   useEffect(() => {
@@ -632,6 +635,11 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
 
   const COMPOSE_ID_PREFIX = 'compose_email_';
 
+  function setEmailFolder(folder: string) {
+    setEmailFolderState(folder);
+    setEmailNextPageToken(null);
+  }
+
   function startNewEmail() {
     const composeId = `${COMPOSE_ID_PREFIX}${Date.now()}`;
     const composeConv: ChannelConversation = {
@@ -682,6 +690,8 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     whatsAppHealthError,
     gmailConnected,
     emailNextPageToken,
+    emailFolder,
+    setEmailFolder,
     loadMoreEmails,
     activeChatbotSession,
     showChatbotBanner,

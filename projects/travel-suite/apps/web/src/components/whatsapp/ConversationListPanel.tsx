@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Search, X, Mail, MessageCircle, Building2, PenSquare } from 'lucide-react';
+import { Search, X, Mail, MessageCircle, Building2, PenSquare, Inbox, Send, Star } from 'lucide-react';
 import type { ChannelConversation } from './inbox-mock-data';
 import { ErrorSection } from '@/components/ui/ErrorSection';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -27,6 +27,8 @@ interface ConversationListPanelProps {
   onConnectWhatsApp: () => void;
   onNewEmail?: () => void;
   emailNextPageToken?: string | null;
+  emailFolder?: string;
+  onEmailFolderChange?: (folder: string) => void;
   onLoadMoreEmails?: () => void;
 }
 
@@ -45,6 +47,8 @@ export function ConversationListPanel({
   onConnectWhatsApp,
   onNewEmail,
   emailNextPageToken,
+  emailFolder = 'inbox',
+  onEmailFolderChange,
   onLoadMoreEmails,
 }: ConversationListPanelProps) {
   const [search, setSearch] = useState('');
@@ -177,6 +181,30 @@ export function ConversationListPanel({
           </button>
         )}
       </div>
+
+      {/* Email folder tabs */}
+      {channelFilter === 'email' && gmailConnected && onEmailFolderChange && (
+        <div className="shrink-0 flex gap-1 px-3 py-1.5 border-b border-white/10">
+          {([
+            { key: 'inbox', label: 'Inbox', icon: <Inbox className="w-3 h-3" /> },
+            { key: 'sent', label: 'Sent', icon: <Send className="w-3 h-3" /> },
+            { key: 'starred', label: 'Starred', icon: <Star className="w-3 h-3" /> },
+          ]).map(({ key, label, icon }) => (
+            <button
+              key={key}
+              onClick={() => onEmailFolderChange(key)}
+              className={`flex-1 flex items-center justify-center gap-1 py-1 rounded-md text-[10px] font-semibold transition-colors ${
+                emailFolder === key
+                  ? 'bg-blue-500/15 text-blue-400'
+                  : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+              }`}
+            >
+              {icon}
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Filter tabs */}
       <div className="shrink-0 flex gap-1 px-3 py-2 overflow-x-auto border-b border-white/10" role="tablist" aria-label="Conversation type filter">

@@ -164,8 +164,16 @@ export async function GET(request: Request): Promise<Response> {
             50,
         );
 
+        const folder = url.searchParams.get("folder") ?? "inbox";
+        const FOLDER_QUERIES: Record<string, string> = {
+            inbox: "in:inbox newer_than:30d",
+            sent: "in:sent newer_than:30d",
+            starred: "is:starred newer_than:30d",
+        };
+        const query = FOLDER_QUERIES[folder] ?? FOLDER_QUERIES.inbox;
+
         const result = await fetchGmailThreads(orgId, {
-            query: "in:inbox newer_than:30d",
+            query,
             maxResults,
             pageToken,
         });
