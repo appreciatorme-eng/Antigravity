@@ -134,7 +134,7 @@ export async function POST(request: Request): Promise<Response> {
                 chatbot_session_id: globalThis.crypto.randomUUID(),
                 client_id: clientId ?? null,
                 traveler_name: extracted.traveler_name,
-                traveler_phone: contactPhone ?? null,
+                traveler_phone: contactPhone ?? '',
                 destination: extracted.destination,
                 travel_dates: extracted.travel_dates,
                 trip_start_date: extracted.trip_start_date,

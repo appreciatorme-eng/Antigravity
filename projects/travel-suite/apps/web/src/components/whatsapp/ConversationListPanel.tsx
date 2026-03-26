@@ -59,7 +59,7 @@ export function ConversationListPanel({
   const [sortMode, setSortMode] = useState<SortMode>('recent');
 
   // Debounced server-side email search
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => {
     if (channelFilter !== 'email' || !onEmailSearch) return;
     clearTimeout(searchTimerRef.current);
