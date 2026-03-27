@@ -249,6 +249,7 @@ export async function GET(request: Request): Promise<Response> {
                   direction: (meta?.direction ?? "in") as "in" | "out",
                   body: (meta?.body_preview as string) ?? "",
                   timestamp: formatLocalTime(ev.received_at, userTimezone),
+                  rawTimestamp: ev.received_at,
                   status: ((meta?.status as string) ?? "delivered") as "sent" | "delivered" | "read" | "pending",
                   ...(isVoice ? {
                       voiceDuration: (meta?.voice_duration as string) ?? undefined,

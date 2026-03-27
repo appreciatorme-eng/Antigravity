@@ -212,8 +212,10 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
 
       const rawConvs = [...(waData.conversations ?? []), ...emailConvs]
         .sort((a, b) => {
-          const aTime = a.messages.at(-1)?.timestamp ?? '';
-          const bTime = b.messages.at(-1)?.timestamp ?? '';
+          const aLast = a.messages.at(-1);
+          const bLast = b.messages.at(-1);
+          const aTime = aLast?.rawTimestamp ?? aLast?.timestamp ?? '';
+          const bTime = bLast?.rawTimestamp ?? bLast?.timestamp ?? '';
           return new Date(bTime).getTime() - new Date(aTime).getTime();
         });
       const convs = applyReadTracking(rawConvs);

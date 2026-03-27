@@ -31,6 +31,7 @@ interface InboxMessage {
     readonly bodyHtml?: string;
     readonly subject?: string;
     readonly timestamp: string;
+    readonly rawTimestamp?: string;
     readonly status: "sent" | "delivered" | "read";
     readonly messageIdHeader?: string | null;
     readonly attachments?: readonly InboxAttachment[];
@@ -96,6 +97,7 @@ function mapMessage(
         bodyHtml: msg.bodyHtml || undefined,
         subject: msg.subject || undefined,
         timestamp: msg.date,
+        rawTimestamp: msg.date,
         status: "read",
         messageIdHeader: msg.messageIdHeader,
         attachments: msg.attachments.length > 0 ? msg.attachments : undefined,

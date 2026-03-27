@@ -79,6 +79,7 @@ export interface Message {
   body?: string;
   bodyHtml?: string;
   timestamp: string; // e.g. "10:42 AM"
+  rawTimestamp?: string; // ISO string for sorting
   status?: MessageStatus;
   subject?: string;
   isAutomated?: boolean;
