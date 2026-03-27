@@ -185,13 +185,18 @@ export async function fetchImapThreads(
   const client = createImapClient(config, credentials);
 
   try {
+    logError("[imap-read] step=connect", { host: config.imapHost });
     await client.connect();
 
     const mailbox = await resolveMailbox(client, options.folder);
+    logError("[imap-read] step=open-mailbox", { mailbox });
     await client.mailboxOpen(mailbox, { readOnly: true });
 
     const since = daysAgo(DAYS_LOOKBACK);
+    logError("[imap-read] step=search", { since: since.toISOString() });
     const searchResult = await client.search({ since }, { uid: true }) as number[];
+
+    logError("[imap-read] step=search-result", { count: searchResult?.length ?? 0 });
 
     if (!searchResult || !Array.isArray(searchResult) || searchResult.length === 0) {
       return { threads: [], nextPageToken: null, resultSizeEstimate: 0 };
@@ -208,6 +213,8 @@ export async function fetchImapThreads(
       return { threads: [], nextPageToken: null, resultSizeEstimate: sortedUids.length };
     }
 
+    logError("[imap-read] step=fetch", { uidCount: pageUids.length });
+
     const messages: EmailMessage[] = [];
     const uidSet = pageUids.join(",");
 
@@ -223,9 +230,11 @@ export async function fetchImapThreads(
         const parsed = await simpleParser(msg.source);
         messages.push(toEmailMessage(msg.uid, "", parsed));
       } catch (parseErr) {
-        logError(`imap-read: failed to parse message uid=${msg.uid}`, parseErr);
+        logError(`[imap-read] step=parse-fail uid=${msg.uid}`, parseErr);
       }
     }
+
+    logError("[imap-read] step=done", { messagesCount: messages.length });
 
     // Sort messages newest-first for thread grouping
     const sorted = [...messages].sort(
@@ -242,7 +251,8 @@ export async function fetchImapThreads(
       resultSizeEstimate: sortedUids.length,
     };
   } catch (err) {
-    logError("imap-read: fetchImapThreads failed", err);
+    const msg = err instanceof Error ? err.message : String(err);
+    logError("[imap-read] fetchImapThreads CRASHED", { error: msg, stack: err instanceof Error ? err.stack : undefined });
     return null;
   } finally {
     await client.logout().catch(() => {});
