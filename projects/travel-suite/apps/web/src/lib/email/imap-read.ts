@@ -221,15 +221,13 @@ export async function fetchImapThreads(
     // Fetch envelope only (minimal — no source, no bodyStructure, no headers)
     // simpleParser and headers both fail on Vercel serverless
     let fetchError: string | null = null;
+    let firstMsgKeys: string[] = [];
+    let firstMsgSample: Record<string, unknown> = {};
     try {
       const fetchIterator = client.fetch(uidSet, {
         uid: true,
         envelope: true,
       });
-
-      // Capture first message's keys for debugging
-      let firstMsgKeys: string[] = [];
-      let firstMsgSample: Record<string, unknown> = {};
       for await (const msg of fetchIterator) {
         try {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
