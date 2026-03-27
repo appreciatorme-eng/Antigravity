@@ -16,28 +16,31 @@ declare global {
   }
 }
 
-async function loadRazorpayCheckoutScript(): Promise<void> {
+/**
+ * Wait for the Razorpay global to become available.
+ * The actual <script> tag is rendered by Next.js <Script> in page.tsx.
+ * We just poll for window.Razorpay with a timeout.
+ */
+async function waitForRazorpay(timeoutMs = 10_000): Promise<void> {
   if (typeof window === "undefined") return;
   if (window.Razorpay) return;
 
-  // Remove any previously failed script tags to allow retry
-  const stale = document.querySelector<HTMLScriptElement>(
-    'script[src="https://checkout.razorpay.com/v1/checkout.js"]',
-  );
-  if (stale) stale.remove();
-
-  await new Promise<void>((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () =>
-      reject(
-        new Error(
-          "Failed to load Razorpay checkout. This may be caused by an ad blocker or browser security settings.",
-        ),
-      );
-    document.head.appendChild(script);
+  const start = Date.now();
+  return new Promise<void>((resolve, reject) => {
+    const check = () => {
+      if (window.Razorpay) {
+        resolve();
+      } else if (Date.now() - start > timeoutMs) {
+        reject(
+          new Error(
+            "Failed to load Razorpay checkout. This may be caused by an ad blocker or browser security settings.",
+          ),
+        );
+      } else {
+        setTimeout(check, 200);
+      }
+    };
+    check();
   });
 }
 
@@ -80,7 +83,7 @@ export function PaymentCheckoutClient({ initialLink }: PaymentCheckoutClientProp
     setIsLaunching(true);
 
     try {
-      await loadRazorpayCheckoutScript();
+      await waitForRazorpay();
       if (!window.Razorpay) {
         throw new Error("Razorpay checkout is unavailable");
       }

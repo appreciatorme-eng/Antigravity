@@ -36,9 +36,10 @@ export default async function PayPage({
           "radial-gradient(circle at top, rgba(0,208,132,0.18), transparent 28%), linear-gradient(180deg, #08111f 0%, #0b1728 100%)",
       }}
     >
+      {/* eslint-disable-next-line @next/next/no-before-interactive-script-outside-document -- payment page needs Razorpay before hydration */}
       <Script
         src="https://checkout.razorpay.com/v1/checkout.js"
-        strategy="afterInteractive"
+        strategy="beforeInteractive"
       />
       <PaymentCheckoutClient initialLink={link} />
     </main>
