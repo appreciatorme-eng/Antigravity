@@ -139,16 +139,19 @@ export default function SaveItineraryButton({
 
     if (saved) {
         return (
-            <div className="flex items-center gap-2">
-                <span className="flex items-center gap-2 px-4 py-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-xl border border-emerald-200 dark:border-emerald-800 font-bold text-sm">
-                    <Check className="w-4 h-4" /> Saved! ↓ Scroll down
+            <div className="flex items-center gap-1.5 md:gap-2">
+                <span className="flex items-center gap-1.5 px-2 md:px-4 py-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-xl border border-emerald-200 dark:border-emerald-800 font-bold text-xs md:text-sm">
+                    <Check className="w-4 h-4" />
+                    <span className="hidden md:inline">Saved! ↓ Scroll down</span>
+                    <span className="md:hidden">Saved!</span>
                 </span>
                 {savedTripId && (
                     <Link
                         href={`/trips/${savedTripId}`}
-                        className="flex items-center gap-1.5 px-3 py-2 bg-secondary text-white rounded-xl text-xs font-bold hover:opacity-90 transition-opacity"
+                        className="flex items-center gap-1 px-2 md:px-3 py-2 bg-secondary text-white rounded-xl text-xs font-bold hover:opacity-90 transition-opacity"
                     >
-                        View Trip <ExternalLink className="w-3 h-3" />
+                        <span className="hidden md:inline">View Trip</span>
+                        <ExternalLink className="w-3 h-3" />
                     </Link>
                 )}
             </div>
@@ -160,16 +163,17 @@ export default function SaveItineraryButton({
             <button
                 onClick={handleSave}
                 disabled={saving}
-                className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl disabled:opacity-50 transition-all flex items-center gap-2 shadow-md shadow-emerald-500/20 font-bold text-sm"
+                className="h-9 md:h-10 px-2 md:px-5 py-2 md:py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl disabled:opacity-50 transition-all flex items-center gap-2 shadow-md shadow-emerald-500/20 font-bold text-xs md:text-sm"
             >
                 {saving ? (
                     <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        Saving...
+                        <span className="hidden md:inline">Saving...</span>
                     </>
                 ) : (
                     <>
-                        <Save className="w-4 h-4" /> Save Trip
+                        <Save className="w-4 h-4" />
+                        <span className="hidden md:inline">Save Trip</span>
                     </>
                 )}
             </button>

@@ -101,7 +101,7 @@ export function TripDetailHeader({
   const durationLabel = computeDurationLabel(trip);
 
   return (
-    <header className="space-y-6">
+    <header className="space-y-4 md:space-y-6">
       {/* Back link */}
       <Link
         href="/trips"
@@ -114,83 +114,83 @@ export function TripDetailHeader({
       {/* Title row */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-3">
-          <div className="flex items-center gap-3">
-            <h1 className="text-5xl font-serif text-secondary dark:text-white tracking-tight">
+          <div className="flex flex-wrap items-center gap-2 md:gap-3">
+            <h1 className="text-2xl md:text-5xl font-serif text-secondary dark:text-white tracking-tight">
               {title}
             </h1>
             {renderStatusBadge(trip.status)}
           </div>
 
           {/* Metadata chips */}
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="inline-flex items-center gap-2 px-4 py-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-gray-100 dark:border-slate-800 text-sm text-secondary dark:text-slate-300">
-              <User className="w-4 h-4 text-text-muted" />
+          <div className="flex flex-wrap items-center gap-2 md:gap-3">
+            <span className="inline-flex items-center gap-1.5 px-2.5 md:px-4 py-1.5 md:py-2 bg-slate-50 dark:bg-slate-800/50 rounded-lg md:rounded-xl border border-gray-100 dark:border-slate-800 text-xs md:text-sm text-secondary dark:text-slate-300">
+              <User className="w-3.5 h-3.5 md:w-4 md:h-4 text-text-muted" />
               {clientName}
             </span>
 
-            <span className="inline-flex items-center gap-2 px-4 py-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-gray-100 dark:border-slate-800 text-sm text-secondary dark:text-slate-300">
-              <Calendar className="w-4 h-4 text-text-muted" />
+            <span className="inline-flex items-center gap-1.5 px-2.5 md:px-4 py-1.5 md:py-2 bg-slate-50 dark:bg-slate-800/50 rounded-lg md:rounded-xl border border-gray-100 dark:border-slate-800 text-xs md:text-sm text-secondary dark:text-slate-300">
+              <Calendar className="w-3.5 h-3.5 md:w-4 md:h-4 text-text-muted" />
               {startDateLabel}
             </span>
 
-            <span className="inline-flex items-center gap-2 px-4 py-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-gray-100 dark:border-slate-800 text-sm text-secondary dark:text-slate-300">
-              <Clock className="w-4 h-4 text-text-muted" />
+            <span className="inline-flex items-center gap-1.5 px-2.5 md:px-4 py-1.5 md:py-2 bg-slate-50 dark:bg-slate-800/50 rounded-lg md:rounded-xl border border-gray-100 dark:border-slate-800 text-xs md:text-sm text-secondary dark:text-slate-300">
+              <Clock className="w-3.5 h-3.5 md:w-4 md:h-4 text-text-muted" />
               {durationLabel}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Action buttons */}
-      <div className="flex flex-wrap items-center gap-3">
+      {/* Action buttons — icon-only on mobile, full labels on desktop */}
+      <div className="flex flex-wrap items-center gap-2 md:gap-3">
         <GlassButton
           variant="outline"
-          className="h-14 px-6 rounded-2xl hover:shadow-md"
+          className="h-10 md:h-14 px-3 md:px-6 rounded-xl md:rounded-2xl hover:shadow-md"
           onClick={onDuplicate}
           loading={duplicating}
         >
           <CopyPlus className="w-4 h-4" />
-          Duplicate Trip
+          <span className="hidden md:inline">Duplicate Trip</span>
         </GlassButton>
 
         <GlassButton
           variant="outline"
-          className="h-14 px-6 rounded-2xl hover:shadow-md"
+          className="h-10 md:h-14 px-3 md:px-6 rounded-xl md:rounded-2xl hover:shadow-md"
           onClick={onShare}
           data-tour="share-trip-btn"
         >
           <Share2 className="w-4 h-4" />
-          Share Trip
+          <span className="hidden md:inline">Share Trip</span>
         </GlassButton>
 
         <GlassButton
           variant="outline"
-          className="h-14 px-6 rounded-2xl hover:shadow-md"
+          className="h-10 md:h-14 px-3 md:px-6 rounded-xl md:rounded-2xl hover:shadow-md"
           onClick={onOptimizeRoute}
         >
           <Zap className="w-4 h-4" />
-          AI Optimize Route
+          <span className="hidden md:inline">AI Optimize Route</span>
         </GlassButton>
 
         <GlassButton
           variant="outline"
-          className="h-14 px-6 rounded-2xl hover:shadow-md border-amber-500 text-amber-600 hover:bg-amber-500 hover:text-white dark:border-amber-400 dark:text-amber-400"
+          className="h-10 md:h-14 px-3 md:px-6 rounded-xl md:rounded-2xl hover:shadow-md border-amber-500 text-amber-600 hover:bg-amber-500 hover:text-white dark:border-amber-400 dark:text-amber-400"
           onClick={onNotify}
           data-tour="notify-client-btn"
         >
           <Bell className="w-4 h-4" />
-          Notify Client
+          <span className="hidden md:inline">Notify Client</span>
         </GlassButton>
 
         <GlassButton
           variant="primary"
-          className="h-14 px-6 rounded-2xl hover:shadow-lg"
+          className="h-10 md:h-14 px-3 md:px-6 rounded-xl md:rounded-2xl hover:shadow-lg"
           onClick={onSave}
           loading={saving}
           data-tour="save-changes-btn"
         >
           <Save className="w-4 h-4" />
-          Save Changes
+          <span className="hidden md:inline">Save Changes</span>
         </GlassButton>
       </div>
     </header>

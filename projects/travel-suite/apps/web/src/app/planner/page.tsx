@@ -290,15 +290,17 @@ export default function PlannerPage() {
                     <>
                         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
                             {/* Sticky action bar */}
-                            <div className="flex justify-between items-center p-4 rounded-2xl shadow-lg border sticky top-4 z-20 backdrop-blur-xl bg-white/90 border-slate-200/50 dark:bg-slate-900/80 dark:border-slate-800 print:hidden mx-6">
+                            <div className="flex justify-between items-center p-2 md:p-4 rounded-2xl shadow-lg border sticky top-4 z-20 backdrop-blur-xl bg-white/90 border-slate-200/50 dark:bg-slate-900/80 dark:border-slate-800 print:hidden mx-3 md:mx-6">
                                 <Button
                                     variant="ghost"
+                                    size="sm"
                                     onClick={() => setResult(null)}
-                                    className="text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-all font-semibold rounded-xl"
+                                    className="text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-all font-semibold rounded-xl text-xs md:text-sm px-2 md:px-4"
                                 >
-                                    ← Start Over
+                                    <span className="md:hidden">←</span>
+                                    <span className="hidden md:inline">← Start Over</span>
                                 </Button>
-                                <div className="flex gap-2 flex-wrap justify-end" data-tour="save-button">
+                                <div className="flex gap-1.5 md:gap-2 items-center" data-tour="save-button">
                                     <SaveItineraryButton
                                         itineraryData={result}
                                         destination={prompt}
@@ -309,17 +311,20 @@ export default function PlannerPage() {
                                     />
                                     <Button
                                         variant="outline"
+                                        size="sm"
                                         onClick={() => setIsEditing(!isEditing)}
-                                        className="border-primary/20 hover:bg-primary/5 text-primary"
+                                        className="border-primary/20 hover:bg-primary/5 text-primary h-9 md:h-10 px-2 md:px-4 text-xs md:text-sm"
                                     >
-                                        {isEditing ? '👀 Preview Design' : '🖊️ Edit Itinerary'}
+                                        <span className="md:hidden">{isEditing ? '👀' : '✏️'}</span>
+                                        <span className="hidden md:inline">{isEditing ? '👀 Preview Design' : '🖊️ Edit Itinerary'}</span>
                                     </Button>
                                     <button
                                         data-tour="share-button"
                                         onClick={() => setIsShareOpen(true)}
-                                        className="px-4 py-2 bg-whatsapp hover:bg-whatsapp:hover text-white rounded-xl shadow-button flex items-center gap-2 transition-smooth text-sm font-bold"
+                                        className="h-9 md:h-10 px-2 md:px-4 bg-whatsapp hover:bg-whatsapp:hover text-white rounded-xl shadow-button flex items-center gap-2 transition-smooth text-xs md:text-sm font-bold"
                                     >
-                                        <Share2 className="w-4 h-4" /> Share Trip
+                                        <Share2 className="w-4 h-4" />
+                                        <span className="hidden md:inline">Share Trip</span>
                                     </button>
                                     <DownloadPDFButton
                                         data={result}
@@ -336,8 +341,8 @@ export default function PlannerPage() {
                                         <Badge variant="outline" className="px-4 py-1 text-base border-primary/20 bg-primary/5 text-primary">
                                             {result.duration_days} Days in {result.destination}
                                         </Badge>
-                                        <h2 className="text-4xl font-serif text-secondary leading-tight">{result.trip_title}</h2>
-                                        <p className="text-xl text-gray-600 dark:text-slate-200 font-light max-w-2xl mx-auto leading-relaxed">{result.summary}</p>
+                                        <h2 className="text-2xl md:text-4xl font-serif text-secondary leading-tight">{result.trip_title}</h2>
+                                        <p className="text-base md:text-xl text-gray-600 dark:text-slate-200 font-light max-w-2xl mx-auto leading-relaxed">{result.summary}</p>
                                     </div>
 
                                     <div className="grid lg:grid-cols-3 gap-6">
