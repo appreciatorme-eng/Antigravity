@@ -43,6 +43,11 @@ function toBase64Id(value: string): string {
   return Buffer.from(value, "utf-8").toString("base64url");
 }
 
+/** Decode a URL-safe base64 string back to the original value. */
+export function fromBase64Id(value: string): string {
+  return Buffer.from(value, "base64url").toString("utf-8");
+}
+
 /** Resolve the correct mailbox name for a folder, with Gmail fallbacks. */
 async function resolveMailbox(
   client: ImapFlow,
@@ -191,7 +196,10 @@ export async function fetchImapThreads(
     await client.mailboxOpen(mailbox, { readOnly: true });
 
     const since = daysAgo(DAYS_LOOKBACK);
-    const searchResult = await client.search({ since }, { uid: true }) as number[];
+    const searchCriteria = options.query
+      ? { since, text: options.query }
+      : { since };
+    const searchResult = await client.search(searchCriteria, { uid: true }) as number[];
 
     logError("[imap-read] step=search-result", { count: searchResult?.length ?? 0 });
 
@@ -332,21 +340,14 @@ export async function fetchImapAttachment(
 
     const partIndex = parseInt(attachmentPartId.split("_").pop() ?? "0", 10);
 
-    const fetchIterator = client.fetch(String(messageUid), {
-      uid: true,
-      source: true,
-    });
+    // Use fetchOne() — for await iterator silently stalls on Vercel serverless
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const msg = await (client as any).fetchOne(String(messageUid), { source: true }, { uid: true });
+    if (!msg?.source) return null;
 
-    for await (const msg of fetchIterator) {
-      if (!msg.source) continue;
-      const parsed = await simpleParser(msg.source);
-      const attachment = parsed.attachments?.[partIndex];
-      if (attachment) {
-        return Buffer.from(attachment.content);
-      }
-    }
-
-    return null;
+    const parsed = await simpleParser(msg.source);
+    const attachment = parsed.attachments?.[partIndex];
+    return attachment ? Buffer.from(attachment.content) : null;
   } catch (err) {
     logError("imap-read: fetchImapAttachment failed", err);
     return null;

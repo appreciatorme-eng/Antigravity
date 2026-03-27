@@ -27,6 +27,7 @@ import {
   Wand2,
 } from 'lucide-react';
 import Image from 'next/image';
+import DOMPurify from 'dompurify';
 import { toast } from 'sonner';
 import { CannedResponses } from './CannedResponses';
 import type { ActionMode, ConversationContact } from './whatsapp.types';
@@ -35,6 +36,35 @@ import {
 } from './ActionPickerModal';
 import type { ContextAction } from './unified-inbox-shared';
 import { LANGUAGES } from '@/app/clients/types';
+
+// Sanitize email HTML — force safe links, strip dangerous content
+const EMAIL_PURIFY_CONFIG = {
+  ALLOWED_TAGS: [
+    'p', 'br', 'b', 'i', 'u', 'strong', 'em', 'a', 'ul', 'ol', 'li',
+    'blockquote', 'div', 'span', 'h1', 'h2', 'h3', 'h4', 'table',
+    'thead', 'tbody', 'tr', 'td', 'th', 'img', 'hr', 'pre', 'code',
+  ],
+  ALLOWED_ATTR: [
+    'href', 'src', 'alt', 'title', 'style', 'class', 'target',
+    'rel', 'width', 'height', 'cellpadding', 'cellspacing', 'border',
+  ],
+  ALLOW_DATA_ATTR: false,
+  FORCE_BODY: true,
+};
+
+// Set up DOMPurify hook once — force target="_blank" + rel on links
+if (typeof window !== 'undefined') {
+  DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+    if (node.tagName === 'A') {
+      node.setAttribute('target', '_blank');
+      node.setAttribute('rel', 'noopener noreferrer');
+    }
+  });
+}
+
+function sanitizeEmailHtml(html: string): string {
+  return DOMPurify.sanitize(html, EMAIL_PURIFY_CONFIG);
+}
 
 export type MessageType = 'text' | 'location' | 'image' | 'voice' | 'system' | 'document';
 export type MessageStatus = 'sent' | 'delivered' | 'read' | 'pending';
@@ -45,6 +75,7 @@ export interface Message {
   type: MessageType;
   direction: MessageDirection;
   body?: string;
+  bodyHtml?: string;
   timestamp: string; // e.g. "10:42 AM"
   status?: MessageStatus;
   subject?: string;
@@ -230,8 +261,19 @@ function MessageBubble({ msg, isEmailChannel }: { msg: Message; isEmailChannel?:
           </div>
         )}
 
-        {msg.type === 'text' && msg.body && (
-          <p className="text-sm text-slate-100 leading-relaxed whitespace-pre-wrap">{msg.body}</p>
+        {msg.type === 'text' && (msg.bodyHtml || msg.body) && (
+          isEmailChannel && msg.bodyHtml
+            ? (
+              <div
+                className="email-html-body text-sm text-slate-100 leading-relaxed overflow-x-auto max-w-full"
+                dangerouslySetInnerHTML={{
+                  __html: sanitizeEmailHtml(msg.bodyHtml),
+                }}
+              />
+            )
+            : (
+              <p className="text-sm text-slate-100 leading-relaxed whitespace-pre-wrap">{msg.body}</p>
+            )
         )}
 
         {/* Attachment chips */}

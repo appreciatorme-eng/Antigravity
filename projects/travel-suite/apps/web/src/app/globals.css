@@ -295,3 +295,17 @@
   0%, 100% { box-shadow: 0 0 0 2px rgba(0, 208, 132, 0.1); }
   50% { box-shadow: 0 0 0 4px rgba(0, 208, 132, 0.3), 0 0 20px rgba(0, 208, 132, 0.1); }
 }
+
+/* Email HTML body scoping — prevent email styles from leaking */
+.email-html-body { overflow-wrap: break-word; word-break: break-word; }
+.email-html-body * { max-width: 100%; box-sizing: border-box; }
+.email-html-body a { color: rgb(96 165 250); text-decoration: underline; }
+.email-html-body img { max-width: 100%; height: auto; }
+.email-html-body blockquote {
+  border-left: 3px solid rgba(255, 255, 255, 0.2);
+  padding-left: 12px;
+  margin: 8px 0;
+  opacity: 0.8;
+}
+.email-html-body table { border-collapse: collapse; }
+.email-html-body td, .email-html-body th { padding: 4px 8px; }

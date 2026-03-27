@@ -12,7 +12,7 @@ import type {
   FetchThreadsOptions,
   SendEmailParams,
 } from "../provider";
-import { fetchImapThreads, fetchImapAttachment, markImapAsRead } from "../imap-read";
+import { fetchImapThreads, fetchImapAttachment, markImapAsRead, fromBase64Id } from "../imap-read";
 import { sendViaSmtp } from "../smtp-send";
 import { testSmtpConnection } from "../smtp-send";
 
@@ -74,10 +74,11 @@ export class ImapSmtpProvider implements EmailProvider {
   }
 
   async markAsRead(threadId: string): Promise<boolean> {
-    // For IMAP, threadId is actually a message UID
-    const uid = Number(threadId);
+    // threadId is base64url-encoded UID — decode before parsing
+    const decoded = fromBase64Id(threadId);
+    const uid = Number(decoded);
     if (Number.isNaN(uid)) {
-      logError(`[imap-smtp] markAsRead: invalid UID: ${threadId}`, null);
+      logError(`[imap-smtp] markAsRead: invalid UID after decode: ${threadId} → ${decoded}`, null);
       return false;
     }
     return markImapAsRead(this.imapConfig, this.credentials, uid);

@@ -28,6 +28,7 @@ interface InboxMessage {
     readonly type: "text";
     readonly direction: "in" | "out";
     readonly body: string;
+    readonly bodyHtml?: string;
     readonly subject?: string;
     readonly timestamp: string;
     readonly status: "sent" | "delivered" | "read";
@@ -92,6 +93,7 @@ function mapMessage(
         type: "text",
         direction: isOutbound ? "out" : "in",
         body,
+        bodyHtml: msg.bodyHtml || undefined,
         subject: msg.subject || undefined,
         timestamp: msg.date,
         status: "read",
