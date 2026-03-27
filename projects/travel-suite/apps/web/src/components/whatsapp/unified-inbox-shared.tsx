@@ -15,6 +15,40 @@ export type ChannelFilter = 'all' | 'whatsapp' | 'email';
 export type SortMode = 'recent' | 'unread' | 'priority';
 export type ContextAction = ContextActionType | 'assign-driver' | 'request-payment' | 'add-to-crm';
 
+// ---------------------------------------------------------------------------
+// Timestamp formatting — handles both ISO strings and pre-formatted times
+// ---------------------------------------------------------------------------
+
+export function formatConversationTime(raw: string): string {
+  if (!raw) return '';
+
+  // If already formatted (e.g. "10:42 AM", "Yesterday"), pass through
+  if (!/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw;
+
+  const date = new Date(raw);
+  if (isNaN(date.getTime())) return raw;
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today.getTime() - 86400000);
+  const sixDaysAgo = new Date(today.getTime() - 6 * 86400000);
+  const msgDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+  if (msgDay.getTime() === today.getTime()) {
+    return date.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
+  }
+  if (msgDay.getTime() === yesterday.getTime()) {
+    return 'Yesterday';
+  }
+  if (msgDay >= sixDaysAgo) {
+    return date.toLocaleDateString('en-IN', { weekday: 'short' });
+  }
+  if (date.getFullYear() === now.getFullYear()) {
+    return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  }
+  return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' });
+}
+
 // Travel intent badge metadata (client-side mirror of classify-intent.ts INTENT_META)
 const INTENT_BADGES: Record<string, { label: string; emoji: string; color: string }> = {
   new_enquiry:   { label: 'New Enquiry', emoji: '🆕', color: '#8b5cf6' },
@@ -126,7 +160,7 @@ export function UnifiedInboxConversationItem({
           <p className={`text-sm truncate ${isUnread ? 'font-bold text-white' : 'font-medium text-slate-300'}`}>
             {conv.contact.name}
           </p>
-          <span className="text-[10px] text-slate-500 shrink-0">{last?.timestamp ?? ''}</span>
+          <span className="text-[10px] text-slate-500 shrink-0">{formatConversationTime(last?.timestamp ?? '')}</span>
         </div>
         <p className="text-[10px] text-slate-500 mb-1">
           {isEmailConv && conv.contact.email ? conv.contact.email : conv.contact.phone}

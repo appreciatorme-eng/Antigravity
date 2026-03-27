@@ -36,7 +36,7 @@ import type { ActionMode, ConversationContact } from './whatsapp.types';
 import {
   ActionPickerModal,
 } from './ActionPickerModal';
-import type { ContextAction } from './unified-inbox-shared';
+import { formatConversationTime, type ContextAction } from './unified-inbox-shared';
 import { LANGUAGES } from '@/app/clients/types';
 
 // Sanitize email HTML — force safe links, strip dangerous content
@@ -306,7 +306,7 @@ function MessageBubble({ msg, isEmailChannel }: { msg: Message; isEmailChannel?:
               Auto
             </span>
           )}
-          <span className="text-[9px] text-slate-500 font-medium">{msg.timestamp}</span>
+          <span className="text-[9px] text-slate-500 font-medium">{formatConversationTime(msg.timestamp)}</span>
           {isOut && !isEmailChannel && <ReadReceipt status={msg.status} />}
         </div>
       </div>
