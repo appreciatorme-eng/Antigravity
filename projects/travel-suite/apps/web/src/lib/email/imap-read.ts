@@ -224,31 +224,14 @@ export async function fetchImapThreads(
     // Fetch envelope only (minimal — no source, no bodyStructure, no headers)
     // simpleParser and headers both fail on Vercel serverless
     let fetchError: string | null = null;
-    let firstMsgKeys: string[] = [];
-    let firstMsgSample: Record<string, unknown> = {};
-    let fetchDebug = { uidRange, iteratorType: "" };
-    try {
-      // imapflow.fetch(range, options) — range is a string, uid:true in options means treat as UIDs
-      const fetchIterator = client.fetch(uidRange, {
-        uid: true,
-        envelope: true,
-      });
-      fetchDebug.iteratorType = typeof fetchIterator;
-      for await (const msg of fetchIterator) {
-        try {
+    // Fetch one UID at a time — batch fetch with comma-separated UIDs yields nothing on Vercel
+    for (const uid of pageUids) {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const fetchIterator = client.fetch(String(uid), { uid: true, envelope: true });
+        for await (const msg of fetchIterator) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const raw = msg as any;
-          if (firstMsgKeys.length === 0) {
-            firstMsgKeys = Object.keys(raw);
-            // Capture a safe sample of the first message for debugging
-            for (const k of firstMsgKeys) {
-              const v = raw[k];
-              if (v === null || v === undefined) firstMsgSample[k] = v;
-              else if (typeof v === 'object') firstMsgSample[k] = `[${typeof v}] keys=${Object.keys(v).join(',')}`;
-              else firstMsgSample[k] = String(v).slice(0, 100);
-            }
-          }
-          const env = raw.envelope;
+          const env = (msg as any).envelope;
           if (!env) continue;
 
           const fromList = env.from ?? [];
@@ -274,12 +257,10 @@ export async function fetchImapThreads(
             labelIds: [],
             attachments: [],
           });
-        } catch (parseErr) {
-          // Skip individual message failures
         }
+      } catch (uidErr) {
+        if (!fetchError) fetchError = uidErr instanceof Error ? uidErr.message : String(uidErr);
       }
-    } catch (fetchErr) {
-      fetchError = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
     }
 
     logError("[imap-read] step=done", { messagesCount: messages.length });
@@ -297,7 +278,7 @@ export async function fetchImapThreads(
       threads,
       nextPageToken: hasMore ? String(nextOffset) : null,
       resultSizeEstimate: sortedUids.length,
-      _imapDebug: { searchHits: sortedUids.length, pageUids: pageUids.length, messagesParsed: messages.length, threadsGrouped: threads.length, fetchError, firstMsgKeys, firstMsgSample, fetchDebug },
+      _imapDebug: { searchHits: sortedUids.length, pageUids: pageUids.length, messagesParsed: messages.length, threadsGrouped: threads.length, fetchError },
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
