@@ -224,40 +224,41 @@ export async function fetchImapThreads(
     // Fetch envelope only (minimal — no source, no bodyStructure, no headers)
     // simpleParser and headers both fail on Vercel serverless
     let fetchError: string | null = null;
-    // Fetch one UID at a time — batch fetch with comma-separated UIDs yields nothing on Vercel
+    // imapflow's fetch() async iterator doesn't yield on Vercel serverless.
+    // Use fetchOne() which returns a single message object directly.
     for (const uid of pageUids) {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const fetchIterator = client.fetch(String(uid), { uid: true, envelope: true });
-        for await (const msg of fetchIterator) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const env = (msg as any).envelope;
-          if (!env) continue;
+        const msg = await (client as any).fetchOne(String(uid), { uid: true, envelope: true });
+        if (!msg) continue;
 
-          const fromList = env.from ?? [];
-          const toList = env.to ?? [];
-          const fromAddr = fromList[0] ?? {};
-          const toAddrs = toList.map((a: Record<string, string>) => a.address || "").join(", ");
-          const subject = typeof env.subject === "string" ? env.subject : "(no subject)";
-          const dateStr = env.date ? new Date(env.date).toISOString() : new Date().toISOString();
-          const messageId = typeof env.messageId === "string" ? env.messageId : null;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const env = (msg as any).envelope;
+        if (!env) continue;
 
-          messages.push({
-            id: String(msg.uid),
-            threadId: "",
-            from: fromAddr.name ?? fromAddr.address ?? "",
-            fromEmail: fromAddr.address ?? "",
-            to: toAddrs,
-            subject,
-            snippet: subject.slice(0, 200),
-            bodyHtml: "",
-            bodyText: "",
-            date: dateStr,
-            messageIdHeader: messageId,
-            labelIds: [],
-            attachments: [],
-          });
-        }
+        const fromList = env.from ?? [];
+        const toList = env.to ?? [];
+        const fromAddr = fromList[0] ?? {};
+        const toAddrs = toList.map((a: Record<string, string>) => a.address || "").join(", ");
+        const subject = typeof env.subject === "string" ? env.subject : "(no subject)";
+        const dateStr = env.date ? new Date(env.date).toISOString() : new Date().toISOString();
+        const messageId = typeof env.messageId === "string" ? env.messageId : null;
+
+        messages.push({
+          id: String(msg.uid ?? uid),
+          threadId: "",
+          from: fromAddr.name ?? fromAddr.address ?? "",
+          fromEmail: fromAddr.address ?? "",
+          to: toAddrs,
+          subject,
+          snippet: subject.slice(0, 200),
+          bodyHtml: "",
+          bodyText: "",
+          date: dateStr,
+          messageIdHeader: messageId,
+          labelIds: [],
+          attachments: [],
+        });
       } catch (uidErr) {
         if (!fetchError) fetchError = uidErr instanceof Error ? uidErr.message : String(uidErr);
       }
