@@ -38,6 +38,7 @@ import { transcribeVoiceMessage } from "@/lib/whatsapp/voice-transcription";
 import { notifyNewLead } from "@/lib/whatsapp/assistant-notifications";
 import { ensureAssistantGroup } from "@/lib/whatsapp/ensure-assistant-group";
 import { routeAssistantCommand } from "@/lib/whatsapp/assistant-commands";
+import { getGeminiModel } from "@/lib/ai/gemini.server";
 
 // ---------------------------------------------------------------------------
 // In-memory lock: prevent duplicate assistant group creation during reconnect
@@ -378,6 +379,32 @@ export async function POST(request: Request): Promise<Response> {
             if ((historyCount ?? 0) > 0) {
                 // Has chat history but not in CRM — likely a friend/family member
                 return NextResponse.json({ ok: true });
+            }
+        }
+
+        // AI-classify first message from unknown contacts.
+        // Only activate chatbot for business/travel enquiries — skip personal messages.
+        if (!internalProfile) {
+            const { count: inboundCount } = await admin
+                .from("whatsapp_webhook_events")
+                .select("id", { count: "exact", head: true })
+                .eq("wa_id", waId)
+                .filter("metadata->>direction", "eq", "in");
+
+            if ((inboundCount ?? 0) <= 1 && messageText.length >= 3) {
+                try {
+                    const model = getGeminiModel();
+                    const classifyResult = await model.generateContent(
+                        `Is this WhatsApp message from a potential travel/tourism customer or a personal contact? Message: "${messageText.slice(0, 300)}". Reply with ONLY one word: BUSINESS or PERSONAL`,
+                    );
+                    const classification = classifyResult.response.text().trim().toUpperCase();
+                    if (classification === "PERSONAL") {
+                        logEvent("info", "[webhooks/evolution] skipped chatbot — personal message", { waId });
+                        return NextResponse.json({ ok: true });
+                    }
+                } catch {
+                    logWarn("[webhooks/evolution] AI classification failed, proceeding with chatbot");
+                }
             }
         }
 
