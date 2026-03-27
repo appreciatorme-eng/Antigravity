@@ -229,7 +229,8 @@ export async function fetchImapThreads(
     for (const uid of pageUids) {
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const msg = await (client as any).fetchOne(String(uid), { uid: true, envelope: true });
+        // fetchOne(seq, query, options) — uid:true MUST be in options (3rd arg), not query
+        const msg = await (client as any).fetchOne(String(uid), { envelope: true }, { uid: true });
         if (!msg) continue;
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
