@@ -216,18 +216,24 @@ export async function fetchImapThreads(
     logError("[imap-read] step=fetch", { uidCount: pageUids.length });
 
     const messages: EmailMessage[] = [];
-    const uidSet = pageUids.join(",");
+
+    // imapflow fetch() expects a SequenceRange string like "uid1,uid2,uid3"
+    // OR {uid: true} option makes it treat the range as UIDs not sequence numbers
+    const uidRange = pageUids.join(",");
 
     // Fetch envelope only (minimal — no source, no bodyStructure, no headers)
     // simpleParser and headers both fail on Vercel serverless
     let fetchError: string | null = null;
     let firstMsgKeys: string[] = [];
     let firstMsgSample: Record<string, unknown> = {};
+    let fetchDebug = { uidRange, iteratorType: "" };
     try {
-      const fetchIterator = client.fetch(uidSet, {
+      // imapflow.fetch(range, options) — range is a string, uid:true in options means treat as UIDs
+      const fetchIterator = client.fetch(uidRange, {
         uid: true,
         envelope: true,
       });
+      fetchDebug.iteratorType = typeof fetchIterator;
       for await (const msg of fetchIterator) {
         try {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -291,7 +297,7 @@ export async function fetchImapThreads(
       threads,
       nextPageToken: hasMore ? String(nextOffset) : null,
       resultSizeEstimate: sortedUids.length,
-      _imapDebug: { searchHits: sortedUids.length, pageUids: pageUids.length, messagesParsed: messages.length, threadsGrouped: threads.length, fetchError, firstMsgKeys, firstMsgSample },
+      _imapDebug: { searchHits: sortedUids.length, pageUids: pageUids.length, messagesParsed: messages.length, threadsGrouped: threads.length, fetchError, firstMsgKeys, firstMsgSample, fetchDebug },
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
