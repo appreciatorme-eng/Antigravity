@@ -38,7 +38,7 @@ export default async function PayPage({
     >
       <Script
         src="https://checkout.razorpay.com/v1/checkout.js"
-        strategy="lazyOnload"
+        strategy="afterInteractive"
       />
       <PaymentCheckoutClient initialLink={link} />
     </main>

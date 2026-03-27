@@ -67,7 +67,7 @@ const cspHeader = [
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data: https://fonts.gstatic.com",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://app.posthog.com https://us.i.posthog.com https://us-assets.i.posthog.com https://*.sentry.io https://*.ingest.sentry.io https://maps.googleapis.com https://maps.gstatic.com https://prod.spline.design https://*.tile.openstreetmap.org https://*.openstreetmap.org https://tiles.openfreemap.org https://*.razorpay.com",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://app.posthog.com https://us.i.posthog.com https://us-assets.i.posthog.com https://*.sentry.io https://*.ingest.sentry.io https://maps.googleapis.com https://maps.gstatic.com https://prod.spline.design https://*.tile.openstreetmap.org https://*.openstreetmap.org https://tiles.openfreemap.org https://checkout.razorpay.com https://api.razorpay.com https://lumberjack.razorpay.com https://*.razorpay.com",
   "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com",
   "worker-src 'self' blob:",
   "form-action 'self' https://api.razorpay.com https://checkout.razorpay.com",
