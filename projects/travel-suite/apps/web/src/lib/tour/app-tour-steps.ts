@@ -207,7 +207,7 @@ export const INBOX_TOUR: TourConfig = {
       waitForElement: true,
     },
   ],
-  nextPage: '/admin/settings?tour=tour-settings',
+  nextPage: '/settings?tour=tour-settings',
 };
 
 export const SETTINGS_TOUR: TourConfig = {

@@ -310,7 +310,7 @@ export async function POST(request: NextRequest) {
                 receiverEmail,
                 orgName,
                 status: status as "verified" | "rejected",
-                settingsUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://itinerary-ai.vercel.app"}/admin/settings/marketplace`,
+                settingsUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://itinerary-ai.vercel.app"}/settings/marketplace`,
             });
             notification = {
                 attempted: true,

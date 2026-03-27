@@ -25,7 +25,7 @@ export async function GET(req: Request) {
         }
 
         if (!GOOGLE_CLIENT_ID) {
-            return NextResponse.redirect(new URL('/admin/settings?oauth_error=google_not_configured', req.url));
+            return NextResponse.redirect(new URL('/settings?oauth_error=google_not_configured', req.url));
         }
 
         const state = createSocialOAuthState(user.id);
@@ -44,6 +44,6 @@ export async function GET(req: Request) {
         return NextResponse.redirect(oauthUrl);
     } catch (error: unknown) {
         logError('Error initiating Google OAuth', error);
-        return NextResponse.redirect(new URL('/admin/settings?oauth_error=google_failed', req.url));
+        return NextResponse.redirect(new URL('/settings?oauth_error=google_failed', req.url));
     }
 }

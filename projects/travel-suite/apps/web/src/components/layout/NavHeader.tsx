@@ -73,7 +73,7 @@ export default function NavHeader() {
         ...(user ? [{ href: "/trips", path: "/trips", label: "My Trips", icon: Briefcase }] : []),
         ...(userProfile?.role === "admin" ? [
             { href: "/admin", path: "/admin", label: "Admin", icon: Settings },
-            { href: "/admin/settings/notifications", path: "/admin/settings/notifications", label: "Notifications", icon: Bell },
+            { href: "/settings?tab=notifications", path: "/settings", label: "Notifications", icon: Bell },
         ] : []),
     ];
 

@@ -26,7 +26,7 @@ function redirectWithError(req: Request, errorCode: string) {
 function redirectWithSuccess(req: Request, platform?: string) {
     // Gmail connects redirect to settings page, not social page
     if (platform === "google") {
-        return NextResponse.redirect(new URL('/admin/settings?setup=gmail&gmail=connected', req.url));
+        return NextResponse.redirect(new URL('/settings?setup=gmail&gmail=connected', req.url));
     }
     return NextResponse.redirect(new URL('/social?success=oauth_complete', req.url));
 }

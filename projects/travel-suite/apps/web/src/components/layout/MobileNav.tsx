@@ -94,7 +94,7 @@ const SECONDARY_ITEMS: SecondaryDrawerItem[] = [
     { icon: Map, label: "Add-ons", href: "/add-ons" },
     { icon: LifeBuoy, label: "Support", href: "/support" },
     { icon: Gift, label: "Refer & Earn", href: "/admin/referrals" },
-    { icon: Settings, label: "Settings", href: "/admin/settings" },
+    { icon: Settings, label: "Settings", href: "/settings" },
     { icon: CreditCard, label: "Billing", href: "/billing" },
 ];
 

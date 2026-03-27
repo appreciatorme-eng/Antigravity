@@ -156,7 +156,7 @@ export default function CommandPalette() {
 
                                 <Command.Group heading="Settings" className="px-2 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">
                                     <CommandItem
-                                        onSelect={() => runCommand(() => router.push("/admin/settings"))}
+                                        onSelect={() => runCommand(() => router.push("/settings"))}
                                         icon={<Settings className="w-4 h-4" />}
                                     >
                                         Organization Settings

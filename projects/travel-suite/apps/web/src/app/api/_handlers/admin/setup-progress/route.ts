@@ -78,7 +78,7 @@ export async function GET(request: Request): Promise<Response> {
         title: "Add your brand",
         description: "Upload logo and set colors",
         completed: hasLogo,
-        href: "/admin/settings?setup=brand",
+        href: "/settings?setup=brand",
         icon: "palette",
       },
       {
@@ -94,7 +94,7 @@ export async function GET(request: Request): Promise<Response> {
         title: "Connect WhatsApp",
         description: "Chat with clients",
         completed: hasWhatsApp,
-        href: "/admin/settings?setup=whatsapp",
+        href: "/settings?setup=whatsapp",
         icon: "message-circle",
       },
       {

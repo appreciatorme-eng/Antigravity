@@ -16,7 +16,7 @@ export async function GET(req: Request) {
         }
 
         if (!META_APP_ID) {
-            return NextResponse.redirect(new URL('/admin/settings?oauth_error=facebook_not_configured', req.url));
+            return NextResponse.redirect(new URL('/settings?oauth_error=facebook_not_configured', req.url));
         }
 
         // Generate state to verify callback
@@ -29,6 +29,6 @@ export async function GET(req: Request) {
         return NextResponse.redirect(oauthUrl);
     } catch (error: unknown) {
         logError('Error initiating Facebook OAuth', error);
-        return NextResponse.redirect(new URL('/admin/settings?oauth_error=facebook_failed', req.url));
+        return NextResponse.redirect(new URL('/settings?oauth_error=facebook_failed', req.url));
     }
 }

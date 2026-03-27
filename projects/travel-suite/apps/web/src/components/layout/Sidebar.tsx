@@ -89,7 +89,7 @@ const PRIMARY_ITEMS: NavItem[] = [
     {
         icon: Settings,
         label: "Settings",
-        href: "/admin/settings",
+        href: "/settings",
         badgeColor: "#00d084",
     },
     {
@@ -502,7 +502,7 @@ export default function Sidebar({ className }: SidebarProps) {
                     <div className="absolute bottom-full left-0 mb-2 w-52 hidden group-hover:block z-50">
                         <div className="bg-[#111e35] border border-slate-700/50 rounded-xl shadow-2xl p-2 space-y-1">
                             <Link
-                                href="/admin/settings/profile"
+                                href="/settings?tab=profile"
                                 className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-800 text-xs text-slate-300 transition-colors"
                             >
                                 <UserIcon className="w-4 h-4" />

@@ -42,7 +42,7 @@ const QUICK_ACTIONS = [
     cardClass: 'hover:bg-indigo-50/50 group-hover:border-indigo-200',
   },
   {
-    href: '/admin/settings/marketplace',
+    href: '/settings/marketplace',
     label: 'Marketplace',
     description: 'Optimize your partner profile.',
     icon: Store,
