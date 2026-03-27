@@ -218,43 +218,50 @@ export async function fetchImapThreads(
     const messages: EmailMessage[] = [];
     const uidSet = pageUids.join(",");
 
-    // Fetch envelope + bodystructure (no full source — simpleParser fails on Vercel serverless)
-    const fetchIterator = client.fetch(uidSet, {
-      uid: true,
-      envelope: true,
-      bodyStructure: true,
-      headers: true,
-    });
+    // Fetch envelope only (minimal — no source, no bodyStructure, no headers)
+    // simpleParser and headers both fail on Vercel serverless
+    let fetchError: string | null = null;
+    try {
+      const fetchIterator = client.fetch(uidSet, {
+        uid: true,
+        envelope: true,
+      });
 
-    for await (const msg of fetchIterator) {
-      try {
-        const env = msg.envelope;
-        if (!env) continue;
+      for await (const msg of fetchIterator) {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const env = (msg as any).envelope;
+          if (!env) continue;
 
-        const fromAddr = env.from?.[0];
-        const toAddrs = env.to?.map((a: { name?: string; address?: string }) => a.address || "").join(", ") ?? "";
-        const subject = env.subject ?? "(no subject)";
-        const date = env.date ? new Date(env.date).toISOString() : new Date().toISOString();
-        const messageId = env.messageId ?? null;
+          const fromList = env.from ?? [];
+          const toList = env.to ?? [];
+          const fromAddr = fromList[0] ?? {};
+          const toAddrs = toList.map((a: Record<string, string>) => a.address || "").join(", ");
+          const subject = typeof env.subject === "string" ? env.subject : "(no subject)";
+          const dateStr = env.date ? new Date(env.date).toISOString() : new Date().toISOString();
+          const messageId = typeof env.messageId === "string" ? env.messageId : null;
 
-        messages.push({
-          id: String(msg.uid),
-          threadId: "",
-          from: fromAddr?.name ?? fromAddr?.address ?? "",
-          fromEmail: fromAddr?.address ?? "",
-          to: toAddrs,
-          subject,
-          snippet: subject,
-          bodyHtml: "",
-          bodyText: "",
-          date,
-          messageIdHeader: messageId,
-          labelIds: [],
-          attachments: [],
-        });
-      } catch (parseErr) {
-        logError(`[imap-read] step=envelope-fail uid=${msg.uid}`, parseErr);
+          messages.push({
+            id: String(msg.uid),
+            threadId: "",
+            from: fromAddr.name ?? fromAddr.address ?? "",
+            fromEmail: fromAddr.address ?? "",
+            to: toAddrs,
+            subject,
+            snippet: subject.slice(0, 200),
+            bodyHtml: "",
+            bodyText: "",
+            date: dateStr,
+            messageIdHeader: messageId,
+            labelIds: [],
+            attachments: [],
+          });
+        } catch (parseErr) {
+          // Skip individual message failures
+        }
       }
+    } catch (fetchErr) {
+      fetchError = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
     }
 
     logError("[imap-read] step=done", { messagesCount: messages.length });
@@ -272,7 +279,7 @@ export async function fetchImapThreads(
       threads,
       nextPageToken: hasMore ? String(nextOffset) : null,
       resultSizeEstimate: sortedUids.length,
-      _imapDebug: { searchHits: sortedUids.length, pageUids: pageUids.length, messagesParced: messages.length, threadsGrouped: threads.length },
+      _imapDebug: { searchHits: sortedUids.length, pageUids: pageUids.length, messagesParsed: messages.length, threadsGrouped: threads.length, fetchError },
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
