@@ -11,9 +11,9 @@ import type { EnrichedTrip, TripReadiness, ReadinessLevel, TripSortKey, QuickFil
 export function computeReadiness(trip: EnrichedTrip): TripReadiness {
     const totalDays = trip.itineraries?.duration_days || 0;
 
-    const driverLevel = computeCoverageLevel(trip.driver_coverage.covered_days, totalDays);
-    const accommodationLevel = computeCoverageLevel(trip.accommodation_coverage.covered_days, totalDays);
-    const paymentLevel = computePaymentLevel(trip.invoice.payment_status);
+    const driverLevel = computeCoverageLevel(trip.driver_coverage?.covered_days ?? 0, totalDays);
+    const accommodationLevel = computeCoverageLevel(trip.accommodation_coverage?.covered_days ?? 0, totalDays);
+    const paymentLevel = computePaymentLevel(trip.invoice?.payment_status ?? "none");
 
     return { driver: driverLevel, accommodation: accommodationLevel, payment: paymentLevel };
 }
@@ -94,7 +94,7 @@ export function sortTrips(trips: readonly EnrichedTrip[], key: TripSortKey): Enr
             );
         case "value":
             return sorted.sort((a, b) =>
-                (b.invoice.total_amount || 0) - (a.invoice.total_amount || 0)
+                (b.invoice?.total_amount || 0) - (a.invoice?.total_amount || 0)
             );
         case "client":
             return sorted.sort((a, b) => {
@@ -122,11 +122,11 @@ export function applyQuickFilters(
                     break;
                 case "missing_driver": {
                     const totalDays = trip.itineraries?.duration_days || 0;
-                    if (totalDays === 0 || trip.driver_coverage.covered_days >= totalDays) return false;
+                    if (totalDays === 0 || (trip.driver_coverage?.covered_days ?? 0) >= totalDays) return false;
                     break;
                 }
                 case "payment_due":
-                    if (trip.invoice.payment_status !== "unpaid" && trip.invoice.payment_status !== "partial") return false;
+                    if (trip.invoice?.payment_status !== "unpaid" && trip.invoice?.payment_status !== "partial") return false;
                     break;
             }
         }

@@ -86,17 +86,17 @@ export function TripListRow({ trip }: TripListRowProps) {
             </div>
 
             <div className="flex items-center gap-2 md:gap-4 relative z-10 shrink-0 mt-2 md:mt-0 ml-13 md:ml-0 flex-wrap">
-                {trip.invoice.payment_status !== "none" && (
+                {trip.invoice?.payment_status !== "none" && (
                     <div className="flex items-center gap-1.5 md:gap-2">
                         <span className="text-[10px] md:text-xs font-bold text-secondary dark:text-white tabular-nums">
-                            {formatINRShort(trip.invoice.total_amount)}
+                            {formatINRShort(trip.invoice?.total_amount)}
                         </span>
                         <GlassBadge
-                            variant={paymentBadgeVariant(trip.invoice.payment_status)}
+                            variant={paymentBadgeVariant(trip.invoice?.payment_status)}
                             size="sm"
                             className="text-[8px] font-black uppercase tracking-widest"
                         >
-                            {paymentBadgeLabel(trip.invoice.payment_status)}
+                            {paymentBadgeLabel(trip.invoice?.payment_status)}
                         </GlassBadge>
                     </div>
                 )}

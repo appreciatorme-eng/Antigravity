@@ -78,17 +78,17 @@ export function TripGridCard({ trip }: TripGridCardProps) {
                         </div>
                     </div>
 
-                    {trip.invoice.payment_status !== "none" && (
+                    {trip.invoice?.payment_status !== "none" && (
                         <div className="mt-4 flex items-center gap-2">
                             <span className="text-sm font-bold text-secondary dark:text-white tabular-nums">
-                                {formatINRShort(trip.invoice.total_amount)}
+                                {formatINRShort(trip.invoice?.total_amount)}
                             </span>
                             <GlassBadge
-                                variant={paymentBadgeVariant(trip.invoice.payment_status)}
+                                variant={paymentBadgeVariant(trip.invoice?.payment_status)}
                                 size="sm"
                                 className="text-[8px] font-black uppercase tracking-widest"
                             >
-                                {paymentBadgeLabel(trip.invoice.payment_status)}
+                                {paymentBadgeLabel(trip.invoice?.payment_status)}
                             </GlassBadge>
                         </div>
                     )}

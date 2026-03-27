@@ -17,7 +17,7 @@ export function TripKPIStats({ trips, loading, onDrillThrough }: TripKPIStatsPro
             ["confirmed", "completed", "in_progress"].includes(t.status || "")
         );
         const totalRevenue = confirmedOrCompleted.reduce(
-            (sum, t) => sum + (t.invoice.total_amount || 0), 0
+            (sum, t) => sum + (t.invoice?.total_amount || 0), 0
         );
 
         const activeTrips = trips.filter((t) =>
@@ -32,8 +32,8 @@ export function TripKPIStats({ trips, loading, onDrillThrough }: TripKPIStatsPro
         ).length;
 
         const collectionPending = trips
-            .filter((t) => t.invoice.payment_status === "unpaid" || t.invoice.payment_status === "partial")
-            .reduce((sum, t) => sum + (t.invoice.balance_amount || 0), 0);
+            .filter((t) => t.invoice?.payment_status === "unpaid" || t.invoice?.payment_status === "partial")
+            .reduce((sum, t) => sum + (t.invoice?.balance_amount || 0), 0);
 
         return { totalRevenue, activeTrips, upcomingDepartures, collectionPending };
     }, [trips]);
