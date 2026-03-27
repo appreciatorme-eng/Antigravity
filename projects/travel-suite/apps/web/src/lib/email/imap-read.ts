@@ -48,31 +48,58 @@ export function fromBase64Id(value: string): string {
   return Buffer.from(value, "base64url").toString("utf-8");
 }
 
-/** Resolve the correct mailbox name for a folder, with Gmail fallbacks. */
+/** Resolve the correct mailbox name for a folder using IMAP LIST + special-use flags. */
 async function resolveMailbox(
   client: ImapFlow,
   folder: FetchThreadsOptions["folder"],
 ): Promise<string> {
   if (!folder || folder === "inbox") return "INBOX";
 
-  const tryOpen = async (name: string): Promise<boolean> => {
-    try {
-      await client.mailboxOpen(name, { readOnly: true });
-      await client.mailboxClose();
-      return true;
-    } catch {
-      return false;
-    }
-  };
+  // Use IMAP LIST to discover actual folder names via RFC 6154 special-use flags
+  const mailboxes = await client.list();
 
   if (folder === "sent") {
-    if (await tryOpen("[Gmail]/Sent Mail")) return "[Gmail]/Sent Mail";
-    return "Sent";
+    const sentBox = mailboxes.find(
+      (m) =>
+        m.specialUse === "\\Sent" ||
+        /^(\[gmail\]\/sent mail|sent|sent items|sent messages)$/i.test(m.path),
+    );
+    return sentBox?.path ?? "Sent";
   }
 
-  // starred
-  if (await tryOpen("[Gmail]/Starred")) return "[Gmail]/Starred";
-  return "Flagged";
+  if (folder === "starred") {
+    const starredBox = mailboxes.find(
+      (m) =>
+        m.specialUse === "\\Flagged" ||
+        /^(\[gmail\]\/starred|flagged|starred)$/i.test(m.path),
+    );
+    return starredBox?.path ?? "Flagged";
+  }
+
+  return "INBOX";
+}
+
+/** Discover the Trash/Bin folder path via IMAP LIST. */
+async function resolveTrashFolder(client: ImapFlow): Promise<string> {
+  const mailboxes = await client.list();
+  const trash = mailboxes.find(
+    (m) =>
+      m.specialUse === "\\Trash" ||
+      /^(\[gmail\]\/trash|trash|deleted items|deleted messages|bin)$/i.test(m.path),
+  );
+  return trash?.path ?? "Trash";
+}
+
+/** Discover the Archive/All Mail folder path via IMAP LIST. */
+async function resolveArchiveFolder(client: ImapFlow): Promise<string> {
+  const mailboxes = await client.list();
+  const archive = mailboxes.find(
+    (m) =>
+      m.specialUse === "\\All" ||
+      m.specialUse === "\\Archive" ||
+      /^(\[gmail\]\/all mail|archive|archives)$/i.test(m.path),
+  );
+  return archive?.path ?? "Archive";
 }
 
 function createImapClient(config: ImapConfig, credentials: ImapCredentials): ImapFlow {
@@ -397,6 +424,58 @@ export async function markImapAsRead(
     return true;
   } catch (err) {
     logError("imap-read: markImapAsRead failed", err);
+    return false;
+  } finally {
+    await client.logout().catch(() => {});
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Public: deleteImapMessage
+// ---------------------------------------------------------------------------
+
+export async function deleteImapMessage(
+  config: ImapConfig,
+  credentials: ImapCredentials,
+  messageUid: number,
+): Promise<boolean> {
+  const client = createImapClient(config, credentials);
+
+  try {
+    await client.connect();
+    await client.mailboxOpen("INBOX");
+
+    const trashFolder = await resolveTrashFolder(client);
+    await client.messageMove(String(messageUid), trashFolder, { uid: true });
+    return true;
+  } catch (err) {
+    logError("imap-read: deleteImapMessage failed", err);
+    return false;
+  } finally {
+    await client.logout().catch(() => {});
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Public: archiveImapMessage
+// ---------------------------------------------------------------------------
+
+export async function archiveImapMessage(
+  config: ImapConfig,
+  credentials: ImapCredentials,
+  messageUid: number,
+): Promise<boolean> {
+  const client = createImapClient(config, credentials);
+
+  try {
+    await client.connect();
+    await client.mailboxOpen("INBOX");
+
+    const archiveFolder = await resolveArchiveFolder(client);
+    await client.messageMove(String(messageUid), archiveFolder, { uid: true });
+    return true;
+  } catch (err) {
+    logError("imap-read: archiveImapMessage failed", err);
     return false;
   } finally {
     await client.logout().catch(() => {});

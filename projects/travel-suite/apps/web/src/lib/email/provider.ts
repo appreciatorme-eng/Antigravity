@@ -87,6 +87,12 @@ export interface EmailProvider {
   /** Mark a thread/message as read. */
   markAsRead(threadId: string): Promise<boolean>;
 
+  /** Move a message to Trash. */
+  deleteMessage?(messageId: string): Promise<boolean>;
+
+  /** Archive a message (move out of Inbox). */
+  archiveMessage?(messageId: string): Promise<boolean>;
+
   /** Download an attachment. Returns raw bytes or null. */
   getAttachment(messageId: string, attachmentId: string): Promise<Buffer | null>;
 

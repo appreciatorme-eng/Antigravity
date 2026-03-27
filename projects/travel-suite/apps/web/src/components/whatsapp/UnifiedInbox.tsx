@@ -144,6 +144,8 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
         })()}
         onContextAction={inbox.handleContextAction}
         onRecipientChange={inbox.updateComposeRecipient}
+        onDeleteEmail={inbox.deleteEmail}
+        onArchiveEmail={inbox.archiveEmail}
       />
 
       {/* RIGHT: Context Panel */}

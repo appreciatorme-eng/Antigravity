@@ -12,7 +12,7 @@ import type {
   FetchThreadsOptions,
   SendEmailParams,
 } from "../provider";
-import { fetchImapThreads, fetchImapAttachment, markImapAsRead, fromBase64Id } from "../imap-read";
+import { fetchImapThreads, fetchImapAttachment, markImapAsRead, deleteImapMessage, archiveImapMessage, fromBase64Id } from "../imap-read";
 import { sendViaSmtp } from "../smtp-send";
 import { testSmtpConnection } from "../smtp-send";
 
@@ -82,6 +82,26 @@ export class ImapSmtpProvider implements EmailProvider {
       return false;
     }
     return markImapAsRead(this.imapConfig, this.credentials, uid);
+  }
+
+  async deleteMessage(messageId: string): Promise<boolean> {
+    const decoded = fromBase64Id(messageId);
+    const uid = Number(decoded);
+    if (Number.isNaN(uid)) {
+      logError(`[imap-smtp] deleteMessage: invalid UID after decode: ${messageId} → ${decoded}`, null);
+      return false;
+    }
+    return deleteImapMessage(this.imapConfig, this.credentials, uid);
+  }
+
+  async archiveMessage(messageId: string): Promise<boolean> {
+    const decoded = fromBase64Id(messageId);
+    const uid = Number(decoded);
+    if (Number.isNaN(uid)) {
+      logError(`[imap-smtp] archiveMessage: invalid UID after decode: ${messageId} → ${decoded}`, null);
+      return false;
+    }
+    return archiveImapMessage(this.imapConfig, this.credentials, uid);
   }
 
   async getAttachment(messageId: string, attachmentId: string): Promise<Buffer | null> {

@@ -25,6 +25,8 @@ import {
   BarChart3,
   Loader2,
   Wand2,
+  Trash2,
+  Archive,
 } from 'lucide-react';
 import Image from 'next/image';
 import DOMPurify from 'dompurify';
@@ -348,6 +350,8 @@ interface MessageThreadProps {
   onContextAction?: (action: ContextAction, tripName?: string) => void;
   contactPresence?: string | null;
   onRecipientChange?: (email: string) => void;
+  onDeleteEmail?: (conversationId: string) => void;
+  onArchiveEmail?: (conversationId: string) => void;
 }
 
 export function MessageThread({
@@ -363,6 +367,8 @@ export function MessageThread({
   onContextAction,
   contactPresence,
   onRecipientChange,
+  onDeleteEmail,
+  onArchiveEmail,
 }: MessageThreadProps) {
   const [inputText, setInputText] = useState('');
   const [emailSubject, setEmailSubject] = useState('');
@@ -600,9 +606,29 @@ export function MessageThread({
             <Sparkles className="w-3.5 h-3.5" />
             <span>Create Proposal</span>
           </button>
-          <button className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors">
-            <Phone className="w-4 h-4 text-slate-400" />
-          </button>
+          {isEmail && onArchiveEmail && conversation && (
+            <button
+              className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors"
+              title="Archive email"
+              onClick={() => onArchiveEmail(conversation.id)}
+            >
+              <Archive className="w-4 h-4 text-slate-400" />
+            </button>
+          )}
+          {isEmail && onDeleteEmail && conversation && (
+            <button
+              className="w-8 h-8 rounded-full hover:bg-red-500/10 flex items-center justify-center transition-colors"
+              title="Move to trash"
+              onClick={() => onDeleteEmail(conversation.id)}
+            >
+              <Trash2 className="w-4 h-4 text-red-400" />
+            </button>
+          )}
+          {!isEmail && (
+            <button className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors">
+              <Phone className="w-4 h-4 text-slate-400" />
+            </button>
+          )}
           <button className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors">
             <MoreVertical className="w-4 h-4 text-slate-400" />
           </button>

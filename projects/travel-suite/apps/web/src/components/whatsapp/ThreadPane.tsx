@@ -47,6 +47,9 @@ interface ThreadPaneProps {
 
   // Email compose
   onRecipientChange?: (email: string) => void;
+  // Email delete/archive
+  onDeleteEmail?: (conversationId: string) => void;
+  onArchiveEmail?: (conversationId: string) => void;
 }
 
 export function ThreadPane({
@@ -70,6 +73,8 @@ export function ThreadPane({
   contactPresence,
   onContextAction,
   onRecipientChange,
+  onDeleteEmail,
+  onArchiveEmail,
 }: ThreadPaneProps) {
   const analytics = useAnalytics();
   const isDisconnected = !isDemoMode && whatsAppStatus !== 'connected';
@@ -203,6 +208,8 @@ export function ThreadPane({
           contactPresence={contactPresence}
           onContextAction={onContextAction}
           onRecipientChange={onRecipientChange}
+          onDeleteEmail={onDeleteEmail}
+          onArchiveEmail={onArchiveEmail}
         />
       </ErrorSection>
     </div>

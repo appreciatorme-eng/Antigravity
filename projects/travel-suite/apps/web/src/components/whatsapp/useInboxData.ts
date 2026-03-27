@@ -85,6 +85,8 @@ export interface InboxData {
   setAddToCrmModal: (val: { open: boolean; phone: string; name: string }) => void;
   startNewEmail: () => void;
   updateComposeRecipient: (email: string) => void;
+  deleteEmail: (conversationId: string) => void;
+  archiveEmail: (conversationId: string) => void;
 }
 
 export interface UseInboxDataOptions {
@@ -700,6 +702,60 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     );
   }
 
+  async function deleteEmail(conversationId: string) {
+    const conv = conversations.find((c) => c.id === conversationId);
+    if (!conv) return;
+
+    // Optimistic removal
+    setConversations((prev) => prev.filter((c) => c.id !== conversationId));
+    if (selectedId === conversationId) setSelectedId(null);
+
+    try {
+      const threadId = conv.id.replace('email_', '');
+      const res = await fetch('/api/admin/email/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messageId: threadId, action: 'delete' }),
+      });
+      if (!res.ok) {
+        toast.error('Failed to delete email');
+        void loadLiveConversations(); // revert
+      } else {
+        toast.success('Email moved to trash');
+      }
+    } catch {
+      toast.error('Failed to delete email');
+      void loadLiveConversations(); // revert
+    }
+  }
+
+  async function archiveEmail(conversationId: string) {
+    const conv = conversations.find((c) => c.id === conversationId);
+    if (!conv) return;
+
+    // Optimistic removal
+    setConversations((prev) => prev.filter((c) => c.id !== conversationId));
+    if (selectedId === conversationId) setSelectedId(null);
+
+    try {
+      const threadId = conv.id.replace('email_', '');
+      const res = await fetch('/api/admin/email/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messageId: threadId, action: 'archive' }),
+      });
+      if (!res.ok) {
+        toast.error('Failed to archive email');
+        void loadLiveConversations(); // revert
+      } else {
+        toast.success('Email archived');
+      }
+    } catch {
+      toast.error('Failed to archive email');
+      void loadLiveConversations(); // revert
+    }
+  }
+
   return {
     conversations,
     selectedId,
@@ -745,5 +801,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     setAddToCrmModal,
     startNewEmail,
     updateComposeRecipient,
+    deleteEmail,
+    archiveEmail,
   };
 }
