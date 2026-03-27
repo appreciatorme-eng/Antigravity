@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import Script from "next/script";
 import { notFound } from "next/navigation";
 import { getPortalPaymentData } from "@/lib/payments/portal-lookup";
 import { PaymentCheckoutClient } from "./PaymentCheckoutClient";
@@ -35,6 +36,10 @@ export default async function PayPage({
           "radial-gradient(circle at top, rgba(0,208,132,0.18), transparent 28%), linear-gradient(180deg, #08111f 0%, #0b1728 100%)",
       }}
     >
+      <Script
+        src="https://checkout.razorpay.com/v1/checkout.js"
+        strategy="lazyOnload"
+      />
       <PaymentCheckoutClient initialLink={link} />
     </main>
   );

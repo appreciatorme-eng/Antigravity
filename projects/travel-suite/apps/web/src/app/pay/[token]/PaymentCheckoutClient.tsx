@@ -20,24 +20,24 @@ async function loadRazorpayCheckoutScript(): Promise<void> {
   if (typeof window === "undefined") return;
   if (window.Razorpay) return;
 
-  await new Promise<void>((resolve, reject) => {
-    const existing = document.querySelector<HTMLScriptElement>(
-      'script[src="https://checkout.razorpay.com/v1/checkout.js"]',
-    );
-    if (existing) {
-      existing.addEventListener("load", () => resolve(), { once: true });
-      existing.addEventListener("error", () => reject(new Error("Failed to load Razorpay")), {
-        once: true,
-      });
-      return;
-    }
+  // Remove any previously failed script tags to allow retry
+  const stale = document.querySelector<HTMLScriptElement>(
+    'script[src="https://checkout.razorpay.com/v1/checkout.js"]',
+  );
+  if (stale) stale.remove();
 
+  await new Promise<void>((resolve, reject) => {
     const script = document.createElement("script");
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
     script.async = true;
     script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Failed to load Razorpay"));
-    document.body.appendChild(script);
+    script.onerror = () =>
+      reject(
+        new Error(
+          "Failed to load Razorpay checkout. This may be caused by an ad blocker or browser security settings.",
+        ),
+      );
+    document.head.appendChild(script);
   });
 }
 
