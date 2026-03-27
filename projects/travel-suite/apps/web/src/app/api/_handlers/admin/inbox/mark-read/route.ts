@@ -26,7 +26,7 @@ export async function GET(request: Request): Promise<Response> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return apiError("Not authenticated", 401);
 
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("inbox_read_state")
       .select("conversation_id, last_read_at")
       .eq("user_id", user.id);
@@ -75,7 +75,7 @@ export async function POST(request: Request): Promise<Response> {
 
     const now = new Date().toISOString();
 
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("inbox_read_state")
       .upsert(
         {
