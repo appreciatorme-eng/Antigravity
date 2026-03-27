@@ -5,33 +5,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
-    MessageCircle,
-    Briefcase,
-    Users,
-    TrendingUp,
-    Settings,
-    Store,
-    Calendar,
-    Truck,
-    Sparkles,
-    Megaphone,
-    Star,
     Globe,
     ChevronRight,
     ChevronDown,
     LogOut,
     User as UserIcon,
-    Map,
-    Plane,
-    Home,
-    LifeBuoy,
-    Gift,
-    Receipt,
-    Coins,
     Compass,
-    CreditCard,
 } from "lucide-react";
 import { TOUR_START_EVENT } from "@/components/demo/DemoTour";
+import { getPrimaryItems, getSecondaryGrouped, type NavItemConfig } from "@/lib/nav/nav-config";
+import { resolveIcon } from "@/lib/nav/icon-map";
 
 const SIDEBAR_PROFILE_SELECT = "full_name, role";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
@@ -52,70 +35,29 @@ interface NavItem {
     badgeColor?: string;
 }
 
+/** Convert shared NavItemConfig to Sidebar's internal NavItem format */
+function toNavItem(config: NavItemConfig): NavItem {
+    return {
+        icon: resolveIcon(config.icon),
+        label: config.label,
+        href: config.href,
+        badgeKey: config.badgeKey,
+        badgeColor: config.badgeColor,
+    };
+}
+
+// Desktop sidebar shows primary items + Settings/Billing at top,
+// then all secondary sections under "More"
 const PRIMARY_ITEMS: NavItem[] = [
-    {
-        icon: Home,
-        label: "Home",
-        href: "/",
-    },
-    {
-        icon: MessageCircle,
-        label: "Inbox",
-        href: "/inbox",
-        badgeKey: "inboxUnread",
-        badgeColor: "#25D366",
-    },
-    {
-        icon: Briefcase,
-        label: "Trips",
-        href: "/trips",
-        badgeKey: "bookingsToday",
-        badgeColor: "#f97316",
-    },
-    {
-        icon: Users,
-        label: "Clients",
-        href: "/clients",
-        badgeKey: "reviewsNeedingResponse",
-        badgeColor: "#3b82f6",
-    },
-    {
-        icon: Plane,
-        label: "Planner",
-        href: "/planner",
-        badgeKey: "proposalsPending",
-        badgeColor: "#8b5cf6",
-    },
-    {
-        icon: Settings,
-        label: "Settings",
-        href: "/settings",
-        badgeColor: "#00d084",
-    },
-    {
-        icon: CreditCard,
-        label: "Billing",
-        href: "/billing",
-        badgeColor: "#8b5cf6",
-    },
+    ...getPrimaryItems().map(toNavItem),
+    // Settings + Billing are primary on desktop sidebar (not in "More")
+    { icon: resolveIcon("Settings"), label: "Settings", href: "/settings", badgeColor: "#00d084" },
+    { icon: resolveIcon("CreditCard"), label: "Billing", href: "/billing", badgeColor: "#8b5cf6" },
 ];
 
-const SECONDARY_ITEMS: NavItem[] = [
-    { icon: Plane, label: "Bookings", href: "/bookings" },
-    { icon: Receipt, label: "Invoices", href: "/admin/invoices" },
-    { icon: TrendingUp, label: "Revenue", href: "/admin/revenue" },
-    { icon: Coins, label: "Pricing & Profit", href: "/admin/pricing" },
-    { icon: Store, label: "Marketplace", href: "/marketplace" },
-    { icon: Sparkles, label: "AI Insights", href: "/admin/insights" },
-    { icon: Calendar, label: "Command Center", href: "/admin/operations" },
-    { icon: Megaphone, label: "Social Studio", href: "/social" },
-    { icon: Star, label: "Reputation", href: "/reputation" },
-    { icon: Calendar, label: "Calendar", href: "/calendar" },
-    { icon: Truck, label: "Drivers", href: "/drivers" },
-    { icon: Map, label: "Add-ons", href: "/add-ons" },
-    { icon: LifeBuoy, label: "Support", href: "/support" },
-    { icon: Gift, label: "Refer & Earn", href: "/admin/referrals" },
-];
+const SECONDARY_ITEMS: NavItem[] = getSecondaryGrouped()
+    .filter((g) => g.section !== "account") // account items are in primary on desktop
+    .flatMap((g) => g.items.map(toNavItem));
 
 interface BadgeProps {
     count: number;

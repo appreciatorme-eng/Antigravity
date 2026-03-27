@@ -4,29 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
 import {
-    MessageCircle,
-    Briefcase,
-    Users,
-    FileText,
     MoreHorizontal,
     X,
-    Home,
-    Plane,
-    Receipt,
-    Coins,
-    Store,
-    Sparkles,
-    Compass,
-    Calendar,
-    Truck,
-    Map,
-    LifeBuoy,
-    Gift,
-    Settings,
-    CreditCard,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavCounts } from "@/components/layout/useNavCounts";
+import { getPrimaryItems, getSecondaryGrouped, type NavItemConfig } from "@/lib/nav/nav-config";
+import { resolveIcon } from "@/lib/nav/icon-map";
 import { cn } from "@/lib/utils";
 
 interface PrimaryNavItem {
@@ -39,41 +23,18 @@ interface PrimaryNavItem {
     isMore?: boolean;
 }
 
-const PRIMARY_ITEMS: PrimaryNavItem[] = [
-    {
-        icon: Home,
-        label: "Home",
-        href: "/",
-    },
-    {
-        icon: MessageCircle,
-        label: "Inbox",
-        href: "/inbox",
-        badgeKey: "inboxUnread",
-        badgeColor: "#25D366",
-    },
-    {
-        icon: Briefcase,
-        label: "Trips",
-        href: "/trips",
-        badgeKey: "bookingsToday",
-        badgeColor: "#f97316",
-    },
-    {
-        icon: Users,
-        label: "Clients",
-        href: "/clients",
-        badgeKey: "reviewsNeedingResponse",
-        badgeColor: "#3b82f6",
-    },
-    {
-        icon: FileText,
-        label: "Proposals",
-        href: "/proposals",
-        badgeKey: "proposalsPending",
-        badgeColor: "#8b5cf6",
-    },
-];
+/** Convert shared NavItemConfig to MobileNav's internal format */
+function toPrimaryItem(config: NavItemConfig): PrimaryNavItem {
+    return {
+        icon: resolveIcon(config.icon),
+        label: config.label,
+        href: config.href,
+        badgeKey: config.badgeKey,
+        badgeColor: config.badgeColor,
+    };
+}
+
+const PRIMARY_ITEMS: PrimaryNavItem[] = getPrimaryItems().map(toPrimaryItem);
 
 interface SecondaryDrawerItem {
     icon: React.ElementType;
@@ -81,22 +42,15 @@ interface SecondaryDrawerItem {
     href: string;
 }
 
-const SECONDARY_ITEMS: SecondaryDrawerItem[] = [
-    { icon: Plane, label: "Bookings", href: "/bookings" },
-    { icon: Receipt, label: "Invoices", href: "/admin/invoices" },
-    { icon: Coins, label: "Pricing", href: "/admin/pricing" },
-    { icon: Store, label: "Marketplace", href: "/marketplace" },
-    { icon: Sparkles, label: "AI Insights", href: "/admin/insights" },
-    { icon: Compass, label: "Command", href: "/admin/operations" },
-    { icon: Calendar, label: "Calendar", href: "/calendar" },
-    { icon: Truck, label: "Drivers", href: "/drivers" },
-    { icon: Map, label: "Planner", href: "/planner" },
-    { icon: Map, label: "Add-ons", href: "/add-ons" },
-    { icon: LifeBuoy, label: "Support", href: "/support" },
-    { icon: Gift, label: "Refer & Earn", href: "/admin/referrals" },
-    { icon: Settings, label: "Settings", href: "/settings" },
-    { icon: CreditCard, label: "Billing", href: "/billing" },
-];
+// Group secondary items by section for the "More" drawer
+const SECONDARY_GROUPS = getSecondaryGrouped().map((group) => ({
+    ...group,
+    items: group.items.map((config): SecondaryDrawerItem => ({
+        icon: resolveIcon(config.icon),
+        label: config.label,
+        href: config.href,
+    })),
+}));
 
 function BadgeDot({
     count,
@@ -187,43 +141,52 @@ export default function MobileNav() {
                                 </button>
                             </div>
 
-                            {/* Grid of secondary items */}
-                            <div className="grid grid-cols-4 gap-3">
-                                {SECONDARY_ITEMS.map((item) => {
-                                    const isActive = isActivePath(item.href);
-                                    const Icon = item.icon;
-                                    return (
-                                        <Link
-                                            key={item.href}
-                                            href={item.href}
-                                            className={cn(
-                                                "flex flex-col items-center gap-2 p-3 rounded-2xl transition-all active:scale-95",
-                                                isActive
-                                                    ? "bg-primary/10 dark:bg-primary/15"
-                                                    : "hover:bg-slate-100 dark:hover:bg-slate-800/70"
-                                                )}
-                                        >
-                                            <Icon
-                                                className={cn(
-                                                    "w-5 h-5",
-                                                    isActive
-                                                        ? "text-primary"
-                                                        : "text-slate-500 dark:text-slate-400"
-                                                )}
-                                            />
-                                            <span
-                                                className={cn(
-                                                    "text-[10px] font-semibold text-center leading-tight",
-                                                    isActive
-                                                        ? "text-primary"
-                                                        : "text-slate-600 dark:text-slate-400"
-                                                )}
-                                            >
-                                                {item.label}
-                                            </span>
-                                        </Link>
-                                    );
-                                })}
+                            {/* Categorized secondary items */}
+                            <div className="space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                                {SECONDARY_GROUPS.map((group) => (
+                                    <div key={group.section}>
+                                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 px-1">
+                                            {group.label}
+                                        </p>
+                                        <div className="grid grid-cols-4 gap-2">
+                                            {group.items.map((item) => {
+                                                const isActive = isActivePath(item.href);
+                                                const Icon = item.icon;
+                                                return (
+                                                    <Link
+                                                        key={item.href}
+                                                        href={item.href}
+                                                        className={cn(
+                                                            "flex flex-col items-center gap-1.5 p-2.5 rounded-2xl transition-all active:scale-95",
+                                                            isActive
+                                                                ? "bg-primary/10 dark:bg-primary/15"
+                                                                : "hover:bg-slate-100 dark:hover:bg-slate-800/70"
+                                                        )}
+                                                    >
+                                                        <Icon
+                                                            className={cn(
+                                                                "w-5 h-5",
+                                                                isActive
+                                                                    ? "text-primary"
+                                                                    : "text-slate-500 dark:text-slate-400"
+                                                            )}
+                                                        />
+                                                        <span
+                                                            className={cn(
+                                                                "text-[10px] font-semibold text-center leading-tight",
+                                                                isActive
+                                                                    ? "text-primary"
+                                                                    : "text-slate-600 dark:text-slate-400"
+                                                            )}
+                                                        >
+                                                            {item.label}
+                                                        </span>
+                                                    </Link>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </motion.div>
                     </>
