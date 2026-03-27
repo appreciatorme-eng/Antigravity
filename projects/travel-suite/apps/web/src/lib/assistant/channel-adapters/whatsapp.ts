@@ -25,6 +25,8 @@ import {
 import { findAction } from "../actions/registry";
 import { logAuditEvent } from "../audit";
 import { sendWhatsAppText } from "@/lib/whatsapp.server";
+import { guardedSendText } from "@/lib/whatsapp-evolution.server";
+import { env } from "@/lib/config/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { sanitizeText } from "@/lib/security/sanitize";
@@ -58,6 +60,31 @@ export interface WhatsAppHandlerResult {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Send a WhatsApp reply using the correct provider.
+ * Evolution API (QR-code connected) takes priority over Meta Cloud API.
+ */
+async function sendReply(senderPhone: string, text: string): Promise<void> {
+  if (env.evolution?.baseUrl) {
+    // Evolution API path — look up session name from DB
+    const admin = createAdminClient();
+    const { data: conn } = await admin
+      .from("whatsapp_connections" as any)
+      .select("session_name")
+      .limit(1)
+      .single();
+    const sessionName = (conn as any)?.session_name;
+    if (!sessionName) {
+      logError("[whatsapp-adapter] No WhatsApp connection found for Evolution send", null);
+      return;
+    }
+    const waId = senderPhone.replace(/^\+/, "");
+    await guardedSendText(sessionName, waId, text);
+  } else {
+    await sendReply(senderPhone, text);
+  }
+}
 
 /** Strip heavy markdown formatting for WhatsApp (keep basic formatting). */
 function formatForWhatsApp(text: string): string {
@@ -179,7 +206,7 @@ export async function handleWhatsAppMessage(
     // Unknown user -- send a polite message and bail
     const unknownReply =
       "Hi! I'm TripBuilt, a business assistant. I couldn't find your account. Please make sure your WhatsApp number is registered in your tour operator profile.";
-    await sendWhatsAppText(senderPhone, unknownReply);
+    await sendReply(senderPhone, unknownReply);
     return { success: true, replySent: true, replyText: unknownReply };
   }
 
@@ -193,7 +220,7 @@ export async function handleWhatsAppMessage(
 
   if (!rateLimit.success) {
     const rateLimitReply = "You're sending messages too quickly. Please wait a moment before trying again.";
-    await sendWhatsAppText(senderPhone, rateLimitReply);
+    await sendReply(senderPhone, rateLimitReply);
     return { success: true, replySent: true, replyText: rateLimitReply };
   }
 
@@ -218,7 +245,7 @@ export async function handleWhatsAppMessage(
     session = await getOrCreateSession(ctx);
   } catch {
     const errorReply = "I'm having trouble connecting. Please try again in a moment.";
-    await sendWhatsAppText(senderPhone, errorReply);
+    await sendReply(senderPhone, errorReply);
     return { success: false, replySent: true, replyText: errorReply, error: "Session creation failed" };
   }
 
@@ -241,7 +268,7 @@ export async function handleWhatsAppMessage(
       });
 
       const formatted = formatForWhatsApp(confirmReply);
-      await sendWhatsAppText(senderPhone, formatted);
+      await sendReply(senderPhone, formatted);
       return { success: true, replySent: true, replyText: formatted };
     }
     // Empty reply means user sent a new topic -- fall through to orchestrator
@@ -286,17 +313,16 @@ export async function handleWhatsAppMessage(
 
     // 8. Send reply via WhatsApp
     const formatted = formatForWhatsApp(replyText);
-    const sendResult = await sendWhatsAppText(senderPhone, formatted);
+    await sendReply(senderPhone, formatted);
 
     return {
-      success: sendResult.success,
-      replySent: sendResult.success,
+      success: true,
+      replySent: true,
       replyText: formatted,
-      error: sendResult.error,
     };
   } catch (error) {
     const errorReply = "I ran into an issue processing your message. Please try again.";
-    await sendWhatsAppText(senderPhone, errorReply);
+    await sendReply(senderPhone, errorReply);
     return {
       success: false,
       replySent: true,
