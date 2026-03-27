@@ -182,7 +182,11 @@ export async function GET(request: Request): Promise<Response> {
         });
 
         if (!result) {
-            return apiSuccess({ conversations: [], gmailConnected: false });
+            return apiSuccess({
+                conversations: [],
+                gmailConnected: true,
+                _debug: "fetchThreads returned null — IMAP fetch failed silently. Check Vercel runtime logs for [imap-read] entries.",
+            });
         }
 
         const connectedEmail = provider.getEmail();
@@ -218,6 +222,7 @@ export async function GET(request: Request): Promise<Response> {
             conversations,
             gmailConnected: true,
             nextPageToken: result.nextPageToken,
+            _debug: `threads=${result.threads.length} resultSizeEstimate=${result.resultSizeEstimate}`,
         });
     } catch (err) {
         if (err instanceof GmailAuthExpiredError) {
