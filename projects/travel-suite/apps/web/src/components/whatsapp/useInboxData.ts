@@ -210,7 +210,12 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
         setEmailNextPageToken(emailData.data?.nextPageToken ?? null);
       }
 
-      const rawConvs = [...(waData.conversations ?? []), ...emailConvs];
+      const rawConvs = [...(waData.conversations ?? []), ...emailConvs]
+        .sort((a, b) => {
+          const aTime = a.messages.at(-1)?.timestamp ?? '';
+          const bTime = b.messages.at(-1)?.timestamp ?? '';
+          return new Date(bTime).getTime() - new Date(aTime).getTime();
+        });
       const convs = applyReadTracking(rawConvs);
 
       // In demo mode with no real data, fall back to mock conversations

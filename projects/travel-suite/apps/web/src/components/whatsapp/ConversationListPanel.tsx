@@ -95,8 +95,15 @@ export function ConversationListPanel({
     }
 
     // Sort
-    if (sortMode === 'unread') list = [...list].sort((a, b) => b.unreadCount - a.unreadCount);
-    else if (sortMode === 'priority') {
+    if (sortMode === 'recent') {
+      list = [...list].sort((a, b) => {
+        const aTime = a.messages.at(-1)?.timestamp ?? '';
+        const bTime = b.messages.at(-1)?.timestamp ?? '';
+        return new Date(bTime).getTime() - new Date(aTime).getTime();
+      });
+    } else if (sortMode === 'unread') {
+      list = [...list].sort((a, b) => b.unreadCount - a.unreadCount);
+    } else if (sortMode === 'priority') {
       list = [...list].sort((a, b) => {
         const score = (c: ChannelConversation) => (c.unreadCount > 0 ? 10 : 0) + (c.contact.label === 'payment' ? 5 : 0);
         return score(b) - score(a);
