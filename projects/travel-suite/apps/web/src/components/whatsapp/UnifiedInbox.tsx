@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useDemoMode } from '@/lib/demo/demo-mode-context';
 import { AlertTriangle } from 'lucide-react';
@@ -27,6 +27,7 @@ interface UnifiedInboxProps {
 export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTemplate, onUnreadChange }: UnifiedInboxProps) {
   const router = useRouter();
   const { isDemoMode } = useDemoMode();
+  const [quickSendText, setQuickSendText] = useState<string | null>(null);
 
   const inbox = useInboxData({ onSendMessage });
 
@@ -146,6 +147,8 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
         onRecipientChange={inbox.updateComposeRecipient}
         onDeleteEmail={inbox.deleteEmail}
         onArchiveEmail={inbox.archiveEmail}
+        quickSendText={quickSendText}
+        onQuickSendConsumed={() => setQuickSendText(null)}
       />
 
       {/* RIGHT: Context Panel */}
@@ -159,6 +162,7 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
           <UnifiedInboxContextPanel
             conversation={inbox.selectedConversation}
             onContextAction={inbox.handleContextAction}
+            onQuickSend={setQuickSendText}
           />
         </ErrorSection>
       </div>

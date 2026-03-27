@@ -50,6 +50,9 @@ interface ThreadPaneProps {
   // Email delete/archive
   onDeleteEmail?: (conversationId: string) => void;
   onArchiveEmail?: (conversationId: string) => void;
+  // Quick compose from context panel
+  quickSendText?: string | null;
+  onQuickSendConsumed?: () => void;
 }
 
 export function ThreadPane({
@@ -75,6 +78,8 @@ export function ThreadPane({
   onRecipientChange,
   onDeleteEmail,
   onArchiveEmail,
+  quickSendText,
+  onQuickSendConsumed,
 }: ThreadPaneProps) {
   const analytics = useAnalytics();
   const isDisconnected = !isDemoMode && whatsAppStatus !== 'connected';
@@ -199,8 +204,8 @@ export function ThreadPane({
           conversation={selectedConversation}
           channel={selectedChannel}
           onSendMessage={onSendMessage}
-          externalInput={selectedConversation && pendingTemplate ? pendingTemplate.body : undefined}
-          onExternalInputConsumed={onClearPendingTemplate}
+          externalInput={quickSendText || (selectedConversation && pendingTemplate ? pendingTemplate.body : undefined)}
+          onExternalInputConsumed={() => { onClearPendingTemplate?.(); onQuickSendConsumed?.(); }}
           smartReplies={smartReplySuggestions}
           smartRepliesLoading={smartReplyLoading}
           onUseSmartReply={() => analytics.aiSuggestionUsed('reply')}

@@ -17,6 +17,7 @@ import {
   TrendingUp,
   UserPlus,
   X,
+  Send,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -129,11 +130,13 @@ function useContactDetails(phone: string) {
 interface ContextPanelProps {
   conversation: Conversation | null;
   onContextAction?: (action: ContextAction, tripName?: string) => void;
+  onQuickSend?: (message: string) => void;
 }
 
 export function UnifiedInboxContextPanel({
   conversation,
   onContextAction,
+  onQuickSend,
 }: ContextPanelProps) {
   const [ctxTab, setCtxTab] = useState<'info' | 'automations'>('info');
   const prevConversationId = useRef(conversation?.id);
@@ -378,6 +381,21 @@ export function UnifiedInboxContextPanel({
                         <span>Paid: {details.client.payment.paid}</span>
                         <span>Total: {details.client.payment.total}</span>
                       </div>
+                      {onQuickSend && (
+                        <button
+                          onClick={() => {
+                            const tripName = details.activeTrip?.name || 'your booking';
+                            const balance = details.client!.payment.balance;
+                            onQuickSend(
+                              `Hi ${details.name || 'there'}! 👋\n\nThis is a friendly reminder about the pending payment for *${tripName}*.\n\n💰 Balance due: *${balance}*\n\nPlease complete the payment at your earliest convenience. Let us know if you have any questions!`
+                            );
+                            toast.success('Payment reminder added to compose');
+                          }}
+                          className="w-full mt-2 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/20 hover:bg-amber-500/25 transition-colors"
+                        >
+                          <Send className="w-2.5 h-2.5" /> Send Payment Reminder
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}
@@ -399,6 +417,24 @@ export function UnifiedInboxContextPanel({
                           {details.activeTrip.endDate && ` — ${new Date(details.activeTrip.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`}
                           {details.activeTrip.paxCount && ` · ${details.activeTrip.paxCount} pax`}
                         </p>
+                      )}
+                      {onQuickSend && (
+                        <div className="flex gap-1.5 mt-2">
+                          <button
+                            onClick={() => {
+                              const tripName = details.activeTrip?.name || 'your trip';
+                              const dest = details.activeTrip?.destination ? ` to ${details.activeTrip.destination}` : '';
+                              const link = `https://tripbuilt.com/share/${details.activeTrip?.id}`;
+                              onQuickSend(
+                                `Hi ${details.name || 'there'}! 👋\n\nHere's your itinerary for *${tripName}*${dest}:\n${link}\n\nPlease review and let us know if you'd like any changes.`
+                              );
+                              toast.success('Itinerary message added to compose');
+                            }}
+                            className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px] font-semibold bg-[#25D366]/15 text-[#25D366] border border-[#25D366]/20 hover:bg-[#25D366]/25 transition-colors"
+                          >
+                            <Send className="w-2.5 h-2.5" /> Send Itinerary
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
