@@ -46,7 +46,6 @@ export interface EmailThreadsResult {
   readonly threads: readonly EmailThread[];
   readonly nextPageToken: string | null;
   readonly resultSizeEstimate: number;
-  readonly _imapDebug?: Record<string, unknown>;
 }
 
 export interface FetchThreadsOptions {

@@ -185,15 +185,12 @@ export async function fetchImapThreads(
   const client = createImapClient(config, credentials);
 
   try {
-    logError("[imap-read] step=connect", { host: config.imapHost });
     await client.connect();
 
     const mailbox = await resolveMailbox(client, options.folder);
-    logError("[imap-read] step=open-mailbox", { mailbox });
     await client.mailboxOpen(mailbox, { readOnly: true });
 
     const since = daysAgo(DAYS_LOOKBACK);
-    logError("[imap-read] step=search", { since: since.toISOString() });
     const searchResult = await client.search({ since }, { uid: true }) as number[];
 
     logError("[imap-read] step=search-result", { count: searchResult?.length ?? 0 });
@@ -265,8 +262,6 @@ export async function fetchImapThreads(
       }
     }
 
-    logError("[imap-read] step=done", { messagesCount: messages.length });
-
     // Sort messages newest-first for thread grouping
     const sorted = [...messages].sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
@@ -280,7 +275,6 @@ export async function fetchImapThreads(
       threads,
       nextPageToken: hasMore ? String(nextOffset) : null,
       resultSizeEstimate: sortedUids.length,
-      _imapDebug: { searchHits: sortedUids.length, pageUids: pageUids.length, messagesParsed: messages.length, threadsGrouped: threads.length, fetchError },
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
