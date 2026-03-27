@@ -1,12 +1,17 @@
 "use client";
 
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassInput } from "@/components/glass/GlassInput";
 import {
   ArrowDownRight,
+  Check,
+  Copy,
+  CreditCard,
   Download,
   FileSpreadsheet,
+  Link2,
   Mail,
   MessageSquare,
   PenLine,
@@ -41,6 +46,9 @@ interface InvoiceListPanelProps {
   onPaymentNotesChange: (value: string) => void;
   onRecordPayment: (e: React.FormEvent) => void;
   paying: boolean;
+  onSendPaymentLink: () => void;
+  sendingPaymentLink: boolean;
+  paymentLinkUrl: string | null;
 }
 
 export default function InvoiceListPanel({
@@ -67,7 +75,18 @@ export default function InvoiceListPanel({
   onPaymentNotesChange,
   onRecordPayment,
   paying,
+  onSendPaymentLink,
+  sendingPaymentLink,
+  paymentLinkUrl,
 }: InvoiceListPanelProps) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    if (!paymentLinkUrl) return;
+    await navigator.clipboard.writeText(paymentLinkUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
   return (
     <div className="space-y-4">
       <button
@@ -232,6 +251,57 @@ export default function InvoiceListPanel({
               </GlassButton>
             </div>
           </div>
+
+          {Number(selectedInvoice.balance_amount || 0) > 0 && (
+            <div className="space-y-2">
+              <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                <Link2 className="h-3.5 w-3.5" />
+                Online Payment
+              </p>
+              <GlassButton
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onSendPaymentLink}
+                disabled={sendingPaymentLink}
+                className="w-full justify-center text-xs"
+              >
+                {sendingPaymentLink ? (
+                  <>
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                    Creating link...
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="h-3.5 w-3.5" />
+                    Send Payment Link
+                  </>
+                )}
+              </GlassButton>
+              {paymentLinkUrl && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-2.5">
+                  <p className="mb-1.5 text-[10px] font-semibold text-emerald-700">
+                    Payment link ready
+                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      readOnly
+                      value={paymentLinkUrl}
+                      className="min-w-0 flex-1 rounded-lg border border-emerald-200 bg-white px-2 py-1 text-[11px] text-slate-700"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void handleCopy()}
+                      className="shrink-0 rounded-lg border border-emerald-200 bg-white p-1.5 text-emerald-700 hover:bg-emerald-100 transition"
+                    >
+                      {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           <form onSubmit={onRecordPayment} className="space-y-2">
             <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
