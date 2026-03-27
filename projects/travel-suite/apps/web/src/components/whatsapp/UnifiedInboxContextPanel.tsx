@@ -554,6 +554,11 @@ export function UnifiedInboxContextPanel({
                 </button>
               ))}
             </div>
+
+            {/* Agent Notes */}
+            <AgentNotes
+              conversationKey={conversation?.contact.phone || conversation?.contact.email || ''}
+            />
           </>
         )}
 
@@ -561,6 +566,72 @@ export function UnifiedInboxContextPanel({
           <AutomationsPanel phone={conversation?.contact.phone ?? ''} />
         )}
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// AgentNotes — private notes per conversation
+// ---------------------------------------------------------------------------
+
+function AgentNotes({ conversationKey }: { conversationKey: string }) {
+  const [note, setNote] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const keyRef = useRef(conversationKey);
+
+  // Fetch note when conversation changes
+  useEffect(() => {
+    if (!conversationKey) return;
+    keyRef.current = conversationKey;
+    setLoaded(false);
+
+    (async () => {
+      try {
+        const res = await fetch(`/api/admin/notes?key=${encodeURIComponent(conversationKey)}`);
+        const json = await res.json().catch(() => ({}));
+        if (keyRef.current === conversationKey) {
+          setNote(json.data?.note ?? '');
+          setLoaded(true);
+        }
+      } catch {
+        setLoaded(true);
+      }
+    })();
+  }, [conversationKey]);
+
+  // Auto-save with debounce
+  function handleChange(value: string) {
+    setNote(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setSaving(true);
+      fetch('/api/admin/notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: conversationKey, note: value }),
+      })
+        .then(() => setSaving(false))
+        .catch(() => setSaving(false));
+    }, 800);
+  }
+
+  if (!conversationKey) return null;
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Agent Notes</p>
+        {saving && <span className="text-[9px] text-slate-500">Saving...</span>}
+        {!saving && loaded && note && <span className="text-[9px] text-slate-600">✓ Saved</span>}
+      </div>
+      <textarea
+        value={note}
+        onChange={(e) => handleChange(e.target.value)}
+        placeholder="Add private notes about this conversation..."
+        className="w-full h-20 p-2 rounded-lg bg-white/5 border border-white/10 text-xs text-slate-300 placeholder-slate-600 resize-none focus:outline-none focus:border-blue-500/30 focus:ring-1 focus:ring-blue-500/20 custom-scrollbar"
+      />
     </div>
   );
 }

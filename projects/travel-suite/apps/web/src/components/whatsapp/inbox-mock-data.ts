@@ -9,6 +9,7 @@ export type ChannelType = 'whatsapp' | 'email';
 export interface ChannelConversation extends Conversation {
   channel: ChannelType;
   chatbotSession?: ChatbotSessionSummary | null;
+  intent?: string; // travel intent classification (e.g. "new_enquiry", "payment_query")
 }
 
 // ─── WHATSAPP CONVERSATIONS ──────────────────────────────────────────────────

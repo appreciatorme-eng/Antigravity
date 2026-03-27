@@ -373,8 +373,33 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
       prev.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c))
     );
 
-    // Mark email thread as read in Gmail (fire-and-forget)
     const conv = conversations.find((c) => c.id === id);
+
+    // Lazy intent classification — classify on first select if no intent yet
+    if (conv && !conv.intent) {
+      const lastInbound = [...conv.messages].reverse().find((m) => m.direction === 'in');
+      const textToClassify = lastInbound?.body || lastInbound?.subject;
+      if (textToClassify && textToClassify.length > 3) {
+        void (async () => {
+          try {
+            const res = await fetch('/api/admin/classify-intent', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ message: textToClassify }),
+            });
+            const json = await res.json().catch(() => ({})) as { data?: { intent?: string } };
+            const intent = json.data?.intent;
+            if (intent && intent !== 'general') {
+              setConversations((prev) =>
+                prev.map((c) => (c.id === id ? { ...c, intent } : c))
+              );
+            }
+          } catch { /* silent — classification is non-critical */ }
+        })();
+      }
+    }
+
+    // Mark email thread as read in Gmail (fire-and-forget)
     if (conv?.channel === 'email' && conv.unreadCount > 0) {
       const emailConv = conv as ChannelConversation & { threadId?: string };
       if (emailConv.threadId) {

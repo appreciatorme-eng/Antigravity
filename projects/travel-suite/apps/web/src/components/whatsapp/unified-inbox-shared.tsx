@@ -15,6 +15,17 @@ export type ChannelFilter = 'all' | 'whatsapp' | 'email';
 export type SortMode = 'recent' | 'unread' | 'priority';
 export type ContextAction = ContextActionType | 'assign-driver' | 'request-payment' | 'add-to-crm';
 
+// Travel intent badge metadata (client-side mirror of classify-intent.ts INTENT_META)
+const INTENT_BADGES: Record<string, { label: string; emoji: string; color: string }> = {
+  new_enquiry:   { label: 'New Enquiry', emoji: '🆕', color: '#8b5cf6' },
+  payment_query: { label: 'Payment', emoji: '💰', color: '#f59e0b' },
+  modification:  { label: 'Modification', emoji: '✏️', color: '#3b82f6' },
+  document:      { label: 'Document', emoji: '📄', color: '#10b981' },
+  cancellation:  { label: 'Cancellation', emoji: '❌', color: '#ef4444' },
+  feedback:      { label: 'Feedback', emoji: '⭐', color: '#ec4899' },
+  follow_up:     { label: 'Follow Up', emoji: '🔄', color: '#6366f1' },
+};
+
 export const AVATAR_COLORS: Record<ConversationContact['type'], string> = {
   client: '#6366f1',
   driver: '#f59e0b',
@@ -126,7 +137,21 @@ export function UnifiedInboxConversationItem({
           {preview}
         </p>
         <div className="flex items-center justify-between mt-1.5">
-          <LabelChip label={conv.contact.label} />
+          <div className="flex items-center gap-1 min-w-0">
+            <LabelChip label={conv.contact.label} />
+            {conv.intent && conv.intent !== 'general' && INTENT_BADGES[conv.intent] && (
+              <span
+                className="inline-flex items-center gap-0.5 text-[9px] font-semibold px-1.5 py-0.5 rounded-full border"
+                style={{
+                  background: `${INTENT_BADGES[conv.intent].color}15`,
+                  borderColor: `${INTENT_BADGES[conv.intent].color}30`,
+                  color: INTENT_BADGES[conv.intent].color,
+                }}
+              >
+                {INTENT_BADGES[conv.intent].emoji} {INTENT_BADGES[conv.intent].label}
+              </span>
+            )}
+          </div>
           {isUnread && (
             <span
               className="text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center shrink-0"
