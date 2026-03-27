@@ -84,18 +84,34 @@ export async function POST(request: Request): Promise<Response> {
             return apiError("Email not connected. Connect your email in Settings.", 422);
         }
 
-        // Append org signature
+        // Append professional org signature
         const admin = createAdminClient();
-        const { data: org } = await admin
-            .from("organizations")
-            .select("name")
-            .eq("id", orgId)
-            .single();
+        const [{ data: org }, { data: senderProfile }] = await Promise.all([
+            admin
+                .from("organizations")
+                .select("name, logo_url, legal_name, billing_city, billing_state" as any)
+                .eq("id", orgId)
+                .single(),
+            admin
+                .from("profiles")
+                .select("full_name, role, phone_normalized")
+                .eq("id", auth.userId)
+                .single(),
+        ]);
+        const orgRow = org as { name?: string; logo_url?: string; legal_name?: string; billing_city?: string; billing_state?: string } | null;
+        const profileRow = senderProfile as { full_name?: string; role?: string; phone_normalized?: string } | null;
         const senderEmail = provider.getEmail();
-        const orgName = org?.name ?? "";
-        const signatureHtml = orgName || senderEmail
-            ? `<div style="margin-top:24px;padding-top:12px;border-top:1px solid #e5e7eb;font-family:sans-serif;font-size:12px;color:#6b7280">${escapeHtml(orgName)}${orgName && senderEmail ? "<br/>" : ""}${escapeHtml(senderEmail)}</div>`
-            : "";
+
+        const signatureHtml = buildSignatureHtml({
+            senderName: profileRow?.full_name ?? null,
+            senderRole: profileRow?.role ?? null,
+            senderPhone: profileRow?.phone_normalized ?? null,
+            senderEmail,
+            orgName: orgRow?.name ?? null,
+            orgLogoUrl: orgRow?.logo_url ?? null,
+            orgCity: orgRow?.billing_city ?? null,
+            orgState: orgRow?.billing_state ?? null,
+        });
 
         const messageId = await provider.sendEmail({
             to: raw.to,
@@ -138,4 +154,54 @@ function escapeHtml(text: string): string {
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;");
+}
+
+interface SignatureData {
+    readonly senderName: string | null;
+    readonly senderRole: string | null;
+    readonly senderPhone: string | null;
+    readonly senderEmail: string;
+    readonly orgName: string | null;
+    readonly orgLogoUrl: string | null;
+    readonly orgCity: string | null;
+    readonly orgState: string | null;
+}
+
+function buildSignatureHtml(data: SignatureData): string {
+    const lines: string[] = [];
+
+    // Sender name + role
+    const nameParts: string[] = [];
+    if (data.senderName) nameParts.push(`<strong>${escapeHtml(data.senderName)}</strong>`);
+    if (data.senderRole && data.senderRole !== "admin") nameParts.push(escapeHtml(data.senderRole));
+    if (nameParts.length > 0) lines.push(nameParts.join(" · "));
+
+    // Organization name
+    if (data.orgName) lines.push(escapeHtml(data.orgName));
+
+    // Location
+    const locationParts: string[] = [];
+    if (data.orgCity) locationParts.push(escapeHtml(data.orgCity));
+    if (data.orgState) locationParts.push(escapeHtml(data.orgState));
+    if (locationParts.length > 0) lines.push(locationParts.join(", "));
+
+    // Contact info
+    const contactParts: string[] = [];
+    if (data.senderEmail) contactParts.push(escapeHtml(data.senderEmail));
+    if (data.senderPhone) {
+        const formatted = data.senderPhone.length > 10
+            ? `+${data.senderPhone.slice(0, 2)} ${data.senderPhone.slice(2, 7)} ${data.senderPhone.slice(7)}`
+            : data.senderPhone;
+        contactParts.push(escapeHtml(formatted));
+    }
+    if (contactParts.length > 0) lines.push(contactParts.join(" | "));
+
+    if (lines.length === 0) return "";
+
+    // Logo (optional)
+    const logoHtml = data.orgLogoUrl
+        ? `<img src="${escapeHtml(data.orgLogoUrl)}" alt="${escapeHtml(data.orgName ?? "")}" width="80" height="auto" style="margin-bottom:8px;border-radius:4px" /><br/>`
+        : "";
+
+    return `<div style="margin-top:24px;padding-top:16px;border-top:1px solid #e5e7eb;font-family:sans-serif;font-size:12px;color:#6b7280;line-height:1.6">${logoHtml}${lines.join("<br/>")}</div>`;
 }
