@@ -80,7 +80,7 @@ export async function recordPricingFeedback(
 
     // Insert feedback record
     const { data, error: insertError } = await supabase
-      .from('pricing_feedback' as any)
+      .from('pricing_feedback')
       .insert({
         organization_id: profile.organization_id,
         proposal_id: input.proposalId || null,
@@ -136,7 +136,7 @@ export async function getFeedbackStats(
 
     // Build query
     let query = supabase
-      .from('pricing_feedback' as any)
+      .from('pricing_feedback')
       .select('action, suggested_price_paise, final_price_paise')
       .ilike('destination', `%${destination}%`);
 

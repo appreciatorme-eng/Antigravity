@@ -85,7 +85,7 @@ export async function GET(req: NextRequest) {
       db
         .from("notification_logs")
         .select("id, title, body, sent_at, status")
-        .eq("organization_id" as any, orgId)
+        .eq("organization_id", orgId)
         .order("sent_at", { ascending: false })
         .limit(5),
       db

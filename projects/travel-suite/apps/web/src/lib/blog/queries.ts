@@ -21,14 +21,11 @@ export type BlogPostSummary = Pick<
   'id' | 'slug' | 'title' | 'excerpt' | 'cover_image' | 'author_name' | 'category' | 'tags' | 'published_at'
 >;
 
-// blog_posts is not yet in the generated database types (migration pending).
-// Use an untyped .from() call via `as never` to bypass the type checker.
-// Follow-up(blog,S33-A17-2): remove these casts after regenerating database.types.ts.
 
 export async function getAllPublishedPosts(): Promise<{ data: BlogPostSummary[] | null; error: string | null }> {
   try {
     const supabase = await createClient();
-    const { data, error } = await (supabase as any).from('blog_posts')
+    const { data, error } = await supabase.from('blog_posts')
       .select('id, slug, title, excerpt, cover_image, author_name, category, tags, published_at')
       .eq('published', true)
       .order('published_at', { ascending: false });
@@ -47,7 +44,7 @@ export async function getAllPublishedPosts(): Promise<{ data: BlogPostSummary[] 
 export async function getPostBySlug(slug: string): Promise<{ data: BlogPost | null; error: string | null }> {
   try {
     const supabase = await createClient();
-    const { data, error } = await (supabase as any).from('blog_posts')
+    const { data, error } = await supabase.from('blog_posts')
       .select('*')
       .eq('slug', slug)
       .eq('published', true)
@@ -67,7 +64,7 @@ export async function getPostBySlug(slug: string): Promise<{ data: BlogPost | nu
 export async function getPostsByCategory(category: string): Promise<{ data: BlogPostSummary[] | null; error: string | null }> {
   try {
     const supabase = await createClient();
-    const { data, error } = await (supabase as any).from('blog_posts')
+    const { data, error } = await supabase.from('blog_posts')
       .select('id, slug, title, excerpt, cover_image, author_name, category, tags, published_at')
       .eq('published', true)
       .eq('category', category)

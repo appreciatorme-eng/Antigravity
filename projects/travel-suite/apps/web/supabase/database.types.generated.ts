@@ -299,6 +299,271 @@ export type Database = {
           },
         ]
       }
+      automation_contact_overrides: {
+        Row: {
+          contact_phone: string
+          created_at: string | null
+          enabled: boolean
+          id: string
+          organization_id: string
+          rule_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          contact_phone: string
+          created_at?: string | null
+          enabled?: boolean
+          id?: string
+          organization_id: string
+          rule_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          contact_phone?: string
+          created_at?: string | null
+          enabled?: boolean
+          id?: string
+          organization_id?: string
+          rule_type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      automation_executions: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          duration_ms: number | null
+          error_message: string | null
+          execution_type: string
+          id: string
+          messages_failed: number
+          messages_sent: number
+          messages_skipped: number
+          metadata: Json
+          rules_processed: number
+          started_at: string
+          status: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          execution_type?: string
+          id?: string
+          messages_failed?: number
+          messages_sent?: number
+          messages_skipped?: number
+          metadata?: Json
+          rules_processed?: number
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          execution_type?: string
+          id?: string
+          messages_failed?: number
+          messages_sent?: number
+          messages_skipped?: number
+          metadata?: Json
+          rules_processed?: number
+          started_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      automation_logs: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          message_channel: string
+          message_content: string | null
+          organization_id: string
+          rule_id: string
+          rule_type: string
+          sent_at: string | null
+          status: string
+          target_entity_id: string
+          target_entity_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message_channel: string
+          message_content?: string | null
+          organization_id: string
+          rule_id: string
+          rule_type: string
+          sent_at?: string | null
+          status?: string
+          target_entity_id: string
+          target_entity_type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message_channel?: string
+          message_content?: string | null
+          organization_id?: string
+          rule_id?: string
+          rule_type?: string
+          sent_at?: string | null
+          status?: string
+          target_entity_id?: string
+          target_entity_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_logs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_logs_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "automation_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_rules: {
+        Row: {
+          action_config: Json
+          created_at: string
+          enabled: boolean
+          id: string
+          organization_id: string
+          rule_type: string
+          trigger_config: Json
+          updated_at: string
+        }
+        Insert: {
+          action_config?: Json
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          organization_id: string
+          rule_type: string
+          trigger_config?: Json
+          updated_at?: string
+        }
+        Update: {
+          action_config?: Json
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          organization_id?: string
+          rule_type?: string
+          trigger_config?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_rules_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_sent_messages: {
+        Row: {
+          contact_phone: string
+          created_at: string
+          id: string
+          message_preview: string | null
+          organization_id: string
+          rule_type: string
+        }
+        Insert: {
+          contact_phone: string
+          created_at?: string
+          id?: string
+          message_preview?: string | null
+          organization_id: string
+          rule_type: string
+        }
+        Update: {
+          contact_phone?: string
+          created_at?: string
+          id?: string
+          message_preview?: string | null
+          organization_id?: string
+          rule_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_sent_messages_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      blog_posts: {
+        Row: {
+          author_name: string
+          category: string
+          content: string
+          cover_image: string | null
+          created_at: string | null
+          excerpt: string
+          id: string
+          published: boolean | null
+          published_at: string | null
+          slug: string
+          tags: string[] | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          author_name?: string
+          category?: string
+          content: string
+          cover_image?: string | null
+          created_at?: string | null
+          excerpt: string
+          id?: string
+          published?: boolean | null
+          published_at?: string | null
+          slug: string
+          tags?: string[] | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          author_name?: string
+          category?: string
+          content?: string
+          cover_image?: string | null
+          created_at?: string | null
+          excerpt?: string
+          id?: string
+          published?: boolean | null
+          published_at?: string | null
+          slug?: string
+          tags?: string[] | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       calendar_events: {
         Row: {
           all_day: boolean | null
@@ -1041,6 +1306,117 @@ export type Database = {
           },
         ]
       }
+      e_invoice_settings: {
+        Row: {
+          auto_generate_enabled: boolean
+          created_at: string | null
+          gstin: string
+          id: string
+          irp_api_key_encrypted: string | null
+          irp_password_encrypted: string | null
+          irp_username: string | null
+          organization_id: string
+          sandbox_mode: boolean
+          threshold_amount: number
+          updated_at: string | null
+        }
+        Insert: {
+          auto_generate_enabled?: boolean
+          created_at?: string | null
+          gstin: string
+          id?: string
+          irp_api_key_encrypted?: string | null
+          irp_password_encrypted?: string | null
+          irp_username?: string | null
+          organization_id: string
+          sandbox_mode?: boolean
+          threshold_amount?: number
+          updated_at?: string | null
+        }
+        Update: {
+          auto_generate_enabled?: boolean
+          created_at?: string | null
+          gstin?: string
+          id?: string
+          irp_api_key_encrypted?: string | null
+          irp_password_encrypted?: string | null
+          irp_username?: string | null
+          organization_id?: string
+          sandbox_mode?: boolean
+          threshold_amount?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "e_invoice_settings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      expense_receipts: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          ocr_confidence: number | null
+          ocr_extracted_amount: number | null
+          ocr_raw_response: Json | null
+          organization_id: string
+          receipt_url: string
+          trip_service_cost_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          ocr_confidence?: number | null
+          ocr_extracted_amount?: number | null
+          ocr_raw_response?: Json | null
+          organization_id: string
+          receipt_url: string
+          trip_service_cost_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          ocr_confidence?: number | null
+          ocr_extracted_amount?: number | null
+          ocr_raw_response?: Json | null
+          organization_id?: string
+          receipt_url?: string
+          trip_service_cost_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_receipts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_receipts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_receipts_trip_service_cost_id_fkey"
+            columns: ["trip_service_cost_id"]
+            isOneToOne: false
+            referencedRelation: "trip_service_costs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       external_drivers: {
         Row: {
           created_at: string | null
@@ -1093,67 +1469,6 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      expense_receipts: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          id: string
-          ocr_confidence: number | null
-          ocr_extracted_amount: number | null
-          ocr_raw_response: Json | null
-          organization_id: string
-          receipt_url: string
-          trip_service_cost_id: string | null
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          ocr_confidence?: number | null
-          ocr_extracted_amount?: number | null
-          ocr_raw_response?: Json | null
-          organization_id: string
-          receipt_url: string
-          trip_service_cost_id?: string | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          ocr_confidence?: number | null
-          ocr_extracted_amount?: number | null
-          ocr_raw_response?: Json | null
-          organization_id?: string
-          receipt_url?: string
-          trip_service_cost_id?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "expense_receipts_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "expense_receipts_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "expense_receipts_trip_service_cost_id_fkey"
-            columns: ["trip_service_cost_id"]
-            isOneToOne: false
-            referencedRelation: "trip_service_costs"
             referencedColumns: ["id"]
           },
         ]
@@ -1298,56 +1613,6 @@ export type Database = {
             foreignKeyName: "invoice_payments_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      e_invoice_settings: {
-        Row: {
-          auto_generate_enabled: boolean | null
-          created_at: string | null
-          gstin: string | null
-          id: string
-          irp_api_key_encrypted: string | null
-          irp_password_encrypted: string | null
-          irp_username: string | null
-          organization_id: string
-          sandbox_mode: boolean | null
-          threshold_amount: number | null
-          updated_at: string | null
-        }
-        Insert: {
-          auto_generate_enabled?: boolean | null
-          created_at?: string | null
-          gstin?: string | null
-          id?: string
-          irp_api_key_encrypted?: string | null
-          irp_password_encrypted?: string | null
-          irp_username?: string | null
-          organization_id: string
-          sandbox_mode?: boolean | null
-          threshold_amount?: number | null
-          updated_at?: string | null
-        }
-        Update: {
-          auto_generate_enabled?: boolean | null
-          created_at?: string | null
-          gstin?: string | null
-          id?: string
-          irp_api_key_encrypted?: string | null
-          irp_password_encrypted?: string | null
-          irp_username?: string | null
-          organization_id?: string
-          sandbox_mode?: boolean | null
-          threshold_amount?: number | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "e_invoice_settings_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: true
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -1511,6 +1776,7 @@ export type Database = {
           duration_days: number | null
           id: string
           interests: string[] | null
+          organization_id: string | null
           raw_data: Json
           summary: string | null
           template_id: string | null
@@ -1526,6 +1792,7 @@ export type Database = {
           duration_days?: number | null
           id?: string
           interests?: string[] | null
+          organization_id?: string | null
           raw_data: Json
           summary?: string | null
           template_id?: string | null
@@ -1541,6 +1808,7 @@ export type Database = {
           duration_days?: number | null
           id?: string
           interests?: string[] | null
+          organization_id?: string | null
           raw_data?: Json
           summary?: string | null
           template_id?: string | null
@@ -1554,6 +1822,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "itineraries_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
           {
@@ -1720,6 +1995,78 @@ export type Database = {
           usage_count?: number | null
         }
         Relationships: []
+      }
+      itinerary_templates: {
+        Row: {
+          budget_range: string
+          created_at: string
+          description: string | null
+          destination: string
+          duration_days: number
+          id: string
+          is_active: boolean
+          organization_id: string
+          published_by_org_id: string
+          rating_avg: number | null
+          rating_count: number
+          template_data: Json
+          theme: string
+          title: string
+          updated_at: string
+          usage_count: number
+        }
+        Insert: {
+          budget_range: string
+          created_at?: string
+          description?: string | null
+          destination: string
+          duration_days: number
+          id?: string
+          is_active?: boolean
+          organization_id: string
+          published_by_org_id: string
+          rating_avg?: number | null
+          rating_count?: number
+          template_data: Json
+          theme: string
+          title: string
+          updated_at?: string
+          usage_count?: number
+        }
+        Update: {
+          budget_range?: string
+          created_at?: string
+          description?: string | null
+          destination?: string
+          duration_days?: number
+          id?: string
+          is_active?: boolean
+          organization_id?: string
+          published_by_org_id?: string
+          rating_avg?: number | null
+          rating_count?: number
+          template_data?: Json
+          theme?: string
+          title?: string
+          updated_at?: string
+          usage_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "itinerary_templates_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "itinerary_templates_published_by_org_id_fkey"
+            columns: ["published_by_org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       lead_events: {
         Row: {
@@ -2300,6 +2647,7 @@ export type Database = {
           external_id: string | null
           id: string
           notification_type: string
+          organization_id: string | null
           recipient_id: string | null
           recipient_phone: string | null
           recipient_type: string | null
@@ -2316,6 +2664,7 @@ export type Database = {
           external_id?: string | null
           id?: string
           notification_type: string
+          organization_id?: string | null
           recipient_id?: string | null
           recipient_phone?: string | null
           recipient_type?: string | null
@@ -2332,6 +2681,7 @@ export type Database = {
           external_id?: string | null
           id?: string
           notification_type?: string
+          organization_id?: string | null
           recipient_id?: string | null
           recipient_phone?: string | null
           recipient_type?: string | null
@@ -2342,6 +2692,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "notification_logs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "notification_logs_recipient_id_fkey"
             columns: ["recipient_id"]
@@ -3231,6 +3588,88 @@ export type Database = {
         }
         Relationships: []
       }
+      pricing_feedback: {
+        Row: {
+          action: string
+          comparable_trips_count: number
+          confidence_level: string
+          created_at: string
+          created_by: string | null
+          destination: string
+          duration_days: number
+          final_price_paise: number | null
+          id: string
+          organization_id: string
+          package_tier: string | null
+          pax: number
+          proposal_id: string | null
+          season_month: number | null
+          suggested_price_paise: number
+          suggestion_id: string
+          updated_at: string
+        }
+        Insert: {
+          action: string
+          comparable_trips_count?: number
+          confidence_level: string
+          created_at?: string
+          created_by?: string | null
+          destination: string
+          duration_days: number
+          final_price_paise?: number | null
+          id?: string
+          organization_id: string
+          package_tier?: string | null
+          pax: number
+          proposal_id?: string | null
+          season_month?: number | null
+          suggested_price_paise: number
+          suggestion_id: string
+          updated_at?: string
+        }
+        Update: {
+          action?: string
+          comparable_trips_count?: number
+          confidence_level?: string
+          created_at?: string
+          created_by?: string | null
+          destination?: string
+          duration_days?: number
+          final_price_paise?: number | null
+          id?: string
+          organization_id?: string
+          package_tier?: string | null
+          pax?: number
+          proposal_id?: string | null
+          season_month?: number | null
+          suggested_price_paise?: number
+          suggestion_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pricing_feedback_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pricing_feedback_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pricing_feedback_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -3243,6 +3682,7 @@ export type Database = {
           budget_min: number | null
           client_info: Json | null
           client_tag: string | null
+          contributor_badge_tier: string | null
           created_at: string | null
           dietary_requirements: string[] | null
           driver_info: Json | null
@@ -3285,6 +3725,7 @@ export type Database = {
           budget_min?: number | null
           client_info?: Json | null
           client_tag?: string | null
+          contributor_badge_tier?: string | null
           created_at?: string | null
           dietary_requirements?: string[] | null
           driver_info?: Json | null
@@ -3327,6 +3768,7 @@ export type Database = {
           budget_min?: number | null
           client_info?: Json | null
           client_tag?: string | null
+          contributor_badge_tier?: string | null
           created_at?: string | null
           dietary_requirements?: string[] | null
           driver_info?: Json | null
@@ -3804,6 +4246,7 @@ export type Database = {
           tier_pricing: Json
           title: string
           total_price: number | null
+          trip_id: string | null
           updated_at: string | null
           version: number | null
           viewed_at: string | null
@@ -3825,6 +4268,7 @@ export type Database = {
           tier_pricing?: Json
           title: string
           total_price?: number | null
+          trip_id?: string | null
           updated_at?: string | null
           version?: number | null
           viewed_at?: string | null
@@ -3846,6 +4290,7 @@ export type Database = {
           tier_pricing?: Json
           title?: string
           total_price?: number | null
+          trip_id?: string | null
           updated_at?: string | null
           version?: number | null
           viewed_at?: string | null
@@ -3870,6 +4315,13 @@ export type Database = {
             columns: ["template_id"]
             isOneToOne: false
             referencedRelation: "tour_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposals_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
             referencedColumns: ["id"]
           },
         ]
@@ -6026,6 +6478,7 @@ export type Database = {
         Row: {
           client_id: string | null
           created_at: string | null
+          created_by: string | null
           destination: string | null
           driver_id: string | null
           end_date: string | null
@@ -6044,6 +6497,7 @@ export type Database = {
         Insert: {
           client_id?: string | null
           created_at?: string | null
+          created_by?: string | null
           destination?: string | null
           driver_id?: string | null
           end_date?: string | null
@@ -6062,6 +6516,7 @@ export type Database = {
         Update: {
           client_id?: string | null
           created_at?: string | null
+          created_by?: string | null
           destination?: string | null
           driver_id?: string | null
           end_date?: string | null
@@ -6081,6 +6536,13 @@ export type Database = {
           {
             foreignKeyName: "trips_client_id_fkey"
             columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trips_created_by_fkey"
+            columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -6107,33 +6569,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      whatsapp_presence: {
-        Row: {
-          id: string
-          session_name: string
-          wa_id: string
-          presence: string
-          last_seen_at: string | null
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          session_name: string
-          wa_id: string
-          presence?: string
-          last_seen_at?: string | null
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          session_name?: string
-          wa_id?: string
-          presence?: string
-          last_seen_at?: string | null
-          updated_at?: string
-        }
-        Relationships: []
       }
       whatsapp_chatbot_sessions: {
         Row: {
@@ -6187,6 +6622,7 @@ export type Database = {
       }
       whatsapp_connections: {
         Row: {
+          assistant_group_jid: string | null
           connected_at: string | null
           created_at: string
           display_name: string | null
@@ -6202,6 +6638,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          assistant_group_jid?: string | null
           connected_at?: string | null
           created_at?: string
           display_name?: string | null
@@ -6217,6 +6654,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          assistant_group_jid?: string | null
           connected_at?: string | null
           created_at?: string
           display_name?: string | null
@@ -6240,6 +6678,74 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      whatsapp_contact_names: {
+        Row: {
+          created_at: string | null
+          custom_name: string | null
+          id: string
+          is_personal: boolean | null
+          org_id: string
+          push_name: string | null
+          updated_at: string | null
+          wa_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          custom_name?: string | null
+          id?: string
+          is_personal?: boolean | null
+          org_id: string
+          push_name?: string | null
+          updated_at?: string | null
+          wa_id: string
+        }
+        Update: {
+          created_at?: string | null
+          custom_name?: string | null
+          id?: string
+          is_personal?: boolean | null
+          org_id?: string
+          push_name?: string | null
+          updated_at?: string | null
+          wa_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_contact_names_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_presence: {
+        Row: {
+          id: string
+          last_seen_at: string | null
+          presence: string
+          session_name: string
+          updated_at: string
+          wa_id: string
+        }
+        Insert: {
+          id?: string
+          last_seen_at?: string | null
+          presence?: string
+          session_name: string
+          updated_at?: string
+          wa_id: string
+        }
+        Update: {
+          id?: string
+          last_seen_at?: string | null
+          presence?: string
+          session_name?: string
+          updated_at?: string
+          wa_id?: string
+        }
+        Relationships: []
       }
       whatsapp_proposal_drafts: {
         Row: {
