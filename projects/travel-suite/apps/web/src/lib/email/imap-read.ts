@@ -227,7 +227,7 @@ export async function fetchImapThreads(
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         // fetchOne(seq, query, options) — uid:true MUST be in options (3rd arg), not query
-        const msg = await (client as any).fetchOne(String(uid), { envelope: true }, { uid: true });
+        const msg = await (client as any).fetchOne(String(uid), { envelope: true, source: true }, { uid: true });
         if (!msg) continue;
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -242,6 +242,35 @@ export async function fetchImapThreads(
         const dateStr = env.date ? new Date(env.date).toISOString() : new Date().toISOString();
         const messageId = typeof env.messageId === "string" ? env.messageId : null;
 
+        // Try to parse body from source if available
+        let bodyHtml = "";
+        let bodyText = "";
+        let snippet = subject.slice(0, 200);
+        const attachmentMeta: EmailAttachmentMeta[] = [];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const source = (msg as any).source;
+        if (source) {
+          try {
+            const parsed = await simpleParser(source);
+            bodyHtml = parsed.html || "";
+            bodyText = parsed.text || "";
+            snippet = (bodyText || subject).slice(0, 200).replace(/\s+/g, " ").trim();
+            if (parsed.attachments?.length) {
+              for (let i = 0; i < parsed.attachments.length; i++) {
+                const att = parsed.attachments[i];
+                attachmentMeta.push({
+                  attachmentId: `${uid}_${i}`,
+                  filename: att.filename ?? `attachment_${i}`,
+                  mimeType: att.contentType ?? "application/octet-stream",
+                  size: att.size ?? 0,
+                });
+              }
+            }
+          } catch {
+            // simpleParser failed — fall back to envelope-only data
+          }
+        }
+
         messages.push({
           id: String(msg.uid ?? uid),
           threadId: "",
@@ -249,13 +278,13 @@ export async function fetchImapThreads(
           fromEmail: fromAddr.address ?? "",
           to: toAddrs,
           subject,
-          snippet: subject.slice(0, 200),
-          bodyHtml: "",
-          bodyText: "",
+          snippet,
+          bodyHtml,
+          bodyText,
           date: dateStr,
           messageIdHeader: messageId,
           labelIds: [],
-          attachments: [],
+          attachments: attachmentMeta,
         });
       } catch (uidErr) {
         if (!fetchError) fetchError = uidErr instanceof Error ? uidErr.message : String(uidErr);
