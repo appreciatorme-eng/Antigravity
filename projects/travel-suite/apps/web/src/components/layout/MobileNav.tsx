@@ -1,40 +1,43 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
 import {
     MoreHorizontal,
+    Plus,
     X,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavCounts } from "@/components/layout/useNavCounts";
-import { getPrimaryItems, getSecondaryGrouped, type NavItemConfig } from "@/lib/nav/nav-config";
+import { getSecondaryGrouped, FAB_ACTIONS, type NavItemConfig } from "@/lib/nav/nav-config";
 import { resolveIcon } from "@/lib/nav/icon-map";
 import { cn } from "@/lib/utils";
 
-interface PrimaryNavItem {
+// ---------------------------------------------------------------------------
+// Bottom tab bar items (hardcoded — see CLAUDE.md "Mobile Bottom Tabs")
+// Changes here MUST be reflected in CLAUDE.md + docs/MOBILE_NAV.md
+// ---------------------------------------------------------------------------
+
+interface TabItem {
     icon: React.ElementType;
     label: string;
     href: string;
-    badge?: number;
     badgeKey?: keyof ReturnType<typeof useNavCounts>;
     badgeColor?: string;
-    isMore?: boolean;
 }
 
-/** Convert shared NavItemConfig to MobileNav's internal format */
-function toPrimaryItem(config: NavItemConfig): PrimaryNavItem {
-    return {
-        icon: resolveIcon(config.icon),
-        label: config.label,
-        href: config.href,
-        badgeKey: config.badgeKey,
-        badgeColor: config.badgeColor,
-    };
-}
+const TAB_ITEMS: TabItem[] = [
+    { icon: resolveIcon("Home"), label: "Home", href: "/" },
+    { icon: resolveIcon("MessageCircle"), label: "Inbox", href: "/inbox", badgeKey: "inboxUnread", badgeColor: "#25D366" },
+    // Slot 3 = Center FAB (rendered separately)
+    { icon: resolveIcon("Briefcase"), label: "Trips", href: "/trips", badgeKey: "bookingsToday", badgeColor: "#f97316" },
+    { icon: resolveIcon("Users"), label: "Clients", href: "/clients", badgeKey: "reviewsNeedingResponse", badgeColor: "#3b82f6" },
+];
 
-const PRIMARY_ITEMS: PrimaryNavItem[] = getPrimaryItems().map(toPrimaryItem);
+// ---------------------------------------------------------------------------
+// Secondary items for "More" drawer (from shared config)
+// ---------------------------------------------------------------------------
 
 interface SecondaryDrawerItem {
     icon: React.ElementType;
@@ -42,23 +45,24 @@ interface SecondaryDrawerItem {
     href: string;
 }
 
-// Group secondary items by section for the "More" drawer
-const SECONDARY_GROUPS = getSecondaryGrouped().map((group) => ({
+// Tell getSecondaryGrouped which primary items are in the tab bar,
+// so overflow primary items (Proposals) appear in the "More" drawer
+const MOBILE_TAB_HREFS = TAB_ITEMS.map((t) => t.href);
+
+const SECONDARY_GROUPS = getSecondaryGrouped(MOBILE_TAB_HREFS).map((group) => ({
     ...group,
-    items: group.items.map((config): SecondaryDrawerItem => ({
+    items: group.items.map((config: NavItemConfig): SecondaryDrawerItem => ({
         icon: resolveIcon(config.icon),
         label: config.label,
         href: config.href,
     })),
 }));
 
-function BadgeDot({
-    count,
-    color,
-}: {
-    count: number;
-    color: string;
-}) {
+// ---------------------------------------------------------------------------
+// Sub-components
+// ---------------------------------------------------------------------------
+
+function BadgeDot({ count, color }: { count: number; color: string }) {
     if (count <= 0) return null;
     return (
         <motion.span
@@ -72,24 +76,31 @@ function BadgeDot({
     );
 }
 
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
+
 export default function MobileNav() {
     const pathname = usePathname();
+    const router = useRouter();
     const counts = useNavCounts();
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+    const [isFabOpen, setIsFabOpen] = useState(false);
 
-    // Close drawer on route change
+    // Close drawers on route change
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setIsDrawerOpen(false);
-    }, [pathname]);
+        setIsFabOpen(false);
+    }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Close drawer on ESC
-    const handleKeyDown = useCallback(
-        (e: KeyboardEvent) => {
-            if (e.key === "Escape") setIsDrawerOpen(false);
-        },
-        []
-    );
+    // Close on ESC
+    const handleKeyDown = useCallback((e: KeyboardEvent) => {
+        if (e.key === "Escape") {
+            setIsDrawerOpen(false);
+            setIsFabOpen(false);
+        }
+    }, []);
+
     useEffect(() => {
         document.addEventListener("keydown", handleKeyDown);
         return () => document.removeEventListener("keydown", handleKeyDown);
@@ -100,11 +111,79 @@ export default function MobileNav() {
 
     return (
         <>
-            {/* "More" Secondary Drawer */}
+            {/* ── FAB Action Sheet ──────────────────────────────────────── */}
+            <AnimatePresence>
+                {isFabOpen && (
+                    <>
+                        <motion.div
+                            key="fab-backdrop"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="md:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[48]"
+                            onClick={() => setIsFabOpen(false)}
+                        />
+                        <motion.div
+                            key="fab-sheet"
+                            initial={{ y: "100%" }}
+                            animate={{ y: 0 }}
+                            exit={{ y: "100%" }}
+                            transition={{ type: "spring", stiffness: 380, damping: 40 }}
+                            className="md:hidden fixed bottom-[72px] left-0 right-0 z-[49] bg-white/95 dark:bg-slate-900/98 backdrop-blur-xl border-t border-slate-200/50 dark:border-slate-700/60 rounded-t-3xl shadow-2xl px-5 pt-5 pb-6"
+                        >
+                            <div className="w-10 h-1 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto mb-4" />
+                            <div className="flex items-center justify-between mb-4">
+                                <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                                    Quick Actions
+                                </span>
+                                <button
+                                    onClick={() => setIsFabOpen(false)}
+                                    className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"
+                                    aria-label="Close quick actions"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+                            <div className="space-y-2">
+                                {FAB_ACTIONS.map((action) => (
+                                    <motion.button
+                                        key={action.label}
+                                        initial={{ opacity: 0, y: 12 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.05 }}
+                                        onClick={() => {
+                                            if (action.route) {
+                                                router.push(action.route);
+                                            } else if (action.event) {
+                                                window.dispatchEvent(new CustomEvent(action.event));
+                                            }
+                                            setIsFabOpen(false);
+                                        }}
+                                        className={cn(
+                                            "w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl text-white font-semibold text-sm transition-all active:scale-[0.98]",
+                                            action.bgColor
+                                        )}
+                                    >
+                                        <span className="text-xl leading-none" role="img" aria-label={action.label}>
+                                            {action.emoji}
+                                        </span>
+                                        <div className="text-left">
+                                            <p className="font-bold">{action.label}</p>
+                                            <p className="text-xs font-normal opacity-80">{action.description}</p>
+                                        </div>
+                                    </motion.button>
+                                ))}
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
+
+            {/* ── "More" Secondary Drawer ───────────────────────────────── */}
             <AnimatePresence>
                 {isDrawerOpen && (
                     <>
-                        {/* Backdrop */}
                         <motion.div
                             key="drawer-backdrop"
                             initial={{ opacity: 0 }}
@@ -114,8 +193,6 @@ export default function MobileNav() {
                             className="md:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[48]"
                             onClick={() => setIsDrawerOpen(false)}
                         />
-
-                        {/* Drawer panel (slides up from bottom) */}
                         <motion.div
                             key="drawer-panel"
                             initial={{ y: "100%" }}
@@ -124,10 +201,7 @@ export default function MobileNav() {
                             transition={{ type: "spring", stiffness: 380, damping: 40 }}
                             className="md:hidden fixed bottom-[72px] left-0 right-0 z-[49] bg-white/95 dark:bg-slate-900/98 backdrop-blur-xl border-t border-slate-200/50 dark:border-slate-700/60 rounded-t-3xl shadow-2xl px-5 pt-5 pb-6"
                         >
-                            {/* Drag handle */}
                             <div className="w-10 h-1 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto mb-5" />
-
-                            {/* Header */}
                             <div className="flex items-center justify-between mb-4">
                                 <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
                                     More
@@ -140,8 +214,6 @@ export default function MobileNav() {
                                     <X className="w-4 h-4" />
                                 </button>
                             </div>
-
-                            {/* Categorized secondary items */}
                             <div className="space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
                                 {SECONDARY_GROUPS.map((group) => (
                                     <div key={group.section}>
@@ -166,17 +238,13 @@ export default function MobileNav() {
                                                         <Icon
                                                             className={cn(
                                                                 "w-5 h-5",
-                                                                isActive
-                                                                    ? "text-primary"
-                                                                    : "text-slate-500 dark:text-slate-400"
+                                                                isActive ? "text-primary" : "text-slate-500 dark:text-slate-400"
                                                             )}
                                                         />
                                                         <span
                                                             className={cn(
                                                                 "text-[10px] font-semibold text-center leading-tight",
-                                                                isActive
-                                                                    ? "text-primary"
-                                                                    : "text-slate-600 dark:text-slate-400"
+                                                                isActive ? "text-primary" : "text-slate-600 dark:text-slate-400"
                                                             )}
                                                         >
                                                             {item.label}
@@ -193,65 +261,42 @@ export default function MobileNav() {
                 )}
             </AnimatePresence>
 
-            {/* Bottom Navigation Bar */}
+            {/* ── Bottom Navigation Bar ─────────────────────────────────── */}
             <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200/50 dark:border-slate-800/50 px-2 pt-2 pb-safe z-50 shadow-[0_-8px_30px_-10px_rgba(0,0,0,0.15)] transition-colors duration-300">
-                <div className="flex items-stretch justify-around gap-1 max-w-lg mx-auto">
-                    {/* Primary items */}
-                    {PRIMARY_ITEMS.map((item) => {
-                        const isActive = isActivePath(item.href);
-                        const Icon = item.icon;
-                        const badgeCount = item.badgeKey ? counts[item.badgeKey] : 0;
-                        const badgeColor = item.badgeColor ?? "#00d084";
+                <div className="flex items-stretch justify-around gap-0.5 max-w-lg mx-auto">
+                    {/* Left tabs: Home, Inbox */}
+                    {TAB_ITEMS.slice(0, 2).map((item) => (
+                        <TabButton key={item.href} item={item} isActive={isActivePath(item.href)} counts={counts} />
+                    ))}
 
-                        return (
-                            <Link
-                                key={item.href}
-                                href={item.href}
-                                onClick={(e) => {
-                                    if (item.href === "/") {
-                                        e.preventDefault();
-                                        window.location.href = "/";
-                                    }
-                                }}
-                                className={cn(
-                                    "flex flex-col items-center justify-center gap-0.5 flex-1 py-2 px-1 rounded-xl transition-all active:scale-95",
-                                    isActive
-                                        ? item.href === "/inbox"
-                                            ? "text-[#25D366]"
-                                            : "text-primary"
-                                        : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                                )}
-                            >
-                                <div className="relative">
-                                    <Icon
-                                        className={cn(
-                                            "w-6 h-6 transition-all duration-200",
-                                            isActive && "-translate-y-0.5"
-                                        )}
-                                    />
-                                    {isActive && (
-                                        <motion.span
-                                            layoutId="mobile-active-dot"
-                                            className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-current shadow-[0_0_6px_currentColor]"
-                                        />
-                                    )}
-                                    <BadgeDot count={badgeCount} color={badgeColor} />
-                                </div>
-                                <span
-                                    className={cn(
-                                        "text-[10px] font-semibold transition-all",
-                                        isActive ? "opacity-100" : "opacity-70"
-                                    )}
-                                >
-                                    {item.label}
-                                </span>
-                            </Link>
-                        );
-                    })}
+                    {/* Center FAB button */}
+                    <button
+                        onClick={() => { setIsFabOpen((o) => !o); setIsDrawerOpen(false); }}
+                        className="flex flex-col items-center justify-center -mt-5 px-1"
+                        aria-label={isFabOpen ? "Close quick actions" : "Quick actions"}
+                    >
+                        <motion.div
+                            animate={{ rotate: isFabOpen ? 45 : 0 }}
+                            transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                            className={cn(
+                                "w-12 h-12 rounded-full flex items-center justify-center text-white shadow-lg transition-colors",
+                                isFabOpen
+                                    ? "bg-slate-600 shadow-slate-600/30"
+                                    : "bg-[#25D366] shadow-[0_4px_16px_rgba(37,211,102,0.4)]"
+                            )}
+                        >
+                            <Plus className="w-6 h-6" />
+                        </motion.div>
+                    </button>
+
+                    {/* Right tabs: Trips, Clients */}
+                    {TAB_ITEMS.slice(2).map((item) => (
+                        <TabButton key={item.href} item={item} isActive={isActivePath(item.href)} counts={counts} />
+                    ))}
 
                     {/* "More" button */}
                     <button
-                        onClick={() => setIsDrawerOpen((o) => !o)}
+                        onClick={() => { setIsDrawerOpen((o) => !o); setIsFabOpen(false); }}
                         className={cn(
                             "flex flex-col items-center justify-center gap-0.5 flex-1 py-2 px-1 rounded-xl transition-all active:scale-95",
                             isDrawerOpen
@@ -273,5 +318,67 @@ export default function MobileNav() {
                 </div>
             </nav>
         </>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Tab button (extracted to reduce duplication)
+// ---------------------------------------------------------------------------
+
+function TabButton({
+    item,
+    isActive,
+    counts,
+}: {
+    item: TabItem;
+    isActive: boolean;
+    counts: ReturnType<typeof useNavCounts>;
+}) {
+    const Icon = item.icon;
+    const badgeCount = item.badgeKey ? counts[item.badgeKey] : 0;
+    const badgeColor = item.badgeColor ?? "#00d084";
+
+    return (
+        <Link
+            href={item.href}
+            onClick={(e) => {
+                if (item.href === "/") {
+                    e.preventDefault();
+                    window.location.href = "/";
+                }
+            }}
+            className={cn(
+                "flex flex-col items-center justify-center gap-0.5 flex-1 py-2 px-1 rounded-xl transition-all active:scale-95",
+                isActive
+                    ? item.href === "/inbox"
+                        ? "text-[#25D366]"
+                        : "text-primary"
+                    : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+            )}
+        >
+            <div className="relative">
+                <Icon
+                    className={cn(
+                        "w-6 h-6 transition-all duration-200",
+                        isActive && "-translate-y-0.5"
+                    )}
+                />
+                {isActive && (
+                    <motion.span
+                        layoutId="mobile-active-dot"
+                        className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-current shadow-[0_0_6px_currentColor]"
+                    />
+                )}
+                <BadgeDot count={badgeCount} color={badgeColor} />
+            </div>
+            <span
+                className={cn(
+                    "text-[10px] font-semibold transition-all",
+                    isActive ? "opacity-100" : "opacity-70"
+                )}
+            >
+                {item.label}
+            </span>
+        </Link>
     );
 }

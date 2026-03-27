@@ -219,18 +219,32 @@ export function getPrimaryItems(): readonly NavItemConfig[] {
   return getNavSection("primary");
 }
 
-/** Get all secondary items grouped by section (for "More" drawer / sidebar expand) */
-export function getSecondaryGrouped(): ReadonlyArray<{
+/**
+ * Get all secondary items grouped by section (for "More" drawer / sidebar expand).
+ * @param mobileTabHrefs - hrefs of items in the mobile tab bar (excluded from results,
+ *   but other primary items like Proposals are prepended to "Daily Workflow").
+ */
+export function getSecondaryGrouped(
+  mobileTabHrefs: readonly string[] = [],
+): ReadonlyArray<{
   section: NavSection;
   label: string;
   items: readonly NavItemConfig[];
 }> {
+  // Primary items NOT in the mobile tab bar go into "Daily Workflow" at the top
+  const overflowPrimary = mobileTabHrefs.length > 0
+    ? NAV_ITEMS.filter((i) => i.section === "primary" && !mobileTabHrefs.includes(i.href))
+    : [];
+
   const sections: NavSection[] = ["daily", "operations", "growth", "account"];
   return sections
-    .map((section) => ({
-      section,
-      label: SECTION_LABELS[section],
-      items: getNavSection(section),
-    }))
+    .map((section) => {
+      const sectionItems = getNavSection(section);
+      // Prepend overflow primary items (e.g. Proposals) to the daily section
+      const items = section === "daily" && overflowPrimary.length > 0
+        ? [...overflowPrimary, ...sectionItems]
+        : sectionItems;
+      return { section, label: SECTION_LABELS[section], items };
+    })
     .filter((group) => group.items.length > 0);
 }
