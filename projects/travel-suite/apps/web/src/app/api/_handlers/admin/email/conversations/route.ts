@@ -223,7 +223,7 @@ export async function GET(request: Request): Promise<Response> {
             gmailConnected: true,
             nextPageToken: result.nextPageToken,
             _debug: `threads=${result.threads.length} resultSizeEstimate=${result.resultSizeEstimate}`,
-            _imapDebug: (result as Record<string, unknown>)._imapDebug ?? null,
+            _imapDebug: result._imapDebug ?? null,
         });
     } catch (err) {
         if (err instanceof GmailAuthExpiredError) {
