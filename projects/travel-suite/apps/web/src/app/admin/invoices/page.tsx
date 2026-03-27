@@ -30,6 +30,8 @@ export default function AdminInvoicesPage() {
   const [paying, setPaying] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [emailingPdf, setEmailingPdf] = useState(false);
+  const [sendingPaymentLink, setSendingPaymentLink] = useState(false);
+  const [paymentLinkUrl, setPaymentLinkUrl] = useState<string | null>(null);
 
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
@@ -233,6 +235,7 @@ export default function AdminInvoicesPage() {
   const handleSelectInvoice = (id: string) => {
     setSelectedInvoiceId(id);
     setPreviewMode("saved");
+    setPaymentLinkUrl(null);
   };
 
   const handleSwitchToDraft = () => {
@@ -338,6 +341,51 @@ export default function AdminInvoicesPage() {
       setPaying(false);
     }
   };
+
+  const handleSendPaymentLink = useCallback(async () => {
+    if (!selectedInvoice) return;
+    const balance = Number(selectedInvoice.balance_amount || 0);
+    if (balance <= 0) {
+      toast({ title: "No balance due", description: "This invoice is already paid.", variant: "warning" });
+      return;
+    }
+
+    setSendingPaymentLink(true);
+    setPaymentLinkUrl(null);
+    try {
+      const headers = await authHeaders();
+      const response = await fetch("/api/payments/links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...headers },
+        body: JSON.stringify({
+          amount: Math.round(balance * 100),
+          currency: selectedInvoice.currency || "INR",
+          description: `Invoice ${selectedInvoice.invoice_number}`,
+          clientName: selectedInvoice.client_snapshot?.full_name || undefined,
+          clientEmail: selectedInvoice.client_snapshot?.email || undefined,
+          clientPhone: selectedInvoice.client_snapshot?.phone || undefined,
+        }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload?.error || "Failed to create payment link");
+
+      const token = payload?.data?.token || payload?.token;
+      if (!token) throw new Error("No payment token returned");
+
+      const linkUrl = `${window.location.origin}/pay/${token}`;
+      setPaymentLinkUrl(linkUrl);
+      toast({ title: "Payment link created", description: "Copy and share with the client.", variant: "success" });
+    } catch (error) {
+      toast({
+        title: "Payment link failed",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "error",
+      });
+    } finally {
+      setSendingPaymentLink(false);
+    }
+  }, [authHeaders, selectedInvoice, toast]);
 
   const buildInvoicePdfBlob = useCallback(
     async (invoice: InvoiceRecord) => {
@@ -645,6 +693,9 @@ export default function AdminInvoicesPage() {
             onPaymentNotesChange={setPaymentNotes}
             onRecordPayment={handleRecordPayment}
             paying={paying}
+            onSendPaymentLink={() => void handleSendPaymentLink()}
+            sendingPaymentLink={sendingPaymentLink}
+            paymentLinkUrl={paymentLinkUrl}
           />
         </GlassCard>
       </div>
