@@ -387,6 +387,38 @@ export default function AdminInvoicesPage() {
     }
   }, [authHeaders, selectedInvoice, toast]);
 
+  const handleAddClient = useCallback(async (client: { full_name: string; email: string; phone?: string }): Promise<string | null> => {
+    try {
+      const headers = await authHeaders();
+      const response = await fetch("/api/admin/clients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...headers },
+        body: JSON.stringify({
+          full_name: client.full_name,
+          email: client.email,
+          phone: client.phone,
+        }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload?.error || "Failed to create client");
+
+      const newClientId = payload?.client?.user_id || payload?.client?.id || payload?.id;
+      if (!newClientId) throw new Error("No client ID returned");
+
+      toast({ title: "Client added", description: `${client.full_name} created.`, variant: "success" });
+      await loadClients();
+      return newClientId;
+    } catch (error) {
+      toast({
+        title: "Failed to add client",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "error",
+      });
+      return null;
+    }
+  }, [authHeaders, loadClients, toast]);
+
   const buildInvoicePdfBlob = useCallback(
     async (invoice: InvoiceRecord) => {
       const [{ pdf }, { InvoiceDocument }] = await Promise.all([
@@ -656,6 +688,8 @@ export default function AdminInvoicesPage() {
             draftTotals={draft.draftTotals}
             saving={saving}
             onSubmit={handleCreateInvoice}
+            onAddClient={handleAddClient}
+            orgSnapshot={orgSnapshot}
           />
         </GlassCard>
 
