@@ -143,7 +143,8 @@ export async function POST(request: Request): Promise<Response> {
             provider: config.provider,
         });
     } catch (err) {
-        logError("[email/connect] Failed", err);
-        return apiError("Failed to connect email", 500);
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        logError("[email/connect] Failed", { error: errorMsg, stack: err instanceof Error ? err.stack : undefined });
+        return apiError(`Failed to connect email: ${errorMsg}`, 500);
     }
 }

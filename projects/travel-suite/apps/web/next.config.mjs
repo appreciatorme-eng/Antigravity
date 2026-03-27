@@ -78,7 +78,7 @@ const nextConfig = {
   turbopack: {
     root: projectRoot,
   },
-  serverExternalPackages: ["pdf-parse", "sharp", "imapflow", "nodemailer"],
+  serverExternalPackages: ["pdf-parse", "sharp", "imapflow", "nodemailer", "mailparser"],
   outputFileTracingRoot: projectRoot,
   images: {
     remotePatterns,
