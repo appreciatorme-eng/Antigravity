@@ -53,6 +53,10 @@ interface ThreadPaneProps {
   // Quick compose from context panel
   quickSendText?: string | null;
   onQuickSendConsumed?: () => void;
+
+  // Mobile navigation
+  onBack?: () => void;
+  onOpenContext?: () => void;
 }
 
 export function ThreadPane({
@@ -80,6 +84,8 @@ export function ThreadPane({
   onArchiveEmail,
   quickSendText,
   onQuickSendConsumed,
+  onBack,
+  onOpenContext,
 }: ThreadPaneProps) {
   const analytics = useAnalytics();
   const isDisconnected = !isDemoMode && whatsAppStatus !== 'connected';
@@ -215,6 +221,8 @@ export function ThreadPane({
           onRecipientChange={onRecipientChange}
           onDeleteEmail={onDeleteEmail}
           onArchiveEmail={onArchiveEmail}
+          onBack={onBack}
+          onOpenContext={onOpenContext}
         />
       </ErrorSection>
     </div>

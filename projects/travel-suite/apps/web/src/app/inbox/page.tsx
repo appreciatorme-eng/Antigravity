@@ -53,49 +53,49 @@ export default function InboxPage() {
       <GuidedTour />
       {/* ── Page Header ──────────────────────────────────────────────────── */}
       <div
-        className="shrink-0 px-6 py-4 flex items-center justify-between border-b border-white/10"
+        className="shrink-0 px-3 md:px-6 py-2.5 md:py-4 flex items-center justify-between border-b border-white/10"
         style={{ background: 'rgba(10,22,40,0.8)', backdropFilter: 'blur(12px)' }}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3">
           {/* Omnichannel Logo */}
           <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center shadow-lg"
+            className="w-8 h-8 md:w-9 md:h-9 rounded-xl flex items-center justify-center shadow-lg"
             style={{ background: 'linear-gradient(135deg, #25D366, #3b82f6)', boxShadow: '0 4px 12px rgba(37,211,102,0.2), 0 4px 12px rgba(59,130,246,0.1)' }}
           >
-            <MessageSquare className="w-5 h-5 text-white" />
+            <MessageSquare className="w-4 h-4 md:w-5 md:h-5 text-white" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-black text-white">Inbox</h1>
+              <h1 className="text-base md:text-lg font-black text-white">Inbox</h1>
               {unreadCount > 0 && (
                 <span
-                  className="inline-flex items-center justify-center w-6 h-6 rounded-full text-white text-[10px] font-black shadow-md"
+                  className="inline-flex items-center justify-center w-5 h-5 md:w-6 md:h-6 rounded-full text-white text-[9px] md:text-[10px] font-black shadow-md"
                   style={{ background: 'linear-gradient(135deg, #25D366, #3b82f6)' }}
                 >
                   {unreadCount}
                 </span>
               )}
             </div>
-            <p className="text-xs text-slate-500">Unified inbox for tour operators</p>
+            <p className="text-[10px] md:text-xs text-slate-500 hidden sm:block">Unified inbox for tour operators</p>
           </div>
         </div>
 
-        {/* Status indicators */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[#25D366]/10 border border-[#25D366]/20">
-            <span className="w-2 h-2 rounded-full bg-[#25D366] animate-pulse" />
-            <span className="text-xs font-semibold text-[#25D366]">WhatsApp</span>
+        {/* Status indicators — compact on mobile */}
+        <div className="flex items-center gap-1.5 md:gap-3">
+          <div className="flex items-center gap-1.5 md:gap-2 px-2 md:px-3 py-1.5 md:py-2 rounded-xl bg-[#25D366]/10 border border-[#25D366]/20">
+            <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-[#25D366] animate-pulse" />
+            <span className="text-[10px] md:text-xs font-semibold text-[#25D366] hidden sm:inline">WhatsApp</span>
           </div>
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-500/10 border border-blue-500/20">
-            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-            <span className="text-xs font-semibold text-blue-400">Email</span>
+          <div className="flex items-center gap-1.5 md:gap-2 px-2 md:px-3 py-1.5 md:py-2 rounded-xl bg-blue-500/10 border border-blue-500/20">
+            <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-blue-500 animate-pulse" />
+            <span className="text-[10px] md:text-xs font-semibold text-blue-400 hidden sm:inline">Email</span>
           </div>
         </div>
       </div>
 
       {/* ── Tab Bar ──────────────────────────────────────────────────────── */}
       <div
-        className="shrink-0 flex gap-1 px-6 py-2 border-b border-white/10"
+        className="shrink-0 flex gap-0.5 md:gap-1 px-3 md:px-6 py-1.5 md:py-2 border-b border-white/10 overflow-x-auto"
         style={{ background: 'rgba(10,22,40,0.6)' }}
         data-tour="inbox-tabs"
       >
@@ -103,7 +103,7 @@ export default function InboxPage() {
           <button
             key={key}
             onClick={() => setActiveTab(key)}
-            className={`relative flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+            className={`relative flex items-center gap-1 md:gap-1.5 px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-semibold transition-all shrink-0 ${
               activeTab === key
                 ? 'text-white'
                 : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'

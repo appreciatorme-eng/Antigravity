@@ -124,8 +124,8 @@ export function ConversationListPanel({
 
   return (
     <div
-      className={`w-[280px] shrink-0 flex flex-col border-r border-white/10 overflow-hidden ${
-        isDisconnected ? 'pt-20' : ''
+      className={`w-full md:w-[280px] shrink-0 flex flex-col border-r border-white/10 overflow-hidden ${
+        isDisconnected ? 'pt-16 md:pt-20' : ''
       }`}
       style={{ background: 'rgba(10,22,40,0.6)' }}
     >
