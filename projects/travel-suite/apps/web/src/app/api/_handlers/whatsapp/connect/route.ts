@@ -105,8 +105,21 @@ export async function POST(request: Request) {
             try {
                 const currentStatus = await getEvolutionStatus(instanceName);
                 if (currentStatus.status === "CONNECTED") {
-                    await adminClient.from("whatsapp_connections").update({ status: "connected" })
-                        .eq("organization_id", orgId);
+                    const connectedPhone = currentStatus.me?.id?.replace(/@.*/, "") ?? null;
+
+                    await adminClient.from("whatsapp_connections").update({
+                        status: "connected",
+                        phone_number: connectedPhone,
+                    } as any).eq("organization_id", orgId);
+
+                    // Auto-save phone to admin profile if not set
+                    if (connectedPhone) {
+                        await adminClient.from("profiles")
+                            .update({ phone_normalized: connectedPhone })
+                            .eq("id", userId)
+                            .is("phone_normalized", null);
+                    }
+
                     return NextResponse.json({
                         success: true,
                         sessionName,

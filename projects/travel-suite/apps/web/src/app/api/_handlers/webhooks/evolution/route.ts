@@ -322,10 +322,10 @@ export async function POST(request: Request): Promise<Response> {
 
         const { data: rawConnection } = await admin
             .from("whatsapp_connections")
-            .select("organization_id, session_name, session_token, assistant_group_jid")
+            .select("organization_id, session_name, session_token, assistant_group_jid, phone_number")
             .eq("session_name", event.instance)
             .maybeSingle();
-        const connection = rawConnection as { organization_id?: string; session_name?: string; session_token?: string; assistant_group_jid?: string } | null;
+        const connection = rawConnection as { organization_id?: string; session_name?: string; session_token?: string; assistant_group_jid?: string; phone_number?: string } | null;
 
         if (!connection?.organization_id) {
             return NextResponse.json({ ok: true });
@@ -340,8 +340,15 @@ export async function POST(request: Request): Promise<Response> {
             return null;
         });
 
-        const isInternalOperator =
+        let isInternalOperator =
             internalProfile?.role === "admin" || internalProfile?.role === "super_admin";
+
+        // Fallback: if profile lookup missed, check if sender IS the connected WhatsApp number
+        if (!isInternalOperator && !internalProfile && connection.phone_number) {
+            if (connection.phone_number === waId) {
+                isInternalOperator = true;
+            }
+        }
 
         if (isInternalOperator) {
             await handleWhatsAppMessage(waId, messageText, senderPhone).catch(
