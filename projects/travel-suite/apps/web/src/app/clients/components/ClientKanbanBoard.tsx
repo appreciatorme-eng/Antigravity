@@ -79,10 +79,10 @@ export function ClientKanbanBoard({
                 </div>
             </div>
 
-            {/* Top scrollbar mirror */}
+            {/* Top scrollbar mirror — desktop only */}
             <div
                 ref={topScrollRef}
-                className="overflow-x-auto overflow-y-hidden h-4 mb-1"
+                className="hidden md:block overflow-x-auto overflow-y-hidden h-4 mb-1"
                 onScroll={(e) => {
                     if (isSyncing.current) return;
                     isSyncing.current = true;

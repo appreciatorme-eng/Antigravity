@@ -84,10 +84,10 @@ export default function ClientsPage() {
                             {clients.length} clients
                         </span>
                     </div>
-                    <h1 className="text-5xl font-serif text-secondary dark:text-white tracking-tight leading-none">
+                    <h1 className="text-3xl md:text-5xl font-serif text-secondary dark:text-white tracking-tight leading-none">
                         Clients
                     </h1>
-                    <p className="text-text-muted text-base font-medium">
+                    <p className="text-text-muted text-sm md:text-base font-medium">
                         Manage your pipeline and track every client relationship.
                     </p>
                 </div>

@@ -48,47 +48,47 @@ export function TripListRow({ trip }: TripListRowProps) {
     return (
         <Link
             href={`/trips/${trip.id}`}
-            className="group flex items-center justify-between px-8 py-5 hover:bg-gray-50/50 dark:hover:bg-slate-800/30 transition-all duration-300 border-b border-gray-50 dark:border-slate-800 last:border-none relative overflow-hidden"
+            className="group flex flex-col md:flex-row md:items-center justify-between px-4 md:px-8 py-4 md:py-5 hover:bg-gray-50/50 dark:hover:bg-slate-800/30 transition-all duration-300 border-b border-gray-50 dark:border-slate-800 last:border-none relative overflow-hidden"
         >
-            <div className="flex items-center gap-6 relative z-10 flex-1 min-w-0">
-                <div className="w-14 h-14 shrink-0 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 flex items-center justify-center transition-all duration-500 group-hover:scale-105 group-hover:shadow-xl group-hover:shadow-primary/5">
-                    <MapPin className="h-7 w-7 text-primary group-hover:rotate-12 transition-transform" />
+            <div className="flex items-center gap-3 md:gap-6 relative z-10 flex-1 min-w-0">
+                <div className="w-10 h-10 md:w-14 md:h-14 shrink-0 bg-white dark:bg-slate-800 rounded-xl md:rounded-2xl shadow-sm border border-gray-100 dark:border-slate-700 flex items-center justify-center transition-all duration-500 group-hover:scale-105 group-hover:shadow-xl group-hover:shadow-primary/5">
+                    <MapPin className="h-5 w-5 md:h-7 md:w-7 text-primary group-hover:rotate-12 transition-transform" />
                 </div>
                 <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-1">
-                        <h3 className="text-lg font-bold text-secondary dark:text-white truncate tracking-tight">
+                    <div className="flex items-center gap-2 md:gap-3 mb-1">
+                        <h3 className="text-sm md:text-lg font-bold text-secondary dark:text-white truncate tracking-tight">
                             {trip.itineraries?.trip_title || trip.destination || "Untitled Trip"}
                         </h3>
-                        <GlassBadge variant="secondary" className="text-[8px] font-black uppercase tracking-widest h-5 px-1.5 border-gray-100 opacity-50 shrink-0">
+                        <GlassBadge variant="secondary" className="hidden md:inline-flex text-[8px] font-black uppercase tracking-widest h-5 px-1.5 border-gray-100 opacity-50 shrink-0">
                             #{trip.id.slice(0, 8)}
                         </GlassBadge>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-y-1.5 gap-x-5">
-                        <div className="flex items-center gap-2 text-text-muted">
-                            <div className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 border-2 border-white dark:border-slate-700 flex items-center justify-center overflow-hidden">
-                                <User className="h-3 w-3" />
+                    <div className="flex flex-wrap items-center gap-y-1 gap-x-3 md:gap-x-5">
+                        <div className="flex items-center gap-1.5 md:gap-2 text-text-muted">
+                            <div className="w-4 h-4 md:w-5 md:h-5 rounded-full bg-slate-100 dark:bg-slate-800 border-2 border-white dark:border-slate-700 flex items-center justify-center overflow-hidden">
+                                <User className="h-2.5 w-2.5 md:h-3 md:w-3" />
                             </div>
-                            <span className="text-[10px] font-black uppercase tracking-widest">{trip.profiles?.full_name || "Guest"}</span>
+                            <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest">{trip.profiles?.full_name || "Guest"}</span>
                         </div>
-                        <div className="flex items-center gap-1.5 text-text-muted">
-                            <Calendar className="h-3.5 w-3.5" />
-                            <span className="text-[10px] font-black uppercase tracking-widest">{formatDate(trip.start_date || "")}</span>
+                        <div className="flex items-center gap-1 md:gap-1.5 text-text-muted">
+                            <Calendar className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                            <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest">{formatDate(trip.start_date || "")}</span>
                         </div>
                         {trip.itineraries?.duration_days && (
-                            <div className="flex items-center gap-1.5 text-primary">
-                                <Clock className="h-3.5 w-3.5" />
-                                <span className="text-[10px] font-black uppercase tracking-widest">{trip.itineraries.duration_days}D</span>
+                            <div className="flex items-center gap-1 md:gap-1.5 text-primary">
+                                <Clock className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                                <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest">{trip.itineraries.duration_days}D</span>
                             </div>
                         )}
                     </div>
                 </div>
             </div>
 
-            <div className="flex items-center gap-4 relative z-10 shrink-0">
+            <div className="flex items-center gap-2 md:gap-4 relative z-10 shrink-0 mt-2 md:mt-0 ml-13 md:ml-0 flex-wrap">
                 {trip.invoice.payment_status !== "none" && (
-                    <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-secondary dark:text-white tabular-nums">
+                    <div className="flex items-center gap-1.5 md:gap-2">
+                        <span className="text-[10px] md:text-xs font-bold text-secondary dark:text-white tabular-nums">
                             {formatINRShort(trip.invoice.total_amount)}
                         </span>
                         <GlassBadge
@@ -112,7 +112,7 @@ export function TripListRow({ trip }: TripListRowProps) {
 
                 {countdown && (
                     <span className={cn(
-                        "text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg whitespace-nowrap",
+                        "text-[9px] md:text-[10px] font-black uppercase tracking-widest px-2 md:px-2.5 py-0.5 md:py-1 rounded-lg whitespace-nowrap",
                         urgencyColor, urgencyBg
                     )}>
                         {countdown}
@@ -120,7 +120,7 @@ export function TripListRow({ trip }: TripListRowProps) {
                 )}
 
                 <div
-                    className="relative"
+                    className="relative hidden md:block"
                     onClick={(e) => e.stopPropagation()}
                     onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") e.stopPropagation(); }}
                 >
@@ -139,7 +139,7 @@ export function TripListRow({ trip }: TripListRowProps) {
                     </select>
                 </div>
 
-                <div className="w-8 h-8 rounded-full border border-gray-100 dark:border-slate-700 flex items-center justify-center transition-all group-hover:bg-secondary group-hover:text-white">
+                <div className="w-7 h-7 md:w-8 md:h-8 rounded-full border border-gray-100 dark:border-slate-700 flex items-center justify-center transition-all group-hover:bg-secondary group-hover:text-white ml-auto md:ml-0">
                     <ChevronRight className="h-4 w-4" />
                 </div>
             </div>

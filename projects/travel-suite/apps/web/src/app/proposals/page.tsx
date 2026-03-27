@@ -217,8 +217,8 @@ export default function ProposalsPage() {
       {/* Header */}
       <div className="flex items-end justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-4xl font-serif text-secondary tracking-tight">Proposals</h1>
-          <p className="text-text-secondary mt-2 text-lg">
+          <h1 className="text-3xl md:text-4xl font-serif text-secondary tracking-tight">Proposals</h1>
+          <p className="text-text-secondary mt-1 md:mt-2 text-sm md:text-lg">
             Manage your high-conversion itinerary proposals and client engagement.
           </p>
         </div>
@@ -231,7 +231,7 @@ export default function ProposalsPage() {
       </div>
 
       {/* Summary Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
         {summaryStats.map((stat) => (
           <GlassCard key={stat.label} padding="lg" className="group">
             <div className="flex items-start justify-between">
@@ -323,8 +323,8 @@ export default function ProposalsPage() {
               const signatureRecord = signatureMap[proposal.id] ?? null;
 
               return (
-                <div key={proposal.id} className="group flex items-center justify-between gap-4 p-6 hover:bg-gray-50/50 transition-all duration-300 relative overflow-hidden">
-                  <div className="shrink-0">
+                <div key={proposal.id} className="group flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4 p-4 md:p-6 hover:bg-gray-50/50 transition-all duration-300 relative overflow-hidden">
+                  <div className="flex items-start md:items-center gap-3 md:gap-4 flex-1 min-w-0">
                     <input
                       type="checkbox"
                       checked={selectedIds.includes(proposal.id)}
@@ -336,16 +336,14 @@ export default function ProposalsPage() {
                         );
                       }}
                       aria-label={`Select proposal ${proposal.title}`}
-                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                      className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary mt-1 md:mt-0 shrink-0"
                     />
-                  </div>
-                  <div className="flex items-center gap-6 flex-1">
-                    <div className="w-14 h-14 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center transition-transform group-hover:scale-105 group-hover:shadow-md">
-                      <Send className="h-7 w-7 text-primary" />
+                    <div className="w-10 h-10 md:w-14 md:h-14 bg-white rounded-xl md:rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 group-hover:shadow-md">
+                      <Send className="h-5 w-5 md:h-7 md:w-7 text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <Link href={`/proposals/${proposal.id}`} className="text-lg font-bold text-secondary group-hover:text-primary transition-colors truncate">
+                      <div className="flex items-center gap-2 md:gap-3 flex-wrap">
+                        <Link href={`/proposals/${proposal.id}`} className="text-sm md:text-lg font-bold text-secondary group-hover:text-primary transition-colors truncate">
                           {proposal.title}
                         </Link>
                         <span className={cn("px-3 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider border", config.color, config.bg)}>
@@ -359,7 +357,7 @@ export default function ProposalsPage() {
                           </span>
                         ) : null}
                       </div>
-                      <div className="flex items-center gap-6 mt-2 text-text-secondary text-sm flex-wrap">
+                      <div className="flex items-center gap-3 md:gap-6 mt-1.5 md:mt-2 text-text-secondary text-xs md:text-sm flex-wrap">
                         <div className="flex items-center gap-1.5 min-w-0">
                           <Mail className="w-3.5 h-3.5 text-text-muted" />
                           <span className="truncate">{proposal.client_name}</span>
@@ -412,7 +410,7 @@ export default function ProposalsPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 ml-4 shrink-0">
+                  <div className="flex items-center gap-2 md:gap-3 shrink-0 self-end md:self-center">
                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => copyShareLink(proposal.share_token)}

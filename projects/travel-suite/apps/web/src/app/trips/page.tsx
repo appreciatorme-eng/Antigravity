@@ -117,10 +117,10 @@ export default function TripsPage() {
                             Trip Manager
                         </div>
                     </div>
-                    <h1 className="text-5xl font-serif text-secondary dark:text-white tracking-tight leading-none">
+                    <h1 className="text-3xl md:text-5xl font-serif text-secondary dark:text-white tracking-tight leading-none">
                         Trips
                     </h1>
-                    <p className="text-text-muted text-lg font-medium max-w-2xl">
+                    <p className="text-text-muted text-sm md:text-lg font-medium max-w-2xl">
                         Comprehensive monitoring of client journeys and travel bookings.
                     </p>
                 </div>
@@ -128,11 +128,11 @@ export default function TripsPage() {
                 <GlassButton
                     variant="primary"
                     onClick={() => setIsCreateModalOpen(true)}
-                    className="h-14 px-8 rounded-2xl shadow-xl shadow-primary/20 group"
+                    className="h-11 md:h-14 px-5 md:px-8 rounded-xl md:rounded-2xl shadow-xl shadow-primary/20 group"
                     data-tour="create-trip-btn"
                 >
-                    <Plus className="w-5 h-5 mr-3 transition-transform group-hover:rotate-90" />
-                    <span className="text-xs font-black uppercase tracking-widest">Create New Trip</span>
+                    <Plus className="w-4 h-4 md:w-5 md:h-5 mr-2 md:mr-3 transition-transform group-hover:rotate-90" />
+                    <span className="text-[10px] md:text-xs font-black uppercase tracking-widest">Create Trip</span>
                 </GlassButton>
             </div>
 
@@ -177,13 +177,13 @@ export default function TripsPage() {
                     </div>
                 </GlassCard>
 
-                <div className="flex items-center gap-3 w-full lg:w-auto flex-wrap">
-                    <div className="flex items-center gap-3 bg-white dark:bg-slate-900 px-5 h-14 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm min-w-[200px]">
+                <div className="flex items-center gap-2 md:gap-3 w-full lg:w-auto flex-wrap">
+                    <div className="flex items-center gap-2 md:gap-3 bg-white dark:bg-slate-900 px-3 md:px-5 h-11 md:h-14 rounded-xl md:rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm flex-1 md:flex-initial md:min-w-[200px]">
                         <Filter className="w-4 h-4 text-primary shrink-0" />
                         <select
                             value={statusFilter}
                             onChange={(e) => { setStatusFilter(e.target.value); setActiveDrill(null); }}
-                            className="bg-transparent border-none focus:ring-0 text-xs font-black uppercase tracking-widest text-secondary dark:text-white flex-1 cursor-pointer"
+                            className="bg-transparent border-none focus:ring-0 text-[10px] md:text-xs font-black uppercase tracking-widest text-secondary dark:text-white flex-1 cursor-pointer"
                         >
                             {STATUS_OPTIONS.map((opt) => (
                                 <option key={opt.value} value={opt.value} className="bg-white dark:bg-slate-900">{opt.label}</option>
@@ -191,12 +191,12 @@ export default function TripsPage() {
                         </select>
                     </div>
 
-                    <div className="flex items-center gap-3 bg-white dark:bg-slate-900 px-5 h-14 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm min-w-[200px]">
+                    <div className="flex items-center gap-2 md:gap-3 bg-white dark:bg-slate-900 px-3 md:px-5 h-11 md:h-14 rounded-xl md:rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm flex-1 md:flex-initial md:min-w-[200px]">
                         <ArrowDownUp className="w-4 h-4 text-primary shrink-0" />
                         <select
                             value={sortKey}
                             onChange={(e) => setSortKey(e.target.value as TripSortKey)}
-                            className="bg-transparent border-none focus:ring-0 text-xs font-black uppercase tracking-widest text-secondary dark:text-white flex-1 cursor-pointer"
+                            className="bg-transparent border-none focus:ring-0 text-[10px] md:text-xs font-black uppercase tracking-widest text-secondary dark:text-white flex-1 cursor-pointer"
                         >
                             {SORT_OPTIONS.map((opt) => (
                                 <option key={opt.value} value={opt.value} className="bg-white dark:bg-slate-900">{opt.label}</option>
