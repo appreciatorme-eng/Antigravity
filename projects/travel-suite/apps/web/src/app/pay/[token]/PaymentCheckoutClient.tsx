@@ -16,31 +16,32 @@ declare global {
   }
 }
 
-/**
- * Wait for the Razorpay global to become available.
- * The actual <script> tag is rendered by Next.js <Script> in page.tsx.
- * We just poll for window.Razorpay with a timeout.
- */
-async function waitForRazorpay(timeoutMs = 10_000): Promise<void> {
+async function loadRazorpayScript(): Promise<void> {
   if (typeof window === "undefined") return;
   if (window.Razorpay) return;
 
-  const start = Date.now();
+  // Check if already loading
+  const existing = document.querySelector<HTMLScriptElement>(
+    'script[src*="checkout.razorpay.com"]',
+  );
+  if (existing) {
+    // Wait for existing script to finish loading
+    if (window.Razorpay) return;
+    return new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error("Razorpay script load timed out")), 10_000);
+      existing.addEventListener("load", () => { clearTimeout(timeout); resolve(); }, { once: true });
+      existing.addEventListener("error", () => { clearTimeout(timeout); reject(new Error("Razorpay script failed to load")); }, { once: true });
+    });
+  }
+
   return new Promise<void>((resolve, reject) => {
-    const check = () => {
-      if (window.Razorpay) {
-        resolve();
-      } else if (Date.now() - start > timeoutMs) {
-        reject(
-          new Error(
-            "Failed to load Razorpay checkout. This may be caused by an ad blocker or browser security settings.",
-          ),
-        );
-      } else {
-        setTimeout(check, 200);
-      }
-    };
-    check();
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () =>
+      reject(new Error("Failed to load Razorpay checkout. Check ad blocker or browser settings."));
+    document.head.appendChild(script);
   });
 }
 
@@ -83,7 +84,7 @@ export function PaymentCheckoutClient({ initialLink }: PaymentCheckoutClientProp
     setIsLaunching(true);
 
     try {
-      await waitForRazorpay();
+      await loadRazorpayScript();
       if (!window.Razorpay) {
         throw new Error("Razorpay checkout is unavailable");
       }
