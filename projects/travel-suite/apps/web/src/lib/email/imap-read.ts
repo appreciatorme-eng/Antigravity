@@ -31,7 +31,7 @@ interface ImapCredentials {
 // ---------------------------------------------------------------------------
 
 const DEFAULT_MAX_RESULTS = 20;
-const DAYS_LOOKBACK = 30;
+const DAYS_LOOKBACK = 90;
 
 /** Strip common reply/forward prefixes for thread grouping. */
 function normalizeSubject(subject: string): string {
