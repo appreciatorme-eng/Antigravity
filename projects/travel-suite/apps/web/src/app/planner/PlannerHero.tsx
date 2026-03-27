@@ -83,7 +83,7 @@ export function PlannerHero({
                 backgroundSize: '40px 40px',
             }} />
 
-            <div className="relative max-w-2xl mx-auto px-6 pt-10 pb-14">
+            <div className="relative max-w-2xl mx-auto px-4 md:px-6 pt-8 md:pt-10 pb-10 md:pb-14">
                 {/* Header copy */}
                 <div className="text-center mb-8">
                     <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-5">

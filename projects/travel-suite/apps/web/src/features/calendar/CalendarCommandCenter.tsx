@@ -33,7 +33,9 @@ import type {
 export function CalendarCommandCenter() {
   // ---- State ----
   const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
-  const [viewMode, setViewMode] = useState<CalendarViewMode>("month");
+  const [viewMode, setViewMode] = useState<CalendarViewMode>(
+    () => typeof window !== "undefined" && window.innerWidth < 768 ? "day" : "month"
+  );
   const [filters, setFilters] = useState<CalendarFiltersState>(() => ({
     enabledTypes: new Set<CalendarEventType>(ALL_EVENT_TYPES),
     searchQuery: "",
@@ -172,10 +174,10 @@ export function CalendarCommandCenter() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
       >
-        <h1 className="text-4xl md:text-5xl font-serif text-secondary dark:text-white tracking-tight">
+        <h1 className="text-3xl md:text-5xl font-serif text-secondary dark:text-white tracking-tight">
           Command Center
         </h1>
-        <p className="mt-2 text-lg text-slate-500">
+        <p className="mt-1 md:mt-2 text-sm md:text-lg text-slate-500">
           Your entire operation at a glance — act on anything, right here.
         </p>
       </motion.div>

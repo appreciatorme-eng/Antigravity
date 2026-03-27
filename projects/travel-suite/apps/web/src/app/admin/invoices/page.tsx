@@ -530,7 +530,7 @@ export default function AdminInvoicesPage() {
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-6 pb-10">
-      <section className="rounded-3xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-white p-6 shadow-[0_14px_45px_-24px_rgba(15,23,42,0.35)]">
+      <section className="rounded-2xl md:rounded-3xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-white p-4 md:p-6 shadow-[0_14px_45px_-24px_rgba(15,23,42,0.35)]">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-1">
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">

@@ -151,7 +151,7 @@ export default function BookingsPage() {
 
     return (
         <main className="min-h-screen bg-[radial-gradient(1200px_500px_at_5%_-10%,rgba(16,185,129,0.18),transparent),radial-gradient(1000px_500px_at_95%_0%,rgba(14,116,144,0.14),transparent),linear-gradient(180deg,#f8fbff_0%,#f3f7fb_55%,#edf3f9_100%)] pb-24">
-            <section className="relative overflow-hidden px-6 pt-14 pb-16">
+            <section className="relative overflow-hidden px-4 md:px-6 pt-8 md:pt-14 pb-10 md:pb-16">
                 <div className="pointer-events-none absolute -top-20 -left-20 h-56 w-56 rounded-full bg-emerald-300/30 blur-3xl" />
                 <div className="pointer-events-none absolute top-10 -right-20 h-56 w-56 rounded-full bg-cyan-300/25 blur-3xl" />
 
@@ -161,7 +161,7 @@ export default function BookingsPage() {
                             <Badge className="border-none bg-emerald-100 text-emerald-700 uppercase tracking-[0.14em] text-[10px] font-extrabold px-3 py-1.5">
                                 Premium Booking Console
                             </Badge>
-                            <h1 className="text-4xl md:text-6xl font-serif leading-[1.02] tracking-tight text-slate-900">
+                            <h1 className="text-2xl md:text-6xl font-serif leading-[1.08] md:leading-[1.02] tracking-tight text-slate-900">
                                 Flights and Hotels,
                                 <span className="block text-emerald-600 italic">stitched into every itinerary</span>
                             </h1>
@@ -238,20 +238,20 @@ export default function BookingsPage() {
                 </div>
             </section>
 
-            <section className="px-6">
+            <section className="px-4 md:px-6">
                 <div className="max-w-7xl mx-auto">
                     <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-8">
-                        <TabsList className="h-14 rounded-2xl border border-slate-200 bg-white/90 p-1.5 shadow-lg shadow-slate-900/5">
+                        <TabsList className="h-11 md:h-14 rounded-xl md:rounded-2xl border border-slate-200 bg-white/90 p-1 md:p-1.5 shadow-lg shadow-slate-900/5 w-full md:w-auto">
                             <TabsTrigger
                                 value="flights"
-                                className="h-full rounded-xl px-6 gap-2 data-[state=active]:bg-emerald-500 data-[state=active]:text-white font-semibold"
+                                className="h-full rounded-lg md:rounded-xl px-4 md:px-6 gap-2 data-[state=active]:bg-emerald-500 data-[state=active]:text-white font-semibold text-sm flex-1 md:flex-initial"
                             >
                                 <Plane className="w-4 h-4" />
                                 Flights
                             </TabsTrigger>
                             <TabsTrigger
                                 value="hotels"
-                                className="h-full rounded-xl px-6 gap-2 data-[state=active]:bg-cyan-600 data-[state=active]:text-white font-semibold"
+                                className="h-full rounded-lg md:rounded-xl px-4 md:px-6 gap-2 data-[state=active]:bg-cyan-600 data-[state=active]:text-white font-semibold text-sm flex-1 md:flex-initial"
                             >
                                 <Hotel className="w-4 h-4" />
                                 Hotels

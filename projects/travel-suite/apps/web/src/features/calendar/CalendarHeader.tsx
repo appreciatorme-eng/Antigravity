@@ -70,28 +70,30 @@ export function CalendarHeader({
   return (
     <GlassCard padding="lg" className="space-y-4">
       {/* Row 1: Navigation + View Toggle */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         {/* Month/Week Navigation */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onPrev}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-            aria-label="Previous"
-          >
-            <ChevronLeft className="w-5 h-5 text-text-secondary" />
-          </button>
+        <div className="flex items-center gap-2 md:gap-3 flex-wrap">
+          <div className="flex items-center gap-1 md:gap-3">
+            <button
+              onClick={onPrev}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              aria-label="Previous"
+            >
+              <ChevronLeft className="w-5 h-5 text-text-secondary" />
+            </button>
 
-          <h2 className="text-2xl font-serif text-secondary min-w-[220px] text-center">
-            {getDateDisplay(currentDate, viewMode)}
-          </h2>
+            <h2 className="text-lg md:text-2xl font-serif text-secondary min-w-0 md:min-w-[220px] text-center">
+              {getDateDisplay(currentDate, viewMode)}
+            </h2>
 
-          <button
-            onClick={onNext}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-            aria-label="Next"
-          >
-            <ChevronRight className="w-5 h-5 text-text-secondary" />
-          </button>
+            <button
+              onClick={onNext}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              aria-label="Next"
+            >
+              <ChevronRight className="w-5 h-5 text-text-secondary" />
+            </button>
+          </div>
 
           <GlassButton variant="outline" size="sm" onClick={onToday}>
             Today
@@ -104,14 +106,15 @@ export function CalendarHeader({
             className="gap-1.5"
           >
             <Plus className="w-4 h-4" />
-            Add Event
+            <span className="hidden sm:inline">Add Event</span>
+            <span className="sm:hidden">Add</span>
           </GlassButton>
 
           <GlassButton
             variant="outline"
             size="sm"
             onClick={onBlockDates}
-            className="gap-1.5"
+            className="gap-1.5 hidden sm:inline-flex"
           >
             <Ban className="w-4 h-4" />
             Block Dates
