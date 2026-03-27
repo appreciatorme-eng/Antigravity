@@ -429,7 +429,14 @@ export function MessageThread({
   }
 
   function handleCannedSelect(msg: string) {
-    setInputText(msg);
+    // Auto-fill template variables from conversation context
+    const filled = msg
+      .replace(/\{\{customer_name\}\}/gi, contact.name || 'Customer')
+      .replace(/\{\{client_name\}\}/gi, contact.name || 'Customer')
+      .replace(/\{\{name\}\}/gi, contact.name || 'Customer')
+      .replace(/\{\{phone\}\}/gi, contact.phone || '')
+      .replace(/\{\{email\}\}/gi, contact.email || '');
+    setInputText(filled);
     setShowCanned(false);
   }
 
@@ -583,17 +590,15 @@ export function MessageThread({
           </div>
         </div>
         <div className="flex items-center gap-1">
-          {isEmail && (
-            <button
-              onClick={handleExtractTripIntent}
-              disabled={extractingTrip}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-500/15 border border-violet-500/25 hover:bg-violet-500/25 text-violet-300 text-xs font-semibold transition-colors active:scale-95 disabled:opacity-50"
-              title="Extract trip details from this email thread using AI"
-            >
-              {extractingTrip ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
-              <span>Extract Trip</span>
-            </button>
-          )}
+          <button
+            onClick={handleExtractTripIntent}
+            disabled={extractingTrip}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-500/15 border border-violet-500/25 hover:bg-violet-500/25 text-violet-300 text-xs font-semibold transition-colors active:scale-95 disabled:opacity-50"
+            title="Extract trip details from this conversation using AI"
+          >
+            {extractingTrip ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
+            <span>Extract Trip</span>
+          </button>
           <button
             onClick={() => onContextAction?.('create-proposal')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors active:scale-95 ${
