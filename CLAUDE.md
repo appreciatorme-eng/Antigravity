@@ -18,7 +18,7 @@ projects/travel-suite/
   apps/
     web/          ← Next.js 16 app (primary codebase)
     agents/       ← Python AI agents
-    mobile/       ← React Native
+    mobile/       ← Flutter (Dart) — GoBuddy companion app
     rag-assistant/
   packages/       ← shared libs
   supabase/       ← migrations & edge functions
@@ -232,3 +232,50 @@ The codebase supports **two WhatsApp implementations**:
 | QA log | `.claude/qa-log.md` |
 | Audit tracker | `AUDIT_REMEDIATION_TRACKER.md` |
 | Deep review tracker | `DEEP_REVIEW_TRACKER.md` |
+
+---
+
+## Mobile-First Development Rules
+
+TripBuilt users are 80%+ mobile (Indian tour operators). Every UI change MUST work on mobile.
+
+### Breakpoints
+
+- **Mobile**: < 768px (`md:` prefix = desktop-only)
+- **Tablet**: 768px–1024px
+- **Desktop**: > 1024px
+- Test at: 390×844 (iPhone 14), 768×1024 (iPad), 1280×800 (laptop)
+
+### Navigation Architecture
+
+- **Single source of truth**: `src/lib/nav/nav-config.ts` — ALL navigation items defined here
+- **Desktop**: `Sidebar.tsx` consumes nav-config → left sidebar
+- **Mobile**: `MobileNav.tsx` consumes nav-config → bottom tabs + "More" drawer
+- **Admin pages**: `AdminShellLayout` includes both Sidebar AND MobileNav
+- **When adding a new page**: Add it to `nav-config.ts` with the correct `section` — it automatically appears in both desktop sidebar and mobile "More" drawer
+- **Full reference**: See `docs/MOBILE_NAV.md`
+
+### Mobile Bottom Tabs (5 slots — DO NOT change without discussion)
+
+| Slot | Label | Route |
+|------|-------|-------|
+| 1 | Home | `/` |
+| 2 | Inbox | `/inbox` |
+| 3 | + (FAB) | Quick actions sheet |
+| 4 | Trips | `/trips` |
+| 5 | Clients | `/clients` |
+
+### Page Layout Checklist (before marking any page work complete)
+
+- [ ] Works at 390px width without horizontal scroll
+- [ ] No fixed widths > 100% (use `w-full` not `w-[600px]`)
+- [ ] Tables switch to card layout on mobile (`< md:`)
+- [ ] Modals are full-screen on mobile (`md:max-w-lg`)
+- [ ] Touch targets are ≥ 44px (Apple HIG minimum)
+- [ ] Bottom nav not obscured (content has `pb-20 md:pb-0`)
+
+### Mobile Patterns
+
+- **List pages**: Sticky search → filter chips (scroll-x) → card list
+- **Detail pages**: ← Back header → summary → tab bar (scroll-x) → content → sticky bottom CTA
+- **Full-bleed pages** (inbox, calendar, planner): Override AppShell padding with `className="!p-0"`
