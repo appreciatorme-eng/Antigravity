@@ -227,10 +227,24 @@ export async function fetchImapThreads(
         envelope: true,
       });
 
+      // Capture first message's keys for debugging
+      let firstMsgKeys: string[] = [];
+      let firstMsgSample: Record<string, unknown> = {};
       for await (const msg of fetchIterator) {
         try {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const env = (msg as any).envelope;
+          const raw = msg as any;
+          if (firstMsgKeys.length === 0) {
+            firstMsgKeys = Object.keys(raw);
+            // Capture a safe sample of the first message for debugging
+            for (const k of firstMsgKeys) {
+              const v = raw[k];
+              if (v === null || v === undefined) firstMsgSample[k] = v;
+              else if (typeof v === 'object') firstMsgSample[k] = `[${typeof v}] keys=${Object.keys(v).join(',')}`;
+              else firstMsgSample[k] = String(v).slice(0, 100);
+            }
+          }
+          const env = raw.envelope;
           if (!env) continue;
 
           const fromList = env.from ?? [];
@@ -279,7 +293,7 @@ export async function fetchImapThreads(
       threads,
       nextPageToken: hasMore ? String(nextOffset) : null,
       resultSizeEstimate: sortedUids.length,
-      _imapDebug: { searchHits: sortedUids.length, pageUids: pageUids.length, messagesParsed: messages.length, threadsGrouped: threads.length, fetchError },
+      _imapDebug: { searchHits: sortedUids.length, pageUids: pageUids.length, messagesParsed: messages.length, threadsGrouped: threads.length, fetchError, firstMsgKeys, firstMsgSample },
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
