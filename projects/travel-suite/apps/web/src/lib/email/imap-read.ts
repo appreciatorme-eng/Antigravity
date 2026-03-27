@@ -218,19 +218,42 @@ export async function fetchImapThreads(
     const messages: EmailMessage[] = [];
     const uidSet = pageUids.join(",");
 
+    // Fetch envelope + bodystructure (no full source — simpleParser fails on Vercel serverless)
     const fetchIterator = client.fetch(uidSet, {
       uid: true,
       envelope: true,
-      source: true,
+      bodyStructure: true,
+      headers: true,
     });
 
     for await (const msg of fetchIterator) {
       try {
-        if (!msg.source) continue;
-        const parsed = await simpleParser(msg.source);
-        messages.push(toEmailMessage(msg.uid, "", parsed));
+        const env = msg.envelope;
+        if (!env) continue;
+
+        const fromAddr = env.from?.[0];
+        const toAddrs = env.to?.map((a: { name?: string; address?: string }) => a.address || "").join(", ") ?? "";
+        const subject = env.subject ?? "(no subject)";
+        const date = env.date ? new Date(env.date).toISOString() : new Date().toISOString();
+        const messageId = env.messageId ?? null;
+
+        messages.push({
+          id: String(msg.uid),
+          threadId: "",
+          from: fromAddr?.name ?? fromAddr?.address ?? "",
+          fromEmail: fromAddr?.address ?? "",
+          to: toAddrs,
+          subject,
+          snippet: subject,
+          bodyHtml: "",
+          bodyText: "",
+          date,
+          messageIdHeader: messageId,
+          labelIds: [],
+          attachments: [],
+        });
       } catch (parseErr) {
-        logError(`[imap-read] step=parse-fail uid=${msg.uid}`, parseErr);
+        logError(`[imap-read] step=envelope-fail uid=${msg.uid}`, parseErr);
       }
     }
 
