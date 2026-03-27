@@ -93,20 +93,52 @@ export interface UseInboxDataOptions {
   onSendMessage?: (convId: string, message: string) => void;
 }
 
-// --- Read tracking helpers (pure, no hook state) ---
+// --- Read tracking helpers (server-side + localStorage fallback) ---
 
 const READ_KEY = 'tripbuilt_inbox_read_at';
 
+/** Optimistic localStorage cache — synced to server */
 function getReadTimestamps(): Record<string, string> {
   try {
     return JSON.parse(localStorage.getItem(READ_KEY) || '{}');
   } catch { return {}; }
 }
 
+/** Write to localStorage (instant) + fire-and-forget POST to server */
 function markConversationRead(convId: string) {
+  const now = new Date().toISOString();
   const map = getReadTimestamps();
-  const updated = { ...map, [convId]: new Date().toISOString() };
+  const updated = { ...map, [convId]: now };
   localStorage.setItem(READ_KEY, JSON.stringify(updated));
+
+  // Persist to server (fire-and-forget — localStorage provides instant UX)
+  void fetch('/api/admin/inbox/mark-read', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ conversationId: convId }),
+  }).catch(() => { /* silent — localStorage is the fast path */ });
+}
+
+/** Merge server-side read state into localStorage on startup */
+async function syncReadStateFromServer(): Promise<void> {
+  try {
+    const res = await fetch('/api/admin/inbox/mark-read', { cache: 'no-store' });
+    if (!res.ok) return;
+    const json = (await res.json()) as { data?: { readMap?: Record<string, string> } };
+    const serverMap = json.data?.readMap ?? {};
+    if (Object.keys(serverMap).length === 0) return;
+
+    // Merge: take the latest timestamp from either source
+    const localMap = getReadTimestamps();
+    const merged = { ...localMap };
+    for (const [convId, serverTs] of Object.entries(serverMap)) {
+      const localTs = localMap[convId];
+      if (!localTs || new Date(serverTs) > new Date(localTs)) {
+        merged[convId] = serverTs;
+      }
+    }
+    localStorage.setItem(READ_KEY, JSON.stringify(merged));
+  } catch { /* silent — will use whatever localStorage has */ }
 }
 
 function applyReadTracking(convs: ChannelConversation[]): ChannelConversation[] {
@@ -115,7 +147,7 @@ function applyReadTracking(convs: ChannelConversation[]): ChannelConversation[] 
     const lastReadAt = readMap[c.id];
     if (!lastReadAt) return c;
     const unread = c.messages.filter(
-      (m) => m.direction === 'in' && m.timestamp > lastReadAt
+      (m) => m.direction === 'in' && (m.rawTimestamp ?? m.timestamp) > lastReadAt
     ).length;
     return { ...c, unreadCount: unread };
   });
@@ -264,8 +296,11 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
   }, []);
 
   useEffect(() => {
-    // Always attempt to load real conversations first
-    void loadLiveConversations();
+    // Sync server-side read state into localStorage before loading conversations,
+    // so applyReadTracking has the merged timestamps from all devices.
+    void syncReadStateFromServer().then(() => {
+      void loadLiveConversations();
+    });
     void loadWhatsAppHealth();
   }, [loadLiveConversations, loadWhatsAppHealth]);
 

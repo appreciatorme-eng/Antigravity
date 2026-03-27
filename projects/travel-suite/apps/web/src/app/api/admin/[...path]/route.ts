@@ -55,6 +55,7 @@ const routes = createCatchAllHandlers([
   ["export/invoices", () => import("@/app/api/_handlers/admin/export/invoices/route")],
   ["funnel", () => import("@/app/api/_handlers/admin/funnel/route")],
   ["ltv", () => import("@/app/api/_handlers/admin/ltv/route")],
+  ["inbox/mark-read", () => import("@/app/api/_handlers/admin/inbox/mark-read/route")],
   ["notes", () => import("@/app/api/_handlers/admin/notes/route")],
   ["notifications/delivery/retry", () => import("@/app/api/_handlers/admin/notifications/delivery/retry/route")],
   ["notifications/delivery", () => import("@/app/api/_handlers/admin/notifications/delivery/route")],
