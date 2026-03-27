@@ -249,6 +249,7 @@ export async function fetchImapThreads(
       threads,
       nextPageToken: hasMore ? String(nextOffset) : null,
       resultSizeEstimate: sortedUids.length,
+      _imapDebug: { searchHits: sortedUids.length, pageUids: pageUids.length, messagesParced: messages.length, threadsGrouped: threads.length },
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
