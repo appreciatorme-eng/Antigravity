@@ -1,25 +1,43 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useTourToggle } from "@/lib/tour/tour-toggle-context";
+import { getNextTourPage, getTourIdForPath } from "@/lib/tour/tour-registry";
+import { TOUR_PAGE_START } from "@/lib/tour/tour-toggle-context";
 import { TourCompletePrompt } from "./TourCompletePrompt";
 
 /**
  * Wrapper that connects TourCompletePrompt to the tour toggle context.
- * Uses Next.js router for smooth SPA transitions (no hard reload).
+ * Navigates to the NEXT page in the tour sequence (not back to dashboard).
  */
 export function ConnectedTourCompletePrompt() {
   const router = useRouter();
-  const { startFullAppTour, progress } = useTourToggle();
+  const pathname = usePathname();
+  const { progress } = useTourToggle();
 
   return (
     <TourCompletePrompt
       progress={progress}
       onTourApp={() => {
-        // #6: Use router + context instead of window.location.href
-        router.push("/?tour=tour-dashboard");
-        // Small delay to let navigation settle, then start full-app tour
-        setTimeout(() => startFullAppTour(), 200);
+        const currentPath = pathname ?? "/";
+        const nextPage = getNextTourPage(currentPath);
+
+        if (nextPage) {
+          // Set full-app mode so subsequent pages chain correctly
+          try {
+            sessionStorage.setItem("tripbuilt:tour_mode", "full-app");
+          } catch { /* noop */ }
+
+          const nextTourId = getTourIdForPath(nextPage);
+          router.push(nextTourId ? `${nextPage}?tour=${nextTourId}` : nextPage);
+        } else {
+          // Already on the last page — start from the beginning
+          try {
+            sessionStorage.setItem("tripbuilt:tour_mode", "full-app");
+          } catch { /* noop */ }
+
+          router.push("/?tour=tour-dashboard");
+        }
       }}
       onDismiss={() => {}}
     />

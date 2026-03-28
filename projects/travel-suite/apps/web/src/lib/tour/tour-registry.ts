@@ -90,7 +90,9 @@ export function getTourIdForPath(pathname: string): string | null {
 
 /** Get the next page in the full-app tour sequence */
 export function getNextTourPage(currentPath: string): string | null {
-  const idx = FULL_APP_TOUR_ORDER.indexOf(currentPath);
+  // Normalize /admin to / since both map to the dashboard tour
+  const normalized = currentPath === '/admin' ? '/' : currentPath;
+  const idx = FULL_APP_TOUR_ORDER.indexOf(normalized);
   if (idx === -1 || idx === FULL_APP_TOUR_ORDER.length - 1) return null;
   return FULL_APP_TOUR_ORDER[idx + 1];
 }
