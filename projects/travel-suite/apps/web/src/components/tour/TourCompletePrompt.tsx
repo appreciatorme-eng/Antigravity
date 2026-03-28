@@ -3,18 +3,50 @@
 import { useState, useEffect } from "react";
 import { Compass, ArrowRight, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { TOUR_PAGE_COMPLETE } from "@/lib/tour/tour-toggle-context";
+import { TOUR_PAGE_COMPLETE, type TourProgress } from "@/lib/tour/tour-toggle-context";
+
+const LS_DISMISS_KEY = "tripbuilt:tour_fullapp_dismissed";
+const MAX_DISMISSALS = 3;
 
 interface PromptPayload {
   pageName: string;
 }
 
+function getDismissCount(): number {
+  try {
+    return parseInt(localStorage.getItem(LS_DISMISS_KEY) ?? "0", 10) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+function incrementDismissCount(): void {
+  try {
+    const count = getDismissCount() + 1;
+    localStorage.setItem(LS_DISMISS_KEY, String(count));
+  } catch {
+    // localStorage unavailable
+  }
+}
+
+/** Fire a PostHog event (best-effort) */
+function fireTourEvent(name: string, props: Record<string, unknown>) {
+  try {
+    const ph = (window as unknown as { posthog?: { capture: (n: string, p: Record<string, unknown>) => void } }).posthog;
+    ph?.capture(name, props);
+  } catch {
+    // PostHog not available
+  }
+}
+
 export function TourCompletePrompt({
   onTourApp,
   onDismiss,
+  progress,
 }: {
   onTourApp: () => void;
   onDismiss: () => void;
+  progress: TourProgress;
 }) {
   const [visible, setVisible] = useState(false);
   const [pageName, setPageName] = useState("this page");
@@ -26,6 +58,9 @@ export function TourCompletePrompt({
       try {
         if (sessionStorage.getItem("tripbuilt:tour_mode") === "full-app") return;
       } catch { /* noop */ }
+
+      // #3: Stop showing after MAX_DISMISSALS
+      if (getDismissCount() >= MAX_DISMISSALS) return;
 
       setPageName(detail?.pageName ?? "this page");
       setVisible(true);
@@ -39,11 +74,20 @@ export function TourCompletePrompt({
 
   const handleTourApp = () => {
     setVisible(false);
+    // #5: Analytics
+    fireTourEvent("tour_fullapp_accepted", { from_page: pageName });
     onTourApp();
   };
 
   const handleDismiss = () => {
     setVisible(false);
+    // #3: Track dismissal count
+    incrementDismissCount();
+    // #5: Analytics
+    fireTourEvent("tour_fullapp_dismissed", {
+      from_page: pageName,
+      dismiss_count: getDismissCount(),
+    });
     onDismiss();
   };
 
@@ -82,6 +126,22 @@ export function TourCompletePrompt({
         <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">
           You&apos;ve explored {pageName}!
         </h3>
+
+        {/* #1: Progress indicator */}
+        {progress.total > 0 && (
+          <div className="flex items-center gap-2 mb-3">
+            <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary rounded-full transition-all duration-500"
+                style={{ width: `${Math.round((progress.visited / progress.total) * 100)}%` }}
+              />
+            </div>
+            <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 whitespace-nowrap">
+              {progress.visited}/{progress.total} pages
+            </span>
+          </div>
+        )}
+
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
           Want a guided tour of the entire app? We&apos;ll walk you through
           every feature step by step.

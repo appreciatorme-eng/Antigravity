@@ -8,7 +8,7 @@ import DemoModeBanner from "@/components/demo/DemoModeBanner";
 import DemoTour from "@/components/demo/DemoTour";
 import WelcomeModal from "@/components/demo/WelcomeModal";
 import { TourToggleProvider } from "@/lib/tour/tour-toggle-context";
-import { TourCompletePrompt } from "@/components/tour/TourCompletePrompt";
+import { ConnectedTourCompletePrompt } from "@/components/tour/ConnectedTourCompletePrompt";
 import { cn } from "@/lib/utils";
 
 interface AdminLayoutProps {
@@ -42,13 +42,7 @@ export default function AdminLayout({ children, className }: AdminLayoutProps) {
                 {/* Demo onboarding overlays */}
                 <DemoTour />
                 <WelcomeModal />
-                <TourCompletePrompt
-                    onTourApp={() => {
-                        try { sessionStorage.setItem("tripbuilt:tour_mode", "full-app"); } catch {}
-                        window.location.href = "/admin?tour=tour-dashboard";
-                    }}
-                    onDismiss={() => {}}
-                />
+                <ConnectedTourCompletePrompt />
             </div>
         </TourToggleProvider>
     );
