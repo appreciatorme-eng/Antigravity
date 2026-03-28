@@ -138,7 +138,9 @@ export default function OperatorDetailPage() {
 
             const profRes = await fetch(`/api/marketplace?q=`, { headers });
             if (profRes.ok) {
-                const allProfs = (await profRes.json()) as MarketplaceListItem[];
+                const body = await profRes.json();
+                // API returns { items: [...], pagination: {...} }
+                const allProfs = (Array.isArray(body) ? body : body.items ?? []) as MarketplaceListItem[];
                 const found = allProfs.find((p) => p.organization_id === targetOrgId);
                 setProfile(found || null);
             }
