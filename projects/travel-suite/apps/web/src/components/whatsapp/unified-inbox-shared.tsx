@@ -160,13 +160,13 @@ export function UnifiedInboxConversationItem({
           <p className={`text-sm truncate ${isUnread ? 'font-bold text-white' : 'font-medium text-slate-300'}`}>
             {conv.contact.name}
           </p>
-          <span className="text-[10px] text-slate-500 shrink-0">{formatConversationTime(last?.timestamp ?? '')}</span>
+          <span className="text-[10px] text-slate-400 shrink-0">{formatConversationTime(last?.timestamp ?? '')}</span>
         </div>
-        <p className="text-[10px] text-slate-500 mb-1">
+        <p className="text-[10px] text-slate-400 mb-1">
           {isEmailConv && conv.contact.email ? conv.contact.email : conv.contact.phone}
         </p>
-        <p className={`text-xs truncate ${isUnread ? 'text-slate-200 font-medium' : 'text-slate-500'}`}>
-          {last?.direction === 'out' && <span className="text-slate-600">You: </span>}
+        <p className={`text-xs truncate ${isUnread ? 'text-slate-200 font-medium' : 'text-slate-400'}`}>
+          {last?.direction === 'out' && <span className="text-slate-500">You: </span>}
           {last?.subject ? `${last.subject} — ` : ''}
           {preview}
         </p>

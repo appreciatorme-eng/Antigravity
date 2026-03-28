@@ -215,14 +215,14 @@ function ClientCard({ client, config, isUpdating, onEdit, onStageChange }: Clien
                         <button
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEdit(client); }}
                             className="p-1.5 text-text-muted hover:text-primary transition-colors bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 hover:border-primary/30"
-                            title="Edit client"
+                            aria-label={`Edit ${client.full_name || 'client'}`}
                         >
                             <Edit2 className="w-3 h-3" />
                         </button>
                         <Link
                             href={`/clients/${client.id}`}
                             className="p-1.5 text-text-muted hover:text-blue-600 transition-colors bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 hover:border-blue-300"
-                            title="View full profile"
+                            aria-label={`View ${client.full_name || 'client'} profile`}
                         >
                             <ExternalLink className="w-3 h-3" />
                         </Link>
@@ -259,7 +259,7 @@ function ClientCard({ client, config, isUpdating, onEdit, onStageChange }: Clien
                             onClick={() => prevStage && void onStageChange(client.id, prevStage)}
                             disabled={!prevStage || isUpdating}
                             className="w-7 h-7 rounded-lg bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 flex items-center justify-center text-text-muted hover:text-primary hover:border-primary/30 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                            title={prevStage ? `Move to ${STAGE_CONFIG[prevStage as LifecycleStage]?.label}` : ""}
+                            aria-label={prevStage ? `Move ${client.full_name || 'client'} to ${STAGE_CONFIG[prevStage as LifecycleStage]?.label}` : "No previous stage"}
                         >
                             <ChevronLeft className="w-3.5 h-3.5" />
                         </button>
@@ -267,7 +267,7 @@ function ClientCard({ client, config, isUpdating, onEdit, onStageChange }: Clien
                             onClick={() => nextStage && void onStageChange(client.id, nextStage)}
                             disabled={!nextStage || isUpdating}
                             className="w-7 h-7 rounded-lg bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 flex items-center justify-center text-text-muted hover:text-primary hover:border-primary/30 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                            title={nextStage ? `Move to ${STAGE_CONFIG[nextStage as LifecycleStage]?.label}` : ""}
+                            aria-label={nextStage ? `Move ${client.full_name || 'client'} to ${STAGE_CONFIG[nextStage as LifecycleStage]?.label}` : "No next stage"}
                         >
                             <ChevronRight className="w-3.5 h-3.5" />
                         </button>

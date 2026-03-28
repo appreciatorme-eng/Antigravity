@@ -203,7 +203,7 @@ export function SetupChecklist() {
         </div>
         <button
           onClick={handleDismiss}
-          className="p-1 text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-100"
+          className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors rounded-lg hover:bg-gray-100"
           aria-label="Dismiss checklist"
         >
           <X className="w-4 h-4" />

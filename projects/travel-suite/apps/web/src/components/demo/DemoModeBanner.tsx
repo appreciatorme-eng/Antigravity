@@ -78,10 +78,10 @@ export default function DemoModeBanner() {
 
       <button
         onClick={handleDismiss}
-        className="ml-auto flex-shrink-0 p-1 rounded-full hover:bg-gray-200/50 dark:hover:bg-slate-700/50 transition-colors"
+        className="ml-auto flex-shrink-0 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full hover:bg-gray-200/50 dark:hover:bg-slate-700/50 transition-colors"
         aria-label="Dismiss demo banner"
       >
-        <X className="w-3.5 h-3.5" />
+        <X className="w-4 h-4" />
       </button>
 
     </div>

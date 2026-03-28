@@ -527,7 +527,7 @@ export default function SettingsPage() {
                 <div className="flex flex-col md:flex-row gap-8 items-start">
                     {/* Sidebar Nav */}
                     <aside className="w-full md:w-64 shrink-0">
-                        <nav className="flex md:flex-col gap-1 overflow-x-auto md:overflow-visible pb-2 md:pb-0">
+                        <nav className="flex md:flex-col gap-2 md:gap-1 overflow-x-auto md:overflow-visible pb-2 md:pb-0" role="tablist" aria-label="Settings sections">
                             {TABS.map((tab) => {
                                 const isActive = activeTab === tab.id;
                                 return (
