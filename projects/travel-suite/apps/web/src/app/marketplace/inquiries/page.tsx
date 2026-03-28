@@ -242,7 +242,7 @@ export default function MarketplaceInquiriesPage() {
                                                             {/* Action CTA */}
                                                             <div className="flex items-center gap-3 w-full md:w-auto pt-4 md:pt-0 border-t md:border-t-0 border-slate-200 dark:border-slate-800">
                                                                 <Link href={`/marketplace/${activeTab === "received" ? inq.sender_org_id : inq.receiver_org_id}`} className="flex-1 md:flex-none">
-                                                                    <GlassButton variant="secondary" className="w-full md:w-auto flex items-center justify-center gap-2 text-[13px] font-bold py-2.5 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700">
+                                                                    <GlassButton variant="outline" className="w-full md:w-auto flex items-center justify-center gap-2 text-[13px] font-bold py-2.5">
                                                                         View Profile
                                                                         <ExternalLink size={16} className="text-slate-400 group-hover:text-blue-500 transition-colors" />
                                                                     </GlassButton>

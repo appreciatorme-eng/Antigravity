@@ -564,7 +564,7 @@ export default function OperatorDetailPage() {
                                                         autoFocus
                                                     />
                                                     <div className="flex gap-2">
-                                                        <GlassButton variant="secondary" className="flex-1 text-sm bg-white dark:bg-slate-800" onClick={() => setShowInquiryModal(false)}>Cancel</GlassButton>
+                                                        <GlassButton variant="outline" className="flex-1 text-sm" onClick={() => setShowInquiryModal(false)}>Cancel</GlassButton>
                                                         <GlassButton className="flex-1 text-sm bg-blue-600 hover:bg-blue-700 text-white shadow-[0_4px_14px_rgba(37,99,235,0.3)]" onClick={handleSubmitInquiry} disabled={submittingInquiry || inquirySent}>
                                                             {inquirySent ? "Sent!" : submittingInquiry ? <RefreshCcw size={16} className="animate-spin mx-auto" /> : "Send Request"}
                                                         </GlassButton>
