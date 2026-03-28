@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { useDemoMode } from '@/lib/demo/demo-mode-context';
+import { DEMO_CLIENTS } from '@/lib/demo/data';
 import type { Client, TourTemplate, AddOn, FeatureLimitSnapshot } from '../_types';
 
 import { formatFeatureLimitError } from '@/lib/subscriptions/feature-limit-error';
@@ -24,6 +26,7 @@ export interface UseProposalDataReturn {
 }
 
 export function useProposalData(): UseProposalDataReturn {
+  const { isDemoMode } = useDemoMode();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [clientsError, setClientsError] = useState<string | null>(null);
@@ -68,6 +71,21 @@ export function useProposalData(): UseProposalDataReturn {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
+      // In demo mode, use hardcoded clients instead of API call
+      if (isDemoMode) {
+        const demoClients: Client[] = DEMO_CLIENTS.map((c) => ({
+          id: c.id,
+          full_name: c.full_name || 'Unknown',
+          email: c.email || '',
+          phone: c.phone || '',
+        }));
+        setClients(demoClients);
+        setTemplates([]);
+        setAddOns([]);
+        setLoading(false);
+        return;
+      }
+
       const supabase = createClient();
       const {
         data: { user },
@@ -159,7 +177,7 @@ export function useProposalData(): UseProposalDataReturn {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isDemoMode]);
 
   useEffect(() => {
     void loadData();

@@ -47,7 +47,7 @@ export function ClientFormModal({
                     ? "Update the client details below."
                     : "Fill in the details to add a new client to your pipeline."}
             </p>
-            <div className="grid gap-5 max-h-[60vh] overflow-y-auto pr-2 pb-4">
+            <div className="grid gap-5 max-h-[70vh] md:max-h-[60vh] overflow-y-auto pr-2 pb-4">
                 <GlassInput
                     label="Full Name *"
                     value={formData.full_name}

@@ -37,11 +37,11 @@ export function OrganizationTab({ draftTimezone, loading, onSave }: Organization
             <div className="grid gap-6">
                 <div className="space-y-2">
                     <label className="text-xs font-bold uppercase tracking-widest text-text-secondary dark:text-slate-300">Official Name</label>
-                    <input type="text" defaultValue="TripBuilt Elite" className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-secondary dark:text-white" />
+                    <input type="text" defaultValue="TripBuilt Elite" aria-label="Official Name" className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-secondary dark:text-white" />
                 </div>
                 <div className="space-y-2">
                     <label className="text-xs font-bold uppercase tracking-widest text-text-secondary dark:text-slate-300">Website Domain</label>
-                    <input type="text" defaultValue="www.tripbuilt.app" className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-secondary dark:text-white" />
+                    <input type="text" defaultValue="www.tripbuilt.app" aria-label="Website Domain" className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-secondary dark:text-white" />
                 </div>
                 <div className="space-y-2">
                     <label className="text-xs font-bold uppercase tracking-widest text-text-secondary dark:text-slate-300">GSTIN</label>
@@ -50,6 +50,7 @@ export function OrganizationTab({ draftTimezone, loading, onSave }: Organization
                         value={gstin}
                         onChange={handleGstinChange}
                         placeholder="27AABCU9603R1ZX"
+                        aria-label="GSTIN"
                         maxLength={15}
                         className={`w-full bg-gray-50 dark:bg-slate-800 border rounded-xl px-4 py-3 focus:ring-2 outline-none text-secondary dark:text-white ${
                             gstinError
@@ -70,7 +71,7 @@ export function OrganizationTab({ draftTimezone, loading, onSave }: Organization
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <label className="text-xs font-bold uppercase tracking-widest text-text-secondary dark:text-slate-300">Base Currency</label>
-                        <select className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-secondary dark:text-white">
+                        <select aria-label="Base Currency" className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-secondary dark:text-white">
                             <option value="USD">USD ($)</option>
                             <option value="EUR">EUR (&euro;)</option>
                             <option value="GBP">GBP (&pound;)</option>
@@ -81,6 +82,7 @@ export function OrganizationTab({ draftTimezone, loading, onSave }: Organization
                         <select
                             value={draftTimezone}
                             disabled
+                            aria-label="Timezone"
                             className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-3 outline-none text-secondary dark:text-white disabled:opacity-100"
                         >
                             <option value={draftTimezone}>{getTimezoneDisplayName(draftTimezone)}</option>

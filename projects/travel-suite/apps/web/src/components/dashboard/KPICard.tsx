@@ -127,18 +127,19 @@ export function KPICard({
         </div>
 
         <div className="space-y-1">
-          <motion.h3
+          <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
             className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter"
+            aria-label={label}
           >
             {loading ? (
               <span className="inline-block w-20 h-8 bg-slate-200 dark:bg-slate-700 rounded-lg animate-pulse" />
             ) : (
               displayValue
             )}
-          </motion.h3>
+          </motion.div>
           <p className="text-xs font-bold uppercase tracking-widest text-slate-400">{label}</p>
         </div>
       </div>
