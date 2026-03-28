@@ -617,7 +617,7 @@ export default function OperatorDetailPage() {
                                                     <p className="text-xs text-slate-600 dark:text-slate-500 leading-relaxed font-medium">To view sensitive legal & safety documents, you must complete your agency verification.</p>
                                                 </div>
                                                 <Link href="/settings/marketplace" className="block pt-1">
-                                                    <GlassButton variant="secondary" className="w-full text-xs font-bold py-2 bg-white dark:bg-slate-800 shadow-sm hover:shadow-md">Get Verified Now</GlassButton>
+                                                    <GlassButton variant="outline" className="w-full text-xs font-bold py-2 shadow-sm hover:shadow-md">Get Verified Now</GlassButton>
                                                 </Link>
                                             </div>
                                         ) : profile.compliance_documents?.length > 0 ? (
