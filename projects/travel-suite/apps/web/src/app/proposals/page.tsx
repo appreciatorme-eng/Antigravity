@@ -37,6 +37,7 @@ import { useToast } from '@/components/ui/toast';
 import { cn } from '@/lib/utils';
 import { useUserTimezone } from '@/hooks/useUserTimezone';
 import ESignature from '@/components/proposals/ESignature';
+import { GuidedTour } from '@/components/tour/GuidedTour';
 
 interface Proposal {
   id: string;
@@ -214,6 +215,7 @@ export default function ProposalsPage() {
 
   return (
     <div className="space-y-8 pb-12">
+      <GuidedTour />
       {/* Header */}
       <div className="flex items-end justify-between flex-wrap gap-4">
         <div>
@@ -222,7 +224,7 @@ export default function ProposalsPage() {
             Manage your high-conversion itinerary proposals and client engagement.
           </p>
         </div>
-        <Link href="/proposals/create">
+        <Link href="/proposals/create" data-tour="create-proposal-btn">
           <GlassButton variant="primary" className="rounded-2xl shadow-lg shadow-primary/20">
             <Plus className="w-5 h-5 mr-2" />
             Generate Proposal
@@ -231,7 +233,7 @@ export default function ProposalsPage() {
       </div>
 
       {/* Summary Row */}
-      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6" data-tour="proposal-stats">
         {summaryStats.map((stat) => (
           <GlassCard key={stat.label} padding="lg" className="group">
             <div className="flex items-start justify-between">
@@ -250,7 +252,7 @@ export default function ProposalsPage() {
       </div>
 
       {/* Controls */}
-      <div className="flex flex-col lg:flex-row gap-6 items-center">
+      <div className="flex flex-col lg:flex-row gap-6 items-center" data-tour="proposal-filters">
         <GlassCard padding="none" className="flex-1 w-full overflow-hidden border-gray-100 shadow-sm">
           <div className="flex items-center px-4 py-2">
             <Search className="w-5 h-5 text-text-muted mr-3" />
@@ -286,7 +288,7 @@ export default function ProposalsPage() {
 
       {/* List */}
       <ErrorSection label="Proposals list">
-        <GlassCard padding="none" className="overflow-hidden border-gray-100 shadow-xl">
+        <GlassCard padding="none" className="overflow-hidden border-gray-100 shadow-xl" data-tour="proposal-list">
           {loading ? (
             <TableSkeleton rows={6} />
           ) : filteredItems.length === 0 ? (

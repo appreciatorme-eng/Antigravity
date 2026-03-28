@@ -25,6 +25,7 @@ import type {
   CalendarEvent,
   CalendarEventType,
 } from "./types";
+import { GuidedTour } from '@/components/tour/GuidedTour';
 
 // ---------------------------------------------------------------------------
 // Orchestrator component
@@ -168,6 +169,7 @@ export function CalendarCommandCenter() {
   // ---- Render ----
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto pb-12">
+      <GuidedTour />
       {/* Page Header */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
@@ -183,6 +185,7 @@ export function CalendarCommandCenter() {
       </motion.div>
 
       {/* Calendar Header */}
+      <div data-tour="calendar-filters">
       <CalendarHeader
         currentDate={currentDate}
         viewMode={viewMode}
@@ -199,9 +202,10 @@ export function CalendarCommandCenter() {
         }}
         onBlockDates={() => setShowBlockDates(true)}
       />
+      </div>
 
       {/* Calendar Grid */}
-      <div className="flex gap-6">
+      <div className="flex gap-6" data-tour="calendar-view">
         <div
           className={cn("flex-1 min-w-0", selectedDay && "xl:mr-[400px]")}
         >

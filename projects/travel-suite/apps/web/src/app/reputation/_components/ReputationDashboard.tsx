@@ -39,6 +39,7 @@ import PlatformConnectionCards from "./PlatformConnectionCards";
 import WidgetConfigurator from "./WidgetConfigurator";
 import NPSSurveyPreview from "./NPSSurveyPreview";
 import { useReputationDashboardData } from "./useReputationDashboardData";
+import { GuidedTour } from '@/components/tour/GuidedTour';
 
 interface ReputationDashboardProps {
   organizationName: string;
@@ -535,7 +536,8 @@ export function ReputationDashboard({ organizationName }: ReputationDashboardPro
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
+      <GuidedTour />
+      <div data-tour="reputation-score" className="flex items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-gray-900">Reputation Manager</h1>
@@ -552,6 +554,7 @@ export function ReputationDashboard({ organizationName }: ReputationDashboardPro
           loading={refreshing}
           onClick={() => refresh()}
           aria-label="Refresh reputation data"
+          data-tour="reputation-actions"
         >
           <RefreshCw className="h-4 w-4" />
           Refresh
@@ -564,7 +567,7 @@ export function ReputationDashboard({ organizationName }: ReputationDashboardPro
         </GlassCard>
       )}
 
-      <div className="flex items-center gap-1 overflow-x-auto rounded-xl border border-gray-200 bg-gray-100 p-1">
+      <div data-tour="reputation-reviews" className="flex items-center gap-1 overflow-x-auto rounded-xl border border-gray-200 bg-gray-100 p-1">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;

@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { LifeBuoy, Send, Loader2, AlertCircle, CheckCircle2, Filter } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { GuidedTour } from '@/components/tour/GuidedTour';
 
 export default function SupportPage() {
     const { data: tickets, isLoading: ticketsLoading, error: ticketsError } = useSupportTickets();
@@ -84,6 +85,7 @@ export default function SupportPage() {
 
     return (
         <div className="flex flex-col min-h-[calc(100vh-64px)] bg-slate-50/50">
+            <GuidedTour />
             {/* Header section with gradient background */}
             <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white pb-8 pt-10 px-6 border-b border-slate-700">
                 <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
@@ -105,7 +107,7 @@ export default function SupportPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                     {/* Left Column - Form */}
                     <div className="lg:col-span-5 relative z-10">
-                        <Card className="shadow-lg border-0 ring-1 ring-slate-200/50 backdrop-blur-xl bg-white/90">
+                        <Card data-tour="support-form" className="shadow-lg border-0 ring-1 ring-slate-200/50 backdrop-blur-xl bg-white/90">
                             <CardHeader className="pb-4">
                                 <CardTitle className="text-xl flex items-center gap-2">
                                     <AlertCircle className="w-5 h-5 text-slate-400" />
@@ -194,7 +196,7 @@ export default function SupportPage() {
                     </div>
 
                     {/* Right Column - Existing Tickets */}
-                    <div className="lg:col-span-7 mt-8 lg:mt-0 relative z-10">
+                    <div data-tour="support-tickets" className="lg:col-span-7 mt-8 lg:mt-0 relative z-10">
                         <div className="flex items-center justify-between mb-4 mt-2">
                             <h2 className="text-lg font-semibold text-slate-800">Your Recent Tickets</h2>
                             <Button variant="outline" size="sm" className="h-8 gap-2 text-slate-500">

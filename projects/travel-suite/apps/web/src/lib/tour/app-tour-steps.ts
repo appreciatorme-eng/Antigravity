@@ -1,6 +1,9 @@
 import type { TourConfig } from './tour-types';
+import { EXTENDED_TOUR_MAP } from './app-tour-steps-extended';
 
-// App tour sequence: dashboard → planner → trips → clients → inbox → settings
+// ---------------------------------------------------------------------------
+// Core page tours (existing 6 — nextPage removed, chaining via registry)
+// ---------------------------------------------------------------------------
 
 export const DASHBOARD_TOUR: TourConfig = {
   id: 'tour-dashboard',
@@ -42,7 +45,6 @@ export const DASHBOARD_TOUR: TourConfig = {
       },
     },
   ],
-  nextPage: '/planner?tour=tour-planner',
 };
 
 export const PLANNER_TOUR: TourConfig = {
@@ -95,7 +97,6 @@ export const PLANNER_TOUR: TourConfig = {
       waitForElement: true,
     },
   ],
-  nextPage: '/trips?tour=tour-trips',
 };
 
 export const TRIPS_TOUR: TourConfig = {
@@ -138,7 +139,6 @@ export const TRIPS_TOUR: TourConfig = {
       },
     },
   ],
-  nextPage: '/clients?tour=tour-clients',
 };
 
 export const CLIENTS_TOUR: TourConfig = {
@@ -172,7 +172,6 @@ export const CLIENTS_TOUR: TourConfig = {
       },
     },
   ],
-  nextPage: '/inbox?tour=tour-inbox',
 };
 
 export const INBOX_TOUR: TourConfig = {
@@ -207,7 +206,6 @@ export const INBOX_TOUR: TourConfig = {
       waitForElement: true,
     },
   ],
-  nextPage: '/settings?tour=tour-settings',
 };
 
 export const SETTINGS_TOUR: TourConfig = {
@@ -241,8 +239,11 @@ export const SETTINGS_TOUR: TourConfig = {
       },
     },
   ],
-  // Last tour in sequence — no nextPage
 };
+
+// ---------------------------------------------------------------------------
+// Merged map: core + extended tours
+// ---------------------------------------------------------------------------
 
 /** Map of all app tour IDs to their configs */
 export const APP_TOUR_MAP: Record<string, TourConfig> = {
@@ -252,4 +253,5 @@ export const APP_TOUR_MAP: Record<string, TourConfig> = {
   'tour-clients': CLIENTS_TOUR,
   'tour-inbox': INBOX_TOUR,
   'tour-settings': SETTINGS_TOUR,
+  ...EXTENDED_TOUR_MAP,
 };

@@ -19,6 +19,7 @@ import { useInvoiceDraft } from "@/features/admin/invoices/useInvoiceDraft";
 import InvoiceCreateForm from "@/features/admin/invoices/InvoiceCreateForm";
 import InvoiceLivePreview from "@/features/admin/invoices/InvoiceLivePreview";
 import InvoiceListPanel from "@/features/admin/invoices/InvoiceListPanel";
+import { GuidedTour } from '@/components/tour/GuidedTour';
 
 export default function AdminInvoicesPage() {
   const supabase = createClient();
@@ -562,6 +563,7 @@ export default function AdminInvoicesPage() {
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-6 pb-10">
+      <GuidedTour />
       <section className="rounded-2xl md:rounded-3xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-white p-4 md:p-6 shadow-[0_14px_45px_-24px_rgba(15,23,42,0.35)]">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-1">
@@ -628,7 +630,7 @@ export default function AdminInvoicesPage() {
       </section>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[380px_minmax(0,1fr)_300px]">
-        <GlassCard padding="lg" className="border-slate-200 xl:max-h-[calc(100vh-220px)] xl:overflow-y-auto">
+        <GlassCard padding="lg" className="border-slate-200 xl:max-h-[calc(100vh-220px)] xl:overflow-y-auto" data-tour="invoice-create-form">
           <InvoiceCreateForm
             clients={clients}
             clientId={draft.clientId}
@@ -693,7 +695,7 @@ export default function AdminInvoicesPage() {
           />
         </GlassCard>
 
-        <div className="min-w-0">
+        <div className="min-w-0" data-tour="invoice-preview">
           <InvoiceLivePreview
             invoice={previewInvoice}
             previewTemplate={previewTemplate}
@@ -702,7 +704,7 @@ export default function AdminInvoicesPage() {
           />
         </div>
 
-        <GlassCard padding="md" className="border-slate-200 xl:max-h-[calc(100vh-220px)] xl:overflow-y-auto">
+        <GlassCard padding="md" className="border-slate-200 xl:max-h-[calc(100vh-220px)] xl:overflow-y-auto" data-tour="invoice-list">
           <InvoiceListPanel
             invoices={invoices}
             selectedInvoiceId={selectedInvoiceId}

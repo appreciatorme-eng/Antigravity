@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useUserTimezone } from "@/hooks/useUserTimezone";
 import { FlightDetails, HotelDetails } from "@/types/itinerary";
+import { GuidedTour } from '@/components/tour/GuidedTour';
 
 interface ItineraryOption {
     id: string;
@@ -151,6 +152,7 @@ export default function BookingsPage() {
 
     return (
         <main className="min-h-screen bg-[radial-gradient(1200px_500px_at_5%_-10%,rgba(16,185,129,0.18),transparent),radial-gradient(1000px_500px_at_95%_0%,rgba(14,116,144,0.14),transparent),linear-gradient(180deg,#f8fbff_0%,#f3f7fb_55%,#edf3f9_100%)] pb-24">
+            <GuidedTour />
             <section className="relative overflow-hidden px-4 md:px-6 pt-8 md:pt-14 pb-10 md:pb-16">
                 <div className="pointer-events-none absolute -top-20 -left-20 h-56 w-56 rounded-full bg-emerald-300/30 blur-3xl" />
                 <div className="pointer-events-none absolute top-10 -right-20 h-56 w-56 rounded-full bg-cyan-300/25 blur-3xl" />
@@ -196,6 +198,7 @@ export default function BookingsPage() {
                                     onChange={(event) => setSelectedItineraryId(event.target.value)}
                                     disabled={loadingItineraries || itineraries.length === 0}
                                     className="w-full h-12 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400 disabled:opacity-50"
+                                    data-tour="booking-itinerary-select"
                                 >
                                     {loadingItineraries && <option>Loading itineraries...</option>}
                                     {!loadingItineraries && itineraries.length === 0 && (
@@ -240,7 +243,7 @@ export default function BookingsPage() {
 
             <section className="px-4 md:px-6">
                 <div className="max-w-7xl mx-auto">
-                    <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-8">
+                    <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-8" data-tour="booking-tabs">
                         <TabsList className="h-11 md:h-14 rounded-xl md:rounded-2xl border border-slate-200 bg-white/90 p-1 md:p-1.5 shadow-lg shadow-slate-900/5 w-full md:w-auto">
                             <TabsTrigger
                                 value="flights"
@@ -271,7 +274,7 @@ export default function BookingsPage() {
                                         Search with city names or IATA codes, compare one-way and round-trip options, then import in one click.
                                     </CardDescription>
                                 </CardHeader>
-                                <CardContent className="p-6 md:p-8">
+                                <CardContent className="p-6 md:p-8" data-tour="booking-search">
                                     <FlightSearch onSelect={handleFlightSelect} timezone={timezone} />
                                 </CardContent>
                             </Card>

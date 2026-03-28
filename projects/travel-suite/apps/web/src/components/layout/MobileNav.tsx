@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
 import {
+    Compass,
     MoreHorizontal,
     Plus,
     X,
@@ -13,6 +14,7 @@ import { useNavCounts } from "@/components/layout/useNavCounts";
 import { getSecondaryGrouped, FAB_ACTIONS, type NavItemConfig } from "@/lib/nav/nav-config";
 import { resolveIcon } from "@/lib/nav/icon-map";
 import { cn } from "@/lib/utils";
+import { useTourToggle } from "@/lib/tour/tour-toggle-context";
 
 // ---------------------------------------------------------------------------
 // Bottom tab bar items (hardcoded — see CLAUDE.md "Mobile Bottom Tabs")
@@ -86,6 +88,7 @@ export default function MobileNav() {
     const counts = useNavCounts();
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [isFabOpen, setIsFabOpen] = useState(false);
+    const { isTourActive, startPageTour, stopTour, hasCurrentPageTour } = useTourToggle();
 
     // Close drawers on route change
     useEffect(() => {
@@ -215,6 +218,46 @@ export default function MobileNav() {
                                 </button>
                             </div>
                             <div className="space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                                {/* Page Tour toggle */}
+                                {hasCurrentPageTour && (
+                                    <button
+                                        onClick={() => {
+                                            if (isTourActive) {
+                                                stopTour();
+                                            } else {
+                                                startPageTour();
+                                            }
+                                            setIsDrawerOpen(false);
+                                        }}
+                                        className={cn(
+                                            "w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all mb-2",
+                                            isTourActive
+                                                ? "bg-primary/10 border border-primary/20"
+                                                : "bg-slate-50 dark:bg-slate-800/50 border border-transparent"
+                                        )}
+                                    >
+                                        <Compass className={cn(
+                                            "w-5 h-5",
+                                            isTourActive ? "text-primary animate-[spin_4s_linear_infinite]" : "text-primary/70"
+                                        )} />
+                                        <span className={cn(
+                                            "text-sm font-semibold flex-1 text-left",
+                                            isTourActive ? "text-primary" : "text-slate-700 dark:text-slate-300"
+                                        )}>
+                                            Page Tour
+                                        </span>
+                                        <div className={cn(
+                                            "w-8 h-5 rounded-full transition-colors flex items-center px-0.5",
+                                            isTourActive ? "bg-primary" : "bg-slate-300 dark:bg-slate-600"
+                                        )}>
+                                            <motion.div
+                                                animate={{ x: isTourActive ? 14 : 0 }}
+                                                transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                                                className="w-3.5 h-3.5 rounded-full bg-white shadow-sm"
+                                            />
+                                        </div>
+                                    </button>
+                                )}
                                 {SECONDARY_GROUPS.map((group) => (
                                     <div key={group.section}>
                                         <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 px-1">
