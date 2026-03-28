@@ -134,7 +134,8 @@ formats: ["image/avif", "image/webp"],
       {
         source: "/pay/:path*",
         headers: [
-          { key: "Content-Security-Policy", value: paymentCspHeader },
+          // No CSP for payment pages — Razorpay checkout.js requires
+          // unrestricted script/connect access to dynamic subdomains
           ...securityHeaders,
         ],
       },
