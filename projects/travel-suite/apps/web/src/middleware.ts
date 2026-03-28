@@ -39,6 +39,9 @@ const PROTECTED_PREFIXES = [
     "/add-ons",
     "/analytics",
     "/calendar",
+    "/bookings",
+    "/billing",
+    "/marketplace",
 ];
 
 const MARKETING_PATHS = ["/", "/pricing", "/about", "/blog", "/demo", "/solutions"];

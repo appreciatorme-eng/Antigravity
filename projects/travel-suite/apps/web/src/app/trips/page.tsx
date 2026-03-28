@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useRef, useState, useMemo } from "react";
+import { useCallback, useRef, useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTrips } from "@/lib/queries/trips";
 import {
     Search,
@@ -41,9 +42,17 @@ const QUICK_FILTER_OPTIONS: { value: QuickFilter; label: string }[] = [
 ];
 
 export default function TripsPage() {
+    const searchParams = useSearchParams();
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState<string>("all");
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+    // Auto-open create modal when navigated with ?create=true (from FAB)
+    useEffect(() => {
+        if (searchParams.get("create") === "true") {
+            setIsCreateModalOpen(true);
+        }
+    }, [searchParams]);
     const [viewMode, setViewMode] = useState<"list" | "grid">("list");
     const [sortKey, setSortKey] = useState<TripSortKey>("departure");
     const [quickFilters, setQuickFilters] = useState<Set<QuickFilter>>(new Set());

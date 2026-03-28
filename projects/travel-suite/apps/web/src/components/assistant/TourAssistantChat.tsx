@@ -22,8 +22,18 @@ export default function TourAssistantChat() {
     const [copiedId, setCopiedId] = useState<string | null>(null);
     const [customPrompts, setCustomPrompts] = useState<string[]>([]);
     const [isRecording, setIsRecording] = useState(false);
+    const [dialogVisible, setDialogVisible] = useState(false);
     const bottomRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+
+    // Hide FAB when any modal/dialog is open (QA-005)
+    useEffect(() => {
+        const check = () => setDialogVisible(!!document.querySelector("[role=dialog]"));
+        check();
+        const observer = new MutationObserver(check);
+        observer.observe(document.body, { childList: true, subtree: true });
+        return () => observer.disconnect();
+    }, []);
 
     interface SpeechRecognitionLike {
         lang: string;
@@ -371,6 +381,9 @@ export default function TourAssistantChat() {
 
     const lastAssistantId = messages.filter((m) => m.role === "assistant").at(-1)?.id;
     const displayPrompts = customPrompts.length > 0 ? customPrompts : QUICK_PROMPTS;
+
+    // Hide FAB entirely when a modal/dialog is open and chat is closed
+    if (dialogVisible && !isOpen) return null;
 
     return (
         <TourAssistantPresentation

@@ -167,16 +167,11 @@ export const FAB_ACTIONS: readonly FabAction[] = [
     emoji: "✈️",
     label: "New Trip",
     description: "Create a new trip itinerary",
-    route: "/trips/new",
+    route: "/trips?create=true",
     bgColor: "bg-blue-500 hover:bg-blue-400",
   },
-  {
-    emoji: "💰",
-    label: "Quick Quote",
-    description: "Generate a quick quotation",
-    event: "open-quick-quote",
-    bgColor: "bg-amber-500 hover:bg-amber-400",
-  },
+  // Quick Quote removed (QA-002): event had no listener — dead button.
+  // Re-add once QuickQuoteModal is implemented.
   {
     emoji: "📱",
     label: "WA Broadcast",
