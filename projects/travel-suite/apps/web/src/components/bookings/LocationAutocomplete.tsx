@@ -111,15 +111,45 @@ export function LocationAutocomplete({
 
     function commitSuggestion(suggestion: LocationSuggestion) {
         onSelectSuggestion(suggestion);
-        onValueChange(suggestion.cityName);
+        // Show "City (CODE)" in the input for better context
+        onValueChange(`${suggestion.cityName} (${suggestion.iataCode})`);
         setOpen(false);
         setActiveIndex(-1);
     }
 
     return (
-        <div className="space-y-2" ref={rootRef}>
+        <div className="space-y-1.5" ref={rootRef}>
             <label htmlFor={inputId} className="text-[11px] uppercase tracking-[0.14em] font-bold text-slate-500">{label}</label>
             <div className="relative">
+                {/* Selected chip overlay — shows city + code when a suggestion is selected */}
+                {selected && !open && (
+                    <button
+                        type="button"
+                        className="absolute inset-0 z-10 flex items-center gap-2 pl-11 pr-3 rounded-xl bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700 cursor-text"
+                        onClick={() => {
+                            onValueChange("");
+                            onSelectSuggestion(null as unknown as LocationSuggestion);
+                            setOpen(true);
+                            // Focus the underlying input
+                            const input = document.getElementById(inputId);
+                            if (input) setTimeout(() => input.focus(), 50);
+                        }}
+                    >
+                        <span className="absolute inset-y-0 left-3 flex items-center text-emerald-500">
+                            {kind === "flight" ? <PlaneTakeoff className="w-4 h-4" /> : <MapPin className="w-4 h-4" />}
+                        </span>
+                        <span className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                            {selected.cityName}
+                        </span>
+                        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-1.5 py-0.5 rounded">
+                            {selected.iataCode}
+                        </span>
+                        {selected.countryCode && (
+                            <span className="text-[10px] text-slate-400 uppercase">{selected.countryCode}</span>
+                        )}
+                    </button>
+                )}
+
                 <Input
                     id={inputId}
                     value={value}
@@ -164,21 +194,23 @@ export function LocationAutocomplete({
                         }
                     }}
                     placeholder={placeholder}
-                    className="h-12 pl-11 pr-3 rounded-xl border-slate-200 bg-white/90 focus-visible:ring-emerald-400"
+                    className="h-12 pl-11 pr-3 rounded-xl border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-900/90 focus-visible:ring-emerald-400"
                     role="combobox"
                     aria-expanded={showDropdown}
                     aria-controls={listboxId}
                     aria-autocomplete="list"
                 />
-                <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">
-                    {kind === "flight" ? <PlaneTakeoff className="w-4 h-4" /> : <MapPin className="w-4 h-4" />}
-                </span>
+                {!selected && (
+                    <span className="absolute inset-y-0 left-3 flex items-center text-slate-400">
+                        {kind === "flight" ? <PlaneTakeoff className="w-4 h-4" /> : <MapPin className="w-4 h-4" />}
+                    </span>
+                )}
 
                 {showDropdown && (
                     <div
                         id={listboxId}
                         role="listbox"
-                        className="absolute z-30 mt-2 w-full rounded-xl border border-slate-200 bg-white shadow-2xl overflow-hidden"
+                        className="absolute z-30 mt-2 w-full min-w-[280px] rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl overflow-hidden"
                     >
                         {loading && (
                             <div className="p-3 text-sm text-slate-500 flex items-center gap-2">
@@ -190,10 +222,14 @@ export function LocationAutocomplete({
                             <div className="p-3 text-sm text-rose-500">{error}</div>
                         )}
                         {!loading && !error && suggestions.length === 0 && (
-                            <div className="p-3 text-sm text-slate-500">No matching locations found.</div>
+                            <div className="p-3 text-sm text-slate-500">
+                                {query.length <= 2
+                                    ? "Type a city name or airport code..."
+                                    : "No matching locations found."}
+                            </div>
                         )}
                         {!loading && !error && suggestions.length > 0 && (
-                            <ul className="max-h-64 overflow-y-auto">
+                            <ul className="max-h-64 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
                                 {suggestions.map((item, index) => (
                                     <li key={item.id}>
                                         <button
@@ -203,18 +239,20 @@ export function LocationAutocomplete({
                                             onMouseEnter={() => setActiveIndex(index)}
                                             onClick={() => commitSuggestion(item)}
                                             className={`w-full text-left px-4 py-3 transition-colors ${
-                                                activeIndex === index ? "bg-emerald-50" : "hover:bg-emerald-50"
+                                                activeIndex === index
+                                                    ? "bg-emerald-50 dark:bg-emerald-900/20"
+                                                    : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
                                             }`}
                                         >
                                             <div className="flex items-center justify-between gap-3">
-                                                <div>
-                                                    <p className="text-sm font-semibold text-slate-900">{item.cityName}</p>
-                                                    <p className="text-xs text-slate-500 truncate">
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{item.cityName}</p>
+                                                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
                                                         {item.detailedName || item.name}
                                                     </p>
                                                 </div>
-                                                <div className="text-right">
-                                                    <p className="text-sm font-bold text-emerald-600">{item.iataCode}</p>
+                                                <div className="text-right shrink-0">
+                                                    <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{item.iataCode}</p>
                                                     <p className="text-[10px] uppercase tracking-[0.12em] text-slate-400">
                                                         {item.subType}
                                                     </p>
@@ -228,11 +266,6 @@ export function LocationAutocomplete({
                     </div>
                 )}
             </div>
-            {selected && (
-                <p className="text-[11px] text-slate-500">
-                    Selected: <span className="font-semibold text-slate-700">{selected.cityName}</span> ({selected.iataCode})
-                </p>
-            )}
         </div>
     );
 }
