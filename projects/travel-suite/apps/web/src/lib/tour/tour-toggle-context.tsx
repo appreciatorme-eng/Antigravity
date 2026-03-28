@@ -195,6 +195,12 @@ export function TourToggleProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!pathname || !hasPageTour(pathname)) return;
 
+    // Don't auto-start tours if the Welcome Modal is still showing
+    // (user hasn't clicked "Start Exploring" yet)
+    try {
+      if (localStorage.getItem("tripbuilt:onboarded") !== "true") return;
+    } catch { /* noop */ }
+
     // #8: If full-app mode is active in sessionStorage, resume tour on this page
     try {
       if (sessionStorage.getItem(SS_MODE_KEY) === "full-app") {
