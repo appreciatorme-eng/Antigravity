@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Sparkles, MapPin, Calendar, User, Link as LinkIcon, FileText, FolderOpen, Clock, Globe, Check } from "lucide-react";
+import { Loader2, Sparkles, MapPin, Calendar, User, UserPlus, Link as LinkIcon, FileText, FolderOpen, Clock, Globe, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { Activity, Day, ItineraryResult } from "@/types/itinerary";
 import { useToast } from "@/components/ui/toast";
@@ -77,6 +77,13 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
     const [creating, setCreating] = useState(false);
     const [tripLimit, setTripLimit] = useState<FeatureLimitSnapshot | null>(null);
 
+    // Inline client creation
+    const [showNewClient, setShowNewClient] = useState(false);
+    const [newClientName, setNewClientName] = useState("");
+    const [newClientEmail, setNewClientEmail] = useState("");
+    const [newClientPhone, setNewClientPhone] = useState("");
+    const [creatingClient, setCreatingClient] = useState(false);
+
     const fetchClients = useCallback(async () => {
         setLoadingClients(true);
 
@@ -104,6 +111,60 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
         );
         setLoadingClients(false);
     }, [supabase]);
+
+    const handleCreateClient = async () => {
+        if (!newClientName.trim() || !newClientEmail.trim()) {
+            toast({ title: "Name and email required", variant: "warning" });
+            return;
+        }
+        setCreatingClient(true);
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const response = await fetch("/api/admin/clients", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${session?.access_token}`,
+                    "x-csrf-token": "1",
+                },
+                body: JSON.stringify({
+                    full_name: newClientName.trim(),
+                    email: newClientEmail.trim(),
+                    phone: newClientPhone.trim() || undefined,
+                }),
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error || "Failed to create client");
+            }
+
+            const data = await response.json();
+            const newClient: Client = {
+                id: data.client?.id || data.id,
+                full_name: newClientName.trim(),
+                email: newClientEmail.trim(),
+            };
+
+            // Add to client list and auto-select
+            setClients((prev) => [newClient, ...prev]);
+            setClientId(newClient.id);
+            setShowNewClient(false);
+            setNewClientName("");
+            setNewClientEmail("");
+            setNewClientPhone("");
+            toast({ title: "Client created!", description: `${newClient.full_name} added and selected.`, variant: "success" });
+        } catch (error) {
+            logError("Inline client creation failed", error);
+            toast({
+                title: "Failed to create client",
+                description: error instanceof Error ? error.message : "Please try again.",
+                variant: "error",
+            });
+        } finally {
+            setCreatingClient(false);
+        }
+    };
 
     const fetchSavedItineraries = useCallback(async () => {
         setLoadingSaved(true);
@@ -190,6 +251,10 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
             setCreating(false);
             setImportMode("saved");
             setSelectedSavedId(null);
+            setShowNewClient(false);
+            setNewClientName("");
+            setNewClientEmail("");
+            setNewClientPhone("");
         }
     }, [open, fetchClients, fetchSavedItineraries]);
 
@@ -459,22 +524,83 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
                             <label className="text-sm font-medium flex items-center gap-2">
                                 <User className="w-4 h-4" /> Client
                             </label>
-                            <select
-                                className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                value={clientId}
-                                onChange={(e) => setClientId(e.target.value)}
-                            >
-                                <option value="" disabled>Select a client</option>
-                                {loadingClients ? (
-                                    <option disabled>Loading...</option>
-                                ) : (
-                                    clients.map(client => (
-                                        <option key={client.id} value={client.id}>
-                                            {client.full_name} ({client.email})
-                                        </option>
-                                    ))
-                                )}
-                            </select>
+                            <div className="flex gap-2">
+                                <select
+                                    className="flex-1 h-10 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                    value={clientId}
+                                    onChange={(e) => setClientId(e.target.value)}
+                                >
+                                    <option value="" disabled>Select a client</option>
+                                    {loadingClients ? (
+                                        <option disabled>Loading...</option>
+                                    ) : (
+                                        clients.map(client => (
+                                            <option key={client.id} value={client.id}>
+                                                {client.full_name} ({client.email})
+                                            </option>
+                                        ))
+                                    )}
+                                </select>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-10 w-10 shrink-0"
+                                    onClick={() => setShowNewClient((v) => !v)}
+                                    title="Add new client"
+                                >
+                                    <UserPlus className="w-4 h-4" />
+                                </Button>
+                            </div>
+
+                            {/* Inline quick-add client */}
+                            {showNewClient && (
+                                <div className="mt-2 p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg space-y-2">
+                                    <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">Quick Add Client</p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                        <Input
+                                            placeholder="Full name *"
+                                            value={newClientName}
+                                            onChange={(e) => setNewClientName(e.target.value)}
+                                            className="h-9 text-sm bg-white dark:bg-slate-900"
+                                        />
+                                        <Input
+                                            placeholder="Email *"
+                                            type="email"
+                                            value={newClientEmail}
+                                            onChange={(e) => setNewClientEmail(e.target.value)}
+                                            className="h-9 text-sm bg-white dark:bg-slate-900"
+                                        />
+                                    </div>
+                                    <Input
+                                        placeholder="Phone (optional)"
+                                        type="tel"
+                                        value={newClientPhone}
+                                        onChange={(e) => setNewClientPhone(e.target.value)}
+                                        className="h-9 text-sm bg-white dark:bg-slate-900"
+                                    />
+                                    <div className="flex gap-2 justify-end">
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setShowNewClient(false)}
+                                        >
+                                            Cancel
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            disabled={creatingClient || !newClientName.trim() || !newClientEmail.trim()}
+                                            onClick={handleCreateClient}
+                                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                        >
+                                            {creatingClient ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
+                                            Add & Select
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                             <div className="space-y-2">
