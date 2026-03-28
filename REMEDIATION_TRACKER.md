@@ -1,43 +1,56 @@
-# Remediation Tracker S43
-**Date**: 2026-03-23 | **Branch**: `fix/remediation-s43` | **Source**: /remediate (post-audit)
+# Remediation Tracker S44
+**Date**: 2026-03-28 | **Branch**: `fix/remediation-s44` | **Source**: QA_ISSUE_TRACKER.md (R1-R8 mobile audit)
 
 ## Legend
-- ✅ Done | 🔄 In Progress | ⏳ Pending | 📝 Documented (no code change)
+✅ Done | 🔄 In Progress | ⏳ Pending | 📝 Documented (no code change)
 
-## CRITICAL (0)
-No critical findings.
+## CRITICAL (2)
 
-## HIGH (0)
-All HIGH findings from S37 were resolved in S42.
+| ID | Finding | Action | Status |
+|----|---------|--------|--------|
+| QA-025 | `/bookings` accessible without auth | Add to middleware protected prefixes | ⏳ |
+| QA-026 | `/billing` accessible without auth | Add to middleware protected prefixes | ⏳ |
 
-## MEDIUM (2)
-| ID | Finding | File/Location | Action | Outcome | Status |
-|----|---------|---------------|--------|---------|--------|
-| M-01 | `auth_rls_initplan` on `e_invoice_settings` — `auth.uid()` evaluated per-row | Supabase RLS policy | Migration: wrap in `(select auth.uid())` | Applied via Supabase MCP, verified policy updated | ✅ |
-| M-02 | Leaked password protection disabled | Supabase Auth dashboard | Dashboard toggle — not code | Requires manual toggle in Supabase dashboard | 📝 |
+## HIGH (6)
 
-## LOW (2)
-| ID | Finding | File/Location | Action | Outcome | Status |
-|----|---------|---------------|--------|---------|--------|
-| L-01 | 156 unused indexes across tables | Supabase performance advisor | Deferred to DB optimization sprint | Index cleanup requires careful analysis | 📝 |
-| L-02 | 1 unindexed FK: `crm_contacts.assigned_to` | Supabase performance advisor | Deferred to DB optimization sprint | Low query volume on this FK | 📝 |
+| ID | Finding | Action | Status |
+|----|---------|--------|--------|
+| QA-002 | FAB Quick Quote — dead button | Remove from FAB_ACTIONS | ⏳ |
+| QA-003 | `/trips/new` → "Trip not found" | Guard id==="new", open create modal | ⏳ |
+| QA-004 | Dark mode Settings labels invisible | Fix label text color | ⏳ |
+| QA-005 | AI FAB overlaps modals | Hide when dialog open | ⏳ |
+| QA-006 | Proposal client dropdown empty in demo | Load demo clients | ⏳ |
+| QA-027 | Clients: 32 unlabeled buttons | Add aria-labels | ⏳ |
 
-## Accepted / Intentional (3)
-| ID | Finding | Reason |
-|----|---------|--------|
-| A-01 | `proposal_activities` RLS `USING (true)` | Client portal — guests interact without auth via /p/[token] |
-| A-02 | `proposal_add_ons` RLS `USING (true)` | Client portal — guests update add-on selections |
-| A-03 | `proposal_comments` RLS `WITH CHECK (true)` | Client portal — guests post comments on proposals |
+## MEDIUM (8 fixable + 3 documented)
+
+| ID | Finding | Action | Status |
+|----|---------|--------|--------|
+| QA-007 | Touch targets below 44px | Increase min-h on small buttons | ⏳ |
+| QA-008 | Demo banner viewport | 📝 Intentional — dismissible | 📝 |
+| QA-009 | Inbox dark mode contrast | Improve conversation item contrast | ⏳ |
+| QA-010 | Template list empty | 📝 Linked to QA-006 | 📝 |
+| QA-011 | AI FAB overlaps More drawer | Fixed by QA-005 | ⏳ |
+| QA-012 | Settings tabs tight | Increase gap | ⏳ |
+| QA-013 | Client modal no scroll | Add overflow-y-auto | ⏳ |
+| QA-028 | Inbox: 10 unlabeled buttons | Add aria-labels | ⏳ |
+| QA-029 | Clients: 10 empty links | Add aria-labels | ⏳ |
+| QA-030 | Social Studio slow | 📝 Defer to perf sprint | 📝 |
+| QA-031 | Heading skip h1→h3 | Fix hierarchy | ⏳ |
+
+## LOW (3 fixable + 11 documented)
+
+| ID | Finding | Action | Status |
+|----|---------|--------|--------|
+| QA-032 | Settings: 4 inputs without labels | Add aria-labels | ⏳ |
+| QA-033 | Inbox: 1 unlabeled toggle | Add aria-label | ⏳ |
+| QA-015–024, QA-034 | 11 minor/design items | 📝 Documented — defer | 📝 |
 
 ## Test Suite Status
-- Lint: ✅ 0 warnings
-- TypeCheck: ✅ 0 errors
-- Vitest: ⚠️ Skipped — rolldown native binding corruption (pre-existing, unrelated)
-- Playwright E2E: N/A — pure DB migration, no UI/API code changes
+- Lint: pending
+- Typecheck: pending
+- Vitest: pending
 
 ## Commit Log
-| Phase | Commit | Date | Summary |
-|-------|--------|------|---------|
-| Setup | faf266c6 | 2026-03-23 | Create remediation tracker s43 |
-| M-01 | (migration) | 2026-03-23 | Fix auth_rls_initplan on e_invoice_settings |
-| Final | — | 2026-03-23 | Finalize tracker, merge to main |
+| Phase | Commit | Summary |
+|-------|--------|---------|
