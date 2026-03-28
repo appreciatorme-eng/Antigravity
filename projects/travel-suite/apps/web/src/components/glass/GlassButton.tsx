@@ -37,7 +37,7 @@ export const GlassButton = forwardRef<HTMLButtonElement, GlassButtonProps>(
 
     const variantStyles = {
       primary: 'bg-primary text-white hover:bg-opacity-90 shadow-button',
-      secondary: 'bg-secondary text-white hover:bg-opacity-90 shadow-button',
+      secondary: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700',
       outline: 'border-2 border-primary text-primary hover:bg-primary hover:text-white',
       ghost: 'text-secondary hover:bg-white/40',
       danger: 'bg-red-500 text-white hover:bg-red-600 shadow-button',
