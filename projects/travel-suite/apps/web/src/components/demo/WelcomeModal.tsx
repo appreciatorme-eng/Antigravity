@@ -72,6 +72,14 @@ export default function WelcomeModal() {
 
   const handleExplore = useCallback(() => {
     handleClose();
+    // After closing, trigger the dashboard tour with a delay so the modal animates out
+    setTimeout(() => {
+      window.dispatchEvent(
+        new CustomEvent("tripbuilt:tour-page-start", {
+          detail: { tourId: "tour-dashboard", mode: "page" },
+        })
+      );
+    }, 500);
   }, [handleClose]);
 
   if (!mounted || checking || !isOpen) return null;
