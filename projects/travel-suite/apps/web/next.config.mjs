@@ -139,7 +139,7 @@ formats: ["image/avif", "image/webp"],
         ],
       },
       {
-        source: "/(.*)",
+        source: "/((?!pay/).*)",
         headers: [
           { key: "Content-Security-Policy", value: cspHeader },
           ...securityHeaders,
