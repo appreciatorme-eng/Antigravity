@@ -6,7 +6,18 @@ import { TOUR_MAP } from './tour-steps';
 import { APP_TOUR_MAP } from './app-tour-steps';
 import type { TourStepConfig, TourConfig } from './tour-types';
 import { getNextTourPage, getPageName, getTourIdForPath } from './tour-registry';
-import { TOUR_PAGE_START, TOUR_PAGE_COMPLETE, TOUR_STOP } from './tour-toggle-context';
+import { TOUR_PAGE_START, TOUR_PAGE_COMPLETE, TOUR_STOP, TOUR_NO_STEPS } from './tour-toggle-context';
+
+/** Fire a PostHog event for tour analytics (best-effort, no crash on missing posthog) */
+function fireTourEvent(name: string, props: Record<string, unknown>) {
+  try {
+    // PostHog is loaded globally via the provider — access it from window
+    const ph = (window as unknown as { posthog?: { capture: (n: string, p: Record<string, unknown>) => void } }).posthog;
+    ph?.capture(name, props);
+  } catch {
+    // PostHog not available — analytics are best-effort
+  }
+}
 
 const LS_KEY_SKIPPED = 'tripbuilt:tour_skipped';
 const SS_KEY_CONTINUE = 'tripbuilt:tour_continue';
@@ -111,7 +122,11 @@ export function useGuidedTour() {
       });
     }
 
-    if (validSteps.length === 0) return;
+    if (validSteps.length === 0) {
+      // #7: Notify context that no steps were found (shows toast)
+      window.dispatchEvent(new Event(TOUR_NO_STEPS));
+      return;
+    }
 
     // For multi-page setup tours: pre-set the continuation flag
     if (tourId === 'share') {
@@ -120,6 +135,14 @@ export function useGuidedTour() {
 
     const isFullApp = mode === 'full-app';
     const currentPath = pathname ?? '/';
+
+    // #5: Analytics — tour started
+    fireTourEvent('tour_started', {
+      page: currentPath,
+      tour_id: tourId,
+      mode,
+      total_steps: validSteps.length,
+    });
 
     const d = driver({
       showProgress: true,
@@ -147,11 +170,28 @@ export function useGuidedTour() {
             JSON.stringify({ ...existing, [tourId]: true }),
           );
           sessionStorage.removeItem(SS_KEY_CONTINUE);
+
+          // #5: Analytics — tour skipped
+          fireTourEvent('tour_skipped', {
+            page: currentPath,
+            tour_id: tourId,
+            step_skipped_at: activeIndex ?? 0,
+            total_steps: validSteps.length,
+          });
         }
 
         d.destroy();
 
         if (isLastStep) {
+          // #5: Analytics — tour completed
+          fireTourEvent('tour_completed', {
+            page: currentPath,
+            tour_id: tourId,
+            steps_viewed: validSteps.length,
+            total_steps: validSteps.length,
+            mode,
+          });
+
           if (isFullApp) {
             // Full-app mode: navigate to next page
             const nextPage = getNextTourPage(currentPath);
@@ -201,11 +241,23 @@ export function useGuidedTour() {
     });
     observer.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['class'] });
 
+    // #4: Escape key syncs toggle state
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && driverRef.current) {
+        driverRef.current.destroy();
+        window.dispatchEvent(new Event(TOUR_STOP));
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+
     requestAnimationFrame(() => {
       d.drive();
     });
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      document.removeEventListener('keydown', handleEscape);
+    };
   }, [pathname, router]);
 
   // ---------------------------------------------------------------------------

@@ -21,6 +21,7 @@ import { useUserTimezone } from '@/hooks/useUserTimezone';
 import { Badge } from '@/components/ui/badge';
 import { SetupGuide } from '@/components/dashboard/SetupGuide';
 import { GuidedTour } from '@/components/tour/GuidedTour';
+import { resetAllTours } from '@/lib/tour/tour-toggle-context';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { logError } from '@/lib/observability/logger';
 import { OrganizationTab } from './_components/OrganizationTab';
@@ -659,6 +660,31 @@ export default function SettingsPage() {
                                     saveWorkflowRules={() => void saveWorkflowRules()}
                                 />
                             )}
+                        </GlassCard>
+
+                        {/* Guided Tours — Reset */}
+                        <GlassCard className="mt-6 p-5">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                                        <PlayCircle className="w-4 h-4 text-primary" />
+                                        Guided Tours
+                                    </h3>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                                        Reset all page tours to experience them again from scratch.
+                                    </p>
+                                </div>
+                                <GlassButton
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                        resetAllTours();
+                                        toast({ title: 'Tours reset', description: 'All guided tours have been reset. Visit any page to see them again.', variant: 'success' });
+                                    }}
+                                >
+                                    Reset Tours
+                                </GlassButton>
+                            </div>
                         </GlassCard>
                     </main>
                 </div>

@@ -186,7 +186,7 @@ export default function Sidebar({ className }: SidebarProps) {
     const pathname = usePathname();
     const supabase = createClient();
     const counts = useNavCounts();
-    const { isTourActive, startPageTour, stopTour, hasCurrentPageTour } = useTourToggle();
+    const { isTourActive, startPageTour, stopTour, hasCurrentPageTour, progress } = useTourToggle();
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isMoreOpen, setIsMoreOpen] = useState(
         () =>
@@ -397,7 +397,14 @@ export default function Sidebar({ className }: SidebarProps) {
                     </div>
                     {!isCollapsed && (
                         <>
-                            <span className="text-xs font-medium flex-1 text-left">Page Tour</span>
+                            <div className="flex-1 text-left">
+                                <span className="text-xs font-medium block">Page Tour</span>
+                                {progress.total > 0 && (
+                                    <span className="text-[10px] text-slate-500">
+                                        {progress.visited}/{progress.total} explored
+                                    </span>
+                                )}
+                            </div>
                             <div className={cn(
                                 "w-7 h-4 rounded-full transition-colors flex items-center px-0.5",
                                 isTourActive ? "bg-primary" : "bg-slate-600"

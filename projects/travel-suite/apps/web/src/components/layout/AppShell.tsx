@@ -8,7 +8,7 @@ import CommandPalette from "./CommandPalette";
 import TourAssistantChat from "@/components/assistant/TourAssistantChat";
 import DemoTour from "@/components/demo/DemoTour";
 import { TourToggleProvider } from "@/lib/tour/tour-toggle-context";
-import { TourCompletePrompt } from "@/components/tour/TourCompletePrompt";
+import { ConnectedTourCompletePrompt } from "@/components/tour/ConnectedTourCompletePrompt";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -78,13 +78,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 <CommandPalette />
                 <TourAssistantChat />
                 <DemoTour />
-                <TourCompletePrompt
-                    onTourApp={() => {
-                        try { sessionStorage.setItem("tripbuilt:tour_mode", "full-app"); } catch {}
-                        window.location.href = "/?tour=tour-dashboard";
-                    }}
-                    onDismiss={() => {}}
-                />
+                <ConnectedTourCompletePrompt />
             </div>
         </TourToggleProvider>
     );
