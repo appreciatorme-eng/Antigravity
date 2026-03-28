@@ -20,6 +20,7 @@ import {
   FileText,
 } from "lucide-react";
 import { useDemoFetch } from "@/lib/demo/use-demo-fetch";
+import { GuidedTour } from '@/components/tour/GuidedTour';
 
 type CommandTab = "command" | "departures" | "revenue";
 
@@ -246,6 +247,7 @@ export default function AdminOperationsPage() {
 
   return (
     <div className="space-y-6 pb-20">
+      <GuidedTour />
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div>
           <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-[10px] uppercase tracking-[0.16em] font-black text-primary">
@@ -317,7 +319,7 @@ export default function AdminOperationsPage() {
         </div>
       </GlassCard>
 
-      <div className="rounded-2xl border border-gray-200 bg-white p-2 grid grid-cols-1 md:grid-cols-3 gap-2">
+      <div className="rounded-2xl border border-gray-200 bg-white p-2 grid grid-cols-1 md:grid-cols-3 gap-2" data-tour="ops-tabs">
         {TABS.map((tab) => (
           <button
             key={tab.id}
@@ -374,7 +376,7 @@ export default function AdminOperationsPage() {
             </GlassCard>
           ) : null}
 
-          <GlassCard padding="lg">
+          <GlassCard padding="lg" data-tour="ops-alerts">
             <div className="flex items-center gap-2 mb-4">
               <BellRing className="w-4 h-4 text-primary" />
               <h2 className="text-lg font-serif text-secondary dark:text-white">Priority Queue</h2>
@@ -428,7 +430,7 @@ export default function AdminOperationsPage() {
       ) : null}
 
       {activeTab === "departures" ? (
-        <GlassCard padding="lg">
+        <GlassCard padding="lg" data-tour="ops-departures">
           <div className="flex items-center gap-2 mb-4">
             <CalendarClock className="w-4 h-4 text-primary" />
             <h2 className="text-lg font-serif text-secondary dark:text-white">Departures Board</h2>

@@ -26,6 +26,7 @@ import { GlassTextarea } from "@/components/glass/GlassInput";
 import { GlassModal, GlassConfirmModal } from "@/components/glass/GlassModal";
 import { GlassTableSkeleton } from "@/components/glass/GlassSkeleton";
 import { logError } from "@/lib/observability/logger";
+import { GuidedTour } from '@/components/tour/GuidedTour';
 
 type ExternalDriver = Database["public"]["Tables"]["external_drivers"]["Row"];
 type NewDriver = Database["public"]["Tables"]["external_drivers"]["Insert"];
@@ -435,6 +436,7 @@ export default function DriversPage() {
 
     return (
         <div className="space-y-6">
+            <GuidedTour />
             {/* Header */}
             <div className="flex items-center justify-between flex-wrap gap-4">
                 <div>
@@ -446,6 +448,7 @@ export default function DriversPage() {
                 </div>
                 <GlassButton
                     variant="primary"
+                    data-tour="add-driver-btn"
                     onClick={() => {
                         resetForm();
                         setEditingDriver(null);
@@ -484,10 +487,11 @@ export default function DriversPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 fullWidth={false}
                 className="max-w-md"
+                data-tour="driver-search"
             />
 
             {/* Drivers Table */}
-            <GlassCard padding="none">
+            <GlassCard padding="none" data-tour="driver-list">
                 {loading ? (
                     <GlassTableSkeleton rows={5} />
                 ) : filteredDrivers.length === 0 ? (

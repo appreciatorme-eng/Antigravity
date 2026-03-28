@@ -22,6 +22,7 @@ import { GlassModal } from "@/components/glass/GlassModal";
 import { ErrorSection } from "@/components/ui/ErrorSection";
 import { useToast } from "@/components/ui/toast";
 import { TIERS, type TierName } from "@/lib/billing/tiers";
+import { GuidedTour } from '@/components/tour/GuidedTour';
 
 type BillingPlanId = "free" | "pro_monthly" | "pro_annual" | "enterprise";
 
@@ -406,6 +407,7 @@ export function BillingPageClient() {
   return (
     <main className="min-h-[100dvh] bg-[linear-gradient(135deg,#0a1628_0%,#0d1f3c_50%,#0a1628_100%)]">
       <div className="mx-auto max-w-6xl px-4 py-16">
+        <GuidedTour />
         <motion.div
           className="mb-10 text-center"
           initial={{ opacity: 0, y: 20 }}
@@ -427,7 +429,7 @@ export function BillingPageClient() {
         </motion.div>
 
         <div className="mb-10 grid gap-4 md:grid-cols-2">
-          <GlassCard className="border-white/10 bg-white/8">
+          <GlassCard data-tour="billing-plan" className="border-white/10 bg-white/8">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#00d084]">
@@ -457,7 +459,7 @@ export function BillingPageClient() {
             )}
           </GlassCard>
 
-          <GlassCard className="border-white/10 bg-white/8">
+          <GlassCard data-tour="billing-usage" className="border-white/10 bg-white/8">
             <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#00d084]">
               Plan usage
             </p>

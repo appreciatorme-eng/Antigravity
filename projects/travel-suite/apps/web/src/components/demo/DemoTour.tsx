@@ -2,6 +2,8 @@
 
 import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { getTourIdForPath } from "@/lib/tour/tour-registry";
+import { TOUR_PAGE_START } from "@/lib/tour/tour-toggle-context";
 
 /** Custom event name used to trigger the tour from anywhere (e.g. sidebar button) */
 export const TOUR_START_EVENT = "tripbuilt:start-tour";
@@ -12,16 +14,34 @@ export default function DemoTour() {
 
   useEffect(() => {
     const handleStartTour = () => {
-      // If already on admin dashboard, add tour param
-      if (pathname === "/admin" || pathname === "/") {
-        // Use replace to avoid pushing duplicate history entries
-        router.replace("/admin?tour=tour-dashboard");
-        // Force re-trigger by dispatching a custom event after a tick
-        setTimeout(() => {
-          window.dispatchEvent(new Event("tripbuilt:tour-rerun"));
-        }, 100);
+      const currentPath = pathname ?? "/";
+      const tourId = getTourIdForPath(currentPath);
+
+      if (tourId) {
+        // Current page has a tour — start it in page mode
+        try {
+          sessionStorage.setItem("tripbuilt:tour_mode", "page");
+        } catch { /* noop */ }
+
+        window.dispatchEvent(
+          new CustomEvent(TOUR_PAGE_START, {
+            detail: { tourId, mode: "page" },
+          })
+        );
       } else {
-        router.push("/admin?tour=tour-dashboard");
+        // No tour for current page — start full-app tour from dashboard
+        try {
+          sessionStorage.setItem("tripbuilt:tour_mode", "full-app");
+        } catch { /* noop */ }
+
+        if (currentPath === "/admin" || currentPath === "/") {
+          router.replace("/admin?tour=tour-dashboard");
+          setTimeout(() => {
+            window.dispatchEvent(new Event("tripbuilt:tour-rerun"));
+          }, 100);
+        } else {
+          router.push("/admin?tour=tour-dashboard");
+        }
       }
     };
 
@@ -29,5 +49,5 @@ export default function DemoTour() {
     return () => window.removeEventListener(TOUR_START_EVENT, handleStartTour);
   }, [router, pathname]);
 
-  return null; // No visible UI — driver.js handles everything
+  return null;
 }

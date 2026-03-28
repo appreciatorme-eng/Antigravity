@@ -20,6 +20,7 @@ import {
   type SmartUpsellData,
   type WinLossData,
 } from "./shared";
+import { GuidedTour } from '@/components/tour/GuidedTour';
 
 export default function AdminInsightsPage() {
   const supabase = useMemo(() => createClient(), []);
@@ -174,6 +175,8 @@ export default function AdminInsightsPage() {
 
   return (
     <div className="space-y-6 pb-16">
+      <GuidedTour />
+      <div data-tour="insights-hero">
       <InsightsHero
         loading={loading}
         refreshing={refreshing}
@@ -184,7 +187,11 @@ export default function AdminInsightsPage() {
         totalActions={totalActions}
         conversionRate={conversionRate}
       />
+      </div>
+      <div data-tour="insights-action-queue">
       <ActionQueuePanel loading={loading} actionQueue={actionQueue} totalActions={totalActions} />
+      </div>
+      <div data-tour="insights-revenue">
       <RevenueInsightsPanels
         loading={loading}
         revenue30d={revenue30d}
@@ -194,6 +201,7 @@ export default function AdminInsightsPage() {
         marginLeak={marginLeak}
         totalDiscountGiven={totalDiscountGiven}
       />
+      </div>
       <WinLossPanel loading={loading} winPct={winPct} winLoss={winLoss} />
       <UpsellAndRequotePanels loading={loading} smartUpsell={smartUpsell} autoRequote={autoRequote} />
     </div>

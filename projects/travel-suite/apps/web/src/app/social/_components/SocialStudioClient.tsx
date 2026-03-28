@@ -18,6 +18,7 @@ import { ToolbarActions, type ToolbarAction } from "./ToolbarActions";
 import { TemplateGallery } from "./TemplateGallery";
 
 import { PlatformStatusBar } from "./PlatformStatusBar";
+import { GuidedTour } from '@/components/tour/GuidedTour';
 import { CaptionEngine, CaptionTone, CaptionPlatform } from "./CaptionEngine";
 
 const MagicPrompter = dynamic(() => import("./MagicPrompter").then((mod) => mod.MagicPrompter));
@@ -234,6 +235,7 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
 
     return (
         <div className="space-y-5 animate-fade-in-up pb-20 mt-4">
+            <GuidedTour />
             {/* Header */}
             <div className="flex items-center justify-between gap-4 flex-wrap bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-2xl shadow-sm">
                 <div>
@@ -290,16 +292,20 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
             <PlatformStatusBar onConnectionsLoaded={setConnections} />
 
             {/* Toolbar Actions (replaces 9 tabs) */}
+            <div data-tour="social-publish">
             <ToolbarActions onActionSelect={handleActionSelect} />
+            </div>
 
             {/* Content Bar (replaces sidebar form) — TemplateDataForRender is a superset
                 of ContentBar's local TemplateData; cast through unknown to bridge the gap */}
+            <div data-tour="social-composer">
             <ContentBar
                 templateData={templateData as unknown as React.ComponentProps<typeof ContentBar>["templateData"]}
                 setTemplateData={setTemplateData as unknown as React.ComponentProps<typeof ContentBar>["setTemplateData"]}
                 orgPrimaryColor={initialOrgData.primary_color}
                 onImageUpload={handleImageUpload}
             />
+            </div>
 
             {/* Background / Gallery Picker — conditional on multi-image */}
             {isMultiImage ? (
@@ -323,12 +329,14 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
             )}
 
             {/* Template Gallery (full width, 3 cols) */}
+            <div data-tour="social-templates">
             <TemplateGallery
                 templateData={templateData}
                 connections={connections}
                 userTier={initialOrgData.subscription_tier ?? "free"}
                 onTemplateSelect={handleTemplateSelect}
             />
+            </div>
 
             {/* Canvas Mode (full-screen overlay) */}
             <AnimatePresence>

@@ -12,8 +12,8 @@ import {
     User as UserIcon,
     Compass,
 } from "lucide-react";
-import { TOUR_START_EVENT } from "@/components/demo/DemoTour";
 import { getPrimaryItems, getSecondaryGrouped, type NavItemConfig } from "@/lib/nav/nav-config";
+import { useTourToggle } from "@/lib/tour/tour-toggle-context";
 import { resolveIcon } from "@/lib/nav/icon-map";
 
 const SIDEBAR_PROFILE_SELECT = "full_name, role";
@@ -186,6 +186,7 @@ export default function Sidebar({ className }: SidebarProps) {
     const pathname = usePathname();
     const supabase = createClient();
     const counts = useNavCounts();
+    const { isTourActive, startPageTour, stopTour, hasCurrentPageTour } = useTourToggle();
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isMoreOpen, setIsMoreOpen] = useState(
         () =>
@@ -371,22 +372,47 @@ export default function Sidebar({ className }: SidebarProps) {
 
             {/* ── Footer: Tour + User Profile ── */}
             <div className="p-3 border-t border-white/10 bg-slate-900/50 backdrop-blur-sm shrink-0">
-                {/* Take a Tour button */}
+                {/* Page Tour toggle */}
                 <button
-                    onClick={() => window.dispatchEvent(new CustomEvent(TOUR_START_EVENT))}
+                    onClick={() => isTourActive ? stopTour() : startPageTour()}
+                    disabled={!hasCurrentPageTour && !isTourActive}
                     className={cn(
-                        "flex items-center gap-3 px-3 py-2 rounded-xl transition-all w-full mb-2",
-                        "text-primary/80 hover:text-primary hover:bg-primary/10 group",
-                        isCollapsed ? "justify-center" : ""
+                        "flex items-center gap-3 px-3 py-2 rounded-xl transition-all w-full mb-2 group",
+                        isCollapsed ? "justify-center" : "",
+                        isTourActive
+                            ? "text-primary bg-primary/10 border border-primary/20"
+                            : hasCurrentPageTour
+                                ? "text-primary/80 hover:text-primary hover:bg-primary/10 border border-transparent"
+                                : "text-slate-500/50 border border-transparent cursor-not-allowed"
                     )}
                 >
-                    <Compass className="w-4 h-4 transition-transform group-hover:rotate-45" />
+                    <div className="relative shrink-0">
+                        <Compass className={cn(
+                            "w-4 h-4 transition-transform",
+                            isTourActive ? "animate-[spin_4s_linear_infinite] text-primary" : "group-hover:rotate-45"
+                        )} />
+                        {isCollapsed && isTourActive && (
+                            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-primary" />
+                        )}
+                    </div>
                     {!isCollapsed && (
-                        <span className="text-xs font-medium">Take a Tour</span>
+                        <>
+                            <span className="text-xs font-medium flex-1 text-left">Page Tour</span>
+                            <div className={cn(
+                                "w-7 h-4 rounded-full transition-colors flex items-center px-0.5",
+                                isTourActive ? "bg-primary" : "bg-slate-600"
+                            )}>
+                                <motion.div
+                                    animate={{ x: isTourActive ? 12 : 0 }}
+                                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                                    className="w-3 h-3 rounded-full bg-white shadow-sm"
+                                />
+                            </div>
+                        </>
                     )}
                     {isCollapsed && (
                         <div className="absolute left-[calc(100%+8px)] top-1/2 -translate-y-1/2 px-2 py-1 bg-slate-900 border border-slate-700/60 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 shadow-xl">
-                            Take a Tour
+                            Page Tour {isTourActive ? "(On)" : "(Off)"}
                         </div>
                     )}
                 </button>

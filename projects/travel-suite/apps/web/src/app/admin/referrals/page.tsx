@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { GuidedTour } from '@/components/tour/GuidedTour';
 
 const COMMISSION_RATE = 10;
 const COMMISSION_MONTHS = 12;
@@ -72,6 +73,7 @@ export default function ReferralsPage() {
 
     return (
         <div className="max-w-5xl mx-auto space-y-8 pb-12">
+            <GuidedTour />
             {/* Hero */}
             <motion.div
                 className="text-center"
@@ -93,7 +95,7 @@ export default function ReferralsPage() {
             </motion.div>
 
             {/* Stats cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div data-tour="referral-stats" className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <GlassCard className="text-center">
                     <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-3">
                         <Users className="w-6 h-6 text-primary" />
@@ -126,7 +128,7 @@ export default function ReferralsPage() {
             </div>
 
             {/* Share link card */}
-            <GlassCard>
+            <GlassCard data-tour="referral-code">
                 <div className="flex items-center gap-3 mb-4">
                     <HeartHandshake className="w-5 h-5 text-primary" />
                     <div>
@@ -169,7 +171,7 @@ export default function ReferralsPage() {
             </GlassCard>
 
             {/* How it works */}
-            <div>
+            <div data-tour="referral-how-it-works">
                 <h2 className="text-lg font-bold text-secondary dark:text-white mb-4 flex items-center gap-2">
                     <Percent className="w-5 h-5 text-primary" />
                     How it works

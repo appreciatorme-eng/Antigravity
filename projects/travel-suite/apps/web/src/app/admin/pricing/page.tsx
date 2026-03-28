@@ -21,6 +21,7 @@ import { TransactionLedger } from "@/features/admin/pricing/components/Transacti
 import { TransactionDetailPanel } from "@/features/admin/pricing/components/TransactionDetailPanel";
 import SlideOutPanel from "@/components/god-mode/SlideOutPanel";
 import type { TransactionItem } from "@/features/admin/pricing/types";
+import { GuidedTour } from '@/components/tour/GuidedTour';
 
 const MONTH_NAMES = [
   "January","February","March","April","May","June",
@@ -96,6 +97,7 @@ export default function PricingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        <GuidedTour />
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -118,7 +120,7 @@ export default function PricingPage() {
 
           <div className="flex items-center gap-2">
             {/* Month Picker */}
-            <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-xl px-1 py-1 shadow-sm">
+            <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-xl px-1 py-1 shadow-sm" data-tour="pricing-month-nav">
               <button
                 onClick={handlePrevMonth}
                 className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"
@@ -160,11 +162,13 @@ export default function PricingPage() {
 
         {/* KPI Cards */}
         {dashboard.data && (
-          <PricingKpiCards kpis={dashboard.data.kpis} />
+          <div data-tour="pricing-kpi">
+            <PricingKpiCards kpis={dashboard.data.kpis} />
+          </div>
         )}
 
         {/* Tabs */}
-        <div className="flex gap-1 bg-white/80 border border-gray-200/60 rounded-xl p-1 w-fit shadow-sm">
+        <div className="flex gap-1 bg-white/80 border border-gray-200/60 rounded-xl p-1 w-fit shadow-sm" data-tour="pricing-tabs">
           {TABS.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;

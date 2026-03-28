@@ -30,6 +30,7 @@ import { formatINR, formatINRShort } from "@/lib/india/formats";
 import { useAdminAnalytics } from "../analytics/useAdminAnalytics";
 import { RANGE_TO_MONTHS, type DashboardRange } from "@/lib/analytics/adapters";
 import { useAdminRevenue } from "./useAdminRevenue";
+import { GuidedTour } from '@/components/tour/GuidedTour';
 
 const RANGE_OPTIONS: Array<{ value: DashboardRange; label: string }> = [
   { value: "1y", label: "1Y" },
@@ -184,6 +185,7 @@ export function AdminRevenueView() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
     >
+      <GuidedTour />
       {/* Header */}
       <motion.div
         className="flex flex-wrap items-end justify-between gap-4"
@@ -304,6 +306,7 @@ export function AdminRevenueView() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.28, delay: 0.08 }}
+        data-tour="revenue-stats"
       >
         {kpis.map((item) => (
           <Link
@@ -387,6 +390,7 @@ export function AdminRevenueView() {
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.28, delay: 0.12 }}
+        data-tour="revenue-chart"
       >
         <GlassCard padding="lg">
           <div className="mb-5 flex items-center justify-between gap-3 flex-wrap">

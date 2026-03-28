@@ -25,6 +25,7 @@ import {
     SPECIALTY_OPTIONS,
 } from "@/lib/marketplace-options";
 import { useAnalytics } from "@/lib/analytics/events";
+import { GuidedTour } from '@/components/tour/GuidedTour';
 
 interface MarketplaceProfile {
     id: string;
@@ -135,6 +136,7 @@ export default function MarketplacePage() {
 
     return (
         <div className="min-h-screen pb-24 lg:pb-12">
+            <GuidedTour />
             {/* 1. HERO SECTION (Immersive & Premium) */}
             <div className="relative rounded-3xl overflow-hidden bg-slate-950 px-6 py-16 lg:px-12 lg:py-24 mx-4 mt-4 lg:mx-8 mb-8 shadow-2xl isolate">
                 <div className="absolute inset-0 bg-gradient-to-tr from-slate-950 via-slate-900 to-slate-800 pointer-events-none" />
@@ -187,7 +189,7 @@ export default function MarketplacePage() {
                 
                 {/* 2a. Sidebar Filters */}
                 <div className="w-full xl:w-72 flex-shrink-0">
-                    <div className="sticky top-24 p-6 rounded-3xl bg-white dark:bg-slate-900/50 shadow-xl shadow-slate-200/40 dark:shadow-none border border-slate-200 dark:border-slate-800 space-y-6">
+                    <div data-tour="marketplace-filters" className="sticky top-24 p-6 rounded-3xl bg-white dark:bg-slate-900/50 shadow-xl shadow-slate-200/40 dark:shadow-none border border-slate-200 dark:border-slate-800 space-y-6">
                         <div className="flex items-center gap-2 mb-2">
                             <Filter size={18} className="text-blue-500 dark:text-blue-400" />
                             <h3 className="font-bold text-slate-900 dark:text-white">Refine Search</h3>
@@ -198,11 +200,12 @@ export default function MarketplacePage() {
                                 <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Search</label>
                                 <div className="relative">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                    <input 
-                                        type="text" 
-                                        placeholder="Operator name..." 
+                                    <input
+                                        type="text"
+                                        placeholder="Operator name..."
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
+                                        data-tour="marketplace-search"
                                         className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl pl-9 pr-4 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-shadow"
                                     />
                                 </div>
@@ -284,7 +287,7 @@ export default function MarketplacePage() {
                 </div>
 
                 {/* 2b. Partner Grid */}
-                <div className="flex-1">
+                <div className="flex-1" data-tour="marketplace-listings">
                     {loading ? (
                         <div className="flex flex-col items-center justify-center py-32 space-y-6">
                             <div className="relative w-16 h-16 flex items-center justify-center">

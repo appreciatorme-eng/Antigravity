@@ -14,6 +14,7 @@ import { StatsHeader } from "./_components/StatsHeader";
 import { CategoryFilter } from "./_components/CategoryFilter";
 import { AddOnsGrid } from "./_components/AddOnsGrid";
 import { AddOnFormModal } from "./_components/AddOnFormModal";
+import { GuidedTour } from '@/components/tour/GuidedTour';
 
 /**
  * Add-ons Management Page (Upsell Engine)
@@ -309,6 +310,7 @@ export default function AddOnsPage() {
 
   return (
     <div className="space-y-8">
+      <GuidedTour />
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center">
@@ -327,8 +329,11 @@ export default function AddOnsPage() {
         </div>
       </div>
 
+      <div data-tour="addons-stats">
       <StatsHeader stats={stats} />
+      </div>
 
+      <div data-tour="addons-categories">
       <CategoryFilter
         categories={categories}
         selectedCategory={selectedCategory}
@@ -337,7 +342,9 @@ export default function AddOnsPage() {
         onSearchChange={setSearchQuery}
         onCreateClick={openCreateModal}
       />
+      </div>
 
+      <div data-tour="addons-grid">
       <AddOnsGrid
         addOns={filteredAddOns}
         searchQuery={searchQuery}
@@ -346,6 +353,7 @@ export default function AddOnsPage() {
         onDeleteClick={openDeleteConfirm}
         onToggleActive={toggleActive}
       />
+      </div>
 
       <AddOnFormModal
         isOpen={modalOpen}
