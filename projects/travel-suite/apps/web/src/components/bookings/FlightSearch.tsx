@@ -196,8 +196,9 @@ export function FlightSearch({
                     </p>
                 </div>
 
-                <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-end">
-                    <div className="xl:col-span-4">
+                {/* Row 1: From / Swap / To */}
+                <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-3 items-end">
+                    <div>
                         <LocationAutocomplete
                             label="From"
                             placeholder="City or IATA (e.g. Chennai / MAA)"
@@ -212,7 +213,18 @@ export function FlightSearch({
                         />
                     </div>
 
-                    <div className="xl:col-span-4">
+                    <div className="flex justify-center md:pt-6">
+                        <button
+                            type="button"
+                            onClick={handleSwap}
+                            className="h-12 w-12 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-500 hover:text-emerald-600 hover:border-emerald-300 transition-colors flex items-center justify-center"
+                            aria-label="Swap origin and destination"
+                        >
+                            <ArrowRightLeft className="w-4 h-4" />
+                        </button>
+                    </div>
+
+                    <div>
                         <LocationAutocomplete
                             label="To"
                             placeholder="City or IATA (e.g. Singapore / SIN)"
@@ -226,54 +238,45 @@ export function FlightSearch({
                             onSelectSuggestion={setDestinationSuggestion}
                         />
                     </div>
+                </div>
 
-                    <div className="xl:col-span-1 flex justify-center xl:justify-start">
-                        <button
-                            type="button"
-                            onClick={handleSwap}
-                            className="h-12 w-12 rounded-xl border border-slate-200 bg-white text-slate-500 hover:text-emerald-600 hover:border-emerald-300 transition-colors flex items-center justify-center"
-                            aria-label="Swap origin and destination"
-                        >
-                            <ArrowRightLeft className="w-4 h-4" />
-                        </button>
-                    </div>
+                {/* Row 2: Dates + Adults + Search */}
+                <div className={`grid gap-3 items-end ${tripType === "round_trip" ? "grid-cols-2 md:grid-cols-4" : "grid-cols-2 md:grid-cols-3"}`}>
+                    <label className="space-y-1.5">
+                        <span className="text-[11px] uppercase tracking-[0.14em] font-bold text-slate-500">Depart</span>
+                        <span className="relative block">
+                            <input
+                                type="date"
+                                value={departureDate}
+                                onChange={(event) => setDepartureDate(event.target.value)}
+                                className="h-12 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 pr-9 text-sm outline-none focus:ring-2 focus:ring-emerald-400"
+                            />
+                            <CalendarDays className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </span>
+                    </label>
 
-                    <div className="xl:col-span-3 grid grid-cols-1 md:grid-cols-3 xl:grid-cols-3 gap-3">
-                        <label className="space-y-2 md:col-span-1 xl:col-span-1">
-                            <span className="text-[11px] uppercase tracking-[0.14em] font-bold text-slate-500">Depart</span>
+                    {tripType === "round_trip" && (
+                        <label className="space-y-1.5">
+                            <span className="text-[11px] uppercase tracking-[0.14em] font-bold text-slate-500">Return</span>
                             <span className="relative block">
                                 <input
                                     type="date"
-                                    value={departureDate}
-                                    onChange={(event) => setDepartureDate(event.target.value)}
-                                    className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3 pr-9 text-sm outline-none focus:ring-2 focus:ring-emerald-400"
+                                    value={returnDate}
+                                    onChange={(event) => setReturnDate(event.target.value)}
+                                    className="h-12 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 pr-9 text-sm outline-none focus:ring-2 focus:ring-emerald-400"
                                 />
-                                <CalendarDays className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                                <CalendarDays className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                             </span>
                         </label>
+                    )}
 
-                        {tripType === "round_trip" && (
-                            <label className="space-y-2 md:col-span-1 xl:col-span-1">
-                                <span className="text-[11px] uppercase tracking-[0.14em] font-bold text-slate-500">Return</span>
-                                <span className="relative block">
-                                    <input
-                                        type="date"
-                                        value={returnDate}
-                                        onChange={(event) => setReturnDate(event.target.value)}
-                                        className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3 pr-9 text-sm outline-none focus:ring-2 focus:ring-emerald-400"
-                                    />
-                                    <CalendarDays className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
-                                </span>
-                            </label>
-                        )}
-
-                        <label className="space-y-2 md:col-span-1 xl:col-span-1">
-                            <span className="text-[11px] uppercase tracking-[0.14em] font-bold text-slate-500">Adults</span>
-                            <span className="relative block">
-                                <select
-                                    value={adults}
-                                    onChange={(event) => setAdults(Number.parseInt(event.target.value, 10) || 1)}
-                                    className="h-12 w-full rounded-xl border border-slate-200 bg-white px-3 pr-9 text-sm outline-none focus:ring-2 focus:ring-emerald-400 appearance-none"
+                    <label className="space-y-1.5">
+                        <span className="text-[11px] uppercase tracking-[0.14em] font-bold text-slate-500">Adults</span>
+                        <span className="relative block">
+                            <select
+                                value={adults}
+                                onChange={(event) => setAdults(Number.parseInt(event.target.value, 10) || 1)}
+                                    className="h-12 w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 pr-9 text-sm outline-none focus:ring-2 focus:ring-emerald-400 appearance-none"
                                 >
                                     {[1, 2, 3, 4, 5, 6].map((count) => (
                                         <option key={count} value={count}>
@@ -281,21 +284,21 @@ export function FlightSearch({
                                         </option>
                                     ))}
                                 </select>
-                                <Users className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                                <Users className="w-4 h-4 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                             </span>
                         </label>
-                    </div>
+                </div>
 
-                    <div className="xl:col-span-12 flex justify-end">
-                        <Button
-                            onClick={handleSearch}
-                            disabled={loading}
-                            className="h-12 px-8 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-semibold shadow-lg shadow-emerald-500/20"
-                        >
-                            {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Search className="w-4 h-4 mr-2" />}
-                            Search Flights
-                        </Button>
-                    </div>
+                {/* Row 3: Search button */}
+                <div className="flex justify-end">
+                    <Button
+                        onClick={handleSearch}
+                        disabled={loading}
+                        className="h-12 px-8 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-semibold shadow-lg shadow-emerald-500/20"
+                    >
+                        {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Search className="w-4 h-4 mr-2" />}
+                        Search Flights
+                    </Button>
                 </div>
             </div>
 
