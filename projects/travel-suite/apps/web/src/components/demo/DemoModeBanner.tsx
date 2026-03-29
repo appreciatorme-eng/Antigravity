@@ -14,6 +14,7 @@ const DISMISS_KEY = "tripbuilt:demo_banner_dismissed";
 export default function DemoModeBanner() {
   const { isDemoMode, toggleDemoMode, mounted } = useDemoMode();
   const [dismissed, setDismissed] = useState(false);
+  const [onboarded, setOnboarded] = useState(false);
 
   useEffect(() => {
     try {
@@ -25,9 +26,19 @@ export default function DemoModeBanner() {
     } catch {
       // sessionStorage unavailable
     }
+    try {
+      // Hide banner while WelcomeModal is showing (it already communicates
+      // that sample data is loaded). Once the user dismisses the modal it
+      // sets tripbuilt:onboarded → "true", and the banner becomes visible.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setOnboarded(localStorage.getItem("tripbuilt:onboarded") === "true");
+    } catch {
+      // localStorage unavailable
+    }
   }, []);
 
-  if (!mounted || !isDemoMode || dismissed) return null;
+  // Don't render when WelcomeModal is still showing (user hasn't onboarded yet)
+  if (!mounted || !isDemoMode || dismissed || !onboarded) return null;
 
   const handleDismiss = () => {
     setDismissed(true);

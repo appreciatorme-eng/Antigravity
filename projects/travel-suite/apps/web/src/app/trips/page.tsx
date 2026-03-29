@@ -60,7 +60,7 @@ export default function TripsPage() {
 
     const departingSoonRef = useRef<HTMLDivElement>(null);
 
-    const { data: rawTrips, isLoading: loading, refetch: fetchTrips } = useTrips(statusFilter, searchQuery);
+    const { data: rawTrips, isPending: loading, refetch: fetchTrips } = useTrips(statusFilter, searchQuery);
     const trips: EnrichedTrip[] = useMemo(() => rawTrips || [], [rawTrips]);
 
     const processedTrips = useMemo(() => {

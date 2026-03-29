@@ -21,6 +21,7 @@ export function useTrips(statusFilter: string = 'all', searchQuery: string = '')
 
     return useQuery({
         queryKey: [...tripsKeys.lists(), { statusFilter, searchQuery, mode: isDemoMode ? 'demo' : 'live' }],
+        staleTime: 30_000,
         queryFn: async () => {
             if (isDemoMode) {
                 let results = DEMO_TRIPS;
