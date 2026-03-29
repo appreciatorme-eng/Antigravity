@@ -14,6 +14,8 @@ import {
     ClipboardList,
     AlertCircle,
     CheckCircle2,
+    Eye,
+    EyeOff,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
@@ -44,9 +46,31 @@ function AuthPageInner() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [message, setMessage] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
+    const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
+
+    const validateEmail = (value: string): string | undefined => {
+        if (!value) return "Please enter a valid email";
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(value)) return "Please enter a valid email";
+        return undefined;
+    };
+
+    const handleEmailBlur = () => {
+        const emailError = validateEmail(email);
+        setFieldErrors((prev) => ({ ...prev, email: emailError }));
+    };
 
     const handleAuth = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        const emailError = validateEmail(email);
+        const passwordError = !password ? "Password is required" : undefined;
+        const newFieldErrors = { email: emailError, password: passwordError };
+        setFieldErrors(newFieldErrors);
+
+        if (emailError || passwordError) return;
+
         setLoading(true);
         setError("");
         setMessage("");
@@ -236,6 +260,7 @@ function AuthPageInner() {
                                     setMode(m);
                                     setError("");
                                     setMessage("");
+                                    setFieldErrors({});
                                 }}
                                 className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
                                     mode === m
@@ -286,12 +311,22 @@ function AuthPageInner() {
                                     id="auth-email"
                                     type="email"
                                     value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
+                                    onChange={(e) => {
+                                        setEmail(e.target.value);
+                                        if (fieldErrors.email) {
+                                            setFieldErrors((prev) => ({ ...prev, email: undefined }));
+                                        }
+                                    }}
+                                    onBlur={handleEmailBlur}
                                     className="pl-10 h-12 bg-white/[0.05] border-white/[0.08] text-white placeholder:text-white/20 focus-visible:ring-1 focus-visible:ring-emerald-500/50 focus-visible:border-emerald-500/40 rounded-xl transition-colors"
                                     placeholder="you@tripbuilt.app"
-                                    required
+                                    aria-invalid={!!fieldErrors.email}
+                                    aria-describedby={fieldErrors.email ? "auth-email-error" : undefined}
                                 />
                             </div>
+                            {fieldErrors.email && (
+                                <p id="auth-email-error" className="text-red-500 text-xs mt-1">{fieldErrors.email}</p>
+                            )}
                         </div>
 
                         <div className="space-y-1.5">
@@ -305,15 +340,36 @@ function AuthPageInner() {
                                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/25 pointer-events-none" />
                                 <Input
                                     id="auth-password"
-                                    type="password"
+                                    type={showPassword ? "text" : "password"}
                                     value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="pl-10 h-12 bg-white/[0.05] border-white/[0.08] text-white placeholder:text-white/20 focus-visible:ring-1 focus-visible:ring-emerald-500/50 focus-visible:border-emerald-500/40 rounded-xl transition-colors"
+                                    onChange={(e) => {
+                                        setPassword(e.target.value);
+                                        if (fieldErrors.password) {
+                                            setFieldErrors((prev) => ({ ...prev, password: undefined }));
+                                        }
+                                    }}
+                                    className="pl-10 pr-12 h-12 bg-white/[0.05] border-white/[0.08] text-white placeholder:text-white/20 focus-visible:ring-1 focus-visible:ring-emerald-500/50 focus-visible:border-emerald-500/40 rounded-xl transition-colors"
                                     placeholder="••••••••"
-                                    required
                                     minLength={8}
+                                    aria-invalid={!!fieldErrors.password}
+                                    aria-describedby={fieldErrors.password ? "auth-password-error" : undefined}
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword((prev) => !prev)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center text-white/40 hover:text-white/70 transition-colors"
+                                    aria-label={showPassword ? "Hide password" : "Show password"}
+                                >
+                                    {showPassword ? (
+                                        <EyeOff className="w-4 h-4" />
+                                    ) : (
+                                        <Eye className="w-4 h-4" />
+                                    )}
+                                </button>
                             </div>
+                            {fieldErrors.password && (
+                                <p id="auth-password-error" className="text-red-500 text-xs mt-1">{fieldErrors.password}</p>
+                            )}
                         </div>
 
                         {error && (

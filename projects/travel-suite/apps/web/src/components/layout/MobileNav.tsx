@@ -274,7 +274,7 @@ export default function MobileNav() {
                                                         className={cn(
                                                             "flex flex-col items-center gap-1.5 p-2.5 rounded-2xl transition-all active:scale-95",
                                                             isActive
-                                                                ? "bg-primary/10 dark:bg-primary/15"
+                                                                ? "bg-primary/10 dark:bg-primary/15 ring-1 ring-primary/30 dark:ring-primary/40"
                                                                 : "hover:bg-slate-100 dark:hover:bg-slate-800/70"
                                                         )}
                                                     >
@@ -286,8 +286,8 @@ export default function MobileNav() {
                                                         />
                                                         <span
                                                             className={cn(
-                                                                "text-[10px] font-semibold text-center leading-tight",
-                                                                isActive ? "text-primary" : "text-slate-600 dark:text-slate-400"
+                                                                "text-[10px] text-center leading-tight",
+                                                                isActive ? "text-primary font-bold" : "text-slate-600 dark:text-slate-400 font-semibold"
                                                             )}
                                                         >
                                                             {item.label}

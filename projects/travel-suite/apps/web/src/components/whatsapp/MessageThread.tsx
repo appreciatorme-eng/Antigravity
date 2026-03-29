@@ -674,7 +674,7 @@ export function MessageThread({
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 custom-scrollbar space-y-0.5">
+      <div className="flex-1 overflow-y-auto px-5 md:px-6 py-3 custom-scrollbar space-y-0.5">
         {messages.map((msg, i) => {
           const prevMsg = messages[i - 1];
           const showDateSep =
