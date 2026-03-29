@@ -140,7 +140,7 @@ export function ConversationListPanel({
             className="flex-1 bg-transparent text-xs text-white placeholder-slate-600 outline-none"
           />
           {search && (
-            <button onClick={() => setSearch('')}>
+            <button onClick={() => setSearch('')} aria-label="Clear search">
               <X className="w-3 h-3 text-slate-500 hover:text-white transition-colors" />
             </button>
           )}
@@ -200,6 +200,7 @@ export function ConversationListPanel({
             onClick={onNewEmail}
             className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 transition-colors"
             title="Compose new email"
+            aria-label="Compose new email"
           >
             <PenSquare className="w-3.5 h-3.5" />
           </button>

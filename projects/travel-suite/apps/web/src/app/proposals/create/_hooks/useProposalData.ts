@@ -68,7 +68,7 @@ export function useProposalData(): UseProposalDataReturn {
     }
   }
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (signal?: { cancelled: boolean }) => {
     setLoading(true);
     try {
       // In demo mode, use hardcoded clients instead of API call
@@ -91,6 +91,9 @@ export function useProposalData(): UseProposalDataReturn {
         data: { user },
       } = await supabase.auth.getUser();
 
+      // Bail out if this call was superseded (e.g. demo mode toggled on)
+      if (signal?.cancelled) return;
+
       if (!user) {
         setError('Please log in');
         setLoading(false);
@@ -102,6 +105,8 @@ export function useProposalData(): UseProposalDataReturn {
         .select('organization_id')
         .eq('id', user.id)
         .single();
+
+      if (signal?.cancelled) return;
 
       if (!profile?.organization_id) {
         setError('Organization not found');
@@ -119,7 +124,12 @@ export function useProposalData(): UseProposalDataReturn {
         headers.Authorization = `Bearer ${session.access_token}`;
       }
       await loadProposalLimit(headers);
+
+      if (signal?.cancelled) return;
+
       const clientsResp = await fetch('/api/admin/clients', { headers });
+      if (signal?.cancelled) return;
+
       if (!clientsResp.ok) {
         const payload = await clientsResp.json().catch(() => ({}));
         console.error('Error loading clients:', payload);
@@ -141,12 +151,16 @@ export function useProposalData(): UseProposalDataReturn {
         setClients(formattedClients);
       }
 
+      if (signal?.cancelled) return;
+
       const { data: templatesData, error: templatesError } = await supabase
         .from('tour_templates')
         .select('id, name, destination, duration_days, base_price, hero_image_url')
         .eq('organization_id', profile.organization_id)
         .eq('status', 'active')
         .order('name', { ascending: true });
+
+      if (signal?.cancelled) return;
 
       if (templatesError) {
         console.error('Error loading templates:', templatesError);
@@ -156,6 +170,7 @@ export function useProposalData(): UseProposalDataReturn {
 
       try {
         const addOnsResp = await fetch('/api/add-ons');
+        if (signal?.cancelled) return;
         if (addOnsResp.ok) {
           const payload = await addOnsResp.json();
           const list = Array.isArray(payload?.addOns)
@@ -172,15 +187,20 @@ export function useProposalData(): UseProposalDataReturn {
         setAddOns([]);
       }
     } catch (loadError) {
+      if (signal?.cancelled) return;
       console.error('Error loading data:', loadError);
       setError('Failed to load data');
     } finally {
-      setLoading(false);
+      if (!signal?.cancelled) {
+        setLoading(false);
+      }
     }
   }, [isDemoMode]);
 
   useEffect(() => {
-    void loadData();
+    const signal = { cancelled: false };
+    void loadData(signal);
+    return () => { signal.cancelled = true; };
   }, [loadData]);
 
   /**

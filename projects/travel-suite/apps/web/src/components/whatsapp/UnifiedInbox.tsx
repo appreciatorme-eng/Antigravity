@@ -209,6 +209,7 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
               <button
                 onClick={() => setContextDrawerOpen(false)}
                 className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors"
+                aria-label="Close contact details"
               >
                 <X className="w-4 h-4 text-slate-400" />
               </button>

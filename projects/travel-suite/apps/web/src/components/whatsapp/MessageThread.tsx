@@ -193,7 +193,7 @@ function MessageBubble({ msg, isEmailChannel }: { msg: Message; isEmailChannel?:
             </div>
             <div>
               <p className="text-xs font-semibold text-white">{msg.locationLabel ?? 'Location Shared'}</p>
-              <button className="text-xs text-blue-400 hover:underline">View Location</button>
+              <button className="text-xs text-blue-400 hover:underline" aria-label="View shared location">View Location</button>
             </div>
           </div>
         )}
@@ -613,6 +613,7 @@ export function MessageThread({
             disabled={extractingTrip}
             className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-500/15 border border-violet-500/25 hover:bg-violet-500/25 text-violet-300 text-xs font-semibold transition-colors active:scale-95 disabled:opacity-50"
             title="Extract trip details from this conversation using AI"
+            aria-label="Extract trip details"
           >
             {extractingTrip ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
             <span className="hidden lg:inline">Extract Trip</span>
@@ -625,6 +626,7 @@ export function MessageThread({
                 : 'bg-[#25D366]/15 border border-[#25D366]/25 hover:bg-[#25D366]/25 text-[#25D366]'
             }`}
             title="Create Proposal"
+            aria-label="Create proposal"
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span className="hidden lg:inline">Create Proposal</span>
@@ -633,6 +635,7 @@ export function MessageThread({
             <button
               className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors"
               title="Archive email"
+              aria-label="Archive email"
               onClick={() => onArchiveEmail(conversation.id)}
             >
               <Archive className="w-4 h-4 text-slate-400" />
@@ -642,13 +645,14 @@ export function MessageThread({
             <button
               className="w-8 h-8 rounded-full hover:bg-red-500/10 flex items-center justify-center transition-colors"
               title="Move to trash"
+              aria-label="Move to trash"
               onClick={() => onDeleteEmail(conversation.id)}
             >
               <Trash2 className="w-4 h-4 text-red-400" />
             </button>
           )}
           {!isEmail && (
-            <button className="hidden md:flex w-8 h-8 rounded-full hover:bg-white/10 items-center justify-center transition-colors">
+            <button className="hidden md:flex w-8 h-8 rounded-full hover:bg-white/10 items-center justify-center transition-colors" aria-label="Call contact">
               <Phone className="w-4 h-4 text-slate-400" />
             </button>
           )}
@@ -658,11 +662,12 @@ export function MessageThread({
               onClick={onOpenContext}
               className="md:hidden w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors"
               title="Contact details"
+              aria-label="Open contact details"
             >
               <PanelRight className="w-4 h-4 text-slate-400" />
             </button>
           )}
-          <button className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors">
+          <button className="w-8 h-8 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors" aria-label="More actions">
             <MoreVertical className="w-4 h-4 text-slate-400" />
           </button>
         </div>
@@ -839,6 +844,7 @@ export function MessageThread({
                         type="button"
                         onClick={() => setAttachedFiles((prev) => prev.filter((_, idx) => idx !== i))}
                         className="ml-0.5 text-blue-400 hover:text-white"
+                        aria-label={`Remove attachment ${f.name}`}
                       >
                         &times;
                       </button>
@@ -865,6 +871,7 @@ export function MessageThread({
                     onClick={() => fileInputRef.current?.click()}
                     className="p-1 hover:bg-white/10 rounded-lg transition-colors"
                     title="Attach files"
+                    aria-label="Attach files"
                   >
                     <Paperclip className="w-4 h-4 text-slate-400" />
                   </button>
@@ -873,6 +880,7 @@ export function MessageThread({
                     onClick={() => setModalMode('payment')}
                     className="p-1 hover:bg-white/10 rounded-lg transition-colors"
                     title="Insert Payment Link"
+                    aria-label="Insert payment link"
                   >
                     <CreditCard className="w-4 h-4 text-pink-400" />
                   </button>
@@ -890,7 +898,7 @@ export function MessageThread({
           </div>
         ) : (
           <div className="flex items-center gap-2 bg-white/8 border border-white/15 rounded-2xl px-3 py-2">
-            <button className="p-1 hover:bg-white/10 rounded-lg transition-colors shrink-0">
+            <button className="p-1 hover:bg-white/10 rounded-lg transition-colors shrink-0" aria-label="Attach file">
               <Paperclip className="w-4 h-4 text-slate-400" />
             </button>
             <input
@@ -901,13 +909,14 @@ export function MessageThread({
               placeholder="Type a message..."
               className="flex-1 bg-transparent text-sm text-white placeholder-slate-500 outline-none min-w-0"
             />
-            <button className="p-1 hover:bg-white/10 rounded-lg transition-colors shrink-0">
+            <button className="p-1 hover:bg-white/10 rounded-lg transition-colors shrink-0" aria-label="Insert emoji">
               <Smile className="w-4 h-4 text-slate-400" />
             </button>
             <button
               onClick={() => setShowCanned(true)}
               className="p-1 hover:bg-white/10 rounded-lg transition-colors shrink-0"
               title="Canned Responses"
+              aria-label="Canned responses"
             >
               <Zap className="w-4 h-4 text-[#25D366]" />
             </button>
@@ -915,6 +924,7 @@ export function MessageThread({
               onClick={handleSend}
               disabled={!inputText.trim()}
               className="w-8 h-8 rounded-full bg-[#25D366] hover:bg-[#1FAF54] disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center transition-colors shrink-0"
+              aria-label="Send message"
             >
               <Send className="w-3.5 h-3.5 text-white" />
             </button>

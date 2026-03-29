@@ -127,7 +127,7 @@ export default function InvoiceCreateForm({
 
       {isOrgBrandingIncomplete(orgSnapshot) && (
         <Link
-          href="/settings"
+          href="/admin/settings"
           className="mb-4 flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 p-3 transition hover:bg-amber-100"
         >
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />

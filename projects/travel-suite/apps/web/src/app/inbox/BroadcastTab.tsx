@@ -380,6 +380,7 @@ export function BroadcastTab() {
                       setState((s) => ({ ...s, selectedTemplate: null }));
                     }}
                     className="w-5 h-5 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center"
+                    aria-label="Clear selected template"
                   >
                     <X className="w-3 h-3 text-slate-400" />
                   </button>

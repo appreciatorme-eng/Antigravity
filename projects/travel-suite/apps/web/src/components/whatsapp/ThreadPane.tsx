@@ -136,6 +136,7 @@ export function ThreadPane({
           <button
             onClick={onClearPendingTemplate}
             className="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors shrink-0"
+            aria-label="Dismiss template"
           >
             <X className="w-3 h-3 text-slate-400" />
           </button>

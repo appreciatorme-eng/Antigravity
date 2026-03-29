@@ -6,6 +6,7 @@ import TopBar from "./TopBar";
 import MobileNav from "./MobileNav";
 import CommandPalette from "./CommandPalette";
 import TourAssistantChat from "@/components/assistant/TourAssistantChat";
+import { QuickQuoteModal } from "@/components/glass/QuickQuoteModal";
 import DemoTour from "@/components/demo/DemoTour";
 import { TourToggleProvider } from "@/lib/tour/tour-toggle-context";
 import { ConnectedTourCompletePrompt } from "@/components/tour/ConnectedTourCompletePrompt";
@@ -16,10 +17,18 @@ import { motion, AnimatePresence } from "framer-motion";
 export default function AppShell({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const [isMounted, setIsMounted] = useState(false);
+    const [isQuickQuoteOpen, setIsQuickQuoteOpen] = useState(false);
 
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setIsMounted(true);
+    }, []);
+
+    // Listen for the open-quick-quote custom event dispatched by FAB actions
+    useEffect(() => {
+        const handler = () => setIsQuickQuoteOpen(true);
+        window.addEventListener("open-quick-quote", handler);
+        return () => window.removeEventListener("open-quick-quote", handler);
     }, []);
 
     // Avoid double shelling for admin routes because /admin has its own layout shell.
@@ -77,6 +86,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 </div>
                 <CommandPalette />
                 <TourAssistantChat />
+                <QuickQuoteModal
+                    isOpen={isQuickQuoteOpen}
+                    onClose={() => setIsQuickQuoteOpen(false)}
+                />
                 <DemoTour />
                 <ConnectedTourCompletePrompt />
             </div>

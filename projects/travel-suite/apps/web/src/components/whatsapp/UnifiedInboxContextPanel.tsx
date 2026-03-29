@@ -236,10 +236,10 @@ export function UnifiedInboxContextPanel({
                     className="bg-white/10 text-sm font-bold text-white rounded px-2 py-0.5 w-32 outline-none focus:ring-1 focus:ring-[#25D366]"
                     autoFocus
                   />
-                  <button onClick={() => void handleSaveName()} className="text-[#25D366] hover:text-green-300">
+                  <button onClick={() => void handleSaveName()} className="text-[#25D366] hover:text-green-300" aria-label="Save contact name">
                     <Check className="w-3.5 h-3.5" />
                   </button>
-                  <button onClick={() => setEditingName(false)} className="text-slate-400 hover:text-white">
+                  <button onClick={() => setEditingName(false)} className="text-slate-400 hover:text-white" aria-label="Cancel editing name">
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -253,6 +253,7 @@ export function UnifiedInboxContextPanel({
                     }}
                     className="text-slate-500 hover:text-white transition-colors"
                     title="Rename contact"
+                    aria-label="Rename contact"
                   >
                     <Pencil className="w-3 h-3" />
                   </button>
@@ -312,6 +313,7 @@ export function UnifiedInboxContextPanel({
               window.open(profilePath, '_blank');
             }}
             className="flex items-center justify-center gap-1 py-2 px-2 rounded-lg bg-white/8 hover:bg-white/15 text-xs text-slate-300 transition-colors border border-white/10 active:scale-95"
+            aria-label="View profile"
           >
             <ExternalLink className="w-3 h-3" />
           </button>
@@ -748,6 +750,9 @@ function AutomationsPanel({ phone }: { phone: string }) {
               a.enabled ? 'bg-[#25D366]' : 'bg-slate-600'
             }`}
             title={a.enabled ? 'Disable automation' : 'Enable automation'}
+            aria-label={`${a.enabled ? 'Disable' : 'Enable'} ${a.name}`}
+            role="switch"
+            aria-checked={a.enabled}
           >
             <span
               className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white shadow transition-transform ${

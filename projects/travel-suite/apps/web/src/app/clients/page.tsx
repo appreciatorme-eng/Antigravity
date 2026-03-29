@@ -96,6 +96,7 @@ export default function ClientsPage() {
                         onClick={() => void pipeline.fetchClients()}
                         className="h-11 w-11 rounded-xl border border-gray-200 dark:border-slate-700 flex items-center justify-center text-text-muted hover:text-primary hover:border-primary/30 transition-colors bg-white dark:bg-slate-900 shadow-sm"
                         title="Refresh"
+                        aria-label="Refresh client list"
                     >
                         <RefreshCcw className={cn("w-4 h-4", loading && "animate-spin")} />
                     </button>
