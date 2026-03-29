@@ -288,6 +288,7 @@ export function ContentBar({
                   setShowSaveInput(false);
                   setPresetName("");
                 }}
+                aria-label="Cancel preset save"
                 className="p-1 text-slate-400 hover:text-slate-600 transition-colors"
               >
                 <X className="w-3.5 h-3.5" />
@@ -361,6 +362,7 @@ export function ContentBar({
                               e.stopPropagation();
                               deletePreset(preset.id);
                             }}
+                            aria-label="Delete preset"
                             className="p-1 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shrink-0"
                             title="Delete preset"
                           >
@@ -496,6 +498,7 @@ export function ContentBar({
                     {palette && (
                       <button
                         onClick={toggleBrandColor}
+                        aria-label={brandColorEnabled ? "Disable brand colors" : "Enable brand colors"}
                         className="transition-transform hover:scale-105"
                       >
                         {brandColorEnabled ? (

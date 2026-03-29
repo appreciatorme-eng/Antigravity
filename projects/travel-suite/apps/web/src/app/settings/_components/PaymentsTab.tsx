@@ -42,7 +42,7 @@ export function PaymentsTab({
                         value={upiId}
                         onChange={(event) => setUpiId(event.target.value)}
                         placeholder="yourname@upi or yourname@bank"
-                        className="flex-1 bg-white/8 border border-white/15 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
+                        className="flex-1 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm text-secondary dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
                     />
                     <GlassButton
                         type="button"

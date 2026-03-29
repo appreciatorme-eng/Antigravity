@@ -539,7 +539,7 @@ export default function SettingsPage() {
                                             "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all whitespace-nowrap text-left",
                                             isActive
                                                 ? "bg-primary text-white shadow-md shadow-primary/20 scale-[1.02]"
-                                                : "text-text-secondary hover:bg-white hover:text-secondary hover:shadow-sm"
+                                                : "text-text-secondary hover:bg-white dark:hover:bg-slate-800 hover:text-secondary hover:shadow-sm"
                                         )}
                                     >
                                         <tab.icon className={cn("w-5 h-5 shrink-0", isActive ? "text-white/80" : "text-text-muted")} />

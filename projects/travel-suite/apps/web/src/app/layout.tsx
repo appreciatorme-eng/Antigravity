@@ -25,6 +25,7 @@ const cormorant = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.tripbuilt.com"),
   title: "TripBuilt | Premium Tour Operator Suite",
   description: "Enterprise-grade AI-Powered Travel Planning and Operations Management",
   manifest: "/manifest.json",
@@ -45,7 +46,15 @@ export const metadata: Metadata = {
     description: "AI-Powered Travel Planning and Operations Management for Tour Operators",
     type: "website",
     siteName: "TripBuilt",
-    url: "https://tripbuilt.com",
+    url: "https://www.tripbuilt.com",
+    images: [
+      {
+        url: "/marketing/dashboard_ui_mockup_1773059467134.png",
+        width: 1200,
+        height: 630,
+        alt: "TripBuilt — Premium Tour Operator Suite",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",

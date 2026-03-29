@@ -52,11 +52,11 @@ export function ProfileTab({
             <div className="grid gap-6">
                 <div className="space-y-2">
                     <label className="text-xs font-bold uppercase tracking-widest text-text-secondary">{t('fields.fullName')}</label>
-                    <input type="text" defaultValue="Admin User" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3" />
+                    <input type="text" defaultValue="Admin User" className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-xl px-4 py-3 text-secondary dark:text-white" />
                 </div>
                 <div className="space-y-2">
                     <label className="text-xs font-bold uppercase tracking-widest text-text-secondary">{t('fields.email')}</label>
-                    <input type="email" defaultValue="admin@tripbuilt.app" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3" />
+                    <input type="email" defaultValue="admin@tripbuilt.app" className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-xl px-4 py-3 text-secondary dark:text-white" />
                 </div>
                 <div className="rounded-2xl border border-primary/10 bg-primary/[0.04] p-4">
                     <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -67,7 +67,7 @@ export function ProfileTab({
                             <select
                                 value={draftTimezone}
                                 onChange={(event) => onDraftTimezoneChange(event.target.value)}
-                                className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-secondary"
+                                className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-secondary dark:text-white"
                             >
                                 {timezoneOptions.map((option) => (
                                     <option key={option} value={option}>

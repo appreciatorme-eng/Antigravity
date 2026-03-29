@@ -418,6 +418,7 @@ export default function ProposalsPage() {
                         onClick={() => copyShareLink(proposal.share_token)}
                         className="p-2 rounded-xl bg-white border border-gray-100 hover:border-primary hover:text-primary transition-all shadow-sm"
                         title="Copy Link"
+                        aria-label={`Copy share link for ${proposal.title}`}
                       >
                         <Copy className="w-4 h-4" />
                       </button>
@@ -425,11 +426,12 @@ export default function ProposalsPage() {
                         onClick={() => setDeleteConfirm(proposal)}
                         className="p-2 rounded-xl bg-white border border-gray-100 hover:border-rose-200 hover:text-rose-500 transition-all shadow-sm"
                         title="Delete"
+                        aria-label={`Delete proposal ${proposal.title}`}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
-                    <Link href={`/proposals/${proposal.id}`} className="w-10 h-10 rounded-full border border-gray-100 flex items-center justify-center transition-all group-hover:bg-primary group-hover:border-primary group-hover:text-white">
+                    <Link href={`/proposals/${proposal.id}`} aria-label={`View proposal ${proposal.title}`} className="w-10 h-10 rounded-full border border-gray-100 flex items-center justify-center transition-all group-hover:bg-primary group-hover:border-primary group-hover:text-white">
                       <ChevronRight className="h-5 w-5" />
                     </Link>
                   </div>

@@ -95,7 +95,7 @@ export function MapsDataSection({ initialPlacesEnabled, initialGooglePlaceId }: 
                     {isPlacesActivating ? 'Activating...' : isPlacesEnabled ? 'Active' : 'Activate'}
                 </GlassButton>
             </div>
-            <div className="mt-3 rounded-2xl border border-gray-100 bg-white p-4">
+            <div className="mt-3 rounded-2xl border border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800/50 p-4">
                 <label htmlFor="google-place-id" className="text-xs font-bold uppercase tracking-widest text-text-secondary">
                     Google Place ID
                 </label>
@@ -108,7 +108,7 @@ export function MapsDataSection({ initialPlacesEnabled, initialGooglePlaceId }: 
                         value={googlePlaceId}
                         onChange={(event) => setGooglePlaceId(event.target.value)}
                         placeholder="ChIJN1t_tDeuEmsRUsoyG83frY4"
-                        className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-secondary outline-none transition focus:border-primary/40 focus:bg-white"
+                        className="flex-1 rounded-xl border border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-800 px-4 py-3 text-sm text-secondary dark:text-white outline-none transition focus:border-primary/40 focus:bg-white dark:focus:bg-slate-700"
                     />
                     <GlassButton
                         size="sm"

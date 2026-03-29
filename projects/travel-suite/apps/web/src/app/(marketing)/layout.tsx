@@ -42,13 +42,16 @@ export const metadata: Metadata = {
     "Indian tour operator",
     "TripBuilt",
   ],
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
     siteName: "TripBuilt",
     type: "website",
     locale: "en_IN",
     images: [
       {
-        url: "/api/og?title=TripBuilt&subtitle=Build%20Your%20Travel%20Empire",
+        url: "/marketing/dashboard_ui_mockup_1773059467134.png",
         width: 1200,
         height: 630,
         alt: "TripBuilt — Build Your Travel Empire",

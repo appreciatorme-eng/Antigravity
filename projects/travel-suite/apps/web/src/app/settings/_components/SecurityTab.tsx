@@ -26,7 +26,7 @@ export function SecurityTab() {
 
                 <div className="space-y-4">
                     <h3 className="text-xs font-bold uppercase tracking-widest text-text-secondary mb-2">Active Sessions</h3>
-                    <div className="flex items-center justify-between p-4 border border-gray-100 rounded-2xl bg-white">
+                    <div className="flex items-center justify-between p-4 border border-gray-100 dark:border-slate-700 rounded-2xl bg-white dark:bg-slate-800">
                         <div className="flex items-center gap-3">
                             <Smartphone className="w-5 h-5 text-gray-400" />
                             <div>

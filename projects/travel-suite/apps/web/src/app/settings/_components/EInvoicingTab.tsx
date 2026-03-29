@@ -161,7 +161,7 @@ export function EInvoicingTab() {
                     Organization Credentials
                 </h3>
                 <div className="space-y-4">
-                    <div className="p-5 border border-gray-100 rounded-2xl bg-gray-50/50">
+                    <div className="p-5 border border-gray-100 dark:border-slate-700 rounded-2xl bg-gray-50/50 dark:bg-slate-800/50">
                         <div className="flex items-start gap-4 mb-4">
                             <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
                                 <Building2 className="w-5 h-5 text-blue-600" />
@@ -179,7 +179,7 @@ export function EInvoicingTab() {
                             onChange={(e) => setGstin(e.target.value.toUpperCase())}
                             placeholder="22AAAAA0000A1Z5"
                             maxLength={15}
-                            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30 font-mono"
+                            className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm text-secondary dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30 font-mono"
                         />
                     </div>
                 </div>
@@ -191,7 +191,7 @@ export function EInvoicingTab() {
                     IRP Portal Credentials
                 </h3>
                 <div className="space-y-3">
-                    <div className="p-5 border border-gray-100 rounded-2xl bg-gray-50/50">
+                    <div className="p-5 border border-gray-100 dark:border-slate-700 rounded-2xl bg-gray-50/50 dark:bg-slate-800/50">
                         <div className="flex items-start gap-4 mb-4">
                             <div className="w-11 h-11 rounded-xl bg-purple-50 flex items-center justify-center shrink-0">
                                 <Key className="w-5 h-5 text-purple-600" />
@@ -208,11 +208,11 @@ export function EInvoicingTab() {
                             value={irpUsername}
                             onChange={(e) => setIrpUsername(e.target.value)}
                             placeholder="IRP_USERNAME"
-                            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
+                            className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm text-secondary dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
                         />
                     </div>
 
-                    <div className="p-5 border border-gray-100 rounded-2xl bg-gray-50/50">
+                    <div className="p-5 border border-gray-100 dark:border-slate-700 rounded-2xl bg-gray-50/50 dark:bg-slate-800/50">
                         <div className="flex items-start gap-4 mb-4">
                             <div className="w-11 h-11 rounded-xl bg-purple-50 flex items-center justify-center shrink-0">
                                 <Key className="w-5 h-5 text-purple-600" />
@@ -229,7 +229,7 @@ export function EInvoicingTab() {
                             value={irpPassword}
                             onChange={(e) => setIrpPassword(e.target.value)}
                             placeholder={isConfigured ? '••••••••' : 'Enter IRP password'}
-                            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
+                            className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm text-secondary dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
                         />
                     </div>
                 </div>
@@ -241,7 +241,7 @@ export function EInvoicingTab() {
                     Automation Settings
                 </h3>
                 <div className="space-y-3">
-                    <div className="p-5 border border-gray-100 rounded-2xl bg-gray-50/50">
+                    <div className="p-5 border border-gray-100 dark:border-slate-700 rounded-2xl bg-gray-50/50 dark:bg-slate-800/50">
                         <div className="flex items-start gap-4 mb-4">
                             <div className="w-11 h-11 rounded-xl bg-orange-50 flex items-center justify-center shrink-0">
                                 <IndianRupee className="w-5 h-5 text-orange-600" />
@@ -259,11 +259,11 @@ export function EInvoicingTab() {
                             onChange={(e) => setThresholdAmount(e.target.value)}
                             min="0"
                             step="10000"
-                            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
+                            className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm text-secondary dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
                         />
                     </div>
 
-                    <div className="p-5 border border-gray-100 rounded-2xl bg-gray-50/50">
+                    <div className="p-5 border border-gray-100 dark:border-slate-700 rounded-2xl bg-gray-50/50 dark:bg-slate-800/50">
                         <div className="flex items-center justify-between">
                             <div className="flex items-start gap-4">
                                 <div className="w-11 h-11 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
@@ -293,7 +293,7 @@ export function EInvoicingTab() {
                         </div>
                     </div>
 
-                    <div className="p-5 border border-gray-100 rounded-2xl bg-gray-50/50">
+                    <div className="p-5 border border-gray-100 dark:border-slate-700 rounded-2xl bg-gray-50/50 dark:bg-slate-800/50">
                         <div className="flex items-center justify-between">
                             <div className="flex items-start gap-4">
                                 <div className="w-11 h-11 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
