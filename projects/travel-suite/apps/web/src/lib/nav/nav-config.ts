@@ -136,6 +136,26 @@ export const NAV_ITEMS: readonly NavItemConfig[] = [
     section: "growth",
   },
 
+  // ── OPERATIONS (continued) ──────────────────────────────────────────
+  {
+    icon: "FileSpreadsheet",
+    label: "GST Report",
+    href: "/admin/gst-report",
+    section: "operations",
+  },
+  {
+    icon: "LayoutTemplate",
+    label: "Templates",
+    href: "/admin/tour-templates",
+    section: "daily",
+  },
+  {
+    icon: "BarChart3",
+    label: "Analytics",
+    href: "/analytics",
+    section: "growth",
+  },
+
   // ── ACCOUNT ─────────────────────────────────────────────────────────
   { icon: "Settings", label: "Settings", href: "/settings", section: "account" },
   {
@@ -144,7 +164,7 @@ export const NAV_ITEMS: readonly NavItemConfig[] = [
     href: "/billing",
     section: "account",
   },
-  { icon: "Map", label: "Add-ons", href: "/add-ons", section: "account" },
+  { icon: "Puzzle", label: "Add-ons", href: "/add-ons", section: "account" },
   { icon: "LifeBuoy", label: "Support", href: "/support", section: "account" },
 ];
 

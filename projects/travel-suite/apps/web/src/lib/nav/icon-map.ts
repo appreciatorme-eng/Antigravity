@@ -28,6 +28,10 @@ import {
   Settings,
   CreditCard,
   LifeBuoy,
+  FileSpreadsheet,
+  LayoutTemplate,
+  BarChart3,
+  Puzzle,
   type LucideIcon,
 } from "lucide-react";
 
@@ -53,6 +57,10 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Settings,
   CreditCard,
   LifeBuoy,
+  FileSpreadsheet,
+  LayoutTemplate,
+  BarChart3,
+  Puzzle,
 };
 
 /** Resolve an icon name string to a lucide-react component. Falls back to FileText. */

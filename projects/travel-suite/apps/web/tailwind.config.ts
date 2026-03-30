@@ -111,6 +111,9 @@ const config = {
           950: '#020617',
         },
       },
+      padding: {
+        safe: "env(safe-area-inset-bottom)",
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
