@@ -39,7 +39,7 @@ export function DepartingSoonSection({ trips }: DepartingSoonSectionProps) {
                     <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                 </div>
                 <div>
-                    <h3 className="text-sm font-bold text-secondary dark:text-white">Departing Soon</h3>
+                    <h2 className="text-sm font-bold text-secondary dark:text-white">Departing Soon</h2>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400">
                         {departingSoon.length} trip{departingSoon.length !== 1 ? "s" : ""} within 7 days
                     </p>

@@ -15,11 +15,12 @@ import { BackgroundPicker } from "./BackgroundPicker";
 import { GallerySlotPicker } from "./GallerySlotPicker";
 import { CanvasMode } from "./CanvasMode";
 import { ToolbarActions, type ToolbarAction } from "./ToolbarActions";
-import { TemplateGallery } from "./TemplateGallery";
-
 import { PlatformStatusBar } from "./PlatformStatusBar";
 import { GuidedTour } from '@/components/tour/GuidedTour';
-import { CaptionEngine, CaptionTone, CaptionPlatform } from "./CaptionEngine";
+import type { CaptionTone, CaptionPlatform } from "./CaptionEngine";
+
+const TemplateGallery = dynamic(() => import("./TemplateGallery").then((mod) => mod.TemplateGallery));
+const CaptionEngine = dynamic(() => import("./CaptionEngine").then((mod) => mod.CaptionEngine));
 
 const MagicPrompter = dynamic(() => import("./MagicPrompter").then((mod) => mod.MagicPrompter));
 const CarouselBuilder = dynamic(() => import("./CarouselBuilder").then((mod) => mod.CarouselBuilder));

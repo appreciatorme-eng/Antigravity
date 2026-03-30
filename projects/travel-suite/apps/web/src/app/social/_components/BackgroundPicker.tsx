@@ -78,6 +78,7 @@ export function BackgroundPicker({
                                 <img
                                     src={url}
                                     alt="Background option"
+                                    loading="lazy"
                                     className="w-20 h-20 rounded-xl object-cover"
                                 />
                                 {isCached && (

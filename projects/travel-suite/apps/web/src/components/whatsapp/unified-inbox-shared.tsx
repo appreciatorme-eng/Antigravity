@@ -128,8 +128,8 @@ export function UnifiedInboxConversationItem({
       className={`w-full text-left px-3 py-3 transition-colors border-b border-white/5 flex items-start gap-3 ${
         selected
           ? isEmailConv
-            ? 'bg-blue-500/10 border-l-2 border-l-blue-500'
-            : 'bg-[#25D366]/10 border-l-2 border-l-[#25D366]'
+            ? 'bg-blue-500/15 border-l-2 border-l-blue-500'
+            : 'bg-[#25D366]/15 border-l-2 border-l-[#25D366]'
           : 'hover:bg-white/5'
       }`}
     >
@@ -157,15 +157,15 @@ export function UnifiedInboxConversationItem({
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-1 mb-0.5">
-          <p className={`text-sm truncate ${isUnread ? 'font-bold text-white' : 'font-medium text-slate-300'}`}>
+          <p className={`text-sm truncate ${isUnread ? 'font-bold text-white' : 'font-medium text-slate-200'}`}>
             {conv.contact.name}
           </p>
-          <span className="text-[10px] text-slate-400 shrink-0">{formatConversationTime(last?.timestamp ?? '')}</span>
+          <span className="text-[10px] text-slate-300 shrink-0">{formatConversationTime(last?.timestamp ?? '')}</span>
         </div>
-        <p className="text-[10px] text-slate-400 mb-1">
+        <p className="text-[10px] text-slate-300 mb-1">
           {isEmailConv && conv.contact.email ? conv.contact.email : conv.contact.phone}
         </p>
-        <p className={`text-xs truncate ${isUnread ? 'text-slate-200 font-medium' : 'text-slate-400'}`}>
+        <p className={`text-xs truncate ${isUnread ? 'text-slate-100 font-medium' : 'text-slate-300'}`}>
           {last?.direction === 'out' && <span className="text-slate-500">You: </span>}
           {last?.subject ? `${last.subject} — ` : ''}
           {preview}
