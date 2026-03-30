@@ -13,6 +13,7 @@ import Link from "next/link";
 import { formatFeatureLimitError } from "@/lib/subscriptions/feature-limit-error";
 import { logError } from "@/lib/observability/logger";
 import { useDemoMode } from "@/lib/demo/demo-mode-context";
+import { authedFetch } from "@/lib/api/authed-fetch";
 
 interface SavedItinerary {
     id: string;
@@ -127,7 +128,6 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
                 headers: {
                     "Content-Type": "application/json",
                     "Authorization": `Bearer ${session?.access_token}`,
-                    "x-csrf-token": "1",
                 },
                 body: JSON.stringify({
                     full_name: newClientName.trim(),
@@ -290,7 +290,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
             const daysMatch = prompt.match(/(\d+)\s*days?/i);
             const days = daysMatch ? parseInt(daysMatch[1]) : 3;
 
-            const res = await fetch("/api/itinerary/generate", {
+            const res = await authedFetch("/api/itinerary/generate", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ prompt, days }),
@@ -320,7 +320,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
         if (!importUrl) return;
         setIsGenerating(true);
         try {
-            const res = await fetch("/api/itinerary/import/url", {
+            const res = await authedFetch("/api/itinerary/import/url", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ url: importUrl }),
@@ -349,7 +349,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
             const formData = new FormData();
             formData.append('file', pdfFile);
 
-            const res = await fetch("/api/itinerary/import/pdf", {
+            const res = await authedFetch("/api/itinerary/import/pdf", {
                 method: "POST",
                 body: formData,
             });

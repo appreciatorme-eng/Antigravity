@@ -170,6 +170,32 @@ For background verification (lint/typecheck/test): run **once** after all agents
 | Background command — non-zero exit code | Read output file, investigate |
 | Agent completed — new work or errors | Normal response + commit |
 
+## CSRF Protection Strategy
+
+**Bearer auth IS the CSRF protection.** The `Authorization: Bearer` header is a custom header that cannot be set by cross-origin forms or simple CORS requests, making it an effective CSRF guard.
+
+### How it works
+
+The dispatcher (`api-dispatch.ts`) runs `passesMutationCsrfGuard()` on every POST/PUT/PATCH/DELETE. It passes if:
+1. Request has `Authorization: Bearer <token>` (≥10 chars) — **primary path**
+2. Request has `x-admin-csrf` header matching `ADMIN_MUTATION_CSRF_TOKEN` env var — server-to-server only
+3. Same-origin check (dev/test fallback only — dead code in production)
+
+### Rules for client-side mutations
+
+- **Every `fetch()` with method POST/PUT/PATCH/DELETE MUST include the Bearer token**
+- Use `authedFetch()` from `src/lib/api/authed-fetch.ts` — it auto-attaches the token
+- Do NOT use `x-csrf-token` or `x-admin-csrf` from client code — Bearer is sufficient
+- If a route is already sending `Authorization: Bearer` manually, that's fine too
+
+### CSRF-exempt routes (in dispatcher)
+
+Only these routes skip CSRF: `cron/*`, `auth/password-login`, `onboarding/setup`, `payments/webhook`, `whatsapp/webhook`, `webhooks/*`. All are pre-auth or external webhooks.
+
+### Common mistake
+
+Bare `fetch("/api/foo", { method: "POST" })` with no auth headers **will fail in production** with 403 "CSRF validation failed". Always use `authedFetch()` or manually attach `Authorization: Bearer`.
+
 ## Error Boundary Pattern
 
 All route groups use a **shared re-export** pattern — not duplicated inline components:

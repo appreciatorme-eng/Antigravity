@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { IndianRupee, Building2, MapPin, Instagram, Linkedin } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { authedFetch } from '@/lib/api/authed-fetch';
 import { GlassButton } from '@/components/glass/GlassButton';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
@@ -180,7 +181,7 @@ export function IntegrationsTab({
                 onOpenWhatsAppConnect={onOpenWhatsAppConnect}
                 onDisconnectWhatsApp={onDisconnectWhatsApp}
                 onDisconnectGmail={async () => {
-                    const res = await fetch('/api/admin/email/disconnect', { method: 'POST' });
+                    const res = await authedFetch('/api/admin/email/disconnect', { method: 'POST' });
                     if (res.ok) {
                         setIsGmailConnected(false);
                         setGmailEmail('');

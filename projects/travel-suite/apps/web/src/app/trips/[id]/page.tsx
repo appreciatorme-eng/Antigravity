@@ -14,6 +14,7 @@ import { buildDaySchedule } from "@/features/trip-detail/utils";
 import type { TripDetailTab, Day } from "@/features/trip-detail/types";
 
 import { useTripDetail, useSaveTripItinerary } from "@/lib/queries/trip-detail";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import { useCloneTrip } from "@/lib/queries/trips";
 
 import { GroupManager } from "@/components/trips/GroupManager";
@@ -105,7 +106,7 @@ export default function TripDetailPage() {
 
     setDeletingTrip(true);
     try {
-      const response = await fetch(`/api/trips/${tripId}`, { method: "DELETE" });
+      const response = await authedFetch(`/api/trips/${tripId}`, { method: "DELETE" });
       if (!response.ok) {
         throw new Error("Failed to delete trip");
       }
