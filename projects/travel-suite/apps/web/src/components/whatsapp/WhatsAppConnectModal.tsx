@@ -16,12 +16,7 @@ import {
 import { GlassButton } from "@/components/glass/GlassButton";
 import { useToast } from "@/components/ui/toast";
 import { motion, AnimatePresence } from "framer-motion";
-import { useDemoMode } from "@/lib/demo/demo-mode-context";
 import { logError } from "@/lib/observability/logger";
-
-// Demo-only: realistic-looking QR payload that renders a visible code without real WA auth
-const DEMO_QR_PAYLOAD =
-    "2@GkT8mXpL1qBn7cJe4sWrY0vZhOi9FdAu=,H3NkRpSv6bQcMwUlKz+XoYtGfEeDb/JmIn2=,demo-tripbuilt-qr-preview-only";
 
 interface WhatsAppConnectModalProps {
     isOpen: boolean;
@@ -37,7 +32,6 @@ export function WhatsAppConnectModal({
     onConnected,
 }: WhatsAppConnectModalProps) {
     const { toast } = useToast();
-    const { isDemoMode } = useDemoMode();
     const [step, setStep] = useState<ConnectionStep>("initial");
     const [sessionName, setSessionName] = useState<string | null>(null);
     const [qrBase64, setQrBase64] = useState<string | null>(null);
@@ -47,13 +41,6 @@ export function WhatsAppConnectModal({
     } | null>(null);
     const [loading, setLoading] = useState(false);
     const [testingMessage, setTestingMessage] = useState(false);
-
-    const startDemoConnection = useCallback(async () => {
-        setLoading(true);
-        setSessionName("demo_" + Date.now());
-        setStep("scanning");
-        setLoading(false);
-    }, []);
 
     const startRealConnection = useCallback(async () => {
         try {
@@ -93,12 +80,8 @@ export function WhatsAppConnectModal({
     }, [onConnected]);
 
     const startConnection = useCallback(() => {
-        if (isDemoMode) {
-            void startDemoConnection();
-        } else {
-            void startRealConnection();
-        }
-    }, [isDemoMode, startDemoConnection, startRealConnection]);
+        void startRealConnection();
+    }, [startRealConnection]);
 
     useEffect(() => {
         if (isOpen && step === "initial") {
@@ -115,21 +98,9 @@ export function WhatsAppConnectModal({
         }
     }, [isOpen, step, startConnection]);
 
-    // Demo mode: auto-connect immediately
+    // Poll for QR — run immediately, then every 3s
     useEffect(() => {
-        if (!isDemoMode || step !== "scanning") return;
-
-        setBusinessProfile({
-            number: "+91 98765 43210",
-            name: "TripBuilt",
-        });
-        setStep("connected");
-        onConnected();
-    }, [isDemoMode, step, onConnected]);
-
-    // Real mode: poll for QR — run immediately, then every 3s
-    useEffect(() => {
-        if (isDemoMode || step !== "scanning" || !sessionName) return;
+        if (step !== "scanning" || !sessionName) return;
 
         const controller = new AbortController();
         const fetchQR = async () => {
@@ -153,11 +124,11 @@ export function WhatsAppConnectModal({
             controller.abort();
             clearInterval(interval);
         };
-    }, [isDemoMode, step, sessionName]);
+    }, [step, sessionName]);
 
-    // Real mode: poll the API for connection status every 2 s
+    // Poll the API for connection status every 2 s
     useEffect(() => {
-        if (isDemoMode || step !== "scanning" || !sessionName) return;
+        if (step !== "scanning" || !sessionName) return;
 
         const controller = new AbortController();
         const interval = setInterval(async () => {
@@ -188,22 +159,9 @@ export function WhatsAppConnectModal({
             controller.abort();
             clearInterval(interval);
         };
-    }, [isDemoMode, step, sessionName, onConnected]);
+    }, [step, sessionName, onConnected]);
 
     const handleTestMessage = async () => {
-        if (isDemoMode) {
-            setTestingMessage(true);
-            toast({
-                title: "Test Message Dispatched! 🚀",
-                description: "Check your WhatsApp for the magic link test message.",
-                variant: "success",
-                durationMs: 4000,
-            });
-            setTestingMessage(false);
-            onClose();
-            return;
-        }
-
         try {
             setTestingMessage(true);
             const res = await fetch("/api/whatsapp/test-message", {
@@ -286,15 +244,7 @@ export function WhatsAppConnectModal({
                                 >
                                     <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 flex items-center justify-center relative group">
                                         <div className="absolute inset-0 bg-gradient-to-tr from-[#25D366]/20 to-emerald-400/10 opacity-0 group-hover:opacity-100 transition-opacity rounded-3xl -z-10 blur-xl" />
-                                        {isDemoMode ? (
-                                            <QRCodeSVG
-                                                value={DEMO_QR_PAYLOAD}
-                                                size={200}
-                                                level="M"
-                                                includeMargin={false}
-                                                fgColor="#0f172a"
-                                            />
-                                        ) : qrBase64 ? (
+                                        {qrBase64 ? (
                                             <QRCodeSVG
                                                 value={qrBase64}
                                                 size={200}
