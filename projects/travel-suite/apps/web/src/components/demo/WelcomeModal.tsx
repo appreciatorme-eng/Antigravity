@@ -1,5 +1,5 @@
-// WelcomeModal — auto-demo welcome for new users with zero data.
-// Shows on first visit, auto-enables demo mode, and invites the user to explore.
+// WelcomeModal — welcome for new users with zero data.
+// Shows on first visit and invites the user to set up their workspace.
 
 "use client";
 
@@ -7,14 +7,17 @@ import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { X, Sparkles, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useDemoMode } from "@/lib/demo/demo-mode-context";
 
 const LS_KEY = "tripbuilt:onboarded";
 
 export default function WelcomeModal() {
-  const { isDemoMode, toggleDemoMode, mounted } = useDemoMode();
   const [isOpen, setIsOpen] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // On first mount, check if user is new (not yet onboarded)
   useEffect(() => {
@@ -31,34 +34,26 @@ export default function WelcomeModal() {
       return;
     }
 
-    // If not onboarded and demo mode is not already on, check if user has data
-    if (!isDemoMode) {
-      const checkData = async () => {
-        try {
-          const res = await fetch("/api/admin/dashboard/stats");
-          if (res.ok) {
-            const data = await res.json();
-            const hasData = (data.activeTrips ?? 0) > 0 || (data.totalClients ?? 0) > 0;
-            if (!hasData) {
-              // New user — show welcome + auto-enable demo
-              setIsOpen(true);
-              toggleDemoMode(); // enable demo mode
-            } else {
-              // User has data — mark as onboarded
-              localStorage.setItem(LS_KEY, "true");
-            }
+    // Check if user has data
+    const checkData = async () => {
+      try {
+        const res = await fetch("/api/admin/dashboard/stats");
+        if (res.ok) {
+          const data = await res.json();
+          const hasData = (data.activeTrips ?? 0) > 0 || (data.totalClients ?? 0) > 0;
+          if (!hasData) {
+            setIsOpen(true);
+          } else {
+            localStorage.setItem(LS_KEY, "true");
           }
-        } catch {
-          // Network error — don't block
-        } finally {
-          setChecking(false);
         }
-      };
-      void checkData();
-    } else {
-      setChecking(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      } catch {
+        // Network error — don't block
+      } finally {
+        setChecking(false);
+      }
+    };
+    void checkData();
   }, [mounted]);
 
   const handleClose = useCallback(() => {
@@ -72,14 +67,6 @@ export default function WelcomeModal() {
 
   const handleExplore = useCallback(() => {
     handleClose();
-    // After closing, trigger the dashboard tour with a delay so the modal animates out
-    setTimeout(() => {
-      window.dispatchEvent(
-        new CustomEvent("tripbuilt:tour-page-start", {
-          detail: { tourId: "tour-dashboard", mode: "page" },
-        })
-      );
-    }, 500);
   }, [handleClose]);
 
   if (!mounted || checking || !isOpen) return null;
@@ -124,20 +111,20 @@ export default function WelcomeModal() {
 
           {/* Heading */}
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-            Welcome to TripBuilt! 🎉
+            Welcome to TripBuilt!
           </h2>
 
           <p className="text-sm text-gray-500 dark:text-slate-400 leading-relaxed mb-6 max-w-xs mx-auto">
-            We&apos;ve loaded sample data so you can explore every feature.
-            Complete your setup checklist on the dashboard to configure WhatsApp, payments, and more.
+            Your workspace is ready. Add your first client, create a trip, or
+            connect WhatsApp to start managing your travel business.
           </p>
 
           {/* Feature highlights */}
           <div className="grid grid-cols-3 gap-3 mb-6">
             {[
-              { emoji: "✈️", label: "10 Trips" },
-              { emoji: "👥", label: "12 Clients" },
-              { emoji: "💰", label: "Real Pricing" },
+              { emoji: "👥", label: "Add Clients" },
+              { emoji: "✈️", label: "Create Trips" },
+              { emoji: "💬", label: "WhatsApp" },
             ].map((item) => (
               <div
                 key={item.label}
@@ -162,13 +149,9 @@ export default function WelcomeModal() {
               "shadow-lg shadow-[#00d084]/20"
             )}
           >
-            Start Exploring
+            Get Started
             <ArrowRight className="w-4 h-4" />
           </button>
-
-          <p className="text-[10px] text-gray-400 dark:text-slate-500 mt-3">
-            Toggle off Demo Mode anytime to work with your own data.
-          </p>
         </div>
       </div>
     </div>,
