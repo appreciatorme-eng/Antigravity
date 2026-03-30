@@ -46,13 +46,39 @@ export function TemplateSelector({
 
       {templates.length === 0 ? (
         <div className="text-center py-8">
-          <p className="text-[#6f5b3e] mb-4">No templates found</p>
+          <p className="text-[#6f5b3e] mb-4">No templates found. Create your first tour template to start building proposals.</p>
           <Link
             href="/admin/tour-templates/create"
             className="inline-flex items-center px-4 py-2 bg-[#9c7c46] text-white rounded-lg hover:bg-[#8a6d3e] transition-colors"
           >
-            Create Template First
+            Create Template
           </Link>
+        </div>
+      ) : templates[0]?.id.startsWith('starter-') ? (
+        <div className="space-y-4">
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <p className="text-sm font-semibold text-amber-900 mb-1">Sample templates shown below</p>
+            <p className="text-sm text-amber-800 mb-3">
+              These are examples to inspire your first tour packages. Create your own templates to start sending proposals.
+            </p>
+            <Link
+              href="/admin/tour-templates/create"
+              className="inline-flex items-center px-4 py-2 bg-[#9c7c46] text-white rounded-lg hover:bg-[#8a6d3e] transition-colors text-sm"
+            >
+              Create Your First Template
+            </Link>
+          </div>
+          <div className="grid gap-3">
+            {templates.map((template) => (
+              <div key={template.id} className="flex items-center gap-3 p-3 rounded-lg bg-[#f8f1e6] opacity-75">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-[#1b140a]">{template.name}</p>
+                  <p className="text-xs text-[#6f5b3e]">{template.destination} · {template.duration_days} days · ₹{(template.base_price || 0).toLocaleString('en-IN')}</p>
+                </div>
+                <span className="text-[10px] font-semibold text-amber-700 bg-amber-100 px-2 py-0.5 rounded">Example</span>
+              </div>
+            ))}
+          </div>
         </div>
       ) : (
         <div className="space-y-4">
