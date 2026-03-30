@@ -33,6 +33,7 @@ export function BrandingThemeSection({ organization, setOrganization }: Branding
                 type="color"
                 value={organization.primary_color || '#00D084'}
                 onChange={(event) => setOrganization((prev) => (prev ? { ...prev, primary_color: event.target.value } : null))}
+                aria-label="Primary Brand Color"
                 className="h-10 w-10 cursor-pointer rounded border-none"
               />
               <GlassInput

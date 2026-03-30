@@ -102,14 +102,15 @@ export function StockTab({
     };
 
     // -----------------------------------------------------------------------
-    // Auto-populate query from destination and search on mount
+    // Auto-populate query from destination on mount (defer search to user action)
     // -----------------------------------------------------------------------
 
     useEffect(() => {
         if (destination && !initialSearchDoneRef.current) {
             initialSearchDoneRef.current = true;
             setUnsplashQuery(destination);
-            fetchUnsplashImagesForQuery(destination);
+            // Defer Unsplash fetch — curated images load instantly;
+            // Unsplash results appear when user clicks search or changes destination.
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -205,6 +206,7 @@ export function StockTab({
                                         <img
                                             src={image.thumb}
                                             alt={`${image.destination} - ${image.tags.join(", ")}`}
+                                            loading="lazy"
                                             className="w-20 h-20 rounded-xl object-cover"
                                         />
                                         {isSelected && (
@@ -240,6 +242,7 @@ export function StockTab({
                                     <img
                                         src={result.url}
                                         alt="Unsplash result"
+                                        loading="lazy"
                                         className="w-20 h-20 rounded-xl object-cover"
                                     />
                                     {isSelected && (

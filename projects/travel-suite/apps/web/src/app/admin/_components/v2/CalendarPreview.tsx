@@ -132,9 +132,9 @@ export function CalendarPreview({ data }: CalendarPreviewProps) {
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <CalendarDays className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-black uppercase tracking-widest text-text-muted">
+          <h2 className="text-sm font-black uppercase tracking-widest text-text-muted">
             Next 7 Days
-          </h3>
+          </h2>
         </div>
         <Link
           href="/calendar"

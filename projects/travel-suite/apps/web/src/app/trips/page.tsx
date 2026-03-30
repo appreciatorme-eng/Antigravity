@@ -276,9 +276,9 @@ export default function TripsPage() {
                         <div className="w-24 h-24 bg-white dark:bg-slate-800 rounded-[2.5rem] flex items-center justify-center mx-auto mb-8 border border-gray-100 dark:border-slate-700 shadow-2xl shadow-gray-200/50">
                             <Plane className="w-10 h-10 text-gray-200 animate-pulse" />
                         </div>
-                        <h3 className="text-3xl font-serif text-secondary dark:text-white tracking-tight">
+                        <h2 className="text-3xl font-serif text-secondary dark:text-white tracking-tight">
                             {quickFilters.size > 0 || activeDrill ? "No Matching Trips" : "No Trips Yet"}
-                        </h3>
+                        </h2>
                         <p className="text-text-muted mt-4 max-w-sm mx-auto font-medium">
                             {quickFilters.size > 0 || activeDrill
                                 ? "No trips match the active filters. Try adjusting your criteria."

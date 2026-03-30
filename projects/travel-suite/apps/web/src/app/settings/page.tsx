@@ -528,7 +528,7 @@ export default function SettingsPage() {
                 <div className="flex flex-col md:flex-row gap-8 items-start">
                     {/* Sidebar Nav */}
                     <aside className="w-full md:w-64 shrink-0">
-                        <nav className="flex md:flex-col gap-2 md:gap-1 overflow-x-auto md:overflow-visible pb-2 md:pb-0" role="tablist" aria-label="Settings sections">
+                        <nav className="flex md:flex-col gap-2 md:gap-1 overflow-x-auto md:overflow-visible pb-2 md:pb-0 scrollbar-hide" role="tablist" aria-label="Settings sections">
                             {TABS.map((tab) => {
                                 const isActive = activeTab === tab.id;
                                 return (
@@ -536,13 +536,13 @@ export default function SettingsPage() {
                                         key={tab.id}
                                         onClick={() => setActiveTab(tab.id)}
                                         className={cn(
-                                            "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all whitespace-nowrap text-left",
+                                            "flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2.5 md:py-3 rounded-xl text-xs md:text-sm font-bold transition-all whitespace-nowrap text-left",
                                             isActive
                                                 ? "bg-primary text-white shadow-md shadow-primary/20 scale-[1.02]"
                                                 : "text-text-secondary hover:bg-white hover:text-secondary hover:shadow-sm"
                                         )}
                                     >
-                                        <tab.icon className={cn("w-5 h-5 shrink-0", isActive ? "text-white/80" : "text-text-muted")} />
+                                        <tab.icon className={cn("w-4 h-4 md:w-5 md:h-5 shrink-0", isActive ? "text-white/80" : "text-text-muted")} />
                                         {tab.label}
                                     </button>
                                 );

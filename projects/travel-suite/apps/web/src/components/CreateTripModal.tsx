@@ -361,6 +361,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
             const payloadData = await response.json();
             const itineraryId = payloadData.itineraryId;
 
+            let shareLinkCopied = false;
             try {
                 // Auto-generate share link
                 const token = crypto.randomUUID();
@@ -378,23 +379,32 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
 
                 const shareLink = `${window.location.origin}/share/${token}`;
                 await navigator.clipboard.writeText(shareLink);
-
-                toast({
-                    title: "Trip Created & Link Copied! 🔗",
-                    description: "Share this magic quote with your client to close the deal.",
-                    durationMs: 4000,
-                    variant: "success",
-                });
+                shareLinkCopied = true;
             } catch {
-                toast({
-                    title: "Trip created",
-                    description: "Trip was created successfully.",
-                    variant: "success",
-                });
+                // Share link generation failed; trip was still created successfully
             }
 
-            onSuccess();
+            // Close modal and refresh parent data first
             onOpenChange(false);
+            onSuccess();
+
+            // Show toast after modal unmount so it isn't destroyed with the modal
+            setTimeout(() => {
+                if (shareLinkCopied) {
+                    toast({
+                        title: "Trip Created & Link Copied!",
+                        description: "Share this magic quote with your client to close the deal.",
+                        durationMs: 4000,
+                        variant: "success",
+                    });
+                } else {
+                    toast({
+                        title: "Trip created",
+                        description: "Trip was created successfully.",
+                        variant: "success",
+                    });
+                }
+            }, 0);
 
         } catch (error) {
             logError("Error creating trip", error);

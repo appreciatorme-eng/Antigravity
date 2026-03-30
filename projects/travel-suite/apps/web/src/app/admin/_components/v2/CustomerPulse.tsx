@@ -91,9 +91,9 @@ export function CustomerPulse({ data }: CustomerPulseProps) {
     <GlassCard padding="xl" className="h-full">
       <div className="mb-4 flex items-center gap-2">
         <Heart className="h-4 w-4 text-rose-500" />
-        <h3 className="text-sm font-black uppercase tracking-widest text-text-muted">
+        <h2 className="text-sm font-black uppercase tracking-widest text-text-muted">
           Customer Pulse
-        </h3>
+        </h2>
       </div>
 
       <div className="divide-y divide-gray-100 dark:divide-white/5">

@@ -9,6 +9,50 @@ import type { Client, TourTemplate, AddOn, FeatureLimitSnapshot } from '../_type
 import { formatFeatureLimitError } from '@/lib/subscriptions/feature-limit-error';
 export { formatFeatureLimitError } from '@/lib/subscriptions/feature-limit-error';
 
+/** Hardcoded starter templates shown when the DB returns no active templates. */
+const STARTER_TEMPLATES: readonly TourTemplate[] = [
+  {
+    id: 'starter-weekend-getaway',
+    name: 'Weekend Getaway',
+    destination: 'Lonavala',
+    duration_days: 3,
+    base_price: 8999,
+    hero_image_url: null,
+  },
+  {
+    id: 'starter-golden-triangle',
+    name: 'Golden Triangle',
+    destination: 'Delhi - Agra - Jaipur',
+    duration_days: 5,
+    base_price: 18999,
+    hero_image_url: null,
+  },
+  {
+    id: 'starter-kerala-backwaters',
+    name: 'Kerala Backwaters',
+    destination: 'Alleppey - Munnar - Kochi',
+    duration_days: 5,
+    base_price: 22999,
+    hero_image_url: null,
+  },
+  {
+    id: 'starter-himalayan-adventure',
+    name: 'Himalayan Adventure',
+    destination: 'Manali - Solang Valley',
+    duration_days: 6,
+    base_price: 15999,
+    hero_image_url: null,
+  },
+  {
+    id: 'starter-corporate-retreat',
+    name: 'Corporate Retreat',
+    destination: 'Goa',
+    duration_days: 3,
+    base_price: 12999,
+    hero_image_url: null,
+  },
+] as const;
+
 export interface UseProposalDataReturn {
   loading: boolean;
   error: string | null;
@@ -150,8 +194,10 @@ export function useProposalData(): UseProposalDataReturn {
 
       if (templatesError) {
         console.error('Error loading templates:', templatesError);
+        setTemplates([...STARTER_TEMPLATES]);
       } else {
-        setTemplates(templatesData || []);
+        const dbTemplates = templatesData || [];
+        setTemplates(dbTemplates.length > 0 ? dbTemplates : [...STARTER_TEMPLATES]);
       }
 
       try {

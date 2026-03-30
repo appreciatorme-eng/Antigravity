@@ -195,9 +195,9 @@ export function KPITickerStrip({ data }: KPITickerStripProps) {
                 )}
               </div>
 
-              <h3 className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted">
+              <h2 className="text-[9px] font-black uppercase tracking-[0.2em] text-text-muted">
                 {card.label}
-              </h3>
+              </h2>
               <span className="mt-1 block text-2xl font-black tabular-nums text-secondary dark:text-white">
                 {card.value}
               </span>

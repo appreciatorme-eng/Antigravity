@@ -123,9 +123,9 @@ export function PipelineFunnel({ data }: PipelineFunnelProps) {
       <div className="mb-5 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-black uppercase tracking-widest text-text-muted">
+          <h2 className="text-sm font-black uppercase tracking-widest text-text-muted">
             Pipeline Funnel
-          </h3>
+          </h2>
         </div>
         <Link
           href="/admin/insights"

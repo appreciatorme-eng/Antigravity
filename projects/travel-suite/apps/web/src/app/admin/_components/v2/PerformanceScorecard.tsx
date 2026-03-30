@@ -138,9 +138,9 @@ export function PerformanceScorecard({ data }: PerformanceScorecardProps) {
         className="flex w-full items-center gap-3"
       >
         <BarChart3 className="h-4 w-4 text-primary" />
-        <h3 className="text-sm font-black uppercase tracking-widest text-text-muted">
+        <h2 className="text-sm font-black uppercase tracking-widest text-text-muted">
           Performance Scorecard
-        </h3>
+        </h2>
         <div className="flex-1" />
         {expanded ? (
           <ChevronUp className="h-4 w-4 text-text-muted" />

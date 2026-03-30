@@ -220,28 +220,13 @@ export function TourToggleProvider({ children }: { children: ReactNode }) {
       }
     } catch { /* noop */ }
 
-    // Normal auto-start: first visit only
+    // Mark page as visited for progress tracking, but do NOT auto-start the tour.
+    // Tours are only started explicitly via "Tour this page" or "Take Full Tour" buttons.
     const visited = getVisitedPages();
-    if (visited.has(pathname)) return;
-
-    markPageVisited(pathname);
-    setProgressVersion((v) => v + 1);
-
-    const timer = setTimeout(() => {
-      const tourId = getTourIdForPath(pathname);
-      if (!tourId) return;
-
-      setIsTourActive(true);
-      try {
-        sessionStorage.setItem(SS_MODE_KEY, "page");
-      } catch { /* noop */ }
-
-      window.dispatchEvent(
-        new CustomEvent(TOUR_PAGE_START, { detail: { tourId, mode: "page" } })
-      );
-    }, 1200);
-
-    return () => clearTimeout(timer);
+    if (!visited.has(pathname)) {
+      markPageVisited(pathname);
+      setProgressVersion((v) => v + 1);
+    }
   }, [pathname]);
 
   return (

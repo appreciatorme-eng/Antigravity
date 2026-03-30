@@ -52,11 +52,11 @@ export function ProfileTab({
             <div className="grid gap-6">
                 <div className="space-y-2">
                     <label className="text-xs font-bold uppercase tracking-widest text-text-secondary">{t('fields.fullName')}</label>
-                    <input type="text" defaultValue="Admin User" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3" />
+                    <input type="text" defaultValue="Admin User" aria-label="Full Name" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3" />
                 </div>
                 <div className="space-y-2">
                     <label className="text-xs font-bold uppercase tracking-widest text-text-secondary">{t('fields.email')}</label>
-                    <input type="email" defaultValue="admin@tripbuilt.app" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3" />
+                    <input type="email" defaultValue="admin@tripbuilt.app" aria-label="Email" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3" />
                 </div>
                 <div className="rounded-2xl border border-primary/10 bg-primary/[0.04] p-4">
                     <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
