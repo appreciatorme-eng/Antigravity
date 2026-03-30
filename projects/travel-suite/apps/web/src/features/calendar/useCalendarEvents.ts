@@ -40,8 +40,8 @@ const CONCIERGE_REQUEST_CALENDAR_SELECT = [
   "status",
   "trip_id",
   "type",
-  "clients(full_name, organization_id)",
-].join(", ");
+  "clients(full_name,organization_id)",
+].join(",");
 const PERSONAL_EVENT_SELECT = [
   "all_day",
   "category",

@@ -267,7 +267,7 @@ export default function Sidebar({ className }: SidebarProps) {
             </div>
 
             {/* ── Scrollable Nav Body ── */}
-            <div className="flex-1 overflow-y-auto overflow-x-hidden py-4 px-3 space-y-1 custom-scrollbar">
+            <nav aria-label="Main navigation" className="flex-1 overflow-y-auto overflow-x-hidden py-4 px-3 space-y-1 custom-scrollbar">
                 {/* PRIMARY NAV */}
                 <div className="space-y-1">
                     {!isCollapsed && (
@@ -368,7 +368,7 @@ export default function Sidebar({ className }: SidebarProps) {
                         )}
                     </AnimatePresence>
                 </div>
-            </div>
+            </nav>
 
             {/* ── Footer: Tour + User Profile ── */}
             <div className="p-3 border-t border-white/10 bg-slate-900/50 backdrop-blur-sm shrink-0">

@@ -175,12 +175,11 @@ export async function middleware(request: NextRequest) {
         .eq("id", user.id)
         .maybeSingle();
 
-    // Fail-open by design: when Supabase auth/profile lookup fails (e.g. during
-    // an outage), we allow the request through rather than locking out all users.
-    // This trades a small security window (unauthenticated access during outage)
-    // for availability. Downstream route handlers perform their own auth checks.
+    // Fail-closed: when the profile lookup errors (e.g. Supabase outage),
+    // redirect to /auth rather than allowing access to protected pages.
     if (profileError) {
-        return sessionResponse;
+        const requested = `${pathname}${request.nextUrl.search}`;
+        return NextResponse.redirect(buildAuthRedirect(request, requested));
     }
 
     const onboardingComplete = isOnboardingComplete(profile);

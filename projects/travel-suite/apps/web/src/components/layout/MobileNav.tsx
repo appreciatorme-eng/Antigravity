@@ -142,7 +142,7 @@ export default function MobileNav() {
                                 </span>
                                 <button
                                     onClick={() => setIsFabOpen(false)}
-                                    className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"
+                                    className="p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"
                                     aria-label="Close quick actions"
                                 >
                                     <X className="w-4 h-4" />
@@ -211,7 +211,7 @@ export default function MobileNav() {
                                 </span>
                                 <button
                                     onClick={() => setIsDrawerOpen(false)}
-                                    className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"
+                                    className="p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"
                                     aria-label="Close drawer"
                                 >
                                     <X className="w-4 h-4" />
@@ -305,7 +305,7 @@ export default function MobileNav() {
             </AnimatePresence>
 
             {/* ── Bottom Navigation Bar ─────────────────────────────────── */}
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200/50 dark:border-slate-800/50 px-2 pt-2 pb-safe z-50 shadow-[0_-8px_30px_-10px_rgba(0,0,0,0.15)] transition-colors duration-300">
+            <nav aria-label="Bottom navigation" className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200/50 dark:border-slate-800/50 px-2 pt-2 pb-safe z-50 shadow-[0_-8px_30px_-10px_rgba(0,0,0,0.15)] transition-colors duration-300">
                 <div className="flex items-stretch justify-around gap-0.5 max-w-lg mx-auto">
                     {/* Left tabs: Home, Inbox */}
                     {TAB_ITEMS.slice(0, 2).map((item) => (
