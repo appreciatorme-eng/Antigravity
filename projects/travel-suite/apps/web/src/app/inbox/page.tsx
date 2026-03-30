@@ -76,7 +76,7 @@ export default function InboxPage() {
                 </span>
               )}
             </div>
-            <p className="text-[10px] md:text-xs text-slate-500 hidden sm:block">Unified inbox for tour operators</p>
+            <p className="text-[10px] md:text-xs text-slate-400 hidden sm:block">Unified inbox for tour operators</p>
           </div>
         </div>
 
@@ -106,7 +106,7 @@ export default function InboxPage() {
             className={`relative flex items-center gap-1 md:gap-1.5 px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-semibold transition-all shrink-0 ${
               activeTab === key
                 ? 'text-white'
-                : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                : 'text-slate-400 hover:text-slate-300 hover:bg-white/5'
             }`}
           >
             {icon}

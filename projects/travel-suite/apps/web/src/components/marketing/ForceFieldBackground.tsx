@@ -20,11 +20,11 @@ export function ForceFieldBackground({ id = 'tsparticles-forcefield', particleCo
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth < 768) {
-        // Mobile: balanced count for rich visuals without tanking performance
-        setActiveParticleCount(Math.min(250, Math.floor(particleCount * 0.5)));
+        // Mobile: low count to prevent jank on low-end devices
+        setActiveParticleCount(Math.min(50, Math.floor(particleCount * 0.33)));
       } else if (window.innerWidth < 1024) {
-        // Tablet: near-desktop density
-        setActiveParticleCount(Math.min(400, Math.floor(particleCount * 0.8)));
+        // Tablet: moderate density
+        setActiveParticleCount(Math.min(100, Math.floor(particleCount * 0.5)));
       } else {
         // Desktop: full count
         setActiveParticleCount(particleCount);
@@ -52,7 +52,7 @@ export function ForceFieldBackground({ id = 'tsparticles-forcefield', particleCo
         options={{
           fullScreen: { enable: false },
           background: { color: { value: 'transparent' } },
-          fpsLimit: 60,
+          fpsLimit: typeof window !== 'undefined' && window.innerWidth < 768 ? 30 : 60,
           interactivity: {
             events: {
               onHover: {

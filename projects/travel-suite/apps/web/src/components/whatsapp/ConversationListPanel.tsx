@@ -187,7 +187,7 @@ export function ConversationListPanel({
                 ? key === 'email'
                   ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
                   : 'bg-[#25D366]/20 text-[#25D366] border border-[#25D366]/30'
-                : 'text-slate-500 hover:text-slate-300 hover:bg-white/8'
+                : 'text-slate-400 hover:text-slate-300 hover:bg-white/8'
             }`}
           >
             {icon}
@@ -221,7 +221,7 @@ export function ConversationListPanel({
               className={`flex-1 flex items-center justify-center gap-1 py-1 rounded-md text-[10px] font-semibold transition-colors ${
                 emailFolder === key
                   ? 'bg-blue-500/15 text-blue-400'
-                  : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                  : 'text-slate-400 hover:text-slate-300 hover:bg-white/5'
               }`}
             >
               {icon}
@@ -242,7 +242,7 @@ export function ConversationListPanel({
             className={`shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-colors ${
               filterTab === key
                 ? 'bg-[#25D366]/20 text-[#25D366] border border-[#25D366]/30'
-                : 'text-slate-500 hover:text-slate-300 hover:bg-white/8'
+                : 'text-slate-400 hover:text-slate-300 hover:bg-white/8'
             }`}
           >
             {label}
