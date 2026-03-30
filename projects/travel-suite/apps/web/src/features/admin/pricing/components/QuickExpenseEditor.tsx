@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { SERVICE_CATEGORIES, CATEGORY_LABELS } from "../types";
 import type { ServiceCategory, VendorHistoryItem } from "../types";
 import { ReceiptUploader } from "./ReceiptUploader";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import { useDemoFetch } from "@/lib/demo/use-demo-fetch";
 import { createClient } from "@/lib/supabase/client";
 
@@ -145,10 +146,6 @@ export function QuickExpenseEditor({
   }, []);
 
   const handleSave = useCallback(async () => {
-    if (!selectedTrip) {
-      setError("Please select a trip");
-      return;
-    }
     if (!costAmount && !priceAmount) {
       setError("Please enter cost or revenue amount");
       return;
@@ -157,39 +154,62 @@ export function QuickExpenseEditor({
     setSaving(true);
     setError(null);
     try {
-      const payload = {
-        trip_id: selectedTrip.id,
-        category,
-        vendor_name: vendorName || null,
-        cost_amount: cost,
-        price_amount: price,
-        commission_pct: parseFloat(commissionPct) || 0,
-        commission_amount: commissionAmount,
-        pax_count: parseInt(paxCount) || 1,
-        notes: notes || null,
-      };
+      if (selectedTrip) {
+        // Save as trip service cost
+        const payload = {
+          trip_id: selectedTrip.id,
+          category,
+          vendor_name: vendorName || null,
+          cost_amount: cost,
+          price_amount: price,
+          commission_pct: parseFloat(commissionPct) || 0,
+          commission_amount: commissionAmount,
+          pax_count: parseInt(paxCount) || 1,
+          notes: notes || null,
+        };
 
-      const res = await demoFetch("/api/admin/pricing/trip-costs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+        const res = await authedFetch("/api/admin/pricing/trip-costs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `HTTP ${res.status}`);
-      }
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || `HTTP ${res.status}`);
+        }
 
-      const savedData = await res.json();
-      const savedCostId = savedData.data?.id || savedData.id;
+        const savedData = await res.json();
+        const savedCostId = savedData.data?.id || savedData.id;
 
-      // Link receipt if uploaded
-      if (receiptId && savedCostId) {
-        const supabase = createClient();
-        await supabase
-          .from("expense_receipts")
-          .update({ trip_service_cost_id: savedCostId })
-          .eq("id", receiptId);
+        // Link receipt if uploaded
+        if (receiptId && savedCostId) {
+          const supabase = createClient();
+          await supabase
+            .from("expense_receipts")
+            .update({ trip_service_cost_id: savedCostId })
+            .eq("id", receiptId);
+        }
+      } else {
+        // No trip selected — save as monthly overhead expense
+        const description = [vendorName, notes].filter(Boolean).join(" — ") || undefined;
+        const payload = {
+          month_start: new Date().toISOString().slice(0, 7) + "-01",
+          category: CATEGORY_LABELS[category],
+          description,
+          amount: cost || price,
+        };
+
+        const res = await authedFetch("/api/admin/pricing/overheads", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || `HTTP ${res.status}`);
+        }
       }
 
       onSaved();
@@ -198,7 +218,7 @@ export function QuickExpenseEditor({
     } finally {
       setSaving(false);
     }
-  }, [selectedTrip, category, vendorName, cost, price, commissionPct, commissionAmount, paxCount, notes, costAmount, priceAmount, receiptId, demoFetch, onSaved]);
+  }, [selectedTrip, category, vendorName, cost, price, commissionPct, commissionAmount, paxCount, notes, costAmount, priceAmount, receiptId, onSaved]);
 
   return (
     <GlassModal
@@ -216,7 +236,7 @@ export function QuickExpenseEditor({
 
         {/* Trip Search */}
         <div className="relative">
-          <label className="block text-sm font-medium text-secondary mb-1.5">Trip *</label>
+          <label className="block text-sm font-medium text-secondary mb-1.5">Trip <span className="text-text-muted font-normal">(optional)</span></label>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input

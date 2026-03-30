@@ -8,6 +8,7 @@ import { formatINR } from "@/lib/india/formats";
 import { SERVICE_CATEGORIES, CATEGORY_LABELS } from "../types";
 import type { ServiceCategory, VendorHistoryItem } from "../types";
 import { ReceiptUploader } from "./ReceiptUploader";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import { createClient } from "@/lib/supabase/client";
 
 interface TripCostEditorProps {
@@ -102,7 +103,7 @@ export function TripCostEditor({
         ? `/api/admin/pricing/trip-costs/${costId}`
         : "/api/admin/pricing/trip-costs";
       const method = costId ? "PATCH" : "POST";
-      const res = await fetch(url, {
+      const res = await authedFetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
