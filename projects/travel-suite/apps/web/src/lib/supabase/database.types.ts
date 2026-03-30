@@ -1,3 +1,4 @@
+Using workdir /Users/justforfun/Desktop/Antigravity/projects/travel-suite
 export type Json =
   | string
   | number
@@ -910,6 +911,51 @@ export type Database = {
           },
         ]
       }
+      conversation_notes: {
+        Row: {
+          conversation_key: string
+          created_at: string
+          id: string
+          note: string
+          organization_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          conversation_key: string
+          created_at?: string
+          id?: string
+          note?: string
+          organization_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          conversation_key?: string
+          created_at?: string
+          id?: string
+          note?: string
+          organization_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_notes_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_notes_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversion_events: {
         Row: {
           created_at: string
@@ -1548,6 +1594,24 @@ export type Database = {
           month_year?: string
           total_requests?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      inbox_read_state: {
+        Row: {
+          conversation_id: string
+          last_read_at: string
+          user_id: string
+        }
+        Insert: {
+          conversation_id: string
+          last_read_at?: string
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string
+          last_read_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -7525,3 +7589,5 @@ export const Constants = {
     Enums: {},
   },
 } as const
+A new version of Supabase CLI is available: v2.84.2 (currently installed v2.75.0)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli
