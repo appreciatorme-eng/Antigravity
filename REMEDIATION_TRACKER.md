@@ -1,61 +1,44 @@
-# Remediation Tracker s46
-**Date**: 2026-03-29 | **Branch**: `fix/remediation-s46` | **Source**: QA_ISSUE_TRACKER.md remaining open items
+# Remediation Tracker s50
+**Date**: 2026-03-30 | **Branch**: `fix/remediation-s50` | **Source**: /full-audit R13
 
 ## Legend
 ✅ Done | 🔄 In Progress | ⏳ Pending | 📝 Documented (no code change)
 
-## P0 CRITICAL — Verify Fixed (2)
+## CRITICAL (6)
+| ID | Finding | File:Line | Action | Outcome | Status |
+|----|---------|-----------|--------|---------|--------|
+| CR-1a | Middleware fail-open on profile error | middleware.ts:178 | Fail-closed on error | | ⏳ |
+| CR-1b | CSRF degrades without token | admin-mutation-csrf.ts:52 | Make token mandatory in prod | | ⏳ |
+| CR-6 | Sidebar no nav landmark | Sidebar.tsx:232 | Wrap in `<nav>` with aria-label | | ⏳ |
+| CR-7 | MobileNav no aria-label | MobileNav.tsx:308 | Add aria-label to `<nav>` | | ⏳ |
+| CR-12 | Landing page client-only (no SSR) | (marketing)/page.tsx:1 | Convert to Server Component | | ⏳ |
+| CR-13 | Solutions no metadata + infinite URLs | solutions/[type]/page.tsx | Add generateMetadata + notFound | | ⏳ |
 
-| ID | Finding | Action | Outcome | Status |
-|----|---------|--------|---------|--------|
-| QA-025 | `/bookings` accessible without auth | Verify — R10 audit showed redirect works | R10 S01 confirmed all routes redirect to /auth | ✅ |
-| QA-026 | `/billing` accessible without auth | Verify — R10 audit showed redirect works | R10 S01 confirmed all routes redirect to /auth | ✅ |
+## HIGH (9)
+| ID | Finding | File:Line | Action | Outcome | Status |
+|----|---------|-----------|--------|---------|--------|
+| CR-14 | Pricing CTAs do nothing | PricingPageContent.tsx:96 | Link to /auth or /demo | | ⏳ |
+| CR-15 | Blog subscribe form submits to # | blog/page.tsx:138 | Remove fake form or add toast | | ⏳ |
+| CR-16 | Footer dead links (spans) | Footer.tsx:15 | Wire to real routes | | ⏳ |
+| CR-17 | Footer social icons dead | Footer.tsx:60 | Make actual `<a>` tags | | ⏳ |
+| CR-18 | Blog hero "TravelBuilt" typo | BlogHero.tsx:28 | Fix to "TripBuilt" | | ⏳ |
+| CR-9 | Close buttons below 44px | MobileNav.tsx:143,213 | Increase padding to 44px | | ⏳ |
+| CR-8 | No role-based nav filtering | nav-config.ts | Add requiredRole field | | 📝 |
+| CR-19 | Demo page placeholder | demo/page.tsx:69 | Improve messaging | | ⏳ |
+| QA-044 | Calendar Supabase 400 errors | calendar page | Fix date range query | | ⏳ |
 
-## P1 HIGH — Fix (6)
-
-| ID | Finding | Action | Outcome | Status |
-|----|---------|--------|---------|--------|
-| QA-002 | FAB Quick Quote dead button | Wire up in AppShell | QuickQuoteModal connected via event listener | ✅ |
-| QA-003 | `/trips/new` shows "Trip not found" | Create static route | /trips/new → redirect to /trips?create=true | ✅ |
-| QA-004 | Settings labels invisible in dark | Already fixed in s45 (QA-037) | Fixed in s45 commit 120820cc | ✅ |
-| QA-005 | AI FAB overlaps modals | Already fixed (MutationObserver) | FAB hides when dialog open (d04e6838) | ✅ |
-| QA-006 | Proposals client dropdown empty in demo | Fix race condition | Added cancellation signal to useProposalData | ✅ |
-| QA-027 | Clients 32 unlabeled buttons | Add aria-labels | aria-labels on icon-only buttons | ✅ |
-
-## P2 MEDIUM — Fix (8)
-
-| ID | Finding | Action | Outcome | Status |
-|----|---------|--------|---------|--------|
-| QA-009 | Inbox dark mode contrast | Improved in inbox a11y pass | Better contrast on active/inactive states | ✅ |
-| QA-010 | Proposal templates empty | Needs template data — deferred | Content not code issue | 📝 |
-| QA-011 | AI FAB overlaps More drawer | Same root cause as QA-005 | Fixed by MutationObserver (d04e6838) | ✅ |
-| QA-013 | Add Client modal no scroll | Remove nested max-h | Single scroll context via GlassModal | ✅ |
-| QA-014 | FAB covers Add Driver notes | Same root cause as QA-005 | Fixed by MutationObserver (d04e6838) | ✅ |
-| QA-028 | Inbox 10 unlabeled buttons | Add aria-labels | close, send, search, attach buttons labeled | ✅ |
-| QA-029 | Clients 10 empty links | Add aria-labels | Navigation links labeled with client names | ✅ |
-| QA-032 | Settings 4 inputs without labels | Already fixed in s45 | Fixed in s45 commit 120820cc | ✅ |
-
-## P3 LOW — Deferred (10)
-
-| ID | Finding | Action | Status |
-|----|---------|--------|--------|
-| QA-007 | Touch targets below 44px | Large scope — design review needed | 📝 |
-| QA-008 | Demo banner 5% viewport | By design — useful for demo users | 📝 |
-| QA-012 | Settings tabs tight at 390px | Already improved in s45 dark mode fixes | 📝 |
-| QA-015 | Setup Guide + Welcome double-stack | UX design decision | 📝 |
-| QA-016 | Kanban text hard to read | CSS refinement — deferred | 📝 |
-| QA-017 | Inbox bubbles tight against edges | Cosmetic — deferred | 📝 |
-| QA-018 | More drawer active indicator | Cosmetic — deferred | 📝 |
-| QA-019 | Template button gold color | Design choice | 📝 |
-| QA-020 | Login no custom validation | Functional — browser native works | 📝 |
-| QA-021 | Login no password toggle | Nice to have — deferred | 📝 |
+## MEDIUM (3)
+| ID | Finding | File:Line | Action | Outcome | Status |
+|----|---------|-----------|--------|---------|--------|
+| QA-045 | Marketing home missing h1 | (marketing)/page.tsx | Add h1 (part of CR-12 SSR fix) | | ⏳ |
+| QA-046 | Pricing canonical wrong | pricing/page.tsx | Fix canonical URL | | ⏳ |
+| CR-12c | Dialogs not full-screen mobile | dialog.tsx:64 | Add mobile full-screen variant | | 📝 |
 
 ## Test Suite Status
-- Lint: ✅ pass (9 pre-existing `any` errors in untouched files, 0 in our changes)
-- TypeCheck: ✅ pass
-- Vitest: deferred (no logic changes requiring new unit tests)
+- Vitest: pending
+- Lint: pending
+- Typecheck: pending
 
 ## Commit Log
 | Phase | Commit | Date | Summary |
 |-------|--------|------|---------|
-| P1+P2 | 0aa70c2c | 2026-03-29 | fix: remediate QA-002/003/006/013/027/028/029 |
