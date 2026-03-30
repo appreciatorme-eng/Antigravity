@@ -70,8 +70,8 @@ const TAX_KPI_CONFIG = [
     icon: Banknote,
     color: "text-purple-600",
     bg: "bg-purple-500/10",
-    description: "1% tax collected at source",
-    badge: "1%",
+    description: "2% tax collected at source",
+    badge: "2%",
   },
 ] as const;
 

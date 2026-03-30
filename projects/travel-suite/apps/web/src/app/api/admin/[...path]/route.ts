@@ -95,6 +95,7 @@ const routes = createCatchAllHandlers([
   ["workflow/events", () => import("@/app/api/_handlers/admin/workflow/events/route")],
   ["workflow/rules", () => import("@/app/api/_handlers/admin/workflow/rules/route")],
   ["pricing/dashboard", () => import("@/app/api/_handlers/admin/pricing/dashboard/route")],
+  ["pricing/trips/search", () => import("@/app/api/_handlers/admin/pricing/trips/search/route")],
   ["pricing/trips", () => import("@/app/api/_handlers/admin/pricing/trips/route")],
   ["pricing/trip-costs/:id", () => import("@/app/api/_handlers/admin/pricing/trip-costs/[id]/route")],
   ["pricing/trip-costs", () => import("@/app/api/_handlers/admin/pricing/trip-costs/route")],

@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
-  Coins, ChevronLeft, ChevronRight, RefreshCw, LayoutGrid, Receipt, BarChart3, Database, Download,
+  Coins, ChevronLeft, ChevronRight, RefreshCw, LayoutGrid, Receipt, BarChart3, Database, Download, Plus,
 } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
@@ -19,6 +19,7 @@ import { CategoryBreakdownChart } from "@/features/admin/pricing/components/Cate
 import { AnalyticsByDimension } from "@/features/admin/pricing/components/AnalyticsByDimension";
 import { TransactionLedger } from "@/features/admin/pricing/components/TransactionLedger";
 import { TransactionDetailPanel } from "@/features/admin/pricing/components/TransactionDetailPanel";
+import { QuickExpenseEditor } from "@/features/admin/pricing/components/QuickExpenseEditor";
 import SlideOutPanel from "@/components/god-mode/SlideOutPanel";
 import type { TransactionItem } from "@/features/admin/pricing/types";
 import { GuidedTour } from '@/components/tour/GuidedTour';
@@ -52,6 +53,7 @@ export default function PricingPage() {
   const [activeTab, setActiveTab] = useState<TabId>("monthly");
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionItem | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [quickExpenseOpen, setQuickExpenseOpen] = useState(false);
 
   const monthLabel = getMonthLabel(month);
   const monthStart = `${month}-01`;
@@ -119,6 +121,15 @@ export default function PricingPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            <GlassButton
+              onClick={() => setQuickExpenseOpen(true)}
+              className="rounded-xl"
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              <span className="hidden sm:inline">Add Expense</span>
+              <span className="sm:hidden">Add</span>
+            </GlassButton>
+
             {/* Month Picker */}
             <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-xl px-1 py-1 shadow-sm" data-tour="pricing-month-nav">
               <button
@@ -443,6 +454,19 @@ export default function PricingPage() {
           </motion.div>
         )}
       </div>
+
+      {/* Quick Expense Editor */}
+      <QuickExpenseEditor
+        isOpen={quickExpenseOpen}
+        onClose={() => setQuickExpenseOpen(false)}
+        onSaved={() => {
+          setQuickExpenseOpen(false);
+          dashboard.reload();
+          tripCosts.reload();
+          overheads.reload();
+        }}
+        fetchVendorHistory={tripCosts.fetchVendorHistory}
+      />
 
       {/* Transaction Detail Panel */}
       <SlideOutPanel

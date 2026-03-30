@@ -79,9 +79,9 @@ export async function GET(req: NextRequest) {
     const tripCount = tripIds.length;
     const marginPct = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
     const avgProfitPerTrip = tripCount > 0 ? grossProfit / tripCount : 0;
-    // Standard Indian tour package rates: 5% GST, 1% TCS (on total price)
+    // Standard Indian tour package rates: 5% GST, 2% TCS (on total price)
     const totalGst = Math.round(totalRevenue * 5 / 100 * 100) / 100;
-    const totalTcs = Math.round(totalRevenue * 1 / 100 * 100) / 100;
+    const totalTcs = Math.round(totalRevenue * 2 / 100 * 100) / 100;
 
     const catMap = new Map<string, { totalCost: number; totalPrice: number }>();
     for (const c of costs) {
