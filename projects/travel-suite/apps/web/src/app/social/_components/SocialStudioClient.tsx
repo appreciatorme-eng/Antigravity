@@ -2,22 +2,36 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
-import { AnimatePresence } from "framer-motion";
 import { CheckCircle2, Circle, Megaphone } from "lucide-react";
 import { toast } from "sonner";
 import { SocialTemplate, type TemplateDataForRender } from "@/lib/social/types";
 import { matchDestination } from "@/lib/social/destination-images";
 import { GlassModal } from "@/components/glass/GlassModal";
 
-// New components
+// Critical-path components (needed immediately)
 import { ContentBar } from "./ContentBar";
-import { BackgroundPicker } from "./BackgroundPicker";
-import { GallerySlotPicker } from "./GallerySlotPicker";
-import { CanvasMode } from "./CanvasMode";
 import { ToolbarActions, type ToolbarAction } from "./ToolbarActions";
-import { PlatformStatusBar } from "./PlatformStatusBar";
 import { GuidedTour } from '@/components/tour/GuidedTour';
 import type { CaptionTone, CaptionPlatform } from "./CaptionEngine";
+
+// Deferred components (below the fold or conditionally rendered)
+const AnimatePresence = dynamic(
+    () => import("framer-motion").then((mod) => mod.AnimatePresence),
+    { ssr: false }
+);
+const BackgroundPicker = dynamic(
+    () => import("./BackgroundPicker").then((mod) => mod.BackgroundPicker)
+);
+const GallerySlotPicker = dynamic(
+    () => import("./GallerySlotPicker").then((mod) => mod.GallerySlotPicker)
+);
+const CanvasMode = dynamic(
+    () => import("./CanvasMode").then((mod) => mod.CanvasMode),
+    { ssr: false }
+);
+const PlatformStatusBar = dynamic(
+    () => import("./PlatformStatusBar").then((mod) => mod.PlatformStatusBar)
+);
 
 const TemplateGallery = dynamic(() => import("./TemplateGallery").then((mod) => mod.TemplateGallery));
 const CaptionEngine = dynamic(() => import("./CaptionEngine").then((mod) => mod.CaptionEngine));
