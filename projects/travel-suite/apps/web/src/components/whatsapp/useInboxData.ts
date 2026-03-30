@@ -13,7 +13,6 @@ import type { ChatbotSessionSummary } from './whatsapp.types';
 import {
   type ChannelConversation,
   type ChannelType,
-  ALL_MOCK_CONVERSATIONS,
 } from './inbox-mock-data';
 import type { ContextAction } from './unified-inbox-shared';
 import type { ContextActionType } from './ContextActionModal';
@@ -252,30 +251,16 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
         });
       const convs = applyReadTracking(rawConvs);
 
-      // In demo mode with no real data, fall back to mock conversations
-      if (isDemoMode && convs.length === 0) {
-        setConversations(ALL_MOCK_CONVERSATIONS);
-        setSelectedId('conv_1');
-        setWhatsAppStatus('connected');
-      } else {
-        setConversations(convs);
-        setSelectedId((current) => current || convs[0]?.id || null);
-      }
+      setConversations(convs);
+      setSelectedId((current) => current || convs[0]?.id || null);
     } catch (error) {
-      // In demo mode, fall back to mock conversations on error
-      if (isDemoMode) {
-        setConversations(ALL_MOCK_CONVERSATIONS);
-        setSelectedId('conv_1');
-        setWhatsAppStatus('connected');
-      } else {
-        setConversationsError(
-          error instanceof Error ? error.message : 'Unable to load conversations right now.',
-        );
-      }
+      setConversationsError(
+        error instanceof Error ? error.message : 'Unable to load conversations right now.',
+      );
     } finally {
       setIsLoadingConvs(false);
     }
-  }, [isDemoMode, businessOnly, emailApiParams]);
+  }, [businessOnly, emailApiParams]);
 
   const loadWhatsAppHealth = useCallback(async () => {
     try {

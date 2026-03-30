@@ -143,18 +143,6 @@ export const NAV_ITEMS: readonly NavItemConfig[] = [
     href: "/admin/gst-report",
     section: "operations",
   },
-  {
-    icon: "LayoutTemplate",
-    label: "Templates",
-    href: "/admin/tour-templates",
-    section: "daily",
-  },
-  {
-    icon: "BarChart3",
-    label: "Analytics",
-    href: "/analytics",
-    section: "growth",
-  },
 
   // ── ACCOUNT ─────────────────────────────────────────────────────────
   { icon: "Settings", label: "Settings", href: "/settings", section: "account" },
