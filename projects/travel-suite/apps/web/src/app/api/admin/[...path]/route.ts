@@ -108,6 +108,7 @@ const routes = createCatchAllHandlers([
   ["revenue", () => import("@/app/api/_handlers/admin/revenue/route")],
   ["scorecards", () => import("@/app/api/_handlers/admin/scorecards/route")],
   ["seed-demo", () => import("@/app/api/_handlers/admin/seed-demo/route")],
+  ["share/create", () => import("@/app/api/_handlers/admin/share/create/route")],
   ["share/send", () => import("@/app/api/_handlers/admin/share/send/route")],
   ["logo", () => import("@/app/api/_handlers/admin/logo/route")],
   ["setup-progress", () => import("@/app/api/_handlers/admin/setup-progress/route")],

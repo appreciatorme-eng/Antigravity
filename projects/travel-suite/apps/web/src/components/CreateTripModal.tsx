@@ -434,27 +434,29 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
             }
 
             const payloadData = await response.json();
-            const itineraryId = payloadData.itineraryId;
+            const tripId = payloadData.tripId;
 
             let shareLinkCopied = false;
             try {
-                // Auto-generate share link
-                const token = crypto.randomUUID();
-                const expiresAt = new Date();
-                expiresAt.setDate(expiresAt.getDate() + 30);
-
-                const { error: shareError } = await supabase.from("shared_itineraries").insert({
-                    itinerary_id: itineraryId,
-                    share_code: token,
-                    expires_at: expiresAt.toISOString(),
-                    template_id: "safari_story",
+                // Auto-generate share link via server API (bypasses RLS)
+                const shareLinkResponse = await fetch(`/api/admin/trips/${tripId}/share-link`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${session?.access_token}`,
+                        "x-requested-with": "XMLHttpRequest",
+                    },
+                    body: JSON.stringify({ templateId: "safari_story" }),
                 });
 
-                if (shareError) throw shareError;
+                if (!shareLinkResponse.ok) throw new Error("Share link creation failed");
 
-                const shareLink = `${window.location.origin}/share/${token}`;
-                await navigator.clipboard.writeText(shareLink);
-                shareLinkCopied = true;
+                const shareLinkData = await shareLinkResponse.json();
+                const shareUrl = shareLinkData?.data?.shareUrl;
+                if (shareUrl) {
+                    await navigator.clipboard.writeText(shareUrl);
+                    shareLinkCopied = true;
+                }
             } catch {
                 // Share link generation failed — trip still created, show fallback toast below
             }
