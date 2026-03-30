@@ -29,9 +29,8 @@ export function ThemeToggle({ className }: { className?: string }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
     const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
-    const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
-    const initialTheme = savedTheme || (prefersLight ? 'light' : 'dark');
-     
+    const initialTheme = savedTheme || 'light';
+
     setTheme(initialTheme);
     updateTheme(initialTheme);
   }, []);
@@ -105,9 +104,8 @@ export function ThemeToggleButton({ className }: { className?: string }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
     const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
-    const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
-    const initialTheme = savedTheme || (prefersLight ? 'light' : 'dark');
-     
+    const initialTheme = savedTheme || 'light';
+
     setTheme(initialTheme);
     updateTheme(initialTheme);
   }, []);
