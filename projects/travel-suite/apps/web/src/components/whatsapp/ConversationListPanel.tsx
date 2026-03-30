@@ -282,15 +282,7 @@ export function ConversationListPanel({
         <ErrorSection label="Inbox conversation list">
           {isLoadingConvs && conversations.length === 0 ? null : filteredAndSorted.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 px-4 py-8 text-center">
-            {isDemoMode ? (
-              <>
-                <EmptyState
-                  icon="💬"
-                  title="No conversations match your filter"
-                  description="Try a different search or switch back to all channels."
-                />
-              </>
-            ) : conversationsError ? (
+            {conversationsError ? (
               <EmptyState
                 icon="⚠️"
                 title="Inbox unavailable"
