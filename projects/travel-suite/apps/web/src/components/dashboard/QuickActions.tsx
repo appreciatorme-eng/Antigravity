@@ -9,7 +9,7 @@ export function QuickActions() {
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between px-2">
-                <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Quick Actions</h3>
+                <h2 className="text-sm font-black uppercase tracking-widest text-slate-400">Quick Actions</h2>
             </div>
 
             <div className="grid grid-cols-1 gap-3">

@@ -306,9 +306,9 @@ export function TodaysTimeline({ loading = false }: TodaysTimelineProps) {
       {/* Header */}
       <div className="flex items-center justify-between px-1 shrink-0">
         <div className="flex items-center gap-3">
-          <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">
+          <h2 className="text-sm font-black uppercase tracking-widest text-slate-400">
             Today&apos;s Schedule
-          </h3>
+          </h2>
           <span className="text-[10px] text-slate-500 font-medium">
             {istDate} IST
           </span>

@@ -197,9 +197,9 @@ export function SetupChecklist() {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Rocket className="w-5 h-5 text-[#00d084]" />
-          <h3 className="text-sm font-bold text-gray-900">
+          <h2 className="text-sm font-bold text-gray-900">
             Get Started with TripBuilt
-          </h3>
+          </h2>
         </div>
         <button
           onClick={handleDismiss}

@@ -234,9 +234,9 @@ export function WhatsAppDashboardPreview({
       {/* Header */}
       <div className="flex items-center justify-between px-1 shrink-0">
         <div className="flex items-center gap-3">
-          <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">
+          <h2 className="text-sm font-black uppercase tracking-widest text-slate-400">
             WhatsApp
-          </h3>
+          </h2>
           {unreadCount > 0 && (
             <span className="flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-[#25D366] text-[10px] font-black text-white">
               {unreadCount}

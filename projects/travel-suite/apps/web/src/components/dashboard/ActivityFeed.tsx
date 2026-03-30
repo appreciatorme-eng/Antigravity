@@ -23,7 +23,7 @@ export function ActivityFeed({ activities, loading = false }: ActivityFeedProps)
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between px-2">
-                <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Recent Activity</h3>
+                <h2 className="text-sm font-black uppercase tracking-widest text-slate-400">Recent Activity</h2>
                 <Link href="/trips" className="text-xs font-bold text-primary hover:underline flex items-center gap-1">
                     View All <ChevronRight className="w-3 h-3" />
                 </Link>

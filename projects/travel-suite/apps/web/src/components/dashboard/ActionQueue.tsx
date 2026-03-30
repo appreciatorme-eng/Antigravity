@@ -151,9 +151,9 @@ export function ActionQueue({ loading: loadingProp = false }: ActionQueueProps) 
       {/* Section Header */}
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-3">
-          <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">
+          <h2 className="text-sm font-black uppercase tracking-widest text-slate-400">
             Needs Your Attention
-          </h3>
+          </h2>
           {!isLoading && highCount > 0 && (
             <span className="flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-red-500 text-[10px] font-black text-white animate-pulse">
               {highCount}
