@@ -89,16 +89,21 @@ export function ApprovalManager({ token, clientName }: ApprovalManagerProps) {
       const response = await fetch(`/api/share/${token}`);
       const payload = await response.json();
       const data = payload?.data ?? null;
-      if (data.status) {
+      if (data?.status) {
         setStatus(data.status);
         setComments(Array.isArray(data.comments) ? data.comments : []);
         setApprovedBy(data.approved_by || "");
         setApprovedAt(data.approved_at || "");
         setPreferences((data.preferences || {}) as Preferences);
         setWishlistItems(Array.isArray(data.wishlist_items) ? data.wishlist_items : []);
+      } else {
+        // API returned but no status — treat as viewed
+        setStatus("viewed");
       }
     } catch (error) {
       logError("Failed to load share status", error);
+      // Don't leave stuck on "loading" — show the UI anyway
+      setStatus("viewed");
     }
   }, [token]);
 
