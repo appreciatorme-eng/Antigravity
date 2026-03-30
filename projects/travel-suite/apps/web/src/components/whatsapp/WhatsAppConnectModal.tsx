@@ -17,6 +17,7 @@ import { GlassButton } from "@/components/glass/GlassButton";
 import { useToast } from "@/components/ui/toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { logError } from "@/lib/observability/logger";
+import { authedFetch } from "@/lib/api/authed-fetch";
 
 interface WhatsAppConnectModalProps {
     isOpen: boolean;
@@ -45,7 +46,7 @@ export function WhatsAppConnectModal({
     const startRealConnection = useCallback(async () => {
         try {
             setLoading(true);
-            const res = await fetch("/api/whatsapp/connect", { method: "POST" });
+            const res = await authedFetch("/api/whatsapp/connect", { method: "POST" });
             const data = await res.json() as {
                 sessionName?: string;
                 qrBase64?: string;

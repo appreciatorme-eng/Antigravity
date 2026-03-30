@@ -23,7 +23,7 @@ afterEach(() => {
 
 it("passesMutationCsrfGuard allows bearer requests", () => {
   const request = makeRequest({
-    authorization: "Bearer token",
+    authorization: "Bearer eyJhbGciOiJIUzI1NiJ9.test-token",
   });
   expect(passesMutationCsrfGuard(request)).toBe(true);
 });

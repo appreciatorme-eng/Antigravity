@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Send, Check, Phone } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { logError } from "@/lib/observability/logger";
+import { authedFetch } from "@/lib/api/authed-fetch";
 
 interface ShareItineraryProps {
     tripTitle: string;
@@ -22,7 +23,7 @@ export default function ShareItinerary({ tripTitle }: ShareItineraryProps) {
         setLoading(true);
 
         try {
-            const res = await fetch("/api/itinerary/share", {
+            const res = await authedFetch("/api/itinerary/share", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

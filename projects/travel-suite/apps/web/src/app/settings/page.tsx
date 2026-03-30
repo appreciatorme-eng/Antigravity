@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase/client';
+import { authedFetch } from '@/lib/api/authed-fetch';
 import { normalizeItineraryTemplateId } from '@/components/pdf/itinerary-types';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { GlassButton } from '@/components/glass/GlassButton';
@@ -282,7 +283,7 @@ export default function SettingsPage() {
 
     const handleDisconnectWhatsApp = useCallback(async () => {
         try {
-            const res = await fetch('/api/whatsapp/disconnect', { method: 'POST' });
+            const res = await authedFetch('/api/whatsapp/disconnect', { method: 'POST' });
             if (!res.ok) throw new Error('Disconnect failed');
             setIsWhatsAppConnected(false);
             setWhatsAppProfile(null);
@@ -590,7 +591,7 @@ export default function SettingsPage() {
                                     onOpenWhatsAppConnect={handleOpenWhatsAppConnect}
                                     onDisconnectWhatsApp={() => { void handleDisconnectWhatsApp(); }}
                                     onDisconnectGmail={async () => {
-                                        const res = await fetch('/api/admin/email/disconnect', { method: 'POST' });
+                                        const res = await authedFetch('/api/admin/email/disconnect', { method: 'POST' });
                                         if (res.ok) {
                                             setIsGmailConnected(false);
                                             setGmailEmail('');
