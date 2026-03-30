@@ -178,6 +178,7 @@ export function EInvoicingTab() {
                             value={gstin}
                             onChange={(e) => setGstin(e.target.value.toUpperCase())}
                             placeholder="22AAAAA0000A1Z5"
+                            aria-label="GSTIN"
                             maxLength={15}
                             className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm text-secondary dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30 font-mono"
                         />
@@ -208,6 +209,7 @@ export function EInvoicingTab() {
                             value={irpUsername}
                             onChange={(e) => setIrpUsername(e.target.value)}
                             placeholder="IRP_USERNAME"
+                            aria-label="IRP Username"
                             className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm text-secondary dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
                         />
                     </div>
@@ -229,6 +231,7 @@ export function EInvoicingTab() {
                             value={irpPassword}
                             onChange={(e) => setIrpPassword(e.target.value)}
                             placeholder={isConfigured ? '••••••••' : 'Enter IRP password'}
+                            aria-label="IRP Password"
                             className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm text-secondary dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
                         />
                     </div>
@@ -259,6 +262,7 @@ export function EInvoicingTab() {
                             onChange={(e) => setThresholdAmount(e.target.value)}
                             min="0"
                             step="10000"
+                            aria-label="E-invoice threshold amount in INR"
                             className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm text-secondary dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30"
                         />
                     </div>
@@ -278,6 +282,7 @@ export function EInvoicingTab() {
                             </div>
                             <button
                                 onClick={() => setAutoGenerateEnabled(!autoGenerateEnabled)}
+                                aria-label="Toggle auto-generate e-invoices"
                                 className={cn(
                                     "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20",
                                     autoGenerateEnabled ? "bg-primary" : "bg-gray-300"
@@ -308,6 +313,7 @@ export function EInvoicingTab() {
                             </div>
                             <button
                                 onClick={() => setSandboxMode(!sandboxMode)}
+                                aria-label="Toggle sandbox mode"
                                 className={cn(
                                     "relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20",
                                     sandboxMode ? "bg-amber-500" : "bg-gray-300"

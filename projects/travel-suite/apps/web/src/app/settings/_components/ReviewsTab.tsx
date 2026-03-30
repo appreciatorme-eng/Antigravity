@@ -93,6 +93,7 @@ export function ReviewsTab({
                                 value={tripAdvisorLocationInput}
                                 onChange={(event) => setTripAdvisorLocationInput(event.target.value)}
                                 placeholder="Location ID (e.g. 297606)"
+                                aria-label="TripAdvisor Location ID"
                                 className="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 text-xs text-secondary dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/20"
                             />
                             <GlassButton
