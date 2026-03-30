@@ -85,16 +85,14 @@ export function useReputationDashboardData() {
   const [brandVoice, setBrandVoice] = useState<ReputationBrandVoice | null>(null);
   const [widgets, setWidgets] = useState<ReputationWidget[]>([]);
   const [loading, setLoading] = useState(true);
+  const [secondaryLoading, setSecondaryLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  /** Load all 7 endpoints in parallel — used for background refresh */
   const loadAll = useCallback(
-    async (background = false) => {
-      if (background) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
+    async () => {
+      setRefreshing(true);
       setError(null);
 
       try {
@@ -128,19 +126,65 @@ export function useReputationDashboardData() {
           loadError instanceof Error ? loadError.message : "Failed to load dashboard";
         setError(message);
       } finally {
-        setLoading(false);
         setRefreshing(false);
       }
     },
     []
   );
 
+  /**
+   * Two-phase initial load for faster perceived page load.
+   * Phase 1 (blocking): dashboard + connections — needed for initial render.
+   * Phase 2 (deferred): trends, topics, campaigns, brandVoice, widgets — loaded after first paint.
+   */
+  const loadInitial = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Phase 1: Critical data for initial render
+      const [dashboardData, connectionsData] = await Promise.all([
+        fetchJson<ReputationDashboardData>("/api/reputation/dashboard"),
+        fetchJson<ConnectionsResponse>("/api/reputation/connections"),
+      ]);
+
+      setDashboard(dashboardData);
+      setConnections(connectionsData.connections ?? []);
+      setLoading(false);
+
+      // Phase 2: Deferred secondary data (non-blocking)
+      setSecondaryLoading(true);
+
+      const [trendsData, topicsData, campaignsData, brandVoiceData, widgetsData] =
+        await Promise.all([
+          fetchJson<TrendsResponse>("/api/reputation/analytics/trends?period=30d"),
+          fetchJson<TopicsResponse>("/api/reputation/analytics/topics?period=30d"),
+          fetchJson<CampaignsResponse>("/api/reputation/campaigns"),
+          fetchJson<BrandVoiceResponse>("/api/reputation/brand-voice"),
+          fetchJson<WidgetsResponse>("/api/reputation/widget/config"),
+        ]);
+
+      setTrends(trendsData.trends ?? []);
+      setTopics(topicsData.topics ?? []);
+      setCampaigns(campaignsData.campaigns ?? []);
+      setBrandVoice(brandVoiceData.brandVoice ?? null);
+      setWidgets(widgetsData.widgets ?? []);
+      setSecondaryLoading(false);
+    } catch (loadError) {
+      const message =
+        loadError instanceof Error ? loadError.message : "Failed to load dashboard";
+      setError(message);
+      setLoading(false);
+      setSecondaryLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    void loadAll(false);
-  }, [loadAll]);
+    void loadInitial();
+  }, [loadInitial]);
 
   const refresh = useCallback(async () => {
-    await loadAll(true);
+    await loadAll();
   }, [loadAll]);
 
   const refreshCampaigns = useCallback(async () => {
@@ -203,6 +247,7 @@ export function useReputationDashboardData() {
     widgets,
     currentWidget,
     loading,
+    secondaryLoading,
     refreshing,
     error,
     refresh,
