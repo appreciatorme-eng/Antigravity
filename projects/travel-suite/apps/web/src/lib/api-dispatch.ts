@@ -116,6 +116,7 @@ async function dispatch(
     const csrfExempt =
       routePath.startsWith("cron/") ||
       routePath === "auth/password-login" ||
+      routePath === "onboarding/setup" ||
       routePath === "payments/webhook" ||
       routePath === "whatsapp/webhook" ||
       routePath.startsWith("webhooks/");
