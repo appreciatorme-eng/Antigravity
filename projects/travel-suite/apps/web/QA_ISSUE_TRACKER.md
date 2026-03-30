@@ -1,7 +1,7 @@
 # TripBuilt Mobile QA Issue Tracker
 
 **Created**: 2026-03-28
-**Last Updated**: 2026-03-29 (Post-Remediation Reconciliation)
+**Last Updated**: 2026-03-30 (CRUD Testing Round)
 **Device**: iPhone 14 (390x844) + iPhone SE (320x568) + iPad (768x1024) + Landscape (844x390)
 **Target**: https://www.tripbuilt.com
 
@@ -11,11 +11,11 @@
 
 | Priority | Open | Fixed | Documented | Total |
 |----------|------|-------|------------|-------|
-| P0 Critical | 0 | 3 | 0 | 3 |
+| P0 Critical | 1 | 5 | 0 | 6 |
 | P1 High | 0 | 8 | 0 | 8 |
-| P2 Medium | 4 | 9 | 2 | 15 |
-| P3 Low | 4 | 7 | 6 | 17 |
-| **Total** | **8** | **27** | **8** | **43** |
+| P2 Medium | 3 | 11 | 2 | 16 |
+| P3 Low | 1 | 10 | 6 | 17 |
+| **Total** | **5** | **34** | **8** | **47** |
 
 ---
 
@@ -207,3 +207,39 @@
 | 2026-03-29 | Remediation s46: Fixed QA-002/003/006/013/027/028/029 + E2E-001 through E2E-004 |
 | 2026-03-29 | Final deferred fixes: QA-007/043/016/017/018/020/021 |
 | 2026-03-29 | **Tracker reconciliation**: 27 fixed, 8 documented, 8 open |
+| 2026-03-29 | Final 8 open fixes: QA-009/010/012/030/031/032/033 |
+| 2026-03-30 | CRUD-001 fixed: Demo mode ghost data — added isDemoMode guard |
+| 2026-03-30 | CRUD-004 fixed: Client PATCH fails — language_preference column missing |
+| 2026-03-30 | CRUD testing round: 4 new issues found, 2 fixed immediately |
+
+---
+
+## CRUD Test Results (R12 — 2026-03-30)
+
+### Test Matrix
+
+| Flow | Mode | Result | Issue |
+|------|------|--------|-------|
+| **CREATE Client** | Demo | FAIL → **FIXED** | CRUD-001: Data saved but invisible (reads from demo) |
+| **CREATE Client** | Real | **PASS** | Client appears in list, count updates |
+| **EDIT Client** | Real | FAIL → **FIXED** | CRUD-004: PATCH 400 — `language_preference` column doesn't exist |
+| **DELETE Client** | Real | Not tested | No delete button in UI |
+| **CREATE Trip** | Real | **PASS** | Trip created, toast shown, appears in list |
+| **CREATE Proposal** | Real | **PASS** | Templates load (starter templates working) |
+| **Settings Save** | Real | **PASS** | "Settings saved" toast confirmed |
+| **Search (global)** | Real | FAIL | CRUD-006: No results for existing data |
+| **Pipeline Stage Move** | Real | Not tested | Only 1 client, wasn't in visible stage |
+| **Invoice Form** | Real | Loads | Full form renders, not submitted (would need Razorpay) |
+| **All 22 routes** | Real | **PASS** | Every page loads without crash |
+
+### New Issues from CRUD Testing
+
+| ID | Severity | Issue | Status |
+|----|----------|-------|--------|
+| CRUD-001 | P0 | Demo mode: mutations succeed but data invisible (reads hardcoded demo data) | **FIXED** — Added `isDemoMode` guard |
+| CRUD-002 | P2 | FAB overlay blocks "Add Client" button on first click | **FIXED** (QA-005 fix) |
+| CRUD-003 | P2 | Total Clients KPI doesn't refresh after creation without page reload | Documented |
+| CRUD-004 | P0 | Client PATCH always fails: `language_preference` column doesn't exist in profiles | **FIXED** — Removed nonexistent column |
+| CRUD-005 | P2 | Pipeline shows 0 in all stages but KPI shows correct total (1) | Open |
+| CRUD-006 | P3 | Global search returns no results for existing clients/trips | Open |
+| CRUD-007 | P2 | Share link fails (403 on shared_itineraries) during trip creation | Open |
