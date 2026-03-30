@@ -1,4 +1,3 @@
-Using workdir /Users/justforfun/Desktop/Antigravity/projects/travel-suite
 export type Json =
   | string
   | number
