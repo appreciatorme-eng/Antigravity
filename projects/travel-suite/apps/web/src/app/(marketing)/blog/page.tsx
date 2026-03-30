@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
-import { ArrowRight } from 'lucide-react';
 import { getAllPublishedPosts, type BlogPostSummary } from '@/lib/blog/queries';
 import { BlogCard } from '@/components/marketing/blog/BlogCard';
 import { BlogHero } from './BlogHero';
@@ -133,25 +132,9 @@ export default async function BlogPage() {
               travel business. No fluff, just operator playbooks.
             </p>
 
-            <form
-              className="flex flex-col sm:flex-row gap-4"
-              action="#"
-              method="POST"
-            >
-              <input
-                type="email"
-                placeholder="you@company.com"
-                className="flex-grow px-6 py-4 rounded-xl bg-black/50 border border-white/10 focus:outline-none focus:border-[#FF9933]/50 text-white"
-                required
-              />
-              <button
-                type="submit"
-                className="px-8 py-4 bg-[#FF9933] text-black font-bold rounded-xl hover:bg-[#FFB366] transition-colors flex items-center justify-center gap-2"
-              >
-                Subscribe
-                <ArrowRight size={18} />
-              </button>
-            </form>
+            <p className="text-sm text-gray-500 italic">
+              Newsletter coming soon. Follow us on social media for updates.
+            </p>
           </div>
         </div>
       </div>

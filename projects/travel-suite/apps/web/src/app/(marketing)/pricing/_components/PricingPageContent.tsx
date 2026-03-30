@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Sparkles, ChevronDown } from 'lucide-react';
 import dynamic from 'next/dynamic';
@@ -93,15 +94,16 @@ function PricingCard({ plan, billingCycle }: { plan: Plan; billingCycle: 'monthl
         ))}
       </div>
 
-      <button
-        className={`w-full py-4 rounded-2xl font-bold transition-all duration-300 ${
+      <Link
+        href={plan.cta === 'Contact Sales' ? '/demo' : '/auth'}
+        className={`block w-full py-4 rounded-2xl font-bold transition-all duration-300 text-center ${
           plan.highlight
             ? 'bg-[#00F0FF] text-black hover:scale-[1.02] shadow-[0_0_20px_rgba(0,240,255,0.3)]'
             : 'bg-white/5 text-white hover:bg-white/10'
         }`}
       >
         {plan.cta}
-      </button>
+      </Link>
     </div>
   );
 }

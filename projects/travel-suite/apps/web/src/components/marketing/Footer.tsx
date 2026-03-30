@@ -24,23 +24,23 @@ export function Footer() {
         { label: 'About Us', href: '/about' },
         { label: 'Careers' },
         { label: 'Blog', href: '/blog' },
-        { label: 'Contact' },
+        { label: 'Contact', href: '/demo' },
       ]
     },
     {
       title: 'Legal',
       links: [
-        { label: 'Privacy Policy' },
-        { label: 'Terms of Service' },
+        { label: 'Privacy Policy', href: '/privacy' },
+        { label: 'Terms of Service', href: '/terms' },
         { label: 'Cookie Policy' },
       ]
     }
   ];
 
   const socialLinks = [
-    { Icon: Twitter, label: 'TripBuilt on Twitter' },
-    { Icon: Instagram, label: 'TripBuilt on Instagram' },
-    { Icon: Linkedin, label: 'TripBuilt on LinkedIn' },
+    { Icon: Twitter, label: 'TripBuilt on Twitter', href: 'https://twitter.com/tripbuilt' },
+    { Icon: Instagram, label: 'TripBuilt on Instagram', href: 'https://instagram.com/tripbuilt' },
+    { Icon: Linkedin, label: 'TripBuilt on LinkedIn', href: 'https://linkedin.com/company/tripbuilt' },
   ];
 
   return (
@@ -57,14 +57,17 @@ export function Footer() {
               The first truly modern operating system for Indian tour operators. Built by operators, for operators. Revolutionizing how itineraries are built and trips are sold.
             </p>
             <div className="flex items-center gap-4">
-              {socialLinks.map(({ Icon, label }) => (
-                <span
+              {socialLinks.map(({ Icon, label, href }) => (
+                <a
                   key={label}
-                  className="w-9 h-9 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center text-gray-400"
-                  title={label}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={label}
+                  className="w-9 h-9 rounded-lg border border-white/10 bg-white/5 flex items-center justify-center text-gray-400 hover:text-white hover:border-white/20 transition-colors"
                 >
                   <Icon size={18} />
-                </span>
+                </a>
               ))}
             </div>
           </div>

@@ -26,7 +26,7 @@ export function BlogHero() {
         className="relative z-10 max-w-7xl mx-auto text-center"
       >
         <h1 className="text-4xl md:text-7xl font-black mb-6 tracking-tight">
-          Travel<span className="text-[#00F0FF]">Built</span> Resources
+          Trip<span className="text-[#00F0FF]">Built</span> Resources
         </h1>
         <p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto">
           Insights, strategies, and playbooks for modern tour operators who want
