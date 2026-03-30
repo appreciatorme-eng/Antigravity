@@ -5,6 +5,8 @@ import { Search, Command, HelpCircle, X } from "lucide-react";
 import { ThemeToggleButton } from "@/components/ThemeToggle";
 import DemoModeToggle from "@/components/demo/DemoModeToggle";
 import { NotificationBell } from "@/components/dashboard/NotificationBell";
+import { GlobalSearchResults } from "@/components/layout/GlobalSearchResults";
+import { useGlobalSearch } from "@/hooks/useGlobalSearch";
 import { cn } from "@/lib/utils";
 import { useIsFetching } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
@@ -41,8 +43,12 @@ export default function TopBar({ className }: TopBarProps) {
     const [searchFocused, setSearchFocused] = useState(false);
     const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
     const mobileInputRef = useRef<HTMLInputElement>(null);
+    const desktopInputRef = useRef<HTMLInputElement>(null);
+    const desktopContainerRef = useRef<HTMLDivElement>(null);
     const isFetching = useIsFetching();
     const istTime = useISTClock();
+    const search = useGlobalSearch();
+    const showDesktopResults = searchFocused && search.query.trim().length > 0;
 
     // Focus mobile search input when overlay opens
     useEffect(() => {
@@ -53,14 +59,39 @@ export default function TopBar({ className }: TopBarProps) {
         }
     }, [mobileSearchOpen]);
 
+    const closeMobileSearch = useCallback(() => {
+        setMobileSearchOpen(false);
+        search.reset();
+    }, [search.reset]);
+
     // Close mobile search on ESC
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
-        if (e.key === "Escape") setMobileSearchOpen(false);
-    }, []);
+        if (e.key === "Escape") {
+            closeMobileSearch();
+            if (desktopInputRef.current) {
+                desktopInputRef.current.blur();
+            }
+        }
+    }, [closeMobileSearch]);
     useEffect(() => {
         document.addEventListener("keydown", handleKeyDown);
         return () => document.removeEventListener("keydown", handleKeyDown);
     }, [handleKeyDown]);
+
+    // Click outside to close desktop dropdown
+    useEffect(() => {
+        if (!showDesktopResults) return;
+        const handleClickOutside = (e: MouseEvent) => {
+            if (
+                desktopContainerRef.current &&
+                !desktopContainerRef.current.contains(e.target as Node)
+            ) {
+                setSearchFocused(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [showDesktopResults]);
 
     return (
         <>
@@ -72,7 +103,7 @@ export default function TopBar({ className }: TopBarProps) {
             >
                 <div className="h-full flex items-center justify-between gap-2 md:gap-4">
                     {/* ── Desktop search bar (hidden on mobile) ── */}
-                    <div className="hidden md:flex flex-1 max-w-xl">
+                    <div ref={desktopContainerRef} className="hidden md:flex flex-1 max-w-xl relative">
                         <div
                             className={cn(
                                 "flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all cursor-text group bg-gray-50/50 dark:bg-slate-800/50 w-full",
@@ -88,17 +119,49 @@ export default function TopBar({ className }: TopBarProps) {
                                 )}
                             />
                             <input
+                                ref={desktopInputRef}
                                 type="text"
+                                value={search.query}
+                                onChange={(e) => search.setQuery(e.target.value)}
                                 placeholder="Search PNR, Client, Itinerary (⌘K)..."
                                 onFocus={() => setSearchFocused(true)}
-                                onBlur={() => setSearchFocused(false)}
                                 className="bg-transparent border-none outline-none text-sm w-full placeholder:text-gray-400 dark:text-slate-200"
                             />
+                            {search.query && (
+                                <button
+                                    onClick={() => {
+                                        search.reset();
+                                        desktopInputRef.current?.focus();
+                                    }}
+                                    className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-400 transition-colors"
+                                    aria-label="Clear search"
+                                >
+                                    <X className="w-3.5 h-3.5" />
+                                </button>
+                            )}
                             <div className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-[10px] font-medium text-gray-400 uppercase tracking-tighter">
                                 <Command className="w-2.5 h-2.5" />
                                 <span>K</span>
                             </div>
                         </div>
+
+                        {/* Desktop search results dropdown */}
+                        {showDesktopResults && (
+                            <div
+                                className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 shadow-xl max-h-[60vh] overflow-y-auto z-50"
+                            >
+                                <GlobalSearchResults
+                                    query={search.query}
+                                    results={search.results}
+                                    isLoading={search.isLoading}
+                                    error={search.error}
+                                    onSelect={() => {
+                                        setSearchFocused(false);
+                                        search.reset();
+                                    }}
+                                />
+                            </div>
+                        )}
                     </div>
 
                     {/* ── Mobile search button (visible on mobile only) ── */}
@@ -183,14 +246,16 @@ export default function TopBar({ className }: TopBarProps) {
                             <input
                                 ref={mobileInputRef}
                                 type="text"
+                                value={search.query}
+                                onChange={(e) => search.setQuery(e.target.value)}
                                 placeholder="Search PNR, Client, Itinerary..."
                                 className="flex-1 bg-transparent border-none outline-none text-base text-slate-900 dark:text-slate-100 placeholder:text-gray-400"
                                 onKeyDown={(e) => {
-                                    if (e.key === "Escape") setMobileSearchOpen(false);
+                                    if (e.key === "Escape") closeMobileSearch();
                                 }}
                             />
                             <button
-                                onClick={() => setMobileSearchOpen(false)}
+                                onClick={closeMobileSearch}
                                 className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-400 transition-colors"
                                 aria-label="Close search"
                             >
@@ -198,9 +263,15 @@ export default function TopBar({ className }: TopBarProps) {
                             </button>
                         </div>
 
-                        {/* Search results area (placeholder for now) */}
-                        <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">
-                            Type to search clients, trips, PNRs...
+                        {/* Search results area */}
+                        <div className="flex-1 overflow-y-auto">
+                            <GlobalSearchResults
+                                query={search.query}
+                                results={search.results}
+                                isLoading={search.isLoading}
+                                error={search.error}
+                                onSelect={closeMobileSearch}
+                            />
                         </div>
                     </motion.div>
                 )}

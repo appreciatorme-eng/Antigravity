@@ -13,9 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Copy, Check, Share2, Loader2 } from "lucide-react";
 import type { ItineraryResult } from "@/types/itinerary";
-import type { Json } from "@/lib/database.types";
 import { useToast } from "@/components/ui/toast";
-import { logError } from "@/lib/observability/logger";
 import ClientPicker from "@/components/ClientPicker";
 
 interface ShareTripModalProps {
@@ -48,95 +46,36 @@ export default function ShareTripModal({
         setLoading(true);
         setError("");
         try {
-            const token = crypto.randomUUID();
-            const expiresAt = new Date();
-            expiresAt.setDate(expiresAt.getDate() + 30);
+            const { data: sessionData } = await supabase.auth.getSession();
+            const accessToken = sessionData?.session?.access_token;
 
-            let resolvedItineraryId = itineraryId;
+            // Call the server-side API to create or retrieve a share link.
+            // This bypasses RLS (uses adminClient on the server) and handles
+            // auto-saving unsaved itineraries + creating trip records.
+            const response = await fetch("/api/admin/share/create", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+                    "x-requested-with": "XMLHttpRequest",
+                },
+                body: JSON.stringify({
+                    itineraryId: itineraryId ?? undefined,
+                    rawItineraryData: !itineraryId && rawItineraryData ? rawItineraryData : undefined,
+                    templateId: initialTemplateId,
+                }),
+            });
 
-            // Auto-save the raw itinerary if it hasn't been saved yet (planner flow)
-            if (!resolvedItineraryId && rawItineraryData) {
-                const { data: sessionData } = await supabase.auth.getUser();
-                const userId = sessionData?.user?.id ?? null;
-
-                const { data: saved, error: saveErr } = await supabase
-                    .from("itineraries")
-                    .insert({
-                        user_id: userId,
-                        trip_title: rawItineraryData.trip_title,
-                        destination: rawItineraryData.destination,
-                        summary: rawItineraryData.summary,
-                        duration_days: rawItineraryData.duration_days,
-                        raw_data: rawItineraryData as unknown as Json,
-                    })
-                    .select("id")
-                    .single();
-
-                if (saveErr) throw saveErr;
-                resolvedItineraryId = saved.id as string;
-
-                // Also create a trip record so shared itineraries appear on Trips page
-                if (userId) {
-                    try {
-                        const { data: profile } = await supabase
-                            .from("profiles")
-                            .select("organization_id")
-                            .eq("id", userId)
-                            .single();
-
-                        await supabase
-                            .from("trips")
-                            .insert({
-                                itinerary_id: resolvedItineraryId,
-                                client_id: userId,
-                                organization_id: profile?.organization_id ?? null,
-                                status: "draft",
-                                destination: rawItineraryData.destination,
-                            });
-                    } catch (tripErr) {
-                        // Non-critical: trip creation can fail gracefully
-                        logError("Trip record creation failed during share", tripErr);
-                    }
-                }
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => null);
+                throw new Error(errorData?.error || "Failed to generate share link");
             }
 
-            resolvedIdRef.current = resolvedItineraryId;
+            const payload = await response.json();
+            const data = payload.data;
 
-            // Check if a share link already exists for this itinerary
-            if (resolvedItineraryId) {
-                const { data: existing } = await supabase
-                    .from("shared_itineraries")
-                    .select("id, share_code")
-                    .eq("itinerary_id", resolvedItineraryId)
-                    .maybeSingle();
-
-                if (existing) {
-                    // Update template and reuse existing share code
-                    const { error: updateErr } = await supabase
-                        .from("shared_itineraries")
-                        .update({ template_id: initialTemplateId })
-                        .eq("id", existing.id);
-
-                    if (updateErr) throw updateErr;
-
-                    setShareLink(`${window.location.origin}/share/${existing.share_code}`);
-                    return;
-                }
-            }
-
-            // Insert fresh share link with the correct template
-            const { error: insertErr } = await supabase
-                .from("shared_itineraries")
-                .insert({
-                    itinerary_id: resolvedItineraryId ?? null,
-                    share_code: token,
-                    expires_at: expiresAt.toISOString(),
-                    template_id: initialTemplateId,
-                });
-
-            if (insertErr) throw insertErr;
-
-            setShareLink(`${window.location.origin}/share/${token}`);
+            resolvedIdRef.current = data.itineraryId ?? itineraryId;
+            setShareLink(`${window.location.origin}/share/${data.shareCode}`);
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : "Failed to generate share link";
             setError(msg);
