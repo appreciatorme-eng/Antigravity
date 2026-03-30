@@ -14,12 +14,15 @@ import { InteractivePricing } from "@/components/InteractivePricing";
 import { ApprovalManager } from "@/components/planner/ApprovalManager";
 import { DownloadCloud } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
+import { ItineraryBrandedFooter, type OrganizationBranding } from "@/components/itinerary-templates/ItineraryBrandedFooter";
+import { RouteSummary } from "@/components/itinerary-templates/RouteSummary";
 
 interface ShareTemplateRendererProps {
     token: string;
     templateId: string;
     itinerary: ItineraryResult;
     organizationName: string;
+    organizationBranding?: OrganizationBranding;
     client: { name: string; email?: string } | null;
 }
 
@@ -28,6 +31,7 @@ export default function ShareTemplateRenderer({
     templateId,
     itinerary,
     organizationName,
+    organizationBranding,
     client,
 }: ShareTemplateRendererProps) {
     const { toast } = useToast();
@@ -109,6 +113,9 @@ export default function ShareTemplateRenderer({
                 {renderTemplate()}
             </div>
 
+            {/* Route Summary — numbered stops with distances */}
+            <RouteSummary itinerary={itinerary} />
+
             {/* Inject dynamic pricing module at the bottom if configured */}
             {itinerary.pricing && (
                 <div className="bg-gray-50 dark:bg-slate-950 py-12 border-t border-gray-200 dark:border-white/10">
@@ -123,6 +130,11 @@ export default function ShareTemplateRenderer({
                     clientName={client?.name || ""}
                 />
             </div>
+
+            {/* Organization Branding Footer & Disclaimer */}
+            {organizationBranding && (
+                <ItineraryBrandedFooter branding={organizationBranding} />
+            )}
         </div>
     );
 }

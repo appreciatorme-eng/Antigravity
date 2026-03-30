@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { logError } from "@/lib/observability/logger";
+import { populateItineraryImages } from "@/lib/image-search";
 import type { Json } from "@/lib/database.types";
 
 /**
@@ -90,12 +91,41 @@ export async function POST(request: NextRequest) {
   // Verify the itinerary belongs to this user/org
   const { data: itinerary } = await adminClient
     .from("itineraries")
-    .select("id, user_id")
+    .select("id, user_id, raw_data, destination")
     .eq("id", itineraryId)
     .maybeSingle();
 
   if (!itinerary) {
     return apiError("Itinerary not found", 404);
+  }
+
+  // Backfill images if raw_data has activities without images
+  const rawData = itinerary.raw_data as {
+    destination?: string;
+    days?: Array<{ activities?: Array<{ image?: string; imageUrl?: string; title: string }> }>;
+  } | null;
+  if (rawData?.days) {
+    const hasImages = rawData.days.some((day) =>
+      (day.activities ?? []).some((a) => !!a.image || !!a.imageUrl)
+    );
+    if (!hasImages) {
+      try {
+        const withImages = await populateItineraryImages({
+          destination: rawData.destination ?? itinerary.destination ?? "travel",
+          days: rawData.days.map((d) => ({
+            ...d,
+            activities: (d.activities ?? []).map((a) => ({ ...a, title: a.title ?? "Activity" })),
+          })),
+        });
+        const updatedRawData = { ...rawData, days: withImages.days };
+        await adminClient
+          .from("itineraries")
+          .update({ raw_data: updatedRawData as unknown as Json })
+          .eq("id", itineraryId);
+      } catch (imgErr) {
+        logError("Image backfill failed during share creation", imgErr);
+      }
+    }
   }
 
   // Check for existing share link

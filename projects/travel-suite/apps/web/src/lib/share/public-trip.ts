@@ -10,6 +10,7 @@ export const SHARED_ITINERARY_PUBLIC_SELECT = `
     budget,
     interests,
     summary,
+    user_id,
     profiles!itineraries_user_id_fkey (
       organizations!profiles_organization_id_fkey ( name, logo_url, primary_color )
     )

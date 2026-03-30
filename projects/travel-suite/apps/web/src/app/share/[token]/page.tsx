@@ -9,6 +9,7 @@ import {
     shareSelectContainsPii,
 } from "@/lib/share/public-trip";
 import ShareTemplateRenderer from "./ShareTemplateRenderer";
+import type { OrganizationBranding } from "@/components/itinerary-templates/ItineraryBrandedFooter";
 
 export async function generateMetadata({
     params,
@@ -127,6 +128,7 @@ export default async function SharedTripPage({
             budget?: string;
             interests?: string[];
             summary?: string;
+            user_id?: string;
             profiles?: {
                 organizations?: { name?: string; logo_url?: string; primary_color?: string } | { name?: string; logo_url?: string; primary_color?: string }[];
             };
@@ -150,10 +152,32 @@ export default async function SharedTripPage({
         summary: tripData?.summary || itinerary.summary || "",
     };
 
-    // Resolve the organization name for branding
+    // Resolve organization branding
     const org = itinerary.profiles?.organizations;
-    const organizationName: string =
-        (Array.isArray(org) ? org[0]?.name : org?.name) || "Travel Adventures";
+    const resolvedOrg = Array.isArray(org) ? org[0] : org;
+    const organizationName: string = resolvedOrg?.name || "Travel Adventures";
+
+    // Fetch operator contact info separately (not through PII-guarded select)
+    // The itinerary's user_id is the operator — their email/phone is business contact info
+    let operatorEmail: string | null = null;
+    let operatorPhone: string | null = null;
+    if (itinerary.user_id) {
+        const { data: operatorProfile } = await supabaseAdmin
+            .from("profiles")
+            .select("email, phone")
+            .eq("id", itinerary.user_id)
+            .maybeSingle();
+        operatorEmail = operatorProfile?.email ?? null;
+        operatorPhone = operatorProfile?.phone ?? null;
+    }
+
+    const organizationBranding: OrganizationBranding = {
+        name: organizationName,
+        logoUrl: resolvedOrg?.logo_url ?? null,
+        primaryColor: resolvedOrg?.primary_color ?? null,
+        email: operatorEmail,
+        phone: operatorPhone,
+    };
 
     // Resolve the template (default to safari_story — the first premium template)
     const templateId: string = shareRecord.template_id || "safari_story";
@@ -166,6 +190,7 @@ export default async function SharedTripPage({
             templateId={templateId}
             itinerary={fullTripData}
             organizationName={organizationName}
+            organizationBranding={organizationBranding}
             client={null}
         />
     );

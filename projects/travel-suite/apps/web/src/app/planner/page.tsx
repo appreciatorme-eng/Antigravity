@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Activity, Day, ItineraryResult } from "@/types/itinerary";
+import type { Json } from "@/lib/database.types";
 import { SafariStoryView, UrbanBriefView, ProfessionalView, LuxuryResortView, VisualJourneyView, BentoJourneyView, TemplateSwitcher, ItineraryTemplateId } from "@/components/itinerary-templates";
 import ItineraryBuilder from "@/components/ItineraryBuilder";
 import { InteractivePricing } from "@/components/InteractivePricing";
@@ -79,6 +80,7 @@ export default function PlannerPage() {
     const [isEditing, setIsEditing] = useState(false);
     const [activeTab, setActiveTab] = useState<PlannerTab>('itinerary');
     const [openingItineraryId, setOpeningItineraryId] = useState<string | null>(null);
+    const [currentItineraryId, setCurrentItineraryId] = useState<string | null>(null);
     const [filterStage, setFilterStage] = useState<ItineraryStage>("all");
     const [searchQuery, setSearchQuery] = useState("");
 
@@ -97,9 +99,10 @@ export default function PlannerPage() {
             }
 
             const itineraryData = data.raw_data as unknown as ItineraryResult;
+            setCurrentItineraryId(itineraryId);
             setResult(itineraryData);
             setImages({}); // Reset images so shimmer shows while fetching
-            fetchImagesForItinerary(itineraryData); // Fetch fresh images from multiple sources
+            fetchImagesForItinerary(itineraryData, itineraryId); // Fetch fresh images from multiple sources
             setPrompt(data.destination || itineraryData.destination || "");
             setDays(data.duration_days || itineraryData.duration_days || 5);
             if (data.budget) setBudget(data.budget);
@@ -142,7 +145,7 @@ export default function PlannerPage() {
         return Array.from(new Set(candidates));
     };
 
-    const fetchImagesForItinerary = async (itineraryData: ItineraryResult) => {
+    const fetchImagesForItinerary = async (itineraryData: ItineraryResult, itineraryId?: string) => {
         const IMAGE_SOURCES = [
             { name: 'unsplash', endpoint: '/api/images/unsplash' },
             { name: 'pexels', endpoint: '/api/images/pexels' },
@@ -184,21 +187,31 @@ export default function PlannerPage() {
         setImages(imageMap);
 
         // Merge fetched images into the itinerary data so templates see them via activity.image
-        setResult((prev) => {
-            if (!prev) return prev;
-            const updatedDays = prev.days.map((day) => ({
-                ...day,
-                activities: day.activities.map((act, idx) => {
-                    const key = activityImageKey(day.day_number, idx);
-                    const fetched = imageMap[key];
-                    if (fetched) {
-                        return { ...act, image: fetched, imageUrl: fetched };
-                    }
-                    return act;
-                }),
-            }));
-            return { ...prev, days: updatedDays };
-        });
+        const updatedDays = itineraryData.days.map((day) => ({
+            ...day,
+            activities: day.activities.map((act, idx) => {
+                const key = activityImageKey(day.day_number, idx);
+                const fetched = imageMap[key];
+                if (fetched) {
+                    return { ...act, image: fetched, imageUrl: fetched };
+                }
+                return act;
+            }),
+        }));
+        const updatedItinerary = { ...itineraryData, days: updatedDays };
+        setResult(updatedItinerary);
+
+        // Persist images back to raw_data so shared pages see them
+        const persistId = itineraryId ?? currentItineraryId;
+        if (persistId) {
+            supabase
+                .from("itineraries")
+                .update({ raw_data: updatedItinerary as unknown as Json })
+                .eq("id", persistId)
+                .then(({ error: updateErr }) => {
+                    if (updateErr) logError("Failed to persist images to raw_data", updateErr);
+                });
+        }
     };
 
     const toggleInterest = (interest: string) => {
@@ -219,6 +232,7 @@ export default function PlannerPage() {
         setError("");
         setResult(null);
         setImages({});
+        setCurrentItineraryId(null);
         const interestString = interests.length > 0 ? ` focusing on ${interests.join(", ")}` : "";
         const finalPrompt = `Create a ${budget} ${days}-day itinerary for ${prompt}${interestString}.\nMake it practical and specific:\n- Use realistic start times and include 4-6 activities per day\n- Mention neighborhoods/areas, how to get there (walk/metro/taxi), and approximate travel time between stops\n- Add expected duration and estimated cost where relevant\n- Include 1-2 food/coffee suggestions per day\n- Add short booking/entry tips where needed\n- Keep it geographically efficient (cluster nearby places)`;
         try {

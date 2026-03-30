@@ -95,18 +95,18 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Fetch trip links for all itineraries
-    const tripMap: Record<string, string> = {};
+    // Fetch trip links for all itineraries (include status to derive pipeline stage)
+    const tripMap: Record<string, { id: string; status: string }> = {};
     if (itineraryIds.length > 0) {
       const { data: trips } = await supabase
         .from("trips")
-        .select("id, itinerary_id")
+        .select("id, itinerary_id, status")
         .in("itinerary_id", itineraryIds);
 
       if (trips) {
         for (const t of trips) {
           if (t.itinerary_id) {
-            tripMap[t.itinerary_id] = t.id;
+            tripMap[t.itinerary_id] = { id: t.id, status: t.status ?? "draft" };
           }
         }
       }
@@ -178,7 +178,8 @@ export async function GET(request: NextRequest) {
         client: clientId ? { full_name: clientNameMap[clientId] ?? null } : null,
         share_code: share?.share_code ?? null,
         share_status: share?.status ?? null,
-        trip_id: tripMap[id] ?? null,
+        trip_id: tripMap[id]?.id ?? null,
+        trip_status: tripMap[id]?.status ?? null,
         // Client feedback fields
         client_comments: share?.client_comments ?? [],
         client_preferences: share?.client_preferences ?? null,

@@ -22,8 +22,12 @@ export function deriveStage(itinerary: {
     share_code?: string | null;
     share_status?: string | null;
     trip_id?: string | null;
+    trip_status?: string | null;
 }): string {
-    if (itinerary.trip_id) return "converted";
+    // Only mark as "converted" (Won) when the trip has progressed beyond draft
+    if (itinerary.trip_id && itinerary.trip_status && itinerary.trip_status !== "draft") {
+        return "converted";
+    }
     if (itinerary.share_status === "approved") return "approved";
     if (itinerary.share_status === "commented") return "feedback";
     if (itinerary.share_status === "viewed") return "viewed";
