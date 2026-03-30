@@ -25,7 +25,7 @@ interface TripOption {
 interface QuickExpenseEditorProps {
   isOpen: boolean;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (savedToTrip: boolean) => void;
   fetchVendorHistory: (vendor: string, category: string) => Promise<VendorHistoryItem[]>;
 }
 
@@ -212,7 +212,7 @@ export function QuickExpenseEditor({
         }
       }
 
-      onSaved();
+      onSaved(!!selectedTrip);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
     } finally {
