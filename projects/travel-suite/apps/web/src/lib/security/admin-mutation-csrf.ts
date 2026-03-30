@@ -12,7 +12,10 @@ type RequestLike = {
 
 export function isBearerRequest(req: RequestLike): boolean {
   const auth = req.headers.get("authorization") || "";
-  return auth.toLowerCase().startsWith("bearer ");
+  if (!auth.toLowerCase().startsWith("bearer ")) return false;
+  // Validate token is non-empty and has reasonable minimum length
+  const token = auth.slice(7).trim();
+  return token.length >= 10;
 }
 
 export function hasTrustedSameOrigin(req: RequestLike): boolean {

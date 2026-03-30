@@ -145,6 +145,19 @@ export async function enforceRateLimit(options: RateLimitOptions): Promise<RateL
             reset: typeof result.reset === "number" ? result.reset : Date.now() + options.windowMs,
         };
     } catch {
+        // Runtime Redis error: fail-closed in production unless explicitly overridden
+        if (process.env.NODE_ENV === "production" && process.env.RATE_LIMIT_FAIL_OPEN !== "true") {
+            logError(
+                `[rate-limit] FAIL-CLOSED: Redis error for prefix "${options.prefix}". Rejecting request.`,
+                null,
+            );
+            return {
+                success: false,
+                limit: options.limit,
+                remaining: 0,
+                reset: Date.now() + options.windowMs,
+            };
+        }
         warnLocalFallback(options.prefix);
         return enforceLocalRateLimit(options);
     }
