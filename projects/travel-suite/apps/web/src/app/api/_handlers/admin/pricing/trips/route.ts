@@ -95,7 +95,7 @@ export async function GET(req: NextRequest) {
       const totalPrice = tripCosts.reduce((s: number, c: TripServiceCostRow) => s + Number(c.price_amount), 0);
       const totalCommission = tripCosts.reduce((s: number, c: TripServiceCostRow) => s + Number(c.commission_amount || 0), 0);
       const gstPct = Number(t.gst_pct ?? 5);
-      const tcsPct = Number(t.tcs_pct ?? 1);
+      const tcsPct = Number(t.tcs_pct ?? 2);
       const gstAmount = Math.round(totalPrice * gstPct / 100 * 100) / 100;
       const tcsAmount = Math.round(totalPrice * tcsPct / 100 * 100) / 100;
       return {
