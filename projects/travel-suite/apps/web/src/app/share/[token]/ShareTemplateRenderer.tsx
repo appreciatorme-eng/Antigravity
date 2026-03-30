@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import type { ItineraryResult } from "@/types/itinerary";
 import { SafariStoryView } from "@/components/itinerary-templates/SafariStoryView";
 import { UrbanBriefView } from "@/components/itinerary-templates/UrbanBriefView";
@@ -93,9 +94,50 @@ export default function ShareTemplateRenderer({
         }
     };
 
+    const brandColor = organizationBranding?.primaryColor || "#0f766e";
+
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
-            <div className="sticky top-0 z-40 bg-slate-900/95 text-slate-100 border-b border-slate-700 px-4 py-2.5 flex items-center justify-between gap-3">
+            {/* Organization branded header */}
+            {organizationBranding && (
+                <header className="sticky top-0 z-50 bg-white dark:bg-slate-950 border-b border-gray-200 dark:border-white/10 px-4 py-3">
+                    <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3 min-w-0">
+                            {organizationBranding.logoUrl && (
+                                <Image
+                                    src={organizationBranding.logoUrl}
+                                    alt={organizationBranding.name}
+                                    width={100}
+                                    height={36}
+                                    className="h-9 w-auto object-contain rounded flex-shrink-0"
+                                    unoptimized
+                                />
+                            )}
+                            <span
+                                className="font-bold text-base md:text-lg tracking-tight truncate"
+                                style={{ color: brandColor }}
+                            >
+                                {organizationBranding.name}
+                            </span>
+                        </div>
+                        <div className="hidden md:flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
+                            {organizationBranding.phone && (
+                                <a href={`tel:${organizationBranding.phone}`} className="hover:text-gray-900 dark:hover:text-white transition-colors">
+                                    {organizationBranding.phone}
+                                </a>
+                            )}
+                            {organizationBranding.email && (
+                                <a href={`mailto:${organizationBranding.email}`} className="hover:text-gray-900 dark:hover:text-white transition-colors">
+                                    {organizationBranding.email}
+                                </a>
+                            )}
+                        </div>
+                    </div>
+                </header>
+            )}
+
+            {/* Offline mode bar */}
+            <div className={`${organizationBranding ? 'sticky top-[57px]' : 'sticky top-0'} z-40 bg-slate-900/95 text-slate-100 border-b border-slate-700 px-4 py-2.5 flex items-center justify-between gap-3`}>
                 <p className="text-xs md:text-sm">
                     Enable offline mode before travel to access this itinerary without internet.
                 </p>
