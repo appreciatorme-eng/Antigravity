@@ -12,6 +12,7 @@ import { useToast } from "@/components/ui/toast";
 import Link from "next/link";
 import { formatFeatureLimitError } from "@/lib/subscriptions/feature-limit-error";
 import { logError } from "@/lib/observability/logger";
+import { useDemoMode } from "@/lib/demo/demo-mode-context";
 
 interface SavedItinerary {
     id: string;
@@ -52,6 +53,7 @@ interface CreateTripModalProps {
 export default function CreateTripModal({ open, onOpenChange, onSuccess }: CreateTripModalProps) {
     const supabase = createClient();
     const { toast } = useToast();
+    const { isDemoMode } = useDemoMode();
 
     // Form State
     const [clientId, setClientId] = useState("");
@@ -369,6 +371,14 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
     };
 
     const handleCreateTrip = async () => {
+        if (isDemoMode) {
+            toast({
+                title: "Demo Mode Active",
+                description: "Toggle off Demo Mode to create real trips.",
+                variant: "warning",
+            });
+            return;
+        }
         if (!clientId || !startDate || !endDate) {
             toast({
                 title: "Missing required fields",

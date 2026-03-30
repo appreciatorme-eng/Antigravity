@@ -7,6 +7,7 @@
 import { useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/toast";
+import { useDemoMode } from "@/lib/demo/demo-mode-context";
 import {
     type Client,
     type ClientFormData,
@@ -36,6 +37,7 @@ interface UseClientFormOptions {
 export function useClientForm({ onSaved }: UseClientFormOptions): UseClientFormReturn {
     const supabase = createClient();
     const { toast } = useToast();
+    const { isDemoMode, toggleDemoMode } = useDemoMode();
 
     const [modalOpen, setModalOpen] = useState(false);
     const [editingClientId, setEditingClientId] = useState<string | null>(null);
@@ -77,6 +79,15 @@ export function useClientForm({ onSaved }: UseClientFormOptions): UseClientFormR
 
     const handleSaveClient = useCallback(async () => {
         if (saving) return;
+        if (isDemoMode) {
+            setFormError("You're viewing demo data. Switch to real data to add clients.");
+            toast({
+                title: "Demo Mode Active",
+                description: "Toggle off Demo Mode to work with your real data.",
+                variant: "warning",
+            });
+            return;
+        }
         if (!formData.full_name.trim()) {
             setFormError("Name is required.");
             return;
@@ -115,7 +126,7 @@ export function useClientForm({ onSaved }: UseClientFormOptions): UseClientFormR
         } finally {
             setSaving(false);
         }
-    }, [formData, editingClientId, saving, supabase, onSaved, resetForm, toast]);
+    }, [formData, editingClientId, saving, isDemoMode, supabase, onSaved, resetForm, toast]);
 
     return {
         formData,
