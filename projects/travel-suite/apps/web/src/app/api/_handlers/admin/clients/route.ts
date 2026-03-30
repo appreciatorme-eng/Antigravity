@@ -659,7 +659,9 @@ export async function PATCH(req: Request) {
         if (referralSource !== undefined) updates.referral_source = referralSource;
         if (sourceChannel !== undefined) updates.source_channel = sourceChannel;
         if (leadStatus !== undefined) updates.lead_status = leadStatus;
-        if (languagePreference !== undefined) updates.language_preference = languagePreference;
+        // Note: language_preference column does not exist in profiles table yet.
+        // Uncomment when the column is added via migration:
+        // if (languagePreference !== undefined) updates.language_preference = languagePreference;
 
         const { error } = await supabaseAdmin
             .from("profiles")
