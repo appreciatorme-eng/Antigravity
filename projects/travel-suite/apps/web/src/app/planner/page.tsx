@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import { useToast } from "@/components/ui/toast";
 import {
     MapPin,
@@ -221,7 +222,7 @@ export default function PlannerPage() {
         const interestString = interests.length > 0 ? ` focusing on ${interests.join(", ")}` : "";
         const finalPrompt = `Create a ${budget} ${days}-day itinerary for ${prompt}${interestString}.\nMake it practical and specific:\n- Use realistic start times and include 4-6 activities per day\n- Mention neighborhoods/areas, how to get there (walk/metro/taxi), and approximate travel time between stops\n- Add expected duration and estimated cost where relevant\n- Include 1-2 food/coffee suggestions per day\n- Add short booking/entry tips where needed\n- Keep it geographically efficient (cluster nearby places)`;
         try {
-            const res = await fetch("/api/itinerary/generate", {
+            const res = await authedFetch("/api/itinerary/generate", {
                 method: "POST", headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ prompt: finalPrompt, days }),
             });
