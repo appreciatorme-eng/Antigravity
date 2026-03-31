@@ -10,8 +10,16 @@ export function useInvoiceDraft(organizationBillingState: string | null) {
   const [notes, setNotes] = useState("");
   const [draftItems, setDraftItems] = useState<DraftLineItem[]>([{ ...EMPTY_DRAFT_LINE_ITEM }]);
   const [gstEnabled, setGstEnabled] = useState(true);
-  const [placeOfSupply, setPlaceOfSupply] = useState("");
+  const [placeOfSupply, setPlaceOfSupply] = useState(organizationBillingState || "");
   const [sacCode, setSacCode] = useState("998314");
+  const [tripDates, setTripDates] = useState("");
+
+  useEffect(() => {
+    if (organizationBillingState && !placeOfSupply) {
+      setPlaceOfSupply(organizationBillingState);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organizationBillingState]);
 
   useEffect(() => {
     if (gstEnabled) {
@@ -123,6 +131,7 @@ export function useInvoiceDraft(organizationBillingState: string | null) {
     setGstEnabled(true);
     setPlaceOfSupply(organizationBillingState || "");
     setSacCode("998314");
+    setTripDates("");
     setDraftItems([{ ...EMPTY_DRAFT_LINE_ITEM }]);
   };
 
@@ -141,6 +150,8 @@ export function useInvoiceDraft(organizationBillingState: string | null) {
     setPlaceOfSupply,
     sacCode,
     setSacCode,
+    tripDates,
+    setTripDates,
     draftItems,
     draftTotals,
     computedLineItems,

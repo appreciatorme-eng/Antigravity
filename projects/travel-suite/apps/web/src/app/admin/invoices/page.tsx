@@ -408,7 +408,13 @@ export default function AdminInvoicesPage() {
       if (!newClientId) throw new Error("No client ID returned");
 
       toast({ title: "Client added", description: `${client.full_name} created.`, variant: "success" });
-      await loadClients();
+      // Immediately add to local list so the dropdown shows the new client
+      setClients((prev) => [
+        ...prev,
+        { id: newClientId, full_name: client.full_name, email: client.email, phone: client.phone || null },
+      ]);
+      // Also do a full reload in the background
+      void loadClients();
       return newClientId;
     } catch (error) {
       toast({
@@ -659,9 +665,9 @@ export default function AdminInvoicesPage() {
               draft.setPlaceOfSupply(v);
               setPreviewMode("draft");
             }}
-            sacCode={draft.sacCode}
-            onSacCodeChange={(v) => {
-              draft.setSacCode(v);
+            tripDates={draft.tripDates}
+            onTripDatesChange={(v) => {
+              draft.setTripDates(v);
               setPreviewMode("draft");
             }}
             organizationBillingState={organizationBillingState}

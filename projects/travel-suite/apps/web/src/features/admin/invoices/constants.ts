@@ -54,4 +54,8 @@ export const LINE_ITEM_PRESETS: Array<{ label: string; item: DraftLineItem }> = 
     label: "Premium Add-on",
     item: { description: "Premium add-on package", quantity: "1", unit_price: "9800", tax_rate: "18" },
   },
+  {
+    label: "TCS (2%)",
+    item: { description: "Tax Collected at Source (TCS) @ 2%", quantity: "1", unit_price: "0", tax_rate: "0" },
+  },
 ];

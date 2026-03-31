@@ -24,8 +24,8 @@ interface InvoiceCreateFormProps {
   onGstToggle: () => void;
   placeOfSupply: string;
   onPlaceOfSupplyChange: (state: string) => void;
-  sacCode: string;
-  onSacCodeChange: (code: string) => void;
+  tripDates: string;
+  onTripDatesChange: (dates: string) => void;
   organizationBillingState: string | null;
   draftItems: DraftLineItem[];
   onAddLine: () => void;
@@ -63,8 +63,8 @@ export default function InvoiceCreateForm({
   onGstToggle,
   placeOfSupply,
   onPlaceOfSupplyChange,
-  sacCode,
-  onSacCodeChange,
+  tripDates,
+  onTripDatesChange,
   organizationBillingState,
   draftItems,
   onAddLine,
@@ -253,6 +253,18 @@ export default function InvoiceCreateForm({
           </div>
         </div>
 
+        <div className="space-y-1.5">
+          <label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+            Trip Dates <span className="text-slate-400 font-normal normal-case">(optional)</span>
+          </label>
+          <GlassInput
+            type="text"
+            value={tripDates}
+            onChange={(e) => onTripDatesChange(e.target.value)}
+            placeholder="e.g. 15 Apr - 22 Apr 2026"
+          />
+        </div>
+
         <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -274,7 +286,7 @@ export default function InvoiceCreateForm({
           </div>
 
           {gstEnabled ? (
-            <div className="mt-3 grid grid-cols-2 gap-2">
+            <div className="mt-3">
               <div className="space-y-1">
                 <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
                   Place of Supply
@@ -291,16 +303,6 @@ export default function InvoiceCreateForm({
                     </option>
                   ))}
                 </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                  SAC Code
-                </label>
-                <GlassInput
-                  value={sacCode}
-                  onChange={(e) => onSacCodeChange(e.target.value)}
-                  placeholder="998314"
-                />
               </div>
             </div>
           ) : null}
