@@ -156,65 +156,43 @@ export function QuickExpenseEditor({
     setSaving(true);
     setError(null);
     try {
-      if (selectedTrip) {
-        // Save as trip service cost
-        const payload = {
-          trip_id: selectedTrip.id,
-          category,
-          vendor_name: vendorName || null,
-          cost_amount: cost,
-          price_amount: price,
-          commission_pct: parseFloat(commissionPct) || 0,
-          commission_amount: commissionAmount,
-          pax_count: parseInt(paxCount) || 1,
-          notes: notes || null,
-        };
+      const payload = {
+        trip_id: selectedTrip?.id ?? null,
+        category,
+        vendor_name: vendorName || null,
+        cost_amount: cost,
+        price_amount: price,
+        commission_pct: parseFloat(commissionPct) || 0,
+        commission_amount: commissionAmount,
+        pax_count: parseInt(paxCount) || 1,
+        notes: notes || null,
+        expense_date: expenseDate,
+      };
 
-        const res = await authedFetch("/api/admin/pricing/trip-costs", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+      const res = await authedFetch("/api/admin/pricing/trip-costs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.error || `HTTP ${res.status}`);
-        }
-
-        const savedData = await res.json();
-        const savedCostId = savedData.data?.id || savedData.id;
-
-        // Link receipt if uploaded
-        if (receiptId && savedCostId) {
-          const supabase = createClient();
-          await supabase
-            .from("expense_receipts")
-            .update({ trip_service_cost_id: savedCostId })
-            .eq("id", receiptId);
-        }
-      } else {
-        // No trip selected — save as monthly overhead expense
-        const description = [vendorName, notes].filter(Boolean).join(" — ") || undefined;
-        const payload = {
-          month_start: expenseDate.slice(0, 7) + "-01",
-          category: CATEGORY_LABELS[category],
-          description,
-          amount: cost || price,
-        };
-
-        const res = await authedFetch("/api/admin/pricing/overheads", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.error || `HTTP ${res.status}`);
-        }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error((body as { error?: string }).error || `HTTP ${res.status}`);
       }
 
-      onSaved(!!selectedTrip);
+      const savedData = await res.json();
+      const savedCostId = (savedData as { data?: { id?: string }; id?: string }).data?.id || (savedData as { id?: string }).id;
+
+      // Link receipt if uploaded
+      if (receiptId && savedCostId) {
+        const supabase = createClient();
+        await supabase
+          .from("expense_receipts")
+          .update({ trip_service_cost_id: savedCostId })
+          .eq("id", receiptId);
+      }
+
+      onSaved(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
     } finally {

@@ -10,7 +10,7 @@ import { logError } from "@/lib/observability/logger";
 
 type CostRow = {
   id: string;
-  trip_id: string;
+  trip_id: string | null;
   category: string;
   vendor_name: string | null;
   description: string | null;
@@ -22,6 +22,7 @@ type CostRow = {
   currency: string;
   notes: string | null;
   created_at: string;
+  expense_date: string | null;
 };
 
 type TripRow = {
@@ -57,7 +58,7 @@ export async function GET(req: NextRequest) {
 
     let query = db
       .from("trip_service_costs")
-      .select("id, trip_id, category, vendor_name, description, pax_count, cost_amount, price_amount, commission_pct, commission_amount, currency, notes, created_at")
+      .select("id, trip_id, category, vendor_name, description, pax_count, cost_amount, price_amount, commission_pct, commission_amount, currency, notes, created_at, expense_date")
       .eq("organization_id", orgId);
 
     if (category && category !== "all") {
@@ -78,23 +79,28 @@ export async function GET(req: NextRequest) {
 
     const costRows = (costs || []) as CostRow[];
 
-    const tripIds = [...new Set(costRows.map((c) => c.trip_id))];
-    if (tripIds.length === 0) {
-      return NextResponse.json({ transactions: [], summary: { totalCost: 0, totalRevenue: 0, totalProfit: 0, count: 0 } });
+    if (costRows.length === 0) {
+      return NextResponse.json({ transactions: [], summary: { totalCost: 0, totalRevenue: 0, totalProfit: 0, totalCommission: 0, count: 0 } });
     }
 
-    const { data: trips } = await db
-      .from("trips")
-      .select("id, name, destination, start_date, pax_count, client_id")
-      .in("id", tripIds);
+    const tripIds = [...new Set(costRows.map((c) => c.trip_id).filter(Boolean))] as string[];
+
+    let trips: TripRow[] = [];
+    if (tripIds.length > 0) {
+      const { data } = await db
+        .from("trips")
+        .select("id, name, destination, start_date, pax_count, client_id")
+        .in("id", tripIds);
+      trips = (data || []) as TripRow[];
+    }
 
     const tripMap = new Map<string, TripRow>();
-    for (const t of (trips || []) as TripRow[]) {
+    for (const t of trips) {
       tripMap.set(t.id, t);
     }
 
     const clientIds = [...new Set(
-      (trips || []).map((t: TripRow) => t.client_id).filter(Boolean) as string[]
+      trips.map((t) => t.client_id).filter(Boolean) as string[]
     )];
 
     const clientMap = new Map<string, string>();
@@ -109,7 +115,7 @@ export async function GET(req: NextRequest) {
     }
 
     let transactions = costRows.map((cost) => {
-      const trip = tripMap.get(cost.trip_id);
+      const trip = cost.trip_id ? tripMap.get(cost.trip_id) : undefined;
       const clientName = trip?.client_id ? (clientMap.get(trip.client_id) ?? null) : null;
       const costAmt = Number(cost.cost_amount);
       const priceAmt = Number(cost.price_amount);
@@ -119,10 +125,10 @@ export async function GET(req: NextRequest) {
       return {
         id: cost.id,
         trip_id: cost.trip_id,
-        trip_name: trip?.name || "Unknown Trip",
+        trip_name: trip?.name || (cost.trip_id ? "Unknown Trip" : "Standalone"),
         destination: trip?.destination ?? null,
         client_name: clientName,
-        start_date: trip?.start_date ?? null,
+        start_date: cost.expense_date ?? trip?.start_date ?? null,
         pax_count: trip?.pax_count ?? cost.pax_count ?? 1,
         category: cost.category,
         vendor_name: cost.vendor_name,

@@ -84,6 +84,7 @@ export async function GET(req: NextRequest) {
 
     const costsByTrip = new Map<string, TripServiceCostRow[]>();
     for (const c of allCosts) {
+      if (!c.trip_id) continue;
       const arr = costsByTrip.get(c.trip_id) || [];
       arr.push(c);
       costsByTrip.set(c.trip_id, arr);

@@ -459,13 +459,12 @@ export default function PricingPage() {
       <QuickExpenseEditor
         isOpen={quickExpenseOpen}
         onClose={() => setQuickExpenseOpen(false)}
-        onSaved={(savedToTrip) => {
+        onSaved={() => {
           setQuickExpenseOpen(false);
           dashboard.reload();
           tripCosts.reload();
           overheads.reload();
-          // Switch to the tab where the expense is visible
-          setActiveTab(savedToTrip ? "ledger" : "overheads");
+          setActiveTab("ledger");
         }}
         fetchVendorHistory={tripCosts.fetchVendorHistory}
       />

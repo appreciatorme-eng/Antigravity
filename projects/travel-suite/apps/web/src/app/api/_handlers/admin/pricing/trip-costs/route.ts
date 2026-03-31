@@ -10,7 +10,7 @@ import { logError } from "@/lib/observability/logger";
 type TripServiceCostRow = Database["public"]["Tables"]["trip_service_costs"]["Row"];
 
 const CreateSchema = z.object({
-  trip_id: z.string().uuid(),
+  trip_id: z.string().uuid().nullable().optional(),
   category: z.enum(["hotels", "vehicle", "flights", "visa", "insurance", "train", "bus", "other"]),
   vendor_name: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
@@ -21,6 +21,7 @@ const CreateSchema = z.object({
   commission_amount: z.number().min(0).default(0),
   currency: z.string().default("INR"),
   notes: z.string().nullable().optional(),
+  expense_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
 export async function GET(req: NextRequest) {

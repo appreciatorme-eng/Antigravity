@@ -6405,12 +6405,13 @@ export type Database = {
           created_by: string | null
           currency: string | null
           description: string | null
+          expense_date: string | null
           id: string
           notes: string | null
           organization_id: string
           pax_count: number | null
           price_amount: number | null
-          trip_id: string
+          trip_id: string | null
           updated_at: string | null
           vendor_name: string | null
         }
@@ -6423,12 +6424,13 @@ export type Database = {
           created_by?: string | null
           currency?: string | null
           description?: string | null
+          expense_date?: string | null
           id?: string
           notes?: string | null
           organization_id: string
           pax_count?: number | null
           price_amount?: number | null
-          trip_id: string
+          trip_id?: string | null
           updated_at?: string | null
           vendor_name?: string | null
         }
@@ -6441,12 +6443,13 @@ export type Database = {
           created_by?: string | null
           currency?: string | null
           description?: string | null
+          expense_date?: string | null
           id?: string
           notes?: string | null
           organization_id?: string
           pax_count?: number | null
           price_amount?: number | null
-          trip_id?: string
+          trip_id?: string | null
           updated_at?: string | null
           vendor_name?: string | null
         }
