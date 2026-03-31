@@ -30,10 +30,10 @@ const MONTH_NAMES = [
 ];
 
 const TABS = [
-  { id: "monthly", label: "Monthly View", icon: LayoutGrid },
-  { id: "overheads", label: "Overheads", icon: Receipt },
-  { id: "analytics", label: "Analytics", icon: BarChart3 },
   { id: "ledger", label: "Ledger", icon: Database },
+  { id: "overheads", label: "Overheads", icon: Receipt },
+  { id: "monthly", label: "Monthly View", icon: LayoutGrid },
+  { id: "analytics", label: "Analytics", icon: BarChart3 },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -50,7 +50,7 @@ function getMonthLabel(monthStr: string): string {
 export default function PricingPage() {
   const now = useMemo(() => new Date(), []);
   const [month, setMonth] = useState(() => getMonthStr(now));
-  const [activeTab, setActiveTab] = useState<TabId>("monthly");
+  const [activeTab, setActiveTab] = useState<TabId>("ledger");
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionItem | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [quickExpenseOpen, setQuickExpenseOpen] = useState(false);

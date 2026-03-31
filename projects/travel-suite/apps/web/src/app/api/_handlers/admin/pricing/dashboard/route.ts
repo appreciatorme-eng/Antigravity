@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
-import { resolveScopedOrgWithDemo } from "@/lib/auth/demo-org-resolver";
 import type { Database } from "@/lib/database.types";
 import { logError } from "@/lib/observability/logger";
 
@@ -11,7 +10,7 @@ const QuerySchema = z.object({
 });
 
 type TripRow = Database['public']['Tables']['trips']['Row'];
-type CostRow = { trip_id: string; category: string; cost_amount: number; price_amount: number; commission_amount: number };
+type CostRow = { trip_id: string | null; category: string; cost_amount: number; price_amount: number; commission_amount: number };
 type OverheadAmountRow = { amount: number | null };
 
 export async function GET(req: NextRequest) {
@@ -38,7 +37,7 @@ export async function GET(req: NextRequest) {
     const nextMonth = mon === 12
       ? `${year + 1}-01-01`
       : `${year}-${String(mon + 1).padStart(2, "0")}-01`;
-    const orgId = resolveScopedOrgWithDemo(req, admin.organizationId)!;
+    const orgId = admin.organizationId!;
     const db = admin.adminClient;
 
     const { data: monthTrips } = await db
@@ -51,15 +50,27 @@ export async function GET(req: NextRequest) {
     const tripRows = (monthTrips || []) as Pick<TripRow, 'id' | 'name' | 'destination' | 'pax_count' | 'status' | 'client_id'>[];
     const tripIds = tripRows.map((t) => t.id);
 
-    let costs: CostRow[] = [];
+    // Fetch trip-linked costs
+    let tripCosts: CostRow[] = [];
     if (tripIds.length > 0) {
       const { data } = await db
         .from("trip_service_costs")
         .select("trip_id, category, cost_amount, price_amount, commission_amount")
         .eq("organization_id", orgId)
         .in("trip_id", tripIds);
-      costs = (data || []) as CostRow[];
+      tripCosts = (data || []) as CostRow[];
     }
+
+    // Fetch standalone expenses (no trip) for this month by expense_date
+    const { data: standaloneCosts } = await db
+      .from("trip_service_costs")
+      .select("trip_id, category, cost_amount, price_amount, commission_amount")
+      .eq("organization_id", orgId)
+      .is("trip_id", null)
+      .gte("expense_date", monthStart)
+      .lt("expense_date", nextMonth);
+
+    const costs: CostRow[] = [...tripCosts, ...((standaloneCosts || []) as CostRow[])];
 
     const { data: overheadData } = await db
       .from("monthly_overhead_expenses")
@@ -99,6 +110,7 @@ export async function GET(req: NextRequest) {
 
     const tripProfitMap = new Map<string, { cost: number; revenue: number }>();
     for (const c of costs) {
+      if (!c.trip_id) continue;
       const existing = tripProfitMap.get(c.trip_id) || { cost: 0, revenue: 0 };
       existing.cost += Number(c.cost_amount);
       existing.revenue += Number(c.price_amount);
@@ -211,6 +223,18 @@ export async function GET(req: NextRequest) {
           mCost += Number(c.cost_amount);
           mRevenue += Number(c.price_amount);
         }
+      }
+      // Include standalone expenses for this month
+      const { data: mStandalone } = await db
+        .from("trip_service_costs")
+        .select("cost_amount, price_amount")
+        .eq("organization_id", orgId)
+        .is("trip_id", null)
+        .gte("expense_date", mStart)
+        .lt("expense_date", mEndStr);
+      for (const c of (mStandalone || []) as { cost_amount: number | null; price_amount: number | null }[]) {
+        mCost += Number(c.cost_amount);
+        mRevenue += Number(c.price_amount);
       }
 
       const { data: mOh } = await db
