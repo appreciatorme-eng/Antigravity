@@ -72,6 +72,7 @@ export async function GET(req: NextRequest) {
     query = query.order(orderColumn, { ascending: false });
 
     const { data: costs, error: costsError } = await query;
+    console.log("[transactions] orgId:", orgId, "costsError:", costsError, "costsCount:", costs?.length ?? "null");
     if (costsError) {
       return apiError(safeErrorMessage(costsError, "Failed to load trip service costs"), 500);
     }
@@ -79,7 +80,7 @@ export async function GET(req: NextRequest) {
     const costRows = (costs || []) as CostRow[];
 
     if (costRows.length === 0) {
-      return NextResponse.json({ transactions: [], summary: { totalCost: 0, totalRevenue: 0, totalProfit: 0, totalCommission: 0, count: 0 } });
+      return NextResponse.json({ transactions: [], summary: { totalCost: 0, totalRevenue: 0, totalProfit: 0, totalCommission: 0, count: 0 }, _debug: { orgId, costsNull: costs === null } });
     }
 
     const tripIds = [...new Set(costRows.map((c) => c.trip_id).filter(Boolean))] as string[];
