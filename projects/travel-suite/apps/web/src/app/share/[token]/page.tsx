@@ -131,7 +131,7 @@ export default async function SharedTripPage({
             user_id?: string;
             client_id?: string;
             profiles?: {
-                organizations?: { name?: string; logo_url?: string; primary_color?: string } | { name?: string; logo_url?: string; primary_color?: string }[];
+                organizations?: { name?: string; logo_url?: string; primary_color?: string; billing_city?: string; billing_state?: string } | { name?: string; logo_url?: string; primary_color?: string; billing_city?: string; billing_state?: string }[];
             };
         } | null;
         template_id?: string;
@@ -189,6 +189,8 @@ export default async function SharedTripPage({
         primaryColor: resolvedOrg?.primary_color ?? null,
         email: operatorEmail,
         phone: operatorPhone,
+        city: resolvedOrg?.billing_city ?? null,
+        state: resolvedOrg?.billing_state ?? null,
     };
 
     // Resolve the template (default to safari_story — the first premium template)

@@ -6,7 +6,7 @@ import { ItineraryTemplateProps } from './types';
 import { Badge } from '@/components/ui/badge';
 import { ChevronDown, ChevronUp, Clock, MapPin, Compass, Check, Sun, Plane } from 'lucide-react';
 
-export const SafariStoryView: React.FC<ItineraryTemplateProps> = ({ itinerary, organizationName, client }) => {
+export const SafariStoryView: React.FC<ItineraryTemplateProps> = ({ itinerary, organizationName, organizationBranding, client }) => {
   // Open the first day by default
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]));
 
@@ -37,8 +37,11 @@ export const SafariStoryView: React.FC<ItineraryTemplateProps> = ({ itinerary, o
     return '🧭';
   };
 
-  const logoUrl = itinerary.branding?.logoUrl;
-  const orgName = itinerary.branding?.organizationName || organizationName || "";
+  const logoUrl = organizationBranding?.logoUrl || itinerary.branding?.logoUrl;
+  const orgName = organizationBranding?.name || itinerary.branding?.organizationName || organizationName || "";
+  const orgEmail = organizationBranding?.email;
+  const orgPhone = organizationBranding?.phone;
+  const orgLocation = [organizationBranding?.city, organizationBranding?.state].filter(Boolean).join(', ');
 
   return (
     <div className="min-h-screen bg-[#FDFBF7] font-sans text-stone-800">
@@ -116,8 +119,23 @@ export const SafariStoryView: React.FC<ItineraryTemplateProps> = ({ itinerary, o
         <div className="relative z-10 flex items-center justify-center px-6 py-3 border-t border-stone-200/60">
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1 text-xs text-stone-400">
             <span className="font-semibold" style={{ color: brandColor }}>{orgName}</span>
-            {client && !client.email && !client.phone && (
-              <span className="hidden md:inline">•</span>
+            {orgEmail && (
+              <>
+                <span className="hidden md:inline">•</span>
+                <span>{orgEmail}</span>
+              </>
+            )}
+            {orgPhone && (
+              <>
+                <span className="hidden md:inline">•</span>
+                <span>{orgPhone}</span>
+              </>
+            )}
+            {orgLocation && (
+              <>
+                <span className="hidden md:inline">•</span>
+                <span>{orgLocation}</span>
+              </>
             )}
           </div>
         </div>

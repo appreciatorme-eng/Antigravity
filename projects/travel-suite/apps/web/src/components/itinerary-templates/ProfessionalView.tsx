@@ -1,16 +1,22 @@
 "use client";
 import React, { useState, useCallback } from 'react';
+import Image from 'next/image';
 import { ItineraryTemplateProps } from './types';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Clock, DollarSign, Navigation, ChevronDown, ChevronUp, Info, Plane } from 'lucide-react';
+import { MapPin, Clock, DollarSign, Navigation, ChevronDown, ChevronUp, Info, Plane, Mail, Phone } from 'lucide-react';
 
 const ProfessionalView: React.FC<ItineraryTemplateProps> = ({
     itinerary,
-    brandColor = '#124ea2',
-    logoUrl,
+    brandColor: brandColorProp = '#124ea2',
+    logoUrl: logoUrlProp,
     organizationName,
+    organizationBranding,
     client
 }) => {
+    const brandColor = organizationBranding?.primaryColor || brandColorProp;
+    const logoUrl = organizationBranding?.logoUrl || logoUrlProp;
+    const orgName = organizationBranding?.name || organizationName;
+    const orgLocation = [organizationBranding?.city, organizationBranding?.state].filter(Boolean).join(', ');
     const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]));
 
     const toggleDay = useCallback((dayNumber: number) => {
@@ -27,19 +33,54 @@ const ProfessionalView: React.FC<ItineraryTemplateProps> = ({
 
     return (
         <div className="min-h-screen bg-gray-50">
-            {/* Header */}
+            {/* Letterhead Header */}
             <div className="bg-white border-b border-gray-200 shadow-sm">
                 <div className="max-w-5xl mx-auto px-6 py-8">
+                    {/* Organization Letterhead */}
+                    {(logoUrl || orgName) && (
+                        <div className="flex items-start justify-between mb-6 pb-6 border-b border-gray-100">
+                            <div className="flex items-center gap-4">
+                                {logoUrl && (
+                                    <Image
+                                        src={logoUrl}
+                                        alt={orgName || 'Logo'}
+                                        width={160}
+                                        height={48}
+                                        className="h-10 md:h-12 w-auto object-contain"
+                                        unoptimized
+                                    />
+                                )}
+                                {orgName && (
+                                    <div>
+                                        <div className="text-xl font-bold tracking-tight" style={{ color: brandColor }}>
+                                            {orgName}
+                                        </div>
+                                        {orgLocation && (
+                                            <div className="text-xs text-gray-500 font-medium mt-0.5">
+                                                {orgLocation}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                            <div className="hidden md:flex flex-col items-end gap-1 text-xs text-gray-500">
+                                {organizationBranding?.email && (
+                                    <span className="flex items-center gap-1.5">
+                                        <Mail className="w-3.5 h-3.5" style={{ color: brandColor }} />
+                                        {organizationBranding.email}
+                                    </span>
+                                )}
+                                {organizationBranding?.phone && (
+                                    <span className="flex items-center gap-1.5">
+                                        <Phone className="w-3.5 h-3.5" style={{ color: brandColor }} />
+                                        {organizationBranding.phone}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    )}
                     <div className="flex items-start justify-between">
                         <div className="flex-1">
-                            {logoUrl && (
-                                /* eslint-disable-next-line @next/next/no-img-element */
-                                <img
-                                    src={logoUrl}
-                                    alt={organizationName || 'Logo'}
-                                    className="h-10 mb-4"
-                                />
-                            )}
                             <h1 className="text-4xl font-bold text-gray-900 mb-3">
                                 {itinerary.trip_title}
                             </h1>

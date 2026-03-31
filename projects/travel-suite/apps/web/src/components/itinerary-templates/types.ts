@@ -3,12 +3,15 @@
  */
 
 import { ItineraryResult } from '@/types/itinerary';
+import type { OrganizationBranding } from './ItineraryBrandedFooter';
 
 export interface ItineraryTemplateProps {
     itinerary: ItineraryResult;
     brandColor?: string;
     logoUrl?: string;
     organizationName?: string;
+    /** Full organization branding — logo, name, contact info, colors */
+    organizationBranding?: OrganizationBranding;
     client?: {
         name: string;
         email?: string;
