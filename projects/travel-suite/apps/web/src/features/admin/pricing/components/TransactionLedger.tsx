@@ -38,9 +38,10 @@ const ALL_CATEGORIES: Array<ServiceCategory | "all"> = [
 
 interface Props {
   onSelectTransaction: (t: TransactionItem) => void;
+  refreshKey?: number;
 }
 
-export function TransactionLedger({ onSelectTransaction }: Props) {
+export function TransactionLedger({ onSelectTransaction, refreshKey }: Props) {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<ServiceCategory | "all">("all");
   const [vendor, setVendor] = useState("");
@@ -51,7 +52,7 @@ export function TransactionLedger({ onSelectTransaction }: Props) {
     [search, category, vendor, sort]
   );
 
-  const { transactions, summary, loading, error } = useTransactions(filters);
+  const { transactions, summary, loading, error } = useTransactions(filters, refreshKey);
 
   const uniqueVendors = useMemo(() => {
     const vendors = transactions.map((t) => t.vendor_name).filter(Boolean) as string[];

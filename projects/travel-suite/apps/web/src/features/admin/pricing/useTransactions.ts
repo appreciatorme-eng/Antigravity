@@ -8,7 +8,7 @@ import type { TransactionItem, TransactionSummary, TransactionFilters } from "./
 
 const EMPTY_SUMMARY: TransactionSummary = { totalCost: 0, totalRevenue: 0, totalProfit: 0, totalCommission: 0, count: 0 };
 
-export function useTransactions(filters: TransactionFilters) {
+export function useTransactions(filters: TransactionFilters, refreshKey = 0) {
   const demoFetch = useDemoFetch();
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
   const [summary, setSummary] = useState<TransactionSummary>(EMPTY_SUMMARY);
@@ -50,7 +50,8 @@ export function useTransactions(filters: TransactionFilters) {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [filters, fetchTransactions]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters, fetchTransactions, refreshKey]);
 
   const reload = useCallback(() => {
     void fetchTransactions(filters);

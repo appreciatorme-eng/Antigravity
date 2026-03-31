@@ -54,6 +54,7 @@ export default function PricingPage() {
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionItem | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [quickExpenseOpen, setQuickExpenseOpen] = useState(false);
+  const [ledgerRefreshKey, setLedgerRefreshKey] = useState(0);
 
   const monthLabel = getMonthLabel(month);
   const monthStart = `${month}-01`;
@@ -269,6 +270,7 @@ export default function PricingPage() {
             transition={{ duration: 0.2 }}
           >
             <TransactionLedger
+              refreshKey={ledgerRefreshKey}
               onSelectTransaction={(t) => {
                 setSelectedTransaction(t);
                 setPanelOpen(true);
@@ -464,6 +466,7 @@ export default function PricingPage() {
           dashboard.reload();
           tripCosts.reload();
           overheads.reload();
+          setLedgerRefreshKey((k) => k + 1);
           setActiveTab("ledger");
         }}
         fetchVendorHistory={tripCosts.fetchVendorHistory}
