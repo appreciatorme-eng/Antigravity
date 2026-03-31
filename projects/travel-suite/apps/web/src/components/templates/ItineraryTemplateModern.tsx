@@ -57,12 +57,6 @@ export default function ItineraryTemplateModern({ itineraryData, organizationNam
                                 <Calendar className="w-5 h-5 text-stone-100" />
                                 {itineraryData.duration_days} Days
                             </span>
-                            {itineraryData.budget && (
-                                <span className="flex items-center gap-2">
-                                    <span className="text-stone-100 font-bold">$</span>
-                                    {itineraryData.budget}
-                                </span>
-                            )}
                         </div>
                     </div>
                 </div>

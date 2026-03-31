@@ -583,7 +583,7 @@ Requirements:
 - ACCURATE lat/lng coordinates for each activity (NOT 0,0 or wrong city)
 - Activity titles must be specific searchable landmark names
 - Descriptions: 3-4 informative sentences each
-- Include specific times, durations, costs, and transport directions
+- Include specific times, durations, costs in Indian Rupees (₹/INR), and transport directions
 - Location must include neighborhood/district`;
 
         try {
@@ -606,7 +606,7 @@ Requirements:
           "title": "searchable landmark",
           "description": "3-4 sentences",
           "location": "string",
-          "cost": "string",
+          "cost": "₹500 (always use Indian Rupees ₹)",
           "transport": "string",
           "coordinates": { "lat": number, "lng": number }
         }

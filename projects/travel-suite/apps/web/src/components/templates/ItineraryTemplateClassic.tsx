@@ -1,5 +1,5 @@
 import type { Day, Activity } from "@/types/itinerary";
-import { MapPin, Calendar, Wallet, Clock, Plane } from "lucide-react";
+import { MapPin, Calendar, Clock, Plane } from "lucide-react";
 import ClientItineraryMap from "@/components/map/ClientItineraryMap";
 import { ItineraryTemplateProps } from "./types";
 
@@ -44,12 +44,6 @@ export default function ItineraryTemplateClassic({ itineraryData, organizationNa
                             <Calendar className="w-4 h-4" />
                             {itineraryData.duration_days} days
                         </span>
-                        {itineraryData.budget && (
-                            <span className="flex items-center gap-1">
-                                <Wallet className="w-4 h-4" />
-                                {itineraryData.budget}
-                            </span>
-                        )}
                     </div>
                     {itineraryData.interests && itineraryData.interests.length > 0 && (
                         <div className="flex flex-wrap gap-2 mt-3">

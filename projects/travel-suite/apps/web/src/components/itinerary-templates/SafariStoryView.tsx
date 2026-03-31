@@ -106,11 +106,6 @@ export const SafariStoryView: React.FC<ItineraryTemplateProps> = ({ itinerary, o
               <Badge variant="outline" className="px-5 py-2 text-sm font-serif bg-white/50 border-stone-400 text-stone-800 backdrop-blur-sm">
                 {getTotalDuration()} Days
               </Badge>
-              {itinerary.budget && (
-                <Badge variant="outline" className="px-5 py-2 text-sm font-serif bg-white/50 border-stone-400 text-stone-800 backdrop-blur-sm">
-                  {itinerary.budget}
-                </Badge>
-              )}
             </div>
           </div>
         </div>

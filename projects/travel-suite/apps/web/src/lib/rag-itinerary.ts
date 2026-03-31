@@ -277,7 +277,7 @@ function formatTemplateAsItinerary(template: TourTemplateRow): RAGAssembledItine
                 title: activity.title,
                 description: activity.description || 'Details to be provided.',
                 location: activity.location || '',
-                cost: activity.price ? `$${activity.price}` : undefined,
+                cost: activity.price ? `₹${activity.price}` : undefined,
                 duration: activity.duration || undefined,
                 transport: activity.transport || undefined,
                 image: activity.image_url || undefined

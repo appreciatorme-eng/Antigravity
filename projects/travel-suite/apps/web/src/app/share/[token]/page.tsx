@@ -10,6 +10,8 @@ import {
 } from "@/lib/share/public-trip";
 import ShareTemplateRenderer from "./ShareTemplateRenderer";
 import type { OrganizationBranding } from "@/components/itinerary-templates/ItineraryBrandedFooter";
+import { populateItineraryImages } from "@/lib/image-search";
+import type { Json } from "@/lib/supabase/database.types";
 
 export async function generateMetadata({
     params,
@@ -121,6 +123,7 @@ export default async function SharedTripPage({
 
     const shareRecord = share as unknown as {
         itineraries: {
+            id?: string;
             raw_data: unknown;
             trip_title?: string;
             destination?: string;
@@ -143,7 +146,7 @@ export default async function SharedTripPage({
 
     const tripData = itinerary.raw_data as unknown as ItineraryResult;
     // Merge DB columns into the tripData object (some fields may live on the itinerary row directly)
-    const fullTripData: ItineraryResult = {
+    let fullTripData: ItineraryResult = {
         ...tripData,
         trip_title: tripData?.trip_title || itinerary.trip_title || "Your Itinerary",
         destination: tripData?.destination || itinerary.destination || "",
@@ -152,6 +155,23 @@ export default async function SharedTripPage({
         interests: tripData?.interests || itinerary.interests || [],
         summary: tripData?.summary || itinerary.summary || "",
     };
+
+    // Server-side image population: if activities are missing images, fetch them via Wikipedia
+    const needsImages = fullTripData.days?.some(d =>
+        d.activities?.some(a => !a.image && !a.imageUrl)
+    );
+    if (needsImages) {
+        const enriched = await populateItineraryImages(fullTripData as ItineraryResult & Record<string, unknown>);
+        fullTripData = enriched as ItineraryResult;
+        // Persist enriched images back to raw_data so future loads are instant (fire-and-forget)
+        if (itinerary.id) {
+            supabaseAdmin
+                .from("itineraries")
+                .update({ raw_data: fullTripData as unknown as Json })
+                .eq("id", itinerary.id)
+                .then(() => { /* fire-and-forget */ });
+        }
+    }
 
     // Resolve organization branding
     const org = itinerary.profiles?.organizations;

@@ -3,6 +3,7 @@ export const SHARED_ITINERARY_PUBLIC_SELECT = `
   expires_at,
   template_id,
   itineraries (
+    id,
     raw_data,
     trip_title,
     destination,
