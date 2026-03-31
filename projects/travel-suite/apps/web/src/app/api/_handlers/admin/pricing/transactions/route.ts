@@ -22,7 +22,6 @@ type CostRow = {
   currency: string;
   notes: string | null;
   created_at: string;
-  expense_date: string | null;
 };
 
 type TripRow = {
@@ -58,7 +57,7 @@ export async function GET(req: NextRequest) {
 
     let query = db
       .from("trip_service_costs")
-      .select("id, trip_id, category, vendor_name, description, pax_count, cost_amount, price_amount, commission_pct, commission_amount, currency, notes, created_at, expense_date")
+      .select("id, trip_id, category, vendor_name, description, pax_count, cost_amount, price_amount, commission_pct, commission_amount, currency, notes, created_at")
       .eq("organization_id", orgId);
 
     if (category && category !== "all") {
@@ -128,7 +127,7 @@ export async function GET(req: NextRequest) {
         trip_name: trip?.name || (cost.trip_id ? "Unknown Trip" : "Standalone"),
         destination: trip?.destination ?? null,
         client_name: clientName,
-        start_date: cost.expense_date ?? trip?.start_date ?? null,
+        start_date: trip?.start_date ?? cost.created_at,
         pax_count: trip?.pax_count ?? cost.pax_count ?? 1,
         category: cost.category,
         vendor_name: cost.vendor_name,
