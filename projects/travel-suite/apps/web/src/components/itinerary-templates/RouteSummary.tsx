@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import {
     MapPin, Clock, Car, Footprints,
     Utensils, Camera, Trees, Waves, ShoppingBag,
-    Coffee, Sunset, Landmark, ChevronDown, Route,
+    Coffee, Sunset, Landmark, ChevronDown,
 } from "lucide-react";
 import type { ItineraryResult } from "@/types/itinerary";
 
@@ -188,63 +188,18 @@ export function RouteSummary({ itinerary }: RouteSummaryProps) {
         setOpenDay((prev) => (prev === dayNum ? null : dayNum));
     };
 
-    // Estimate total drive time
-    const totalDriveMin = Math.round((totalKm / 30) * 60);
-    const driveH = Math.floor(totalDriveMin / 60);
-    const driveM = totalDriveMin % 60;
-    const driveTimeStr = driveH > 0 ? (driveM > 0 ? `${driveH}h ${driveM}m` : `${driveH}h`) : `${driveM}m`;
-
     return (
         <div className="bg-[#FDFBF7] dark:bg-slate-950 border-t border-stone-200 dark:border-white/10">
-            {/* Visual header */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-stone-900 via-stone-800 to-stone-900 text-white px-6 py-14 md:py-20">
-                {/* Decorative background elements */}
-                <div className="absolute inset-0 opacity-[0.06]"
-                    style={{ backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)", backgroundSize: "40px 40px" }}
-                />
-                <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full opacity-[0.04] bg-white blur-3xl" />
-                <div className="absolute -bottom-32 -left-16 w-96 h-96 rounded-full opacity-[0.03] bg-emerald-400 blur-3xl" />
-
-                {/* Decorative route line SVG */}
-                <svg className="absolute right-4 md:right-12 top-1/2 -translate-y-1/2 opacity-[0.06] h-40 md:h-56" viewBox="0 0 80 200" fill="none">
-                    <path d="M40 0 C40 40, 10 50, 10 80 C10 110, 70 120, 70 150 C70 180, 40 190, 40 200" stroke="white" strokeWidth="2" strokeDasharray="6 4" />
-                    <circle cx="40" cy="0" r="4" fill="white" />
-                    <circle cx="10" cy="80" r="4" fill="white" />
-                    <circle cx="70" cy="150" r="4" fill="white" />
-                    <circle cx="40" cy="200" r="4" fill="white" />
-                </svg>
-
-                <div className="relative z-10 max-w-5xl mx-auto">
-                    {/* Label */}
-                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.07] backdrop-blur-sm text-white/60 text-[11px] font-semibold tracking-[0.25em] uppercase mb-6 border border-white/[0.06]">
-                        <Route className="w-3.5 h-3.5" />
-                        Route Overview
-                    </div>
-
-                    {/* Destination */}
-                    <h2 className="text-3xl md:text-5xl font-serif font-light mb-2 tracking-tight">
-                        {itinerary.destination || "Your Journey"}
-                    </h2>
-                    <p className="text-white/30 text-sm mb-10">
-                        {days.length}-day journey &middot; {stops.length} destinations
-                    </p>
-
-                    {/* Stat cards */}
-                    <div className="grid grid-cols-3 gap-3 md:gap-4 max-w-md">
-                        <div className="bg-white/[0.06] backdrop-blur-sm rounded-2xl p-4 border border-white/[0.06] text-center">
-                            <p className="text-3xl md:text-4xl font-serif font-light">{stops.length}</p>
-                            <p className="text-[10px] uppercase tracking-[0.2em] text-white/35 mt-1">Stops</p>
-                        </div>
-                        <div className="bg-white/[0.06] backdrop-blur-sm rounded-2xl p-4 border border-white/[0.06] text-center">
-                            <p className="text-3xl md:text-4xl font-serif font-light">{formatDist(totalKm)}</p>
-                            <p className="text-[10px] uppercase tracking-[0.2em] text-white/35 mt-1">Distance</p>
-                        </div>
-                        <div className="bg-white/[0.06] backdrop-blur-sm rounded-2xl p-4 border border-white/[0.06] text-center">
-                            <p className="text-3xl md:text-4xl font-serif font-light">{driveTimeStr}</p>
-                            <p className="text-[10px] uppercase tracking-[0.2em] text-white/35 mt-1">Drive Time</p>
-                        </div>
-                    </div>
-                </div>
+            {/* Section header — editorial style matching the itinerary template */}
+            <div className="max-w-4xl mx-auto px-6 pt-16 pb-10 text-center">
+                <div className="w-12 h-px bg-stone-300 mx-auto mb-8" />
+                <h2 className="text-2xl md:text-3xl font-serif text-stone-900 dark:text-white uppercase tracking-[0.15em] mb-3">
+                    Route &amp; Logistics
+                </h2>
+                <p className="text-stone-500 dark:text-gray-400 text-sm max-w-lg mx-auto">
+                    {itinerary.destination ? `Your ${days.length}-day journey across ${itinerary.destination}` : `${days.length}-day journey`}
+                    {" "}&middot; {stops.length} stops &middot; {formatDist(totalKm)} total
+                </p>
             </div>
 
             {/* Accordion day cards */}
