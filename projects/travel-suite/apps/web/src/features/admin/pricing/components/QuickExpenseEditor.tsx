@@ -49,6 +49,7 @@ export function QuickExpenseEditor({
   const [commissionPct, setCommissionPct] = useState("0");
   const [paxCount, setPaxCount] = useState("1");
   const [notes, setNotes] = useState("");
+  const [expenseDate, setExpenseDate] = useState(() => new Date().toISOString().slice(0, 10));
 
   // Vendor history
   const [vendorHistory, setVendorHistory] = useState<VendorHistoryItem[]>([]);
@@ -82,6 +83,7 @@ export function QuickExpenseEditor({
       setCommissionPct("0");
       setPaxCount("1");
       setNotes("");
+      setExpenseDate(new Date().toISOString().slice(0, 10));
       setError(null);
       setReceiptId(null);
       setReceiptUrl(null);
@@ -194,7 +196,7 @@ export function QuickExpenseEditor({
         // No trip selected — save as monthly overhead expense
         const description = [vendorName, notes].filter(Boolean).join(" — ") || undefined;
         const payload = {
-          month_start: new Date().toISOString().slice(0, 7) + "-01",
+          month_start: expenseDate.slice(0, 7) + "-01",
           category: CATEGORY_LABELS[category],
           description,
           amount: cost || price,
@@ -218,7 +220,7 @@ export function QuickExpenseEditor({
     } finally {
       setSaving(false);
     }
-  }, [selectedTrip, category, vendorName, cost, price, commissionPct, commissionAmount, paxCount, notes, costAmount, priceAmount, receiptId, onSaved]);
+  }, [selectedTrip, category, vendorName, cost, price, commissionPct, commissionAmount, paxCount, notes, costAmount, priceAmount, receiptId, expenseDate, onSaved]);
 
   return (
     <GlassModal
@@ -311,6 +313,17 @@ export function QuickExpenseEditor({
               <option key={cat} value={cat}>{CATEGORY_LABELS[cat]}</option>
             ))}
           </select>
+        </div>
+
+        {/* Date */}
+        <div>
+          <label className="block text-sm font-medium text-secondary mb-1.5">Date *</label>
+          <input
+            type="date"
+            value={expenseDate}
+            onChange={(e) => setExpenseDate(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl bg-white/80 border border-white/20 text-secondary focus:outline-none focus:ring-2 focus:ring-primary/50 shadow-sm"
+          />
         </div>
 
         {/* Vendor */}
