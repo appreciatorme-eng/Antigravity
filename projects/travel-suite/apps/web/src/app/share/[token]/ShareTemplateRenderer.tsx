@@ -79,7 +79,7 @@ export default function ShareTemplateRenderer({
         },
     };
 
-    const commonProps = { itinerary: brandedItinerary, organizationName, client };
+    const commonProps = { itinerary: brandedItinerary, organizationName, organizationBranding, client };
     const legacyProps = { itineraryData: brandedItinerary, organizationName, client };
 
     const renderTemplate = () => {

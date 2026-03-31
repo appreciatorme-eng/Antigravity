@@ -1,11 +1,12 @@
 "use client";
 import React, { useRef } from 'react';
+import Image from 'next/image';
 import { Activity, Day } from '@/types/itinerary';
 import { ItineraryTemplateProps } from './types';
 import { MapPin, Clock, Navigation, CheckCircle2, ChevronDown, Plane } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
-export const VisualJourneyView: React.FC<ItineraryTemplateProps> = ({ itinerary, client }) => {
+export const VisualJourneyView: React.FC<ItineraryTemplateProps> = ({ itinerary, organizationBranding, client }) => {
     const brandColor = itinerary.branding?.primaryColor || '#e11d48'; // Rose Red
     const mainRef = useRef<HTMLDivElement>(null);
 
@@ -32,6 +33,36 @@ export const VisualJourneyView: React.FC<ItineraryTemplateProps> = ({ itinerary,
                     }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent" />
+
+                {/* Bold Brand Mark — Top Left */}
+                {organizationBranding && (
+                    <div className="absolute top-0 left-0 right-0 z-20 px-6 md:px-12 py-5 flex items-center justify-between">
+                        <div className="flex items-center gap-3 bg-black/30 backdrop-blur-md rounded-2xl px-5 py-3 border border-white/10">
+                            {organizationBranding.logoUrl && (
+                                <Image
+                                    src={organizationBranding.logoUrl}
+                                    alt={organizationBranding.name}
+                                    width={140}
+                                    height={44}
+                                    className="h-8 md:h-10 w-auto object-contain brightness-0 invert"
+                                    unoptimized
+                                />
+                            )}
+                            <div className={organizationBranding.logoUrl ? 'border-l border-white/20 pl-3' : ''}>
+                                <div className="text-lg md:text-xl font-bold text-white tracking-tight">
+                                    {organizationBranding.name}
+                                </div>
+                                <div className="flex flex-wrap gap-x-4 text-[10px] text-white/50 tracking-wider uppercase">
+                                    {organizationBranding.email && <span>{organizationBranding.email}</span>}
+                                    {organizationBranding.phone && <span>{organizationBranding.phone}</span>}
+                                    {(organizationBranding.city || organizationBranding.state) && (
+                                        <span>{[organizationBranding.city, organizationBranding.state].filter(Boolean).join(', ')}</span>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 <div className="relative z-10 text-center px-6 max-w-5xl mt-24">
                     <Badge className="mb-8 bg-white/20 text-white hover:bg-white/30 backdrop-blur-md rounded-full px-6 py-2 text-sm tracking-widest uppercase border border-white/30">

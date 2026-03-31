@@ -1,11 +1,12 @@
 "use client";
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { Activity, Day } from '@/types/itinerary';
 import { ItineraryTemplateProps } from './types';
 import { MapPin, Clock, Info, ArrowUpRight, Plane } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
-export const LuxuryResortView: React.FC<ItineraryTemplateProps> = ({ itinerary, client }) => {
+export const LuxuryResortView: React.FC<ItineraryTemplateProps> = ({ itinerary, organizationBranding, client }) => {
     const brandColor = itinerary.branding?.primaryColor || '#ccb27a'; // Champagne Gold
     const [currentBg, setCurrentBg] = useState<string>('');
 
@@ -39,6 +40,34 @@ export const LuxuryResortView: React.FC<ItineraryTemplateProps> = ({ itinerary, 
 
             {/* Content Container */}
             <div className="relative z-10 max-w-6xl mx-auto px-6 py-20 md:py-32">
+
+                {/* Organization Branding — Elegant Overlay */}
+                {organizationBranding && (
+                    <div className="mb-16 flex items-center gap-5">
+                        {organizationBranding.logoUrl && (
+                            <Image
+                                src={organizationBranding.logoUrl}
+                                alt={organizationBranding.name}
+                                width={160}
+                                height={56}
+                                className="h-12 md:h-14 w-auto object-contain brightness-0 invert opacity-90"
+                                unoptimized
+                            />
+                        )}
+                        <div className="border-l border-white/20 pl-5">
+                            <div className="text-xl md:text-2xl font-serif tracking-wide" style={{ color: brandColor }}>
+                                {organizationBranding.name}
+                            </div>
+                            <div className="flex flex-wrap gap-x-5 gap-y-1 mt-1 text-xs font-light tracking-[0.15em] text-white/40 uppercase">
+                                {organizationBranding.email && <span>{organizationBranding.email}</span>}
+                                {organizationBranding.phone && <span>{organizationBranding.phone}</span>}
+                                {(organizationBranding.city || organizationBranding.state) && (
+                                    <span>{[organizationBranding.city, organizationBranding.state].filter(Boolean).join(', ')}</span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Hero Section */}
                 <div className="mb-32 max-w-3xl">

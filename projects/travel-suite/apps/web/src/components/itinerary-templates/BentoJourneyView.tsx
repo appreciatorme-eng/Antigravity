@@ -1,17 +1,69 @@
 "use client";
 import React from 'react';
+import Image from 'next/image';
 import { Activity, Day } from '@/types/itinerary';
 import { ItineraryTemplateProps } from './types';
-import { MapPin, Navigation, Clock, Plane } from 'lucide-react';
+import { MapPin, Navigation, Clock, Plane, Mail, Phone } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
-export const BentoJourneyView: React.FC<ItineraryTemplateProps> = ({ itinerary, client }) => {
+export const BentoJourneyView: React.FC<ItineraryTemplateProps> = ({ itinerary, organizationBranding, client }) => {
     const brandColor = itinerary.branding?.primaryColor || '#6366f1'; // Indigo 
 
     return (
         <div className="bg-[#f0f2f5] min-h-screen text-slate-900 font-sans p-4 md:p-8 xl:p-12">
+            {/* Bento Brand Banner */}
+            {organizationBranding && (
+                <div className="max-w-7xl mx-auto mb-8 pt-8">
+                    <div className="bg-white rounded-[2rem] p-6 md:p-8 shadow-sm border border-slate-100 flex flex-col md:flex-row items-center md:items-start justify-between gap-6">
+                        <div className="flex items-center gap-5">
+                            {organizationBranding.logoUrl && (
+                                <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center overflow-hidden flex-shrink-0">
+                                    <Image
+                                        src={organizationBranding.logoUrl}
+                                        alt={organizationBranding.name}
+                                        width={80}
+                                        height={80}
+                                        className="w-full h-full object-contain p-2"
+                                        unoptimized
+                                    />
+                                </div>
+                            )}
+                            <div>
+                                <div className="text-2xl md:text-3xl font-bold tracking-tight" style={{ color: brandColor }}>
+                                    {organizationBranding.name}
+                                </div>
+                                {(organizationBranding.city || organizationBranding.state) && (
+                                    <div className="text-sm text-slate-400 font-medium mt-1">
+                                        {[organizationBranding.city, organizationBranding.state].filter(Boolean).join(', ')}
+                                    </div>
+                                )}
+                                {client && (
+                                    <div className="mt-2 text-sm font-semibold uppercase tracking-wider" style={{ color: brandColor }}>
+                                        Prepared for {client.name}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div className="flex flex-wrap md:flex-col items-center md:items-end gap-2 text-sm text-slate-500">
+                            {organizationBranding.email && (
+                                <span className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl">
+                                    <Mail className="w-3.5 h-3.5" style={{ color: brandColor }} />
+                                    {organizationBranding.email}
+                                </span>
+                            )}
+                            {organizationBranding.phone && (
+                                <span className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl">
+                                    <Phone className="w-3.5 h-3.5" style={{ color: brandColor }} />
+                                    {organizationBranding.phone}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Minimalist Header */}
-            <div className="max-w-7xl mx-auto mb-16 pt-8 text-center md:text-left">
+            <div className={`max-w-7xl mx-auto mb-16 ${organizationBranding ? '' : 'pt-8'} text-center md:text-left`}>
                 <Badge variant="outline" className="mb-6 rounded-full px-4 py-1.5 border-slate-300 text-slate-500 font-medium tracking-widest uppercase text-xs">
                     Immersive Travel Grid
                 </Badge>

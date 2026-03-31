@@ -1,18 +1,72 @@
 import React from 'react';
-import { ChevronRight, MapPin, Clock, DollarSign, Calendar, Plane } from 'lucide-react';
+import Image from 'next/image';
+import { ChevronRight, MapPin, Clock, DollarSign, Calendar, Plane, Mail, Phone } from 'lucide-react';
 import { ItineraryTemplateProps } from './types';
 import { Badge } from '@/components/ui/badge';
 
-export const UrbanBriefView: React.FC<ItineraryTemplateProps> = ({ itinerary, client }) => {
-  const brandColor = '#124ea2';
+export const UrbanBriefView: React.FC<ItineraryTemplateProps> = ({ itinerary, organizationBranding, client }) => {
+  const brandColor = organizationBranding?.primaryColor || '#124ea2';
+  const orgName = organizationBranding?.name;
+  const orgLocation = [organizationBranding?.city, organizationBranding?.state].filter(Boolean).join(', ');
 
   const totalDays = itinerary.days?.length || 0;
   const totalActivities = itinerary.days?.reduce((sum, day) => sum + (day.activities?.length || 0), 0) || 0;
 
   return (
     <div className="max-w-4xl mx-auto bg-white" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+      {/* Newspaper-Style Masthead — Organization Branding */}
+      {organizationBranding && (
+        <div className="border-b border-gray-200 px-8 pt-6 pb-5" style={{ borderTop: `4px solid ${brandColor}` }}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              {organizationBranding.logoUrl && (
+                <Image
+                  src={organizationBranding.logoUrl}
+                  alt={orgName || 'Organization'}
+                  width={160}
+                  height={48}
+                  className="h-10 md:h-12 w-auto object-contain"
+                  unoptimized
+                />
+              )}
+              {orgName && (
+                <div className="border-l border-gray-300 pl-4">
+                  <div className="text-xl font-bold tracking-tight" style={{ color: brandColor }}>
+                    {orgName}
+                  </div>
+                  {orgLocation && (
+                    <div className="text-[11px] text-gray-500 font-medium tracking-wide uppercase">
+                      {orgLocation}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="hidden md:flex flex-col items-end gap-1 text-[11px] text-gray-500">
+              {organizationBranding.email && (
+                <span className="flex items-center gap-1.5">
+                  <Mail className="w-3 h-3" />
+                  {organizationBranding.email}
+                </span>
+              )}
+              {organizationBranding.phone && (
+                <span className="flex items-center gap-1.5">
+                  <Phone className="w-3 h-3" />
+                  {organizationBranding.phone}
+                </span>
+              )}
+            </div>
+          </div>
+          {client && (
+            <div className="mt-3 pt-3 border-t border-gray-100 text-xs font-semibold uppercase tracking-wider" style={{ color: brandColor }}>
+              Prepared for {client.name}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Corporate Header with Brand Border */}
-      <div className="border-t-4 pt-8 pb-6 px-8" style={{ borderTopColor: brandColor }}>
+      <div className={`${organizationBranding ? '' : 'border-t-4'} pt-8 pb-6 px-8`} style={organizationBranding ? {} : { borderTopColor: brandColor }}>
         <div className="flex items-start justify-between mb-6">
           <div className="flex-1">
             <div className="text-xs font-semibold tracking-wider mb-2" style={{ color: brandColor }}>

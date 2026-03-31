@@ -9,6 +9,8 @@ export interface OrganizationBranding {
     primaryColor?: string | null;
     email?: string | null;
     phone?: string | null;
+    city?: string | null;
+    state?: string | null;
 }
 
 interface ItineraryBrandedFooterProps {
