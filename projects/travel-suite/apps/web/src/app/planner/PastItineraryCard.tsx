@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { Copy, Check, Clock, MapPin, User } from "lucide-react";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { Copy, Check, Clock, MapPin, Search, UserPlus } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { getDeterministicFallback } from "@/lib/image-search";
 import { deriveStage, hasClientActivity } from "./planner.types";
+import { useClients } from "@/lib/queries/clients";
+import { useUpdateItinerary } from "@/lib/queries/itineraries";
 import type { ClientComment } from "@/types/feedback";
 
 interface PastItineraryCardProps {
@@ -164,6 +166,45 @@ function SkeletonShimmer() {
 export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoading = false }: PastItineraryCardProps) {
     const { toast } = useToast();
     const [linkCopied, setLinkCopied] = useState(false);
+    const [showClientPicker, setShowClientPicker] = useState(false);
+    const [clientSearch, setClientSearch] = useState("");
+    const pickerRef = useRef<HTMLDivElement>(null);
+    const { data: allClients } = useClients();
+    const updateItinerary = useUpdateItinerary();
+
+    // Close picker on outside click
+    useEffect(() => {
+        if (!showClientPicker) return;
+        const handler = (e: MouseEvent) => {
+            if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+                setShowClientPicker(false);
+                setClientSearch("");
+            }
+        };
+        document.addEventListener("mousedown", handler);
+        return () => document.removeEventListener("mousedown", handler);
+    }, [showClientPicker]);
+
+    const filteredClients = useMemo(() => {
+        if (!allClients || !Array.isArray(allClients)) return [];
+        const list = allClients as Array<{ id: string; full_name: string | null; email: string | null; phone: string | null }>;
+        if (!clientSearch.trim()) return list.slice(0, 8);
+        const q = clientSearch.toLowerCase();
+        return list.filter(
+            (c) => c.full_name?.toLowerCase().includes(q) || c.email?.toLowerCase().includes(q) || c.phone?.includes(q)
+        ).slice(0, 8);
+    }, [allClients, clientSearch]);
+
+    const handleAssignClient = async (clientId: string, clientFullName: string) => {
+        setShowClientPicker(false);
+        setClientSearch("");
+        try {
+            await updateItinerary.mutateAsync({ id: itinerary.id, updates: { client_id: clientId } });
+            toast({ title: "Client assigned", description: `${clientFullName} assigned to this itinerary.`, variant: "success" });
+        } catch {
+            toast({ title: "Failed to assign", description: "Could not assign client. Try again.", variant: "error" });
+        }
+    };
 
     const stage = deriveStage(itinerary);
     const hasActivity = hasClientActivity(itinerary);
@@ -269,11 +310,61 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
                         </span>
                     </div>
                 ) : (
-                    <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full border-2 border-dashed border-slate-600 flex items-center justify-center">
-                            <User className="w-3 h-3 text-slate-500" />
-                        </div>
-                        <span className="text-xs text-slate-500">Unassigned</span>
+                    <div className="relative" ref={pickerRef}>
+                        <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setShowClientPicker((p) => !p); }}
+                            className="flex items-center gap-2 hover:bg-white/10 rounded-lg px-1.5 py-1 -mx-1.5 transition-colors"
+                        >
+                            <div className="w-7 h-7 rounded-full border-2 border-dashed border-slate-600 flex items-center justify-center group-hover:border-emerald-500 transition-colors">
+                                <UserPlus className="w-3 h-3 text-slate-500 group-hover:text-emerald-400" />
+                            </div>
+                            <span className="text-xs text-slate-500">Assign client</span>
+                        </button>
+
+                        {/* Inline client picker dropdown */}
+                        {showClientPicker && (
+                            <div className="absolute bottom-full left-0 mb-2 w-64 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-50 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                                <div className="p-2">
+                                    <div className="relative">
+                                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                                        <input
+                                            type="text"
+                                            value={clientSearch}
+                                            onChange={(e) => setClientSearch(e.target.value)}
+                                            placeholder="Search clients..."
+                                            className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-8 pr-3 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+                                            autoFocus
+                                        />
+                                    </div>
+                                </div>
+                                <div className="max-h-48 overflow-y-auto px-1 pb-1">
+                                    {filteredClients.length === 0 ? (
+                                        <p className="text-xs text-slate-500 text-center py-4">No clients found</p>
+                                    ) : (
+                                        filteredClients.map((c) => (
+                                            <button
+                                                key={c.id}
+                                                type="button"
+                                                onClick={() => void handleAssignClient(c.id, c.full_name || "Client")}
+                                                className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-slate-700/50 transition-colors text-left"
+                                            >
+                                                <div
+                                                    className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0"
+                                                    style={{ backgroundColor: djb2Color(c.full_name || "?") }}
+                                                >
+                                                    {(c.full_name || "?").charAt(0).toUpperCase()}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <p className="text-xs font-medium text-white truncate">{c.full_name || "Unnamed"}</p>
+                                                    {c.email && <p className="text-[10px] text-slate-400 truncate">{c.email}</p>}
+                                                </div>
+                                            </button>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 
