@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
-    MapPin, Navigation, Clock, Car, Footprints, Ship,
+    MapPin, Clock, Car, Footprints,
     Utensils, Camera, Trees, Waves, ShoppingBag,
-    Coffee, Sunset, Landmark,
+    Coffee, Sunset, Landmark, ChevronDown, Route,
 } from "lucide-react";
 import type { ItineraryResult } from "@/types/itinerary";
 
@@ -20,23 +20,23 @@ function haversineKm(a: [number, number], b: [number, number]): number {
     return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
-function formatDistance(km: number): string {
-    if (km < 1) return `${Math.round(km * 1000)} m`;
-    return `${km.toFixed(1)} km`;
+function formatDist(km: number): string {
+    if (km < 1) return `${Math.round(km * 1000)}m`;
+    return `${km.toFixed(1)}km`;
 }
 
-function estimateDriveTime(km: number): string {
-    const minutes = Math.round((km / 30) * 60);
-    if (minutes < 60) return `${minutes} min`;
-    const h = Math.floor(minutes / 60);
-    const m = minutes % 60;
-    return m > 0 ? `${h}h ${m}m` : `${h}h`;
+function estimateTime(km: number): string {
+    const m = Math.round((km / 30) * 60);
+    if (m < 60) return `${m}min`;
+    const h = Math.floor(m / 60);
+    const r = m % 60;
+    return r > 0 ? `${h}h${r}m` : `${h}h`;
 }
 
 // ── Activity type detection ─────────────────────────────────────────────────
 type ActivityType = "food" | "sightseeing" | "nature" | "culture" | "shopping" | "beach" | "transport" | "coffee" | "sunset" | "default";
 
-function detectActivityType(title: string): ActivityType {
+function detectType(title: string): ActivityType {
     const t = title.toLowerCase();
     if (/breakfast|lunch|dinner|meal|eat|dine|restaurant|food/.test(t)) return "food";
     if (/coffee|tea|cafe|chai/.test(t)) return "coffee";
@@ -50,8 +50,7 @@ function detectActivityType(title: string): ActivityType {
     return "default";
 }
 
-function renderActivityIcon(type: ActivityType) {
-    const cls = "w-4 h-4 text-white";
+function renderIcon(type: ActivityType, cls = "w-3.5 h-3.5") {
     switch (type) {
         case "food": return <Utensils className={cls} />;
         case "coffee": return <Coffee className={cls} />;
@@ -66,7 +65,7 @@ function renderActivityIcon(type: ActivityType) {
     }
 }
 
-function getActivityColor(type: ActivityType): string {
+function typeColor(type: ActivityType): string {
     switch (type) {
         case "food": return "#f97316";
         case "coffee": return "#92400e";
@@ -81,16 +80,20 @@ function getActivityColor(type: ActivityType): string {
     }
 }
 
-// ── Transport mode detection ────────────────────────────────────────────────
-type TransportMode = "walk" | "drive" | "boat";
-
-function detectTransportMode(km: number, title: string): TransportMode {
-    const t = title.toLowerCase();
-    if (/boat|ferry|cruise|houseboat|backwater/.test(t)) return "boat";
-    if (km < 1) return "walk";
-    return "drive";
+function typeLabel(type: ActivityType): string {
+    switch (type) {
+        case "food": return "Dining";
+        case "coffee": return "Café";
+        case "sunset": return "Scenic";
+        case "beach": return "Beach";
+        case "culture": return "Culture";
+        case "nature": return "Nature";
+        case "shopping": return "Shopping";
+        case "transport": return "Transfer";
+        case "sightseeing": return "Sightseeing";
+        default: return "Activity";
+    }
 }
-
 
 // ── Types ───────────────────────────────────────────────────────────────────
 interface Stop {
@@ -101,289 +104,282 @@ interface Stop {
     coords: [number, number] | null;
     dayNumber: number;
     dayTheme: string;
-    activityType: ActivityType;
+    type: ActivityType;
+    distFromPrev: number | null;
 }
 
-function extractStops(itinerary: ItineraryResult): Stop[] {
-    const stops: Stop[] = [];
+function buildStops(itinerary: ItineraryResult): Stop[] {
+    const raw: Omit<Stop, "distFromPrev">[] = [];
     let counter = 1;
     for (const day of itinerary.days ?? []) {
         for (const act of day.activities ?? []) {
-            const hasCoords =
-                act.coordinates &&
+            const ok = act.coordinates &&
                 typeof act.coordinates.lat === "number" &&
                 typeof act.coordinates.lng === "number" &&
-                act.coordinates.lat !== 0 &&
-                act.coordinates.lng !== 0;
-            stops.push({
+                act.coordinates.lat !== 0 && act.coordinates.lng !== 0;
+            raw.push({
                 number: counter++,
                 title: act.title || act.name || "Activity",
                 location: act.location || "",
                 time: act.time || "",
-                coords: hasCoords ? [act.coordinates!.lat, act.coordinates!.lng] : null,
+                coords: ok ? [act.coordinates!.lat, act.coordinates!.lng] : null,
                 dayNumber: day.day_number ?? day.day ?? 0,
                 dayTheme: day.theme || day.title || "",
-                activityType: detectActivityType(act.title || act.name || ""),
+                type: detectType(act.title || act.name || ""),
             });
         }
     }
-    return stops;
+    return raw.map((s, i) => {
+        if (i === 0 || !s.coords) return { ...s, distFromPrev: null };
+        const prev = raw.slice(0, i).reverse().find((p) => p.coords !== null);
+        if (!prev?.coords) return { ...s, distFromPrev: null };
+        return { ...s, distFromPrev: haversineKm(prev.coords, s.coords) };
+    });
 }
 
-// ── Day gradient palettes ───────────────────────────────────────────────────
-const DAY_PALETTES = [
-    { from: "#0f766e", to: "#134e4a", bg: "from-teal-700 to-teal-900" },
-    { from: "#1d4ed8", to: "#1e3a5f", bg: "from-blue-700 to-blue-900" },
-    { from: "#7c3aed", to: "#4c1d95", bg: "from-violet-600 to-violet-900" },
-    { from: "#c2410c", to: "#7c2d12", bg: "from-orange-700 to-orange-900" },
-    { from: "#be185d", to: "#831843", bg: "from-pink-700 to-pink-900" },
-    { from: "#15803d", to: "#14532d", bg: "from-green-700 to-green-900" },
-    { from: "#b45309", to: "#78350f", bg: "from-amber-700 to-amber-900" },
+// ── Day palettes ────────────────────────────────────────────────────────────
+const PALETTES = [
+    { from: "#0f766e", to: "#134e4a" },
+    { from: "#1d4ed8", to: "#1e3a5f" },
+    { from: "#7c3aed", to: "#4c1d95" },
+    { from: "#c2410c", to: "#7c2d12" },
+    { from: "#be185d", to: "#831843" },
+    { from: "#15803d", to: "#14532d" },
+    { from: "#b45309", to: "#78350f" },
 ];
 
+interface DayData {
+    dayNum: number;
+    theme: string;
+    stops: Stop[];
+    totalKm: number;
+    palette: { from: string; to: string };
+}
+
+// ── Component ───────────────────────────────────────────────────────────────
 interface RouteSummaryProps {
     itinerary: ItineraryResult;
 }
 
 export function RouteSummary({ itinerary }: RouteSummaryProps) {
-    const stops = useMemo(() => extractStops(itinerary), [itinerary]);
+    const stops = useMemo(() => buildStops(itinerary), [itinerary]);
+    const totalKm = useMemo(() => stops.reduce((s, x) => s + (x.distFromPrev ?? 0), 0), [stops]);
 
-    const stopsWithDistance = useMemo(() => {
-        return stops.map((stop, idx) => {
-            if (idx === 0 || !stop.coords) return { ...stop, distFromPrev: null };
-            const prevWithCoords = stops
-                .slice(0, idx)
-                .reverse()
-                .find((s) => s.coords !== null);
-            if (!prevWithCoords?.coords) return { ...stop, distFromPrev: null };
-            const km = haversineKm(prevWithCoords.coords, stop.coords);
-            return { ...stop, distFromPrev: km };
-        });
+    const days: DayData[] = useMemo(() => {
+        const map = new Map<number, Stop[]>();
+        for (const s of stops) {
+            const arr = map.get(s.dayNumber) ?? [];
+            map.set(s.dayNumber, [...arr, s]);
+        }
+        return Array.from(map.entries()).map(([dayNum, dayStops], i) => ({
+            dayNum,
+            theme: dayStops[0]?.dayTheme || "",
+            stops: dayStops,
+            totalKm: dayStops.reduce((sum, s) => sum + (s.distFromPrev ?? 0), 0),
+            palette: PALETTES[i % PALETTES.length],
+        }));
     }, [stops]);
 
-    const totalDistance = useMemo(() => {
-        return stopsWithDistance.reduce((sum, s) => sum + (s.distFromPrev ?? 0), 0);
-    }, [stopsWithDistance]);
-
-    const dayGroups = useMemo(() => {
-        const groups: Map<number, typeof stopsWithDistance> = new Map();
-        for (const stop of stopsWithDistance) {
-            const existing = groups.get(stop.dayNumber) ?? [];
-            groups.set(stop.dayNumber, [...existing, stop]);
-        }
-        return groups;
-    }, [stopsWithDistance]);
+    const [openDay, setOpenDay] = useState<number | null>(null);
 
     if (stops.length === 0) return null;
 
+    const toggleDay = (dayNum: number) => {
+        setOpenDay((prev) => (prev === dayNum ? null : dayNum));
+    };
+
     return (
         <div className="bg-[#FDFBF7] dark:bg-slate-950 border-t border-stone-200 dark:border-white/10">
-            {/* Hero header */}
-            <div className="relative overflow-hidden bg-stone-900 text-white py-16 md:py-20 px-6">
-                <div className="absolute inset-0 opacity-[0.04]"
-                    style={{ backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)", backgroundSize: "32px 32px" }}
-                />
-                <div className="relative z-10 max-w-4xl mx-auto text-center">
-                    <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-white/10 backdrop-blur-sm text-white/90 text-xs font-semibold tracking-[0.2em] uppercase mb-6">
-                        <Navigation className="w-4 h-4" />
-                        Your Journey
-                    </div>
-                    <h2 className="text-3xl md:text-5xl font-serif mb-4">
-                        Route Overview
-                    </h2>
-                    <p className="text-white/50 text-base md:text-lg font-light">
-                        {itinerary.destination || "Your adventure"} &middot; {itinerary.days?.length ?? 0} days
-                    </p>
-
-                    {/* Stats ribbon */}
-                    <div className="mt-10 flex flex-wrap justify-center gap-8 md:gap-16">
+            {/* Compact header */}
+            <div className="bg-stone-900 text-white px-6 py-10 md:py-14">
+                <div className="max-w-5xl mx-auto">
+                    <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
                         <div>
-                            <p className="text-4xl md:text-5xl font-serif font-light">{stops.length}</p>
-                            <p className="text-xs uppercase tracking-[0.2em] text-white/40 mt-1">Stops</p>
+                            <div className="flex items-center gap-2 text-white/40 text-xs font-semibold tracking-[0.2em] uppercase mb-3">
+                                <Route className="w-4 h-4" />
+                                Route Overview
+                            </div>
+                            <h2 className="text-2xl md:text-4xl font-serif">
+                                {itinerary.destination || "Your Journey"}
+                            </h2>
                         </div>
-                        <div className="w-px bg-white/10 hidden md:block" />
-                        <div>
-                            <p className="text-4xl md:text-5xl font-serif font-light">{formatDistance(totalDistance)}</p>
-                            <p className="text-xs uppercase tracking-[0.2em] text-white/40 mt-1">Distance</p>
-                        </div>
-                        <div className="w-px bg-white/10 hidden md:block" />
-                        <div>
-                            <p className="text-4xl md:text-5xl font-serif font-light">{itinerary.days?.length ?? 0}</p>
-                            <p className="text-xs uppercase tracking-[0.2em] text-white/40 mt-1">Days</p>
+                        <div className="flex gap-8 text-sm">
+                            <div>
+                                <p className="text-2xl md:text-3xl font-serif font-light">{stops.length}</p>
+                                <p className="text-[10px] uppercase tracking-[0.15em] text-white/40">Stops</p>
+                            </div>
+                            <div>
+                                <p className="text-2xl md:text-3xl font-serif font-light">{formatDist(totalKm)}</p>
+                                <p className="text-[10px] uppercase tracking-[0.15em] text-white/40">Distance</p>
+                            </div>
+                            <div>
+                                <p className="text-2xl md:text-3xl font-serif font-light">{days.length}</p>
+                                <p className="text-[10px] uppercase tracking-[0.15em] text-white/40">Days</p>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Day journey cards */}
-            <div className="max-w-4xl mx-auto px-4 md:px-6 py-12 md:py-16 space-y-16">
-                {Array.from(dayGroups.entries()).map(([dayNum, dayStops], dayIdx) => {
-                    const palette = DAY_PALETTES[dayIdx % DAY_PALETTES.length];
-                    const dayDistance = dayStops.reduce((sum, s) => sum + (s.distFromPrev ?? 0), 0);
-                    const theme = dayStops[0]?.dayTheme || "";
+            {/* Accordion day cards */}
+            <div className="max-w-5xl mx-auto px-4 md:px-6 py-8 md:py-12 space-y-3">
+                {days.map((day) => {
+                    const isOpen = openDay === day.dayNum;
+                    // Count activity types for the summary chips
+                    const typeCounts = new Map<ActivityType, number>();
+                    for (const s of day.stops) {
+                        typeCounts.set(s.type, (typeCounts.get(s.type) ?? 0) + 1);
+                    }
 
                     return (
-                        <div key={dayNum} className="relative">
-                            {/* Day header card */}
-                            <div
-                                className="rounded-2xl p-6 md:p-8 text-white mb-0 relative overflow-hidden"
-                                style={{ background: `linear-gradient(135deg, ${palette.from}, ${palette.to})` }}
+                        <div
+                            key={day.dayNum}
+                            className="rounded-2xl overflow-hidden border border-stone-100 dark:border-white/10 bg-white dark:bg-slate-900 shadow-sm"
+                        >
+                            {/* Day header — always visible, tap to expand */}
+                            <button
+                                type="button"
+                                onClick={() => toggleDay(day.dayNum)}
+                                className="w-full text-left px-5 md:px-6 py-4 md:py-5 flex items-center gap-4 hover:bg-stone-50 dark:hover:bg-slate-800/50 transition-colors"
                             >
-                                <div className="absolute top-0 right-0 w-48 h-48 opacity-10"
-                                    style={{ background: "radial-gradient(circle, white 0%, transparent 70%)" }}
-                                />
-                                <div className="relative z-10 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-                                    <div>
-                                        <p className="text-xs uppercase tracking-[0.25em] text-white/50 font-semibold mb-2">
-                                            Day {dayNum}
-                                        </p>
-                                        <h3 className="text-2xl md:text-3xl font-serif">
-                                            {theme || `Day ${dayNum}`}
+                                {/* Day number circle */}
+                                <div
+                                    className="flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-sm"
+                                    style={{ background: `linear-gradient(135deg, ${day.palette.from}, ${day.palette.to})` }}
+                                >
+                                    {day.dayNum}
+                                </div>
+
+                                {/* Day info */}
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-baseline gap-2 mb-1">
+                                        <h3 className="font-semibold text-stone-900 dark:text-white text-sm md:text-base truncate">
+                                            {day.theme || `Day ${day.dayNum}`}
                                         </h3>
                                     </div>
-                                    <div className="flex gap-6 text-sm text-white/70">
-                                        <span className="flex items-center gap-1.5">
-                                            <MapPin className="w-4 h-4" />
-                                            {dayStops.length} stops
-                                        </span>
-                                        {dayDistance > 0 && (
-                                            <span className="flex items-center gap-1.5">
-                                                <Car className="w-4 h-4" />
-                                                {formatDistance(dayDistance)}
+                                    {/* Activity type chips — compact summary */}
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {Array.from(typeCounts.entries()).map(([type, count]) => (
+                                            <span
+                                                key={type}
+                                                className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md"
+                                                style={{ backgroundColor: `${typeColor(type)}12`, color: typeColor(type) }}
+                                            >
+                                                {renderIcon(type, "w-2.5 h-2.5")}
+                                                {count > 1 ? `${count} ${typeLabel(type)}` : typeLabel(type)}
                                             </span>
-                                        )}
+                                        ))}
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* Timeline */}
-                            <div className="relative ml-6 md:ml-10 mt-2">
-                                {/* Vertical line */}
-                                <div
-                                    className="absolute left-4 top-0 bottom-0 w-px"
-                                    style={{ background: `linear-gradient(to bottom, ${palette.from}40, ${palette.from}10)` }}
-                                />
+                                {/* Stats + chevron */}
+                                <div className="flex-shrink-0 flex items-center gap-3">
+                                    <div className="hidden md:flex items-center gap-4 text-xs text-stone-400 dark:text-gray-500">
+                                        <span>{day.stops.length} stops</span>
+                                        {day.totalKm > 0 && (
+                                            <span>{formatDist(day.totalKm)}</span>
+                                        )}
+                                    </div>
+                                    <ChevronDown
+                                        className={`w-5 h-5 text-stone-300 dark:text-gray-600 transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`}
+                                    />
+                                </div>
+                            </button>
 
-                                <div className="space-y-0">
-                                    {dayStops.map((stop, idx) => {
-                                        const color = getActivityColor(stop.activityType);
-                                        const isLast = idx === dayStops.length - 1;
+                            {/* Expanded stops */}
+                            <div
+                                className={`grid transition-all duration-300 ease-in-out ${isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+                            >
+                                <div className="overflow-hidden">
+                                    <div className="border-t border-stone-100 dark:border-white/5 px-5 md:px-6 py-4">
+                                        {/* Mobile stats */}
+                                        <div className="flex md:hidden items-center gap-4 text-xs text-stone-400 mb-4 pb-3 border-b border-stone-50 dark:border-white/5">
+                                            <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{day.stops.length} stops</span>
+                                            {day.totalKm > 0 && (
+                                                <span className="flex items-center gap-1"><Car className="w-3 h-3" />{formatDist(day.totalKm)}</span>
+                                            )}
+                                        </div>
 
-                                        return (
-                                            <div key={stop.number}>
-                                                {/* Transport connector */}
-                                                {idx > 0 && stop.distFromPrev !== null && stop.distFromPrev > 0 && (
-                                                    <TransportConnector
-                                                        distance={stop.distFromPrev}
-                                                        title={stop.title}
-                                                        accentColor={palette.from}
-                                                    />
-                                                )}
+                                        {/* Stops timeline */}
+                                        <div className="relative">
+                                            {/* Vertical line */}
+                                            <div
+                                                className="absolute left-[17px] top-2 bottom-2 w-px"
+                                                style={{ background: `linear-gradient(to bottom, ${day.palette.from}30, transparent)` }}
+                                            />
 
-                                                {/* Stop card */}
-                                                <div className="relative flex items-start gap-4 py-4">
-                                                    {/* Timeline node */}
-                                                    <div className="relative z-10 flex-shrink-0">
-                                                        <div
-                                                            className="w-9 h-9 rounded-xl flex items-center justify-center shadow-lg"
-                                                            style={{ backgroundColor: color, boxShadow: `0 4px 14px ${color}30` }}
-                                                        >
-                                                            {renderActivityIcon(stop.activityType)}
-                                                        </div>
-                                                    </div>
+                                            <div className="space-y-0">
+                                                {day.stops.map((stop, idx) => {
+                                                    const color = typeColor(stop.type);
+                                                    const showTransport = idx > 0 && stop.distFromPrev !== null && stop.distFromPrev > 0;
 
-                                                    {/* Content */}
-                                                    <div className={`flex-1 min-w-0 bg-white dark:bg-slate-900 rounded-xl border border-stone-100 dark:border-white/10 p-4 shadow-sm hover:shadow-md transition-shadow ${isLast ? "" : ""}`}>
-                                                        <div className="flex items-start justify-between gap-3">
-                                                            <div className="min-w-0">
-                                                                <div className="flex items-center gap-2 mb-1">
-                                                                    <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded" style={{ backgroundColor: `${color}15`, color }}>
-                                                                        #{stop.number}
+                                                    return (
+                                                        <div key={stop.number}>
+                                                            {/* Transport connector */}
+                                                            {showTransport && (
+                                                                <div className="flex items-center gap-3 py-1 ml-1">
+                                                                    <div className="w-[26px] flex justify-center">
+                                                                        {stop.distFromPrev! < 1
+                                                                            ? <Footprints className="w-3 h-3 text-stone-300" />
+                                                                            : <Car className="w-3 h-3 text-stone-300" />}
+                                                                    </div>
+                                                                    <span className="text-[11px] text-stone-400 font-medium">
+                                                                        {formatDist(stop.distFromPrev!)} · {estimateTime(stop.distFromPrev!)}
                                                                     </span>
-                                                                    <h4 className="font-semibold text-stone-900 dark:text-white text-sm leading-tight truncate">
-                                                                        {stop.title}
-                                                                    </h4>
-                                                                </div>
-                                                                {stop.location && (
-                                                                    <p className="text-xs text-stone-400 dark:text-gray-500 flex items-center gap-1 mt-1">
-                                                                        <MapPin className="w-3 h-3 flex-shrink-0" />
-                                                                        <span className="truncate">{stop.location}</span>
-                                                                    </p>
-                                                                )}
-                                                            </div>
-                                                            {stop.time && (
-                                                                <div className="flex-shrink-0 flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg bg-stone-50 dark:bg-slate-800 text-stone-500 dark:text-gray-400">
-                                                                    <Clock className="w-3 h-3" />
-                                                                    {stop.time}
                                                                 </div>
                                                             )}
+
+                                                            {/* Stop row */}
+                                                            <div className="flex items-center gap-3 py-2">
+                                                                {/* Icon dot */}
+                                                                <div
+                                                                    className="relative z-10 flex-shrink-0 w-[34px] h-[34px] rounded-lg flex items-center justify-center"
+                                                                    style={{ backgroundColor: `${color}15` }}
+                                                                >
+                                                                    {renderIcon(stop.type, "w-4 h-4")}
+                                                                </div>
+
+                                                                {/* Content */}
+                                                                <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
+                                                                    <div className="min-w-0">
+                                                                        <p className="text-sm font-medium text-stone-800 dark:text-white truncate">
+                                                                            {stop.title}
+                                                                        </p>
+                                                                        {stop.location && (
+                                                                            <p className="text-[11px] text-stone-400 truncate">
+                                                                                {stop.location}
+                                                                            </p>
+                                                                        )}
+                                                                    </div>
+                                                                    {stop.time && (
+                                                                        <span className="flex-shrink-0 text-[11px] font-medium text-stone-400 flex items-center gap-1">
+                                                                            <Clock className="w-3 h-3" />
+                                                                            {stop.time}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                </div>
+                                                    );
+                                                })}
                                             </div>
-                                        );
-                                    })}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     );
                 })}
-            </div>
-        </div>
-    );
-}
 
-// ── Transport connector between stops ────────────────────────────────────────
-function TransportConnector({
-    distance,
-    title,
-    accentColor,
-}: {
-    distance: number;
-    title: string;
-    accentColor: string;
-}) {
-    const mode = detectTransportMode(distance, title);
-    const modeLabel = mode === "walk" ? "Walk" : mode === "boat" ? "Boat" : "Drive";
-
-    const iconElement = (() => {
-        switch (mode) {
-            case "walk": return <Footprints className="w-3 h-3" style={{ color: accentColor }} />;
-            case "boat": return <Ship className="w-3 h-3" style={{ color: accentColor }} />;
-            default: return <Car className="w-3 h-3" style={{ color: accentColor }} />;
-        }
-    })();
-
-    return (
-        <div className="relative flex items-center gap-4 py-2 pl-1">
-            {/* Icon on the timeline */}
-            <div className="relative z-10 flex-shrink-0 w-9 flex justify-center">
-                <div
-                    className="w-6 h-6 rounded-full flex items-center justify-center border-2"
-                    style={{ borderColor: `${accentColor}40`, backgroundColor: `${accentColor}08` }}
-                >
-                    {iconElement}
-                </div>
-            </div>
-
-            {/* Distance info */}
-            <div className="flex items-center gap-3 text-xs">
-                <div className="flex items-center gap-1.5 font-semibold" style={{ color: accentColor }}>
-                    {formatDistance(distance)}
-                </div>
-                <span className="text-stone-300 dark:text-gray-600">&middot;</span>
-                <span className="text-stone-400 dark:text-gray-500">
-                    {estimateDriveTime(distance)} {modeLabel.toLowerCase()}
-                </span>
-                {/* Visual distance bar */}
-                <div className="hidden md:block w-20 h-1 rounded-full bg-stone-100 dark:bg-slate-800 overflow-hidden">
-                    <div
-                        className="h-full rounded-full transition-all"
-                        style={{
-                            width: `${Math.min(100, (distance / 50) * 100)}%`,
-                            backgroundColor: `${accentColor}50`,
-                        }}
-                    />
+                {/* Expand all / collapse all */}
+                <div className="flex justify-center pt-2">
+                    <button
+                        type="button"
+                        onClick={() => setOpenDay(openDay === null ? days[0]?.dayNum ?? null : null)}
+                        className="text-xs text-stone-400 hover:text-stone-600 transition-colors font-medium px-4 py-2"
+                    >
+                        {openDay !== null ? "Collapse" : "Expand a day to see stops"}
+                    </button>
                 </div>
             </div>
         </div>
