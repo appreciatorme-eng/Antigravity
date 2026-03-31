@@ -129,6 +129,7 @@ export default async function SharedTripPage({
             interests?: string[];
             summary?: string;
             user_id?: string;
+            client_id?: string;
             profiles?: {
                 organizations?: { name?: string; logo_url?: string; primary_color?: string } | { name?: string; logo_url?: string; primary_color?: string }[];
             };
@@ -171,6 +172,17 @@ export default async function SharedTripPage({
         operatorPhone = operatorProfile?.phone ?? null;
     }
 
+    // Fetch client name if a client is assigned to this itinerary
+    let clientName: string | null = null;
+    if (itinerary.client_id) {
+        const { data: clientProfile } = await supabaseAdmin
+            .from("profiles")
+            .select("full_name")
+            .eq("id", itinerary.client_id)
+            .maybeSingle();
+        clientName = clientProfile?.full_name ?? null;
+    }
+
     const organizationBranding: OrganizationBranding = {
         name: organizationName,
         logoUrl: resolvedOrg?.logo_url ?? null,
@@ -191,7 +203,7 @@ export default async function SharedTripPage({
             itinerary={fullTripData}
             organizationName={organizationName}
             organizationBranding={organizationBranding}
-            client={null}
+            client={clientName ? { name: clientName } : null}
         />
     );
 }

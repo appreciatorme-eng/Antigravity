@@ -1,11 +1,12 @@
 "use client";
 import React, { useState } from 'react';
+import Image from 'next/image';
 import { Activity, Day } from '@/types/itinerary';
 import { ItineraryTemplateProps } from './types';
 import { Badge } from '@/components/ui/badge';
 import { ChevronDown, ChevronUp, Clock, MapPin, Compass, Check, Sun, Plane } from 'lucide-react';
 
-export const SafariStoryView: React.FC<ItineraryTemplateProps> = ({ itinerary, client }) => {
+export const SafariStoryView: React.FC<ItineraryTemplateProps> = ({ itinerary, organizationName, client }) => {
   // Open the first day by default
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]));
 
@@ -36,49 +37,88 @@ export const SafariStoryView: React.FC<ItineraryTemplateProps> = ({ itinerary, c
     return '🧭';
   };
 
+  const logoUrl = itinerary.branding?.logoUrl;
+  const orgName = itinerary.branding?.organizationName || organizationName || "";
+
   return (
     <div className="min-h-screen bg-[#FDFBF7] font-sans text-stone-800">
-      {/* 1. COVER PAGE / HERO SECTION (Print PDF feel) */}
-      <div className="relative min-h-[500px] flex flex-col justify-center items-center text-center p-12 overflow-hidden border-b-[12px] border-[#4b5320]" style={{ borderColor: brandColor }}>
-        {/* Vintage map / noise overlay effect */}
+      {/* 1. COVER PAGE / HERO SECTION — integrated branding */}
+      <div className="relative min-h-[600px] md:min-h-[700px] flex flex-col overflow-hidden border-b-[12px]" style={{ borderColor: brandColor }}>
+        {/* Vintage noise overlay */}
         <div className="absolute inset-0 opacity-[0.03] pointer-events-none mix-blend-multiply"
           style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}>
         </div>
-
         <div className="absolute inset-0 opacity-10" style={{ backgroundColor: brandColor }}></div>
 
-        <div className="relative z-10 max-w-4xl mx-auto flex flex-col items-center">
-          <Compass className="w-12 h-12 mb-6 opacity-80" style={{ color: brandColor }} />
-          <p className="tracking-[0.3em] uppercase text-sm font-semibold mb-6" style={{ color: brandColor }}>
-            An Exclusive Expedition
-          </p>
-          <h1 className="text-5xl md:text-7xl font-serif text-stone-900 mb-6 leading-tight">
-            {itinerary.trip_title || itinerary.title || 'Safari Adventure'}
-          </h1>
-          {client && (
-            <div className="mb-8">
-              <h2 className="text-3xl font-serif text-stone-600 italic" style={{ color: brandColor }}>
-                Exclusively prepared for {client.name}
+        {/* Top bar — org branding */}
+        <div className="relative z-10 flex items-center justify-between px-6 md:px-12 py-5 border-b border-stone-200/60">
+          <div className="flex items-center gap-3">
+            {logoUrl && (
+              <Image
+                src={logoUrl}
+                alt={orgName}
+                width={120}
+                height={40}
+                className="h-8 md:h-10 w-auto object-contain"
+                unoptimized
+              />
+            )}
+            <span className="font-serif text-lg md:text-xl font-bold tracking-tight" style={{ color: brandColor }}>
+              {orgName}
+            </span>
+          </div>
+          <div className="hidden md:block text-xs tracking-[0.2em] uppercase font-semibold text-stone-400">
+            Travel Itinerary
+          </div>
+        </div>
+
+        {/* Center content */}
+        <div className="relative z-10 flex-1 flex flex-col justify-center items-center text-center px-6 py-12">
+          <div className="max-w-4xl mx-auto flex flex-col items-center">
+            {client && (
+              <p className="text-sm tracking-[0.25em] uppercase font-semibold mb-3 text-stone-500">
+                Prepared exclusively for
+              </p>
+            )}
+            {client && (
+              <h2 className="text-3xl md:text-4xl font-serif mb-8" style={{ color: brandColor }}>
+                {client.name}
               </h2>
-              <div className="flex justify-center gap-4 mt-2 text-stone-500 text-sm">
-                {client.email && <span>{client.email}</span>}
-                {client.email && client.phone && <span>•</span>}
-                {client.phone && <span>{client.phone}</span>}
+            )}
+
+            <div className="w-16 h-px bg-stone-300 mb-8" />
+
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-serif text-stone-900 mb-6 leading-tight">
+              {itinerary.trip_title || itinerary.title || 'Your Journey'}
+            </h1>
+
+            {itinerary.destination && (
+              <div className="flex items-center gap-2 text-lg md:text-xl text-stone-600 font-serif italic mb-8">
+                <MapPin className="w-5 h-5 opacity-70" />
+                {itinerary.destination}
               </div>
-            </div>
-          )}
+            )}
 
-          {itinerary.destination && (
-            <div className="flex items-center gap-2 text-xl text-stone-600 font-serif italic mb-8 border-t border-b border-stone-300 py-3 px-8">
-              <MapPin className="w-5 h-5 opacity-70" />
-              {itinerary.destination}
+            <div className="flex flex-wrap justify-center gap-3 items-center">
+              <Badge variant="outline" className="px-5 py-2 text-sm font-serif bg-white/50 border-stone-400 text-stone-800 backdrop-blur-sm">
+                {getTotalDuration()} Days
+              </Badge>
+              {itinerary.budget && (
+                <Badge variant="outline" className="px-5 py-2 text-sm font-serif bg-white/50 border-stone-400 text-stone-800 backdrop-blur-sm">
+                  {itinerary.budget}
+                </Badge>
+              )}
             </div>
-          )}
+          </div>
+        </div>
 
-          <div className="flex gap-4 items-center">
-            <Badge variant="outline" className="px-6 py-2 text-base font-serif bg-white/50 border-stone-400 text-stone-800 backdrop-blur-sm">
-              {getTotalDuration()} Days
-            </Badge>
+        {/* Bottom accent — org contact */}
+        <div className="relative z-10 flex items-center justify-center px-6 py-3 border-t border-stone-200/60">
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1 text-xs text-stone-400">
+            <span className="font-semibold" style={{ color: brandColor }}>{orgName}</span>
+            {client && !client.email && !client.phone && (
+              <span className="hidden md:inline">•</span>
+            )}
           </div>
         </div>
       </div>
@@ -310,7 +350,7 @@ export const SafariStoryView: React.FC<ItineraryTemplateProps> = ({ itinerary, c
       <div className="py-12 text-center bg-[#FDFBF7] border-t border-stone-200">
         <Compass className="w-6 h-6 mx-auto mb-4 text-stone-300" />
         <p className="font-serif italic text-stone-500">
-          Curated specially for you {itinerary.branding?.organizationName ? `by ${itinerary.branding.organizationName}` : ''}
+          Curated specially for you{orgName ? ` by ${orgName}` : ''}
         </p>
       </div>
     </div>
