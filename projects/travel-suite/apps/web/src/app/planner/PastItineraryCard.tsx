@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
-import { Copy, Check, Clock, MapPin, Search, UserPlus } from "lucide-react";
+import { Copy, Check, Clock, MapPin, Search, UserPlus, Plus, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { getDeterministicFallback } from "@/lib/image-search";
 import { deriveStage, hasClientActivity } from "./planner.types";
-import { useClients } from "@/lib/queries/clients";
+import { useClients, clientsKeys } from "@/lib/queries/clients";
 import { useUpdateItinerary } from "@/lib/queries/itineraries";
+import { useQueryClient } from "@tanstack/react-query";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import type { ClientComment } from "@/types/feedback";
 
 interface PastItineraryCardProps {
@@ -171,6 +173,12 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
     const pickerRef = useRef<HTMLDivElement>(null);
     const { data: allClients } = useClients();
     const updateItinerary = useUpdateItinerary();
+    const queryClient = useQueryClient();
+    const [showQuickCreate, setShowQuickCreate] = useState(false);
+    const [quickName, setQuickName] = useState("");
+    const [quickEmail, setQuickEmail] = useState("");
+    const [quickPhone, setQuickPhone] = useState("");
+    const [isCreating, setIsCreating] = useState(false);
 
     // Close picker on outside click
     useEffect(() => {
@@ -203,6 +211,42 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
             toast({ title: "Client assigned", description: `${clientFullName} assigned to this itinerary.`, variant: "success" });
         } catch {
             toast({ title: "Failed to assign", description: "Could not assign client. Try again.", variant: "error" });
+        }
+    };
+
+    const handleQuickCreateClient = async () => {
+        const name = quickName.trim();
+        const email = quickEmail.trim().toLowerCase();
+        if (!name || !email) {
+            toast({ title: "Name & email required", variant: "warning" });
+            return;
+        }
+        setIsCreating(true);
+        try {
+            const res = await authedFetch("/api/admin/clients", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    full_name: name,
+                    email,
+                    phone: quickPhone.trim() || undefined,
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Failed to create client");
+            // Invalidate clients cache so the new client appears in the picker
+            await queryClient.invalidateQueries({ queryKey: clientsKeys.all });
+            // Auto-assign the newly created client
+            await handleAssignClient(data.userId, name);
+            setShowQuickCreate(false);
+            setQuickName("");
+            setQuickEmail("");
+            setQuickPhone("");
+            toast({ title: "Client created & assigned", description: `${name} was added and assigned.`, variant: "success" });
+        } catch (err) {
+            toast({ title: "Create failed", description: err instanceof Error ? err.message : "Unknown error", variant: "error" });
+        } finally {
+            setIsCreating(false);
         }
     };
 
@@ -361,6 +405,65 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
                                                 </div>
                                             </button>
                                         ))
+                                    )}
+                                </div>
+
+                                {/* Quick create divider + form */}
+                                <div className="border-t border-slate-700 px-2 py-1.5">
+                                    {!showQuickCreate ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowQuickCreate(true)}
+                                            className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-emerald-500/10 transition-colors text-left"
+                                        >
+                                            <div className="w-7 h-7 rounded-full border-2 border-dashed border-emerald-500/40 flex items-center justify-center">
+                                                <Plus className="w-3 h-3 text-emerald-400" />
+                                            </div>
+                                            <span className="text-xs font-medium text-emerald-400">Create new client</span>
+                                        </button>
+                                    ) : (
+                                        <div className="space-y-1.5 py-1">
+                                            <input
+                                                type="text"
+                                                value={quickName}
+                                                onChange={(e) => setQuickName(e.target.value)}
+                                                placeholder="Full name *"
+                                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+                                                autoFocus
+                                            />
+                                            <input
+                                                type="email"
+                                                value={quickEmail}
+                                                onChange={(e) => setQuickEmail(e.target.value)}
+                                                placeholder="Email *"
+                                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+                                            />
+                                            <input
+                                                type="tel"
+                                                value={quickPhone}
+                                                onChange={(e) => setQuickPhone(e.target.value)}
+                                                placeholder="Phone (optional)"
+                                                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500"
+                                            />
+                                            <div className="flex gap-1.5 pt-0.5">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => { setShowQuickCreate(false); setQuickName(""); setQuickEmail(""); setQuickPhone(""); }}
+                                                    className="flex-1 text-[10px] text-slate-400 hover:text-white py-1.5 rounded-lg hover:bg-slate-700/50 transition-colors"
+                                                >
+                                                    Cancel
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => void handleQuickCreateClient()}
+                                                    disabled={isCreating || !quickName.trim() || !quickEmail.trim()}
+                                                    className="flex-1 flex items-center justify-center gap-1 text-[10px] font-semibold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 py-1.5 rounded-lg transition-colors"
+                                                >
+                                                    {isCreating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                                                    Create & Assign
+                                                </button>
+                                            </div>
+                                        </div>
                                     )}
                                 </div>
                             </div>
