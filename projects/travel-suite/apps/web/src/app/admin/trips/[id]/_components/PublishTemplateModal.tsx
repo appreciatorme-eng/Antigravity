@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import { GlassModal } from "@/components/glass/GlassModal";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { useToast } from "@/components/ui/toast";
-import { createClient } from "@/lib/supabase/client";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import { Info, Sparkles } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -56,7 +56,6 @@ export function PublishTemplateModal({
   onClose,
   onPublishSuccess,
 }: PublishTemplateModalProps) {
-  const supabase = createClient();
   const { toast } = useToast();
   const [publishing, setPublishing] = useState(false);
   const [form, setForm] = useState<FormState>({
@@ -89,13 +88,10 @@ export function PublishTemplateModal({
 
     setPublishing(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-
-      const response = await fetch("/api/admin/templates", {
+      const response = await authedFetch("/api/admin/templates", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${session?.access_token}`,
         },
         body: JSON.stringify({
           itinerary_id: itineraryId,
@@ -143,7 +139,7 @@ export function PublishTemplateModal({
     } finally {
       setPublishing(false);
     }
-  }, [form, itineraryId, supabase, toast, onClose, onPublishSuccess]);
+  }, [form, itineraryId, toast, onClose, onPublishSuccess]);
 
   // ---------------------------------------------------------------------------
   // Derived state

@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAnalytics } from '@/lib/analytics/events';
+import { authedFetch } from '@/lib/api/authed-fetch';
 import { formatLocalTime } from '@/lib/date/tz';
 import { useDemoMode } from '@/lib/demo/demo-mode-context';
 import { createClient } from '@/lib/supabase/client';
@@ -111,7 +112,7 @@ function markConversationRead(convId: string) {
   localStorage.setItem(READ_KEY, JSON.stringify(updated));
 
   // Persist to server (fire-and-forget — localStorage provides instant UX)
-  void fetch('/api/admin/inbox/mark-read', {
+  void authedFetch('/api/admin/inbox/mark-read', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ conversationId: convId }),
@@ -409,7 +410,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
       if (textToClassify && textToClassify.length > 3) {
         void (async () => {
           try {
-            const res = await fetch('/api/admin/classify-intent', {
+            const res = await authedFetch('/api/admin/classify-intent', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ message: textToClassify }),
@@ -430,7 +431,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     if (conv?.channel === 'email' && conv.unreadCount > 0) {
       const emailConv = conv as ChannelConversation & { threadId?: string };
       if (emailConv.threadId) {
-        void fetch('/api/admin/email/read', {
+        void authedFetch('/api/admin/email/read', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ threadId: emailConv.threadId }),
@@ -442,7 +443,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
   async function handleTakeOverChatbot(session: ChatbotSessionSummary) {
     setIsTakingOverChatbot(true);
     try {
-      const response = await fetch(`/api/whatsapp/chatbot-sessions/${session.id}`, {
+      const response = await authedFetch(`/api/whatsapp/chatbot-sessions/${session.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ state: 'handed_off' }),
@@ -480,7 +481,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
   async function handleRefreshProposalDraft(draftId: string) {
     setIsRefreshingProposalDraft(true);
     try {
-      const response = await fetch(`/api/whatsapp/proposal-drafts/${draftId}`, {
+      const response = await authedFetch(`/api/whatsapp/proposal-drafts/${draftId}`, {
         method: 'POST',
       });
       const payload = (await response.json().catch(() => ({}))) as {
@@ -547,7 +548,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
           );
         }
 
-        const response = await fetch('/api/admin/email/send', {
+        const response = await authedFetch('/api/admin/email/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -625,7 +626,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
     );
 
     try {
-      const response = await fetch('/api/whatsapp/send', {
+      const response = await authedFetch('/api/whatsapp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -764,7 +765,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
 
     try {
       const threadId = conv.id.replace('email_', '');
-      const res = await fetch('/api/admin/email/delete', {
+      const res = await authedFetch('/api/admin/email/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messageId: threadId, action: 'delete' }),
@@ -791,7 +792,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
 
     try {
       const threadId = conv.id.replace('email_', '');
-      const res = await fetch('/api/admin/email/delete', {
+      const res = await authedFetch('/api/admin/email/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messageId: threadId, action: 'archive' }),

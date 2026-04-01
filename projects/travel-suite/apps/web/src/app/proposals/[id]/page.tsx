@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { authedFetch } from '@/lib/api/authed-fetch';
 import { formatLocalDate, formatLocalDateTime } from '@/lib/date/tz';
 import { useUserTimezone } from '@/hooks/useUserTimezone';
 import { useParams, useRouter } from 'next/navigation';
@@ -268,7 +269,7 @@ export default function AdminProposalViewPage() {
 
     setSendingProposal(true);
     try {
-      const response = await fetch(`/api/proposals/${proposal.id}/send`, {
+      const response = await authedFetch(`/api/proposals/${proposal.id}/send`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

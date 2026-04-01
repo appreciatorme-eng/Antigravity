@@ -6,6 +6,7 @@ import { templates, getTemplatesByCategory, searchTemplates } from "@/lib/social
 import { SocialTemplate, type TemplateDataForRender } from "@/lib/social/types";
 import { getUpcomingFestivals } from "@/lib/social/indian-calendar";
 import { toast } from "sonner";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import { PublishKitDrawer } from "./PublishKitDrawer";
 import {
     TemplateSearchBar,
@@ -145,7 +146,7 @@ export const TemplateGallery = ({
 
     // ── Save draft to backend ───────────────────────────────────────
     const handleSaveDraft = async (templateId: string, caption: string) => {
-        const res = await fetch("/api/social/posts", {
+        const res = await authedFetch("/api/social/posts", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -163,7 +164,7 @@ export const TemplateGallery = ({
     const handleHdExport = useCallback(async (templateId: string, preset: SocialTemplate) => {
         setHdExporting(templateId);
         try {
-            const res = await fetch("/api/social/render-poster", {
+            const res = await authedFetch("/api/social/render-poster", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

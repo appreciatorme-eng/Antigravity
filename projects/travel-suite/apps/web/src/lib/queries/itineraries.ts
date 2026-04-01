@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { createClient } from '@/lib/supabase/client';
+import { authedFetch } from '@/lib/api/authed-fetch';
 import type { FeedbackAction, ClientComment } from '@/types/feedback';
 
 /** Lightweight shape used for optimistic cache updates on the itinerary list. */
@@ -44,12 +44,9 @@ export function useUpdateItinerary() {
 
     return useMutation({
         mutationFn: async ({ id, updates }: { id: string; updates: { client_id?: string | null; budget?: string } }) => {
-            const supabase = createClient();
-            const { data: { session } } = await supabase.auth.getSession();
-            const response = await fetch(`/api/itineraries/${id}`, {
+            const response = await authedFetch(`/api/itineraries/${id}`, {
                 method: "PATCH",
                 headers: {
-                    "Authorization": `Bearer ${session?.access_token}`,
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify(updates),
@@ -111,12 +108,9 @@ export function useFeedbackAction() {
             itineraryId,
             ...action
         }: FeedbackAction & { itineraryId: string }) => {
-            const supabase = createClient();
-            const { data: { session } } = await supabase.auth.getSession();
-            const response = await fetch(`/api/itineraries/${itineraryId}/feedback`, {
+            const response = await authedFetch(`/api/itineraries/${itineraryId}/feedback`, {
                 method: "POST",
                 headers: {
-                    "Authorization": `Bearer ${session?.access_token}`,
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify(action),

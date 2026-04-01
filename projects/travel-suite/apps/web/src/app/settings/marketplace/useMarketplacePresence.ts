@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/toast";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import type {
   MarketplaceListingPlan,
   MarketplaceListingPlanId,
@@ -197,7 +198,7 @@ export function useMarketplacePresence() {
   const save = async (requestVerification = false) => {
     setSaving(true);
     try {
-      const response = await fetch("/api/marketplace", {
+      const response = await authedFetch("/api/marketplace", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import { Trash2, RotateCcw, Loader2, AlertCircle } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/toast";
@@ -85,11 +86,10 @@ function TrashTable({
   async function handleRestore(id: string) {
     try {
       setRestoringId(id);
-      const res = await fetch("/api/admin/trash/restore", {
+      const res = await authedFetch("/api/admin/trash/restore", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-requested-with": "XMLHttpRequest",
         },
         body: JSON.stringify({ table, id }),
       });

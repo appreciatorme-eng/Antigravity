@@ -4,6 +4,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { Search, RefreshCw, Clock } from "lucide-react";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import SlideOutPanel from "@/components/god-mode/SlideOutPanel";
 import StatCard from "@/components/god-mode/StatCard";
 
@@ -105,7 +106,7 @@ export default function SupportPage() {
         if (!selectedTicket || !responseText.trim()) return;
         setSubmitting(true);
         try {
-            const res = await fetch(`/api/superadmin/support/tickets/${selectedTicket.ticket.id}/respond`, {
+            const res = await authedFetch(`/api/superadmin/support/tickets/${selectedTicket.ticket.id}/respond`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ response: responseText.trim(), new_status: responseStatus }),

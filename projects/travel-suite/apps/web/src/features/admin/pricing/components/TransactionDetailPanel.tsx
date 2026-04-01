@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { formatINR } from "@/lib/india/formats";
 import { CATEGORY_LABELS, type ServiceCategory, type TransactionItem, type VendorHistoryItem } from "../types";
 import { TripCostEditor } from "./TripCostEditor";
+import { authedFetch } from "@/lib/api/authed-fetch";
 
 const CATEGORY_META: Record<ServiceCategory, { icon: React.ElementType; color: string; bg: string }> = {
   hotels:    { icon: Building2, color: "text-rose-600",    bg: "bg-rose-100" },
@@ -56,7 +57,7 @@ export function TransactionDetailPanel({ transaction: t, fetchVendorHistory, onE
     setDeleting(true);
     setDeleteError(null);
     try {
-      const res = await fetch(`/api/admin/pricing/trip-costs/${t.id}`, { method: "DELETE" });
+      const res = await authedFetch(`/api/admin/pricing/trip-costs/${t.id}`, { method: "DELETE" });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error((body as { error?: string }).error || "Delete failed");

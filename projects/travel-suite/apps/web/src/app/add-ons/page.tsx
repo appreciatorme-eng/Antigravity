@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { Package } from "lucide-react";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import { GlassConfirmModal } from "@/components/glass/GlassModal";
 import { useToast } from "@/components/ui/toast";
 import { logError } from "@/lib/observability/logger";
@@ -35,20 +35,6 @@ const DEFAULT_STATS: Stats = {
 };
 
 const DEFAULT_CATEGORIES = ["All", "Activities", "Dining", "Transport", "Upgrades"];
-
-async function getAuthHeaders(): Promise<Record<string, string>> {
-  const supabase = createClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-  if (session?.access_token) {
-    headers.Authorization = `Bearer ${session.access_token}`;
-  }
-  return headers;
-}
 
 export default function AddOnsPage() {
   const searchParams = useSearchParams();
@@ -97,10 +83,8 @@ export default function AddOnsPage() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const headers = await getAuthHeaders();
-
       // Load add-ons
-      const response = await fetch("/api/add-ons", { headers });
+      const response = await authedFetch("/api/add-ons");
       const data = await response.json();
 
       if (data.addOns) {
@@ -118,7 +102,7 @@ export default function AddOnsPage() {
       }
 
       // Load stats
-      const statsResponse = await fetch("/api/add-ons/stats", { headers });
+      const statsResponse = await authedFetch("/api/add-ons/stats");
       const statsData = await statsResponse.json();
 
       if (statsData) {
@@ -199,10 +183,9 @@ export default function AddOnsPage() {
       const method = editingAddOn ? "PUT" : "POST";
 
       try {
-        const headers = await getAuthHeaders();
-        const response = await fetch(url, {
+        const response = await authedFetch(url, {
           method,
-          headers,
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(data),
         });
 
@@ -236,10 +219,8 @@ export default function AddOnsPage() {
     if (!addOnToDelete) return;
 
     try {
-      const headers = await getAuthHeaders();
-      const response = await fetch(`/api/add-ons/${addOnToDelete.id}`, {
+      const response = await authedFetch(`/api/add-ons/${addOnToDelete.id}`, {
         method: "DELETE",
-        headers,
       });
 
       const data = await response.json();
@@ -265,10 +246,9 @@ export default function AddOnsPage() {
   const toggleActive = useCallback(
     async (addon: AddOn) => {
       try {
-        const headers = await getAuthHeaders();
-        const response = await fetch(`/api/add-ons/${addon.id}`, {
+        const response = await authedFetch(`/api/add-ons/${addon.id}`, {
           method: "PUT",
-          headers,
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ...addon,
             is_active: !addon.is_active,

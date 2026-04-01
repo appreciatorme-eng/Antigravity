@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import { authedFetch } from "@/lib/api/authed-fetch";
 
 interface Props {
     onGenerated: (data: Record<string, unknown>) => void;
@@ -19,7 +20,7 @@ export const MagicPrompter = ({ onGenerated }: Props) => {
         if (!prompt) return;
         setLoading(true);
         try {
-            const res = await fetch("/api/social/ai-poster", {
+            const res = await authedFetch("/api/social/ai-poster", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ prompt })

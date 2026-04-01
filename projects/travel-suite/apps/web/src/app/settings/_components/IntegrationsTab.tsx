@@ -121,7 +121,7 @@ export function IntegrationsTab({
         if (!tripAdvisorLocationInput.trim()) return;
         setIsTripAdvisorConnecting(true);
         try {
-            const res = await fetch('/api/integrations/tripadvisor', {
+            const res = await authedFetch('/api/integrations/tripadvisor', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ locationId: tripAdvisorLocationInput.trim() }),
@@ -146,7 +146,7 @@ export function IntegrationsTab({
         if (!upiId.trim()) return;
         setIsUpiSaving(true);
         try {
-            const res = await fetch('/api/settings/upi', {
+            const res = await authedFetch('/api/settings/upi', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ upiId: upiId.trim() }),

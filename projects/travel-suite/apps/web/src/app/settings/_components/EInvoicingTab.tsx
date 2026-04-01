@@ -5,6 +5,7 @@ import { FileText, IndianRupee, Key, Building2, TestTube } from 'lucide-react';
 import { GlassButton } from '@/components/glass/GlassButton';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
+import { authedFetch } from '@/lib/api/authed-fetch';
 
 export function EInvoicingTab() {
     const { toast } = useToast();
@@ -76,7 +77,7 @@ export function EInvoicingTab() {
 
         setIsSaving(true);
         try {
-            const res = await fetch('/api/settings/e-invoicing', {
+            const res = await authedFetch('/api/settings/e-invoicing', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

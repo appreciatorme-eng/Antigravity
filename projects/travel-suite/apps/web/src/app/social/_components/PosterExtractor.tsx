@@ -5,6 +5,7 @@ import { GlassCard } from "@/components/glass/GlassCard";
 import { AppImage } from "@/components/ui/AppImage";
 import { Wand2, Sparkles, Image as ImageLucide } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { authedFetch } from "@/lib/api/authed-fetch";
 
 interface ExtractedPosterData {
     destination: string;
@@ -25,7 +26,7 @@ export const PosterExtractor = ({ onExtracted, extracting }: Props) => {
 
     const handleMagicExtract = async (base64Image: string) => {
         try {
-            const resp = await fetch("/api/social/extract", {
+            const resp = await authedFetch("/api/social/extract", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ image: base64Image }),

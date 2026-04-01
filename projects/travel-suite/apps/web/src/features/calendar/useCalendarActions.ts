@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/toast";
 import { calendarKeys } from "./useCalendarEvents";
+import { authedFetch } from "@/lib/api/authed-fetch";
 
 const CALENDAR_TRIP_STATUS_SELECT = "id, status";
 const CALENDAR_INVOICE_PAYMENT_SELECT = "amount, id, invoice_id, method, payment_date, status";
@@ -122,7 +123,7 @@ export function useCalendarActions() {
 
   const sendInvoice = useMutation({
     mutationFn: async (id: string) => {
-      const response = await fetch(`/api/invoices/${id}/send`, {
+      const response = await authedFetch(`/api/invoices/${id}/send`, {
         method: "POST",
       });
 
@@ -189,7 +190,7 @@ export function useCalendarActions() {
 
   const sendProposal = useMutation({
     mutationFn: async (id: string) => {
-      const response = await fetch(`/api/proposals/${id}/send`, {
+      const response = await authedFetch(`/api/proposals/${id}/send`, {
         method: "POST",
       });
 
@@ -219,7 +220,7 @@ export function useCalendarActions() {
 
   const convertProposal = useMutation({
     mutationFn: async (id: string) => {
-      const response = await fetch(`/api/proposals/${id}/convert`, {
+      const response = await authedFetch(`/api/proposals/${id}/convert`, {
         method: "POST",
       });
 

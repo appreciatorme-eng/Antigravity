@@ -8,6 +8,7 @@ import { GlassBadge } from "@/components/glass/GlassBadge";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassModal } from "@/components/glass/GlassModal";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import type { SocialTemplate, TemplateDataForRender } from "@/lib/social/types";
 
 interface CanvasPublishModalProps {
@@ -85,7 +86,7 @@ export function CanvasPublishModal({
           ? new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString()
           : undefined;
 
-      const response = await fetch(endpoint, {
+      const response = await authedFetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

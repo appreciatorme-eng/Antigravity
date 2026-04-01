@@ -9,6 +9,7 @@ import { Search, User, Phone, Mail, MessageSquare, Send, Loader2, Save } from "l
 import { useToast } from "@/components/ui/toast";
 import { createClient } from "@/lib/supabase/client";
 import { logError } from "@/lib/observability/logger";
+import { authedFetch } from "@/lib/api/authed-fetch";
 
 interface Client {
   id: string;
@@ -121,13 +122,10 @@ export default function ClientPicker({ shareLink, itineraryId }: ClientPickerPro
     if (!selectedClient) return;
     setSending(channel);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const res = await fetch("/api/admin/share/send", {
+      const res = await authedFetch("/api/admin/share/send", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${sessionData.session?.access_token}`,
-          "x-requested-with": "XMLHttpRequest",
         },
         body: JSON.stringify({
           shareLink,

@@ -5,6 +5,7 @@ import { Clock, Trash2, Download, Send, CheckCircle2, XCircle, Loader2, FileText
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { authedFetch } from "@/lib/api/authed-fetch";
 
 interface Post {
     id: string;
@@ -61,7 +62,7 @@ export const PostHistory = () => {
     const handleDelete = async (id: string) => {
         setDeletingId(id);
         try {
-            const res = await fetch(`/api/social/posts/${id}`, { method: "DELETE" });
+            const res = await authedFetch(`/api/social/posts/${id}`, { method: "DELETE" });
             if (!res.ok) throw new Error();
             setPosts(prev => prev.filter(p => p.id !== id));
             toast.success("Post deleted");

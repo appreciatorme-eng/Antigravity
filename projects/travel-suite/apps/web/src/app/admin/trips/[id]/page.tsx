@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import { useParams } from "next/navigation";
 import ItineraryMap from "@/components/map/ItineraryMap";
 import { getDriverWhatsAppLink, formatDriverAssignmentMessage } from "@/lib/notifications.shared";
@@ -490,12 +491,10 @@ out center tags 80;
 
         setCreatingLiveLink(true);
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const response = await fetch("/api/location/share", {
+            const response = await authedFetch("/api/location/share", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${session?.access_token || ""}`,
                 },
                 body: JSON.stringify({
                     tripId,
@@ -540,12 +539,10 @@ out center tags 80;
         if (!tripId || !liveLocationUrl) return;
 
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const response = await fetch(
+            const response = await authedFetch(
                 `/api/location/share?tripId=${tripId}&dayNumber=${activeDay}`,
                 {
                     method: "DELETE",
-                    headers: { Authorization: `Bearer ${session?.access_token || ""}` },
                 }
             );
 

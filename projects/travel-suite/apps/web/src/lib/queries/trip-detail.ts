@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import { createClient } from "@/lib/supabase/client";
 import type {
   TripDetailPayload,
@@ -22,18 +23,6 @@ export const tripDetailKeys = {
 };
 
 // ---------------------------------------------------------------------------
-// Auth helper (shared across hooks)
-// ---------------------------------------------------------------------------
-
-async function getAuthHeaders(): Promise<Record<string, string>> {
-  const supabase = createClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  return { Authorization: `Bearer ${session?.access_token}` };
-}
-
-// ---------------------------------------------------------------------------
 // useTripDetail — replaces the raw fetch + useState in the trip detail page
 // ---------------------------------------------------------------------------
 
@@ -41,8 +30,7 @@ export function useTripDetail(tripId: string) {
   return useQuery({
     queryKey: tripDetailKeys.detail(tripId),
     queryFn: async (): Promise<TripDetailPayload> => {
-      const headers = await getAuthHeaders();
-      const response = await fetch(`/api/trips/${tripId}`, { headers });
+      const response = await authedFetch(`/api/trips/${tripId}`);
       if (!response.ok) throw new Error("Failed to fetch trip details");
       return response.json();
     },
@@ -58,10 +46,7 @@ export function useTripInvoices(tripId: string) {
   return useQuery({
     queryKey: tripDetailKeys.invoices(tripId),
     queryFn: async (): Promise<{ invoices: TripInvoice[] }> => {
-      const headers = await getAuthHeaders();
-      const response = await fetch(`/api/trips/${tripId}/invoices`, {
-        headers,
-      });
+      const response = await authedFetch(`/api/trips/${tripId}/invoices`);
       if (!response.ok) throw new Error("Failed to fetch trip invoices");
       return response.json();
     },
@@ -77,10 +62,7 @@ export function useTripNotifications(tripId: string) {
   return useQuery({
     queryKey: tripDetailKeys.notifications(tripId),
     queryFn: async (): Promise<{ notifications: TripNotificationEntry[] }> => {
-      const headers = await getAuthHeaders();
-      const response = await fetch(`/api/trips/${tripId}/notifications`, {
-        headers,
-      });
+      const response = await authedFetch(`/api/trips/${tripId}/notifications`);
       if (!response.ok)
         throw new Error("Failed to fetch trip notifications");
       return response.json();
@@ -97,10 +79,7 @@ export function useTripAddOns(tripId: string) {
   return useQuery({
     queryKey: tripDetailKeys.addOns(tripId),
     queryFn: async (): Promise<{ addOns: TripAddOn[] }> => {
-      const headers = await getAuthHeaders();
-      const response = await fetch(`/api/trips/${tripId}/add-ons`, {
-        headers,
-      });
+      const response = await authedFetch(`/api/trips/${tripId}/add-ons`);
       if (!response.ok) throw new Error("Failed to fetch trip add-ons");
       return response.json();
     },
@@ -130,10 +109,9 @@ export function useCreateTripInvoice() {
 
   return useMutation({
     mutationFn: async (input: CreateInvoiceInput) => {
-      const headers = await getAuthHeaders();
-      const response = await fetch("/api/invoices", {
+      const response = await authedFetch("/api/invoices", {
         method: "POST",
-        headers: { ...headers, "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           trip_id: input.tripId,
           client_id: input.clientId,

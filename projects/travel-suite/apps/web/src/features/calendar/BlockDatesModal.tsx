@@ -11,6 +11,7 @@ import {
   toDateInputValue,
   type OperatorUnavailability,
 } from "./availability";
+import { authedFetch } from "@/lib/api/authed-fetch";
 
 interface BlockDatesModalProps {
   isOpen: boolean;
@@ -62,7 +63,7 @@ export function BlockDatesModal({
 
     setSaving(true);
     try {
-      const response = await fetch("/api/availability", {
+      const response = await authedFetch("/api/availability", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -100,7 +101,7 @@ export function BlockDatesModal({
   async function handleDelete(id: string) {
     setDeletingId(id);
     try {
-      const response = await fetch(`/api/availability?id=${id}`, {
+      const response = await authedFetch(`/api/availability?id=${id}`, {
         method: "DELETE",
       });
       const payload = (await response.json().catch(() => null)) as

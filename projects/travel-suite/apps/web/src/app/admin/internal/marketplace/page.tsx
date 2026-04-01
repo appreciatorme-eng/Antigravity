@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import Image from "next/image";
 import {
     ShieldAlert,
@@ -54,7 +55,7 @@ export default function InternalMarketplaceAdmin() {
     const handleVerify = async (orgId: string, status: 'verified' | 'rejected') => {
         setVerifyingOrg(orgId);
         try {
-            const res = await fetch("/api/admin/marketplace/verify", {
+            const res = await authedFetch("/api/admin/marketplace/verify", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

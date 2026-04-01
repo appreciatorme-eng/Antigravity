@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import { toast } from "sonner";
 
 export type ReferralStats = {
@@ -43,7 +44,7 @@ export function useApplyReferralCode() {
 
     return useMutation<Record<string, unknown>, Error, { referralCode: string }>({
         mutationFn: async ({ referralCode }) => {
-            const res = await fetch("/api/admin/referrals", {
+            const res = await authedFetch("/api/admin/referrals", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ referralCode })

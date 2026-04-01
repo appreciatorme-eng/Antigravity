@@ -6,6 +6,7 @@ import { useToast } from "@/components/ui/toast";
 import { getPlanById } from "./plans";
 import type { CreditPackOffer, PremiumAutomationGate } from "@/lib/billing/credit-packs";
 import { logError } from "@/lib/observability/logger";
+import { authedFetch } from "@/lib/api/authed-fetch";
 
 export interface Subscription {
   id: string;
@@ -135,14 +136,8 @@ export function useBillingData() {
           let aiRequestsUsed = 0;
           let aiUtilizationPct = 0;
 
-          const {
-            data: { session },
-          } = await supabase.auth.getSession();
-
-          if (session?.access_token) {
-            const usageRes = await fetch("/api/admin/insights/ai-usage", {
-              headers: { Authorization: `Bearer ${session.access_token}` },
-            });
+          try {
+            const usageRes = await authedFetch("/api/admin/insights/ai-usage");
             if (usageRes.ok) {
               const usageJson = (await usageRes.json()) as AiUsageResponse;
               aiRequestsUsed = asNumber(usageJson.usage?.ai_requests);
@@ -151,6 +146,8 @@ export function useBillingData() {
                 asNumber(usageJson.utilization?.spend_pct)
               );
             }
+          } catch {
+            // best-effort -- user may not be authenticated yet
           }
 
           setUsage({
@@ -195,7 +192,7 @@ export function useBillingData() {
       try {
         const billingCycle = planId.includes("annual") ? "annual" : "monthly";
 
-        const response = await fetch("/api/subscriptions", {
+        const response = await authedFetch("/api/subscriptions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -233,7 +230,7 @@ export function useBillingData() {
   const handleCancelSubscription = useCallback(async () => {
     setCancelling(true);
     try {
-      const response = await fetch("/api/subscriptions/cancel", {
+      const response = await authedFetch("/api/subscriptions/cancel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ cancel_at_period_end: true }),

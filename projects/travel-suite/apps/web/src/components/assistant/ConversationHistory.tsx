@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, MessageSquare, Trash2, ArrowLeft, Clock, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { authedFetch } from "@/lib/api/authed-fetch";
 
 interface ConversationSummary {
   readonly sessionId: string;
@@ -105,7 +106,7 @@ export default function ConversationHistory() {
 
   async function deleteConversation(sessionId: string) {
     try {
-      await fetch(`/api/assistant/conversations?sessionId=${sessionId}`, { method: "DELETE" });
+      await authedFetch(`/api/assistant/conversations?sessionId=${sessionId}`, { method: "DELETE" });
       setConversations((prev) => prev.filter((c) => c.sessionId !== sessionId));
       if (selectedConversation?.sessionId === sessionId) {
         setSelectedConversation(null);

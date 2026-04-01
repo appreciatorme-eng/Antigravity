@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import { FileText, Send, Link2, Loader2 } from "lucide-react";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import type { ActionPickerProps } from "./shared";
 
 export function DocumentPicker({ contact, onSend }: ActionPickerProps) {
@@ -17,7 +18,7 @@ export function DocumentPicker({ contact, onSend }: ActionPickerProps) {
         setSending(true);
         try {
             const phone = contact.phone.replace(/\D/g, "");
-            const res = await fetch("/api/whatsapp/send-rich", {
+            const res = await authedFetch("/api/whatsapp/send-rich", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

@@ -9,6 +9,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { authedFetch } from "@/lib/api/authed-fetch";
 
 import { CanvasEditorPanel } from "./CanvasEditorPanel";
 import { CanvasFooter } from "./CanvasFooter";
@@ -115,7 +116,7 @@ export function CanvasMode({
   const handleHdExport = async () => {
     setHdExporting(true);
     try {
-      const response = await fetch("/api/social/render-poster", {
+      const response = await authedFetch("/api/social/render-poster", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -150,7 +151,7 @@ export function CanvasMode({
 
   const handleSaveDraft = async () => {
     try {
-      await fetch("/api/social/posts", {
+      await authedFetch("/api/social/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

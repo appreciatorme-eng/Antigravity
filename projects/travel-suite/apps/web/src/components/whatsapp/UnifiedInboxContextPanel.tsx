@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { authedFetch } from '@/lib/api/authed-fetch';
 import {
   Car,
   Check,
@@ -164,7 +165,7 @@ export function UnifiedInboxContextPanel({
     setLocalName(trimmed);
     setEditingName(false);
     try {
-      await fetch('/api/admin/whatsapp/contact-names', {
+      await authedFetch('/api/admin/whatsapp/contact-names', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ wa_id: digits, custom_name: trimmed }),
@@ -183,7 +184,7 @@ export function UnifiedInboxContextPanel({
     const digits = conversation.contact.phone.replace(/\D/g, '');
     setLocalIsPersonal(newValue);
     try {
-      await fetch('/api/admin/whatsapp/contact-names', {
+      await authedFetch('/api/admin/whatsapp/contact-names', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ wa_id: digits, is_personal: newValue }),
@@ -609,7 +610,7 @@ function AgentNotes({ conversationKey }: { conversationKey: string }) {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       setSaving(true);
-      fetch('/api/admin/notes', {
+      authedFetch('/api/admin/notes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key: conversationKey, note: value }),
@@ -698,7 +699,7 @@ function AutomationsPanel({ phone }: { phone: string }) {
       prev.map((a) => (a.rule_type === ruleType ? { ...a, enabled: newEnabled } : a))
     );
     try {
-      await fetch('/api/admin/automations/contact-status', {
+      await authedFetch('/api/admin/automations/contact-status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone, rule_type: ruleType, enabled: newEnabled }),

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import {
     Bell,
     Clock,
@@ -188,12 +189,8 @@ export default function NotificationLogsPage() {
     const runQueueNow = async () => {
         try {
             setRunningQueue(true);
-            const { data: { session } } = await supabase.auth.getSession();
-            const response = await fetch("/api/notifications/process-queue", {
+            const response = await authedFetch("/api/notifications/process-queue", {
                 method: "POST",
-                headers: {
-                    Authorization: `Bearer ${session?.access_token || ""}`,
-                },
             });
 
             const payload = await response.json();
@@ -217,12 +214,8 @@ export default function NotificationLogsPage() {
     const retryFailedQueue = async () => {
         try {
             setRetryingFailed(true);
-            const { data: { session } } = await supabase.auth.getSession();
-            const response = await fetch("/api/notifications/retry-failed", {
+            const response = await authedFetch("/api/notifications/retry-failed", {
                 method: "POST",
-                headers: {
-                    Authorization: `Bearer ${session?.access_token || ""}`,
-                },
             });
             const payload = await response.json();
             if (!response.ok) {
@@ -243,12 +236,8 @@ export default function NotificationLogsPage() {
     const scheduleFollowupsNow = async () => {
         try {
             setSchedulingFollowups(true);
-            const { data: { session } } = await supabase.auth.getSession();
-            const response = await fetch("/api/notifications/schedule-followups?limit=300", {
+            const response = await authedFetch("/api/notifications/schedule-followups?limit=300", {
                 method: "POST",
-                headers: {
-                    Authorization: `Bearer ${session?.access_token || ""}`,
-                },
             });
             const payload = await response.json();
             if (!response.ok) {
@@ -272,12 +261,8 @@ export default function NotificationLogsPage() {
     const cleanupExpiredShares = async () => {
         try {
             setCleaningShares(true);
-            const { data: { session } } = await supabase.auth.getSession();
-            const response = await fetch("/api/location/cleanup-expired", {
+            const response = await authedFetch("/api/location/cleanup-expired", {
                 method: "POST",
-                headers: {
-                    Authorization: `Bearer ${session?.access_token || ""}`,
-                },
             });
             const payload = await response.json();
             if (!response.ok) {
@@ -302,12 +287,10 @@ export default function NotificationLogsPage() {
                 setNormalizingAllDrivers(true);
             }
 
-            const { data: { session } } = await supabase.auth.getSession();
-            const response = await fetch("/api/admin/whatsapp/normalize-driver-phones", {
+            const response = await authedFetch("/api/admin/whatsapp/normalize-driver-phones", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${session?.access_token || ""}`,
                 },
                 body: JSON.stringify(driverId ? { driver_id: driverId } : {}),
             });
@@ -337,12 +320,10 @@ export default function NotificationLogsPage() {
     const retrySingleQueueItem = async (queueId: string) => {
         try {
             setRetryingQueueId(queueId);
-            const { data: { session } } = await supabase.auth.getSession();
-            const response = await fetch("/api/admin/notifications/delivery/retry", {
+            const response = await authedFetch("/api/admin/notifications/delivery/retry", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${session?.access_token || ""}`,
                 },
                 body: JSON.stringify({ queue_id: queueId }),
             });

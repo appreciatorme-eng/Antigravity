@@ -2,8 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
-import { fetchWithTimeout } from '@/lib/fetch-with-timeout';
+import { authedFetch } from '@/lib/api/authed-fetch';
 import { useAnalytics } from '@/lib/analytics/events';
 import { useToast } from '@/components/ui/toast';
 import type { FeatureLimitSnapshot } from '../_types';
@@ -22,7 +21,7 @@ export interface CreateProposalParams {
   readonly availabilityConflicts: readonly { id: string }[];
   readonly availabilityOverrideAccepted: boolean;
   readonly proposalLimit: FeatureLimitSnapshot | null;
-  readonly loadProposalLimit: (headers?: Record<string, string>) => Promise<FeatureLimitSnapshot | null>;
+  readonly loadProposalLimit: () => Promise<FeatureLimitSnapshot | null>;
   readonly setError: (error: string | null) => void;
   readonly setProposalLimit: React.Dispatch<React.SetStateAction<FeatureLimitSnapshot | null>>;
 }
@@ -104,30 +103,27 @@ export function useCreateProposal(params: CreateProposalParams): UseCreatePropos
     setError(null);
 
     try {
-      const supabase = createClient();
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      if (session?.access_token) {
-        headers.Authorization = `Bearer ${session.access_token}`;
-      }
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30_000);
 
-      const response = await fetchWithTimeout('/api/proposals/create', {
-        method: 'POST',
-        headers,
-        timeoutMs: 30_000,
-        body: JSON.stringify({
-          templateId: selectedTemplateId,
-          clientId: selectedClientId,
-          proposalTitle: proposalTitle || undefined,
-          expirationDays,
-          selectedVehicleId: selectedVehicleId || null,
-          selectedAddOnIds: Array.from(selectedAddOnIds),
-        }),
-      });
+      let response: Response;
+      try {
+        response = await authedFetch('/api/proposals/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            templateId: selectedTemplateId,
+            clientId: selectedClientId,
+            proposalTitle: proposalTitle || undefined,
+            expirationDays,
+            selectedVehicleId: selectedVehicleId || null,
+            selectedAddOnIds: Array.from(selectedAddOnIds),
+          }),
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
 
       const payload = await response.json().catch((parseError: unknown) => {
         console.error('Failed to parse JSON response from /api/proposals/create', parseError);
@@ -186,7 +182,7 @@ export function useCreateProposal(params: CreateProposalParams): UseCreatePropos
       analytics.proposalCreated(proposalId, Number(payloadData?.amount || 0));
 
       if (sendEmail) {
-        const sendResponse = await fetch(`/api/proposals/${proposalId}/send`, {
+        const sendResponse = await authedFetch(`/api/proposals/${proposalId}/send`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
         });

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useDemoMode } from '@/lib/demo/demo-mode-context';
+import { authedFetch } from '@/lib/api/authed-fetch';
 import { DEMO_CLIENTS } from '@/lib/demo/data';
 import type { Client, TourTemplate, AddOn, FeatureLimitSnapshot } from '../_types';
 
@@ -65,7 +66,7 @@ export interface UseProposalDataReturn {
   setClientsError: (error: string | null) => void;
   setProposalLimit: React.Dispatch<React.SetStateAction<FeatureLimitSnapshot | null>>;
   loadData: () => Promise<void>;
-  loadProposalLimit: (headers?: Record<string, string>) => Promise<FeatureLimitSnapshot | null>;
+  loadProposalLimit: () => Promise<FeatureLimitSnapshot | null>;
   addClient: (fullName: string, email: string, phone: string) => Promise<string>;
 }
 
@@ -79,10 +80,9 @@ export function useProposalData(): UseProposalDataReturn {
   const [addOns, setAddOns] = useState<AddOn[]>([]);
   const [proposalLimit, setProposalLimit] = useState<FeatureLimitSnapshot | null>(null);
 
-  async function loadProposalLimit(headers?: Record<string, string>): Promise<FeatureLimitSnapshot | null> {
+  async function loadProposalLimit(): Promise<FeatureLimitSnapshot | null> {
     try {
-      const limitsResp = await fetch('/api/subscriptions/limits', {
-        headers,
+      const limitsResp = await authedFetch('/api/subscriptions/limits', {
         cache: 'no-store',
       });
 
@@ -160,18 +160,11 @@ export function useProposalData(): UseProposalDataReturn {
 
       setClientsError(null);
 
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const headers: Record<string, string> = {};
-      if (session?.access_token) {
-        headers.Authorization = `Bearer ${session.access_token}`;
-      }
-      await loadProposalLimit(headers);
+      await loadProposalLimit();
 
       if (signal?.cancelled) return;
 
-      const clientsResp = await fetch('/api/admin/clients', { headers });
+      const clientsResp = await authedFetch('/api/admin/clients');
       if (signal?.cancelled) return;
 
       if (!clientsResp.ok) {
@@ -257,16 +250,9 @@ export function useProposalData(): UseProposalDataReturn {
     setError(null);
     setClientsError(null);
 
-    const supabase = createClient();
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`;
-
-    const resp = await fetch('/api/admin/clients', {
+    const resp = await authedFetch('/api/admin/clients', {
       method: 'POST',
-      headers,
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ full_name: fullName, email, phone }),
     });
 

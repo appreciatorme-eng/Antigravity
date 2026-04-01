@@ -13,6 +13,7 @@ import {
   Check,
   X,
 } from 'lucide-react';
+import { authedFetch } from '@/lib/api/authed-fetch';
 import {
   WHATSAPP_TEMPLATES,
   TEMPLATE_CATEGORIES_DISPLAY,
@@ -250,7 +251,7 @@ export function BroadcastTab() {
     setScheduleMessage(null);
 
     try {
-      const response = await fetch('/api/whatsapp/broadcast', {
+      const response = await authedFetch('/api/whatsapp/broadcast', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

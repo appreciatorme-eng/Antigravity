@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Wand2, CopyPlus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassInput } from "@/components/glass/GlassInput";
@@ -120,7 +121,7 @@ export default function CloneTripPage() {
         useAi,
       };
 
-      const response = await fetch(`/api/admin/trips/${tripId}/clone`, {
+      const response = await authedFetch(`/api/admin/trips/${tripId}/clone`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

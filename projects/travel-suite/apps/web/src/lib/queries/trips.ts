@@ -2,6 +2,7 @@
 // Cache key includes isDemoMode segment for instant isolation on toggle.
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { authedFetch } from '@/lib/api/authed-fetch';
 import { createClient } from '@/lib/supabase/client';
 import { useDemoMode } from '@/lib/demo/demo-mode-context';
 import { DEMO_TRIPS } from '@/lib/demo/data';
@@ -40,14 +41,7 @@ export function useTrips(statusFilter: string = 'all', searchQuery: string = '')
                 return results;
             }
 
-            const supabase = createClient();
-            const { data: { session } } = await supabase.auth.getSession();
-
-            const response = await fetch(`/api/trips?status=${encodeURIComponent(statusFilter)}&search=${encodeURIComponent(searchQuery)}`, {
-                headers: {
-                    "Authorization": `Bearer ${session?.access_token}`,
-                },
-            });
+            const response = await authedFetch(`/api/trips?status=${encodeURIComponent(statusFilter)}&search=${encodeURIComponent(searchQuery)}`);
 
             if (!response.ok) {
                 throw new Error("Failed to fetch trips");
@@ -63,13 +57,7 @@ export function useTrip(id: string) {
     return useQuery({
         queryKey: tripsKeys.detail(id),
         queryFn: async () => {
-            const supabase = createClient();
-            const { data: { session } } = await supabase.auth.getSession();
-            const response = await fetch(`/api/trips/${id}`, {
-                headers: {
-                    "Authorization": `Bearer ${session?.access_token}`,
-                },
-            });
+            const response = await authedFetch(`/api/trips/${id}`);
             if (!response.ok) throw new Error("Failed to fetch trip details");
             const payload = await response.json();
             return payload.trip;
@@ -108,13 +96,8 @@ export function useCloneTrip() {
 
     return useMutation({
         mutationFn: async (id: string) => {
-            const supabase = createClient();
-            const { data: { session } } = await supabase.auth.getSession();
-            const response = await fetch(`/api/trips/${id}/clone`, {
+            const response = await authedFetch(`/api/trips/${id}/clone`, {
                 method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${session?.access_token}`,
-                },
             });
 
             if (!response.ok) {

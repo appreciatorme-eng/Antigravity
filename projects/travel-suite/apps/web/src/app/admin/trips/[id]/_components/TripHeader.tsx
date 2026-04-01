@@ -18,6 +18,7 @@ import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassInput, GlassTextarea } from "@/components/glass/GlassInput";
 import { GlassModal } from "@/components/glass/GlassModal";
 import { useToast } from "@/components/ui/toast";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import { getDriverWhatsAppLink, formatClientWhatsAppMessage } from "@/lib/notifications.shared";
 import type { Trip } from "./types";
 import { formatDate } from "./utils";
@@ -69,9 +70,6 @@ export function TripHeader({
         if (!trip.profiles?.id && !notificationEmail.trim()) return;
 
         try {
-            const { createClient } = await import("@/lib/supabase/client");
-            const supabase = createClient();
-            const { data: { session } } = await supabase.auth.getSession();
             const payload: Record<string, unknown> = {
                 tripId: trip.id,
                 type: "itinerary_update",
@@ -85,11 +83,10 @@ export function TripHeader({
                 payload.userId = trip.profiles?.id;
             }
 
-            const response = await fetch("/api/notifications/send", {
+            const response = await authedFetch("/api/notifications/send", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "Authorization": `Bearer ${session?.access_token}`,
                 },
                 body: JSON.stringify(payload),
             });

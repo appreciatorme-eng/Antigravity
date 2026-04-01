@@ -40,6 +40,7 @@ import {
 } from './ActionPickerModal';
 import { formatConversationTime, type ContextAction } from './unified-inbox-shared';
 import { LANGUAGES } from '@/app/clients/types';
+import { authedFetch } from '@/lib/api/authed-fetch';
 
 // Sanitize email HTML — force safe links, strip dangerous content
 const EMAIL_PURIFY_CONFIG = {
@@ -466,7 +467,7 @@ export function MessageThread({
         toast.error('No messages to extract trip details from');
         return;
       }
-      const res = await fetch('/api/admin/email/extract-intent', {
+      const res = await authedFetch('/api/admin/email/extract-intent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

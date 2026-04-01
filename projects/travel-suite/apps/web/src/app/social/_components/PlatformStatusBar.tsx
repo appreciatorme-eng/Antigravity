@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Instagram, Facebook, Plus, RefreshCw, CheckCircle2, AlertCircle, Wifi } from "lucide-react";
 import { motion } from "framer-motion";
+import { authedFetch } from "@/lib/api/authed-fetch";
 
 interface Connection {
     id: string;
@@ -137,7 +138,7 @@ export const PlatformStatusBar = ({ onConnectionsLoaded }: Props) => {
                 <>
                     <span className="text-slate-300 dark:text-slate-600">|</span>
                     <button
-                        onClick={() => fetch("/api/social/refresh-tokens", { method: "POST" }).then(() => window.location.reload())}
+                        onClick={() => authedFetch("/api/social/refresh-tokens", { method: "POST" }).then(() => window.location.reload())}
                         className="text-xs text-amber-700 dark:text-amber-400 hover:text-amber-800 flex items-center gap-1 font-bold"
                     >
                         <RefreshCw className="w-3 h-3" /> Refresh tokens

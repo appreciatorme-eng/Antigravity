@@ -9,6 +9,7 @@ import { useToast } from '@/components/ui/toast';
 import { logError } from '@/lib/observability/logger';
 import { useAnalytics } from '@/lib/analytics/events';
 import { usePostHog } from 'posthog-js/react';
+import { authedFetch } from '@/lib/api/authed-fetch';
 
 interface ComparableTrip {
     destination: string;
@@ -108,7 +109,7 @@ export function PricingSuggestionWidget({
             const suggestedPricePaise = Math.round(suggestion.median * 100);
             const finalPricePaise = finalPrice !== null ? Math.round(finalPrice * 100) : null;
 
-            const response = await fetch('/api/ai/pricing-feedback', {
+            const response = await authedFetch('/api/ai/pricing-feedback', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

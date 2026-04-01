@@ -13,6 +13,7 @@ import { GlassCard } from '@/components/glass/GlassCard'
 import { GlassModal } from '@/components/glass/GlassModal'
 import { formatPaymentAmount } from '@/lib/payments/payment-links'
 import { logError } from "@/lib/observability/logger"
+import { authedFetch } from "@/lib/api/authed-fetch"
 
 declare global {
   interface Window {
@@ -177,7 +178,7 @@ export default function RazorpayModal({
           setStatus('verifying')
 
           try {
-            const verifyResponse = await fetch('/api/payments/verify', {
+            const verifyResponse = await authedFetch('/api/payments/verify', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',

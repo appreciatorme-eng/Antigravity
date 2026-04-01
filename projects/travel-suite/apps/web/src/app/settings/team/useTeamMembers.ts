@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { TeamRole } from "@/lib/team/roles";
 import { useToast } from "@/components/ui/toast";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import type { InviteTeamMemberInput, TeamMember, TeamStats } from "./team.types";
 
 type TeamResponse = {
@@ -110,7 +111,7 @@ export function useTeamMembers() {
     inviteMember: async (input: InviteTeamMemberInput) =>
       mutate(
         () =>
-          fetch("/api/settings/team/invite", {
+          authedFetch("/api/settings/team/invite", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(input),
@@ -121,7 +122,7 @@ export function useTeamMembers() {
     updateMemberRole: async (memberId: string, role: Exclude<TeamRole, "owner">) =>
       mutate(
         () =>
-          fetch(`/api/settings/team/${memberId}`, {
+          authedFetch(`/api/settings/team/${memberId}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ role }),
@@ -131,7 +132,7 @@ export function useTeamMembers() {
     removeMember: async (memberId: string, memberName: string) =>
       mutate(
         () =>
-          fetch(`/api/settings/team/${memberId}`, {
+          authedFetch(`/api/settings/team/${memberId}`, {
             method: "DELETE",
           }),
         "Member removed",
@@ -140,7 +141,7 @@ export function useTeamMembers() {
     resendInvite: async (memberId: string, memberName: string) =>
       mutate(
         () =>
-          fetch(`/api/settings/team/${memberId}/resend`, {
+          authedFetch(`/api/settings/team/${memberId}/resend`, {
             method: "POST",
           }),
         "Invite resent",

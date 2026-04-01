@@ -6,6 +6,7 @@ import { GlassBadge } from "@/components/glass/GlassBadge";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { useToast } from "@/components/ui/toast";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import {
   formatMarketplaceListingPrice,
   type MarketplaceListingPlan,
@@ -119,7 +120,7 @@ export function MarketplaceListingPlans({
   async function handleDowngrade() {
     setSubmitting(true);
     try {
-      const response = await fetch("/api/marketplace/listing-subscription", {
+      const response = await authedFetch("/api/marketplace/listing-subscription", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "downgrade_to_free" }),
@@ -167,7 +168,7 @@ export function MarketplaceListingPlans({
     setSubmitting(true);
 
     try {
-      const createResponse = await fetch("/api/marketplace/listing-subscription", {
+      const createResponse = await authedFetch("/api/marketplace/listing-subscription", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ planId: selectedPlan.id }),
@@ -196,7 +197,7 @@ export function MarketplaceListingPlans({
         theme: { color: "#14b8a6" },
         handler: async (response: Record<string, unknown>) => {
           try {
-            const verifyResponse = await fetch(
+            const verifyResponse = await authedFetch(
               "/api/marketplace/listing-subscription/verify",
               {
                 method: "POST",

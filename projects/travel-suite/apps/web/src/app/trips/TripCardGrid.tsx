@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { authedFetch } from "@/lib/api/authed-fetch";
 
 interface Trip {
     id: string;
@@ -67,7 +68,7 @@ export default function TripCardGrid({ trips }: TripCardGridProps) {
         if (!confirm("Delete this trip? All trip data will be permanently removed.")) return;
 
         setDeleting(tripId);
-        const response = await fetch(`/api/trips/${tripId}`, {
+        const response = await authedFetch(`/api/trips/${tripId}`, {
             method: "DELETE",
         });
 

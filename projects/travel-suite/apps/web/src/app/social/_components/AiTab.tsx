@@ -16,6 +16,7 @@ import {
     generateFullPosterPrompt,
     POSTER_STYLE_LABELS,
 } from "@/lib/social/ai-prompts";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import {
     AI_STYLES,
     STYLE_LABELS,
@@ -105,7 +106,7 @@ export function AiTab({
         setAiError(null);
         try {
             const prompt = generateBackgroundPrompt(templateData, aiStyle);
-            const res = await fetch("/api/social/ai-image", {
+            const res = await authedFetch("/api/social/ai-image", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -171,7 +172,7 @@ export function AiTab({
         setAiError(null);
         try {
             const prompt = generateFullPosterPrompt(templateData, posterStyle);
-            const res = await fetch("/api/social/ai-image", {
+            const res = await authedFetch("/api/social/ai-image", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

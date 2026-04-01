@@ -165,7 +165,7 @@ export function WhatsAppConnectModal({
     const handleTestMessage = async () => {
         try {
             setTestingMessage(true);
-            const res = await fetch("/api/whatsapp/test-message", {
+            const res = await authedFetch("/api/whatsapp/test-message", {
                 method: "POST",
             });
 

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+import { authedFetch } from "@/lib/api/authed-fetch";
 import {
   fillTemplate,
   getPreferredTemplate,
@@ -117,7 +118,7 @@ export function PaymentPicker({
     if (!selectedTrip || amount <= 0) return;
     setSending(true);
     try {
-      const res = await fetch("/api/admin/payments/links", {
+      const res = await authedFetch("/api/admin/payments/links", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

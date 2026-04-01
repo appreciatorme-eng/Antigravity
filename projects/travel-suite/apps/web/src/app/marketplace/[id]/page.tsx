@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import {
     Star,
     Building2,
@@ -171,7 +172,7 @@ export default function OperatorDetailPage() {
     useEffect(() => {
         const recordView = async () => {
             try {
-                await fetch(`/api/marketplace/${targetOrgId}/view`, {
+                await authedFetch(`/api/marketplace/${targetOrgId}/view`, {
                     method: "POST"
                 });
             } catch (err) {
@@ -190,12 +191,10 @@ export default function OperatorDetailPage() {
         if (!newComment.trim()) return;
         setSubmittingReview(true);
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const response = await fetch(`/api/marketplace/${targetOrgId}/reviews`, {
+            const response = await authedFetch(`/api/marketplace/${targetOrgId}/reviews`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "Authorization": `Bearer ${session?.access_token}`
                 },
                 body: JSON.stringify({ rating: newRating, comment: newComment })
             });
@@ -219,12 +218,10 @@ export default function OperatorDetailPage() {
         if (!inquiryMessage.trim()) return;
         setSubmittingInquiry(true);
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const response = await fetch(`/api/marketplace/${targetOrgId}/inquiry`, {
+            const response = await authedFetch(`/api/marketplace/${targetOrgId}/inquiry`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "Authorization": `Bearer ${session?.access_token}`
                 },
                 body: JSON.stringify({ message: inquiryMessage })
             });

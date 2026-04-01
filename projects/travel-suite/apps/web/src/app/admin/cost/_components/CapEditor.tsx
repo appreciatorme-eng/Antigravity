@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { useToast } from "@/components/ui/toast";
@@ -39,19 +39,9 @@ export function CapEditor({ emergencyCapsUsd, onCapSaved }: CapEditorProps) {
 
       setSavingCategory(category);
       try {
-        const supabase = createClient();
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
-        if (!session?.access_token) {
-          throw new Error("Unauthorized");
-        }
-
-        const response = await fetch("/api/admin/cost/overview", {
+        const response = await authedFetch("/api/admin/cost/overview", {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${session.access_token}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({

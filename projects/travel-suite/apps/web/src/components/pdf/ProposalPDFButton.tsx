@@ -11,6 +11,7 @@ import { Download, Mail, Loader2 } from 'lucide-react';
 import type { ProposalData } from './ProposalDocument';
 import { GlassButton } from '../glass/GlassButton';
 import { useToast } from '@/components/ui/toast';
+import { authedFetch } from '@/lib/api/authed-fetch';
 
 interface ProposalPDFButtonProps {
   proposalId: string;
@@ -104,7 +105,7 @@ export const ProposalPDFButton: React.FC<ProposalPDFButtonProps> = ({
       });
 
       // Send email via API
-      const response = await fetch('/api/proposals/send-pdf', {
+      const response = await authedFetch('/api/proposals/send-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

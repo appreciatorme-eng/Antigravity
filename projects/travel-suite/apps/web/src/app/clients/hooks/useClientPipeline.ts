@@ -6,8 +6,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useClients } from "@/lib/queries/clients";
-import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/toast";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import {
     type Client,
     type FeatureLimitSnapshot,
@@ -42,7 +42,6 @@ interface UseClientPipelineReturn {
 }
 
 export function useClientPipeline(): UseClientPipelineReturn {
-    const supabase = createClient();
     const { toast } = useToast();
     const { data: rawClients, isLoading: loading, refetch: fetchClients } = useClients();
     const clients: Client[] = rawClients || [];
@@ -54,10 +53,7 @@ export function useClientPipeline(): UseClientPipelineReturn {
     useEffect(() => {
         const fetchLimits = async () => {
             try {
-                const { data: { session } } = await supabase.auth.getSession();
-                const headers: Record<string, string> = {};
-                if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`;
-                const limitsResponse = await fetch("/api/subscriptions/limits", { headers, cache: "no-store" });
+                const limitsResponse = await authedFetch("/api/subscriptions/limits", { cache: "no-store" });
                 if (!limitsResponse.ok) return;
                 const payload = await limitsResponse.json();
                 const limit = payload?.limits?.clients;
@@ -73,7 +69,7 @@ export function useClientPipeline(): UseClientPipelineReturn {
             } catch { /* best-effort */ }
         };
         fetchLimits();
-    }, [supabase]);
+    }, []);
 
     const filteredClients = clients.filter(client =>
         client.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -90,12 +86,10 @@ export function useClientPipeline(): UseClientPipelineReturn {
     const handleLifecycleStageChange = useCallback(async (clientId: string, lifecycleStage: string) => {
         setStageUpdatingId(clientId);
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const response = await fetch("/api/admin/clients", {
+            const response = await authedFetch("/api/admin/clients", {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${session?.access_token}`,
                 },
                 body: JSON.stringify({ id: clientId, lifecycle_stage: lifecycleStage }),
             });
@@ -113,7 +107,7 @@ export function useClientPipeline(): UseClientPipelineReturn {
         } finally {
             setStageUpdatingId(null);
         }
-    }, [supabase, fetchClients, toast]);
+    }, [fetchClients, toast]);
 
     const activeCount = clients.filter(c => ["lead", "prospect", "proposal"].includes(c.lifecycle_stage || "lead")).length;
     const vipCount = clients.filter(c => c.client_tag === "vip").length;

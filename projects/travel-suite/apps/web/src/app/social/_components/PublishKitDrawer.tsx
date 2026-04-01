@@ -5,6 +5,7 @@ import { X, Instagram, Facebook, Calendar, Clock, Send, Download, Save, Loader2,
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import { SocialTemplate, type TemplateDataForRender } from "@/lib/social/types";
 
 interface Props {
@@ -71,7 +72,7 @@ export const PublishKitDrawer = ({
             if (publishMode === "schedule") {
                 body.scheduledFor = `${scheduleDate}T${scheduleTime}:00`;
             }
-            const res = await fetch(endpoint, {
+            const res = await authedFetch(endpoint, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(body),
@@ -120,7 +121,7 @@ export const PublishKitDrawer = ({
     const handleRetry = async (queueId: string) => {
         setRetrying(queueId);
         try {
-            const res = await fetch("/api/social/queue-retry", {
+            const res = await authedFetch("/api/social/queue-retry", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ queueId }),
@@ -150,7 +151,7 @@ export const PublishKitDrawer = ({
     const pollQueueStatus = useCallback(async () => {
         if (queueIds.length === 0) return;
         try {
-            const res = await fetch("/api/social/queue-status", {
+            const res = await authedFetch("/api/social/queue-status", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ queueIds }),
@@ -499,7 +500,7 @@ export const PublishKitDrawer = ({
                                             onClick={async () => {
                                                 setHdDownloading(true);
                                                 try {
-                                                    const res = await fetch("/api/social/render-poster", {
+                                                    const res = await authedFetch("/api/social/render-poster", {
                                                         method: "POST",
                                                         headers: { "Content-Type": "application/json" },
                                                         body: JSON.stringify({

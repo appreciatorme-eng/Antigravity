@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import React, { useEffect, useMemo, useState } from "react";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import { usePathname, useRouter } from "next/navigation";
 import {
     ArrowRight,
@@ -107,7 +108,7 @@ export default function BookingsPage() {
         setImporting(true);
         setImportError("");
         try {
-            const res = await fetch(`/api/itineraries/${selectedItineraryId}/bookings`, {
+            const res = await authedFetch(`/api/itineraries/${selectedItineraryId}/bookings`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(type === "flight" ? { type, flight: payload } : { type, hotel: payload }),

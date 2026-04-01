@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import { CheckCircle2, Circle, Megaphone } from "lucide-react";
 import { toast } from "sonner";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import { SocialTemplate, type TemplateDataForRender } from "@/lib/social/types";
 import { matchDestination } from "@/lib/social/destination-images";
 import { GlassModal } from "@/components/glass/GlassModal";
@@ -136,7 +137,7 @@ export const SocialStudioClient = ({ initialOrgData }: Props) => {
     const handleGenerateCaptions = useCallback(async () => {
         setGeneratingCaptions(true);
         try {
-            const resp = await fetch("/api/social/captions", {
+            const resp = await authedFetch("/api/social/captions", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ templateData, tone: captionTone, platform: captionPlatform }),

@@ -6,6 +6,7 @@ import { GlassButton } from "@/components/glass/GlassButton";
 import { Upload, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { formatINR } from "@/lib/india/formats";
 import type { ReceiptOcrResult } from "../types";
+import { authedFetch } from "@/lib/api/authed-fetch";
 
 interface ReceiptUploaderProps {
   isOpen: boolean;
@@ -125,7 +126,7 @@ export function ReceiptUploader({
       const formData = new FormData();
       formData.append("file", selectedFile);
 
-      const uploadRes = await fetch("/api/admin/pricing/receipts/upload", {
+      const uploadRes = await authedFetch("/api/admin/pricing/receipts/upload", {
         method: "POST",
         body: formData,
       });
@@ -142,7 +143,7 @@ export function ReceiptUploader({
 
       // Start OCR processing
       setStatus("ocr-processing");
-      const ocrRes = await fetch("/api/admin/pricing/receipts/ocr", {
+      const ocrRes = await authedFetch("/api/admin/pricing/receipts/ocr", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ receipt_id: uploadData.receipt_id }),

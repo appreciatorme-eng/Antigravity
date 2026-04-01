@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   X,
 } from "lucide-react";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import type {
   ReputationPlatformConnection,
   ConnectionPlatform,
@@ -92,7 +93,7 @@ export default function PlatformConnectionCards({
     setNotice(null);
 
     try {
-      const res = await fetch("/api/reputation/connections", {
+      const res = await authedFetch("/api/reputation/connections", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -125,7 +126,7 @@ export default function PlatformConnectionCards({
     try {
       setError(null);
       setNotice(null);
-      const res = await fetch(
+      const res = await authedFetch(
         `/api/reputation/connections?id=${connectionId}`,
         { method: "DELETE" }
       );
@@ -150,7 +151,7 @@ export default function PlatformConnectionCards({
     setNotice(null);
 
     try {
-      const res = await fetch("/api/reputation/sync", {
+      const res = await authedFetch("/api/reputation/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ connectionId }),

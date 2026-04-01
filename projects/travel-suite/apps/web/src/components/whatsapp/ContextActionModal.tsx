@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { authedFetch } from '@/lib/api/authed-fetch';
 import { useOrganizationTrips, type Trip } from './action-picker/shared';
 import type { ConversationContact } from './whatsapp.types';
 
@@ -463,7 +464,7 @@ function CreateProposalPanel({
     let cancelled = false;
     async function run() {
       try {
-        const res = await fetch('/api/whatsapp/extract-trip-intent', {
+        const res = await authedFetch('/api/whatsapp/extract-trip-intent', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ waId, contactName: contact.name, contactPhone: contact.phone }),

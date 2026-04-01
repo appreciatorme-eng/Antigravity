@@ -4,6 +4,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { ShieldAlert, Power, RefreshCw } from "lucide-react";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import ToggleSwitch from "@/components/god-mode/ToggleSwitch";
 import ConfirmDangerModal from "@/components/god-mode/ConfirmDangerModal";
 
@@ -57,7 +58,7 @@ export default function KillSwitchPage() {
             // path like "enabled" or "ai_enabled" — all are top-level
             updated[pending.path] = pending.newValue;
 
-            const res = await fetch("/api/superadmin/settings/kill-switch", {
+            const res = await authedFetch("/api/superadmin/settings/kill-switch", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ key: pending.key, value: updated }),

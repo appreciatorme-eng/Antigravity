@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import { BarChart3, Plus, Send, Trash2, Loader2 } from "lucide-react";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import type { ActionPickerProps } from "./shared";
 
 const POLL_TEMPLATES = [
@@ -45,7 +46,7 @@ export function PollPicker({ contact, onSend }: ActionPickerProps) {
         setSending(true);
         try {
             const phone = contact.phone.replace(/\D/g, "");
-            const res = await fetch("/api/whatsapp/send-rich", {
+            const res = await authedFetch("/api/whatsapp/send-rich", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

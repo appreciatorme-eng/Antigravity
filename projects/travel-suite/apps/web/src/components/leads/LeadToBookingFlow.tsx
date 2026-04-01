@@ -16,6 +16,7 @@ import {
   Phone,
 } from 'lucide-react';
 import { ParsedIntent } from '@/lib/leads/intent-parser';
+import { authedFetch } from '@/lib/api/authed-fetch';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -438,7 +439,7 @@ function Step3CreateAndNotify({
   const handleSend = async (mode: 'whatsapp' | 'draft') => {
     setLoading(true);
     try {
-      const res = await fetch('/api/leads/convert', {
+      const res = await authedFetch('/api/leads/convert', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

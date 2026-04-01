@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import type { Conversation } from "./MessageThread";
 
 type SmartReplyPayload = {
@@ -92,7 +93,7 @@ export function useSmartReplySuggestions(
       const payloadWithLang = language && language !== 'English'
         ? { ...payload, language }
         : payload;
-      const response = await fetch("/api/ai/suggest-reply", {
+      const response = await authedFetch("/api/ai/suggest-reply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payloadWithLang),

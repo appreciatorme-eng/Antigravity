@@ -13,6 +13,7 @@ import {
 import JSZip from "jszip";
 import { templates } from "@/lib/social/template-registry";
 import type { SocialTemplate, AspectRatio } from "@/lib/social/types";
+import { authedFetch } from "@/lib/api/authed-fetch";
 
 /* ---------- Types ---------- */
 
@@ -78,7 +79,7 @@ async function renderImage(
     backgroundUrl: string,
     format: string,
 ): Promise<Blob> {
-    const resp = await fetch("/api/social/render-poster", {
+    const resp = await authedFetch("/api/social/render-poster", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ templateData, layoutType, aspectRatio, backgroundUrl, format, quality: 95 }),

@@ -20,6 +20,7 @@ import { ErrorSection } from "@/components/ui/ErrorSection";
 import { ReviewSkeleton } from "@/components/ui/skeletons/ReviewSkeleton";
 import { PLATFORM_LABELS } from "@/lib/reputation/constants";
 import { toast } from "sonner";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import { ReviewCard } from "./ReviewCard";
 import { ReviewResponsePanel } from "./ReviewResponsePanel";
 import { logError } from "@/lib/observability/logger";
@@ -309,7 +310,7 @@ export function ReviewInbox({ organizationName }: ReviewInboxProps) {
 
   const handleFlag = async (id: string) => {
     try {
-      await fetch(`/api/reputation/reviews/${id}`, {
+      await authedFetch(`/api/reputation/reviews/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -326,7 +327,7 @@ export function ReviewInbox({ organizationName }: ReviewInboxProps) {
   const handleAddReview = async (formData: AddReviewFormData) => {
     try {
       setSubmitting(true);
-      const res = await fetch("/api/reputation/reviews", {
+      const res = await authedFetch("/api/reputation/reviews", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -345,7 +346,7 @@ export function ReviewInbox({ organizationName }: ReviewInboxProps) {
   };
 
   const handleSaveResponse = async (id: string, text: string) => {
-    const response = await fetch(`/api/reputation/reviews/${id}`, {
+    const response = await authedFetch(`/api/reputation/reviews/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -379,7 +380,7 @@ export function ReviewInbox({ organizationName }: ReviewInboxProps) {
   const handleGenerateMarketingAsset = async (reviewId: string) => {
     try {
       updateAssetBusyState(reviewId, "generate");
-      const response = await fetch(`/api/reputation/reviews/${reviewId}/marketing-asset`, {
+      const response = await authedFetch(`/api/reputation/reviews/${reviewId}/marketing-asset`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "generate" }),
@@ -403,7 +404,7 @@ export function ReviewInbox({ organizationName }: ReviewInboxProps) {
   const handleScheduleMarketingAsset = async (reviewId: string) => {
     try {
       updateAssetBusyState(reviewId, "schedule");
-      const response = await fetch(`/api/reputation/reviews/${reviewId}/marketing-asset`, {
+      const response = await authedFetch(`/api/reputation/reviews/${reviewId}/marketing-asset`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

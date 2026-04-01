@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Upload, X, Image as ImageIcon, CheckCircle2 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { authedFetch } from '@/lib/api/authed-fetch';
 
 interface LogoUploadProps {
   currentUrl: string | null;
@@ -77,7 +78,7 @@ export function LogoUpload({ currentUrl, organizationId, onUploaded, onRemoved }
       }
 
       // Save logo_url via server-side API (bypasses RLS)
-      const saveRes = await fetch('/api/admin/logo', {
+      const saveRes = await authedFetch('/api/admin/logo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ logo_url: publicUrl }),

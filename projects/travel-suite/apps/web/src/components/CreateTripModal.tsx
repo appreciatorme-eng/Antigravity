@@ -90,12 +90,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
     const fetchClients = useCallback(async () => {
         setLoadingClients(true);
 
-        const { data: { session } } = await supabase.auth.getSession();
-        const response = await fetch("/api/admin/clients", {
-            headers: {
-                "Authorization": `Bearer ${session?.access_token}`,
-            },
-        });
+        const response = await authedFetch("/api/admin/clients");
 
         if (!response.ok) {
             const error = await response.json();
@@ -122,12 +117,10 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
         }
         setCreatingClient(true);
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const response = await fetch("/api/admin/clients", {
+            const response = await authedFetch("/api/admin/clients", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "Authorization": `Bearer ${session?.access_token}`,
                 },
                 body: JSON.stringify({
                     full_name: newClientName.trim(),
@@ -171,12 +164,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
     const fetchSavedItineraries = useCallback(async () => {
         setLoadingSaved(true);
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const response = await fetch("/api/itineraries", {
-                headers: {
-                    "Authorization": `Bearer ${session?.access_token}`,
-                },
-            });
+            const response = await authedFetch("/api/itineraries");
 
             if (!response.ok) {
                 console.error("Error fetching saved itineraries");
@@ -390,12 +378,10 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
 
         setCreating(true);
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const response = await fetch("/api/admin/trips", {
+            const response = await authedFetch("/api/admin/trips", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "Authorization": `Bearer ${session?.access_token}`,
                 },
                 body: JSON.stringify({
                     clientId,
@@ -439,12 +425,10 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
             let shareLinkCopied = false;
             try {
                 // Auto-generate share link via server API (bypasses RLS)
-                const shareLinkResponse = await fetch(`/api/admin/trips/${tripId}/share-link`, {
+                const shareLinkResponse = await authedFetch(`/api/admin/trips/${tripId}/share-link`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
-                        "Authorization": `Bearer ${session?.access_token}`,
-                        "x-requested-with": "XMLHttpRequest",
                     },
                     body: JSON.stringify({ templateId: "safari_story" }),
                 });

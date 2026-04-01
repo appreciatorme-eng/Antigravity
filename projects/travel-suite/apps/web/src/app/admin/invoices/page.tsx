@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { useToast } from "@/components/ui/toast";
@@ -68,13 +69,6 @@ export default function AdminInvoicesPage() {
     draft.autoFillForClient(selectedClient);
   }, [selectedClient]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const authHeaders = useCallback(async () => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    return { Authorization: `Bearer ${session?.access_token || ""}` };
-  }, [supabase]);
-
   const loadOrganization = useCallback(async () => {
     try {
       const {
@@ -113,8 +107,7 @@ export default function AdminInvoicesPage() {
 
   const loadInvoices = useCallback(
     async (showRefreshToast = false) => {
-      const headers = await authHeaders();
-      const response = await fetch("/api/invoices?limit=50", { headers, cache: "no-store" });
+      const response = await authedFetch("/api/invoices?limit=50", { cache: "no-store" });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload?.error || "Failed to load invoices");
 
@@ -129,12 +122,11 @@ export default function AdminInvoicesPage() {
         toast({ title: "Invoices refreshed", description: "Data is up to date.", variant: "success" });
       }
     },
-    [authHeaders, toast]
+    [toast]
   );
 
   const loadClients = useCallback(async () => {
-    const headers = await authHeaders();
-    const response = await fetch("/api/admin/clients", { headers, cache: "no-store" });
+    const response = await authedFetch("/api/admin/clients", { cache: "no-store" });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload?.error || "Failed to load clients");
 
@@ -148,17 +140,16 @@ export default function AdminInvoicesPage() {
         client_tag: c.client_tag,
       }))
     );
-  }, [authHeaders]);
+  }, []);
 
   const loadInvoiceDetails = useCallback(
     async (invoiceId: string) => {
-      const headers = await authHeaders();
-      const response = await fetch(`/api/invoices/${invoiceId}`, { headers, cache: "no-store" });
+      const response = await authedFetch(`/api/invoices/${invoiceId}`, { cache: "no-store" });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload?.error || "Failed to load invoice details");
       setSelectedInvoice(payload.invoice as InvoiceRecord);
     },
-    [authHeaders]
+    []
   );
 
   useEffect(() => {
@@ -254,10 +245,9 @@ export default function AdminInvoicesPage() {
         tax_rate: draft.gstEnabled ? Number.parseFloat(item.tax_rate || "0") : 0,
       }));
 
-      const headers = await authHeaders();
-      const response = await fetch("/api/invoices", {
+      const response = await authedFetch("/api/invoices", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...headers },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           client_id: draft.clientId || undefined,
           currency: draft.currency,
@@ -305,10 +295,9 @@ export default function AdminInvoicesPage() {
       const amount = Number.parseFloat(paymentAmount || "0");
       if (!Number.isFinite(amount) || amount <= 0) throw new Error("Enter a valid payment amount.");
 
-      const headers = await authHeaders();
-      const response = await fetch(`/api/invoices/${selectedInvoice.id}/pay`, {
+      const response = await authedFetch(`/api/invoices/${selectedInvoice.id}/pay`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...headers },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amount,
           method: paymentMethod,
@@ -354,10 +343,9 @@ export default function AdminInvoicesPage() {
     setSendingPaymentLink(true);
     setPaymentLinkUrl(null);
     try {
-      const headers = await authHeaders();
-      const response = await fetch("/api/payments/links", {
+      const response = await authedFetch("/api/payments/links", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...headers },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amount: Math.round(balance * 100),
           currency: selectedInvoice.currency || "INR",
@@ -386,14 +374,13 @@ export default function AdminInvoicesPage() {
     } finally {
       setSendingPaymentLink(false);
     }
-  }, [authHeaders, selectedInvoice, toast]);
+  }, [selectedInvoice, toast]);
 
   const handleAddClient = useCallback(async (client: { full_name: string; email: string; phone?: string }): Promise<string | null> => {
     try {
-      const headers = await authHeaders();
-      const response = await fetch("/api/admin/clients", {
+      const response = await authedFetch("/api/admin/clients", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...headers },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           full_name: client.full_name,
           email: client.email,
@@ -424,7 +411,7 @@ export default function AdminInvoicesPage() {
       });
       return null;
     }
-  }, [authHeaders, loadClients, toast]);
+  }, [loadClients, toast]);
 
   const buildInvoicePdfBlob = useCallback(
     async (invoice: InvoiceRecord) => {
@@ -484,10 +471,9 @@ export default function AdminInvoicesPage() {
         reader.onerror = () => reject(new Error("Failed to read PDF file"));
       });
 
-      const headers = await authHeaders();
-      const response = await fetch("/api/invoices/send-pdf", {
+      const response = await authedFetch("/api/invoices/send-pdf", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...headers },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           invoice_id: selectedInvoice.id,
           client_email: clientEmail,
@@ -514,7 +500,7 @@ export default function AdminInvoicesPage() {
     } finally {
       setEmailingPdf(false);
     }
-  }, [authHeaders, buildInvoicePdfBlob, selectedInvoice, toast]);
+  }, [buildInvoicePdfBlob, selectedInvoice, toast]);
 
   const handleWhatsAppShare = useCallback(() => {
     if (!selectedInvoice) return;

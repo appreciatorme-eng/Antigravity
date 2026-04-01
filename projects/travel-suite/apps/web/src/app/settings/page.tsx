@@ -261,9 +261,7 @@ export default function SettingsPage() {
                 }
             }
 
-            const rulesResponse = await fetch('/api/admin/workflow/rules', {
-                headers: { Authorization: `Bearer ${session?.access_token || ''}` },
-            });
+            const rulesResponse = await authedFetch('/api/admin/workflow/rules');
             const rulesPayload = await rulesResponse.json();
             if (rulesResponse.ok) setWorkflowRules(rulesPayload.rules || []);
         } catch (error) {
@@ -314,7 +312,7 @@ export default function SettingsPage() {
         if (!tripAdvisorLocationInput.trim()) return;
         setIsTripAdvisorConnecting(true);
         try {
-            const response = await fetch('/api/integrations/tripadvisor', {
+            const response = await authedFetch('/api/integrations/tripadvisor', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ locationId: tripAdvisorLocationInput.trim() }),
@@ -339,7 +337,7 @@ export default function SettingsPage() {
         if (!upiId.trim()) return;
         setIsUpiSaving(true);
         try {
-            const response = await fetch('/api/settings/upi', {
+            const response = await authedFetch('/api/settings/upi', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ upiId: upiId.trim() }),
@@ -409,11 +407,10 @@ export default function SettingsPage() {
     const saveWorkflowRules = async () => {
         setRulesSaving(true);
         try {
-            const { data: { session } } = await supabase.auth.getSession();
             for (const rule of workflowRules) {
-                const response = await fetch('/api/admin/workflow/rules', {
+                const response = await authedFetch('/api/admin/workflow/rules', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token || ''}` },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(rule),
                 });
                 if (!response.ok) {

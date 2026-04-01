@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { authedFetch } from '@/lib/api/authed-fetch';
 import {
   Zap,
   Plus,
@@ -660,7 +661,7 @@ export function AutomationRules() {
       setToggling(id);
       const newEnabledState = !rule.enabled;
 
-      const res = await fetch('/api/admin/automation/toggle', {
+      const res = await authedFetch('/api/admin/automation/toggle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

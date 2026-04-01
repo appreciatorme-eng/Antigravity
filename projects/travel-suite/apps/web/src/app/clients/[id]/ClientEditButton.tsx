@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { Edit2, Save, Loader2, Languages } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import { GlassModal } from "@/components/glass/GlassModal";
 import { GlassInput } from "@/components/glass/GlassInput";
 import { GlassButton } from "@/components/glass/GlassButton";
@@ -47,7 +47,6 @@ interface ClientEditButtonProps {
 
 export default function ClientEditButton({ client }: ClientEditButtonProps) {
     const router = useRouter();
-    const supabase = createClient();
     const [open, setOpen] = useState(false);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -79,12 +78,10 @@ export default function ClientEditButton({ client }: ClientEditButtonProps) {
         setError(null);
 
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const response = await fetch("/api/admin/clients", {
+            const response = await authedFetch("/api/admin/clients", {
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${session?.access_token}`,
                 },
                 body: JSON.stringify({
                     id: client.id,

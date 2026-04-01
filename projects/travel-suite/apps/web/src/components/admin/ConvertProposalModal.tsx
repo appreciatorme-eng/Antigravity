@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Loader2, Calendar, CheckCircle } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { logError } from "@/lib/observability/logger";
+import { authedFetch } from "@/lib/api/authed-fetch";
 
 interface ConvertProposalModalProps {
     open: boolean;
@@ -39,7 +40,7 @@ export default function ConvertProposalModal({
 
         setConverting(true);
         try {
-            const response = await fetch(`/api/proposals/${proposalId}/convert`, {
+            const response = await authedFetch(`/api/proposals/${proposalId}/convert`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

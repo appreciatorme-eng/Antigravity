@@ -15,6 +15,7 @@ import {
   Star,
   Users,
 } from "lucide-react";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import { PricingCard } from "@/components/billing/PricingCard";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassCard } from "@/components/glass/GlassCard";
@@ -266,7 +267,7 @@ export function BillingPageClient() {
     try {
       if (isDowngrade) {
         const targetPlanId = selectedTier === "free" ? "free" : selectedTier === "pro" ? (billing === "annual" ? "pro_annual" : "pro_monthly") : selectedTier;
-        const response = await fetch("/api/subscriptions/downgrade", {
+        const response = await authedFetch("/api/subscriptions/downgrade", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ target_plan_id: targetPlanId }),
@@ -283,7 +284,7 @@ export function BillingPageClient() {
           variant: "success",
         });
       } else if (!usesContactSales && selectedPlanId) {
-        const response = await fetch("/api/subscriptions", {
+        const response = await authedFetch("/api/subscriptions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -303,7 +304,7 @@ export function BillingPageClient() {
           variant: "success",
         });
       } else {
-        const response = await fetch("/api/billing/contact-sales", {
+        const response = await authedFetch("/api/billing/contact-sales", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -345,7 +346,7 @@ export function BillingPageClient() {
   async function handleCancelSubscription(immediately: boolean) {
     setCancelling(true);
     try {
-      const response = await fetch("/api/subscriptions/cancel", {
+      const response = await authedFetch("/api/subscriptions/cancel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reason: cancelReason, cancel_immediately: immediately }),

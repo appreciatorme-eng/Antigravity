@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { formatLocalDate, formatLocalDateTime } from '@/lib/date/tz';
 import { useProposals } from '@/lib/queries/proposals';
 import { createClient } from '@/lib/supabase/client';
+import { authedFetch } from '@/lib/api/authed-fetch';
 import {
   Plus,
   Search,
@@ -179,7 +180,7 @@ export default function ProposalsPage() {
     setBulkSubmitting(action);
 
     try {
-      const response = await fetch('/api/proposals/bulk', {
+      const response = await authedFetch('/api/proposals/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, ids: selectedIds }),

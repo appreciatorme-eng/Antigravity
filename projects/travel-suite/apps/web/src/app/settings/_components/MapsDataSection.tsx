@@ -5,6 +5,7 @@ import { Globe } from 'lucide-react';
 import { GlassButton } from '@/components/glass/GlassButton';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
+import { authedFetch } from '@/lib/api/authed-fetch';
 
 export interface MapsDataSectionProps {
     readonly initialPlacesEnabled: boolean;
@@ -22,7 +23,7 @@ export function MapsDataSection({ initialPlacesEnabled, initialGooglePlaceId }: 
     const handleActivatePlaces = async () => {
         setIsPlacesActivating(true);
         try {
-            const res = await fetch('/api/integrations/places', { method: 'POST' });
+            const res = await authedFetch('/api/integrations/places', { method: 'POST' });
             if (!res.ok) {
                 const data = (await res.json()) as { error?: string };
                 toast({ title: 'Activation failed', description: data.error ?? 'Could not activate Google Places', variant: 'error' });
@@ -46,7 +47,7 @@ export function MapsDataSection({ initialPlacesEnabled, initialGooglePlaceId }: 
 
         setIsGooglePlaceSaving(true);
         try {
-            const res = await fetch('/api/integrations/places', {
+            const res = await authedFetch('/api/integrations/places', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ googlePlaceId: trimmedPlaceId }),

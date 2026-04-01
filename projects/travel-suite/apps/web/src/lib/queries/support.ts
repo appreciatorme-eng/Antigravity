@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import { Database } from "../database.types";
 
 export type SupportTicket = Database["public"]["Tables"]["support_tickets"]["Row"];
@@ -29,7 +30,7 @@ export function useCreateSupportTicket() {
 
     return useMutation<SupportTicket, Error, CreateSupportTicketParams>({
         mutationFn: async (params) => {
-            const res = await fetch("/api/support", {
+            const res = await authedFetch("/api/support", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(params)

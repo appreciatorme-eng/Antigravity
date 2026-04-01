@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import { useDemoMode } from "@/lib/demo/demo-mode-context";
 import { DEMO_TASKS, DEMO_SCHEDULE } from "@/lib/demo/data";
 
@@ -133,23 +133,6 @@ function applyLocalDismissals(
 }
 
 // ---------------------------------------------------------------------------
-// Helper: get auth headers
-// ---------------------------------------------------------------------------
-
-async function getAuthHeaders(): Promise<Record<string, string>> {
-  const supabase = createClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session) {
-    throw new Error("Not authenticated");
-  }
-
-  return { Authorization: `Bearer ${session.access_token}` };
-}
-
-// ---------------------------------------------------------------------------
 // 1. useDashboardTasks
 // ---------------------------------------------------------------------------
 
@@ -163,8 +146,7 @@ export function useDashboardTasks() {
         return { tasks: DEMO_TASKS, completedTasks: [] };
       }
 
-      const headers = await getAuthHeaders();
-      const response = await fetch("/api/dashboard/tasks", { headers });
+      const response = await authedFetch("/api/dashboard/tasks");
 
       if (!response.ok) {
         throw new Error("Failed to fetch dashboard tasks");
@@ -192,8 +174,7 @@ export function useDashboardSchedule() {
         return { events: DEMO_SCHEDULE, completedCount: 1 };
       }
 
-      const headers = await getAuthHeaders();
-      const response = await fetch("/api/dashboard/schedule", { headers });
+      const response = await authedFetch("/api/dashboard/schedule");
 
       if (!response.ok) {
         throw new Error("Failed to fetch dashboard schedule");
@@ -213,9 +194,8 @@ export function useDriverSearch(query: string) {
   return useQuery<DriverSearchResult[]>({
     queryKey: dashboardTasksKeys.driverSearch(query),
     queryFn: async () => {
-      const headers = await getAuthHeaders();
       const url = `/api/drivers/search?q=${encodeURIComponent(query)}`;
-      const response = await fetch(url, { headers });
+      const response = await authedFetch(url);
 
       if (!response.ok) {
         throw new Error("Failed to search drivers");
@@ -244,11 +224,9 @@ export function useDismissTask() {
 
   return useMutation({
     mutationFn: async (input: DismissTaskInput) => {
-      const headers = await getAuthHeaders();
-      const response = await fetch("/api/dashboard/tasks/dismiss", {
+      const response = await authedFetch("/api/dashboard/tasks/dismiss", {
         method: "POST",
         headers: {
-          ...headers,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({

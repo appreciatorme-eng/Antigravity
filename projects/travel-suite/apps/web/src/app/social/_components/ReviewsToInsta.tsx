@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import type { ReputationPlatform } from "@/lib/reputation/types";
 
 /* ---------- Types ---------- */
@@ -220,7 +221,7 @@ export const ReviewsToInsta = ({ onReviewSelected }: Props) => {
     const handleImport = useCallback(async () => {
         try {
             setImporting(true);
-            const res = await fetch("/api/social/reviews/import", { method: "POST" });
+            const res = await authedFetch("/api/social/reviews/import", { method: "POST" });
             const data = await res.json();
             if (res.ok) {
                 toast.success(data.message || "Import complete");

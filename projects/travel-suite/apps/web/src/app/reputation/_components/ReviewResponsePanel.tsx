@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import type { ReputationReview } from "@/lib/reputation/types";
 import { PLATFORM_LABELS, PLATFORM_COLORS } from "@/lib/reputation/constants";
 import { useAnalytics } from "@/lib/analytics/events";
+import { authedFetch } from "@/lib/api/authed-fetch";
 
 interface ReviewResponsePanelProps {
   review: ReputationReview | null;
@@ -84,7 +85,7 @@ export function ReviewResponsePanel({
       setError(null);
 
       try {
-        const res = await fetch("/api/ai/draft-review-response", {
+        const res = await authedFetch("/api/ai/draft-review-response", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

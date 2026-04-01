@@ -7,6 +7,7 @@ import {
     WELCOME,
 } from "./tour-assistant-helpers";
 import { TourAssistantPresentation } from "./TourAssistantPresentation";
+import { authedFetch } from "@/lib/api/authed-fetch";
 
 // --- Main Component ---
 
@@ -172,7 +173,7 @@ export default function TourAssistantChat() {
         setMessages((prev) => [...prev, { id: assistantId, role: "assistant", content: "" }]);
 
         try {
-            const res = await fetch("/api/assistant/chat/stream", {
+            const res = await authedFetch("/api/assistant/chat/stream", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ message: trimmed, history: historyForApi }),
@@ -180,7 +181,7 @@ export default function TourAssistantChat() {
 
             if (!res.ok || !res.body) {
                 // Fallback to non-streaming endpoint
-                const fallbackRes = await fetch("/api/assistant/chat", {
+                const fallbackRes = await authedFetch("/api/assistant/chat", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ message: trimmed, history: historyForApi }),
@@ -327,7 +328,7 @@ export default function TourAssistantChat() {
 
     async function exportCSV(actionName: string, data: unknown) {
         try {
-            const res = await fetch("/api/assistant/export", {
+            const res = await authedFetch("/api/assistant/export", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ actionName, data }),
@@ -352,7 +353,7 @@ export default function TourAssistantChat() {
     async function confirmAction(actionName: string, params: Record<string, unknown>, confirmed: boolean) {
         setIsLoading(true);
         try {
-            const res = await fetch("/api/assistant/confirm", {
+            const res = await authedFetch("/api/assistant/confirm", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

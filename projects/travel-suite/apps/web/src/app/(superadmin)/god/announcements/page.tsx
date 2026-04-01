@@ -4,6 +4,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { Plus, Send, RefreshCw, Megaphone } from "lucide-react";
+import { authedFetch } from "@/lib/api/authed-fetch";
 
 interface Announcement {
     id: string;
@@ -83,7 +84,7 @@ export default function AnnouncementsPage() {
         if (!compose.title.trim() || !compose.body.trim()) return;
         setSubmitting(true);
         try {
-            const res = await fetch("/api/superadmin/announcements", {
+            const res = await authedFetch("/api/superadmin/announcements", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(compose),
@@ -102,7 +103,7 @@ export default function AnnouncementsPage() {
         if (!confirm("Send this announcement to all target users now?")) return;
         setSendingId(id);
         try {
-            const res = await fetch(`/api/superadmin/announcements/${id}/send`, { method: "POST" });
+            const res = await authedFetch(`/api/superadmin/announcements/${id}/send`, { method: "POST" });
             if (res.ok) await fetchData();
         } finally {
             setSendingId(null);

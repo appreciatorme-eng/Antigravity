@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Mail, ArrowLeft, CheckCircle2, Loader2, AlertCircle, ExternalLink } from 'lucide-react';
 import { GlassButton } from '@/components/glass/GlassButton';
 import { cn } from '@/lib/utils';
+import { authedFetch } from '@/lib/api/authed-fetch';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -114,7 +115,7 @@ export function EmailConnectWizard({ onConnected, onCancel }: EmailConnectWizard
                 body.smtpPort = parseInt(smtpPort) || 465;
             }
 
-            const res = await fetch('/api/admin/email/connect', {
+            const res = await authedFetch('/api/admin/email/connect', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body),

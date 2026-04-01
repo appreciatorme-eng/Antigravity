@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { generateBrandPalette, type BrandPalette } from "@/lib/social/color-utils";
 import { generateBackgroundPrompt, type AiImageStyle } from "@/lib/social/ai-prompts";
 import { toast } from "sonner";
+import { authedFetch } from "@/lib/api/authed-fetch";
 
 interface TemplateDataBase {
     companyName: string;
@@ -77,7 +78,7 @@ export const TemplateEditor = <TTemplateData extends TemplateDataBase>({
         setAiError(null);
         try {
             const prompt = generateBackgroundPrompt(templateData, aiStyle);
-            const res = await fetch("/api/social/ai-image", {
+            const res = await authedFetch("/api/social/ai-image", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ prompt, width: 1080, height: 1080, count: 4 }),
@@ -128,7 +129,7 @@ export const TemplateEditor = <TTemplateData extends TemplateDataBase>({
             await new Promise(r => setTimeout(r, 300));
             setSmartProgress("Compositing poster...");
 
-            const res = await fetch("/api/social/smart-poster", {
+            const res = await authedFetch("/api/social/smart-poster", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

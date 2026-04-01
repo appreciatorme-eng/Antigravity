@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { authedFetch } from '@/lib/api/authed-fetch';
 import { validateExtractedTour, type ExtractedTourData } from '@/lib/import/types';
 import {
   INSERTED_TEMPLATE_DAY_SELECT,
@@ -60,7 +61,7 @@ export default function ImportTourPage() {
       fd.set('method', 'pdf');
       fd.set('file', pdfFile);
 
-      const res = await fetch('/api/admin/tour-templates/extract', {
+      const res = await authedFetch('/api/admin/tour-templates/extract', {
         method: 'POST',
         body: fd,
       });
@@ -106,7 +107,7 @@ export default function ImportTourPage() {
     setError(null);
 
     try {
-      const res = await fetch('/api/admin/tour-templates/extract', {
+      const res = await authedFetch('/api/admin/tour-templates/extract', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ method: 'preview', url }),
@@ -131,7 +132,7 @@ export default function ImportTourPage() {
     setError(null);
 
     try {
-      const res = await fetch('/api/admin/tour-templates/extract', {
+      const res = await authedFetch('/api/admin/tour-templates/extract', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ method: 'url', url }),
