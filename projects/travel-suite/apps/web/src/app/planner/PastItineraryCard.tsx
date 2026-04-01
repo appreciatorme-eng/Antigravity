@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
-import { Copy, Check, Clock, MapPin, Search, UserPlus, Plus, Loader2 } from "lucide-react";
+import { Copy, Check, Clock, MapPin, Search, UserPlus, Plus, Loader2, Eye } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { getDeterministicFallback } from "@/lib/image-search";
@@ -30,6 +30,7 @@ interface PastItineraryCardProps {
         client_comments?: ClientComment[];
         client_preferences?: import("@/types/feedback").ClientPreferences | null;
         wishlist_items?: string[];
+        viewed_at?: string | null;
         approved_by?: string | null;
         approved_at?: string | null;
         self_service_status?: string | null;
@@ -488,6 +489,12 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
                     <span className="text-[10px] text-slate-400 truncate flex-1 font-mono">
                         /share/{itinerary.share_code}
                     </span>
+                    {itinerary.viewed_at && (
+                        <span className="flex items-center gap-1 text-[10px] text-purple-400 font-medium shrink-0" title={`Viewed ${new Date(itinerary.viewed_at).toLocaleString("en-IN")}`}>
+                            <Eye className="w-3 h-3" />
+                            {relativeTime(itinerary.viewed_at)}
+                        </span>
+                    )}
                     <button
                         onClick={copyShareLink}
                         className={cn(
