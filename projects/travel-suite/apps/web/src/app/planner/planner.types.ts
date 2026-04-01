@@ -21,6 +21,7 @@ export interface ItineraryLike {
 export function deriveStage(itinerary: {
     share_code?: string | null;
     share_status?: string | null;
+    viewed_at?: string | null;
     trip_id?: string | null;
     trip_status?: string | null;
 }): string {
@@ -31,6 +32,8 @@ export function deriveStage(itinerary: {
     if (itinerary.share_status === "approved") return "approved";
     if (itinerary.share_status === "commented") return "feedback";
     if (itinerary.share_status === "viewed") return "viewed";
+    // Fallback: if viewed_at is set but status wasn't updated (legacy data), treat as viewed
+    if (itinerary.viewed_at && itinerary.share_code) return "viewed";
     if (itinerary.share_code) return "shared";
     return "draft";
 }

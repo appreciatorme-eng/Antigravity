@@ -115,10 +115,16 @@ export default async function SharedTripPage({
         );
     }
 
-    // Track the view
+    // Track the view — set both viewed_at and status so the planner pipeline reflects "Viewed"
+    const isFirstView = !share.viewed_at;
+    const viewUpdate: Record<string, string> = { viewed_at: new Date().toISOString() };
+    // Only promote status to "viewed" if it hasn't progressed further (commented/approved)
+    if (isFirstView && (!share.status || share.status === "active")) {
+        viewUpdate.status = "viewed";
+    }
     await supabaseAdmin
         .from("shared_itineraries")
-        .update({ viewed_at: new Date().toISOString() })
+        .update(viewUpdate)
         .eq("id", share.id);
 
     const shareRecord = share as unknown as {

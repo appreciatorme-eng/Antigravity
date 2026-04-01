@@ -485,28 +485,30 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
 
             {/* Share Link Row */}
             {itinerary.share_code && (
-                <div className="flex items-center gap-2 mx-4 mb-2 px-2.5 py-1.5 rounded-lg bg-white/5">
-                    <span className="text-[10px] text-slate-400 truncate flex-1 font-mono">
-                        /share/{itinerary.share_code}
-                    </span>
-                    {itinerary.viewed_at && (
-                        <span className="flex items-center gap-1 text-[10px] text-purple-400 font-medium shrink-0" title={`Viewed ${new Date(itinerary.viewed_at).toLocaleString("en-IN")}`}>
-                            <Eye className="w-3 h-3" />
-                            {relativeTime(itinerary.viewed_at)}
+                <div className="mx-4 mb-2 rounded-lg bg-white/5">
+                    <div className="flex items-center gap-2 px-2.5 py-1.5">
+                        <span className="text-[10px] text-slate-400 truncate flex-1 font-mono">
+                            /share/{itinerary.share_code}
                         </span>
+                        <button
+                            onClick={copyShareLink}
+                            className={cn(
+                                "shrink-0 p-1 rounded transition-colors",
+                                linkCopied
+                                    ? "text-emerald-400"
+                                    : "text-slate-400 hover:text-white"
+                            )}
+                            aria-label="Copy share link"
+                        >
+                            {linkCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                        </button>
+                    </div>
+                    {itinerary.viewed_at && (
+                        <div className="flex items-center gap-1.5 px-2.5 pb-1.5 text-[10px] text-purple-400 font-medium" title={new Date(itinerary.viewed_at).toLocaleString("en-IN")}>
+                            <Eye className="w-3 h-3" />
+                            Last viewed {relativeTime(itinerary.viewed_at)}
+                        </div>
                     )}
-                    <button
-                        onClick={copyShareLink}
-                        className={cn(
-                            "shrink-0 p-1 rounded transition-colors",
-                            linkCopied
-                                ? "text-emerald-400"
-                                : "text-slate-400 hover:text-white"
-                        )}
-                        aria-label="Copy share link"
-                    >
-                        {linkCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                    </button>
                 </div>
             )}
 
