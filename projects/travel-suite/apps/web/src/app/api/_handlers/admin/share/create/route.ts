@@ -99,16 +99,16 @@ export async function POST(request: NextRequest) {
     return apiError("Itinerary not found", 404);
   }
 
-  // Backfill images if raw_data has activities without images
+  // Backfill images for any activities missing them (not just when zero have images)
   const rawData = itinerary.raw_data as {
     destination?: string;
     days?: Array<{ activities?: Array<{ image?: string; imageUrl?: string; title: string }> }>;
   } | null;
   if (rawData?.days) {
-    const hasImages = rawData.days.some((day) =>
-      (day.activities ?? []).some((a) => !!a.image || !!a.imageUrl)
+    const needsImages = rawData.days.some((day) =>
+      (day.activities ?? []).some((a) => !a.image && !a.imageUrl)
     );
-    if (!hasImages) {
+    if (needsImages) {
       try {
         const withImages = await populateItineraryImages({
           destination: rawData.destination ?? itinerary.destination ?? "travel",

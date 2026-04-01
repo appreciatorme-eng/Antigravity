@@ -25,6 +25,7 @@ import type { Json } from "@/lib/database.types";
 import { SafariStoryView, UrbanBriefView, ProfessionalView, LuxuryResortView, VisualJourneyView, BentoJourneyView, TemplateSwitcher, ItineraryTemplateId } from "@/components/itinerary-templates";
 import ItineraryBuilder from "@/components/ItineraryBuilder";
 import { InteractivePricing } from "@/components/InteractivePricing";
+import { RouteSummary } from "@/components/itinerary-templates/RouteSummary";
 import { LogisticsManager } from "@/components/planner/LogisticsManager";
 import { PricingManager } from "@/components/planner/PricingManager";
 import { PlannerTabs, PlannerTab } from "@/components/planner/PlannerTabs";
@@ -495,6 +496,10 @@ export default function PlannerPage() {
                                                 )}
                                             </>
                                         )}
+                                    </div>
+                                    {/* Route & Logistics summary — distances, times, stop types per day */}
+                                    <div className="mt-12 rounded-2xl overflow-hidden border border-stone-100 dark:border-white/10 shadow-sm">
+                                        <RouteSummary itinerary={result!} />
                                     </div>
                                     {result!.pricing && (
                                         <div className="mt-16 bg-white/60 dark:bg-slate-950/40 py-12 border-t border-gray-200 dark:border-white/10 rounded-2xl shadow-sm">

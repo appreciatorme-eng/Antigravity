@@ -2,8 +2,8 @@ const CACHE_NAME = 'trip-portal-v2';
 const APP_SHELL = ['/', '/offline', '/manifest.json'];
 
 const IDB_NAME = 'tripbuilt-offline-mutations-v1';
-const IDB_STORE = 'outbox';
-const IDB_VERSION = 1;
+const IDB_STORE = 'mutation_queue';
+const IDB_VERSION = 2;
 
 // ─── IndexedDB helpers ───────────────────────────────────────────────────────
 
@@ -12,8 +12,13 @@ function openDB() {
     const request = indexedDB.open(IDB_NAME, IDB_VERSION);
     request.onupgradeneeded = (event) => {
       const db = event.target.result;
+      // Remove the legacy "outbox" store from v1 if it exists
+      if (db.objectStoreNames.contains('outbox')) {
+        db.deleteObjectStore('outbox');
+      }
       if (!db.objectStoreNames.contains(IDB_STORE)) {
-        db.createObjectStore(IDB_STORE, { keyPath: 'id', autoIncrement: true });
+        const store = db.createObjectStore(IDB_STORE, { keyPath: 'id' });
+        store.createIndex('createdAt', 'createdAt', { unique: false });
       }
     };
     request.onsuccess = (event) => resolve(event.target.result);

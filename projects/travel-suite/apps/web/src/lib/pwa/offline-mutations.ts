@@ -37,10 +37,14 @@ function generateRecordId(): string {
 
 function openQueueDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(OFFLINE_MUTATION_DB, 1);
+    const request = indexedDB.open(OFFLINE_MUTATION_DB, 2);
 
     request.onupgradeneeded = () => {
       const database = request.result;
+      // Remove the legacy "outbox" store from v1 if it exists
+      if (database.objectStoreNames.contains("outbox")) {
+        database.deleteObjectStore("outbox");
+      }
       if (!database.objectStoreNames.contains(OFFLINE_MUTATION_STORE)) {
         const store = database.createObjectStore(OFFLINE_MUTATION_STORE, { keyPath: "id" });
         store.createIndex("createdAt", "createdAt", { unique: false });
