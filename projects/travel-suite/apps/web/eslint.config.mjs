@@ -20,6 +20,15 @@ const eslintConfig = defineConfig([
       "react-hooks/preserve-manual-memoization": "warn",
       "react-hooks/rules-of-hooks": "warn",
       "prefer-const": "error",
+      // Prevent bare fetch() for mutations — must use authedFetch() to avoid CSRF errors.
+      // This catches: fetch("/api/...", { method: "POST" }) and similar patterns.
+      "no-restricted-syntax": [
+        "warn",
+        {
+          selector: "CallExpression[callee.name='fetch'][arguments.1.properties] > ObjectExpression > Property[key.name='method'][value.value=/^(POST|PUT|PATCH|DELETE)$/i]",
+          message: "Use authedFetch() from @/lib/api/authed-fetch instead of bare fetch() for mutations. Bare fetch() will fail CSRF validation.",
+        },
+      ],
     },
   },
   // Override default ignores of eslint-config-next.
