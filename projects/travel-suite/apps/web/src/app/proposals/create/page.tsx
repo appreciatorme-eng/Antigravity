@@ -1,25 +1,21 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
-  ArrowLeft,
   Loader2,
   AlertCircle,
 } from 'lucide-react';
-import Link from 'next/link';
-import { ClientSelector } from './_components/ClientSelector';
-import { TemplateSelector } from './_components/TemplateSelector';
-import { AddOnsGrid } from './_components/AddOnsGrid';
-import { ProposalSummary } from './_components/ProposalSummary';
+import { WizardShell } from './_components/WizardShell';
 import { WhatsAppDraftBanner } from './_components/WhatsAppDraftBanner';
 import { ProposalLimitBanner } from './_components/ProposalLimitBanner';
-import { CreateProposalActions } from './_components/CreateProposalActions';
 import { useProposalData } from './_hooks/useProposalData';
 import { useWhatsAppDraft } from './_hooks/useWhatsAppDraft';
 import { useAvailabilityCheck } from './_hooks/useAvailabilityCheck';
 import { usePricingSuggestion } from './_hooks/usePricingSuggestion';
 import { useCreateProposal } from './_hooks/useCreateProposal';
+import { useWizardStep } from './_hooks/useWizardStep';
+import type { WizardStepNumber } from './_hooks/useWizardStep';
 import type { AddOn } from './_types';
 
 export default function CreateProposalPage() {
@@ -52,6 +48,46 @@ export default function CreateProposalPage() {
   const [tripEndDate, setTripEndDate] = useState('');
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>('');
   const [selectedAddOnIds, setSelectedAddOnIds] = useState<Set<string>>(new Set());
+
+  // Direction tracking for slide animations
+  const directionRef = useRef<1 | -1>(1);
+  const [direction, setDirection] = useState<1 | -1>(1);
+
+  // Wizard step hook — start at step 2 if client is pre-filled
+  const initialStep: WizardStepNumber = prefilledClientId ? 2 : 1;
+  const {
+    currentStep,
+    nextStep: rawNextStep,
+    prevStep: rawPrevStep,
+    goToStep: rawGoToStep,
+    canProceed,
+  } = useWizardStep({
+    selectedClientId,
+    selectedTemplateId,
+    initialStep,
+  });
+
+  // Wrap step navigation to track direction
+  const nextStep = useCallback(() => {
+    directionRef.current = 1;
+    setDirection(1);
+    rawNextStep();
+  }, [rawNextStep]);
+
+  const prevStep = useCallback(() => {
+    directionRef.current = -1;
+    setDirection(-1);
+    rawPrevStep();
+  }, [rawPrevStep]);
+
+  const goToStep = useCallback(
+    (step: WizardStepNumber) => {
+      directionRef.current = step > currentStep ? 1 : -1;
+      setDirection(directionRef.current);
+      rawGoToStep(step);
+    },
+    [rawGoToStep, currentStep],
+  );
 
   const handleApplyDraft = useCallback(
     (updates: { clientId?: string; templateId?: string; title?: string; tripStartDate?: string; tripEndDate?: string }) => {
@@ -144,31 +180,15 @@ export default function CreateProposalPage() {
     );
   }
 
-  const selectedTemplate = templates.find((t) => t.id === selectedTemplateId);
+  const selectedTemplate = templates.find((t) => t.id === selectedTemplateId) ?? null;
+  const selectedClient = clients.find((c) => c.id === selectedClientId) ?? null;
   const selectedExtrasTotal = computeExtrasTotal(addOns, selectedAddOnIds, selectedVehicleId);
   const estimatedTotal = (selectedTemplate?.base_price || 0) + selectedExtrasTotal;
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto">
-      <div className="flex items-center gap-4">
-        <Link
-          href="/proposals"
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5 text-gray-600" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-[var(--font-display)] text-[#1b140a]">
-            Create New Proposal
-          </h1>
-          <p className="text-sm text-[#6f5b3e]">
-            Select a client and template to create an interactive proposal
-          </p>
-        </div>
-      </div>
-
+    <div className="max-w-4xl mx-auto">
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center gap-3 mb-4">
           <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
           <p className="text-sm text-red-800">{error}</p>
         </div>
@@ -178,62 +198,74 @@ export default function CreateProposalPage() {
 
       <WhatsAppDraftBanner loading={loadingWhatsAppDraft} draft={whatsappDraft} />
 
-      <ClientSelector
-        clients={clients}
-        selectedClientId={selectedClientId}
-        clientsError={clientsError}
-        onSelectClient={handleSelectClient}
-        onClearClient={() => setSelectedClientId('')}
-        onAddClient={handleAddClient}
-        onRefresh={loadData}
-        initialQuery={clientQueryOverride}
-      />
-
-      <TemplateSelector
-        templates={templates}
-        selectedTemplateId={selectedTemplateId}
-        onSelectTemplate={handleSelectTemplate}
-        tripStartDate={tripStartDate}
-        tripEndDate={tripEndDate}
-        onTripStartDateChange={setTripStartDate}
-        onTripEndDateChange={setTripEndDate}
-        availabilityConflicts={availability.conflicts}
-        availabilityLoading={availability.loading}
-        availabilityOverrideAccepted={availability.overrideAccepted}
-        onAvailabilityOverride={availability.acceptOverride}
-        pricingSuggestion={pricing.suggestion}
-        pricingSuggestionLoading={pricing.loading}
-      />
-
-      <AddOnsGrid
+      <WizardShell
+        currentStep={currentStep}
+        canProceed={canProceed}
+        nextStep={nextStep}
+        prevStep={prevStep}
+        goToStep={goToStep}
+        direction={direction}
+        creating={creating}
+        onCreateProposal={handleCreateProposal}
+        clientSelectorProps={{
+          clients,
+          selectedClientId,
+          clientsError,
+          onSelectClient: handleSelectClient,
+          onClearClient: () => setSelectedClientId(''),
+          onAddClient: handleAddClient,
+          onRefresh: loadData,
+          initialQuery: clientQueryOverride,
+        }}
+        templateSelectorProps={{
+          templates,
+          selectedTemplateId,
+          onSelectTemplate: handleSelectTemplate,
+          tripStartDate,
+          tripEndDate,
+          onTripStartDateChange: setTripStartDate,
+          onTripEndDateChange: setTripEndDate,
+          availabilityConflicts: availability.conflicts,
+          availabilityLoading: availability.loading,
+          availabilityOverrideAccepted: availability.overrideAccepted,
+          onAvailabilityOverride: availability.acceptOverride,
+          pricingSuggestion: pricing.suggestion,
+          pricingSuggestionLoading: pricing.loading,
+        }}
+        addOnsGridProps={{
+          addOns,
+          selectedVehicleId,
+          selectedAddOnIds,
+          onSelectVehicle: setSelectedVehicleId,
+          onToggleAddOn: (id, checked) => {
+            setSelectedAddOnIds((prev) => {
+              const next = new Set(prev);
+              if (checked) next.add(id);
+              else next.delete(id);
+              return next;
+            });
+          },
+          estimatedTotal,
+        }}
+        proposalSummaryProps={{
+          proposalTitle,
+          expirationDays,
+          sendEmail,
+          onTitleChange: setProposalTitle,
+          onExpirationChange: setExpirationDays,
+          onEmailToggle: setSendEmail,
+        }}
+        selectedClient={selectedClient}
+        selectedTemplate={selectedTemplate}
+        selectedAddOnIds={selectedAddOnIds}
         addOns={addOns}
         selectedVehicleId={selectedVehicleId}
-        selectedAddOnIds={selectedAddOnIds}
-        onSelectVehicle={setSelectedVehicleId}
-        onToggleAddOn={(id, checked) => {
-          setSelectedAddOnIds((prev) => {
-            const next = new Set(prev);
-            if (checked) next.add(id);
-            else next.delete(id);
-            return next;
-          });
-        }}
-        estimatedTotal={estimatedTotal}
-      />
-
-      <ProposalSummary
+        tripStartDate={tripStartDate}
+        tripEndDate={tripEndDate}
         proposalTitle={proposalTitle}
         expirationDays={expirationDays}
-        sendEmail={sendEmail}
-        onTitleChange={setProposalTitle}
-        onExpirationChange={setExpirationDays}
-        onEmailToggle={setSendEmail}
-      />
-
-      <CreateProposalActions
-        creating={creating}
-        disabled={creating || !selectedClientId || !selectedTemplateId}
-        onCreateProposal={handleCreateProposal}
+        estimatedTotal={estimatedTotal}
+        hasAddOns={addOns.length > 0}
       />
     </div>
   );
