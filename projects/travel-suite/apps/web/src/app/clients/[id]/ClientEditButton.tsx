@@ -41,7 +41,6 @@ interface ClientEditButtonProps {
         lead_status?: string | null;
         client_tag?: string | null;
         lifecycle_stage?: string | null;
-        language_preference?: string | null;
     };
 }
 
@@ -66,7 +65,7 @@ export default function ClientEditButton({ client }: ClientEditButtonProps) {
         leadStatus: client.lead_status || "new",
         clientTag: client.client_tag || "standard",
         lifecycleStage: client.lifecycle_stage || "lead",
-        languagePreference: client.language_preference || "English",
+        languagePreference: "English",
     });
 
     const handleSave = async () => {

@@ -278,7 +278,6 @@ export async function renderClientProfilePage({
                             lead_status: profile.lead_status,
                             client_tag: profile.client_tag,
                             lifecycle_stage: profile.lifecycle_stage,
-                            language_preference: language,
                         }} />
                     </div>
                 </div>

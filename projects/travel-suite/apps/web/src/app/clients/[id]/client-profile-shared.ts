@@ -12,18 +12,15 @@ export const CLIENT_PROFILE_SELECT = [
   'budget_min',
   'client_tag',
   'created_at',
-  'dietary_preferences',
   'dietary_requirements',
   'email',
   'full_name',
   'home_airport',
   'id',
   'interests',
-  'language_preference',
   'lead_status',
   'lifecycle_stage',
-  'medical_notes',
-  'mobility_requirements',
+  'mobility_needs',
   'notes',
   'organization_id',
   'phone',
@@ -88,11 +85,7 @@ export type ClientProfile = {
   travel_style?: string | null;
   interests?: string[] | null;
   home_airport?: string | null;
-  language_preference?: string | null;
   client_tag?: string | null;
-  dietary_preferences?: string | null;
-  mobility_requirements?: string | null;
-  medical_notes?: string | null;
   lifecycle_stage?: string | null;
   referral_source?: string | null;
   source_channel?: string | null;
@@ -296,7 +289,7 @@ export function deriveClientDashboardState(profile: ClientProfile, trips: TripRo
     .reduce((sum, proposal) => sum + (proposal.total_price ?? 0), 0);
 
   const memberSinceDays = getDaysSince(profile.created_at);
-  const language = profile.language_preference ?? 'English';
+  const language = 'English';
   const initials = getInitials(profile.full_name ?? null);
   const hasPreferences =
     profile.preferred_destination ||
