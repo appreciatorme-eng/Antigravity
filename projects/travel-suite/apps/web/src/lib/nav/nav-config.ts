@@ -108,6 +108,12 @@ export const NAV_ITEMS: readonly NavItemConfig[] = [
     href: "/admin/operations",
     section: "operations",
   },
+  {
+    icon: "Puzzle",
+    label: "Add-ons",
+    href: "/add-ons",
+    section: "operations",
+  },
 
   // ── GROWTH ──────────────────────────────────────────────────────────
   {
@@ -152,7 +158,6 @@ export const NAV_ITEMS: readonly NavItemConfig[] = [
     href: "/billing",
     section: "account",
   },
-  { icon: "Puzzle", label: "Add-ons", href: "/add-ons", section: "account" },
   { icon: "LifeBuoy", label: "Support", href: "/support", section: "account" },
 ];
 
