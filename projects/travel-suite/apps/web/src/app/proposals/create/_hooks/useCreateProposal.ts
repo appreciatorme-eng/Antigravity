@@ -11,6 +11,7 @@ import { formatFeatureLimitError } from './useProposalData';
 export interface CreateProposalParams {
   readonly selectedClientId: string;
   readonly selectedTemplateId: string;
+  readonly itineraryId?: string;
   readonly proposalTitle: string;
   readonly expirationDays: number;
   readonly sendEmail: boolean;
@@ -41,6 +42,7 @@ export function useCreateProposal(params: CreateProposalParams): UseCreatePropos
     const {
       selectedClientId,
       selectedTemplateId,
+      itineraryId,
       proposalTitle,
       expirationDays,
       sendEmail,
@@ -56,10 +58,15 @@ export function useCreateProposal(params: CreateProposalParams): UseCreatePropos
       setProposalLimit,
     } = params;
 
-    if (!selectedClientId || !selectedTemplateId) {
+    const hasTemplate = selectedTemplateId.length > 0;
+    const hasItinerary = Boolean(itineraryId);
+
+    if (!selectedClientId || (!hasTemplate && !hasItinerary)) {
       toast({
         title: 'Selection required',
-        description: 'Please select both a client and a template.',
+        description: hasItinerary
+          ? 'Please select a client.'
+          : 'Please select both a client and a template.',
         variant: 'warning',
       });
       return;
@@ -106,27 +113,43 @@ export function useCreateProposal(params: CreateProposalParams): UseCreatePropos
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30_000);
 
-      let response: Response;
-      try {
-        response = await authedFetch('/api/proposals/create', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          signal: controller.signal,
-          body: JSON.stringify({
+      const useItineraryPath = hasItinerary;
+      const endpoint = useItineraryPath
+        ? '/api/admin/proposals/create-from-itinerary'
+        : '/api/proposals/create';
+
+      const requestBody = useItineraryPath
+        ? {
+            itineraryId,
+            clientId: selectedClientId,
+            proposalTitle: proposalTitle || undefined,
+            expirationDays,
+            selectedVehicleId: selectedVehicleId || null,
+            selectedAddOnIds: Array.from(selectedAddOnIds),
+          }
+        : {
             templateId: selectedTemplateId,
             clientId: selectedClientId,
             proposalTitle: proposalTitle || undefined,
             expirationDays,
             selectedVehicleId: selectedVehicleId || null,
             selectedAddOnIds: Array.from(selectedAddOnIds),
-          }),
+          };
+
+      let response: Response;
+      try {
+        response = await authedFetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify(requestBody),
         });
       } finally {
         clearTimeout(timeoutId);
       }
 
       const payload = await response.json().catch((parseError: unknown) => {
-        console.error('Failed to parse JSON response from /api/proposals/create', parseError);
+        console.error(`Failed to parse JSON response from ${endpoint}`, parseError);
         return {};
       });
       const payloadData = payload?.data ?? null;

@@ -11,6 +11,7 @@ const MAX_STEP: WizardStepNumber = 4;
 interface UseWizardStepOptions {
   selectedClientId: string;
   selectedTemplateId: string;
+  itineraryId?: string;
   initialStep?: WizardStepNumber;
 }
 
@@ -31,6 +32,7 @@ function clampStep(n: number): WizardStepNumber {
 export function useWizardStep({
   selectedClientId,
   selectedTemplateId,
+  itineraryId,
   initialStep = 1,
 }: UseWizardStepOptions): UseWizardStepReturn {
   const router = useRouter();
@@ -56,13 +58,15 @@ export function useWizardStep({
     [router, searchParams],
   );
 
+  const hasItinerary = Boolean(itineraryId);
+
   const canProceed = useCallback(
     (step: WizardStepNumber): boolean => {
       switch (step) {
         case 1:
           return selectedClientId.length > 0;
         case 2:
-          return selectedTemplateId.length > 0;
+          return hasItinerary || selectedTemplateId.length > 0;
         case 3:
           return true; // add-ons are optional
         case 4:
@@ -71,7 +75,7 @@ export function useWizardStep({
           return false;
       }
     },
-    [selectedClientId, selectedTemplateId],
+    [selectedClientId, selectedTemplateId, hasItinerary],
   );
 
   const nextStep = useCallback(() => {

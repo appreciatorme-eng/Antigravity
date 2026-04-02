@@ -63,6 +63,7 @@ const routes = createCatchAllHandlers([
   ["pdf-imports/upload", () => import("@/app/api/_handlers/admin/pdf-imports/upload/route")],
   ["pdf-imports/:id", () => import("@/app/api/_handlers/admin/pdf-imports/[id]/route")],
   ["pdf-imports", () => import("@/app/api/_handlers/admin/pdf-imports/route")],
+  ["proposals/create-from-itinerary", () => import("@/app/api/_handlers/admin/proposals/create-from-itinerary/route")],
   ["proposals/:id/payment-plan", () => import("@/app/api/_handlers/admin/proposals/[id]/payment-plan/route")],
   ["proposals/:id/tiers", () => import("@/app/api/_handlers/admin/proposals/[id]/tiers/route")],
   ["referrals", () => import("@/app/api/_handlers/admin/referrals/route")],

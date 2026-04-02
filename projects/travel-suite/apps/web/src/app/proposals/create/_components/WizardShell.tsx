@@ -18,6 +18,12 @@ import type { ProposalSummaryProps } from './ProposalSummary';
 import type { WizardStepNumber } from '../_hooks/useWizardStep';
 import type { Client, TourTemplate, AddOn } from '../_types';
 
+export interface ItineraryInfo {
+  title: string;
+  destination: string | null;
+  duration_days: number | null;
+}
+
 const STEP_HELP: Record<WizardStepNumber, string> = {
   1: 'Choose the client who will receive this proposal.',
   2: 'Pick a tour template and set travel dates.',
@@ -66,6 +72,8 @@ interface WizardShellProps {
   estimatedTotal: number;
   // Whether add-ons exist (for auto-skip)
   hasAddOns: boolean;
+  // Itinerary info (when creating from itinerary instead of template)
+  itineraryInfo?: ItineraryInfo | null;
 }
 
 export function WizardShell({
@@ -92,6 +100,7 @@ export function WizardShell({
   expirationDays,
   estimatedTotal,
   hasAddOns,
+  itineraryInfo,
 }: WizardShellProps) {
   const handleSkipExtras = useCallback(() => {
     goToStep(4);
@@ -150,7 +159,25 @@ export function WizardShell({
             transition={slideTransition}
           >
             {currentStep === 1 && <ClientSelector {...clientSelectorProps} />}
-            {currentStep === 2 && <TemplateSelector {...templateSelectorProps} />}
+            {currentStep === 2 && (
+              itineraryInfo ? (
+                <div className="p-4 rounded-xl bg-[#f8f1e6] border border-[#eadfcd]">
+                  <p className="text-xs font-medium uppercase tracking-wider text-[#bda87f] mb-2">
+                    From Itinerary
+                  </p>
+                  <p className="text-sm font-medium text-[#1b140a]">{itineraryInfo.title}</p>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#6f5b3e] mt-1">
+                    {itineraryInfo.destination && <span>{itineraryInfo.destination}</span>}
+                    {itineraryInfo.duration_days && <span>{itineraryInfo.duration_days} days</span>}
+                  </div>
+                  <p className="text-xs text-[#9c7c46] mt-3">
+                    A template will be auto-created from this itinerary when you finalize the proposal.
+                  </p>
+                </div>
+              ) : (
+                <TemplateSelector {...templateSelectorProps} />
+              )
+            )}
             {currentStep === 3 && <AddOnsGrid {...addOnsGridProps} />}
             {currentStep === 4 && (
               <div className="space-y-6">
@@ -158,6 +185,7 @@ export function WizardShell({
                 <WizardReviewCard
                   client={selectedClient}
                   template={selectedTemplate}
+                  itineraryInfo={itineraryInfo}
                   selectedAddOnIds={selectedAddOnIds}
                   addOns={addOns as AddOn[]}
                   selectedVehicleId={selectedVehicleId}

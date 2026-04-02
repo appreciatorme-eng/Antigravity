@@ -3,10 +3,12 @@
 import { Pencil, User, Map, Package, Calendar, FileText, Clock } from 'lucide-react';
 import type { Client, TourTemplate, AddOn } from '../_types';
 import type { WizardStepNumber } from '../_hooks/useWizardStep';
+import type { ItineraryInfo } from './WizardShell';
 
 interface WizardReviewCardProps {
   client: Client | null;
   template: TourTemplate | null;
+  itineraryInfo?: ItineraryInfo | null;
   selectedAddOnIds: ReadonlySet<string>;
   addOns: readonly AddOn[];
   selectedVehicleId: string;
@@ -59,6 +61,7 @@ function ReviewSection({
 export function WizardReviewCard({
   client,
   template,
+  itineraryInfo,
   selectedAddOnIds,
   addOns,
   selectedVehicleId,
@@ -98,8 +101,8 @@ export function WizardReviewCard({
         )}
       </ReviewSection>
 
-      {/* Template */}
-      <ReviewSection icon={Map} label="Template" step={2} onEdit={onEditStep}>
+      {/* Template / Itinerary */}
+      <ReviewSection icon={Map} label={itineraryInfo ? 'Itinerary' : 'Template'} step={2} onEdit={onEditStep}>
         {template ? (
           <div className="space-y-1">
             <p className="text-sm font-medium text-[#1b140a]">{template.name}</p>
@@ -115,6 +118,14 @@ export function WizardReviewCard({
                   })}
                 </span>
               )}
+            </div>
+          </div>
+        ) : itineraryInfo ? (
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-[#1b140a]">{itineraryInfo.title}</p>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#6f5b3e]">
+              {itineraryInfo.destination && <span>{itineraryInfo.destination}</span>}
+              {itineraryInfo.duration_days && <span>{itineraryInfo.duration_days} days</span>}
             </div>
           </div>
         ) : (

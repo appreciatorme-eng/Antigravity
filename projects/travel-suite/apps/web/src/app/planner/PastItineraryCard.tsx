@@ -517,7 +517,7 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
             {itinerary.share_code && itinerary.client_id && stage !== "converted" && (
                 <div className="mx-4 mb-2">
                     <Link
-                        href={`/proposals/create?clientId=${encodeURIComponent(itinerary.client_id)}&title=${encodeURIComponent(itinerary.trip_title || itinerary.destination || "")}`}
+                        href={`/proposals/create?clientId=${encodeURIComponent(itinerary.client_id)}&title=${encodeURIComponent(itinerary.trip_title || itinerary.destination || "")}&itineraryId=${encodeURIComponent(itinerary.id)}`}
                         onClick={(e) => e.stopPropagation()}
                         className="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 transition-colors"
                     >

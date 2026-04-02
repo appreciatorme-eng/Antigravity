@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   Loader2,
@@ -17,12 +17,40 @@ import { useCreateProposal } from './_hooks/useCreateProposal';
 import { useWizardStep } from './_hooks/useWizardStep';
 import type { WizardStepNumber } from './_hooks/useWizardStep';
 import type { AddOn } from './_types';
+import type { ItineraryInfo } from './_components/WizardShell';
+import { authedFetch } from '@/lib/api/authed-fetch';
 
 export default function CreateProposalPage() {
   const searchParams = useSearchParams();
   const whatsappDraftId = searchParams.get('whatsappDraft');
   const prefilledClientId = searchParams.get('clientId');
   const prefilledTitle = searchParams.get('title');
+  const itineraryId = searchParams.get('itineraryId') || undefined;
+  const [itineraryInfo, setItineraryInfo] = useState<ItineraryInfo | null>(null);
+
+  // Load itinerary metadata when itineraryId is present
+  useEffect(() => {
+    if (!itineraryId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await authedFetch(`/api/itineraries/${itineraryId}`);
+        if (!res.ok || cancelled) return;
+        const json = await res.json();
+        const d = json?.data ?? json;
+        if (!cancelled) {
+          setItineraryInfo({
+            title: d.trip_title || d.title || 'Untitled',
+            destination: d.destination || null,
+            duration_days: d.duration_days || null,
+          });
+        }
+      } catch {
+        // Best-effort — itinerary info is for display only
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [itineraryId]);
 
   const {
     loading,
@@ -53,8 +81,8 @@ export default function CreateProposalPage() {
   const directionRef = useRef<1 | -1>(1);
   const [direction, setDirection] = useState<1 | -1>(1);
 
-  // Wizard step hook — start at step 2 if client is pre-filled
-  const initialStep: WizardStepNumber = prefilledClientId ? 2 : 1;
+  // Wizard step hook — start at step 3 if itinerary flow, step 2 if client pre-filled
+  const initialStep: WizardStepNumber = itineraryId && prefilledClientId ? 3 : prefilledClientId ? 2 : 1;
   const {
     currentStep,
     nextStep: rawNextStep,
@@ -64,6 +92,7 @@ export default function CreateProposalPage() {
   } = useWizardStep({
     selectedClientId,
     selectedTemplateId,
+    itineraryId,
     initialStep,
   });
 
@@ -116,6 +145,7 @@ export default function CreateProposalPage() {
   const { creating, handleCreateProposal } = useCreateProposal({
     selectedClientId,
     selectedTemplateId,
+    itineraryId,
     proposalTitle,
     expirationDays,
     sendEmail,
@@ -207,6 +237,7 @@ export default function CreateProposalPage() {
         direction={direction}
         creating={creating}
         onCreateProposal={handleCreateProposal}
+        itineraryInfo={itineraryInfo}
         clientSelectorProps={{
           clients,
           selectedClientId,
