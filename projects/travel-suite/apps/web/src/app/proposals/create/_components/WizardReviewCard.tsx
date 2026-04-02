@@ -1,6 +1,7 @@
 'use client';
 
-import { Pencil, User, Map, Package, Calendar, FileText, Clock } from 'lucide-react';
+import { useState } from 'react';
+import { Pencil, User, Map, Package, Calendar, FileText, Clock, IndianRupee, Check, X } from 'lucide-react';
 import type { Client, TourTemplate, AddOn } from '../_types';
 import type { WizardStepNumber } from '../_hooks/useWizardStep';
 import type { ItineraryInfo } from './WizardShell';
@@ -17,20 +18,22 @@ interface WizardReviewCardProps {
   proposalTitle: string;
   expirationDays: number;
   estimatedTotal: number;
+  basePrice: number;
+  onBasePriceChange: (price: number) => void;
   onEditStep: (step: WizardStepNumber) => void;
 }
 
 function ReviewSection({
   icon: Icon,
   label,
-  step,
+  editLabel,
   onEdit,
   children,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
-  step: WizardStepNumber;
-  onEdit: (step: WizardStepNumber) => void;
+  editLabel?: string;
+  onEdit?: () => void;
   children: React.ReactNode;
 }) {
   return (
@@ -43,19 +46,29 @@ function ReviewSection({
           <span className="text-xs font-medium uppercase tracking-wider text-[#bda87f]">
             {label}
           </span>
-          <button
-            type="button"
-            onClick={() => onEdit(step)}
-            className="inline-flex items-center gap-1 text-xs text-[#9c7c46] hover:text-[#8a6d3e] transition-colors h-7 px-2 rounded-md hover:bg-white/60"
-          >
-            <Pencil className="w-3 h-3" />
-            Edit
-          </button>
+          {onEdit && (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="inline-flex items-center gap-1 text-xs text-[#9c7c46] hover:text-[#8a6d3e] transition-colors h-7 px-2 rounded-md hover:bg-white/60"
+            >
+              <Pencil className="w-3 h-3" />
+              {editLabel || 'Edit'}
+            </button>
+          )}
         </div>
         {children}
       </div>
     </div>
   );
+}
+
+function formatINR(amount: number): string {
+  return amount.toLocaleString('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  });
 }
 
 export function WizardReviewCard({
@@ -70,6 +83,8 @@ export function WizardReviewCard({
   proposalTitle,
   expirationDays,
   estimatedTotal,
+  basePrice,
+  onBasePriceChange,
   onEditStep,
 }: WizardReviewCardProps) {
   const selectedExtras = addOns.filter(
@@ -78,10 +93,25 @@ export function WizardReviewCard({
   const extrasTotal = selectedExtras.reduce((sum, a) => sum + (Number(a.price) || 0), 0);
   const hasDates = tripStartDate && tripEndDate;
 
+  // Inline editing states
+  const [editingPrice, setEditingPrice] = useState(false);
+  const [priceInput, setPriceInput] = useState(String(basePrice || ''));
+
+  const handleSavePrice = () => {
+    const parsed = parseInt(priceInput.replace(/[^0-9]/g, ''), 10);
+    onBasePriceChange(Number.isFinite(parsed) && parsed >= 0 ? parsed : 0);
+    setEditingPrice(false);
+  };
+
+  const handleCancelPrice = () => {
+    setPriceInput(String(basePrice || ''));
+    setEditingPrice(false);
+  };
+
   return (
     <div className="space-y-3">
       {/* Client */}
-      <ReviewSection icon={User} label="Client" step={1} onEdit={onEditStep}>
+      <ReviewSection icon={User} label="Client" onEdit={() => onEditStep(1)}>
         {client ? (
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-full bg-[#9c7c46] flex items-center justify-center text-white text-sm font-semibold shrink-0">
@@ -102,22 +132,17 @@ export function WizardReviewCard({
       </ReviewSection>
 
       {/* Template / Itinerary */}
-      <ReviewSection icon={Map} label={itineraryInfo ? 'Itinerary' : 'Template'} step={2} onEdit={onEditStep}>
+      <ReviewSection
+        icon={Map}
+        label={itineraryInfo ? 'Itinerary' : 'Template'}
+        onEdit={itineraryInfo ? undefined : () => onEditStep(2)}
+      >
         {template ? (
           <div className="space-y-1">
             <p className="text-sm font-medium text-[#1b140a]">{template.name}</p>
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#6f5b3e]">
               {template.destination && <span>{template.destination}</span>}
               {template.duration_days && <span>{template.duration_days} days</span>}
-              {template.base_price != null && (
-                <span>
-                  {Number(template.base_price).toLocaleString('en-IN', {
-                    style: 'currency',
-                    currency: 'INR',
-                    maximumFractionDigits: 0,
-                  })}
-                </span>
-              )}
             </div>
           </div>
         ) : itineraryInfo ? (
@@ -133,9 +158,55 @@ export function WizardReviewCard({
         )}
       </ReviewSection>
 
+      {/* Base Price — inline editable */}
+      <ReviewSection
+        icon={IndianRupee}
+        label="Base Price"
+        editLabel={editingPrice ? undefined : 'Set Price'}
+        onEdit={editingPrice ? undefined : () => { setPriceInput(String(basePrice || '')); setEditingPrice(true); }}
+      >
+        {editingPrice ? (
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#6f5b3e]">₹</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={priceInput}
+                onChange={(e) => setPriceInput(e.target.value.replace(/[^0-9]/g, ''))}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSavePrice(); if (e.key === 'Escape') handleCancelPrice(); }}
+                className="w-full bg-white border border-[#eadfcd] rounded-lg pl-7 pr-3 py-2 text-sm text-[#1b140a] focus:outline-none focus:border-[#9c7c46] focus:ring-1 focus:ring-[#9c7c46]"
+                placeholder="Enter base price"
+                autoFocus
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handleSavePrice}
+              className="w-8 h-8 rounded-lg bg-[#9c7c46] text-white flex items-center justify-center hover:bg-[#8a6d3e] transition-colors"
+            >
+              <Check className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={handleCancelPrice}
+              className="w-8 h-8 rounded-lg bg-white border border-[#eadfcd] text-[#6f5b3e] flex items-center justify-center hover:bg-gray-50 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          <p className="text-sm font-medium text-[#1b140a]">
+            {basePrice > 0 ? formatINR(basePrice) : (
+              <span className="text-[#9c7c46] italic">Tap &quot;Set Price&quot; to add base price</span>
+            )}
+          </p>
+        )}
+      </ReviewSection>
+
       {/* Travel dates */}
       {hasDates && (
-        <ReviewSection icon={Calendar} label="Travel Dates" step={2} onEdit={onEditStep}>
+        <ReviewSection icon={Calendar} label="Travel Dates" onEdit={() => onEditStep(2)}>
           <p className="text-sm text-[#1b140a]">
             {tripStartDate} to {tripEndDate}
           </p>
@@ -143,19 +214,19 @@ export function WizardReviewCard({
       )}
 
       {/* Extras */}
-      <ReviewSection icon={Package} label="Extras" step={3} onEdit={onEditStep}>
+      <ReviewSection icon={Package} label="Extras" onEdit={() => onEditStep(3)}>
         {selectedExtras.length > 0 ? (
-          <div className="space-y-1">
-            <p className="text-sm text-[#1b140a]">
-              {selectedExtras.length} item{selectedExtras.length !== 1 ? 's' : ''} selected
-            </p>
-            <p className="text-xs text-[#6f5b3e]">
-              +{extrasTotal.toLocaleString('en-IN', {
-                style: 'currency',
-                currency: 'INR',
-                maximumFractionDigits: 0,
-              })}
-            </p>
+          <div className="space-y-1.5">
+            {selectedExtras.map((addon) => (
+              <div key={addon.id} className="flex items-center justify-between text-xs">
+                <span className="text-[#1b140a]">{addon.name}</span>
+                <span className="text-[#6f5b3e] tabular-nums">{formatINR(Number(addon.price) || 0)}</span>
+              </div>
+            ))}
+            <div className="flex items-center justify-between text-xs font-medium pt-1 border-t border-[#eadfcd]">
+              <span className="text-[#6f5b3e]">Extras subtotal</span>
+              <span className="text-[#1b140a]">{formatINR(extrasTotal)}</span>
+            </div>
           </div>
         ) : (
           <p className="text-sm text-[#6f5b3e]">No extras selected</p>
@@ -163,7 +234,7 @@ export function WizardReviewCard({
       </ReviewSection>
 
       {/* Proposal settings */}
-      <ReviewSection icon={FileText} label="Proposal" step={4} onEdit={onEditStep}>
+      <ReviewSection icon={FileText} label="Proposal">
         <div className="space-y-1">
           {proposalTitle && (
             <p className="text-sm font-medium text-[#1b140a] truncate">{proposalTitle}</p>
@@ -182,13 +253,14 @@ export function WizardReviewCard({
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-[#6f5b3e]">Estimated Total</span>
           <span className="text-xl font-bold text-[#1b140a]">
-            {estimatedTotal.toLocaleString('en-IN', {
-              style: 'currency',
-              currency: 'INR',
-              maximumFractionDigits: 0,
-            })}
+            {formatINR(estimatedTotal)}
           </span>
         </div>
+        {basePrice > 0 && extrasTotal > 0 && (
+          <p className="text-[10px] text-[#bda87f] text-right mt-1">
+            Base {formatINR(basePrice)} + Extras {formatINR(extrasTotal)}
+          </p>
+        )}
       </div>
     </div>
   );

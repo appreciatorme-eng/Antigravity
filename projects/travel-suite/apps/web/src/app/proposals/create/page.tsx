@@ -37,10 +37,10 @@ export default function CreateProposalPage() {
         const res = await authedFetch(`/api/itineraries/${itineraryId}`);
         if (!res.ok || cancelled) return;
         const json = await res.json();
-        const d = json?.data ?? json;
+        const d = json?.itinerary ?? json?.data ?? json;
         if (!cancelled) {
           setItineraryInfo({
-            title: d.trip_title || d.title || 'Untitled',
+            title: d.trip_title || d.title || prefilledTitle || 'Untitled',
             destination: d.destination || null,
             duration_days: d.duration_days || null,
           });
@@ -76,6 +76,7 @@ export default function CreateProposalPage() {
   const [tripEndDate, setTripEndDate] = useState('');
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>('');
   const [selectedAddOnIds, setSelectedAddOnIds] = useState<Set<string>>(new Set());
+  const [basePrice, setBasePrice] = useState<number>(0);
 
   // Direction tracking for slide animations
   const directionRef = useRef<1 | -1>(1);
@@ -213,7 +214,9 @@ export default function CreateProposalPage() {
   const selectedTemplate = templates.find((t) => t.id === selectedTemplateId) ?? null;
   const selectedClient = clients.find((c) => c.id === selectedClientId) ?? null;
   const selectedExtrasTotal = computeExtrasTotal(addOns, selectedAddOnIds, selectedVehicleId);
-  const estimatedTotal = (selectedTemplate?.base_price || 0) + selectedExtrasTotal;
+  const templateBasePrice = selectedTemplate?.base_price || 0;
+  const effectiveBasePrice = basePrice || templateBasePrice;
+  const estimatedTotal = effectiveBasePrice + selectedExtrasTotal;
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -297,6 +300,8 @@ export default function CreateProposalPage() {
         expirationDays={expirationDays}
         estimatedTotal={estimatedTotal}
         hasAddOns={addOns.length > 0}
+        basePrice={basePrice}
+        onBasePriceChange={setBasePrice}
       />
     </div>
   );

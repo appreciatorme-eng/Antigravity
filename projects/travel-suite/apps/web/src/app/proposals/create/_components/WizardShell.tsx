@@ -74,6 +74,9 @@ interface WizardShellProps {
   hasAddOns: boolean;
   // Itinerary info (when creating from itinerary instead of template)
   itineraryInfo?: ItineraryInfo | null;
+  // Base price for the proposal
+  basePrice: number;
+  onBasePriceChange: (price: number) => void;
 }
 
 export function WizardShell({
@@ -101,6 +104,8 @@ export function WizardShell({
   estimatedTotal,
   hasAddOns,
   itineraryInfo,
+  basePrice,
+  onBasePriceChange,
 }: WizardShellProps) {
   const handleSkipExtras = useCallback(() => {
     goToStep(4);
@@ -194,6 +199,8 @@ export function WizardShell({
                   proposalTitle={proposalTitle}
                   expirationDays={expirationDays}
                   estimatedTotal={estimatedTotal}
+                  basePrice={basePrice}
+                  onBasePriceChange={onBasePriceChange}
                   onEditStep={handleEditStep}
                 />
               </div>

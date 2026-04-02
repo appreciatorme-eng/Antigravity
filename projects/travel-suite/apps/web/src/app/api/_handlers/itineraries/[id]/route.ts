@@ -3,7 +3,7 @@ import { apiError } from "@/lib/api/response";
 import { createClient } from "@/lib/supabase/server";
 import { logError } from "@/lib/observability/logger";
 
-const ITINERARY_DETAIL_SELECT = "id, user_id, client_id, budget, raw_data, created_at, updated_at";
+const ITINERARY_DETAIL_SELECT = "id, user_id, client_id, trip_title, destination, duration_days, budget, raw_data, created_at, updated_at";
 
 export async function GET(
     request: Request,
