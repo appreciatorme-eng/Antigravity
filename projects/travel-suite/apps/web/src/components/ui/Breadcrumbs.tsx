@@ -10,6 +10,19 @@ const PATH_REDIRECTS: Record<string, string> = {
     "/dashboard": "/",
 };
 
+/** UUID v4 pattern — raw IDs are meaningless to users, replace with context-aware labels. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Map parent path segment → friendly label for UUID children. */
+const ENTITY_LABELS: Record<string, string> = {
+    clients: "Client Details",
+    trips: "Trip Details",
+    proposals: "Proposal Details",
+    bookings: "Booking Details",
+    drivers: "Driver Details",
+    invoices: "Invoice Details",
+};
+
 export function Breadcrumbs({ className }: { className?: string }) {
     const pathname = usePathname();
     if (!pathname || pathname === "/") return null;
@@ -31,8 +44,11 @@ export function Breadcrumbs({ className }: { className?: string }) {
                 const href = PATH_REDIRECTS[rawHref] ?? rawHref;
                 const isLast = idx === paths.length - 1;
 
-                // Capitalize and remove hyphens
-                const formattedPath = path.charAt(0).toUpperCase() + path.slice(1).replace(/-/g, " ");
+                // Replace raw UUIDs with context-aware labels; capitalize others
+                const parentSegment = idx > 0 ? paths[idx - 1] : "";
+                const formattedPath = UUID_RE.test(path)
+                    ? (ENTITY_LABELS[parentSegment] || "Details")
+                    : path.charAt(0).toUpperCase() + path.slice(1).replace(/-/g, " ");
 
                 return (
                     <div key={path} className="flex items-center">
