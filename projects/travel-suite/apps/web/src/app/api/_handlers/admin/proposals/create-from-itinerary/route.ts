@@ -17,6 +17,7 @@ const CreateFromItinerarySchema = z.object({
   clientId: z.string().uuid(),
   proposalTitle: z.string().trim().min(1).max(160).optional(),
   expirationDays: z.coerce.number().int().min(0).max(365).default(14),
+  basePrice: z.coerce.number().min(0).default(0),
   selectedVehicleId: z.string().uuid().optional().nullable(),
   selectedAddOnIds: z.array(z.string().uuid()).default([]),
 });
@@ -84,6 +85,7 @@ export async function POST(req: NextRequest) {
       clientId,
       proposalTitle,
       expirationDays,
+      basePrice,
       selectedVehicleId,
       selectedAddOnIds,
     } = parsed.data;
@@ -108,6 +110,23 @@ export async function POST(req: NextRequest) {
 
     if (!clientProfile || clientProfile.organization_id !== admin.organizationId) {
       return apiError("Client not found in your organization", 404);
+    }
+
+    // 2b. Ensure client row exists in the `clients` table (RPC references it)
+    const { error: clientUpsertError } = await admin.adminClient
+      .from("clients")
+      .upsert(
+        {
+          id: clientId,
+          organization_id: admin.organizationId,
+          user_id: clientId,
+        },
+        { onConflict: "id" }
+      );
+
+    if (clientUpsertError) {
+      logError("Failed to ensure client record", clientUpsertError);
+      return apiError("Failed to prepare client record", 500);
     }
 
     // 3. Check proposal feature limits
@@ -142,7 +161,7 @@ export async function POST(req: NextRequest) {
         name: itinerary.trip_title || "Untitled Itinerary",
         destination: itinerary.destination || null,
         duration_days: itinerary.duration_days || null,
-        base_price: 0,
+        base_price: basePrice || 0,
         organization_id: admin.organizationId,
         created_by: admin.userId,
         status: "active",

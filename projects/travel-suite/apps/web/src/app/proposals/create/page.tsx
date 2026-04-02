@@ -50,7 +50,7 @@ export default function CreateProposalPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, [itineraryId]);
+  }, [itineraryId, prefilledTitle]);
 
   const {
     loading,
@@ -154,6 +154,7 @@ export default function CreateProposalPage() {
     selectedAddOnIds,
     tripStartDate,
     tripEndDate,
+    basePrice,
     availabilityConflicts: availability.conflicts,
     availabilityOverrideAccepted: availability.overrideAccepted,
     proposalLimit,

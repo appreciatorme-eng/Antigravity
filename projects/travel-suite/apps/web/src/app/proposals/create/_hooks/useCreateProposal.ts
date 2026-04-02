@@ -19,6 +19,7 @@ export interface CreateProposalParams {
   readonly selectedAddOnIds: ReadonlySet<string>;
   readonly tripStartDate: string;
   readonly tripEndDate: string;
+  readonly basePrice: number;
   readonly availabilityConflicts: readonly { id: string }[];
   readonly availabilityOverrideAccepted: boolean;
   readonly proposalLimit: FeatureLimitSnapshot | null;
@@ -50,6 +51,7 @@ export function useCreateProposal(params: CreateProposalParams): UseCreatePropos
       selectedAddOnIds,
       tripStartDate,
       tripEndDate,
+      basePrice,
       availabilityConflicts,
       availabilityOverrideAccepted,
       proposalLimit,
@@ -124,6 +126,7 @@ export function useCreateProposal(params: CreateProposalParams): UseCreatePropos
             clientId: selectedClientId,
             proposalTitle: proposalTitle || undefined,
             expirationDays,
+            basePrice: basePrice || 0,
             selectedVehicleId: selectedVehicleId || null,
             selectedAddOnIds: Array.from(selectedAddOnIds),
           }
@@ -132,6 +135,7 @@ export function useCreateProposal(params: CreateProposalParams): UseCreatePropos
             clientId: selectedClientId,
             proposalTitle: proposalTitle || undefined,
             expirationDays,
+            basePrice: basePrice || 0,
             selectedVehicleId: selectedVehicleId || null,
             selectedAddOnIds: Array.from(selectedAddOnIds),
           };
