@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
-import { Copy, Check, Clock, MapPin, Search, UserPlus, Plus, Loader2, Eye } from "lucide-react";
+import { Copy, Check, Clock, MapPin, Search, UserPlus, Plus, Loader2, Eye, FileText } from "lucide-react";
+import Link from "next/link";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { getDeterministicFallback } from "@/lib/image-search";
@@ -509,6 +510,21 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
                             Last viewed {relativeTime(itinerary.viewed_at)}
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* Create Proposal CTA — show when shared with client but not yet converted */}
+            {itinerary.share_code && itinerary.client_id && stage !== "converted" && (
+                <div className="mx-4 mb-2">
+                    <Link
+                        href={`/proposals/create?clientId=${encodeURIComponent(itinerary.client_id)}&title=${encodeURIComponent(itinerary.trip_title || itinerary.destination || "")}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 transition-colors"
+                    >
+                        <FileText className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+                        <span className="text-[11px] font-semibold text-violet-300">Create Proposal</span>
+                        <span className="text-[10px] text-violet-400/70 ml-auto">Add pricing & close the deal</span>
+                    </Link>
                 </div>
             )}
 

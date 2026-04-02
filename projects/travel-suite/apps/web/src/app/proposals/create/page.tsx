@@ -25,6 +25,8 @@ import type { AddOn } from './_types';
 export default function CreateProposalPage() {
   const searchParams = useSearchParams();
   const whatsappDraftId = searchParams.get('whatsappDraft');
+  const prefilledClientId = searchParams.get('clientId');
+  const prefilledTitle = searchParams.get('title');
 
   const {
     loading,
@@ -41,9 +43,9 @@ export default function CreateProposalPage() {
     addClient,
   } = useProposalData();
 
-  const [selectedClientId, setSelectedClientId] = useState<string>('');
+  const [selectedClientId, setSelectedClientId] = useState<string>(prefilledClientId || '');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
-  const [proposalTitle, setProposalTitle] = useState('');
+  const [proposalTitle, setProposalTitle] = useState(prefilledTitle || '');
   const [expirationDays, setExpirationDays] = useState(14);
   const [sendEmail, setSendEmail] = useState(true);
   const [tripStartDate, setTripStartDate] = useState('');
