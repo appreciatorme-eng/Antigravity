@@ -18,7 +18,6 @@ import {
 import { cn } from '@/lib/utils'
 import {
   avatarColor,
-  DEFAULT_TRAVELERS,
   DIETARY_COLORS,
   DIETARY_OPTIONS,
   type DietaryPreference,
@@ -47,12 +46,12 @@ export function GroupManager({ tripId, tripName }: GroupManagerProps) {
   const storageKey = `group-${tripId}`
 
   const [travelers, setTravelers] = useState<Traveler[]>(() => {
-    if (typeof window === 'undefined') return DEFAULT_TRAVELERS
+    if (typeof window === 'undefined') return []
     try {
       const saved = localStorage.getItem(storageKey)
-      return saved ? (JSON.parse(saved) as Traveler[]) : DEFAULT_TRAVELERS
+      return saved ? (JSON.parse(saved) as Traveler[]) : []
     } catch {
-      return DEFAULT_TRAVELERS
+      return []
     }
   })
 
