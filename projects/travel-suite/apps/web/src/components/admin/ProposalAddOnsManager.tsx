@@ -61,6 +61,15 @@ const getCategoryColor = (category: string) => {
 
 const isTransportCategory = (category: string) => category.trim().toLowerCase() === 'transport';
 
+/** Convert /unsplash-img/ proxy paths back to full Unsplash URLs for next/image optimization */
+function resolveImageUrl(url: string | null): string | null {
+  if (!url) return null;
+  if (url.startsWith('/unsplash-img/')) {
+    return `https://images.unsplash.com/${url.replace('/unsplash-img/', '')}`;
+  }
+  return url;
+}
+
 export default function ProposalAddOnsManager({
   proposalId,
   readonly = false,
@@ -349,12 +358,13 @@ export default function ProposalAddOnsManager({
           {proposalAddOns.map((proposalAddOn) => (
             <GlassCard key={proposalAddOn.id} padding="lg" rounded="xl">
               <div className="flex items-start gap-4">
-                {proposalAddOn.image_url ? (
-                  <div className="w-20 h-20 rounded-lg overflow-hidden relative">
+                {resolveImageUrl(proposalAddOn.image_url) ? (
+                  <div className="w-20 h-20 rounded-lg overflow-hidden relative flex-shrink-0">
                     <Image
-                      src={proposalAddOn.image_url}
+                      src={resolveImageUrl(proposalAddOn.image_url)!}
                       alt={proposalAddOn.name}
                       fill
+                      sizes="80px"
                       className="object-cover"
                     />
                   </div>
