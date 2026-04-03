@@ -120,6 +120,41 @@ export async function GET(req: NextRequest) {
       };
     });
 
+    // Include standalone expenses (no trip_id) for this month
+    const { data: standaloneCosts } = await db
+      .from("trip_service_costs")
+      .select(TRIP_SERVICE_COST_SELECT)
+      .eq("organization_id", orgId)
+      .is("trip_id", null)
+      .gte("expense_date", monthStart)
+      .lt("expense_date", nextMonth);
+
+    const standaloneRows = (standaloneCosts || []) as unknown as TripServiceCostRow[];
+    if (standaloneRows.length > 0) {
+      const standaloneTotalCost = standaloneRows.reduce((s: number, c: TripServiceCostRow) => s + Number(c.cost_amount), 0);
+      const standaloneTotalPrice = standaloneRows.reduce((s: number, c: TripServiceCostRow) => s + Number(c.price_amount), 0);
+      const standaloneTotalCommission = standaloneRows.reduce((s: number, c: TripServiceCostRow) => s + Number(c.commission_amount || 0), 0);
+      trips.push({
+        id: "standalone",
+        title: "Standalone Expenses",
+        destination: null,
+        start_date: monthStart,
+        end_date: null,
+        status: "standalone",
+        pax_count: 1,
+        client_name: null,
+        costs: standaloneRows,
+        totalCost: standaloneTotalCost,
+        totalPrice: standaloneTotalPrice,
+        profit: standaloneTotalPrice - standaloneTotalCost,
+        totalCommission: standaloneTotalCommission,
+        gstPct: 0,
+        tcsPct: 0,
+        gstAmount: 0,
+        tcsAmount: 0,
+      });
+    }
+
     return NextResponse.json({ trips });
   } catch (error) {
     logError("[/api/admin/pricing/trips:GET] Unhandled error", error);

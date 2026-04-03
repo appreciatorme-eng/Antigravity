@@ -25,6 +25,7 @@ const STATUS_VARIANT: Record<string, "success" | "info" | "warning" | "danger" |
   planned: "warning",
   pending: "warning",
   cancelled: "danger",
+  standalone: "default",
 };
 
 export function MonthlyTripTable({ trips, onCostSaved, fetchVendorHistory }: MonthlyTripTableProps) {
@@ -139,13 +140,19 @@ export function MonthlyTripTable({ trips, onCostSaved, fetchVendorHistory }: Mon
                   animate={{ opacity: 1 }}
                 >
                   <td className="sticky left-0 bg-white/90 z-10 px-4 py-3 whitespace-nowrap">
-                    <Link
-                      href={`/trips/${trip.id}`}
-                      className="text-sm font-semibold text-secondary hover:text-primary transition-colors"
-                    >
-                      {trip.title || "Untitled"}
-                    </Link>
-                    {trip.start_date && (
+                    {trip.id === "standalone" ? (
+                      <span className="text-sm font-semibold text-text-muted italic">
+                        {trip.title}
+                      </span>
+                    ) : (
+                      <Link
+                        href={`/trips/${trip.id}`}
+                        className="text-sm font-semibold text-secondary hover:text-primary transition-colors"
+                      >
+                        {trip.title || "Untitled"}
+                      </Link>
+                    )}
+                    {trip.start_date && trip.id !== "standalone" && (
                       <p className="text-[10px] text-text-muted">
                         {new Date(trip.start_date).toLocaleDateString("en-IN", {
                           day: "numeric", month: "short",
