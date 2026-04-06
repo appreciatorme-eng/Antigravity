@@ -182,7 +182,7 @@ export async function POST(req: Request) {
                 { role: 'system', content: groqSystemPrompt },
                 { role: 'user', content: `Extract the itinerary from this raw website text:\n\n${truncatedText}` }
             ],
-            model: 'llama3-70b-8192', // Use 70b as it is far smarter at layout extraction than 8b
+            model: 'llama-3.3-70b-versatile', // llama3-70b-8192 deprecated by Groq
             temperature: 0.1,
             max_completion_tokens: 8000,
             response_format: { type: 'json_object' }
