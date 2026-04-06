@@ -360,20 +360,23 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
         }
     };
 
+    const parseImportText = async (): Promise<ItineraryResult | null> => {
+        const res = await authedFetch("/api/itinerary/import/text", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: importText }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to parse text");
+        return data.itinerary as ItineraryResult;
+    };
+
     const handleImportText = async () => {
         if (!importText) return;
         setIsGenerating(true);
         try {
-            const res = await authedFetch("/api/itinerary/import/text", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text: importText }),
-            });
-
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || "Failed to parse text");
-
-            setGeneratedData(data.itinerary as ItineraryResult);
+            const itinerary = await parseImportText();
+            setGeneratedData(itinerary);
         } catch (error) {
             logError("Text import error", error);
             toast({
@@ -406,6 +409,28 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
 
         setCreating(true);
         try {
+            // Auto-parse if user clicked Create Trip without explicitly parsing text first
+            let resolvedData = generatedData;
+            if (!resolvedData && importMode === "text" && importText.trim().length >= 50) {
+                try {
+                    setIsGenerating(true);
+                    resolvedData = await parseImportText();
+                    setGeneratedData(resolvedData);
+                } catch (error) {
+                    logError("Auto-parse on create error", error);
+                    toast({
+                        title: "Text parsing failed",
+                        description: error instanceof Error ? error.message : "Could not extract itinerary from the pasted text.",
+                        variant: "error",
+                    });
+                    setCreating(false);
+                    setIsGenerating(false);
+                    return;
+                } finally {
+                    setIsGenerating(false);
+                }
+            }
+
             const response = await authedFetch("/api/admin/trips", {
                 method: "POST",
                 headers: {
@@ -416,11 +441,11 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
                     startDate,
                     endDate,
                     itinerary: {
-                        trip_title: generatedData?.trip_title || "New Trip",
-                        destination: generatedData?.destination || "TBD",
-                        summary: generatedData?.summary || "",
-                        duration_days: generatedData?.days?.length || 1,
-                        raw_data: { days: generatedData?.days || [] },
+                        trip_title: resolvedData?.trip_title || "New Trip",
+                        destination: resolvedData?.destination || "TBD",
+                        summary: resolvedData?.summary || "",
+                        duration_days: resolvedData?.days?.length || 1,
+                        raw_data: { days: resolvedData?.days || [] },
                     },
                 }),
             });
