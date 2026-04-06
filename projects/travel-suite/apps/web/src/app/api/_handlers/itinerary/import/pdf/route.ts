@@ -45,32 +45,12 @@ Return ONLY valid raw JSON and absolutely nothing else.
 Note: For coordinates, if you know the exact lat/lng of the tourist attraction, provide it. Otherwise provide the coordinates of the destination city or generic 0,0.`;
 
 async function extractPdfText(buffer: Buffer): Promise<string> {
-    // Dynamic import to ensure it runs in the correct serverless context
-    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
-
-    const data = new Uint8Array(buffer);
-    const loadingTask = pdfjsLib.getDocument({
-        data,
-        useSystemFonts: false,
-        disableFontFace: true,
-        isEvalSupported: false,
-    });
-
-    const pdf = await loadingTask.promise;
-    const textParts: string[] = [];
-
-    for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const textContent = await page.getTextContent();
-        const pageText = textContent.items
-            .map((item: Record<string, unknown>) => typeof item.str === 'string' ? item.str : '')
-            .join(' ');
-        textParts.push(pageText);
-        page.cleanup();
-    }
-
-    await pdf.destroy();
-    return textParts.join('\n').replace(/\s+/g, ' ').trim();
+    // Dynamic import avoids module-level initialization errors in serverless
+    const { PDFParse } = await import('pdf-parse');
+    const parser = new PDFParse({ data: new Uint8Array(buffer) });
+    const result = await parser.getText();
+    await parser.destroy();
+    return result.text.replace(/\s+/g, ' ').trim();
 }
 
 export async function POST(req: Request) {
@@ -118,7 +98,7 @@ export async function POST(req: Request) {
         const arrayBuffer = await file.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
 
-        // Parse text from PDF using pdfjs-dist directly
+        // Parse text from PDF (dynamic import keeps errors catchable)
         const rawText = await extractPdfText(buffer);
 
         if (!rawText || rawText.length < 50) {
