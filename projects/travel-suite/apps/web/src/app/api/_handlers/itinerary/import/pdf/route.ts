@@ -47,6 +47,8 @@ Note: For coordinates, if you know the exact lat/lng of the tourist attraction, 
 async function extractPdfText(buffer: Buffer): Promise<string> {
     // Dynamic import avoids module-level initialization errors in serverless
     const { PDFParse } = await import('pdf-parse');
+    // Disable worker thread — required for Vercel serverless (no Worker support)
+    PDFParse.setWorker('');
     const parser = new PDFParse({ data: new Uint8Array(buffer) });
     const result = await parser.getText();
     await parser.destroy();
