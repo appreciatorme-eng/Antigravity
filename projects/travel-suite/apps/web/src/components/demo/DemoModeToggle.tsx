@@ -22,7 +22,9 @@ export default function DemoModeToggle({ className }: { className?: string }) {
     setLocalMounted(true);
   }, []);
 
-  if (DEMO_DISABLED_IN_PRODUCTION) {
+  // Always render the escape hatch when demo mode is currently ON,
+  // even in production — user must be able to get out.
+  if (DEMO_DISABLED_IN_PRODUCTION && !isDemoMode) {
     return null;
   }
 

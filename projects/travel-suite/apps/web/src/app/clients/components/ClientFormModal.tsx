@@ -8,6 +8,7 @@ import { Languages } from "lucide-react";
 import { GlassModal } from "@/components/glass/GlassModal";
 import { GlassInput } from "@/components/glass/GlassInput";
 import { GlassButton } from "@/components/glass/GlassButton";
+import { useDemoMode } from "@/lib/demo/demo-mode-context";
 import {
     type ClientFormData,
     LIFECYCLE_STAGES,
@@ -36,6 +37,7 @@ export function ClientFormModal({
     formError,
     onSave,
 }: ClientFormModalProps) {
+    const { isDemoMode, toggleDemoMode } = useDemoMode();
     return (
         <GlassModal
             isOpen={isOpen}
@@ -165,8 +167,16 @@ export function ClientFormModal({
                 </div>
 
                 {formError && (
-                    <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800">
+                    <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 flex items-center justify-between gap-3">
                         <p className="text-xs font-bold text-rose-600 dark:text-rose-400">{formError}</p>
+                        {isDemoMode && (
+                            <button
+                                onClick={toggleDemoMode}
+                                className="shrink-0 text-xs font-bold text-rose-600 dark:text-rose-400 underline underline-offset-2 hover:text-rose-800 dark:hover:text-rose-200 transition-colors"
+                            >
+                                Turn off
+                            </button>
+                        )}
                     </div>
                 )}
             </div>

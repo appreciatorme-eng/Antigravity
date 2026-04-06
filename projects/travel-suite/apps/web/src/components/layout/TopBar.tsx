@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useDemoMode } from "@/lib/demo/demo-mode-context";
 import { Search, Command, HelpCircle, X } from "lucide-react";
 import { ThemeToggleButton } from "@/components/ThemeToggle";
 import DemoModeToggle from "@/components/demo/DemoModeToggle";
@@ -48,6 +49,7 @@ export default function TopBar({ className }: TopBarProps) {
     const isFetching = useIsFetching();
     const istTime = useISTClock();
     const search = useGlobalSearch();
+    const { isDemoMode } = useDemoMode();
     const showDesktopResults = searchFocused && search.query.trim().length > 0;
 
     // Focus mobile search input when overlay opens
@@ -175,8 +177,8 @@ export default function TopBar({ className }: TopBarProps) {
 
                     {/* ── Actions ── */}
                     <div className="flex items-center gap-1 md:gap-2">
-                        {/* Demo Mode Toggle — desktop only */}
-                        <div className="hidden md:block">
+                        {/* Demo Mode Toggle — always visible when demo is ON (escape hatch), desktop-only otherwise */}
+                        <div className={isDemoMode ? "block" : "hidden md:block"}>
                             <DemoModeToggle />
                         </div>
 
