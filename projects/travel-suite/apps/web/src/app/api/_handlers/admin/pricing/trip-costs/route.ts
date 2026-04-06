@@ -11,6 +11,7 @@ type TripServiceCostRow = Database["public"]["Tables"]["trip_service_costs"]["Ro
 
 const CreateSchema = z.object({
   trip_id: z.string().uuid().nullable().optional(),
+  trip_name: z.string().nullable().optional(),
   category: z.enum(["hotels", "vehicle", "flights", "visa", "insurance", "train", "bus", "other"]),
   vendor_name: z.string().nullable().optional(),
   description: z.string().nullable().optional(),

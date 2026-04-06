@@ -6475,6 +6475,7 @@ export type Database = {
           pax_count: number | null
           price_amount: number | null
           trip_id: string | null
+          trip_name: string | null
           updated_at: string | null
           vendor_name: string | null
         }
@@ -6494,6 +6495,7 @@ export type Database = {
           pax_count?: number | null
           price_amount?: number | null
           trip_id?: string | null
+          trip_name?: string | null
           updated_at?: string | null
           vendor_name?: string | null
         }
@@ -6513,6 +6515,7 @@ export type Database = {
           pax_count?: number | null
           price_amount?: number | null
           trip_id?: string | null
+          trip_name?: string | null
           updated_at?: string | null
           vendor_name?: string | null
         }

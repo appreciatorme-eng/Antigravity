@@ -158,6 +158,7 @@ export function QuickExpenseEditor({
     try {
       const payload = {
         trip_id: selectedTrip?.id ?? null,
+        trip_name: selectedTrip ? null : (tripSearch.trim() || null),
         category,
         vendor_name: vendorName || null,
         cost_amount: cost,
@@ -233,6 +234,9 @@ export function QuickExpenseEditor({
               className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/80 border border-white/20 text-secondary placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/50 shadow-sm"
             />
           </div>
+          {!selectedTrip && tripSearch.trim().length > 0 && !showTripDropdown && (
+            <p className="mt-1 text-xs text-text-muted">Will save as custom trip name</p>
+          )}
           {showTripDropdown && tripOptions.length > 0 && (
             <div className="absolute z-20 mt-1 w-full bg-white rounded-xl border border-gray-200 shadow-lg max-h-56 overflow-y-auto">
               {loadingTrips && (

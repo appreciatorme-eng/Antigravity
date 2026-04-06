@@ -10,6 +10,7 @@ import { logError } from "@/lib/observability/logger";
 type CostRow = {
   id: string;
   trip_id: string | null;
+  trip_name: string | null;
   category: string;
   vendor_name: string | null;
   description: string | null;
@@ -56,7 +57,7 @@ export async function GET(req: NextRequest) {
 
     let query = db
       .from("trip_service_costs")
-      .select("id, trip_id, category, vendor_name, description, pax_count, cost_amount, price_amount, commission_pct, commission_amount, currency, notes, created_at")
+      .select("id, trip_id, trip_name, category, vendor_name, description, pax_count, cost_amount, price_amount, commission_pct, commission_amount, currency, notes, created_at")
       .eq("organization_id", orgId);
 
     if (category && category !== "all") {
@@ -123,7 +124,7 @@ export async function GET(req: NextRequest) {
       return {
         id: cost.id,
         trip_id: cost.trip_id,
-        trip_name: trip?.name || (cost.trip_id ? "Unknown Trip" : "Standalone"),
+        trip_name: trip?.name || cost.trip_name || (cost.trip_id ? "Unknown Trip" : "Standalone"),
         destination: trip?.destination ?? null,
         client_name: clientName,
         start_date: trip?.start_date ?? cost.created_at,
