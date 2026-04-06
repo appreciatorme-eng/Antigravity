@@ -10,6 +10,8 @@ import { enforceRateLimit } from '@/lib/security/rate-limit';
 import { safeErrorMessage } from '@/lib/security/safe-error';
 import { logError } from "@/lib/observability/logger";
 
+export const maxDuration = 30;
+
 function isPrivateIp(address: string): boolean {
     const normalized = address.trim().toLowerCase();
     const version = net.isIP(normalized);
@@ -148,11 +150,12 @@ export async function POST(req: Request) {
 
         // 1. Fetch & parse HTML
         const response = await fetch(url, {
+            redirect: 'follow',
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
             },
-            signal: AbortSignal.timeout(10000)
+            signal: AbortSignal.timeout(25000)
         });
 
         if (!response.ok) {
@@ -197,6 +200,9 @@ export async function POST(req: Request) {
 
     } catch (error: unknown) {
         logError("URL Import Error", error);
+        if (error instanceof Error && error.name === 'AbortError') {
+            return apiError('The URL took too long to respond. Try again or check the URL.', 408);
+        }
         const message = safeErrorMessage(error, "Request failed");
         return apiError(message, 500);
     }
