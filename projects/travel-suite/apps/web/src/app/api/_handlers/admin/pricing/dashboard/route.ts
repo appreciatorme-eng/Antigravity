@@ -10,7 +10,7 @@ const QuerySchema = z.object({
 });
 
 type TripRow = Database['public']['Tables']['trips']['Row'];
-type CostRow = { trip_id: string | null; category: string; cost_amount: number; price_amount: number; commission_amount: number };
+type CostRow = { trip_id: string | null; trip_name: string | null; category: string; cost_amount: number; price_amount: number; commission_amount: number };
 type OverheadAmountRow = { amount: number | null };
 
 export async function GET(req: NextRequest) {
@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
     // Fetch standalone expenses (no trip) for this month by expense_date
     const { data: standaloneCosts } = await db
       .from("trip_service_costs")
-      .select("trip_id, category, cost_amount, price_amount, commission_amount")
+      .select("trip_id, trip_name, category, cost_amount, price_amount, commission_amount")
       .eq("organization_id", orgId)
       .is("trip_id", null)
       .gte("expense_date", monthStart)
@@ -157,6 +157,15 @@ export async function GET(req: NextRequest) {
       existing.revenue += tripProfit.revenue;
       existing.tripCount += 1;
       destProfitMap.set(destination, existing);
+    }
+
+    // Include standalone expenses in destination breakdown using trip_name as label
+    for (const c of (standaloneCosts || []) as CostRow[]) {
+      const label = c.trip_name?.trim() || "Standalone";
+      const existing = destProfitMap.get(label) || { cost: 0, revenue: 0, tripCount: 0 };
+      existing.cost += Number(c.cost_amount);
+      existing.revenue += Number(c.price_amount);
+      destProfitMap.set(label, existing);
     }
 
     const destinationProfits = Array.from(destProfitMap.entries()).map(([destination, data]) => ({
