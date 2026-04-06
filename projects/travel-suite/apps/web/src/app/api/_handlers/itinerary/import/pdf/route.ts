@@ -8,6 +8,10 @@ import { safeErrorMessage } from '@/lib/security/safe-error';
 import { logError } from "@/lib/observability/logger";
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 30;
+
+// Disable pdfjs worker thread — required for Vercel serverless environment
+PDFParse.setWorker('');
 
 const groqSystemPrompt = `You are an expert data extraction bot for a premium B2B Travel Agency SaaS. 
 I am going to give you raw text extracted from a PDF brochure of a tour/itinerary. 
