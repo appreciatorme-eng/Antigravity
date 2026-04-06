@@ -25,6 +25,7 @@ export function useTransactions(filters: TransactionFilters, refreshKey = 0) {
       if (f.category && f.category !== "all") params.set("category", f.category);
       if (f.vendor) params.set("vendor", f.vendor);
       if (f.sort) params.set("sort", f.sort);
+      if (f.month) params.set("month", f.month);
 
       const res = await demoFetch(`/api/admin/pricing/transactions?${params.toString()}`);
       if (!res.ok) {

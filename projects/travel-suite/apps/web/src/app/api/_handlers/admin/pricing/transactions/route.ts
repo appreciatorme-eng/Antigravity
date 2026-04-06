@@ -52,31 +52,46 @@ export async function GET(req: NextRequest) {
     const category = url.searchParams.get("category")?.trim() || "";
     const vendor = url.searchParams.get("vendor")?.trim() || "";
     const sort = VALID_SORTS.has(url.searchParams.get("sort") || "") ? url.searchParams.get("sort")! : "date";
+    const monthParam = url.searchParams.get("month")?.trim() || "";
+
+    // Derive month range when a month filter is requested
+    let monthStart: string | null = null;
+    let nextMonth: string | null = null;
+    if (monthParam && /^\d{4}-\d{2}$/.test(monthParam)) {
+      const [y, m] = monthParam.split("-").map(Number);
+      monthStart = `${y}-${String(m).padStart(2, "0")}-01`;
+      const nm = m === 12 ? new Date(y + 1, 0, 1) : new Date(y, m, 1);
+      nextMonth = `${nm.getFullYear()}-${String(nm.getMonth() + 1).padStart(2, "0")}-01`;
+    }
 
     const db = admin.adminClient;
 
-    let query = db
-      .from("trip_service_costs")
-      .select("id, trip_id, trip_name, category, vendor_name, description, pax_count, cost_amount, price_amount, commission_pct, commission_amount, currency, notes, created_at")
-      .eq("organization_id", orgId);
-
-    if (category && category !== "all") {
-      query = query.eq("category", category);
-    }
-
-    if (vendor) {
-      query = query.ilike("vendor_name", `%${vendor}%`);
-    }
-
+    const SELECT = "id, trip_id, trip_name, category, vendor_name, description, pax_count, cost_amount, price_amount, commission_pct, commission_amount, currency, notes, created_at";
     const orderColumn = sort === "cost" ? "cost_amount" : sort === "price" ? "price_amount" : "created_at";
-    query = query.order(orderColumn, { ascending: false });
 
-    const { data: costs, error: costsError } = await query;
-    if (costsError) {
-      return apiError(safeErrorMessage(costsError, "Failed to load trip service costs"), 500);
+    const buildBase = () => {
+      let q = db.from("trip_service_costs").select(SELECT).eq("organization_id", orgId);
+      if (category && category !== "all") q = q.eq("category", category);
+      if (vendor) q = q.ilike("vendor_name", `%${vendor}%`);
+      return q.order(orderColumn, { ascending: false });
+    };
+
+    let costRows: CostRow[];
+
+    if (monthStart && nextMonth) {
+      // Two queries: entries with expense_date in range + entries without expense_date but created_at in range
+      const [{ data: withDate, error: e1 }, { data: withoutDate, error: e2 }] = await Promise.all([
+        buildBase().gte("expense_date", monthStart).lt("expense_date", nextMonth),
+        buildBase().is("expense_date", null).gte("created_at", monthStart + "T00:00:00Z").lt("created_at", nextMonth + "T00:00:00Z"),
+      ]);
+      if (e1) return apiError(safeErrorMessage(e1, "Failed to load trip service costs"), 500);
+      if (e2) return apiError(safeErrorMessage(e2, "Failed to load trip service costs"), 500);
+      costRows = [...(withDate || []), ...(withoutDate || [])] as CostRow[];
+    } else {
+      const { data: costs, error: costsError } = await buildBase();
+      if (costsError) return apiError(safeErrorMessage(costsError, "Failed to load trip service costs"), 500);
+      costRows = (costs || []) as CostRow[];
     }
-
-    const costRows = (costs || []) as CostRow[];
 
     if (costRows.length === 0) {
       return NextResponse.json({ transactions: [], summary: { totalCost: 0, totalRevenue: 0, totalProfit: 0, totalCommission: 0, count: 0 } });

@@ -39,17 +39,18 @@ const ALL_CATEGORIES: Array<ServiceCategory | "all"> = [
 interface Props {
   onSelectTransaction: (t: TransactionItem) => void;
   refreshKey?: number;
+  month?: string; // YYYY-MM — scopes ledger to selected month
 }
 
-export function TransactionLedger({ onSelectTransaction, refreshKey }: Props) {
+export function TransactionLedger({ onSelectTransaction, refreshKey, month }: Props) {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<ServiceCategory | "all">("all");
   const [vendor, setVendor] = useState("");
   const [sort, setSort] = useState<TransactionSort>("date");
 
   const filters = useMemo(
-    () => ({ search, category, vendor, sort }),
-    [search, category, vendor, sort]
+    () => ({ search, category, vendor, sort, month }),
+    [search, category, vendor, sort, month]
   );
 
   const { transactions, summary, loading, error } = useTransactions(filters, refreshKey);

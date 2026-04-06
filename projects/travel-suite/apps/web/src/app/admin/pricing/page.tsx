@@ -271,6 +271,7 @@ export default function PricingPage() {
           >
             <TransactionLedger
               refreshKey={ledgerRefreshKey}
+              month={month}
               onSelectTransaction={(t) => {
                 setSelectedTransaction(t);
                 setPanelOpen(true);

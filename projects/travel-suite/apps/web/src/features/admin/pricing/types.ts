@@ -185,6 +185,7 @@ export interface TransactionFilters {
   category: ServiceCategory | "all";
   vendor: string;
   sort: TransactionSort;
+  month?: string; // YYYY-MM — when set, ledger is scoped to that month
 }
 
 export interface ReceiptOcrResult {
