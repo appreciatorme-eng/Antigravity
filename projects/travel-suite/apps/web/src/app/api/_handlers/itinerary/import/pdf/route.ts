@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { apiError } from "@/lib/api/response";
 import { createClient } from '@/lib/supabase/server';
 import Groq from 'groq-sdk';
-import { PDFParse } from 'pdf-parse';
 import { enforceRateLimit } from '@/lib/security/rate-limit';
 import { safeErrorMessage } from '@/lib/security/safe-error';
 import { logError } from "@/lib/observability/logger";
@@ -10,13 +9,10 @@ import { logError } from "@/lib/observability/logger";
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
-// Disable pdfjs worker thread — required for Vercel serverless environment
-PDFParse.setWorker('');
-
-const groqSystemPrompt = `You are an expert data extraction bot for a premium B2B Travel Agency SaaS. 
-I am going to give you raw text extracted from a PDF brochure of a tour/itinerary. 
-You must read the raw text, understand the itinerary, and export it strictly into this robust JSON format. 
-DO NOT INCLUDE MARKDOWN. 
+const groqSystemPrompt = `You are an expert data extraction bot for a premium B2B Travel Agency SaaS.
+I am going to give you raw text extracted from a PDF brochure of a tour/itinerary.
+You must read the raw text, understand the itinerary, and export it strictly into this robust JSON format.
+DO NOT INCLUDE MARKDOWN.
 Return ONLY valid raw JSON and absolutely nothing else.
 
 {
@@ -47,6 +43,35 @@ Return ONLY valid raw JSON and absolutely nothing else.
 }
 
 Note: For coordinates, if you know the exact lat/lng of the tourist attraction, provide it. Otherwise provide the coordinates of the destination city or generic 0,0.`;
+
+async function extractPdfText(buffer: Buffer): Promise<string> {
+    // Dynamic import to ensure it runs in the correct serverless context
+    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+
+    const data = new Uint8Array(buffer);
+    const loadingTask = pdfjsLib.getDocument({
+        data,
+        useSystemFonts: false,
+        disableFontFace: true,
+        isEvalSupported: false,
+    });
+
+    const pdf = await loadingTask.promise;
+    const textParts: string[] = [];
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items
+            .map((item: Record<string, unknown>) => typeof item.str === 'string' ? item.str : '')
+            .join(' ');
+        textParts.push(pageText);
+        page.cleanup();
+    }
+
+    await pdf.destroy();
+    return textParts.join('\n').replace(/\s+/g, ' ').trim();
+}
 
 export async function POST(req: Request) {
     try {
@@ -93,11 +118,8 @@ export async function POST(req: Request) {
         const arrayBuffer = await file.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
 
-        // Parse text from PDF
-        const parser = new PDFParse({ data: buffer });
-        const pdfData = await parser.getText();
-        await parser.destroy();
-        const rawText = pdfData.text.replace(/\s+/g, ' ').trim();
+        // Parse text from PDF using pdfjs-dist directly
+        const rawText = await extractPdfText(buffer);
 
         if (!rawText || rawText.length < 50) {
             return apiError('Could not extract useful text from this PDF. It might be entirely images.', 422);
@@ -105,7 +127,6 @@ export async function POST(req: Request) {
 
         const truncatedText = rawText.slice(0, 20000);
 
-        // Pass to Llama3 Groq
         const chatCompletion = await groq.chat.completions.create({
             messages: [
                 { role: 'system', content: groqSystemPrompt },
@@ -129,7 +150,7 @@ export async function POST(req: Request) {
 
     } catch (error: unknown) {
         logError("PDF Import Error", error);
-        const message = safeErrorMessage(error, "Request failed");
+        const message = safeErrorMessage(error, "Failed to process PDF. Please try again.");
         return apiError(message, 500);
     }
 }
