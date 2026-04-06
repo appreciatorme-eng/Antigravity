@@ -5,8 +5,9 @@ import { createClient } from "@/lib/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Sparkles, MapPin, Calendar, User, UserPlus, Link as LinkIcon, FileText, FolderOpen, Clock, Globe, Check } from "lucide-react";
+import { Loader2, Sparkles, MapPin, Calendar, User, UserPlus, Link as LinkIcon, FileText, FolderOpen, Clock, Globe, Check, ClipboardPaste } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import type { Activity, Day, ItineraryResult } from "@/types/itinerary";
 import { useToast } from "@/components/ui/toast";
 import Link from "next/link";
@@ -64,8 +65,9 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
     const [prompt, setPrompt] = useState("");
     const [isGenerating, setIsGenerating] = useState(false);
     const [generatedData, setGeneratedData] = useState<ItineraryResult | null>(null);
-    const [importMode, setImportMode] = useState<"saved" | "ai" | "url" | "pdf">("saved");
+    const [importMode, setImportMode] = useState<"saved" | "ai" | "url" | "pdf" | "text">("saved");
     const [importUrl, setImportUrl] = useState("");
+    const [importText, setImportText] = useState("");
     const [pdfFile, setPdfFile] = useState<File | null>(null);
 
     // Saved Itineraries
@@ -358,6 +360,32 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
         }
     };
 
+    const handleImportText = async () => {
+        if (!importText) return;
+        setIsGenerating(true);
+        try {
+            const res = await authedFetch("/api/itinerary/import/text", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text: importText }),
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Failed to parse text");
+
+            setGeneratedData(data.itinerary as ItineraryResult);
+        } catch (error) {
+            logError("Text import error", error);
+            toast({
+                title: "Text import failed",
+                description: error instanceof Error ? error.message : "Failed to parse the pasted text.",
+                variant: "error",
+            });
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
     const handleCreateTrip = async () => {
         if (isDemoMode) {
             toast({
@@ -524,14 +552,14 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
                     )}
 
                     {/* Basic Info */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="space-y-2">
                             <label className="text-sm font-medium flex items-center gap-2">
                                 <User className="w-4 h-4" /> Client
                             </label>
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 min-w-0">
                                 <select
-                                    className="flex-1 h-10 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                    className="flex-1 min-w-0 h-10 px-3 rounded-md border border-input bg-background text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                     value={clientId}
                                     onChange={(e) => setClientId(e.target.value)}
                                 >
@@ -607,27 +635,25 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
                                 </div>
                             )}
                         </div>
-                        <div className="grid grid-cols-2 gap-2">
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium flex items-center gap-2">
-                                    <Calendar className="w-4 h-4" /> Start Date
-                                </label>
-                                <Input
-                                    type="date"
-                                    value={startDate}
-                                    onChange={(e) => setStartDate(e.target.value)}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium flex items-center gap-2">
-                                    <Calendar className="w-4 h-4" /> End Date
-                                </label>
-                                <Input
-                                    type="date"
-                                    value={endDate}
-                                    onChange={(e) => setEndDate(e.target.value)}
-                                />
-                            </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium flex items-center gap-2">
+                                <Calendar className="w-4 h-4" /> Start Date
+                            </label>
+                            <Input
+                                type="date"
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium flex items-center gap-2">
+                                <Calendar className="w-4 h-4" /> End Date
+                            </label>
+                            <Input
+                                type="date"
+                                value={endDate}
+                                onChange={(e) => setEndDate(e.target.value)}
+                            />
                         </div>
                     </div>
 
@@ -663,6 +689,12 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
                                     className={`px-3 py-1.5 text-sm font-medium rounded-md flex items-center gap-1.5 transition-colors ${importMode === "pdf" ? "bg-rose-100 text-rose-700" : "text-gray-500 hover:bg-gray-100"}`}
                                 >
                                     <FileText className="w-4 h-4" /> From PDF Upload
+                                </button>
+                                <button
+                                    onClick={() => setImportMode("text")}
+                                    className={`px-3 py-1.5 text-sm font-medium rounded-md flex items-center gap-1.5 transition-colors ${importMode === "text" ? "bg-amber-100 text-amber-700" : "text-gray-500 hover:bg-gray-100"}`}
+                                >
+                                    <ClipboardPaste className="w-4 h-4" /> Copy Text
                                 </button>
                             </div>
 
@@ -835,6 +867,30 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
                                     <p className="text-xs text-gray-500">
                                         Upload a PDF brochure. The AI will read the text and parse it directly into your trip format.
                                     </p>
+                                </div>
+                            )}
+
+                            {importMode === "text" && (
+                                <div className="space-y-4 pt-2">
+                                    <Textarea
+                                        placeholder="Paste your itinerary text here — day-by-day plan, tour description, WhatsApp notes, anything..."
+                                        value={importText}
+                                        onChange={(e) => setImportText(e.target.value)}
+                                        rows={8}
+                                        className="bg-white resize-none text-sm"
+                                    />
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-xs text-gray-500">
+                                            Paste any raw itinerary text. The AI will structure it into a full day-by-day trip plan.
+                                        </p>
+                                        <Button
+                                            onClick={handleImportText}
+                                            disabled={isGenerating || importText.trim().length < 50}
+                                            className="bg-amber-600 hover:bg-amber-700 text-white shrink-0"
+                                        >
+                                            {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : "Parse Text"}
+                                        </Button>
+                                    </div>
                                 </div>
                             )}
                         </div>

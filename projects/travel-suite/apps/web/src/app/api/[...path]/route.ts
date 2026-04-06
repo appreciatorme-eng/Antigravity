@@ -54,6 +54,7 @@ const routes = createCatchAllHandlers([
   ["itineraries", () => import("@/app/api/_handlers/itineraries/route")],
   ["itinerary/generate", () => import("@/app/api/_handlers/itinerary/generate/route")],
   ["itinerary/import/pdf", () => import("@/app/api/_handlers/itinerary/import/pdf/route")],
+  ["itinerary/import/text", () => import("@/app/api/_handlers/itinerary/import/text/route")],
   ["itinerary/import/url", () => import("@/app/api/_handlers/itinerary/import/url/route")],
   ["itinerary/share", () => import("@/app/api/_handlers/itinerary/share/route")],
   ["leads/convert", () => import("@/app/api/_handlers/leads/convert/route")],
