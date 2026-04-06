@@ -111,8 +111,7 @@ async function scrapeAndSeedTour(tourUrl: string) {
                 { role: 'system', content: groqSystemPrompt },
                 { role: 'user', content: `Extract the itinerary from this raw website text:\n\n${truncatedText}` }
             ],
-            // Use 70b model for better complex extraction if available, otherwise 8b is fine.
-            model: 'llama3-70b-8192',
+            model: 'llama-3.3-70b-versatile',
             temperature: 0.1, // Strict factual extraction
             max_completion_tokens: 8000,
             response_format: { type: 'json_object' }
