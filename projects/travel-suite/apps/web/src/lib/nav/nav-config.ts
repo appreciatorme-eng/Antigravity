@@ -69,17 +69,14 @@ export const NAV_ITEMS: readonly NavItemConfig[] = [
     section: "primary",
   },
   {
-    icon: "FileText",
-    label: "Proposals",
-    href: "/proposals",
-    badgeKey: "proposalsPending",
-    badgeColor: "#8b5cf6",
+    icon: "Map",
+    label: "Planner",
+    href: "/planner",
     section: "primary",
   },
 
   // ── DAILY WORKFLOW ───────────────────────────────────────────────────
   { icon: "Plane", label: "Bookings", href: "/bookings", section: "daily" },
-  { icon: "Map", label: "Planner", href: "/planner", section: "daily" },
   { icon: "Calendar", label: "Calendar", href: "/calendar", section: "daily" },
   { icon: "Truck", label: "Drivers", href: "/drivers", section: "daily" },
 

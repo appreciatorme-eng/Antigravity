@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
-import { Copy, Check, Clock, MapPin, Search, UserPlus, Plus, Loader2, Eye, FileText } from "lucide-react";
+import { Copy, Check, Clock, MapPin, Search, UserPlus, Plus, Loader2, Eye, FileText, Briefcase, Link2 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
@@ -28,6 +28,10 @@ interface PastItineraryCardProps {
         share_code?: string | null;
         share_status?: string | null;
         trip_id?: string | null;
+        proposal_id?: string | null;
+        proposal_status?: string | null;
+        proposal_share_token?: string | null;
+        proposal_title?: string | null;
         client_comments?: ClientComment[];
         client_preferences?: import("@/types/feedback").ClientPreferences | null;
         wishlist_items?: string[];
@@ -272,6 +276,14 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
         toast({ title: "Link copied!", description: "Share this with your client." });
     };
 
+    const copyClientPortalLink = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!itinerary.proposal_share_token) return;
+        const url = `${window.location.origin}/p/${itinerary.proposal_share_token}`;
+        navigator.clipboard.writeText(url);
+        toast({ title: "Client portal copied", description: "Proposal portal link copied for the client.", variant: "success" });
+    };
+
     const handleCardClick = () => {
         if (onOpen && !isLoading) onOpen(itinerary.id);
     };
@@ -513,18 +525,60 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
                 </div>
             )}
 
-            {/* Create Proposal CTA — show when shared with client but not yet converted */}
-            {itinerary.share_code && itinerary.client_id && stage !== "converted" && (
-                <div className="mx-4 mb-2">
-                    <Link
-                        href={`/proposals/create?clientId=${encodeURIComponent(itinerary.client_id)}&title=${encodeURIComponent(itinerary.trip_title || itinerary.destination || "")}&itineraryId=${encodeURIComponent(itinerary.id)}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 transition-colors"
-                    >
-                        <FileText className="w-3.5 h-3.5 text-violet-400 shrink-0" />
-                        <span className="text-[11px] font-semibold text-violet-300">Create Proposal</span>
-                        <span className="text-[10px] text-violet-400/70 ml-auto">Add pricing & close the deal</span>
-                    </Link>
+            {(itinerary.trip_id || itinerary.proposal_id || (itinerary.share_code && itinerary.client_id && stage !== "converted")) && (
+                <div className="mx-4 mb-2 grid gap-2">
+                    {itinerary.trip_id ? (
+                        <Link
+                            href={`/trips/${itinerary.trip_id}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 transition-colors"
+                        >
+                            <Briefcase className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                            <span className="text-[11px] font-semibold text-emerald-300">Open Linked Trip</span>
+                            <span className="text-[10px] text-emerald-400/70 ml-auto">Ops, pricing, client updates</span>
+                        </Link>
+                    ) : null}
+
+                    {itinerary.proposal_id ? (
+                        <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                            <Link
+                                href={`/proposals/${itinerary.proposal_id}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 transition-colors"
+                            >
+                                <FileText className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+                                <span className="text-[11px] font-semibold text-violet-300">
+                                    {itinerary.proposal_status ? `Proposal: ${itinerary.proposal_status}` : "Open Proposal"}
+                                </span>
+                                <span className="text-[10px] text-violet-400/70 ml-auto truncate">
+                                    {itinerary.proposal_title || "Client quote"}
+                                </span>
+                            </Link>
+
+                            {itinerary.proposal_share_token ? (
+                                <button
+                                    type="button"
+                                    onClick={copyClientPortalLink}
+                                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 transition-colors"
+                                >
+                                    <Link2 className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                                    <span className="text-[11px] font-semibold text-blue-300">Client Portal</span>
+                                </button>
+                            ) : null}
+                        </div>
+                    ) : null}
+
+                    {!itinerary.proposal_id && itinerary.share_code && itinerary.client_id && stage !== "converted" ? (
+                        <Link
+                            href={`/proposals/create?clientId=${encodeURIComponent(itinerary.client_id)}&title=${encodeURIComponent(itinerary.trip_title || itinerary.destination || "")}&itineraryId=${encodeURIComponent(itinerary.id)}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 transition-colors"
+                        >
+                            <FileText className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+                            <span className="text-[11px] font-semibold text-violet-300">Create Proposal</span>
+                            <span className="text-[10px] text-violet-400/70 ml-auto">Add pricing & close the deal</span>
+                        </Link>
+                    ) : null}
                 </div>
             )}
 

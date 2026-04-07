@@ -563,8 +563,8 @@ export default function AdminOperationsPage() {
               Open invoices
               <ArrowUpRight className="w-4 h-4" />
             </Link>
-            <Link href="/proposals" className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">
-              Open proposals
+            <Link href="/planner" className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">
+              Open planner
               <ArrowUpRight className="w-4 h-4" />
             </Link>
           </div>

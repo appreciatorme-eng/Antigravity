@@ -12,6 +12,10 @@ export interface ItineraryLike {
     share_code?: string | null;
     share_status?: string | null;
     trip_id?: string | null;
+    proposal_id?: string | null;
+    proposal_status?: string | null;
+    proposal_share_token?: string | null;
+    proposal_title?: string | null;
     client_comments?: ClientComment[];
     client_preferences?: ClientPreferences | null;
     wishlist_items?: string[];

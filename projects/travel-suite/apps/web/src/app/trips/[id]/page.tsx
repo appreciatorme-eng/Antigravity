@@ -151,7 +151,7 @@ export default function TripDetailPage() {
       await refetch();
       toast({
         title: "Linked proposal created",
-        description: "This trip now appears in Proposals and uses the proposal share flow.",
+        description: "Client portal and proposal controls are now available from this trip.",
         variant: "success",
       });
     } catch (error) {

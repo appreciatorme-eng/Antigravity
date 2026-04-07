@@ -97,6 +97,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch trip links for all itineraries (include status to derive pipeline stage)
     const tripMap: Record<string, { id: string; status: string }> = {};
+    const tripIdByItineraryId: Record<string, string> = {};
     if (itineraryIds.length > 0) {
       const { data: trips } = await supabase
         .from("trips")
@@ -107,7 +108,30 @@ export async function GET(request: NextRequest) {
         for (const t of trips) {
           if (t.itinerary_id) {
             tripMap[t.itinerary_id] = { id: t.id, status: t.status ?? "draft" };
+            tripIdByItineraryId[t.itinerary_id] = t.id;
           }
+        }
+      }
+    }
+
+    const proposalMap: Record<string, { id: string; status: string | null; share_token: string | null; title: string | null }> = {};
+    const linkedTripIds = [...new Set(Object.values(tripIdByItineraryId))];
+    if (linkedTripIds.length > 0) {
+      const { data: proposals } = await supabase
+        .from("proposals")
+        .select("id, trip_id, status, share_token, title, created_at")
+        .in("trip_id", linkedTripIds)
+        .order("created_at", { ascending: false });
+
+      if (proposals) {
+        for (const proposal of proposals) {
+          if (!proposal.trip_id || proposalMap[proposal.trip_id]) continue;
+          proposalMap[proposal.trip_id] = {
+            id: proposal.id,
+            status: proposal.status ?? null,
+            share_token: proposal.share_token ?? null,
+            title: proposal.title ?? null,
+          };
         }
       }
     }
@@ -166,6 +190,8 @@ export async function GET(request: NextRequest) {
       const id = itin.id as string;
       const clientId = itin.client_id as string | null;
       const share = shareMap[id];
+      const tripId = tripMap[id]?.id ?? null;
+      const linkedProposal = tripId ? proposalMap[tripId] : null;
 
 
       // Strip raw_data from response (too large for list view)
@@ -178,8 +204,12 @@ export async function GET(request: NextRequest) {
         client: clientId ? { full_name: clientNameMap[clientId] ?? null } : null,
         share_code: share?.share_code ?? null,
         share_status: share?.status ?? null,
-        trip_id: tripMap[id]?.id ?? null,
+        trip_id: tripId,
         trip_status: tripMap[id]?.status ?? null,
+        proposal_id: linkedProposal?.id ?? null,
+        proposal_status: linkedProposal?.status ?? null,
+        proposal_share_token: linkedProposal?.share_token ?? null,
+        proposal_title: linkedProposal?.title ?? null,
         // Client feedback fields
         client_comments: share?.client_comments ?? [],
         client_preferences: share?.client_preferences ?? null,

@@ -52,6 +52,10 @@ interface PastItineraryItem extends ItineraryLike {
     summary?: string | null;
     interests?: string[] | null;
     client?: { full_name: string } | null;
+    proposal_id?: string | null;
+    proposal_status?: string | null;
+    proposal_share_token?: string | null;
+    proposal_title?: string | null;
     client_comments?: ClientComment[];
     client_preferences?: ClientPreferences | null;
     wishlist_items?: string[];

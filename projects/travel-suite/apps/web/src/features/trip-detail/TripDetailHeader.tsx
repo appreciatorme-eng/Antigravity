@@ -12,6 +12,7 @@ import {
   Bell,
   Save,
   Link2,
+  ExternalLink,
 } from "lucide-react";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassBadge } from "@/components/glass/GlassBadge";
@@ -84,6 +85,13 @@ function renderStatusBadge(status: string) {
   }
 }
 
+function formatProposalStatus(status: string | null | undefined) {
+  if (!status) return "Draft";
+  return status
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -146,13 +154,30 @@ export function TripDetailHeader({
             </span>
 
             {linkedProposal ? (
-              <Link
-                href={`/proposals/${linkedProposal.id}`}
-                className="inline-flex items-center gap-1.5 px-2.5 md:px-4 py-1.5 md:py-2 bg-emerald-50 rounded-lg md:rounded-xl border border-emerald-100 text-xs md:text-sm text-emerald-700 hover:bg-emerald-100 transition-colors"
-              >
-                <Link2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                Linked Proposal
-              </Link>
+              <>
+                <span className="inline-flex items-center gap-1.5 px-2.5 md:px-4 py-1.5 md:py-2 bg-violet-50 rounded-lg md:rounded-xl border border-violet-100 text-xs md:text-sm text-violet-700">
+                  <Link2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                  Proposal {formatProposalStatus(linkedProposal.status)}
+                </span>
+                <Link
+                  href={`/proposals/${linkedProposal.id}`}
+                  className="inline-flex items-center gap-1.5 px-2.5 md:px-4 py-1.5 md:py-2 bg-emerald-50 rounded-lg md:rounded-xl border border-emerald-100 text-xs md:text-sm text-emerald-700 hover:bg-emerald-100 transition-colors"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                  Open Proposal
+                </Link>
+                {linkedProposal.share_token ? (
+                  <a
+                    href={`/p/${linkedProposal.share_token}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 px-2.5 md:px-4 py-1.5 md:py-2 bg-blue-50 rounded-lg md:rounded-xl border border-blue-100 text-xs md:text-sm text-blue-700 hover:bg-blue-100 transition-colors"
+                  >
+                    <Link2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                    Client Portal
+                  </a>
+                ) : null}
+              </>
             ) : null}
           </div>
         </div>
