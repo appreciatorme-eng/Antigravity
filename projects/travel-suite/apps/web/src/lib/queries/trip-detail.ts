@@ -123,16 +123,19 @@ export function useCreateTripInvoice() {
 
   return useMutation({
     mutationFn: async (input: CreateInvoiceInput) => {
+      const body = {
+        ...(input.tripId ? { trip_id: input.tripId } : {}),
+        ...(input.clientId ? { client_id: input.clientId } : {}),
+        items: input.items,
+        ...(input.dueDate ? { due_date: input.dueDate } : {}),
+        ...(input.notes ? { notes: input.notes } : {}),
+        status: "issued" as const,
+      };
+
       const response = await authedFetch("/api/invoices", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          trip_id: input.tripId,
-          client_id: input.clientId,
-          items: input.items,
-          due_date: input.dueDate,
-          notes: input.notes,
-        }),
+        body: JSON.stringify(body),
       });
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
