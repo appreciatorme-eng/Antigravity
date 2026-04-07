@@ -136,6 +136,18 @@ async function getUserIdFromRequest(
   request: RequestLike,
   adminClient: ReturnType<typeof createAdminClient>,
 ) {
+  try {
+    const serverClient = await createServerClient();
+    const {
+      data: { user },
+    } = await serverClient.auth.getUser();
+    if (user?.id) {
+      return user.id;
+    }
+  } catch {
+    // Fall through to bearer-token auth.
+  }
+
   const token = normalizeBearerToken(request.headers.get("authorization"));
 
   if (token) {
@@ -148,15 +160,7 @@ async function getUserIdFromRequest(
     }
   }
 
-  try {
-    const serverClient = await createServerClient();
-    const {
-      data: { user },
-    } = await serverClient.auth.getUser();
-    return user?.id || null;
-  } catch {
-    return null;
-  }
+  return null;
 }
 
 export async function requireAdmin(
