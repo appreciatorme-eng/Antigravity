@@ -12,7 +12,21 @@ export async function GET(
   const { organizationId, adminClient } = auth;
   const { id: tripId } = await params;
 
-  // Get the trip's client_id
+  const { data: linkedProposal } = await adminClient
+    .from("proposals")
+    .select("share_token")
+    .eq("trip_id", tripId)
+    .eq("organization_id", organizationId!)
+    .not("share_token", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (linkedProposal?.share_token) {
+    return apiSuccess({ portalToken: linkedProposal.share_token });
+  }
+
+  // Fallback for legacy trips whose proposals were never linked
   const { data: trip } = await adminClient
     .from("trips")
     .select("client_id")

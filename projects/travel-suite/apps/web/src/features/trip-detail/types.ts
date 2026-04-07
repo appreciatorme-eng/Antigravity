@@ -128,8 +128,18 @@ export interface DriverLocationSnapshot {
   accuracy?: number | null;
 }
 
+export interface LinkedProposal {
+  id: string;
+  title: string | null;
+  status: string | null;
+  share_token: string | null;
+  total_price: number | null;
+  client_selected_price: number | null;
+}
+
 export interface TripDetailPayload {
   trip: Trip;
+  linkedProposal?: LinkedProposal | null;
   drivers?: Driver[];
   assignments?: Record<number, DriverAssignment>;
   accommodations?: Record<number, Accommodation>;

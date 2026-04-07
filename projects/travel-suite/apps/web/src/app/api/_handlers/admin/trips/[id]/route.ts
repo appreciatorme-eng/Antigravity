@@ -42,6 +42,15 @@ interface ReminderDayStatus {
     lastScheduledFor: string | null;
 }
 
+interface LinkedProposalRow {
+    id: string;
+    title: string | null;
+    status: string | null;
+    share_token: string | null;
+    total_price: number | null;
+    client_selected_price: number | null;
+}
+
 function attachRateLimitHeaders(
     response: NextResponse,
     rateLimit: Awaited<ReturnType<typeof enforceRateLimit>>
@@ -139,11 +148,23 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
                 ? {
                     ...itinerary,
                     raw_data: {
+                        ...(itinerary.raw_data || {}),
                         days: itinerary.raw_data?.days || [],
                     },
                 }
                 : null,
         };
+
+        const { data: linkedProposalData } = await admin.adminClient
+            .from("proposals")
+            .select("id, title, status, share_token, total_price, client_selected_price")
+            .eq("trip_id", tripId)
+            .eq("organization_id", tripData.organization_id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+        const linkedProposal = (linkedProposalData as LinkedProposalRow | null) ?? null;
 
         const { data: driversData } = await admin.adminClient
             .from("external_drivers")
@@ -303,6 +324,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
 
         return NextResponse.json({
             trip: mappedTrip,
+            linkedProposal,
             drivers: driversData || [],
             assignments: assignmentsMap,
             accommodations: accommodationsMap,

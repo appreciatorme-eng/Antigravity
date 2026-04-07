@@ -15,6 +15,7 @@ const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 const CreateFromItinerarySchema = z.object({
   itineraryId: z.string().uuid(),
   clientId: z.string().uuid(),
+  tripId: z.string().uuid().optional().nullable(),
   proposalTitle: z.string().trim().min(1).max(160).optional(),
   expirationDays: z.coerce.number().int().min(0).max(365).default(14),
   basePrice: z.coerce.number().min(0).default(0),
@@ -83,6 +84,7 @@ export async function POST(req: NextRequest) {
     const {
       itineraryId,
       clientId,
+      tripId,
       proposalTitle,
       expirationDays,
       basePrice,
@@ -100,6 +102,16 @@ export async function POST(req: NextRequest) {
     if (itinError || !itinerary) {
       return apiError("Itinerary not found", 404);
     }
+
+    const { data: existingTrip } = await admin.adminClient
+      .from("trips")
+      .select("id")
+      .eq("itinerary_id", itineraryId)
+      .eq("organization_id", admin.organizationId)
+      .limit(1)
+      .maybeSingle();
+
+    const resolvedTripId = tripId || existingTrip?.id || null;
 
     // 2. Verify client belongs to org
     const { data: clientProfile } = await admin.adminClient
@@ -313,6 +325,10 @@ export async function POST(req: NextRequest) {
       proposalUpdates.expires_at = expirationDate.toISOString();
     }
 
+    if (resolvedTripId) {
+      proposalUpdates.trip_id = resolvedTripId;
+    }
+
     if (Object.keys(proposalUpdates).length > 0) {
       const { error: proposalUpdateError } = await admin.adminClient
         .from("proposals")
@@ -344,6 +360,7 @@ export async function POST(req: NextRequest) {
 
     return apiSuccess({
       proposalId,
+      tripId: resolvedTripId,
       amount: Number(newPrice || 0),
       limit: refreshedLimitStatus,
     });

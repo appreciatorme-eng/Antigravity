@@ -44,6 +44,7 @@ interface Proposal {
   id: string;
   organization_id: string;
   client_id: string;
+  trip_id?: string | null;
   template_id: string | null;
   title: string;
   share_token: string;
@@ -61,6 +62,12 @@ interface Proposal {
   client_email?: string;
   template_name?: string;
   comments_count?: number;
+  trips?: {
+    id: string;
+    status: string | null;
+    start_date: string | null;
+    end_date: string | null;
+  } | null;
 }
 
 // Tracks which proposals have been signed locally (in production: stored in DB)
@@ -379,6 +386,15 @@ export default function ProposalsPage() {
                             <span>{proposal.comments_count} Feedback</span>
                           </div>
                         ) : null}
+                        {proposal.trip_id ? (
+                          <Link
+                            href={`/trips/${proposal.trip_id}`}
+                            className="inline-flex items-center gap-1.5 text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100 hover:bg-emerald-100 transition-colors"
+                          >
+                            <Link2 className="w-3.5 h-3.5" />
+                            <span>View Trip</span>
+                          </Link>
+                        ) : null}
                       </div>
 
                       {/* Action buttons row — always visible on mobile, hover on desktop */}
@@ -409,6 +425,15 @@ export default function ProposalsPage() {
                           <Link2 className="w-3.5 h-3.5" />
                           Client Portal
                         </button>
+                        {proposal.trip_id ? (
+                          <Link
+                            href={`/trips/${proposal.trip_id}`}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            View Trip
+                          </Link>
+                        ) : null}
                       </div>
                     </div>
                   </div>

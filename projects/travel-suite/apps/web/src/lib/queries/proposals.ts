@@ -17,9 +17,11 @@ const PROPOSAL_LIST_SELECT = [
     'organization_id',
     'share_token',
     'status',
+    'trip_id',
     'template_id',
     'title',
     'total_price',
+    'trips:trip_id(id, status, start_date, end_date)',
     'updated_at',
     'version',
     'viewed_at',
@@ -37,9 +39,11 @@ const PROPOSAL_DETAIL_SELECT = [
     'organization_id',
     'share_token',
     'status',
+    'trip_id',
     'template_id',
     'title',
     'total_price',
+    'trips:trip_id(id, status, start_date, end_date)',
     'updated_at',
     'version',
     'viewed_at',
@@ -59,9 +63,11 @@ type ProposalListRow = {
     organization_id: string;
     share_token: string;
     status: string | null;
+    trip_id: string | null;
     template_id: string | null;
     title: string;
     total_price: number | null;
+    trips: { id: string; status: string | null; start_date: string | null; end_date: string | null } | null;
     tour_templates: { name?: string } | null;
     updated_at: string | null;
     version: number | null;

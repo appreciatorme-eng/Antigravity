@@ -237,6 +237,7 @@ export default function TripDetailPage() {
       <GuidedTour />
       <TripDetailHeader
         trip={trip}
+        linkedProposal={data?.linkedProposal ?? null}
         onSave={handleSave}
         saving={saveMutation.isPending}
         onDuplicate={handleDuplicate}

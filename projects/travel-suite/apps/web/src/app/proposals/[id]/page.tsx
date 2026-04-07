@@ -46,10 +46,17 @@ interface Proposal {
   approved_by: string | null;
   created_at: string;
   updated_at: string;
+  trip_id: string | null;
   // Joined data
   client_name?: string;
   client_email?: string;
   template_name?: string;
+  trips?: {
+    id: string;
+    status: string | null;
+    start_date: string | null;
+    end_date: string | null;
+  } | null;
 }
 
 interface ProposalComment {
@@ -180,7 +187,8 @@ export default function AdminProposalViewPage() {
           clients(
             profiles(full_name, email)
           ),
-          tour_templates(name)
+          tour_templates(name),
+          trips:trip_id(id, status, start_date, end_date)
         `
         )
         .eq('id', proposalId)
@@ -407,6 +415,15 @@ export default function AdminProposalViewPage() {
             <p className="text-sm text-text-secondary">
               {proposal.client_name} • Version {proposal.version}
             </p>
+            {proposal.trip_id ? (
+              <Link
+                href={`/trips/${proposal.trip_id}`}
+                className="mt-2 inline-flex items-center gap-2 text-sm font-medium text-emerald-700 hover:text-emerald-800"
+              >
+                <ExternalLink className="w-4 h-4" />
+                View Linked Trip
+              </Link>
+            ) : null}
           </div>
         </div>
         <div className="flex gap-2">

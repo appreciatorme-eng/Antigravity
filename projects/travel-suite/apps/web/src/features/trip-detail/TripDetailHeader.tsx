@@ -11,10 +11,11 @@ import {
   Zap,
   Bell,
   Save,
+  Link2,
 } from "lucide-react";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassBadge } from "@/components/glass/GlassBadge";
-import type { Trip } from "@/features/trip-detail/types";
+import type { LinkedProposal, Trip } from "@/features/trip-detail/types";
 
 // ---------------------------------------------------------------------------
 // Props
@@ -22,6 +23,7 @@ import type { Trip } from "@/features/trip-detail/types";
 
 interface TripDetailHeaderProps {
   trip: Trip;
+  linkedProposal?: LinkedProposal | null;
   onSave: () => void;
   saving: boolean;
   onDuplicate: () => void;
@@ -86,6 +88,7 @@ function renderStatusBadge(status: string) {
 
 export function TripDetailHeader({
   trip,
+  linkedProposal,
   onSave,
   saving,
   onDuplicate,
@@ -137,6 +140,16 @@ export function TripDetailHeader({
               <Clock className="w-3.5 h-3.5 md:w-4 md:h-4 text-text-muted" />
               {durationLabel}
             </span>
+
+            {linkedProposal ? (
+              <Link
+                href={`/proposals/${linkedProposal.id}`}
+                className="inline-flex items-center gap-1.5 px-2.5 md:px-4 py-1.5 md:py-2 bg-emerald-50 rounded-lg md:rounded-xl border border-emerald-100 text-xs md:text-sm text-emerald-700 hover:bg-emerald-100 transition-colors"
+              >
+                <Link2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                Linked Proposal
+              </Link>
+            ) : null}
           </div>
         </div>
       </div>

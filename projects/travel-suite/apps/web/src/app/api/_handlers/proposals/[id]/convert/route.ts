@@ -213,7 +213,7 @@ export async function POST(
         // 6. Update Proposal Status
         await supabaseAdmin
             .from("proposals")
-            .update({ status: "converted" })
+            .update({ status: "converted", trip_id: insertedTrip.id })
             .eq("id", proposalId);
 
         // 7. Auto-create draft invoice linked to the new trip
