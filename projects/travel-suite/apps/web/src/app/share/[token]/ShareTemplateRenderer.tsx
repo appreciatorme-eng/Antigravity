@@ -12,7 +12,7 @@ import ItineraryTemplateClassic from "@/components/templates/ItineraryTemplateCl
 import ItineraryTemplateModern from "@/components/templates/ItineraryTemplateModern";
 import { InteractivePricing } from "@/components/InteractivePricing";
 import { ApprovalManager } from "@/components/planner/ApprovalManager";
-import { DownloadCloud } from "lucide-react";
+import { CheckCircle2, DownloadCloud, ShieldAlert } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { ItineraryBrandedFooter, type OrganizationBranding } from "@/components/itinerary-templates/ItineraryBrandedFooter";
 import { RouteSummary } from "@/components/itinerary-templates/RouteSummary";
@@ -81,6 +81,9 @@ export default function ShareTemplateRenderer({
 
     const commonProps = { itinerary: brandedItinerary, organizationName, organizationBranding, client };
     const legacyProps = { itineraryData: brandedItinerary, organizationName, client };
+    const hasPackageScope =
+        (Array.isArray(itinerary.inclusions) && itinerary.inclusions.length > 0) ||
+        (Array.isArray(itinerary.exclusions) && itinerary.exclusions.length > 0);
 
     const renderTemplate = () => {
         switch (templateId) {
@@ -124,6 +127,78 @@ export default function ShareTemplateRenderer({
             <div className="flex-grow">
                 {renderTemplate()}
             </div>
+
+            {hasPackageScope && (
+                <section className="border-t border-stone-200 bg-[#f7f4ee] px-6 py-14 text-stone-900">
+                    <div className="mx-auto max-w-5xl">
+                        <div className="mb-8 text-center">
+                            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-stone-500">
+                                Package Scope
+                            </p>
+                            <h2 className="mt-3 font-serif text-3xl text-stone-900">
+                                What&apos;s Included, What&apos;s Not
+                            </h2>
+                            <p className="mx-auto mt-3 max-w-2xl text-sm text-stone-600">
+                                A clear view of what the shared package already covers and what should still be budgeted separately.
+                            </p>
+                        </div>
+
+                        <div className="grid gap-6 md:grid-cols-2">
+                            {itinerary.inclusions && itinerary.inclusions.length > 0 && (
+                                <div className="rounded-[28px] border border-emerald-200 bg-white p-6 shadow-sm">
+                                    <div className="mb-5 flex items-center gap-3">
+                                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
+                                            <CheckCircle2 className="h-5 w-5" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-emerald-700">
+                                                Included
+                                            </p>
+                                            <h3 className="font-serif text-2xl text-stone-900">Covered In Your Package</h3>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-3">
+                                        {itinerary.inclusions.map((item, index) => (
+                                            <div
+                                                key={`${item}-${index}`}
+                                                className="rounded-2xl border border-emerald-100 bg-emerald-50/60 px-4 py-3 text-sm text-stone-700"
+                                            >
+                                                {item}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {itinerary.exclusions && itinerary.exclusions.length > 0 && (
+                                <div className="rounded-[28px] border border-amber-200 bg-white p-6 shadow-sm">
+                                    <div className="mb-5 flex items-center gap-3">
+                                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
+                                            <ShieldAlert className="h-5 w-5" />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-amber-700">
+                                                Excluded
+                                            </p>
+                                            <h3 className="font-serif text-2xl text-stone-900">To Arrange Separately</h3>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-3">
+                                        {itinerary.exclusions.map((item, index) => (
+                                            <div
+                                                key={`${item}-${index}`}
+                                                className="rounded-2xl border border-amber-100 bg-amber-50/60 px-4 py-3 text-sm text-stone-700"
+                                            >
+                                                {item}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </section>
+            )}
 
             {/* Route Summary — numbered stops with distances */}
             <RouteSummary itinerary={itinerary} />
