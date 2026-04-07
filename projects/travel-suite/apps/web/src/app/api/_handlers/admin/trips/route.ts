@@ -412,9 +412,7 @@ export async function PATCH(req: NextRequest) {
 
         let query = admin.adminClient
             .from("trips")
-            .select("id, client_id, itinerary_id, organization_id")
-            .not("itinerary_id", "is", null)
-            .not("client_id", "is", null);
+            .select("id, client_id, itinerary_id, organization_id");
 
         if (!admin.isSuperAdmin) {
             query = query.eq("organization_id", admin.organizationId!);

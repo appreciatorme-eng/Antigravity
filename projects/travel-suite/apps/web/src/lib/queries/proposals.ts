@@ -2,6 +2,7 @@
 // Cache key includes isDemoMode segment for instant isolation on toggle.
 
 import { useQuery } from '@tanstack/react-query';
+import { authedFetch } from '@/lib/api/authed-fetch';
 import { createClient } from '@/lib/supabase/client';
 import { useDemoMode } from '@/lib/demo/demo-mode-context';
 import { DEMO_PROPOSALS } from '@/lib/demo/data';
@@ -99,55 +100,14 @@ export function useProposals(statusFilter: string = 'all') {
                 return DEMO_PROPOSALS.filter((p) => p.status === statusFilter);
             }
 
-            const supabase = createClient();
-
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error("Not authenticated");
-
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('organization_id')
-                .eq('id', user.id)
-                .single();
-
-            if (!profile?.organization_id) throw new Error("No organization found");
-
-            let query = supabase
-                .from('proposals')
-                .select(PROPOSAL_LIST_SELECT)
-                .eq('organization_id', profile.organization_id)
-                .order('created_at', { ascending: false });
-
-            if (statusFilter !== 'all') {
-                query = query.eq('status', statusFilter);
+            const response = await authedFetch(`/api/admin/proposals?status=${encodeURIComponent(statusFilter)}`);
+            if (!response.ok) {
+                const payload = await response.json().catch(() => ({}));
+                throw new Error(payload?.error || "Failed to load proposals");
             }
 
-            const { data, error } = await query;
-            const proposalRows = (data as unknown as ProposalListRow[] | null) ?? [];
-            if (error) throw error;
-
-            const formattedProposals = proposalRows.map((proposal) => {
-                const clients = proposal.clients as { full_name?: string; email?: string } | null;
-                const tourTemplates = proposal.tour_templates as { name?: string } | null;
-                return {
-                    ...proposal,
-                    client_name: clients?.full_name || 'Unknown Client',
-                    client_email: clients?.email,
-                    template_name: tourTemplates?.name,
-                };
-            });
-
-            const proposalsWithCounts = await Promise.all(
-                formattedProposals.map(async (proposal) => {
-                    const { count } = await supabase
-                        .from('proposal_comments')
-                        .select('id', { count: 'exact', head: true })
-                        .eq('proposal_id', proposal.id);
-                    return { ...proposal, comments_count: count || 0 };
-                })
-            );
-
-            return proposalsWithCounts;
+            const payload = await response.json();
+            return (payload?.proposals as ProposalListRow[] | undefined) ?? [];
         }
     });
 }
