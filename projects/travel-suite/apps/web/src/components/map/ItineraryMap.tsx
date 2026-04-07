@@ -67,7 +67,11 @@ interface ItineraryMapProps {
     className?: string;
 }
 
-type ResolvedActivity = Activity & {
+type ResolvedStop = {
+    key: string;
+    label: string;
+    title: string;
+    start_time?: string;
     resolvedCoordinates?: Coordinate;
 };
 
@@ -91,58 +95,6 @@ function totalDistanceKm(route: [number, number][]) {
         if (a && b) total += haversineKm(a, b);
     }
     return total;
-}
-
-// ── Route optimisation: nearest-neighbour greedy + 2-opt refinement ───────────
-function optimizeRouteIndices(points: [number, number][], startIndex = 0): number[] {
-    const n = points.length;
-    if (n <= 2) return Array.from({ length: n }, (_, i) => i);
-
-    const unvisited = new Set<number>(Array.from({ length: n }, (_, i) => i));
-    unvisited.delete(startIndex);
-    const order: number[] = [startIndex];
-
-    while (unvisited.size) {
-        const last = order[order.length - 1];
-        if (last === undefined) break;
-        let bestIdx: number | null = null;
-        let bestDist = Infinity;
-        const lastPoint = points[last];
-        if (!lastPoint) break;
-        for (const idx of unvisited) {
-            const pt = points[idx];
-            if (!pt) continue;
-            const d = haversineKm(lastPoint, pt);
-            if (d < bestDist) { bestDist = d; bestIdx = idx; }
-        }
-        if (bestIdx === null) break;
-        unvisited.delete(bestIdx);
-        order.push(bestIdx);
-    }
-
-    // 2-opt improvement (effective for up to ~40 stops)
-    if (order.length >= 4 && order.length <= 40) {
-        let improved = true;
-        let safety = 0;
-        while (improved && safety++ < 80) {
-            improved = false;
-            for (let i = 1; i < order.length - 2; i++) {
-                for (let k = i + 1; k < order.length - 1; k++) {
-                    const a = points[order[i - 1] ?? -1];
-                    const b = points[order[i] ?? -1];
-                    const c = points[order[k] ?? -1];
-                    const d = points[order[k + 1] ?? -1];
-                    if (!a || !b || !c || !d) continue;
-                    if (haversineKm(a, c) + haversineKm(b, d) + 1e-9 < haversineKm(a, b) + haversineKm(c, d)) {
-                        order.splice(i, k - i + 1, ...order.slice(i, k + 1).reverse());
-                        improved = true;
-                    }
-                }
-            }
-        }
-    }
-
-    return order;
 }
 
 // ── Driver icon ──────────────────────────────────────────────────────────────
@@ -262,6 +214,42 @@ function cleanActivityQuery(activity: Activity): string {
 
     if (activity.location?.trim()) return activity.location.trim();
     return base;
+}
+
+function normalizeRouteStopLabel(raw: string): string {
+    return raw
+        .replace(/\([^)]*\)/g, " ")
+        .replace(/\ben-route.*$/i, " ")
+        .replace(/\s+-\s+.*$/g, " ")
+        .replace(/\b(round trip|one way|private transfer|shared transfer|sharing transfers?|joined transfer|transfer|hotel pickup|drop off|pickup|ticket|entry ticket|regular seat)\b/gi, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+function extractRouteStopQueries(activity: Activity): string[] {
+    const locationText = activity.location?.trim();
+    const titleText = activity.title?.trim() || "";
+    const candidates = [locationText, titleText].filter(Boolean) as string[];
+
+    for (const candidate of candidates) {
+        if (!/\bto\b/i.test(candidate)) continue;
+
+        const parts = candidate
+            .split(/\bto\b/i)
+            .map((part) => normalizeRouteStopLabel(part))
+            .filter(Boolean);
+
+        if (parts.length >= 2) {
+            return parts.slice(0, 2);
+        }
+    }
+
+    const fallback = cleanActivityQuery(activity);
+    return fallback ? [fallback] : [];
+}
+
+function coordinatesAlmostEqual(a: Coordinate, b: Coordinate): boolean {
+    return Math.abs(a.lat - b.lat) < 0.0005 && Math.abs(a.lng - b.lng) < 0.0005;
 }
 
 async function geocodeActivityLocation(query: string, destination?: string): Promise<Coordinate | null> {
@@ -398,21 +386,22 @@ export default function ItineraryMap({
     useEffect(() => {
         let cancelled = false;
 
-        const unresolved = activeActivities
-            .map((activity, index) => ({
-                index,
-                activity,
-                query: cleanActivityQuery(activity),
-            }))
-            .filter(({ activity, query }) => !hasValidCoordinates(activity.coordinates) && query);
+        const unresolved = activeActivities.flatMap((activity, index) => {
+            if (hasValidCoordinates(activity.coordinates)) return [];
+
+            return extractRouteStopQueries(activity).map((query, stopIndex) => ({
+                query,
+                key: `${activeDay}:${index}:${stopIndex}:${activity.title}`,
+            }));
+        });
 
         if (unresolved.length === 0) return;
 
         void (async () => {
             const nextEntries = await Promise.all(
-                unresolved.map(async ({ index, activity, query }) => {
+                unresolved.map(async ({ key, query }) => {
                     const resolved = await geocodeActivityLocation(query, destination);
-                    return resolved ? [`${activeDay}:${index}:${activity.title}`, resolved] as const : null;
+                    return resolved ? [key, resolved] as const : null;
                 }),
             );
 
@@ -433,22 +422,49 @@ export default function ItineraryMap({
         };
     }, [activeActivities, activeDay, destination]);
 
-    const resolvedActivities = useMemo<ResolvedActivity[]>(
-        () =>
-            activeActivities.map((activity, index) => ({
-                ...activity,
-                resolvedCoordinates:
-                    hasValidCoordinates(activity.coordinates)
-                        ? activity.coordinates
-                        : resolvedCoordinates[`${activeDay}:${index}:${activity.title}`],
-            })),
-        [activeActivities, activeDay, resolvedCoordinates],
-    );
+    const resolvedStops = useMemo<ResolvedStop[]>(() => {
+        const stops = activeActivities.flatMap((activity, activityIndex) => {
+            if (hasValidCoordinates(activity.coordinates)) {
+                return [{
+                    key: `${activeDay}:${activityIndex}:0:${activity.title}`,
+                    label: activity.location?.trim() || activity.title,
+                    title: activity.title,
+                    start_time: activity.start_time,
+                    resolvedCoordinates: activity.coordinates,
+                }];
+            }
 
-    const valid = useMemo(
-        () =>
-            resolvedActivities.filter((activity) => hasValidCoordinates(activity.resolvedCoordinates)),
-        [resolvedActivities]
+            return extractRouteStopQueries(activity).map((query, stopIndex) => ({
+                key: `${activeDay}:${activityIndex}:${stopIndex}:${activity.title}`,
+                label: query,
+                title: activity.title,
+                start_time: activity.start_time,
+                resolvedCoordinates: resolvedCoordinates[`${activeDay}:${activityIndex}:${stopIndex}:${activity.title}`],
+            }));
+        });
+
+        return stops.filter((stop) => hasValidCoordinates(stop.resolvedCoordinates));
+    }, [activeActivities, activeDay, resolvedCoordinates]);
+
+    const valid = useMemo<ResolvedStop[]>(
+        () => {
+            const compact: ResolvedStop[] = [];
+
+            for (const stop of resolvedStops) {
+                const previous = compact[compact.length - 1];
+                if (
+                    previous?.resolvedCoordinates &&
+                    stop.resolvedCoordinates &&
+                    coordinatesAlmostEqual(previous.resolvedCoordinates, stop.resolvedCoordinates)
+                ) {
+                    continue;
+                }
+                compact.push(stop);
+            }
+
+            return compact;
+        },
+        [resolvedStops]
     );
 
     const positions = useMemo<[number, number][]>(
@@ -456,13 +472,9 @@ export default function ItineraryMap({
         [valid]
     );
 
-    const optimizedLine = useMemo<[number, number][]>(() => {
-        if (positions.length <= 1) return positions;
-        const order = optimizeRouteIndices(positions, 0);
-        return order.map((i) => positions[i]!);
-    }, [positions]);
+    const orderedLine = useMemo<[number, number][]>(() => positions, [positions]);
 
-    const totalKm = useMemo(() => totalDistanceKm(optimizedLine), [optimizedLine]);
+    const totalKm = useMemo(() => totalDistanceKm(orderedLine), [orderedLine]);
 
     const driverPos = useMemo<[number, number] | null>(() => {
         if (!driverLocation) return null;
@@ -542,14 +554,14 @@ export default function ItineraryMap({
 
                 <FitBounds positions={positions} driverLocation={driverPos || undefined} />
 
-                {optimizedLine.length > 1 && (
+                {orderedLine.length > 1 && (
                     <>
                         <Polyline
-                            positions={optimizedLine}
+                            positions={orderedLine}
                             pathOptions={{ color: "#10b981", weight: 6, opacity: 0.15 }}
                         />
                         <Polyline
-                            positions={optimizedLine}
+                            positions={orderedLine}
                             pathOptions={{ color: "#10b981", weight: 3, opacity: 0.8, dashArray: "1, 10" }}
                         />
                     </>
@@ -564,7 +576,7 @@ export default function ItineraryMap({
                         <Popup>
                             <div className="p-1">
                                 <h4 className="font-bold text-sm text-slate-900">{act.title}</h4>
-                                {act.location && <p className="text-xs text-slate-500 mt-1">📍 {act.location}</p>}
+                                <p className="text-xs text-slate-500 mt-1">📍 {act.label}</p>
                                 {act.start_time && <p className="text-xs font-mono text-emerald-600 mt-1">{act.start_time}</p>}
                             </div>
                         </Popup>
