@@ -131,6 +131,9 @@ export async function POST(req: Request) {
         });
 
     } catch (error: unknown) {
+        // Temporary: emit plain-text error so Vercel log search can find it
+        const rawMsg = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+        process.stderr.write(`PDF_ERR_RAW: ${rawMsg}\n`);
         logError("PDF Import Error", error);
         const message = safeErrorMessage(error, "Failed to process PDF. Please try again.");
         return apiError(message, 500);
