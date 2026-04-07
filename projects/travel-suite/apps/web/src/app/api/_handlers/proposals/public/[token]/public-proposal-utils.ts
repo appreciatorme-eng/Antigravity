@@ -8,6 +8,7 @@ import {
   parseTierPricing,
 } from '@/lib/proposals/types';
 import { logError } from "@/lib/observability/logger";
+export { syncLinkedProposalToTrip } from "@/lib/proposals/trip-linking";
 
 export const supabaseAdmin = createAdminClient();
 

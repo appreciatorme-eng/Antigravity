@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { useTrips } from "@/lib/queries/trips";
+import { useTrips, useBackfillTripProposals } from "@/lib/queries/trips";
 import {
     Search,
     Filter,
@@ -27,6 +27,7 @@ import { TripListRow } from "./TripListRow";
 import { TripGridCard } from "./TripGridCard";
 import { SetupGuide } from "@/components/dashboard/SetupGuide";
 import { GuidedTour } from "@/components/tour/GuidedTour";
+import { useToast } from "@/components/ui/toast";
 
 const SORT_OPTIONS: { value: TripSortKey; label: string }[] = [
     { value: "departure", label: "Departure Date" },
@@ -42,6 +43,7 @@ const QUICK_FILTER_OPTIONS: { value: QuickFilter; label: string }[] = [
 ];
 
 export default function TripsPage() {
+    const { toast } = useToast();
     const searchParams = useSearchParams();
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -61,6 +63,7 @@ export default function TripsPage() {
     const departingSoonRef = useRef<HTMLDivElement>(null);
 
     const { data: rawTrips, isPending: loading, refetch: fetchTrips } = useTrips(statusFilter, searchQuery);
+    const backfillMutation = useBackfillTripProposals();
     const trips: EnrichedTrip[] = useMemo(() => rawTrips || [], [rawTrips]);
 
     const processedTrips = useMemo(() => {
@@ -134,15 +137,48 @@ export default function TripsPage() {
                     </p>
                 </div>
 
-                <GlassButton
-                    variant="primary"
-                    onClick={() => setIsCreateModalOpen(true)}
-                    className="h-11 md:h-14 px-5 md:px-8 rounded-xl md:rounded-2xl shadow-xl shadow-primary/20 group"
-                    data-tour="create-trip-btn"
-                >
-                    <Plus className="w-4 h-4 md:w-5 md:h-5 mr-2 md:mr-3 transition-transform group-hover:rotate-90" />
-                    <span className="text-[10px] md:text-xs font-black uppercase tracking-widest">Create Trip</span>
-                </GlassButton>
+                <div className="flex flex-wrap items-center gap-3">
+                    <GlassButton
+                        variant="outline"
+                        onClick={() => {
+                            backfillMutation.mutate(undefined, {
+                                onSuccess: (payload) => {
+                                    const data = payload as { created?: number; skipped?: number; failed?: number };
+                                    void fetchTrips();
+                                    toast({
+                                        title: "Proposal backfill finished",
+                                        description: `${data.created ?? 0} linked, ${data.skipped ?? 0} skipped, ${data.failed ?? 0} failed.`,
+                                        variant: data.failed ? "warning" : "success",
+                                      });
+                                },
+                                onError: (error) => {
+                                    toast({
+                                        title: "Backfill failed",
+                                        description: error instanceof Error ? error.message : "Unable to backfill linked proposals.",
+                                        variant: "error",
+                                    });
+                                },
+                            });
+                        }}
+                        className="h-11 md:h-14 px-5 md:px-8 rounded-xl md:rounded-2xl"
+                        disabled={backfillMutation.isPending}
+                    >
+                        <Plus className="w-4 h-4 md:w-5 md:h-5 mr-2 md:mr-3" />
+                        <span className="text-[10px] md:text-xs font-black uppercase tracking-widest">
+                            {backfillMutation.isPending ? "Linking..." : "Backfill Proposals"}
+                        </span>
+                    </GlassButton>
+
+                    <GlassButton
+                        variant="primary"
+                        onClick={() => setIsCreateModalOpen(true)}
+                        className="h-11 md:h-14 px-5 md:px-8 rounded-xl md:rounded-2xl shadow-xl shadow-primary/20 group"
+                        data-tour="create-trip-btn"
+                    >
+                        <Plus className="w-4 h-4 md:w-5 md:h-5 mr-2 md:mr-3 transition-transform group-hover:rotate-90" />
+                        <span className="text-[10px] md:text-xs font-black uppercase tracking-widest">Create Trip</span>
+                    </GlassButton>
+                </div>
             </div>
 
             {/* KPI Stats */}

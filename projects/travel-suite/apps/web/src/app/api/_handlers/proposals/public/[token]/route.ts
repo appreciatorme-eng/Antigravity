@@ -32,6 +32,7 @@ import {
   sanitizeIdentifier,
   sanitizeShareToken,
   supabaseAdmin,
+  syncLinkedProposalToTrip,
   withRateLimitHeaders,
 } from "./public-proposal-utils";
 import { logError } from "@/lib/observability/logger";
@@ -160,6 +161,11 @@ export async function POST(
       if (recalculated.error) {
         return NextResponse.json({ error: recalculated.error }, { status: 400 });
       }
+
+      await syncLinkedProposalToTrip({
+        adminClient: supabaseAdmin,
+        proposalId: proposal.id,
+      });
 
       return NextResponse.json({ success: true, client_selected_price: recalculated.price });
     }

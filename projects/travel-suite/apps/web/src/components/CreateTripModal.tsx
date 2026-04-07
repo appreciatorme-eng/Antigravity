@@ -695,6 +695,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
           clientId,
           startDate,
           endDate,
+          createLinkedProposal: true,
           itinerary: itineraryPayload,
         }),
       });
@@ -720,6 +721,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
 
       const payloadData = await response.json();
       const tripId = payloadData.tripId;
+      const proposalError = payloadData.proposalError as string | undefined;
 
       let shareLinkCopied = false;
       try {
@@ -747,6 +749,13 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
       onSuccess();
 
       if (tripId) {
+        if (proposalError) {
+          toast({
+            title: "Trip created with warning",
+            description: `Linked proposal was not created automatically: ${proposalError}`,
+            variant: "warning",
+          });
+        }
         router.push(`/trips/${tripId}`);
         return;
       }

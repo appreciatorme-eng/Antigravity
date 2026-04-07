@@ -19,6 +19,7 @@ import ClientPicker from "@/components/ClientPicker";
 interface ShareTripModalProps {
     isOpen: boolean;
     onClose: () => void;
+    tripId?: string;
     itineraryId?: string;
     tripTitle: string;
     isPro?: boolean;
@@ -29,6 +30,7 @@ interface ShareTripModalProps {
 export default function ShareTripModal({
     isOpen,
     onClose,
+    tripId,
     itineraryId,
     tripTitle,
     initialTemplateId = "safari_story",
@@ -52,19 +54,31 @@ export default function ShareTripModal({
             // Call the server-side API to create or retrieve a share link.
             // This bypasses RLS (uses adminClient on the server) and handles
             // auto-saving unsaved itineraries + creating trip records.
-            const response = await fetch("/api/admin/share/create", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-                    "x-requested-with": "XMLHttpRequest",
-                },
-                body: JSON.stringify({
-                    itineraryId: itineraryId ?? undefined,
-                    rawItineraryData: !itineraryId && rawItineraryData ? rawItineraryData : undefined,
-                    templateId: initialTemplateId,
-                }),
-            });
+            const response = tripId
+                ? await fetch(`/api/admin/trips/${tripId}/share-link`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+                        "x-requested-with": "XMLHttpRequest",
+                    },
+                    body: JSON.stringify({
+                        templateId: initialTemplateId,
+                    }),
+                })
+                : await fetch("/api/admin/share/create", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+                        "x-requested-with": "XMLHttpRequest",
+                    },
+                    body: JSON.stringify({
+                        itineraryId: itineraryId ?? undefined,
+                        rawItineraryData: !itineraryId && rawItineraryData ? rawItineraryData : undefined,
+                        templateId: initialTemplateId,
+                    }),
+                });
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => null);
@@ -75,7 +89,11 @@ export default function ShareTripModal({
             const data = payload.data;
 
             resolvedIdRef.current = data.itineraryId ?? itineraryId;
-            setShareLink(`${window.location.origin}/share/${data.shareCode}`);
+            setShareLink(
+                typeof data.shareUrl === "string"
+                    ? data.shareUrl.replace(/^https?:\/\/tripbuilt\.com/i, window.location.origin)
+                    : `${window.location.origin}/share/${data.shareCode}`,
+            );
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : "Failed to generate share link";
             setError(msg);
@@ -115,7 +133,9 @@ export default function ShareTripModal({
                         Share &quot;{tripTitle}&quot;
                     </DialogTitle>
                     <DialogDescription>
-                        Generating a magic link with the <strong>{initialTemplateId.replace(/_/g, " ")}</strong> template.
+                        {tripId
+                            ? "Preparing the best client-facing share for this trip."
+                            : <>Generating a magic link with the <strong>{initialTemplateId.replace(/_/g, " ")}</strong> template.</>}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -139,7 +159,9 @@ export default function ShareTripModal({
                             <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100">
                                 <Check className="w-4 h-4 shrink-0" />
                                 <span>
-                                    Magic link ready — using <strong>{initialTemplateId.replace(/_/g, " ")}</strong> template.
+                                    {tripId
+                                        ? "Client-facing share is ready. Linked proposal portal is used when available."
+                                        : <>Magic link ready — using <strong>{initialTemplateId.replace(/_/g, " ")}</strong> template.</>}
                                 </span>
                             </div>
 

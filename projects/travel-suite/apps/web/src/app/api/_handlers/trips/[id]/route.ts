@@ -4,6 +4,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import { EXTERNAL_DRIVER_SELECT } from "@/lib/travel/selects";
+import type { Database } from "@/lib/database.types";
+import { syncTripToLinkedProposal } from "@/lib/proposals/trip-linking";
 
 const supabaseAdmin = createAdminClient();
 
@@ -39,6 +41,15 @@ interface ReminderDayStatus {
     sent: number;
     failed: number;
     lastScheduledFor: string | null;
+}
+
+interface LinkedProposalRow {
+    id: string;
+    title: string | null;
+    status: string | null;
+    share_token: string | null;
+    total_price: number | null;
+    client_selected_price: number | null;
 }
 
 function parseRole(role: string | null | undefined): "admin" | "super_admin" | null {
@@ -180,9 +191,23 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
                 : null,
         };
 
+        const { data: linkedProposalData } = auth.isStaff && tripData.organization_id
+            ? await supabaseAdmin
+                .from("proposals")
+                .select("id, title, status, share_token, total_price, client_selected_price")
+                .eq("trip_id", tripId)
+                .eq("organization_id", tripData.organization_id)
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .maybeSingle()
+            : { data: null as LinkedProposalRow | null };
+
+        const linkedProposal = (linkedProposalData as LinkedProposalRow | null) ?? null;
+
         if (!auth.isStaff) {
             return NextResponse.json({
                 trip: mappedTrip,
+                linkedProposal,
             });
         }
 
@@ -355,6 +380,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
 
         return NextResponse.json({
             trip: mappedTrip,
+            linkedProposal,
             drivers: driversData || [],
             assignments: assignmentsMap,
             accommodations: accommodationsMap,
@@ -362,6 +388,92 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
             busyDriversByDay,
             latestDriverLocation: latestLocation || null,
             invoiceSummary,
+        });
+    } catch (error) {
+        return apiError(safeErrorMessage(error, "Request failed"), 500);
+    }
+}
+
+export async function PATCH(req: Request, { params }: { params: Promise<{ id?: string }> }) {
+    try {
+        const auth = await requireTripReader(req);
+        if ("error" in auth) return auth.error;
+        if (!auth.isStaff) {
+            return apiError("Forbidden", 403);
+        }
+
+        const { id: tripId } = await params;
+        if (!tripId || tripId === "undefined") {
+            return apiError("Missing trip id", 400);
+        }
+
+        const body = await req.json().catch(() => ({}));
+        const itineraryId = typeof body.itineraryId === "string" ? body.itineraryId : "";
+        const rawData = body.rawData;
+        const days = Array.isArray(body.days) ? body.days : undefined;
+
+        if (!itineraryId || !rawData || typeof rawData !== "object") {
+            return apiError("Invalid itinerary payload", 400);
+        }
+
+        let tripLookup = supabaseAdmin
+            .from("trips")
+            .select("id, organization_id, itinerary_id")
+            .eq("id", tripId);
+
+        if (auth.role !== "super_admin") {
+            if (!auth.organizationId) {
+                return apiError("Admin organization not configured", 400);
+            }
+            tripLookup = tripLookup.eq("organization_id", auth.organizationId);
+        }
+
+        const { data: trip, error: tripError } = await tripLookup.maybeSingle();
+        if (tripError || !trip || trip.itinerary_id !== itineraryId) {
+            return apiError("Trip not found", 404);
+        }
+
+        const nextRawData = {
+            ...rawData,
+            ...(days ? { days } : {}),
+        };
+
+        const updatePayload: Database["public"]["Tables"]["itineraries"]["Update"] = {
+            raw_data: nextRawData as Database["public"]["Tables"]["itineraries"]["Update"]["raw_data"],
+        };
+
+        if (typeof nextRawData.trip_title === "string" && nextRawData.trip_title.trim()) {
+            updatePayload.trip_title = nextRawData.trip_title.trim();
+        }
+        if (typeof nextRawData.destination === "string" && nextRawData.destination.trim()) {
+            updatePayload.destination = nextRawData.destination.trim();
+        }
+        if (typeof nextRawData.summary === "string") {
+            updatePayload.summary = nextRawData.summary;
+        }
+        if (typeof nextRawData.duration_days === "number" && Number.isFinite(nextRawData.duration_days)) {
+            updatePayload.duration_days = nextRawData.duration_days;
+        }
+
+        const { error: itineraryError } = await supabaseAdmin
+            .from("itineraries")
+            .update(updatePayload)
+            .eq("id", itineraryId);
+
+        if (itineraryError) {
+            return apiError("Failed to save itinerary", 400);
+        }
+
+        const syncResult = await syncTripToLinkedProposal({
+            adminClient: supabaseAdmin,
+            tripId,
+            rawData: nextRawData,
+        });
+
+        return NextResponse.json({
+            success: true,
+            linkedProposalId: syncResult.proposalId,
+            linkedProposalSynced: syncResult.synced,
         });
     } catch (error) {
         return apiError(safeErrorMessage(error, "Request failed"), 500);

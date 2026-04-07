@@ -24,6 +24,8 @@ import type { LinkedProposal, Trip } from "@/features/trip-detail/types";
 interface TripDetailHeaderProps {
   trip: Trip;
   linkedProposal?: LinkedProposal | null;
+  onCreateProposal?: () => void;
+  creatingProposal?: boolean;
   onSave: () => void;
   saving: boolean;
   onDuplicate: () => void;
@@ -89,6 +91,8 @@ function renderStatusBadge(status: string) {
 export function TripDetailHeader({
   trip,
   linkedProposal,
+  onCreateProposal,
+  creatingProposal = false,
   onSave,
   saving,
   onDuplicate,
@@ -175,6 +179,18 @@ export function TripDetailHeader({
           <Share2 className="w-4 h-4" />
           <span className="hidden md:inline">Share Trip</span>
         </GlassButton>
+
+        {!linkedProposal && onCreateProposal ? (
+          <GlassButton
+            variant="outline"
+            className="h-10 md:h-14 px-3 md:px-6 rounded-xl md:rounded-2xl hover:shadow-md border-emerald-500 text-emerald-700"
+            onClick={onCreateProposal}
+            loading={creatingProposal}
+          >
+            <Link2 className="w-4 h-4" />
+            <span className="hidden md:inline">Create Proposal</span>
+          </GlassButton>
+        ) : null}
 
         <GlassButton
           variant="outline"

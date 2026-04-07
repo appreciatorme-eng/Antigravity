@@ -4,6 +4,7 @@ import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import { EXTERNAL_DRIVER_SELECT } from "@/lib/travel/selects";
 import { logError } from "@/lib/observability/logger";
+import { createLinkedProposalFromItinerary } from "@/lib/proposals/trip-linking";
 
 const TRIP_DETAILS_RATE_LIMIT_MAX = 120;
 const TRIP_DETAILS_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
@@ -334,6 +335,65 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
         });
     } catch (error) {
         logError("Error fetching trip details", error);
+        return NextResponse.json({ error: safeErrorMessage(error, "Request failed") }, { status: 500 });
+    }
+}
+
+export async function PATCH(req: Request, { params }: { params: Promise<{ id?: string }> }) {
+    try {
+        const admin = await requireAdmin(req, { requireOrganization: false });
+        if (!admin.ok) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: admin.response.status || 401 });
+        }
+
+        const { id: tripId } = await params;
+        if (!tripId || tripId === "undefined") {
+            return NextResponse.json({ error: "Missing trip id" }, { status: 400 });
+        }
+
+        const body = await req.json().catch(() => ({}));
+        const action = String(body.action || "");
+
+        if (action !== "create_linked_proposal") {
+            return NextResponse.json({ error: "Unsupported action" }, { status: 400 });
+        }
+
+        let tripQuery = admin.adminClient
+            .from("trips")
+            .select("id, client_id, itinerary_id, organization_id, itineraries(raw_data)")
+            .eq("id", tripId);
+
+        if (!admin.isSuperAdmin) {
+            if (!admin.organizationId) {
+                return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+            }
+            tripQuery = tripQuery.eq("organization_id", admin.organizationId);
+        }
+
+        const { data: trip } = await tripQuery.maybeSingle();
+        const itinerary = Array.isArray(trip?.itineraries) ? trip?.itineraries[0] : trip?.itineraries;
+
+        if (!trip?.client_id || !trip.itinerary_id || !trip.organization_id) {
+            return NextResponse.json({ error: "Trip is missing client or itinerary linkage" }, { status: 400 });
+        }
+
+        const createdProposal = await createLinkedProposalFromItinerary({
+            adminClient: admin.adminClient,
+            organizationId: trip.organization_id,
+            userId: admin.userId,
+            itineraryId: trip.itinerary_id,
+            clientId: trip.client_id,
+            tripId: trip.id,
+            basePrice: Number((itinerary?.raw_data as { pricing?: { total_cost?: number } } | null)?.pricing?.total_cost || 0),
+        });
+
+        return NextResponse.json({
+            success: true,
+            proposalId: createdProposal.proposalId,
+            reused: createdProposal.reused,
+        });
+    } catch (error) {
+        logError("Create linked proposal error", error);
         return NextResponse.json({ error: safeErrorMessage(error, "Request failed") }, { status: 500 });
     }
 }

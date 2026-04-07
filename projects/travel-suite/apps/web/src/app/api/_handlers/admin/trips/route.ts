@@ -7,6 +7,7 @@ import { resolveDemoOrg, blockDemoMutation } from "@/lib/auth/demo-org-resolver"
 import { passesMutationCsrfGuard } from "@/lib/security/admin-mutation-csrf";
 import type { Database } from "@/lib/database.types";
 import { ITINERARY_SELECT, TRIP_SELECT } from "@/lib/travel/selects";
+import { createLinkedProposalFromItinerary } from "@/lib/proposals/trip-linking";
 
 const TRIPS_READ_RATE_LIMIT_MAX = 120;
 const TRIPS_READ_RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
@@ -266,6 +267,7 @@ export async function POST(req: NextRequest) {
         const startDate = String(body.startDate || "");
         const endDate = String(body.endDate || "");
         const itinerary = body.itinerary || {};
+        const createLinkedProposal = body.createLinkedProposal !== false;
 
         if (!clientId || !startDate || !endDate) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -344,8 +346,138 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Failed to create trip" }, { status: 400 });
         }
 
-        return NextResponse.json({ success: true, tripId: tripRow.id, itineraryId: itineraryRow.id });
+        let proposalId: string | null = null;
+        let proposalError: string | null = null;
+
+        if (createLinkedProposal) {
+            try {
+                const createdProposal = await createLinkedProposalFromItinerary({
+                    adminClient: admin.adminClient,
+                    organizationId: clientProfile.organization_id,
+                    userId: admin.userId,
+                    itineraryId: itineraryRow.id,
+                    clientId,
+                    tripId: tripRow.id,
+                    proposalTitle: itineraryPayload.trip_title,
+                    basePrice: Number(itineraryPayload.raw_data?.pricing?.total_cost || 0),
+                });
+                proposalId = createdProposal.proposalId;
+            } catch (error) {
+                proposalError = error instanceof Error ? error.message : "Failed to create linked proposal";
+            }
+        }
+
+        return NextResponse.json({
+            success: true,
+            tripId: tripRow.id,
+            itineraryId: itineraryRow.id,
+            proposalId,
+            proposalError,
+        });
     } catch {
         return NextResponse.json({ error: "Failed to process trip" }, { status: 500 });
+    }
+}
+
+export async function PATCH(req: NextRequest) {
+    try {
+        const admin = await requireAdmin(req, { requireOrganization: false });
+        if (!admin.ok) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: admin.response.status || 401 });
+        }
+        if (!passesMutationCsrfGuard(req)) {
+            return NextResponse.json(
+                { error: "CSRF validation failed for admin mutation" },
+                { status: 403 }
+            );
+        }
+
+        const demoBlocked = blockDemoMutation(req);
+        if (demoBlocked) return demoBlocked;
+
+        const body = await req.json().catch(() => ({}));
+        const action = String(body.action || "");
+
+        if (action !== "backfill_linked_proposals") {
+            return NextResponse.json({ error: "Unsupported action" }, { status: 400 });
+        }
+
+        if (!admin.organizationId && !admin.isSuperAdmin) {
+            return NextResponse.json({ error: "Admin organization not configured" }, { status: 400 });
+        }
+
+        const requestedTripIds = Array.isArray(body.tripIds)
+            ? body.tripIds.map((id: unknown) => String(id)).filter(Boolean)
+            : [];
+
+        let query = admin.adminClient
+            .from("trips")
+            .select("id, client_id, itinerary_id, organization_id")
+            .not("itinerary_id", "is", null)
+            .not("client_id", "is", null);
+
+        if (!admin.isSuperAdmin) {
+            query = query.eq("organization_id", admin.organizationId!);
+        }
+
+        if (requestedTripIds.length > 0) {
+            query = query.in("id", requestedTripIds);
+        }
+
+        const { data: trips, error: tripsError } = await query.order("created_at", { ascending: false });
+        if (tripsError) {
+            return NextResponse.json({ error: "Failed to load trips" }, { status: 500 });
+        }
+
+        const results: Array<{ tripId: string; proposalId?: string; status: "created" | "skipped" | "failed"; reason?: string }> = [];
+
+        for (const trip of trips || []) {
+            if (!trip.id || !trip.client_id || !trip.itinerary_id || !trip.organization_id) {
+                results.push({ tripId: trip.id, status: "skipped", reason: "Missing itinerary or client" });
+                continue;
+            }
+
+            const { data: existingProposal } = await admin.adminClient
+                .from("proposals")
+                .select("id")
+                .eq("trip_id", trip.id)
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+            if (existingProposal?.id) {
+                results.push({ tripId: trip.id, proposalId: existingProposal.id, status: "skipped", reason: "Already linked" });
+                continue;
+            }
+
+            try {
+                const createdProposal = await createLinkedProposalFromItinerary({
+                    adminClient: admin.adminClient,
+                    organizationId: trip.organization_id,
+                    userId: admin.userId,
+                    itineraryId: trip.itinerary_id,
+                    clientId: trip.client_id,
+                    tripId: trip.id,
+                });
+
+                results.push({ tripId: trip.id, proposalId: createdProposal.proposalId, status: "created" });
+            } catch (error) {
+                results.push({
+                    tripId: trip.id,
+                    status: "failed",
+                    reason: error instanceof Error ? error.message : "Failed to create proposal",
+                });
+            }
+        }
+
+        return NextResponse.json({
+            success: true,
+            created: results.filter((result) => result.status === "created").length,
+            skipped: results.filter((result) => result.status === "skipped").length,
+            failed: results.filter((result) => result.status === "failed").length,
+            results,
+        });
+    } catch {
+        return NextResponse.json({ error: "Failed to backfill linked proposals" }, { status: 500 });
     }
 }

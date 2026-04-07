@@ -112,3 +112,30 @@ export function useCloneTrip() {
         }
     });
 }
+
+export function useBackfillTripProposals() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (tripIds?: string[]) => {
+            const response = await authedFetch("/api/admin/trips", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: "backfill_linked_proposals",
+                    tripIds,
+                }),
+            });
+
+            if (!response.ok) {
+                const errorPayload = await response.json().catch(() => ({}));
+                throw new Error(errorPayload.error || "Failed to backfill linked proposals");
+            }
+
+            return response.json();
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: tripsKeys.all });
+        },
+    });
+}

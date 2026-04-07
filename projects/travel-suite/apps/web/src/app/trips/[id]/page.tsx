@@ -36,7 +36,7 @@ export default function TripDetailPage() {
   const { toast } = useToast();
 
   // --- Data fetching ---
-  const { data, isLoading } = useTripDetail(tripId);
+  const { data, isLoading, refetch } = useTripDetail(tripId);
   const saveMutation = useSaveTripItinerary();
   const cloneMutation = useCloneTrip();
 
@@ -49,6 +49,7 @@ export default function TripDetailPage() {
   const [deletingTrip, setDeletingTrip] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [editableRawData, setEditableRawData] = useState<TripItineraryRawData | null>(null);
+  const [creatingProposal, setCreatingProposal] = useState(false);
 
   // --- Derived data ---
   const trip = data?.trip ?? null;
@@ -129,6 +130,39 @@ export default function TripDetailPage() {
       description: "AI Route Optimization will be available in a future update.",
       variant: "info",
     });
+  };
+
+  const handleCreateLinkedProposal = async () => {
+    if (creatingProposal) return;
+
+    setCreatingProposal(true);
+    try {
+      const response = await authedFetch(`/api/admin/trips/${tripId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "create_linked_proposal" }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.error || "Failed to create linked proposal");
+      }
+
+      await refetch();
+      toast({
+        title: "Linked proposal created",
+        description: "This trip now appears in Proposals and uses the proposal share flow.",
+        variant: "success",
+      });
+    } catch (error) {
+      toast({
+        title: "Proposal creation failed",
+        description: error instanceof Error ? error.message : "Unable to create linked proposal.",
+        variant: "error",
+      });
+    } finally {
+      setCreatingProposal(false);
+    }
   };
 
   const handleDeleteTrip = async () => {
@@ -238,6 +272,8 @@ export default function TripDetailPage() {
       <TripDetailHeader
         trip={trip}
         linkedProposal={data?.linkedProposal ?? null}
+        onCreateProposal={data?.linkedProposal ? undefined : handleCreateLinkedProposal}
+        creatingProposal={creatingProposal}
         onSave={handleSave}
         saving={saveMutation.isPending}
         onDuplicate={handleDuplicate}
@@ -285,6 +321,7 @@ export default function TripDetailPage() {
       <ShareTripModal
         isOpen={isShareOpen}
         onClose={() => setIsShareOpen(false)}
+        tripId={tripId}
         tripTitle={trip.itineraries?.trip_title || trip.destination || "Trip"}
         itineraryId={trip.itineraries?.id}
       />

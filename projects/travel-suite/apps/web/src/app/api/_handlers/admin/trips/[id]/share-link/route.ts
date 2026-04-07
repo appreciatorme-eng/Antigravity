@@ -20,6 +20,24 @@ async function resolveItineraryId(
   return trip?.itinerary_id ?? null;
 }
 
+async function findLinkedProposalShare(
+  adminClient: ReturnType<typeof import("@/lib/supabase/admin").createAdminClient>,
+  tripId: string,
+  organizationId: string,
+) {
+  const { data } = await adminClient
+    .from("proposals")
+    .select("share_token")
+    .eq("trip_id", tripId)
+    .eq("organization_id", organizationId)
+    .not("share_token", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return data?.share_token ?? null;
+}
+
 /** Find or create a share link for the given itinerary. */
 async function findOrCreateShareLink(
   adminClient: ReturnType<typeof import("@/lib/supabase/admin").createAdminClient>,
@@ -72,6 +90,7 @@ export async function GET(
 
   const { organizationId, adminClient } = auth;
   const { id: tripId } = await params;
+  const linkedProposalShareToken = await findLinkedProposalShare(adminClient, tripId, organizationId!);
 
   const itineraryId = await resolveItineraryId(adminClient, tripId, organizationId!);
   if (!itineraryId) {
@@ -85,7 +104,13 @@ export async function GET(
   }
 
   return apiSuccess({
-    shareUrl: `https://tripbuilt.com/share/${shareCode}`,
+    shareUrl: linkedProposalShareToken
+      ? `https://tripbuilt.com/portal/${linkedProposalShareToken}`
+      : `https://tripbuilt.com/share/${shareCode}`,
+    previewUrl: `https://tripbuilt.com/share/${shareCode}`,
+    portalUrl: linkedProposalShareToken
+      ? `https://tripbuilt.com/portal/${linkedProposalShareToken}`
+      : null,
   });
 }
 
@@ -98,6 +123,7 @@ export async function POST(
 
   const { organizationId, adminClient } = auth;
   const { id: tripId } = await params;
+  const linkedProposalShareToken = await findLinkedProposalShare(adminClient, tripId, organizationId!);
 
   const itineraryId = await resolveItineraryId(adminClient, tripId, organizationId!);
   if (!itineraryId) {
@@ -125,6 +151,12 @@ export async function POST(
 
   return apiSuccess({
     shareCode,
-    shareUrl: `https://tripbuilt.com/share/${shareCode}`,
+    shareUrl: linkedProposalShareToken
+      ? `https://tripbuilt.com/portal/${linkedProposalShareToken}`
+      : `https://tripbuilt.com/share/${shareCode}`,
+    previewUrl: `https://tripbuilt.com/share/${shareCode}`,
+    portalUrl: linkedProposalShareToken
+      ? `https://tripbuilt.com/portal/${linkedProposalShareToken}`
+      : null,
   });
 }

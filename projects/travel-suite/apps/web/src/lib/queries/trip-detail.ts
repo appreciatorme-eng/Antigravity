@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { authedFetch } from "@/lib/api/authed-fetch";
-import { createClient } from "@/lib/supabase/client";
 import type {
   TripDetailPayload,
   TripInvoice,
@@ -258,17 +257,23 @@ export function useSaveTripItinerary() {
 
   return useMutation({
     mutationFn: async (input: SaveItineraryInput) => {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from("itineraries")
-        .update({
-          raw_data: {
+      const response = await authedFetch(`/api/trips/${input.tripId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          itineraryId: input.itineraryId,
+          days: input.days,
+          rawData: {
             ...(input.rawData || {}),
             days: input.days,
           } as unknown as Json,
-        })
-        .eq("id", input.itineraryId);
-      if (error) throw error;
+        }),
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to save trip itinerary");
+      }
+      return response.json();
     },
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({
