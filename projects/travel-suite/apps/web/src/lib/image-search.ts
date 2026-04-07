@@ -20,7 +20,7 @@ interface ItineraryForImages {
     [key: string]: unknown;
 }
 
-export const IMAGE_SEARCH_VERSION = 4;
+export const IMAGE_SEARCH_VERSION = 5;
 
 // Curated scenic fallback images — expanded to 20 for better hash distribution
 export const LUXURY_FALLBACKS = [
@@ -74,6 +74,11 @@ const URBAN_FALLBACK_INDEXES = [4, 6, 7, 5] as const;
 const NATURE_FALLBACK_INDEXES = [3, 8, 9, 14, 18] as const;
 const RESORT_FALLBACK_INDEXES = [0, 1, 5, 15] as const;
 
+const CONTEXTUAL_FALLBACK_FIRST_PATTERNS = [
+    /\b(airport|transfer|transfers|pickup|drop|terminal|station|hotel to|to hotel|one way|round trip|return transfer|private transfer|shared transfer|joined transfer|en[- ]route)\b/i,
+    /\b(show|fantasea|dolphin|cabaret|theme park|city tour)\b/i,
+] as const;
+
 export function getContextualFallback(queryOrTitle: string): string | null {
     const normalized = normalizeWhitespace(queryOrTitle).toLowerCase();
     if (!normalized) return null;
@@ -99,6 +104,12 @@ export function getContextualFallback(queryOrTitle: string): string | null {
     }
 
     return null;
+}
+
+export function shouldPreferContextualFallback(queryOrTitle: string): boolean {
+    const normalized = normalizeWhitespace(queryOrTitle).toLowerCase();
+    if (!normalized) return false;
+    return CONTEXTUAL_FALLBACK_FIRST_PATTERNS.some((pattern) => pattern.test(normalized));
 }
 
 /** Patterns that indicate a Wikipedia image is NOT a place/landmark photo. */
@@ -406,8 +417,14 @@ export async function getWikiImage(query: string | readonly string[], titleStr: 
     const queries = uniqueQueries(
         (typeof query === 'string' ? [query] : Array.from(query)) as string[],
     );
+    const combinedContext = `${queries.join(" ")} ${titleStr}`.trim();
     if (queries.length === 0) {
         return getContextualFallback(titleStr) ?? getDeterministicFallback(titleStr);
+    }
+
+    if (shouldPreferContextualFallback(combinedContext)) {
+        const contextualFallback = getContextualFallback(combinedContext);
+        if (contextualFallback) return contextualFallback;
     }
 
     for (const candidate of queries) {
@@ -420,7 +437,7 @@ export async function getWikiImage(query: string | readonly string[], titleStr: 
         if (result) return result;
     }
 
-    return getContextualFallback(`${queries.join(" ")} ${titleStr}`) ?? getDeterministicFallback(titleStr);
+    return getContextualFallback(combinedContext) ?? getDeterministicFallback(titleStr);
 }
 
 const WIKI_CONCURRENCY_LIMIT = 5;
