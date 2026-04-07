@@ -336,12 +336,32 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
         if (!pdfFile) return;
         setIsGenerating(true);
         try {
-            const formData = new FormData();
-            formData.append('file', pdfFile);
+            // Extract text client-side using pdfjs-dist (browser-native, no serverless issues)
+            const arrayBuffer = await pdfFile.arrayBuffer();
+            const pdfjsLib = await import('pdfjs-dist');
+            pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+            const pdfDoc = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+            const textParts: string[] = [];
+            for (let i = 1; i <= pdfDoc.numPages; i++) {
+                const page = await pdfDoc.getPage(i);
+                const content = await page.getTextContent();
+                const pageText = content.items
+                    .map((item: Record<string, unknown>) => typeof item.str === 'string' ? item.str : '')
+                    .join(' ');
+                if (pageText.trim()) textParts.push(pageText);
+                page.cleanup();
+            }
+            await pdfDoc.destroy();
+            const extractedText = textParts.join('\n').replace(/\s+/g, ' ').trim();
+            if (extractedText.length < 50) {
+                throw new Error('Could not extract text from this PDF. It may be image-only.');
+            }
 
-            const res = await authedFetch("/api/itinerary/import/pdf", {
+            // Reuse the text import endpoint — no server-side PDF parsing
+            const res = await authedFetch("/api/itinerary/import/text", {
                 method: "POST",
-                body: formData,
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text: extractedText }),
             });
 
             const data = await res.json();
