@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { formatLocalDate, formatLocalDateTime } from '@/lib/date/tz';
 import { useProposals } from '@/lib/queries/proposals';
+import { useBackfillTripProposals } from '@/lib/queries/trips';
 import { createClient } from '@/lib/supabase/client';
 import { authedFetch } from '@/lib/api/authed-fetch';
 import {
@@ -110,6 +111,7 @@ export default function ProposalsPage() {
   // E-Signature modal state
   const [signModalProposal, setSignModalProposal] = useState<Proposal | null>(null);
   const [signatureMap, setSignatureMap] = useState<Record<string, SignatureRecord>>({});
+  const backfillMutation = useBackfillTripProposals();
 
   const { data: proposalsRaw, isLoading: loading, refetch: loadProposals } = useProposals(filterStatus);
   const proposals = useMemo<Proposal[]>(() => proposalsRaw ?? [], [proposalsRaw]);
@@ -303,8 +305,30 @@ export default function ProposalsPage() {
             <EmptyState
               icon="📋"
               title="No proposals yet"
-              description="Create your first proposal to start tracking client interest, approvals, and payment conversion."
-              action={{ label: 'Create First Proposal', href: '/proposals/create' }}
+              description="Create your first proposal, or backfill linked proposals from existing trips."
+              action={{
+                label: backfillMutation.isPending ? 'Linking Trips…' : 'Backfill From Trips',
+                onClick: () => {
+                  backfillMutation.mutate(undefined, {
+                    onSuccess: (payload) => {
+                      const data = payload as { created?: number; skipped?: number; failed?: number };
+                      void loadProposals();
+                      toast({
+                        title: 'Proposal backfill finished',
+                        description: `${data.created ?? 0} linked, ${data.skipped ?? 0} skipped, ${data.failed ?? 0} failed.`,
+                        variant: data.failed ? 'warning' : 'success',
+                      });
+                    },
+                    onError: (error) => {
+                      toast({
+                        title: 'Backfill failed',
+                        description: error instanceof Error ? error.message : 'Unable to backfill linked proposals.',
+                        variant: 'error',
+                      });
+                    },
+                  });
+                },
+              }}
               className="py-20"
             />
           ) : (

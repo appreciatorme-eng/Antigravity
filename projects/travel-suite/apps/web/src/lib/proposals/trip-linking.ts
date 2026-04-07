@@ -155,6 +155,21 @@ export async function createLinkedProposalFromItinerary(params: {
     itinerary.duration_days || undefined,
   );
 
+  const { error: clientUpsertError } = await adminClient
+    .from("clients")
+    .upsert(
+      {
+        id: clientId,
+        organization_id: organizationId,
+        user_id: clientId,
+      },
+      { onConflict: "id" },
+    );
+
+  if (clientUpsertError) {
+    throw new Error(clientUpsertError.message || "Failed to prepare client record");
+  }
+
   const resolvedBasePrice = Number(basePrice ?? normalized.pricing?.total_cost ?? 0);
 
   const { data: template, error: templateError } = await adminClient
