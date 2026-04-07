@@ -25,12 +25,26 @@ export interface ExtractedAccommodation {
   amenities?: string[];
 }
 
+export interface ExtractedPricing {
+  per_person_cost?: number;
+  total_cost?: number;
+  currency?: string;
+  pax_count?: number;
+  notes?: string;
+}
+
 export interface ExtractedTourData {
   name: string;
   destination: string;
   duration_days: number;
   description?: string;
   base_price?: number;
+  budget?: string;
+  interests?: string[];
+  tips?: string[];
+  inclusions?: string[];
+  exclusions?: string[];
+  pricing?: ExtractedPricing;
   days: ExtractedDay[];
   images?: string[]; // Image URLs if found in PDF
 }
@@ -94,4 +108,3 @@ export function validateExtractedTour(data: ExtractedTourData): { valid: boolean
     errors,
   };
 }
-

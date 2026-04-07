@@ -77,10 +77,10 @@ export interface Pricing {
 }
 
 export interface ExtractedPricing {
-    per_person_cost: number;
-    total_cost: number;
-    currency: string;
-    pax_count: number;
+    per_person_cost?: number;
+    total_cost?: number;
+    currency?: string;
+    pax_count?: number;
     notes?: string;
 }
 
@@ -89,7 +89,7 @@ export interface ItineraryResult {
     title?: string; // Alias for trip_title used in templates
     description?: string;
     pricing?: Pricing;
-    extracted_pricing?: ExtractedPricing; // AI-extracted pricing from PDF/text import
+    extracted_pricing?: ExtractedPricing;
     destination: string;
     duration_days: number;
     summary: string;

@@ -147,6 +147,7 @@ interface SaveItineraryInput {
   tripId: string;
   itineraryId: string;
   days: unknown[];
+  rawData?: Record<string, unknown> | null;
 }
 
 export function useSaveTripItinerary() {
@@ -157,7 +158,12 @@ export function useSaveTripItinerary() {
       const supabase = createClient();
       const { error } = await supabase
         .from("itineraries")
-        .update({ raw_data: { days: input.days } as unknown as Json })
+        .update({
+          raw_data: {
+            ...(input.rawData || {}),
+            days: input.days,
+          } as unknown as Json,
+        })
         .eq("id", input.itineraryId);
       if (error) throw error;
     },

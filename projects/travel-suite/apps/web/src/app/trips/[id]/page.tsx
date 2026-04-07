@@ -63,7 +63,12 @@ export default function TripDetailPage() {
   const handleSave = () => {
     if (!trip?.itineraries) return;
     saveMutation.mutate(
-      { tripId, itineraryId: trip.itineraries.id, days: [...itineraryDays] },
+      {
+        tripId,
+        itineraryId: trip.itineraries.id,
+        days: [...itineraryDays],
+        rawData: trip.itineraries.raw_data,
+      },
       {
         onSuccess: () =>
           toast({ title: "Trip updated", description: "Trip details saved successfully.", variant: "success" }),

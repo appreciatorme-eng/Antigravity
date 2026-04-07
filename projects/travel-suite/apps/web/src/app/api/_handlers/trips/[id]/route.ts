@@ -163,8 +163,18 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
                 ? {
                     ...itinerary,
                     raw_data: {
+                        trip_title: itinerary.raw_data?.trip_title || itinerary.trip_title,
+                        destination: itinerary.raw_data?.destination || itinerary.destination || "TBD",
+                        duration_days: itinerary.raw_data?.duration_days || itinerary.duration_days || 1,
+                        summary: itinerary.raw_data?.summary || "",
                         days: itinerary.raw_data?.days || [],
                         flights: itinerary.raw_data?.flights || [],
+                        budget: itinerary.raw_data?.budget,
+                        interests: itinerary.raw_data?.interests || [],
+                        tips: itinerary.raw_data?.tips || [],
+                        inclusions: itinerary.raw_data?.inclusions || [],
+                        exclusions: itinerary.raw_data?.exclusions || [],
+                        pricing: itinerary.raw_data?.pricing,
                     },
                 }
                 : null,

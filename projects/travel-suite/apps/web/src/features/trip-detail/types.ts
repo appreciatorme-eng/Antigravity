@@ -67,6 +67,10 @@ export interface TripItinerary {
   duration_days: number;
   destination?: string | null;
   raw_data: {
+    trip_title?: string;
+    destination?: string;
+    duration_days?: number;
+    summary?: string;
     days: Day[];
     flights?: FlightDetails[];
     budget?: string;

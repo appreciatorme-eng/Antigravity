@@ -461,7 +461,10 @@ out center tags 80;
                 await supabase
                     .from("itineraries")
                     .update({
-                        raw_data: { days: itineraryDays } as unknown as Json,
+                        raw_data: {
+                            ...(trip.itineraries.raw_data || {}),
+                            days: itineraryDays,
+                        } as unknown as Json,
                     })
                     .eq("id", trip.itineraries.id);
             }

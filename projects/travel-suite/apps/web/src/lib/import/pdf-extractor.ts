@@ -38,21 +38,32 @@ export async function extractTourFromPDF(
     }
 
     const genAI = new GoogleGenerativeAI(key);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
     const arrayBuffer = await pdfFile.arrayBuffer();
     const base64Data = Buffer.from(arrayBuffer).toString('base64');
 
     const prompt = `
-You are a tour itinerary extraction expert. Extract ALL tour information from this PDF and return it as valid JSON.
+You are a tour itinerary extraction expert. Read this brochure visually, including layout-heavy sections, tables, badges, callouts, and image text overlays. Extract ALL tour information from this PDF and return it as valid JSON.
 
 Extract the following information:
 1. Tour name/title
 2. Destination (city, country)
 3. Duration in days
 4. Overall description
-5. Base price (if mentioned)
-6. Day-by-day breakdown with:
+5. Budget category (if implied or stated)
+6. Interests / themes
+7. Travel tips
+8. Inclusions
+9. Exclusions
+10. Package pricing:
+   - per person cost
+   - total package cost
+   - currency
+   - pax count
+   - pricing notes
+11. Base price (if mentioned separately)
+12. Day-by-day breakdown with:
    - Day number
    - Day title (e.g., "Arrival & Desert Safari")
    - Day description
@@ -67,6 +78,8 @@ Important rules:
 - Extract times in "HH:MM AM/PM" format (e.g., "09:00 AM")
 - Star ratings should be 1-5
 - If no base price is found, omit the field
+- Do not invent itinerary days that are not supported by the brochure
+- If pricing or package metadata is missing, omit it instead of guessing
 - Days should be sequential (1, 2, 3, etc.)
 
 Return ONLY valid JSON in this exact structure (no markdown, no explanations):
@@ -76,6 +89,18 @@ Return ONLY valid JSON in this exact structure (no markdown, no explanations):
   "duration_days": 5,
   "description": "Overall tour description",
   "base_price": 2500,
+  "budget": "Budget | Moderate | Luxury",
+  "interests": ["beach", "family", "wildlife"],
+  "tips": ["Carry a light jacket for evenings"],
+  "inclusions": ["Airport transfers", "Breakfast"],
+  "exclusions": ["Flights", "Personal expenses"],
+  "pricing": {
+    "per_person_cost": 1250,
+    "total_cost": 2500,
+    "currency": "USD",
+    "pax_count": 2,
+    "notes": "Rate valid for twin sharing"
+  },
   "days": [
     {
       "day_number": 1,
@@ -145,4 +170,3 @@ Return ONLY valid JSON in this exact structure (no markdown, no explanations):
     };
   }
 }
-

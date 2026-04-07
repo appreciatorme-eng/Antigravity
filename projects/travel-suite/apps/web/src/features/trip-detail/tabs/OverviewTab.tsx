@@ -60,6 +60,15 @@ function extractFlights(trip: Trip): readonly FlightDetails[] {
   return trip.itineraries?.raw_data?.flights ?? [];
 }
 
+function formatCurrency(amount: number, currency?: string): string {
+  if (!amount) return "—";
+  const cur = currency?.toUpperCase() ?? "INR";
+  if (cur === "INR") return `₹${amount.toLocaleString("en-IN")}`;
+  if (cur === "USD") return `$${amount.toLocaleString("en-US")}`;
+  if (cur === "THB") return `฿${amount.toLocaleString("en-US")}`;
+  return `${cur} ${amount.toLocaleString("en-US")}`;
+}
+
 // ---------------------------------------------------------------------------
 // Shared section header
 // ---------------------------------------------------------------------------
@@ -288,6 +297,161 @@ function TripPreferences({ trip }: { trip: Trip }) {
             </div>
           );
         })}
+      </div>
+    </GlassCard>
+  );
+}
+
+function ExtractedPricingCard({ trip }: { trip: Trip }) {
+  const pricing = trip.itineraries?.raw_data?.pricing;
+  if (!pricing || (!pricing.per_person_cost && !pricing.total_cost)) return null;
+
+  return (
+    <GlassCard padding="xl">
+      <SectionHeader icon={CreditCard} label="Package Pricing" />
+      <div className="grid grid-cols-2 gap-4">
+        {pricing.per_person_cost ? (
+          <div className="space-y-1">
+            <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+              Per Person
+            </p>
+            <p className="text-2xl font-black text-emerald-600 tabular-nums">
+              {formatCurrency(pricing.per_person_cost, pricing.currency)}
+            </p>
+          </div>
+        ) : null}
+        {pricing.total_cost ? (
+          <div className="space-y-1">
+            <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+              Total Package
+            </p>
+            <p className="text-2xl font-black text-secondary dark:text-white tabular-nums">
+              {formatCurrency(pricing.total_cost, pricing.currency)}
+            </p>
+          </div>
+        ) : null}
+        {pricing.pax_count ? (
+          <div className="flex items-center gap-2 space-y-1">
+            <Users className="h-4 w-4 text-text-muted" />
+            <span className="text-sm text-secondary dark:text-slate-300">
+              {pricing.pax_count} {pricing.pax_count === 1 ? "person" : "people"}
+            </span>
+          </div>
+        ) : null}
+      </div>
+      {pricing.notes && (
+        <p className="mt-3 text-xs italic text-text-muted">{pricing.notes}</p>
+      )}
+    </GlassCard>
+  );
+}
+
+function ExtractedDetailsCard({ trip }: { trip: Trip }) {
+  const rawData = trip.itineraries?.raw_data;
+  if (!rawData) return null;
+
+  const { budget, interests, tips, inclusions, exclusions } = rawData;
+  const hasContent =
+    Boolean(budget) ||
+    Boolean(interests && interests.length > 0) ||
+    Boolean(tips && tips.length > 0) ||
+    Boolean(inclusions && inclusions.length > 0) ||
+    Boolean(exclusions && exclusions.length > 0);
+
+  if (!hasContent) return null;
+
+  return (
+    <GlassCard padding="xl">
+      <SectionHeader icon={Sparkles} label="Package Details" />
+      <div className="space-y-5">
+        {budget && (
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Wallet className="h-3.5 w-3.5 text-text-muted" />
+              <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+                Budget Category
+              </p>
+            </div>
+            <p className="pl-[22px] text-sm font-bold text-secondary dark:text-slate-300">
+              {budget}
+            </p>
+          </div>
+        )}
+
+        {interests && interests.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Tag className="h-3.5 w-3.5 text-text-muted" />
+              <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+                Interests
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2 pl-[22px]">
+              {interests.map((interest, idx) => (
+                <GlassBadge key={idx} variant="info" size="sm">
+                  {interest}
+                </GlassBadge>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {inclusions && inclusions.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+              <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+                Inclusions
+              </p>
+            </div>
+            <ul className="space-y-1 pl-[22px]">
+              {inclusions.map((item, idx) => (
+                <li key={idx} className="flex items-start gap-2 text-sm text-secondary dark:text-slate-300">
+                  <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-400" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {exclusions && exclusions.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <XCircle className="h-3.5 w-3.5 text-rose-400" />
+              <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+                Exclusions
+              </p>
+            </div>
+            <ul className="space-y-1 pl-[22px]">
+              {exclusions.map((item, idx) => (
+                <li key={idx} className="flex items-start gap-2 text-sm text-secondary dark:text-slate-300">
+                  <XCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-300" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {tips && tips.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
+              <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+                Travel Tips
+              </p>
+            </div>
+            <ul className="space-y-1 pl-[22px]">
+              {tips.map((tip, idx) => (
+                <li key={idx} className="flex items-start gap-2 text-sm text-secondary dark:text-slate-300">
+                  <Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400" />
+                  {tip}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </GlassCard>
   );
