@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -56,6 +57,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
     const supabase = createClient();
     const { toast } = useToast();
     const { isDemoMode } = useDemoMode();
+    const router = useRouter();
 
     // Form State
     const [clientId, setClientId] = useState("");
@@ -468,8 +470,15 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
                         trip_title: resolvedData?.trip_title || "New Trip",
                         destination: resolvedData?.destination || "TBD",
                         summary: resolvedData?.summary || "",
-                        duration_days: resolvedData?.days?.length || 1,
-                        raw_data: { days: resolvedData?.days || [] },
+                        duration_days: resolvedData?.days?.length || resolvedData?.duration_days || 1,
+                        // Preserve ALL AI-extracted fields so they appear on the trip detail page
+                        raw_data: resolvedData ? {
+                            days: resolvedData.days || [],
+                            budget: resolvedData.budget,
+                            interests: resolvedData.interests,
+                            tips: resolvedData.tips,
+                            pricing: resolvedData.pricing,
+                        } : { days: [] },
                     },
                 }),
             });
@@ -525,6 +534,14 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
             // Close modal first, then show toast after unmount to ensure visibility
             onOpenChange(false);
             onSuccess();
+
+            // Auto-navigate to trip detail when created from AI import (PDF/URL/text)
+            // so the operator sees the full mapped itinerary immediately
+            const wasAiImport = resolvedData != null;
+            if (wasAiImport && tripId) {
+                router.push(`/trips/${tripId}`);
+                return;
+            }
 
             setTimeout(() => {
                 if (shareLinkCopied) {
