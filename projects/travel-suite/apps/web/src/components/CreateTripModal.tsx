@@ -339,7 +339,8 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
             // Extract text client-side using pdfjs-dist (browser-native, no serverless issues)
             const arrayBuffer = await pdfFile.arrayBuffer();
             const pdfjsLib = await import('pdfjs-dist');
-            pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+            // Disable worker — runs synchronously in main thread, fine for one-off extraction
+            pdfjsLib.GlobalWorkerOptions.workerSrc = '';
             const pdfDoc = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
             const textParts: string[] = [];
             for (let i = 1; i <= pdfDoc.numPages; i++) {
