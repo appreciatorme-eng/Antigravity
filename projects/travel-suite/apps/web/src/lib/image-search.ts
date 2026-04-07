@@ -112,6 +112,12 @@ export function shouldPreferContextualFallback(queryOrTitle: string): boolean {
     return CONTEXTUAL_FALLBACK_FIRST_PATTERNS.some((pattern) => pattern.test(normalized));
 }
 
+function shouldPreferUnsplashFirst(queryOrTitle: string): boolean {
+    const normalized = normalizeWhitespace(queryOrTitle).toLowerCase();
+    if (!normalized) return false;
+    return /\b(phuket|krabi|thailand|phi phi|khai|maya bay|james bond|phang nga|island|beach|bay|airport|transfer|hotel|show|tour|sunset|boat|marine)\b/i.test(normalized);
+}
+
 /** Patterns that indicate a Wikipedia image is NOT a place/landmark photo. */
 const BAD_IMAGE_PATTERNS = [
     '.svg', 'portrait', 'logo', 'coat_of_arms', 'flag_of', 'crest',
@@ -307,6 +313,9 @@ function extractPrimaryPlaceFromTitle(title: string, destination?: string): stri
 
 function extractRoutePlaceCandidates(title: string, destination?: string): string[] {
     if (!/\bto\b/i.test(title)) return [];
+    if (!/\b(transfer|pickup|drop|airport|hotel|station|terminal|one way|round trip|return|en[- ]route)\b/i.test(title)) {
+        return [];
+    }
 
     const [fromPart, toPart] = title.split(/\bto\b/i, 2);
     return uniqueQueries([
@@ -343,6 +352,16 @@ export function buildImageSearchQueries({
     const cleanedLocation = cleanImageQueryPart(location ?? '', destinationText);
     const routePlaces = extractRoutePlaceCandidates(title, destinationText);
     const routePlaceSet = new Set(routePlaces.map((candidate) => candidate.toLowerCase()));
+    const precisePlaceSet = new Set(
+        [cleanedLocation, ...routePlaces]
+            .map((candidate) => normalizeWhitespace(candidate).toLowerCase())
+            .filter(Boolean),
+    );
+    const destinationSegments = destinationText
+        .split(',')
+        .map((part) => normalizeWhitespace(part))
+        .filter(Boolean);
+    const broadDestination = destinationSegments[destinationSegments.length - 1] ?? destinationText;
     const primaryPlace = extractPrimaryPlaceFromTitle(title, destinationText);
     const cleanedTitle = routePlaces.length > 0
         ? cleanRoutePlacePart(title, destinationText)
@@ -362,7 +381,15 @@ export function buildImageSearchQueries({
     for (const candidate of baseCandidates) {
         const candidateKey = candidate.toLowerCase();
         const alreadyIncludesDestination = destinationParts.some((part) => candidateKey.includes(part));
-        if (destinationText && !alreadyIncludesDestination) {
+        const alreadyIncludesBroadDestination = broadDestination
+            ? candidateKey.includes(broadDestination.toLowerCase())
+            : false;
+        const isSpecificLandmarkCandidate = PLACE_HINT_PATTERNS.some((pattern) => pattern.test(candidate));
+        if (precisePlaceSet.has(candidateKey) && destinationText && !alreadyIncludesDestination && isSpecificLandmarkCandidate) {
+            queries.push(`${candidate} ${destinationText}`);
+        } else if (precisePlaceSet.has(candidateKey) && broadDestination && !alreadyIncludesBroadDestination) {
+            queries.push(`${candidate} ${broadDestination}`);
+        } else if (destinationText && !alreadyIncludesDestination) {
             queries.push(`${candidate} ${destinationText}`);
         }
         queries.push(candidate);
@@ -422,9 +449,13 @@ export async function getWikiImage(query: string | readonly string[], titleStr: 
         return getContextualFallback(titleStr) ?? getDeterministicFallback(titleStr);
     }
 
-    if (shouldPreferContextualFallback(combinedContext)) {
-        const contextualFallback = getContextualFallback(combinedContext);
-        if (contextualFallback) return contextualFallback;
+    const preferUnsplashFirst = shouldPreferUnsplashFirst(combinedContext);
+
+    if (preferUnsplashFirst) {
+        for (const candidate of queries.slice(0, 4)) {
+            const result = await fetchUnsplashImage(candidate);
+            if (result) return result;
+        }
     }
 
     for (const candidate of queries) {
@@ -432,9 +463,11 @@ export async function getWikiImage(query: string | readonly string[], titleStr: 
         if (result) return result;
     }
 
-    for (const candidate of queries.slice(0, 4)) {
-        const result = await fetchUnsplashImage(candidate);
-        if (result) return result;
+    if (!preferUnsplashFirst) {
+        for (const candidate of queries.slice(0, 4)) {
+            const result = await fetchUnsplashImage(candidate);
+            if (result) return result;
+        }
     }
 
     return getContextualFallback(combinedContext) ?? getDeterministicFallback(titleStr);

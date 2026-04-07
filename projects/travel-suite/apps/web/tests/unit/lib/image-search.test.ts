@@ -38,9 +38,20 @@ describe("image search query builder", () => {
       destination: "Krabi, Thailand",
     });
 
-    expect(queries[0]).toMatch(/Krabi Krabi, Thailand|Phuket Airport Krabi, Thailand/);
-    expect(queries).toContain("Phuket Airport Krabi, Thailand");
+    expect(queries[0]).toMatch(/Krabi Thailand|Phuket Airport Thailand/);
+    expect(queries).toContain("Phuket Airport Thailand");
     expect(queries.join(" ")).not.toMatch(/one way|private transfer|hotel|hkt/i);
+  });
+
+  it("does not mash the trip destination into a different activity location", () => {
+    const queries = buildImageSearchQueries({
+      title: "Krabi - 7 Island Sunset Tour by Long Tail Boat + Dinner",
+      location: "Krabi",
+      destination: "Phuket, Thailand",
+    });
+
+    expect(queries[0]).toBe("Krabi Thailand");
+    expect(queries).not.toContain("Krabi Phuket, Thailand");
   });
 
   it("recognizes auto-generated image URLs for safe refresh", () => {
