@@ -5,6 +5,7 @@ import {
   CheckCircle,
   AlertCircle,
   FileText,
+  Users,
 } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import type { TripInvoiceSummaryData } from "@/features/trip-detail/types";
@@ -15,6 +16,13 @@ import type { TripInvoiceSummaryData } from "@/features/trip-detail/types";
 
 interface TripFinancialSummaryProps {
   invoiceSummary: TripInvoiceSummaryData | null;
+  packagePricing?: {
+    per_person_cost?: number;
+    total_cost?: number;
+    currency?: string;
+    pax_count?: number;
+    notes?: string;
+  } | null;
   loading?: boolean;
 }
 
@@ -24,6 +32,14 @@ interface TripFinancialSummaryProps {
 
 function formatCurrency(amount: number): string {
   return `\u20B9${amount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+}
+
+function formatPackageCurrency(amount: number, currency?: string): string {
+  const code = currency?.toUpperCase() ?? "INR";
+  if (code === "INR") return `₹${amount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+  if (code === "USD") return `$${amount.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+  if (code === "THB") return `฿${amount.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+  return `${code} ${amount.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -71,12 +87,46 @@ function buildKpis(summary: TripInvoiceSummaryData): readonly MiniKpi[] {
   ] as const;
 }
 
+function buildPackageKpis(pricing: NonNullable<TripFinancialSummaryProps["packagePricing"]>): readonly MiniKpi[] {
+  return [
+    {
+      label: "Quoted Total",
+      value: pricing.total_cost ? formatPackageCurrency(pricing.total_cost, pricing.currency) : "Not set",
+      icon: IndianRupee,
+      color: "text-emerald-600",
+      iconBg: "bg-emerald-50",
+    },
+    {
+      label: "Per Person",
+      value: pricing.per_person_cost ? formatPackageCurrency(pricing.per_person_cost, pricing.currency) : "Not set",
+      icon: CheckCircle,
+      color: "text-sky-600",
+      iconBg: "bg-sky-50",
+    },
+    {
+      label: "Travelers",
+      value: pricing.pax_count ? String(pricing.pax_count) : "Not set",
+      icon: Users,
+      color: "text-violet-600",
+      iconBg: "bg-violet-50",
+    },
+    {
+      label: "Invoices",
+      value: "0",
+      icon: FileText,
+      color: "text-amber-600",
+      iconBg: "bg-amber-50",
+    },
+  ] as const;
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 export function TripFinancialSummary({
   invoiceSummary,
+  packagePricing = null,
   loading = false,
 }: TripFinancialSummaryProps) {
   if (loading) {
@@ -91,7 +141,7 @@ export function TripFinancialSummary({
     );
   }
 
-  if (!invoiceSummary) {
+  if (!invoiceSummary && !packagePricing) {
     return (
       <GlassCard padding="xl">
         <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -102,7 +152,7 @@ export function TripFinancialSummary({
     );
   }
 
-  const kpis = buildKpis(invoiceSummary);
+  const kpis = invoiceSummary ? buildKpis(invoiceSummary) : buildPackageKpis(packagePricing!);
 
   return (
     <GlassCard padding="xl">
@@ -137,6 +187,9 @@ export function TripFinancialSummary({
           );
         })}
       </div>
+      {!invoiceSummary && packagePricing?.notes ? (
+        <p className="mt-4 text-xs italic text-text-muted">{packagePricing.notes}</p>
+      ) : null}
     </GlassCard>
   );
 }

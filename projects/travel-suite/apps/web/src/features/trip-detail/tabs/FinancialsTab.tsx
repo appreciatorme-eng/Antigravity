@@ -90,6 +90,22 @@ interface RevenueKpi {
   iconBg: string;
 }
 
+interface PackagePricing {
+  per_person_cost?: number;
+  total_cost?: number;
+  currency?: string;
+  pax_count?: number;
+  notes?: string;
+}
+
+function formatPackageCurrency(amount: number, currency?: string): string {
+  const code = currency?.toUpperCase() ?? "INR";
+  if (code === "INR") return `₹${amount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+  if (code === "USD") return `$${amount.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+  if (code === "THB") return `฿${amount.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+  return `${code} ${amount.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+}
+
 function buildRevenueKpis(summary: TripInvoiceSummaryData): readonly RevenueKpi[] {
   const collectionRate =
     summary.total_amount > 0
@@ -128,12 +144,57 @@ function buildRevenueKpis(summary: TripInvoiceSummaryData): readonly RevenueKpi[
   ];
 }
 
+function buildPackageRevenueKpis(pricing: PackagePricing): readonly RevenueKpi[] {
+  return [
+    {
+      label: "Quoted Total",
+      value:
+        typeof pricing.total_cost === "number"
+          ? formatPackageCurrency(pricing.total_cost, pricing.currency)
+          : "Not set",
+      icon: IndianRupee,
+      color: "text-emerald-600",
+      iconBg: "bg-emerald-50",
+    },
+    {
+      label: "Per Person",
+      value:
+        typeof pricing.per_person_cost === "number"
+          ? formatPackageCurrency(pricing.per_person_cost, pricing.currency)
+          : "Not set",
+      icon: CheckCircle,
+      color: "text-sky-600",
+      iconBg: "bg-sky-50",
+    },
+    {
+      label: "Travelers",
+      value:
+        typeof pricing.pax_count === "number" ? String(pricing.pax_count) : "Not set",
+      icon: TrendingUp,
+      color: "text-violet-600",
+      iconBg: "bg-violet-50",
+    },
+    {
+      label: "Outstanding Balance",
+      value:
+        typeof pricing.total_cost === "number"
+          ? formatPackageCurrency(pricing.total_cost, pricing.currency)
+          : "Not set",
+      icon: AlertCircle,
+      color: "text-amber-600",
+      iconBg: "bg-amber-50",
+    },
+  ];
+}
+
 function RevenueBreakdownCard({
   invoiceSummary,
+  packagePricing,
 }: {
   invoiceSummary: TripInvoiceSummaryData | null;
+  packagePricing?: PackagePricing | null;
 }) {
-  if (!invoiceSummary) {
+  if (!invoiceSummary && !packagePricing) {
     return (
       <GlassCard padding="xl">
         <SectionHeader icon={PieChart} label="Revenue Breakdown" />
@@ -147,7 +208,9 @@ function RevenueBreakdownCard({
     );
   }
 
-  const kpis = buildRevenueKpis(invoiceSummary);
+  const kpis = invoiceSummary
+    ? buildRevenueKpis(invoiceSummary)
+    : buildPackageRevenueKpis(packagePricing!);
 
   return (
     <GlassCard padding="xl">
@@ -472,6 +535,8 @@ export function FinancialsTab({ trip, invoiceSummary }: FinancialsTabProps) {
     [invoices]
   );
 
+  const packagePricing = trip.itineraries?.raw_data?.pricing ?? null;
+
   const handleOpenCreate = useCallback(() => {
     setShowCreateModal(true);
   }, []);
@@ -505,10 +570,14 @@ export function FinancialsTab({ trip, invoiceSummary }: FinancialsTabProps) {
         <div className="col-span-12 xl:col-span-8 space-y-6">
           <TripFinancialSummary
             invoiceSummary={invoiceSummary}
+            packagePricing={packagePricing}
             loading={invoicesQuery.isLoading}
           />
 
-          <RevenueBreakdownCard invoiceSummary={invoiceSummary} />
+          <RevenueBreakdownCard
+            invoiceSummary={invoiceSummary}
+            packagePricing={packagePricing}
+          />
 
           <TripInvoiceSection
             tripId={trip.id}

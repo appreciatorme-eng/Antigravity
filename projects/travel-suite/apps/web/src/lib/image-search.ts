@@ -8,15 +8,19 @@ import { logEvent, logError } from '@/lib/observability/logger';
 /** Minimal shape the image populator needs -- compatible with ItineraryResult and ItineraryLike. */
 interface ItineraryForImages {
     destination?: string;
+    image_search_version?: number;
     days: Array<{
         activities: Array<{
             title: string;
+            location?: string;
             image?: string;
             imageUrl?: string;
         }>;
     }>;
     [key: string]: unknown;
 }
+
+export const IMAGE_SEARCH_VERSION = 2;
 
 // Curated scenic fallback images — expanded to 20 for better hash distribution
 export const LUXURY_FALLBACKS = [
@@ -96,40 +100,202 @@ async function fetchWikiThumbnail(q: string, ms = 4000): Promise<string | null> 
 const ACTIVITY_VERB_PREFIX = /^(visit|explore|walk through|tour|experience|discover|head to|stop at|go to|check out|stroll through|wander|relax at|enjoy|take a)\s+/i;
 const DINING_PREFIX = /^(lunch at|dinner at|breakfast at|brunch at|morning at|afternoon at|evening at|drinks at|coffee at|tea at|eat at|dine at|meal at)\s+/i;
 
-/** Multi-strategy Wikipedia image search with smarter query construction. */
-export async function getWikiImage(query: string, titleStr: string): Promise<string> {
-    if (!query?.trim()) return getDeterministicFallback(titleStr);
+const TITLE_NOISE_PATTERNS = [
+    /\([^)]*(excluding|including|fee|cash on tour|compulsory|ticket|tickets|transfer|transfers)[^)]*\)/gi,
+    /\b(excluding|including)\b[^+|/,-]*/gi,
+    /\b(compulsory to pay cash on tour|cash on tour)\b/gi,
+    /\b(national park fee|entry tickets?|entry ticket)\b/gi,
+    /\b(sharing transfers?|private transfers?|shared transfers?)\b/gi,
+    /\b(joined speed boat|speed boat|speedboat|longtail boat|ferry ride|boat ride)\b/gi,
+    /\b(local lunch buffet|local lunch|buffet lunch|lunch|dinner|breakfast)\b/gi,
+    /\b(sea canoe|snorkeling|snorkelling|kayaking)\b/gi,
+    /\b(full day|half day)\b/gi,
+    /\b(tour|trip|excursion|experience|adventure)\b/gi,
+];
 
-    // For dining activities, search for the restaurant/place name + city rather than
-    // "Dinner at X City" which returns random people/unrelated results
-    const isDining = DINING_PREFIX.test(titleStr);
-    const cleanTitle = titleStr
-        .replace(DINING_PREFIX, '')
+const GENERIC_PLACE_PATTERNS = [
+    /^tbd$/i,
+    /^activity$/i,
+    /^destination$/i,
+    /^arrival$/i,
+    /^departure$/i,
+    /^transfers?$/i,
+    /^sharing transfers?$/i,
+    /^private transfers?$/i,
+    /^hotel$/i,
+];
+
+const PLACE_HINT_PATTERNS = [
+    /\bisland\b/i,
+    /\bbeach\b/i,
+    /\bbay\b/i,
+    /\btemple\b/i,
+    /\bpark\b/i,
+    /\bmarket\b/i,
+    /\bpalace\b/i,
+    /\bfort\b/i,
+    /\bwaterfall\b/i,
+    /\bmount\b/i,
+    /\bmountain\b/i,
+    /\blake\b/i,
+    /\breef\b/i,
+    /\bcove\b/i,
+    /\bviewpoint\b/i,
+    /\bmuseum\b/i,
+    /\bold town\b/i,
+    /\bphi phi\b/i,
+    /\bjames bond\b/i,
+    /\bkhai\b/i,
+    /\bmaya bay\b/i,
+];
+
+function normalizeWhitespace(value: string): string {
+    return value.replace(/\s+/g, ' ').trim();
+}
+
+function extractDestinationTokens(destination?: string): string[] {
+    if (!destination) return [];
+    return destination
+        .split(',')
+        .map((part) => normalizeWhitespace(part).toLowerCase())
+        .filter(Boolean);
+}
+
+function removeDestinationPrefix(value: string, destination?: string): string {
+    let output = normalizeWhitespace(value);
+    for (const token of extractDestinationTokens(destination)) {
+        const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        output = output.replace(new RegExp(`^${escaped}\\s*[-,:|/]\\s*`, 'i'), '');
+    }
+    return normalizeWhitespace(output);
+}
+
+function cleanImageQueryPart(value: string, destination?: string): string {
+    let output = removeDestinationPrefix(value, destination)
         .replace(ACTIVITY_VERB_PREFIX, '')
-        .trim();
+        .replace(DINING_PREFIX, '');
 
-    // Strategy 1: Clean title + destination (e.g., "The Kitchin Edinburgh")
-    if (cleanTitle && cleanTitle !== titleStr) {
-        const destination = query.replace(titleStr, '').trim();
-        const q1 = destination ? `${cleanTitle} ${destination}` : cleanTitle;
-        const r1 = await fetchWikiThumbnail(q1);
-        if (r1) return r1;
+    for (const pattern of TITLE_NOISE_PATTERNS) {
+        output = output.replace(pattern, ' ');
     }
 
-    // Strategy 2: Full query as-is (e.g., "Arthur's Seat Edinburgh, Scotland")
-    const r2 = await fetchWikiThumbnail(query);
-    if (r2) return r2;
+    output = output
+        .replace(/\bwith\b.*$/i, ' ')
+        .replace(/\bby\b.*$/i, ' ')
+        .replace(/[+|/]/g, ' ')
+        .replace(/\s*-\s*/g, ' ')
+        .replace(/\s*&\s*/g, ' & ')
+        .replace(/[()]/g, ' ')
+        .replace(/\b[a-z]{1,3}\s*\d{2,6}\b/gi, ' ')
+        .replace(/[^\p{L}\p{N}&' -]/gu, ' ');
 
-    // Strategy 3: For dining, search for the neighborhood/area instead
-    if (isDining && cleanTitle.length > 2) {
-        const r3 = await fetchWikiThumbnail(cleanTitle);
-        if (r3) return r3;
+    return normalizeWhitespace(output);
+}
+
+function isGenericPlace(value: string, destination?: string): boolean {
+    const normalized = normalizeWhitespace(value).toLowerCase();
+    if (!normalized) return true;
+    if (GENERIC_PLACE_PATTERNS.some((pattern) => pattern.test(normalized))) return true;
+    return extractDestinationTokens(destination).includes(normalized);
+}
+
+function scorePlaceCandidate(candidate: string): number {
+    const normalized = candidate.toLowerCase();
+    let score = Math.min(normalized.length, 80);
+    if (PLACE_HINT_PATTERNS.some((pattern) => pattern.test(normalized))) score += 60;
+    if (normalized.includes('&')) score += 5;
+    if (normalized.split(' ').length <= 1) score -= 10;
+    return score;
+}
+
+function extractPrimaryPlaceFromTitle(title: string, destination?: string): string | null {
+    const normalizedTitle = normalizeWhitespace(title);
+    if (!normalizedTitle) return null;
+
+    const parts = normalizedTitle
+        .split(/\s*[+|/]\s*/)
+        .flatMap((part) => part.split(/\s+-\s+/))
+        .map((part) => cleanImageQueryPart(part, destination))
+        .filter((part) => !isGenericPlace(part, destination));
+
+    if (parts.length === 0) {
+        const cleanedTitle = cleanImageQueryPart(normalizedTitle, destination);
+        return isGenericPlace(cleanedTitle, destination) ? null : cleanedTitle;
     }
 
-    // Strategy 4: Just the title without verbs
-    if (cleanTitle !== titleStr && cleanTitle.length > 2) {
-        const r4 = await fetchWikiThumbnail(cleanTitle);
-        if (r4) return r4;
+    return [...parts].sort((a, b) => scorePlaceCandidate(b) - scorePlaceCandidate(a))[0] ?? null;
+}
+
+function uniqueQueries(values: readonly string[]): string[] {
+    const seen = new Set<string>();
+    const output: string[] = [];
+    for (const value of values) {
+        const normalized = normalizeWhitespace(value);
+        if (!normalized) continue;
+        const key = normalized.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        output.push(normalized);
+    }
+    return output;
+}
+
+export function buildImageSearchQueries({
+    title,
+    location,
+    destination,
+}: {
+    title: string;
+    location?: string;
+    destination?: string;
+}): string[] {
+    const destinationText = normalizeWhitespace(destination ?? '');
+    const destinationParts = extractDestinationTokens(destinationText);
+    const cleanedLocation = cleanImageQueryPart(location ?? '', destinationText);
+    const primaryPlace = extractPrimaryPlaceFromTitle(title, destinationText);
+    const cleanedTitle = cleanImageQueryPart(title, destinationText);
+
+    const baseCandidates = uniqueQueries([
+        cleanedLocation,
+        primaryPlace ?? '',
+        cleanedTitle,
+    ]).filter((candidate) => !isGenericPlace(candidate, destinationText));
+
+    const queries: string[] = [];
+
+    for (const candidate of baseCandidates) {
+        const candidateKey = candidate.toLowerCase();
+        const alreadyIncludesDestination = destinationParts.some((part) => candidateKey.includes(part));
+        if (destinationText && !alreadyIncludesDestination) {
+            queries.push(`${candidate} ${destinationText}`);
+        }
+        queries.push(candidate);
+    }
+
+    if (destinationText) {
+        queries.push(destinationText);
+    }
+
+    return uniqueQueries(queries);
+}
+
+export function isAutoGeneratedImageUrl(url?: string): boolean {
+    if (!url) return false;
+    return url.startsWith('/unsplash-img/')
+        || url.includes('wikipedia.org/')
+        || url.includes('wikimedia.org/');
+}
+
+/** Multi-strategy Wikipedia image search with smarter query construction. */
+export async function getWikiImage(query: string | readonly string[], titleStr: string): Promise<string> {
+    const queries = uniqueQueries(
+        (typeof query === 'string' ? [query] : Array.from(query)) as string[],
+    );
+    if (queries.length === 0) return getDeterministicFallback(titleStr);
+
+    for (const candidate of queries) {
+        const result = await fetchWikiThumbnail(candidate);
+        if (result) return result;
     }
 
     return getDeterministicFallback(titleStr);
@@ -165,23 +331,37 @@ function makeSemaphore(concurrency: number) {
  * by searching Wikipedia for the real-life location. Immutable — does not
  * mutate the input; returns a deep-cloned structure with images applied.
  */
-export async function populateItineraryImages<T extends ItineraryForImages>(itinerary: T): Promise<T> {
+export async function populateItineraryImages<T extends ItineraryForImages>(
+    itinerary: T,
+    options?: {
+        refreshAutoGenerated?: boolean;
+    },
+): Promise<T> {
     try {
         const destination = itinerary.destination || "destination";
         const semaphore = makeSemaphore(WIKI_CONCURRENCY_LIMIT);
+        const refreshAutoGenerated = options?.refreshAutoGenerated ?? false;
 
         const updatedDays = await Promise.all(
             itinerary.days.map(async (day) => {
                 const updatedActivities = await Promise.all(
                     day.activities.map(async (activity) => {
-                        if (activity.image || activity.imageUrl) {
+                        const existingImage = activity.image || activity.imageUrl;
+                        if (
+                            existingImage &&
+                            (!refreshAutoGenerated || !isAutoGeneratedImageUrl(existingImage))
+                        ) {
                             return activity;
                         }
 
                         const release = await semaphore();
                         try {
-                            const searchQuery = `${activity.title} ${destination}`.trim();
-                            const imgUrl = await getWikiImage(searchQuery, activity.title);
+                            const searchQueries = buildImageSearchQueries({
+                                title: activity.title,
+                                location: activity.location,
+                                destination,
+                            });
+                            const imgUrl = await getWikiImage(searchQueries, activity.title);
                             return imgUrl
                                 ? { ...activity, imageUrl: imgUrl, image: imgUrl }
                                 : activity;
@@ -197,7 +377,11 @@ export async function populateItineraryImages<T extends ItineraryForImages>(itin
         const activitiesCount = updatedDays.reduce((n, d) => n + d.activities.length, 0);
         logEvent('info', `[Images] Populated photos for up to ${activitiesCount} activities (max ${WIKI_CONCURRENCY_LIMIT} concurrent)`);
 
-        return { ...itinerary, days: updatedDays };
+        return {
+            ...itinerary,
+            days: updatedDays,
+            image_search_version: IMAGE_SEARCH_VERSION,
+        };
     } catch (error) {
         logError('Image fetching error (non-blocking)', error);
         return itinerary;
