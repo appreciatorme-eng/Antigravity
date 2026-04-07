@@ -13,6 +13,8 @@ describe("trip draft normalization", () => {
         name: "Thailand Tour Package",
         destination: "Phuket, Thailand",
         duration_days: 6,
+        start_date: "2026-04-28",
+        end_date: "2026-05-03",
         description: "Island-hopping itinerary.",
         budget: "Moderate",
         inclusions: ["Airport transfers", "Breakfast"],
@@ -43,6 +45,8 @@ describe("trip draft normalization", () => {
     );
 
     expect(draft.trip_title).toBe("Thailand Tour Package");
+    expect(draft.start_date).toBe("2026-04-28");
+    expect(draft.end_date).toBe("2026-05-03");
     expect(draft.pricing?.per_person_cost).toBe(87025);
     expect(draft.inclusions).toEqual(["Airport transfers", "Breakfast"]);
     expect(draft.source_meta?.filename).toBe("thai.pdf");
@@ -91,5 +95,49 @@ describe("trip draft normalization", () => {
       exclusions: ["Flights"],
       pricing: { total_cost: 100000, currency: "INR" },
     });
+  });
+
+  it("derives trip dates from dated itinerary days when explicit dates are missing", () => {
+    const draft = normalizeImportedItineraryDraft({
+      trip_title: "Phuket Escape",
+      destination: "Phuket",
+      duration_days: 3,
+      days: [
+        {
+          day_number: 1,
+          title: "Arrival",
+          date: "2026-04-28",
+          activities: [{ time: "TBD", title: "Check in", description: "", location: "Phuket" }],
+        },
+        {
+          day_number: 2,
+          title: "Island day",
+          date: "2026-04-29",
+          activities: [{ time: "TBD", title: "Boat trip", description: "", location: "Phi Phi" }],
+        },
+      ],
+    });
+
+    expect(draft.start_date).toBe("2026-04-28");
+    expect(draft.end_date).toBe("2026-04-29");
+  });
+
+  it("computes an end date from the start date and duration when needed", () => {
+    const draft = normalizeImportedItineraryDraft({
+      trip_title: "Krabi Escape",
+      destination: "Krabi",
+      duration_days: 4,
+      start_date: "2026-05-10",
+      days: [
+        {
+          day_number: 1,
+          title: "Arrival",
+          activities: [{ time: "TBD", title: "Check in", description: "", location: "Krabi" }],
+        },
+      ],
+    });
+
+    expect(draft.start_date).toBe("2026-05-10");
+    expect(draft.end_date).toBe("2026-05-13");
   });
 });

@@ -50,21 +50,24 @@ Extract the following information:
 1. Tour name/title
 2. Destination (city, country)
 3. Duration in days
-4. Overall description
-5. Budget category (if implied or stated)
-6. Interests / themes
-7. Travel tips
-8. Inclusions
-9. Exclusions
-10. Package pricing:
+4. Trip start date (YYYY-MM-DD if clearly stated)
+5. Trip end date (YYYY-MM-DD if clearly stated)
+6. Overall description
+7. Budget category (if implied or stated)
+8. Interests / themes
+9. Travel tips
+10. Inclusions
+11. Exclusions
+12. Package pricing:
    - per person cost
    - total package cost
    - currency
    - pax count
    - pricing notes
-11. Base price (if mentioned separately)
-12. Day-by-day breakdown with:
+-13. Base price (if mentioned separately)
+-14. Day-by-day breakdown with:
    - Day number
+   - Day date (YYYY-MM-DD if clearly stated)
    - Day title (e.g., "Arrival & Desert Safari")
    - Day description
    - Activities (with time, title, description, location, price if mentioned)
@@ -87,6 +90,8 @@ Return ONLY valid JSON in this exact structure (no markdown, no explanations):
   "name": "Tour name",
   "destination": "City, Country",
   "duration_days": 5,
+  "start_date": "2026-04-28",
+  "end_date": "2026-05-03",
   "description": "Overall tour description",
   "base_price": 2500,
   "budget": "Budget | Moderate | Luxury",
@@ -104,6 +109,7 @@ Return ONLY valid JSON in this exact structure (no markdown, no explanations):
   "days": [
     {
       "day_number": 1,
+      "date": "2026-04-28",
       "title": "Day title",
       "description": "Day description",
       "activities": [

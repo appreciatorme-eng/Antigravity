@@ -92,6 +92,8 @@ export interface ItineraryResult {
     extracted_pricing?: ExtractedPricing;
     destination: string;
     duration_days: number;
+    start_date?: string;
+    end_date?: string;
     summary: string;
     days: Day[];
     budget?: string;

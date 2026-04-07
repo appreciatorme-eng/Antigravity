@@ -17,6 +17,8 @@ export interface ImportedItineraryDraft {
   trip_title: string;
   destination: string;
   duration_days: number;
+  start_date?: string;
+  end_date?: string;
   summary: string;
   days: Day[];
   budget?: string;
@@ -51,6 +53,39 @@ function toFiniteNumber(value: unknown): number | undefined {
     return Number.isFinite(parsed) ? parsed : undefined;
   }
   return undefined;
+}
+
+function formatDateOnly(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function addDays(dateString: string, daysToAdd: number): string | undefined {
+  const parsed = new Date(`${dateString}T00:00:00.000Z`);
+  if (!Number.isFinite(parsed.getTime())) return undefined;
+  parsed.setUTCDate(parsed.getUTCDate() + daysToAdd);
+  return formatDateOnly(parsed);
+}
+
+function toIsoDateString(value: unknown): string | undefined {
+  const input = toTrimmedString(value);
+  if (!input) return undefined;
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(input)) {
+    return input;
+  }
+
+  const slashMatch = input.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})$/);
+  if (slashMatch) {
+    const [, day, month, rawYear] = slashMatch;
+    const year = rawYear.length === 2 ? `20${rawYear}` : rawYear;
+    const normalized = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+    const parsed = new Date(`${normalized}T00:00:00.000Z`);
+    if (Number.isFinite(parsed.getTime())) return normalized;
+  }
+
+  const parsed = new Date(input);
+  if (!Number.isFinite(parsed.getTime())) return undefined;
+  return formatDateOnly(parsed);
 }
 
 function normalizeStringList(value: unknown): string[] | undefined {
@@ -152,6 +187,7 @@ function normalizeDay(raw: unknown, index: number, pricing?: ExtractedPricing): 
     day: Math.max(1, Math.round(dayNumber)),
     theme,
     title: toTrimmedString(record.title) ?? theme,
+    date: toIsoDateString(record.date),
     summary: toTrimmedString(record.summary) ?? toTrimmedString(record.description),
     activities,
   };
@@ -223,6 +259,8 @@ export function buildItineraryRawDataFromDraft(draft: ImportedItineraryDraft) {
     trip_title: draft.trip_title,
     destination: draft.destination,
     duration_days: draft.duration_days,
+    start_date: draft.start_date,
+    end_date: draft.end_date,
     summary: draft.summary,
     budget: draft.budget,
     interests: draft.interests,
@@ -239,6 +277,8 @@ export function importedDraftToItineraryResult(draft: ImportedItineraryDraft): I
     trip_title: draft.trip_title,
     destination: draft.destination,
     duration_days: draft.duration_days,
+    start_date: draft.start_date,
+    end_date: draft.end_date,
     summary: draft.summary,
     days: draft.days,
     budget: draft.budget,
@@ -271,6 +311,26 @@ export function normalizeImportedItineraryDraft(
         .filter((day): day is Day => Boolean(day))
         .sort((a, b) => a.day_number - b.day_number)
     : [];
+  const datedDays = days
+    .map((day) => day.date)
+    .filter((value): value is string => Boolean(value))
+    .sort();
+  const explicitStartDate =
+    toIsoDateString(merged.start_date) ??
+    toIsoDateString(merged.trip_start_date) ??
+    datedDays[0];
+  const explicitEndDate =
+    toIsoDateString(merged.end_date) ??
+    toIsoDateString(merged.trip_end_date) ??
+    datedDays[datedDays.length - 1];
+  const computedEndDate =
+    explicitStartDate && !explicitEndDate
+      ? addDays(explicitStartDate, Math.max(0, (toFiniteNumber(merged.duration_days) ?? durationFallback ?? 1) - 1))
+      : explicitEndDate;
+  const computedStartDate =
+    explicitEndDate && !explicitStartDate
+      ? addDays(explicitEndDate, -Math.max(0, (toFiniteNumber(merged.duration_days) ?? durationFallback ?? 1) - 1))
+      : explicitStartDate;
 
   const draftBase = {
     trip_title:
@@ -280,6 +340,8 @@ export function normalizeImportedItineraryDraft(
       "Imported itinerary",
     destination: toTrimmedString(merged.destination) ?? "",
     duration_days: Math.max(1, Math.round(toFiniteNumber(merged.duration_days) ?? durationFallback ?? 1)),
+    start_date: computedStartDate,
+    end_date: computedEndDate,
     summary:
       toTrimmedString(merged.summary) ??
       toTrimmedString(merged.description) ??

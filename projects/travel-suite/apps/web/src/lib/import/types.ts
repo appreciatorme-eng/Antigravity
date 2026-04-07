@@ -37,6 +37,8 @@ export interface ExtractedTourData {
   name: string;
   destination: string;
   duration_days: number;
+  start_date?: string;
+  end_date?: string;
   description?: string;
   base_price?: number;
   budget?: string;

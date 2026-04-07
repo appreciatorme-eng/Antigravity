@@ -456,6 +456,18 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
     });
   }, []);
 
+  useEffect(() => {
+    if (!draftData) return;
+
+    if (draftData.start_date) {
+      setStartDate((current) => current || draftData.start_date || "");
+    }
+
+    if (draftData.end_date || draftData.start_date) {
+      setEndDate((current) => current || draftData.end_date || draftData.start_date || "");
+    }
+  }, [draftData?.start_date, draftData?.end_date, draftData]);
+
   const handleSelectSavedItinerary = useCallback(async (itinerary: SavedItinerary) => {
     setSelectedSavedId(itinerary.id);
     setLoadingRawData(true);

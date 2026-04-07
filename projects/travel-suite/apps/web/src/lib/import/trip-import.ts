@@ -167,6 +167,8 @@ Return JSON in this exact structure:
   "name": "Tour name",
   "destination": "City, Country",
   "duration_days": 5,
+  "start_date": "2026-04-28",
+  "end_date": "2026-05-03",
   "description": "Overall tour summary",
   "base_price": 2500,
   "budget": "Budget | Moderate | Luxury",
@@ -184,6 +186,7 @@ Return JSON in this exact structure:
   "days": [
     {
       "day_number": 1,
+      "date": "2026-04-28",
       "title": "Arrival in Phuket",
       "description": "Day summary",
       "activities": [
@@ -204,6 +207,7 @@ Return JSON in this exact structure:
 
 Rules:
 - Return JSON only, no markdown.
+- Use YYYY-MM-DD for start_date, end_date, and any explicit day dates.
 - Extract pricing, inclusions, exclusions, tips, and interests whenever present.
 - Use numeric prices only, no currency symbols.
 - If exact coordinates are unknown, omit coordinates instead of guessing 0,0.
