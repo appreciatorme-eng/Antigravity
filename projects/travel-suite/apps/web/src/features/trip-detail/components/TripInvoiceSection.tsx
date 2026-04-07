@@ -8,6 +8,7 @@ import {
   Calendar,
   CreditCard,
   Hash,
+  Pencil,
 } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
@@ -25,6 +26,7 @@ interface TripInvoiceSectionProps {
   invoices: TripInvoice[];
   loading: boolean;
   onCreateInvoice: () => void;
+  onEditInvoice: (invoice: TripInvoice) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -104,10 +106,12 @@ function InvoiceRow({
   invoice,
   isExpanded,
   onToggle,
+  onEdit,
 }: {
   invoice: TripInvoice;
   isExpanded: boolean;
   onToggle: () => void;
+  onEdit: () => void;
 }) {
   const handleDownloadInvoice = () => {
     window.open(`/api/bookings/${invoice.id}/invoice`, "_blank", "noopener,noreferrer");
@@ -160,6 +164,11 @@ function InvoiceRow({
         </div>
 
         <div className="flex items-start gap-2">
+          <GlassButton variant="ghost" size="sm" onClick={onEdit}>
+            <Pencil className="w-3.5 h-3.5" />
+            Edit
+          </GlassButton>
+
           <GlassButton variant="ghost" size="sm" onClick={handleDownloadInvoice}>
             <FileText className="w-3.5 h-3.5" />
             Download PDF
@@ -214,6 +223,7 @@ export function TripInvoiceSection({
   invoices,
   loading,
   onCreateInvoice,
+  onEditInvoice,
 }: TripInvoiceSectionProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -247,6 +257,7 @@ export function TripInvoiceSection({
               invoice={invoice}
               isExpanded={expandedId === invoice.id}
               onToggle={() => handleToggle(invoice.id)}
+              onEdit={() => onEditInvoice(invoice)}
             />
           ))}
         </div>

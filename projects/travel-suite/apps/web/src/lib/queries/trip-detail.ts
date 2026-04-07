@@ -19,6 +19,7 @@ export const tripDetailKeys = {
   all: ["trips"] as const,
   detail: (id: string) => ["trips", "detail", id] as const,
   invoices: (id: string) => ["trips", "detail", id, "invoices"] as const,
+  invoice: (id: string) => ["trips", "detail", "invoice", id] as const,
   notifications: (id: string) =>
     ["trips", "detail", id, "notifications"] as const,
   addOns: (id: string) => ["trips", "detail", id, "add-ons"] as const,
@@ -54,6 +55,18 @@ export function useTripInvoices(tripId: string) {
       return response.json();
     },
     enabled: !!tripId,
+  });
+}
+
+export function useTripInvoiceDetail(invoiceId: string | null) {
+  return useQuery({
+    queryKey: invoiceId ? tripDetailKeys.invoice(invoiceId) : tripDetailKeys.invoice("pending"),
+    queryFn: async (): Promise<{ invoice: TripInvoice }> => {
+      const response = await authedFetch(`/api/invoices/${invoiceId}`);
+      if (!response.ok) throw new Error("Failed to fetch invoice details");
+      return response.json();
+    },
+    enabled: !!invoiceId,
   });
 }
 
@@ -116,6 +129,8 @@ interface CreateInvoiceInput {
   }>;
   dueDate?: string;
   notes?: string;
+  placeOfSupply?: string | null;
+  sacCode?: string | null;
 }
 
 export function useCreateTripInvoice() {
@@ -136,6 +151,10 @@ export function useCreateTripInvoice() {
         items,
         ...(input.dueDate ? { due_date: input.dueDate } : {}),
         ...(input.notes ? { notes: input.notes } : {}),
+        ...(input.placeOfSupply !== undefined
+          ? { place_of_supply: input.placeOfSupply || null }
+          : {}),
+        ...(input.sacCode !== undefined ? { sac_code: input.sacCode || null } : {}),
         status: "issued" as const,
       };
 
@@ -158,6 +177,66 @@ export function useCreateTripInvoice() {
       });
       void queryClient.invalidateQueries({
         queryKey: tripDetailKeys.detail(variables.tripId),
+      });
+    },
+  });
+}
+
+interface UpdateTripInvoiceInput {
+  invoiceId: string;
+  tripId: string;
+  items: Array<{
+    description: string;
+    quantity: number;
+    unit_price: number;
+    tax_rate?: number;
+  }>;
+  dueDate?: string | null;
+  notes?: string | null;
+  placeOfSupply?: string | null;
+  sacCode?: string | null;
+}
+
+export function useUpdateTripInvoice() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: UpdateTripInvoiceInput) => {
+      const items = input.items.map((item) => ({
+        description: item.description,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        tax_rate: typeof item.tax_rate === "number" ? item.tax_rate : 0,
+      }));
+
+      const body = {
+        items,
+        due_date: input.dueDate || null,
+        notes: input.notes || null,
+        place_of_supply: input.placeOfSupply || null,
+        sac_code: input.sacCode || null,
+      };
+
+      const response = await authedFetch(`/api/invoices/${input.invoiceId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to update invoice");
+      }
+      return response.json();
+    },
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({
+        queryKey: tripDetailKeys.invoices(variables.tripId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: tripDetailKeys.detail(variables.tripId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: tripDetailKeys.invoice(variables.invoiceId),
       });
     },
   });

@@ -157,9 +157,16 @@ export interface TripInvoice {
   paid_amount: number;
   balance_amount: number;
   status: string;
+  currency?: string | null;
   due_date: string | null;
   issued_at: string | null;
   created_at: string | null;
+  cgst?: number | null;
+  sgst?: number | null;
+  igst?: number | null;
+  place_of_supply?: string | null;
+  sac_code?: string | null;
+  notes?: string | null;
   payments: TripPayment[];
   line_items: InvoiceLineItem[];
 }

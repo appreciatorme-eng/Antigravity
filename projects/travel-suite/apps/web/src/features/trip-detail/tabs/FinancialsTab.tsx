@@ -21,16 +21,20 @@ import { formatINR, formatDate } from "@/features/trip-detail/utils";
 import { useToast } from "@/components/ui/toast";
 import {
   useTripInvoices,
+  useTripInvoiceDetail,
   useTripAddOns,
   useAvailableAddOnsCatalog,
   useCreateTripInvoice,
   useCreateTripAddOn,
+  useUpdateTripInvoice,
   useUpdateTripAddOn,
 } from "@/lib/queries/trip-detail";
 import { authedFetch } from "@/lib/api/authed-fetch";
+import { INDIAN_STATES } from "@/lib/tax/gst-calculator";
 import type {
   Trip,
   TripAddOn,
+  TripInvoice,
   TripInvoiceSummaryData,
   TripPayment,
   TripPricing,
@@ -148,6 +152,87 @@ function buildInvoiceDraftNotes(
   }
 
   return notes.join("\n\n").trim();
+}
+
+const DEFAULT_GST_RATE = 18;
+
+interface InvoiceEditorSeed {
+  lines: readonly InvoiceFormLine[];
+  dueDate: string;
+  notes: string;
+  gstEnabled: boolean;
+  placeOfSupply: string;
+  sacCode: string;
+  currency: string;
+}
+
+function buildCreateInvoiceSeed(
+  initialLines?: readonly InvoiceFormLine[],
+  initialNotes?: string,
+): InvoiceEditorSeed {
+  return {
+    lines: sanitizeInvoiceLines(initialLines),
+    dueDate: "",
+    notes: initialNotes?.trim() ?? "",
+    gstEnabled: false,
+    placeOfSupply: "",
+    sacCode: "998314",
+    currency: "INR",
+  };
+}
+
+function buildEditInvoiceSeed(invoice: TripInvoice): InvoiceEditorSeed {
+  const lines = sanitizeInvoiceLines(
+    invoice.line_items.map((item) => ({
+      description: item.description,
+      quantity: item.quantity,
+      unit_price: item.unit_price,
+      tax_rate: typeof item.tax_rate === "number" ? item.tax_rate : 0,
+    })),
+  );
+  const gstEnabled =
+    lines.some((line) => line.tax_rate > 0) ||
+    Boolean(invoice.place_of_supply) ||
+    Boolean(invoice.sac_code) ||
+    Boolean(invoice.cgst || invoice.sgst || invoice.igst);
+
+  return {
+    lines,
+    dueDate: invoice.due_date ?? "",
+    notes: invoice.notes?.trim() ?? "",
+    gstEnabled,
+    placeOfSupply: invoice.place_of_supply ?? "",
+    sacCode: invoice.sac_code ?? "998314",
+    currency: invoice.currency?.trim().toUpperCase() || "INR",
+  };
+}
+
+function calculateInvoiceDraftTotals(
+  lines: readonly InvoiceFormLine[],
+  gstEnabled: boolean,
+): { subtotal: number; tax: number; total: number } {
+  let subtotal = 0;
+  let tax = 0;
+
+  for (const line of lines) {
+    const quantity = Number.isFinite(line.quantity) && line.quantity > 0 ? line.quantity : 0;
+    const unitPrice =
+      Number.isFinite(line.unit_price) && line.unit_price >= 0 ? line.unit_price : 0;
+    const taxRate =
+      gstEnabled && Number.isFinite(line.tax_rate) && line.tax_rate >= 0 ? line.tax_rate : 0;
+
+    const lineSubtotal = quantity * unitPrice;
+    const lineTax = (lineSubtotal * taxRate) / 100;
+
+    subtotal += lineSubtotal;
+    tax += lineTax;
+  }
+
+  return {
+    subtotal: Math.round((subtotal + Number.EPSILON) * 100) / 100,
+    tax: Math.round((tax + Number.EPSILON) * 100) / 100,
+    total: Math.round((subtotal + tax + Number.EPSILON) * 100) / 100,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -390,11 +475,13 @@ function PaymentSummaryCard({ payments }: { payments: readonly TripPayment[] }) 
 // Create Invoice Modal
 // ---------------------------------------------------------------------------
 
-function CreateInvoiceModal({
+function InvoiceEditorModal({
   isOpen,
   onClose,
   tripId,
   clientId,
+  mode,
+  invoiceId,
   initialLines,
   initialNotes,
 }: {
@@ -402,32 +489,76 @@ function CreateInvoiceModal({
   onClose: () => void;
   tripId: string;
   clientId: string | null;
+  mode: "create" | "edit";
+  invoiceId?: string | null;
   initialLines?: readonly InvoiceFormLine[];
   initialNotes?: string;
 }) {
   const { toast } = useToast();
   const createInvoice = useCreateTripInvoice();
+  const updateInvoice = useUpdateTripInvoice();
+  const invoiceDetailQuery = useTripInvoiceDetail(
+    isOpen && mode === "edit" ? invoiceId ?? null : null,
+  );
+  const loadingExistingInvoice = mode === "edit" && invoiceDetailQuery.isLoading;
+  const existingInvoice = mode === "edit" ? invoiceDetailQuery.data?.invoice ?? null : null;
   const wasOpenRef = useRef(false);
 
-  const [lines, setLines] = useState<readonly InvoiceFormLine[]>(() =>
-    sanitizeInvoiceLines(initialLines),
-  );
+  const [lines, setLines] = useState<readonly InvoiceFormLine[]>(() => sanitizeInvoiceLines(initialLines));
   const [dueDate, setDueDate] = useState("");
   const [notes, setNotes] = useState(initialNotes?.trim() ?? "");
+  const [gstEnabled, setGstEnabled] = useState(false);
+  const [placeOfSupply, setPlaceOfSupply] = useState("");
+  const [sacCode, setSacCode] = useState("998314");
+  const [currency, setCurrency] = useState("INR");
 
   useEffect(() => {
-    if (isOpen && !wasOpenRef.current) {
-      setLines(sanitizeInvoiceLines(initialLines));
-      setNotes(initialNotes?.trim() ?? "");
-      setDueDate("");
+    if (!isOpen) {
+      wasOpenRef.current = false;
+      return;
     }
 
-    wasOpenRef.current = isOpen;
-  }, [initialLines, initialNotes, isOpen]);
+    if (mode === "edit") {
+      if (!existingInvoice || wasOpenRef.current) return;
+      const seed = buildEditInvoiceSeed(existingInvoice);
+      setLines(seed.lines);
+      setNotes(seed.notes);
+      setDueDate(seed.dueDate);
+      setGstEnabled(seed.gstEnabled);
+      setPlaceOfSupply(seed.placeOfSupply);
+      setSacCode(seed.sacCode);
+      setCurrency(seed.currency);
+      wasOpenRef.current = true;
+      return;
+    }
+
+    if (!wasOpenRef.current) {
+      const seed = buildCreateInvoiceSeed(initialLines, initialNotes);
+      setLines(seed.lines);
+      setNotes(seed.notes);
+      setDueDate(seed.dueDate);
+      setGstEnabled(seed.gstEnabled);
+      setPlaceOfSupply(seed.placeOfSupply);
+      setSacCode(seed.sacCode);
+      setCurrency(seed.currency);
+      wasOpenRef.current = true;
+    }
+  }, [existingInvoice, initialLines, initialNotes, isOpen, mode]);
+
+  const invoiceTotals = useMemo(
+    () => calculateInvoiceDraftTotals(lines, gstEnabled),
+    [gstEnabled, lines],
+  );
 
   const handleAddLine = useCallback(() => {
-    setLines((prev) => [...prev, createEmptyLine()]);
-  }, []);
+    setLines((prev) => [
+      ...prev,
+      {
+        ...createEmptyLine(),
+        tax_rate: gstEnabled ? DEFAULT_GST_RATE : 0,
+      },
+    ]);
+  }, [gstEnabled]);
 
   const handleRemoveLine = useCallback((index: number) => {
     setLines((prev) => prev.filter((_, i) => i !== index));
@@ -441,6 +572,27 @@ function CreateInvoiceModal({
     },
     []
   );
+
+  const handleToggleGst = useCallback(() => {
+    setGstEnabled((previous) => {
+      const next = !previous;
+      setLines((current) =>
+        current.map((line) => ({
+          ...line,
+          tax_rate:
+            next
+              ? line.tax_rate > 0
+                ? line.tax_rate
+                : DEFAULT_GST_RATE
+              : 0,
+        })),
+      );
+      if (next && !sacCode.trim()) {
+        setSacCode("998314");
+      }
+      return next;
+    });
+  }, [sacCode]);
 
   const handleSubmit = useCallback(async () => {
     const validLines = lines.filter(
@@ -456,39 +608,91 @@ function CreateInvoiceModal({
     }
 
     try {
-      await createInvoice.mutateAsync({
-        tripId,
-        clientId,
-        items: validLines.map((l) => ({
-          description: l.description,
-          quantity: l.quantity,
-          unit_price: l.unit_price,
-          tax_rate: l.tax_rate > 0 ? l.tax_rate : undefined,
-        })),
-        dueDate: dueDate || undefined,
-        notes: notes.trim() || undefined,
-      });
+      const normalizedItems = validLines.map((line) => ({
+        description: line.description.trim(),
+        quantity: line.quantity,
+        unit_price: line.unit_price,
+        tax_rate: gstEnabled ? Math.max(line.tax_rate, 0) : 0,
+      }));
 
-      toast({ title: "Invoice created successfully", variant: "success" });
+      if (mode === "edit" && invoiceId) {
+        await updateInvoice.mutateAsync({
+          invoiceId,
+          tripId,
+          items: normalizedItems,
+          dueDate: dueDate || null,
+          notes: notes.trim() || null,
+          placeOfSupply: gstEnabled ? placeOfSupply || null : null,
+          sacCode: gstEnabled ? (sacCode.trim() || "998314") : null,
+        });
+      } else {
+        await createInvoice.mutateAsync({
+          tripId,
+          clientId,
+          items: normalizedItems,
+          dueDate: dueDate || undefined,
+          notes: notes.trim() || undefined,
+          placeOfSupply: gstEnabled ? placeOfSupply || null : null,
+          sacCode: gstEnabled ? (sacCode.trim() || "998314") : null,
+        });
+      }
+
+      toast({
+        title: mode === "edit" ? "Invoice updated successfully" : "Invoice created successfully",
+        variant: "success",
+      });
       setLines([createEmptyLine()]);
       setDueDate("");
       setNotes("");
+      setGstEnabled(false);
+      setPlaceOfSupply("");
+      setSacCode("998314");
       onClose();
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Failed to create invoice";
+        err instanceof Error
+          ? err.message
+          : mode === "edit"
+            ? "Failed to update invoice"
+            : "Failed to create invoice";
       toast({ title: message, variant: "error" });
     }
-  }, [clientId, createInvoice, dueDate, lines, notes, onClose, toast, tripId]);
+  }, [
+    clientId,
+    createInvoice,
+    dueDate,
+    gstEnabled,
+    invoiceId,
+    lines,
+    mode,
+    notes,
+    onClose,
+    placeOfSupply,
+    sacCode,
+    toast,
+    tripId,
+    updateInvoice,
+  ]);
 
   return (
     <GlassModal
       isOpen={isOpen}
       onClose={onClose}
-      title="Create Invoice"
-      description="Review the prefilled trip charges, edit anything you need, then create the invoice."
+      title={mode === "edit" ? "Edit Invoice" : "Create Invoice"}
+      description={
+        mode === "edit"
+          ? "Update line items, tax settings, and due date for this invoice."
+          : "Review the prefilled trip charges, edit anything you need, then create the invoice."
+      }
       size="lg"
     >
+      {loadingExistingInvoice ? (
+        <div className="flex items-center justify-center py-10">
+          <span className="text-sm text-gray-400 animate-pulse">
+            Loading invoice details...
+          </span>
+        </div>
+      ) : (
       <div className="space-y-4">
         {/* Due date */}
         <div>
@@ -503,6 +707,54 @@ function CreateInvoiceModal({
           />
         </div>
 
+        <div className="rounded-xl border border-white/40 bg-white/30 dark:bg-slate-800/30 dark:border-slate-700/40 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-bold text-secondary dark:text-white">GST</p>
+              <p className="text-xs text-text-muted">
+                Add tax percentage to each invoice line
+              </p>
+            </div>
+            <GlassButton variant={gstEnabled ? "primary" : "ghost"} size="sm" onClick={handleToggleGst}>
+              {gstEnabled ? "On" : "Off"}
+            </GlassButton>
+          </div>
+
+          {gstEnabled ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-text-muted mb-1">
+                  Place of Supply
+                </label>
+                <select
+                  value={placeOfSupply}
+                  onChange={(e) => setPlaceOfSupply(e.target.value)}
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-white/40 bg-white/50 dark:bg-slate-800/50 dark:border-slate-700/40 text-secondary dark:text-white focus:outline-none focus:ring-1 focus:ring-primary"
+                >
+                  <option value="">Select state</option>
+                  {INDIAN_STATES.map((state) => (
+                    <option key={state} value={state}>
+                      {state}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-text-muted mb-1">
+                  SAC Code
+                </label>
+                <input
+                  type="text"
+                  value={sacCode}
+                  onChange={(e) => setSacCode(e.target.value)}
+                  placeholder="998314"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-white/40 bg-white/50 dark:bg-slate-800/50 dark:border-slate-700/40 text-secondary dark:text-white focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+            </div>
+          ) : null}
+        </div>
+
         {/* Line items */}
         <div>
           <label className="block text-xs font-bold uppercase tracking-wider text-text-muted mb-2">
@@ -514,7 +766,7 @@ function CreateInvoiceModal({
                 key={idx}
                 className="grid grid-cols-12 gap-2 items-end"
               >
-                <div className="col-span-5">
+                <div className="col-span-4">
                   {idx === 0 && (
                     <span className="text-[10px] text-text-muted">
                       Description
@@ -548,7 +800,7 @@ function CreateInvoiceModal({
                     className="w-full px-2 py-1.5 text-xs rounded-lg border border-white/40 bg-white/50 dark:bg-slate-800/50 dark:border-slate-700/40 text-secondary dark:text-white focus:outline-none focus:ring-1 focus:ring-primary"
                   />
                 </div>
-                <div className="col-span-3">
+                <div className="col-span-2">
                   {idx === 0 && (
                     <span className="text-[10px] text-text-muted">
                       Unit Price
@@ -566,6 +818,26 @@ function CreateInvoiceModal({
                       )
                     }
                     className="w-full px-2 py-1.5 text-xs rounded-lg border border-white/40 bg-white/50 dark:bg-slate-800/50 dark:border-slate-700/40 text-secondary dark:text-white focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+                <div className="col-span-2">
+                  {idx === 0 && (
+                    <span className="text-[10px] text-text-muted">Tax %</span>
+                  )}
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={line.tax_rate}
+                    disabled={!gstEnabled}
+                    onChange={(e) =>
+                      handleLineChange(
+                        idx,
+                        "tax_rate",
+                        parseFloat(e.target.value) || 0,
+                      )
+                    }
+                    className="w-full px-2 py-1.5 text-xs rounded-lg border border-white/40 bg-white/50 disabled:opacity-50 disabled:cursor-not-allowed dark:bg-slate-800/50 dark:border-slate-700/40 text-secondary dark:text-white focus:outline-none focus:ring-1 focus:ring-primary"
                   />
                 </div>
                 <div className="col-span-2 flex gap-1">
@@ -606,6 +878,25 @@ function CreateInvoiceModal({
           />
         </div>
 
+        <div className="rounded-xl border border-white/40 bg-white/30 dark:bg-slate-800/30 dark:border-slate-700/40 p-4 space-y-2">
+          <div className="flex items-center justify-between text-sm text-text-muted">
+            <span>Subtotal</span>
+            <span className="font-semibold text-secondary dark:text-white">
+              {formatPackageCurrency(invoiceTotals.subtotal, currency)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-sm text-text-muted">
+            <span>Tax</span>
+            <span className="font-semibold text-secondary dark:text-white">
+              {formatPackageCurrency(invoiceTotals.tax, currency)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between text-base font-black text-secondary dark:text-white">
+            <span>Total</span>
+            <span>{formatPackageCurrency(invoiceTotals.total, currency)}</span>
+          </div>
+        </div>
+
         {/* Actions */}
         <div className="flex justify-end gap-3 pt-4 border-t border-white/30 dark:border-slate-700/30">
           <GlassButton variant="ghost" size="md" onClick={onClose}>
@@ -614,13 +905,14 @@ function CreateInvoiceModal({
           <GlassButton
             variant="primary"
             size="md"
-            loading={createInvoice.isPending}
+            loading={createInvoice.isPending || updateInvoice.isPending}
             onClick={handleSubmit}
           >
-            Create Invoice
+            {mode === "edit" ? "Save Invoice" : "Create Invoice"}
           </GlassButton>
         </div>
       </div>
+      )}
     </GlassModal>
   );
 }
@@ -648,6 +940,7 @@ export function FinancialsTab({
   onPricingChange,
 }: FinancialsTabProps) {
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
   const [convertingCurrency, setConvertingCurrency] = useState(false);
   const autoConvertedPricingRef = useRef<string | null>(null);
   const { toast } = useToast();
@@ -750,11 +1043,18 @@ export function FinancialsTab({
   }, [handleConvertPricingToINR, itineraryId, onPricingChange, packagePricing]);
 
   const handleOpenCreate = useCallback(() => {
+    setEditingInvoiceId(null);
     setShowCreateModal(true);
   }, []);
 
   const handleCloseCreate = useCallback(() => {
     setShowCreateModal(false);
+    setEditingInvoiceId(null);
+  }, []);
+
+  const handleOpenEditInvoice = useCallback((invoice: TripInvoice) => {
+    setShowCreateModal(false);
+    setEditingInvoiceId(invoice.id);
   }, []);
 
   const handleAddOnToggle = useCallback(
@@ -892,6 +1192,7 @@ export function FinancialsTab({
             invoices={invoices}
             loading={invoicesQuery.isLoading}
             onCreateInvoice={handleOpenCreate}
+            onEditInvoice={handleOpenEditInvoice}
           />
         </div>
 
@@ -914,11 +1215,13 @@ export function FinancialsTab({
       </div>
 
       {/* Create Invoice Modal */}
-      <CreateInvoiceModal
-        isOpen={showCreateModal}
+      <InvoiceEditorModal
+        isOpen={showCreateModal || editingInvoiceId !== null}
         onClose={handleCloseCreate}
         tripId={trip.id}
         clientId={trip.client_id ?? null}
+        mode={editingInvoiceId ? "edit" : "create"}
+        invoiceId={editingInvoiceId}
         initialLines={prefilledInvoiceLines}
         initialNotes={prefilledInvoiceNotes}
       />
