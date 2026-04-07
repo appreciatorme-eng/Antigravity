@@ -1,17 +1,53 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Pricing } from '@/types/itinerary';
+import type { ExtractedPricing, Pricing } from '@/types/itinerary';
 import { IndianRupee, CheckCircle2, Circle } from 'lucide-react';
 
+type SharePricing = Pricing | ExtractedPricing;
+
 interface InteractivePricingProps {
-    pricing?: Pricing;
+    pricing?: SharePricing;
 }
 
 export function InteractivePricing({ pricing }: InteractivePricingProps) {
     const [selectedAddOns, setSelectedAddOns] = useState<Set<string>>(new Set());
 
     if (!pricing) return null;
+
+    const pricingRecord = pricing as Partial<Pricing & ExtractedPricing>;
+    const passengerCount =
+        typeof pricingRecord.passengerCount === "number" && Number.isFinite(pricingRecord.passengerCount)
+            ? pricingRecord.passengerCount
+            : typeof pricingRecord.pax_count === "number" && Number.isFinite(pricingRecord.pax_count)
+                ? pricingRecord.pax_count
+                : 1;
+    const currency =
+        typeof pricingRecord.currency === "string" && pricingRecord.currency.trim()
+            ? pricingRecord.currency.trim().toUpperCase()
+            : "INR";
+    const availableAddOns = Array.isArray(pricingRecord.availableAddOns)
+        ? pricingRecord.availableAddOns
+        : [];
+
+    const baseCost =
+        typeof pricingRecord.basePrice === "number" && Number.isFinite(pricingRecord.basePrice)
+            ? pricingRecord.basePrice
+            : typeof pricingRecord.total_cost === "number" && Number.isFinite(pricingRecord.total_cost)
+                ? pricingRecord.total_cost
+                : typeof pricingRecord.per_person_cost === "number" && Number.isFinite(pricingRecord.per_person_cost)
+                    ? pricingRecord.per_person_cost * passengerCount
+                    : 0;
+    const markupPercentage =
+        typeof pricingRecord.markupPercentage === "number" && Number.isFinite(pricingRecord.markupPercentage)
+            ? pricingRecord.markupPercentage
+            : 0;
+    const serviceFee =
+        typeof pricingRecord.serviceFee === "number" && Number.isFinite(pricingRecord.serviceFee)
+            ? pricingRecord.serviceFee
+            : 0;
+
+    if (baseCost <= 0 && availableAddOns.length === 0) return null;
 
     const handleToggle = (id: string) => {
         const newSet = new Set(selectedAddOns);
@@ -23,13 +59,19 @@ export function InteractivePricing({ pricing }: InteractivePricingProps) {
         setSelectedAddOns(newSet);
     };
 
-    // Calculate total
-    const baseCost = pricing.basePrice;
-    const markupMultiplier = 1 + (pricing.markupPercentage || 0) / 100;
-    const baseTotal = (baseCost * markupMultiplier) + (pricing.serviceFee || 0);
+    const formatMoney = (value: number) =>
+        new Intl.NumberFormat('en-IN', {
+            style: 'currency',
+            currency,
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2,
+        }).format(value);
 
+    // Calculate total
+    const markupMultiplier = 1 + markupPercentage / 100;
+    const baseTotal = (baseCost * markupMultiplier) + serviceFee;
     let addOnsTotal = 0;
-    pricing.availableAddOns?.forEach(addon => {
+    availableAddOns.forEach(addon => {
         if (selectedAddOns.has(addon.id)) {
             addOnsTotal += addon.price;
         }
@@ -43,7 +85,7 @@ export function InteractivePricing({ pricing }: InteractivePricingProps) {
                 {/* Header */}
                 <div className="bg-gradient-to-r from-emerald-500 to-teal-600 p-6 text-white text-center">
                     <h2 className="text-2xl font-serif mb-2">Trip Investment</h2>
-                    <p className="opacity-90">Customized for {pricing.passengerCount} {pricing.passengerCount === 1 ? 'passenger' : 'passengers'}</p>
+                    <p className="opacity-90">Customized for {passengerCount} {passengerCount === 1 ? 'passenger' : 'passengers'}</p>
                 </div>
 
                 <div className="p-6 md:p-8 space-y-8">
@@ -54,19 +96,19 @@ export function InteractivePricing({ pricing }: InteractivePricingProps) {
                             <p className="text-sm text-gray-500 dark:text-gray-400">Includes all standard accommodations and scheduled activities.</p>
                         </div>
                         <div className="text-xl font-bold text-gray-900 dark:text-gray-100 flex flex-col items-end">
-                            <span>₹{baseTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                            {(pricing.markupPercentage || pricing.serviceFee) ? (
+                            <span>{formatMoney(baseTotal)}</span>
+                            {(markupPercentage || serviceFee) ? (
                                 <span className="text-[10px] text-emerald-600 font-medium">Incl. Service Fees</span>
                             ) : null}
                         </div>
                     </div>
 
                     {/* Add-ons */}
-                    {pricing.availableAddOns && pricing.availableAddOns.length > 0 && (
+                    {availableAddOns.length > 0 && (
                         <div className="space-y-4">
                             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Available Enhancements</h3>
                             <div className="grid gap-4">
-                                {pricing.availableAddOns.map(addon => {
+                                {availableAddOns.map(addon => {
                                     const isSelected = selectedAddOns.has(addon.id);
                                     return (
                                         <div
@@ -94,7 +136,7 @@ export function InteractivePricing({ pricing }: InteractivePricingProps) {
                                                 </div>
                                             </div>
                                             <div className={`font-bold whitespace-nowrap ${isSelected ? 'text-emerald-700 dark:text-emerald-300' : 'text-gray-600 dark:text-gray-400'}`}>
-                                                + ₹{addon.price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                + {formatMoney(addon.price)}
                                             </div>
                                         </div>
                                     );
@@ -110,8 +152,8 @@ export function InteractivePricing({ pricing }: InteractivePricingProps) {
                             <p className="text-xs text-gray-400">Prices are subject to final confirmation.</p>
                         </div>
                         <div className="text-4xl font-bold flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                            <IndianRupee className="w-8 h-8 opacity-50" />
-                            {finalTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {currency === "INR" && <IndianRupee className="w-8 h-8 opacity-50" />}
+                            {formatMoney(finalTotal)}
                         </div>
                     </div>
                 </div>

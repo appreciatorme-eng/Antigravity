@@ -279,57 +279,60 @@ export const SafariStoryView: React.FC<ItineraryTemplateProps> = ({ itinerary, o
                       )}
 
                       <div className="space-y-6 mt-8">
-                        {day.activities?.map((activity: Activity, actIndex: number) => (
-                          <div key={actIndex} className="bg-white border border-stone-200 p-6 md:p-8 flex flex-col md:flex-row gap-8 hover:border-stone-300 transition-colors">
+                        {day.activities?.map((activity: Activity, actIndex: number) => {
+                          const activityImage = activity.image || activity.imageUrl;
 
-                            {/* Activity Image (Left) */}
-                            {activity.image && (
-                              <div className="md:w-1/3 shrink-0">
-                                <div className="aspect-[4/3] w-full overflow-hidden border border-stone-200 bg-stone-100 p-2">
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img
-                                    src={activity.image}
-                                    alt={activity.title}
-                                    className="w-full h-full object-cover filter contrast-[1.05] grayscale-[0.1]"
-                                    onError={(e) => {
-                                      e.currentTarget.src = "/unsplash-img/photo-1469854523086-cc02fe5d8800?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3";
-                                      e.currentTarget.onerror = null;
-                                    }}
-                                  />
+                          return (
+                            <div key={actIndex} className="bg-white border border-stone-200 p-6 md:p-8 flex flex-col md:flex-row gap-8 hover:border-stone-300 transition-colors">
+                              {/* Activity Image (Left) */}
+                              {activityImage && (
+                                <div className="md:w-1/3 shrink-0">
+                                  <div className="aspect-[4/3] w-full overflow-hidden border border-stone-200 bg-stone-100 p-2">
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                      src={activityImage}
+                                      alt={activity.title}
+                                      className="w-full h-full object-cover filter contrast-[1.05] grayscale-[0.1]"
+                                      onError={(e) => {
+                                        e.currentTarget.src = "/unsplash-img/photo-1469854523086-cc02fe5d8800?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3";
+                                        e.currentTarget.onerror = null;
+                                      }}
+                                    />
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Activity Details (Right) */}
+                              <div className="flex-1 flex flex-col justify-center">
+                                <div className="flex items-center gap-3 mb-3">
+                                  <span className="text-2xl opacity-80">{getActivityIcon(activity)}</span>
+                                  {activity.time && (
+                                    <Badge variant="outline" className="font-serif tracking-widest text-[10px] uppercase border-stone-300 text-stone-600 bg-[#FDFBF7]">
+                                      <Clock className="w-3 h-3 mr-1.5 inline" /> {activity.time}
+                                    </Badge>
+                                  )}
+                                </div>
+
+                                <h4 className="text-xl md:text-2xl font-serif text-stone-900 mb-3">
+                                  {activity.title}
+                                </h4>
+
+                                <p className="text-stone-600 leading-relaxed text-sm md:text-base mb-6">
+                                  {activity.description}
+                                </p>
+
+                                <div className="flex flex-wrap gap-x-6 gap-y-2 mt-auto pt-4 border-t border-stone-100 text-sm font-serif italic text-stone-500">
+                                  {activity.location && (
+                                    <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> {activity.location}</span>
+                                  )}
+                                  {activity.duration && (
+                                    <span className="flex items-center gap-1.5"><Sun className="w-3.5 h-3.5" /> {activity.duration}</span>
+                                  )}
                                 </div>
                               </div>
-                            )}
-
-                            {/* Activity Details (Right) */}
-                            <div className="flex-1 flex flex-col justify-center">
-                              <div className="flex items-center gap-3 mb-3">
-                                <span className="text-2xl opacity-80">{getActivityIcon(activity)}</span>
-                                {activity.time && (
-                                  <Badge variant="outline" className="font-serif tracking-widest text-[10px] uppercase border-stone-300 text-stone-600 bg-[#FDFBF7]">
-                                    <Clock className="w-3 h-3 mr-1.5 inline" /> {activity.time}
-                                  </Badge>
-                                )}
-                              </div>
-
-                              <h4 className="text-xl md:text-2xl font-serif text-stone-900 mb-3">
-                                {activity.title}
-                              </h4>
-
-                              <p className="text-stone-600 leading-relaxed text-sm md:text-base mb-6">
-                                {activity.description}
-                              </p>
-
-                              <div className="flex flex-wrap gap-x-6 gap-y-2 mt-auto pt-4 border-t border-stone-100 text-sm font-serif italic text-stone-500">
-                                {activity.location && (
-                                  <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> {activity.location}</span>
-                                )}
-                                {activity.duration && (
-                                  <span className="flex items-center gap-1.5"><Sun className="w-3.5 h-3.5" /> {activity.duration}</span>
-                                )}
-                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   </div>

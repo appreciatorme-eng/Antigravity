@@ -20,7 +20,7 @@ interface ItineraryForImages {
     [key: string]: unknown;
 }
 
-export const IMAGE_SEARCH_VERSION = 3;
+export const IMAGE_SEARCH_VERSION = 4;
 
 // Curated scenic fallback images — expanded to 20 for better hash distribution
 export const LUXURY_FALLBACKS = [
@@ -57,6 +57,48 @@ export function getDeterministicFallback(title: string): string {
     }
     const idx = Math.abs(hash) % LUXURY_FALLBACKS.length;
     return LUXURY_FALLBACKS[idx];
+}
+
+function pickFallbackFromIndexes(seed: string, indexes: readonly number[]): string {
+    let hash = 5381;
+    for (let i = 0; i < seed.length; i++) {
+        hash = ((hash << 5) + hash + seed.charCodeAt(i)) | 0;
+    }
+    const idx = indexes[Math.abs(hash) % indexes.length] ?? 0;
+    return LUXURY_FALLBACKS[idx];
+}
+
+const TROPICAL_FALLBACK_INDEXES = [2, 5, 10, 13, 19, 1] as const;
+const CULTURAL_FALLBACK_INDEXES = [12, 4, 7, 6] as const;
+const URBAN_FALLBACK_INDEXES = [4, 6, 7, 5] as const;
+const NATURE_FALLBACK_INDEXES = [3, 8, 9, 14, 18] as const;
+const RESORT_FALLBACK_INDEXES = [0, 1, 5, 15] as const;
+
+export function getContextualFallback(queryOrTitle: string): string | null {
+    const normalized = normalizeWhitespace(queryOrTitle).toLowerCase();
+    if (!normalized) return null;
+
+    if (/\b(phuket|krabi|thailand|phi phi|khai|maya bay|james bond|phang nga|island|beach|bay|snorkel|boat|canoe|marine)\b/i.test(normalized)) {
+        return pickFallbackFromIndexes(normalized, TROPICAL_FALLBACK_INDEXES);
+    }
+
+    if (/\b(temple|palace|market|old town|museum|shrine|heritage|fort)\b/i.test(normalized)) {
+        return pickFallbackFromIndexes(normalized, CULTURAL_FALLBACK_INDEXES);
+    }
+
+    if (/\b(airport|transfer|hotel|pickup|drop|station|terminal|city|downtown)\b/i.test(normalized)) {
+        return pickFallbackFromIndexes(normalized, URBAN_FALLBACK_INDEXES);
+    }
+
+    if (/\b(resort|villa|spa|pool|stay|accommodation)\b/i.test(normalized)) {
+        return pickFallbackFromIndexes(normalized, RESORT_FALLBACK_INDEXES);
+    }
+
+    if (/\b(mountain|lake|waterfall|national park|forest|valley|camp)\b/i.test(normalized)) {
+        return pickFallbackFromIndexes(normalized, NATURE_FALLBACK_INDEXES);
+    }
+
+    return null;
 }
 
 /** Patterns that indicate a Wikipedia image is NOT a place/landmark photo. */
@@ -364,7 +406,9 @@ export async function getWikiImage(query: string | readonly string[], titleStr: 
     const queries = uniqueQueries(
         (typeof query === 'string' ? [query] : Array.from(query)) as string[],
     );
-    if (queries.length === 0) return getDeterministicFallback(titleStr);
+    if (queries.length === 0) {
+        return getContextualFallback(titleStr) ?? getDeterministicFallback(titleStr);
+    }
 
     for (const candidate of queries) {
         const result = await fetchWikiThumbnail(candidate);
@@ -376,7 +420,7 @@ export async function getWikiImage(query: string | readonly string[], titleStr: 
         if (result) return result;
     }
 
-    return getDeterministicFallback(titleStr);
+    return getContextualFallback(`${queries.join(" ")} ${titleStr}`) ?? getDeterministicFallback(titleStr);
 }
 
 const WIKI_CONCURRENCY_LIMIT = 5;

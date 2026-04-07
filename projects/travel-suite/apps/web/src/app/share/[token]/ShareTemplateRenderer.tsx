@@ -129,9 +129,9 @@ export default function ShareTemplateRenderer({
             <RouteSummary itinerary={itinerary} />
 
             {/* Inject dynamic pricing module at the bottom if configured */}
-            {itinerary.pricing && (
+            {(itinerary.pricing || itinerary.extracted_pricing) && (
                 <div className="bg-gray-50 dark:bg-slate-950 py-12 border-t border-gray-200 dark:border-white/10">
-                    <InteractivePricing pricing={itinerary.pricing} />
+                    <InteractivePricing pricing={itinerary.pricing ?? itinerary.extracted_pricing} />
                 </div>
             )}
 
