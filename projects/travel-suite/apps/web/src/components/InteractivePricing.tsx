@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { ExtractedPricing, Pricing } from '@/types/itinerary';
 import { IndianRupee, CheckCircle2, Circle } from 'lucide-react';
 
@@ -12,6 +12,9 @@ interface InteractivePricingProps {
 
 export function InteractivePricing({ pricing }: InteractivePricingProps) {
     const [selectedAddOns, setSelectedAddOns] = useState<Set<string>>(new Set());
+    const [convertedBaseCost, setConvertedBaseCost] = useState<number | null>(null);
+    const [displayCurrency, setDisplayCurrency] = useState<string>("INR");
+    const convertedKeyRef = useRef<string | null>(null);
 
     if (!pricing) return null;
 
@@ -47,7 +50,60 @@ export function InteractivePricing({ pricing }: InteractivePricingProps) {
             ? pricingRecord.serviceFee
             : 0;
 
+    const conversionKey = useMemo(() => {
+        if (currency === "INR") return null;
+        return JSON.stringify({
+            currency,
+            basePrice: pricingRecord.basePrice ?? null,
+            total_cost: pricingRecord.total_cost ?? null,
+            per_person_cost: pricingRecord.per_person_cost ?? null,
+            pax_count: passengerCount,
+        });
+    }, [currency, passengerCount, pricingRecord.basePrice, pricingRecord.per_person_cost, pricingRecord.total_cost]);
+
+    useEffect(() => {
+        if (currency === "INR") {
+            setConvertedBaseCost(null);
+            setDisplayCurrency("INR");
+            convertedKeyRef.current = null;
+            return;
+        }
+
+        if (!conversionKey || convertedKeyRef.current === conversionKey) return;
+        convertedKeyRef.current = conversionKey;
+
+        let cancelled = false;
+
+        const convertToINR = async () => {
+            try {
+                const response = await fetch(
+                    `/api/currency?amount=${baseCost}&from=${currency}&to=INR`,
+                    { cache: "no-store" },
+                );
+                if (!response.ok) return;
+                const payload = await response.json() as { result?: number };
+                if (cancelled || typeof payload.result !== "number" || !Number.isFinite(payload.result)) return;
+                setConvertedBaseCost(Math.round(payload.result));
+                setDisplayCurrency("INR");
+            } catch {
+                if (!cancelled) {
+                    setConvertedBaseCost(null);
+                    setDisplayCurrency(currency);
+                }
+            }
+        };
+
+        void convertToINR();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [baseCost, conversionKey, currency]);
+
     if (baseCost <= 0 && availableAddOns.length === 0) return null;
+
+    const resolvedCurrency = convertedBaseCost !== null ? displayCurrency : currency;
+    const resolvedBaseCost = convertedBaseCost ?? baseCost;
 
     const handleToggle = (id: string) => {
         const newSet = new Set(selectedAddOns);
@@ -62,14 +118,14 @@ export function InteractivePricing({ pricing }: InteractivePricingProps) {
     const formatMoney = (value: number) =>
         new Intl.NumberFormat('en-IN', {
             style: 'currency',
-            currency,
+            currency: resolvedCurrency,
             minimumFractionDigits: 0,
             maximumFractionDigits: 2,
         }).format(value);
 
     // Calculate total
     const markupMultiplier = 1 + markupPercentage / 100;
-    const baseTotal = (baseCost * markupMultiplier) + serviceFee;
+    const baseTotal = (resolvedBaseCost * markupMultiplier) + serviceFee;
     let addOnsTotal = 0;
     availableAddOns.forEach(addon => {
         if (selectedAddOns.has(addon.id)) {
@@ -152,7 +208,7 @@ export function InteractivePricing({ pricing }: InteractivePricingProps) {
                             <p className="text-xs text-gray-400">Prices are subject to final confirmation.</p>
                         </div>
                         <div className="text-4xl font-bold flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                            {currency === "INR" && <IndianRupee className="w-8 h-8 opacity-50" />}
+                            {resolvedCurrency === "INR" && <IndianRupee className="w-8 h-8 opacity-50" />}
                             {formatMoney(finalTotal)}
                         </div>
                     </div>
