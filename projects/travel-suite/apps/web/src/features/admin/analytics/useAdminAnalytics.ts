@@ -53,11 +53,19 @@ const DEFAULT_FILTERS: AnalyticsFilterState = {
 
 const APPROVED_STATUSES = new Set(["approved", "accepted", "confirmed", "converted"]);
 const ACTIVE_TRIP_STATUSES = new Set(["planned", "confirmed", "in_progress", "active"]);
+const PEAK_MONTHS = new Set([10, 11, 12, 1, 2]);
 
 function extractDestination(value: TripRow["itineraries"]): string | null {
   if (!value) return null;
   if (Array.isArray(value)) return value[0]?.destination ?? null;
   return value.destination ?? null;
+}
+
+function extractMonthNumber(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.getMonth() + 1;
 }
 
 function isColumnMissingError(message: string | null | undefined): boolean {
@@ -69,6 +77,7 @@ function buildSnapshot(raw: AnalyticsRawState, filters: AnalyticsFilterState): A
   const profileNameMap = new Map<string, string>();
   const sourceByClient = new Map<string, string>();
   const destinationByClient = new Map<string, string>();
+  const tripDestinationById = new Map<string, string>();
 
   for (const profile of raw.profiles) {
     if (profile.id) {
@@ -78,6 +87,12 @@ function buildSnapshot(raw: AnalyticsRawState, filters: AnalyticsFilterState): A
     }
   }
 
+  for (const trip of raw.trips) {
+    if (!trip.id) continue;
+    const destination = extractDestination(trip.itineraries);
+    if (destination) tripDestinationById.set(trip.id, destination);
+  }
+
   const ownerByClient = new Map<string, string>();
   for (const proposal of raw.proposals) {
     if (proposal.client_id && proposal.created_by) {
@@ -85,11 +100,16 @@ function buildSnapshot(raw: AnalyticsRawState, filters: AnalyticsFilterState): A
     }
   }
 
-  const matchDestination = (rowDestination: string | null | undefined, clientId: string | null | undefined) => {
+  const matchDestination = (
+    rowDestination: string | null | undefined,
+    clientId: string | null | undefined,
+    tripId?: string | null,
+  ) => {
     if (filters.destination === "all") return true;
     const byRow = rowDestination || null;
+    const byTrip = tripId ? tripDestinationById.get(tripId) : null;
     const byClient = clientId ? destinationByClient.get(clientId) : null;
-    return byRow === filters.destination || byClient === filters.destination;
+    return byRow === filters.destination || byTrip === filters.destination || byClient === filters.destination;
   };
 
   const matchSource = (clientId: string | null | undefined) => {
@@ -105,7 +125,7 @@ function buildSnapshot(raw: AnalyticsRawState, filters: AnalyticsFilterState): A
   };
 
   const filteredTrips = raw.trips.filter((trip) =>
-    matchDestination(extractDestination(trip.itineraries), trip.client_id) &&
+    matchDestination(extractDestination(trip.itineraries), trip.client_id, trip.id) &&
     matchSource(trip.client_id) &&
     matchOwner(trip.owner_id, trip.client_id)
   );
@@ -117,7 +137,7 @@ function buildSnapshot(raw: AnalyticsRawState, filters: AnalyticsFilterState): A
   );
 
   const filteredInvoices = raw.invoices.filter((invoice) =>
-    matchDestination(null, invoice.client_id) &&
+    matchDestination(null, invoice.client_id, invoice.trip_id) &&
     matchSource(invoice.client_id) &&
     matchOwner(null, invoice.client_id)
   );
@@ -180,7 +200,7 @@ function buildSnapshot(raw: AnalyticsRawState, filters: AnalyticsFilterState): A
     };
   });
 
-  const destinationMap = new Map<string, number>();
+  const destinationMap = new Map<string, { trips: number; revenue: number }>();
   let activeTrips = 0;
   for (const trip of filteredTrips) {
     const status = (trip.status || "").toLowerCase();
@@ -188,7 +208,45 @@ function buildSnapshot(raw: AnalyticsRawState, filters: AnalyticsFilterState): A
 
     const destination = extractDestination(trip.itineraries);
     if (!destination) continue;
-    destinationMap.set(destination, (destinationMap.get(destination) || 0) + 1);
+    const existing = destinationMap.get(destination);
+    if (existing) {
+      existing.trips += 1;
+    } else {
+      destinationMap.set(destination, { trips: 1, revenue: 0 });
+    }
+  }
+
+  const seasonalBreakdown = {
+    peak: { months: "Oct — Feb", revenue: 0, bookings: 0, avgTrip: 0 },
+    offSeason: { months: "Mar — Sep", revenue: 0, bookings: 0, avgTrip: 0 },
+  };
+
+  for (const invoice of filteredInvoices) {
+    if ((invoice.status || "").toLowerCase() !== "paid") continue;
+
+    const amount = toNumber(invoice.total_amount, 0);
+    const monthNumber = extractMonthNumber(invoice.created_at);
+    const seasonKey = monthNumber && PEAK_MONTHS.has(monthNumber) ? "peak" : "offSeason";
+    seasonalBreakdown[seasonKey].revenue += amount;
+
+    const destination =
+      (invoice.trip_id ? tripDestinationById.get(invoice.trip_id) : null) ||
+      (invoice.client_id ? destinationByClient.get(invoice.client_id) : null) ||
+      null;
+
+    if (!destination) continue;
+    const existing = destinationMap.get(destination);
+    if (existing) {
+      existing.revenue += amount;
+    } else {
+      destinationMap.set(destination, { trips: 0, revenue: amount });
+    }
+  }
+
+  for (const trip of filteredTrips) {
+    const monthNumber = extractMonthNumber(trip.created_at);
+    const seasonKey = monthNumber && PEAK_MONTHS.has(monthNumber) ? "peak" : "offSeason";
+    seasonalBreakdown[seasonKey].bookings += 1;
   }
 
   const touchedClients = new Set<string>();
@@ -209,9 +267,16 @@ function buildSnapshot(raw: AnalyticsRawState, filters: AnalyticsFilterState): A
   const viewedProposalRate = proposalsTotal > 0 ? (viewedCount / proposalsTotal) * 100 : 0;
 
   const destinationRank = Array.from(destinationMap.entries())
-    .map(([name, trips]) => ({ name, trips }))
-    .sort((a, b) => b.trips - a.trips)
+    .map(([name, data]) => ({ name, trips: data.trips, revenue: data.revenue }))
+    .sort((a, b) => b.revenue - a.revenue || b.trips - a.trips)
     .slice(0, 6);
+
+  seasonalBreakdown.peak.avgTrip =
+    seasonalBreakdown.peak.bookings > 0 ? seasonalBreakdown.peak.revenue / seasonalBreakdown.peak.bookings : 0;
+  seasonalBreakdown.offSeason.avgTrip =
+    seasonalBreakdown.offSeason.bookings > 0
+      ? seasonalBreakdown.offSeason.revenue / seasonalBreakdown.offSeason.bookings
+      : 0;
 
   const proposalStatusBreakdown = Array.from(proposalStatusMap.entries())
     .map(([status, count]) => ({ status, count }))
@@ -281,6 +346,7 @@ function buildSnapshot(raw: AnalyticsRawState, filters: AnalyticsFilterState): A
     revenuePerPax,
     series,
     destinationRank,
+    seasonalBreakdown,
     proposalStatusBreakdown,
     drivers,
     topClients,
@@ -336,25 +402,25 @@ export function useAdminAnalytics() {
         let tripsRes: QueryResult<TripRow> = (await supabase
           .from("trips")
           // owner_id was removed from the trips table; client_id is used as fallback by matchOwner
-          .select("status,created_at,client_id,itineraries(destination)")
+          .select("id,status,created_at,client_id,itineraries(destination)")
           .eq("organization_id", orgId)) as unknown as QueryResult<TripRow>;
 
         if (tripsRes.error && isColumnMissingError(tripsRes.error.message)) {
           tripsRes = (await supabase
             .from("trips")
-            .select("status,created_at,itineraries(destination)")
+            .select("id,status,created_at,itineraries(destination)")
             .eq("organization_id", orgId)) as unknown as QueryResult<TripRow>;
         }
 
         let invoicesRes: QueryResult<InvoiceRow> = (await supabase
           .from("invoices")
-          .select("status,total_amount,created_at,client_id")
+          .select("status,total_amount,created_at,client_id,trip_id")
           .eq("organization_id", orgId)) as unknown as QueryResult<InvoiceRow>;
 
         if (invoicesRes.error && isColumnMissingError(invoicesRes.error.message)) {
           invoicesRes = (await supabase
             .from("invoices")
-            .select("status,total_amount,created_at")
+            .select("status,total_amount,created_at,trip_id")
             .eq("organization_id", orgId)) as unknown as QueryResult<InvoiceRow>;
         }
 

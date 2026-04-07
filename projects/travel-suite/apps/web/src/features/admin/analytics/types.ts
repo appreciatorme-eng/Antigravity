@@ -15,9 +15,11 @@ export interface InvoiceRow {
   total_amount: number | null;
   created_at: string | null;
   client_id?: string | null;
+  trip_id?: string | null;
 }
 
 export interface TripRow {
+  id?: string;
   status: string | null;
   created_at: string | null;
   owner_id?: string | null;
@@ -36,6 +38,14 @@ export interface ProfileRow {
 export interface DestinationRank {
   name: string;
   trips: number;
+  revenue: number;
+}
+
+export interface SeasonSnapshot {
+  months: string;
+  revenue: number;
+  bookings: number;
+  avgTrip: number;
 }
 
 export interface TopClientEntry {
@@ -59,6 +69,10 @@ export interface AnalyticsSnapshot {
   revenuePerPax: number;
   series: RevenueChartPoint[];
   destinationRank: DestinationRank[];
+  seasonalBreakdown: {
+    peak: SeasonSnapshot;
+    offSeason: SeasonSnapshot;
+  };
   proposalStatusBreakdown: Array<{ status: string; count: number }>;
   drivers: DriverCallout[];
   topClients: TopClientEntry[];
@@ -90,6 +104,10 @@ export const EMPTY_ANALYTICS_SNAPSHOT: AnalyticsSnapshot = {
   revenuePerPax: 0,
   series: [],
   destinationRank: [],
+  seasonalBreakdown: {
+    peak: { months: "Oct — Feb", revenue: 0, bookings: 0, avgTrip: 0 },
+    offSeason: { months: "Mar — Sep", revenue: 0, bookings: 0, avgTrip: 0 },
+  },
   proposalStatusBreakdown: [],
   drivers: [],
   topClients: [],

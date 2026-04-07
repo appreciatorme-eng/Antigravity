@@ -35,16 +35,14 @@ const METRIC_OPTIONS: Array<{ value: RevenueMetricMode; label: string }> = [
   { value: "bookings", label: "Bookings" },
 ];
 
-// Revenue by top-5 destination (static seed data; real app pulls from analytics engine)
-const DESTINATION_REVENUE: Array<{ name: string; revenue: number; color: string; flag: string }> = [
-  { name: "Rajasthan", revenue: 840000, color: "bg-gradient-to-r from-amber-500 to-amber-400", flag: "🏰" },
-  { name: "Kerala", revenue: 620000, color: "bg-gradient-to-r from-emerald-500 to-teal-400", flag: "🌴" },
-  { name: "Goa", revenue: 410000, color: "bg-gradient-to-r from-sky-500 to-blue-400", flag: "🏖️" },
-  { name: "Himachal", revenue: 380000, color: "bg-gradient-to-r from-violet-500 to-purple-400", flag: "⛰️" },
-  { name: "Delhi NCR", revenue: 290000, color: "bg-gradient-to-r from-orange-500 to-amber-400", flag: "🏛️" },
-];
-
-const MAX_DEST_REVENUE = Math.max(...DESTINATION_REVENUE.map((d) => d.revenue));
+const DESTINATION_COLORS = [
+  "bg-gradient-to-r from-amber-500 to-amber-400",
+  "bg-gradient-to-r from-emerald-500 to-teal-400",
+  "bg-gradient-to-r from-sky-500 to-blue-400",
+  "bg-gradient-to-r from-violet-500 to-purple-400",
+  "bg-gradient-to-r from-orange-500 to-amber-400",
+  "bg-gradient-to-r from-fuchsia-500 to-pink-400",
+] as const;
 
 const PIPELINE_COLORS: Record<string, string> = {
   approved: "bg-emerald-500",
@@ -58,37 +56,37 @@ const PIPELINE_COLORS: Record<string, string> = {
   rejected: "bg-rose-500",
 };
 
-// Peak vs off-season comparison data
-const SEASON_DATA = {
+const SEASON_THEME = {
   peak: {
     label: "Peak Season",
-    months: "Oct — Feb",
-    revenue: 3840000,
-    bookings: 214,
-    avgTrip: 17944,
     color: "from-amber-500 to-orange-600",
     bgColor: "bg-amber-500/10 border-amber-500/20",
     textColor: "text-amber-400",
   },
   offSeason: {
     label: "Off Season",
-    months: "Mar — Sep",
-    revenue: 1960000,
-    bookings: 128,
-    avgTrip: 15312,
     color: "from-blue-500 to-indigo-600",
     bgColor: "bg-blue-500/10 border-blue-500/20",
     textColor: "text-blue-400",
   },
-};
-
-const PEAK_UPLIFT_PCT = Math.round(
-  ((SEASON_DATA.peak.revenue - SEASON_DATA.offSeason.revenue) / SEASON_DATA.offSeason.revenue) * 100
-);
+} as const;
 
 export function AdminAnalyticsView() {
   const { loading, refreshing, error, filters, filterOptions, snapshot, setFilter, reload } = useAdminAnalytics();
   const [chartMetric, setChartMetric] = useState<RevenueMetricMode>("revenue");
+
+  const destinationMetricMax = useMemo(() => {
+    return Math.max(
+      1,
+      ...snapshot.destinationRank.map((item) => (item.revenue > 0 ? item.revenue : item.trips))
+    );
+  }, [snapshot.destinationRank]);
+
+  const peakUpliftPct = useMemo(() => {
+    const offRevenue = snapshot.seasonalBreakdown.offSeason.revenue;
+    if (offRevenue <= 0) return 0;
+    return Math.round(((snapshot.seasonalBreakdown.peak.revenue - offRevenue) / offRevenue) * 100);
+  }, [snapshot.seasonalBreakdown]);
 
   const drillBaseParams = useMemo(() => {
     const params = new URLSearchParams({
@@ -392,7 +390,7 @@ export function AdminAnalyticsView() {
         </GlassCard>
       </motion.div>
 
-      {/* Revenue by Destination Bar Chart */}
+      {/* Destination Performance */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -401,8 +399,8 @@ export function AdminAnalyticsView() {
         <GlassCard padding="lg">
           <div className="mb-6 flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-serif text-secondary">Revenue by Destination</h2>
-              <p className="text-xs text-text-muted mt-1">Top 5 destinations by total revenue (₹ lakh)</p>
+              <h2 className="text-xl font-serif text-secondary">Destination Performance</h2>
+              <p className="text-xs text-text-muted mt-1">Live paid invoice revenue by destination, with trip volume as fallback</p>
             </div>
             <Link
               href={`/analytics/drill-through?${drillBaseParams.toString()}&type=destination-revenue`}
@@ -411,40 +409,49 @@ export function AdminAnalyticsView() {
               Drill <ChevronRight className="h-3 w-3" />
             </Link>
           </div>
-          <div className="space-y-4">
-            {DESTINATION_REVENUE.map((dest) => {
-              const widthPct = Math.round((dest.revenue / MAX_DEST_REVENUE) * 100);
-              return (
+          {snapshot.destinationRank.length === 0 ? (
+            <div className="py-12 text-center text-text-muted">
+              <p className="text-sm">No destination-linked invoice or trip data yet.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {snapshot.destinationRank.map((dest, idx) => {
+                const metricValue = dest.revenue > 0 ? dest.revenue : dest.trips;
+                const widthPct = Math.round((metricValue / destinationMetricMax) * 100);
+                const color = DESTINATION_COLORS[idx % DESTINATION_COLORS.length];
+                return (
                 <Link
                   key={dest.name}
                   href={`/analytics/drill-through?${drillBaseParams.toString()}&type=destination-revenue&destination=${encodeURIComponent(dest.name)}`}
                   className="block space-y-1.5 hover:bg-gray-50/50 rounded-xl p-2 -mx-2 transition-colors group"
                 >
                   <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center gap-2 font-semibold text-secondary">
-                      <span>{dest.flag}</span>
-                      {dest.name}
-                    </span>
+                    <span className="flex items-center gap-2 font-semibold text-secondary">{dest.name}</span>
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-primary tabular-nums">
-                        {formatINRShort(dest.revenue)}
+                        {dest.revenue > 0 ? formatINRShort(dest.revenue) : `${dest.trips} trip${dest.trips === 1 ? "" : "s"}`}
                       </span>
                       <ChevronRight className="h-3 w-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                   </div>
                   <div className="relative h-3 w-full overflow-hidden rounded-full bg-gray-100">
                     <motion.div
-                      className={cn("h-full rounded-full", dest.color)}
+                      className={cn("h-full rounded-full", color)}
                       initial={{ width: 0 }}
                       animate={{ width: `${widthPct}%` }}
                       transition={{ duration: 0.7, ease: "easeOut", delay: 0.2 }}
                     />
                   </div>
-                  <p className="text-xs text-text-muted">{formatINR(dest.revenue)}</p>
+                  <p className="text-xs text-text-muted">
+                    {dest.revenue > 0
+                      ? `${formatINR(dest.revenue)} across ${dest.trips} trip${dest.trips === 1 ? "" : "s"}`
+                      : `${dest.trips} trip${dest.trips === 1 ? "" : "s"} · no paid invoice revenue yet`}
+                  </p>
                 </Link>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </GlassCard>
       </motion.div>
 
@@ -460,22 +467,22 @@ export function AdminAnalyticsView() {
           href={`/analytics/drill-through?${drillBaseParams.toString()}&type=season&season=peak`}
           className="block group"
         >
-          <div className={cn("rounded-2xl border p-5 transition-all group-hover:shadow-lg", SEASON_DATA.peak.bgColor)}>
+          <div className={cn("rounded-2xl border p-5 transition-all group-hover:shadow-lg", SEASON_THEME.peak.bgColor)}>
             <div className="mb-4 flex items-center gap-3">
-              <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br", SEASON_DATA.peak.color)}>
+              <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br", SEASON_THEME.peak.color)}>
                 <Sun className="h-5 w-5 text-white" />
               </div>
               <div>
                 <p className="text-xs font-black uppercase tracking-widest text-white/70">
-                  {SEASON_DATA.peak.label}
+                  {SEASON_THEME.peak.label}
                 </p>
-                <p className={cn("text-sm font-bold", SEASON_DATA.peak.textColor)}>
-                  {SEASON_DATA.peak.months}
+                <p className={cn("text-sm font-bold", SEASON_THEME.peak.textColor)}>
+                  {snapshot.seasonalBreakdown.peak.months}
                 </p>
               </div>
               <div className="ml-auto flex items-center gap-2">
-                <span className={cn("rounded-full px-2.5 py-1 text-xs font-bold bg-gradient-to-r text-white", SEASON_DATA.peak.color)}>
-                  +{PEAK_UPLIFT_PCT}% uplift
+                <span className={cn("rounded-full px-2.5 py-1 text-xs font-bold bg-gradient-to-r text-white", SEASON_THEME.peak.color)}>
+                  {peakUpliftPct > 0 ? `+${peakUpliftPct}% uplift` : "Current range"}
                 </span>
                 <ChevronRight className="h-4 w-4 text-white/50 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
@@ -483,21 +490,21 @@ export function AdminAnalyticsView() {
             <div className="grid grid-cols-3 gap-3">
               <div className="rounded-xl bg-white/10 p-3">
                 <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Revenue</p>
-                <p className={cn("mt-1 text-lg font-extrabold", SEASON_DATA.peak.textColor)}>
-                  {formatINRShort(SEASON_DATA.peak.revenue)}
+                <p className={cn("mt-1 text-lg font-extrabold", SEASON_THEME.peak.textColor)}>
+                  {formatINRShort(snapshot.seasonalBreakdown.peak.revenue)}
                 </p>
-                <p className="text-xs text-white/50">{formatINR(SEASON_DATA.peak.revenue)}</p>
+                <p className="text-xs text-white/50">{formatINR(snapshot.seasonalBreakdown.peak.revenue)}</p>
               </div>
               <div className="rounded-xl bg-white/10 p-3">
                 <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Bookings</p>
-                <p className={cn("mt-1 text-lg font-extrabold", SEASON_DATA.peak.textColor)}>
-                  {SEASON_DATA.peak.bookings}
+                <p className={cn("mt-1 text-lg font-extrabold", SEASON_THEME.peak.textColor)}>
+                  {snapshot.seasonalBreakdown.peak.bookings}
                 </p>
               </div>
               <div className="rounded-xl bg-white/10 p-3">
                 <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Avg Trip</p>
-                <p className={cn("mt-1 text-lg font-extrabold", SEASON_DATA.peak.textColor)}>
-                  {formatINRShort(SEASON_DATA.peak.avgTrip)}
+                <p className={cn("mt-1 text-lg font-extrabold", SEASON_THEME.peak.textColor)}>
+                  {formatINRShort(snapshot.seasonalBreakdown.peak.avgTrip)}
                 </p>
               </div>
             </div>
@@ -509,21 +516,21 @@ export function AdminAnalyticsView() {
           href={`/analytics/drill-through?${drillBaseParams.toString()}&type=season&season=off`}
           className="block group"
         >
-          <div className={cn("rounded-2xl border p-5 transition-all group-hover:shadow-lg", SEASON_DATA.offSeason.bgColor)}>
+          <div className={cn("rounded-2xl border p-5 transition-all group-hover:shadow-lg", SEASON_THEME.offSeason.bgColor)}>
           <div className="mb-4 flex items-center gap-3">
-            <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br", SEASON_DATA.offSeason.color)}>
+            <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br", SEASON_THEME.offSeason.color)}>
               <Cloud className="h-5 w-5 text-white" />
             </div>
             <div>
               <p className="text-xs font-black uppercase tracking-widest text-white/70">
-                {SEASON_DATA.offSeason.label}
+                {SEASON_THEME.offSeason.label}
               </p>
-              <p className={cn("text-sm font-bold", SEASON_DATA.offSeason.textColor)}>
-                {SEASON_DATA.offSeason.months}
+              <p className={cn("text-sm font-bold", SEASON_THEME.offSeason.textColor)}>
+                {snapshot.seasonalBreakdown.offSeason.months}
               </p>
             </div>
             <div className="ml-auto flex items-center gap-2">
-              <span className={cn("rounded-full px-2.5 py-1 text-xs font-bold bg-gradient-to-r text-white", SEASON_DATA.offSeason.color)}>
+              <span className={cn("rounded-full px-2.5 py-1 text-xs font-bold bg-gradient-to-r text-white", SEASON_THEME.offSeason.color)}>
                 Shoulder period
               </span>
               <ChevronRight className="h-4 w-4 text-white/50 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -532,21 +539,21 @@ export function AdminAnalyticsView() {
           <div className="grid grid-cols-3 gap-3">
             <div className="rounded-xl bg-white/10 p-3">
               <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Revenue</p>
-              <p className={cn("mt-1 text-lg font-extrabold", SEASON_DATA.offSeason.textColor)}>
-                {formatINRShort(SEASON_DATA.offSeason.revenue)}
+              <p className={cn("mt-1 text-lg font-extrabold", SEASON_THEME.offSeason.textColor)}>
+                {formatINRShort(snapshot.seasonalBreakdown.offSeason.revenue)}
               </p>
-              <p className="text-xs text-white/50">{formatINR(SEASON_DATA.offSeason.revenue)}</p>
+              <p className="text-xs text-white/50">{formatINR(snapshot.seasonalBreakdown.offSeason.revenue)}</p>
             </div>
             <div className="rounded-xl bg-white/10 p-3">
               <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Bookings</p>
-              <p className={cn("mt-1 text-lg font-extrabold", SEASON_DATA.offSeason.textColor)}>
-                {SEASON_DATA.offSeason.bookings}
+              <p className={cn("mt-1 text-lg font-extrabold", SEASON_THEME.offSeason.textColor)}>
+                {snapshot.seasonalBreakdown.offSeason.bookings}
               </p>
             </div>
             <div className="rounded-xl bg-white/10 p-3">
               <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Avg Trip</p>
-              <p className={cn("mt-1 text-lg font-extrabold", SEASON_DATA.offSeason.textColor)}>
-                {formatINRShort(SEASON_DATA.offSeason.avgTrip)}
+              <p className={cn("mt-1 text-lg font-extrabold", SEASON_THEME.offSeason.textColor)}>
+                {formatINRShort(snapshot.seasonalBreakdown.offSeason.avgTrip)}
               </p>
             </div>
           </div>
