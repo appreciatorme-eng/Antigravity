@@ -6,6 +6,8 @@ import {
     Calendar,
     User,
     ArrowUpRight,
+    Trash2,
+    Loader2,
 } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassBadge } from "@/components/glass/GlassBadge";
@@ -27,9 +29,11 @@ import {
 
 interface TripGridCardProps {
     trip: EnrichedTrip;
+    onDelete?: (tripId: string) => void;
+    deleting?: boolean;
 }
 
-export function TripGridCard({ trip }: TripGridCardProps) {
+export function TripGridCard({ trip, onDelete, deleting = false }: TripGridCardProps) {
     const styles = getStatusStyles(trip.status || "");
     const readiness = computeReadiness(trip);
     const countdown = formatDepartureCountdown(trip.days_until_departure);
@@ -45,6 +49,22 @@ export function TripGridCard({ trip }: TripGridCardProps) {
                         <MapPin className="w-6 h-6 text-primary" />
                     </div>
                     <div className="flex items-center gap-2">
+                        {onDelete ? (
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    onDelete(trip.id);
+                                }}
+                                disabled={deleting}
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-rose-100 bg-white text-rose-500 transition-all hover:border-rose-200 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                aria-label={`Delete trip ${trip.itineraries?.trip_title || trip.destination || trip.id}`}
+                                title="Delete trip"
+                            >
+                                {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                            </button>
+                        ) : null}
                         {showCountdown && (
                             <span className={cn(
                                 "text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg",

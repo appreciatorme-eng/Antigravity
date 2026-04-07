@@ -28,6 +28,7 @@ import { TripGridCard } from "./TripGridCard";
 import { SetupGuide } from "@/components/dashboard/SetupGuide";
 import { GuidedTour } from "@/components/tour/GuidedTour";
 import { useToast } from "@/components/ui/toast";
+import { authedFetch } from "@/lib/api/authed-fetch";
 
 const SORT_OPTIONS: { value: TripSortKey; label: string }[] = [
     { value: "departure", label: "Departure Date" },
@@ -59,6 +60,7 @@ export default function TripsPage() {
     const [sortKey, setSortKey] = useState<TripSortKey>("departure");
     const [quickFilters, setQuickFilters] = useState<Set<QuickFilter>>(new Set());
     const [activeDrill, setActiveDrill] = useState<TripKPIDrillAction | null>(null);
+    const [deletingTripId, setDeletingTripId] = useState<string | null>(null);
 
     const departingSoonRef = useRef<HTMLDivElement>(null);
 
@@ -115,6 +117,33 @@ export default function TripsPage() {
         setSortKey("departure");
         setQuickFilters(new Set());
     }, []);
+
+    const handleDeleteTrip = useCallback(async (tripId: string) => {
+        if (deletingTripId) return;
+        if (!confirm("Delete this trip? All trip data will be permanently removed.")) return;
+
+        setDeletingTripId(tripId);
+        try {
+            const response = await authedFetch(`/api/trips/${tripId}`, { method: "DELETE" });
+            if (!response.ok) {
+                throw new Error("Failed to delete trip");
+            }
+            toast({
+                title: "Trip deleted",
+                description: "The trip has been removed.",
+                variant: "success",
+            });
+            void fetchTrips();
+        } catch (error) {
+            toast({
+                title: "Delete failed",
+                description: error instanceof Error ? error.message : "Unable to delete this trip right now.",
+                variant: "error",
+            });
+        } finally {
+            setDeletingTripId(null);
+        }
+    }, [deletingTripId, fetchTrips, toast]);
 
     return (
         <div className="space-y-8 pb-20">
@@ -344,7 +373,11 @@ export default function TripsPage() {
                     <div className="grid grid-cols-1">
                         {processedTrips.map((trip, idx) => (
                             <div key={trip.id} {...(idx === 0 ? { 'data-tour': 'trip-row-first' } : {})}>
-                                <TripListRow trip={trip} />
+                                <TripListRow
+                                    trip={trip}
+                                    onDelete={handleDeleteTrip}
+                                    deleting={deletingTripId === trip.id}
+                                />
                             </div>
                         ))}
                     </div>
@@ -352,7 +385,12 @@ export default function TripsPage() {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {processedTrips.map((trip) => (
-                        <TripGridCard key={trip.id} trip={trip} />
+                        <TripGridCard
+                            key={trip.id}
+                            trip={trip}
+                            onDelete={handleDeleteTrip}
+                            deleting={deletingTripId === trip.id}
+                        />
                     ))}
                 </div>
             )}

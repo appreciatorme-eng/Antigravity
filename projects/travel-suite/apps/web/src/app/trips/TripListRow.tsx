@@ -7,6 +7,8 @@ import {
     User,
     Clock,
     ChevronRight,
+    Trash2,
+    Loader2,
 } from "lucide-react";
 import { GlassBadge } from "@/components/glass/GlassBadge";
 import { cn } from "@/lib/utils";
@@ -29,9 +31,11 @@ import {
 
 interface TripListRowProps {
     trip: EnrichedTrip;
+    onDelete?: (tripId: string) => void;
+    deleting?: boolean;
 }
 
-export function TripListRow({ trip }: TripListRowProps) {
+export function TripListRow({ trip, onDelete, deleting = false }: TripListRowProps) {
     const styles = getStatusStyles(trip.status || "");
     const readiness = computeReadiness(trip);
     const countdown = formatDepartureCountdown(trip.days_until_departure);
@@ -138,6 +142,23 @@ export function TripListRow({ trip }: TripListRowProps) {
                         ))}
                     </select>
                 </div>
+
+                {onDelete ? (
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onDelete(trip.id);
+                        }}
+                        disabled={deleting}
+                        className="hidden md:inline-flex h-9 w-9 items-center justify-center rounded-xl border border-rose-100 bg-white text-rose-500 transition-all hover:border-rose-200 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        aria-label={`Delete trip ${trip.itineraries?.trip_title || trip.destination || trip.id}`}
+                        title="Delete trip"
+                    >
+                        {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                    </button>
+                ) : null}
 
                 <div className="w-7 h-7 md:w-8 md:h-8 rounded-full border border-gray-100 dark:border-slate-700 flex items-center justify-center transition-all group-hover:bg-secondary group-hover:text-white ml-auto md:ml-0">
                     <ChevronRight className="h-4 w-4" />
