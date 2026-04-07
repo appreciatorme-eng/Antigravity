@@ -28,7 +28,13 @@ import {
   useUpdateTripAddOn,
 } from "@/lib/queries/trip-detail";
 import { authedFetch } from "@/lib/api/authed-fetch";
-import type { Trip, TripInvoiceSummaryData, TripPayment, TripPricing } from "@/features/trip-detail/types";
+import type {
+  Trip,
+  TripAddOn,
+  TripInvoiceSummaryData,
+  TripPayment,
+  TripPricing,
+} from "@/features/trip-detail/types";
 
 // ---------------------------------------------------------------------------
 // Props
@@ -60,6 +66,88 @@ const EMPTY_LINE: InvoiceFormLine = {
 
 function createEmptyLine(): InvoiceFormLine {
   return { ...EMPTY_LINE };
+}
+
+function sanitizeInvoiceLines(
+  lines: readonly InvoiceFormLine[] | undefined,
+): readonly InvoiceFormLine[] {
+  if (!lines || lines.length === 0) return [createEmptyLine()];
+
+  const normalized = lines
+    .map((line) => ({
+      description: line.description.trim(),
+      quantity: Number.isFinite(line.quantity) && line.quantity > 0 ? line.quantity : 1,
+      unit_price:
+        Number.isFinite(line.unit_price) && line.unit_price >= 0 ? line.unit_price : 0,
+      tax_rate: Number.isFinite(line.tax_rate) && line.tax_rate >= 0 ? line.tax_rate : 0,
+    }))
+    .filter((line) => line.description !== "" || line.unit_price > 0);
+
+  return normalized.length > 0 ? normalized : [createEmptyLine()];
+}
+
+function buildInvoiceDraftLines(
+  trip: Trip,
+  packagePricing: PackagePricing | null,
+  addOns: readonly TripAddOn[],
+): readonly InvoiceFormLine[] {
+  const title =
+    trip.itineraries?.trip_title?.trim() ||
+    trip.itineraries?.raw_data?.trip_title?.trim() ||
+    trip.destination?.trim() ||
+    "Tour package";
+
+  const packageLine =
+    typeof packagePricing?.total_cost === "number" && packagePricing.total_cost > 0
+      ? {
+          description: `${title} package`,
+          quantity: 1,
+          unit_price: packagePricing.total_cost,
+          tax_rate: 0,
+        }
+      : typeof packagePricing?.per_person_cost === "number" && packagePricing.per_person_cost > 0
+        ? {
+            description: `${title} package (per traveler)`,
+            quantity:
+              typeof packagePricing.pax_count === "number" && packagePricing.pax_count > 0
+                ? packagePricing.pax_count
+                : 1,
+            unit_price: packagePricing.per_person_cost,
+            tax_rate: 0,
+          }
+        : null;
+
+  const selectedAddOnLines = addOns
+    .filter((addOn) => addOn.is_selected && addOn.unit_price > 0)
+    .map((addOn) => ({
+      description: addOn.name.trim() || "Add-on",
+      quantity: addOn.quantity > 0 ? addOn.quantity : 1,
+      unit_price: addOn.unit_price,
+      tax_rate: 0,
+    }));
+
+  return sanitizeInvoiceLines(
+    packageLine ? [packageLine, ...selectedAddOnLines] : selectedAddOnLines,
+  );
+}
+
+function buildInvoiceDraftNotes(
+  packagePricing: PackagePricing | null,
+  addOns: readonly TripAddOn[],
+): string {
+  const notes: string[] = [];
+  const packageNotes = packagePricing?.notes?.trim();
+  if (packageNotes) notes.push(packageNotes);
+
+  const selectedAddOnDetails = addOns
+    .filter((addOn) => addOn.is_selected && addOn.description?.trim())
+    .map((addOn) => `${addOn.name}: ${addOn.description?.trim()}`);
+
+  if (selectedAddOnDetails.length > 0) {
+    notes.push(`Add-ons:\n${selectedAddOnDetails.join("\n")}`);
+  }
+
+  return notes.join("\n\n").trim();
 }
 
 // ---------------------------------------------------------------------------
@@ -307,19 +395,35 @@ function CreateInvoiceModal({
   onClose,
   tripId,
   clientId,
+  initialLines,
+  initialNotes,
 }: {
   isOpen: boolean;
   onClose: () => void;
   tripId: string;
   clientId: string | null;
+  initialLines?: readonly InvoiceFormLine[];
+  initialNotes?: string;
 }) {
   const { toast } = useToast();
   const createInvoice = useCreateTripInvoice();
+  const wasOpenRef = useRef(false);
 
-  const [lines, setLines] = useState<readonly InvoiceFormLine[]>([
-    createEmptyLine(),
-  ]);
+  const [lines, setLines] = useState<readonly InvoiceFormLine[]>(() =>
+    sanitizeInvoiceLines(initialLines),
+  );
   const [dueDate, setDueDate] = useState("");
+  const [notes, setNotes] = useState(initialNotes?.trim() ?? "");
+
+  useEffect(() => {
+    if (isOpen && !wasOpenRef.current) {
+      setLines(sanitizeInvoiceLines(initialLines));
+      setNotes(initialNotes?.trim() ?? "");
+      setDueDate("");
+    }
+
+    wasOpenRef.current = isOpen;
+  }, [initialLines, initialNotes, isOpen]);
 
   const handleAddLine = useCallback(() => {
     setLines((prev) => [...prev, createEmptyLine()]);
@@ -362,25 +466,27 @@ function CreateInvoiceModal({
           tax_rate: l.tax_rate > 0 ? l.tax_rate : undefined,
         })),
         dueDate: dueDate || undefined,
+        notes: notes.trim() || undefined,
       });
 
       toast({ title: "Invoice created successfully", variant: "success" });
       setLines([createEmptyLine()]);
       setDueDate("");
+      setNotes("");
       onClose();
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to create invoice";
       toast({ title: message, variant: "error" });
     }
-  }, [lines, dueDate, tripId, clientId, createInvoice, toast, onClose]);
+  }, [clientId, createInvoice, dueDate, lines, notes, onClose, toast, tripId]);
 
   return (
     <GlassModal
       isOpen={isOpen}
       onClose={onClose}
       title="Create Invoice"
-      description="Add line items for this trip invoice."
+      description="Review the prefilled trip charges, edit anything you need, then create the invoice."
       size="lg"
     >
       <div className="space-y-4">
@@ -487,6 +593,19 @@ function CreateInvoiceModal({
           </GlassButton>
         </div>
 
+        <div>
+          <label className="block text-xs font-bold uppercase tracking-wider text-text-muted mb-1">
+            Invoice Notes
+          </label>
+          <textarea
+            rows={4}
+            placeholder="Add package details or payment notes"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            className="w-full px-3 py-2 text-sm rounded-lg border border-white/40 bg-white/50 dark:bg-slate-800/50 dark:border-slate-700/40 text-secondary dark:text-white focus:outline-none focus:ring-1 focus:ring-primary resize-y"
+          />
+        </div>
+
         {/* Actions */}
         <div className="flex justify-end gap-3 pt-4 border-t border-white/30 dark:border-slate-700/30">
           <GlassButton variant="ghost" size="md" onClick={onClose}>
@@ -553,6 +672,14 @@ export function FinancialsTab({
 
   const packagePricing = trip.itineraries?.raw_data?.pricing ?? null;
   const itineraryId = trip.itineraries?.id ?? null;
+  const prefilledInvoiceLines = useMemo(
+    () => buildInvoiceDraftLines(trip, packagePricing, addOns),
+    [addOns, packagePricing, trip],
+  );
+  const prefilledInvoiceNotes = useMemo(
+    () => buildInvoiceDraftNotes(packagePricing, addOns),
+    [addOns, packagePricing],
+  );
 
   const handlePricingChange = useCallback(
     (pricing: TripPricing) => {
@@ -792,6 +919,8 @@ export function FinancialsTab({
         onClose={handleCloseCreate}
         tripId={trip.id}
         clientId={trip.client_id ?? null}
+        initialLines={prefilledInvoiceLines}
+        initialNotes={prefilledInvoiceNotes}
       />
     </>
   );
