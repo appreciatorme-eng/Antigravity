@@ -477,6 +477,8 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
                             budget: resolvedData.budget,
                             interests: resolvedData.interests,
                             tips: resolvedData.tips,
+                            inclusions: resolvedData.inclusions,
+                            exclusions: resolvedData.exclusions,
                             pricing: resolvedData.pricing,
                         } : { days: [] },
                     },

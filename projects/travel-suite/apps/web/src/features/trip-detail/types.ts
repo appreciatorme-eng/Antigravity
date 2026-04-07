@@ -69,6 +69,18 @@ export interface TripItinerary {
   raw_data: {
     days: Day[];
     flights?: FlightDetails[];
+    budget?: string;
+    interests?: string[];
+    tips?: string[];
+    inclusions?: string[];
+    exclusions?: string[];
+    pricing?: {
+      per_person_cost?: number;
+      total_cost?: number;
+      currency?: string;
+      pax_count?: number;
+      notes?: string;
+    };
   };
 }
 

@@ -76,11 +76,20 @@ export interface Pricing {
     availableAddOns?: PricingAddOn[];
 }
 
+export interface ExtractedPricing {
+    per_person_cost: number;
+    total_cost: number;
+    currency: string;
+    pax_count: number;
+    notes?: string;
+}
+
 export interface ItineraryResult {
     trip_title: string;
     title?: string; // Alias for trip_title used in templates
     description?: string;
     pricing?: Pricing;
+    extracted_pricing?: ExtractedPricing; // AI-extracted pricing from PDF/text import
     destination: string;
     duration_days: number;
     summary: string;
@@ -88,6 +97,8 @@ export interface ItineraryResult {
     budget?: string;
     interests?: string[];
     tips?: string[];
+    inclusions?: string[];
+    exclusions?: string[];
     logistics?: Logistics;
     branding?: {
         logoUrl?: string;
