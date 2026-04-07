@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MapPin } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 import { cn } from "@/lib/utils";
@@ -66,6 +66,10 @@ interface ItineraryMapProps {
     driverLocation?: DriverLocationSnapshot | null;
     className?: string;
 }
+
+type ResolvedActivity = Activity & {
+    resolvedCoordinates?: Coordinate;
+};
 
 // ── Haversine distance ───────────────────────────────────────────────────────
 function haversineKm(a: [number, number], b: [number, number]) {
@@ -185,6 +189,30 @@ function makeNumberedIcon(n: number) {
 
 // ── Fallback city coordinates ─────────────────────────────────────────────────
 const CITY_COORDS: Record<string, [number, number]> = {
+    thailand: [15.87, 100.9925],
+    bangkok: [13.7563, 100.5018],
+    phuket: [7.8804, 98.3923],
+    "phuket airport": [8.1132, 98.3169],
+    krabi: [8.0863, 98.9063],
+    "krabi airport": [8.0991, 98.9862],
+    "phi phi": [7.7407, 98.7784],
+    "phi phi island": [7.7407, 98.7784],
+    "maya bay": [7.6789, 98.7667],
+    "james bond island": [8.2746, 98.5012],
+    "khao phing kan": [8.2748, 98.5015],
+    "phang nga": [8.4509, 98.5255],
+    "phang nga bay": [8.2944, 98.5057],
+    "khai island": [7.9348, 98.466],
+    "khai islands": [7.9348, 98.466],
+    "samet nangshe": [8.2456, 98.4505],
+    "ao nang": [8.0327, 98.8236],
+    "railay": [8.0059, 98.8372],
+    "railey": [8.0059, 98.8372],
+    "koh lanta": [7.6134, 99.0361],
+    "koh samui": [9.512, 100.0136],
+    pattaya: [12.9236, 100.8825],
+    chiangmai: [18.7883, 98.9853],
+    "chiang mai": [18.7883, 98.9853],
     chennai: [13.0827, 80.2707],
     mumbai: [19.076, 72.8777],
     delhi: [28.7041, 77.1025],
@@ -212,6 +240,76 @@ function getCityCoords(destination?: string): [number, number] | null {
         if (norm.includes(city)) return coords;
     }
     return null;
+}
+
+const geocodeCache = new Map<string, Coordinate | null>();
+
+function hasValidCoordinates(coordinates?: Coordinate): coordinates is Coordinate {
+    return !!coordinates &&
+        typeof coordinates.lat === "number" &&
+        typeof coordinates.lng === "number" &&
+        coordinates.lat !== 0 &&
+        coordinates.lng !== 0;
+}
+
+function cleanActivityQuery(activity: Activity): string {
+    const base = `${activity.location || ""} ${activity.title || ""}`
+        .replace(/\([^)]*\)/g, " ")
+        .replace(/\b(excluding|including|compulsory|sharing|transfers?|entry ticket|speed boat|joined speed boat|local lunch|dinner|lunch|cash on tour|per person|private transfer|one way)\b/gi, " ")
+        .replace(/[^\p{L}\p{N}\s-]/gu, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    if (activity.location?.trim()) return activity.location.trim();
+    return base;
+}
+
+async function geocodeActivityLocation(query: string, destination?: string): Promise<Coordinate | null> {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) return null;
+
+    const cached = geocodeCache.get(normalizedQuery);
+    if (cached !== undefined) return cached;
+
+    const localMatch = getCityCoords(query) || getCityCoords(destination ? `${query}, ${destination}` : query);
+    if (localMatch) {
+        const resolved = { lat: localMatch[0], lng: localMatch[1] };
+        geocodeCache.set(normalizedQuery, resolved);
+        return resolved;
+    }
+
+    try {
+        const url = new URL("https://nominatim.openstreetmap.org/search");
+        url.searchParams.set("format", "jsonv2");
+        url.searchParams.set("limit", "1");
+        url.searchParams.set("q", destination ? `${query}, ${destination}` : query);
+
+        const response = await fetch(url.toString(), {
+            headers: { Accept: "application/json" },
+        });
+
+        if (!response.ok) {
+            geocodeCache.set(normalizedQuery, null);
+            return null;
+        }
+
+        const data = await response.json();
+        const first = Array.isArray(data) ? data[0] : null;
+        const lat = Number(first?.lat);
+        const lng = Number(first?.lon);
+
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+            geocodeCache.set(normalizedQuery, null);
+            return null;
+        }
+
+        const resolved = { lat, lng };
+        geocodeCache.set(normalizedQuery, resolved);
+        return resolved;
+    } catch {
+        geocodeCache.set(normalizedQuery, null);
+        return null;
+    }
 }
 
 // ── Auto-fit bounds on mount ──────────────────────────────────────────────────
@@ -295,21 +393,66 @@ export default function ItineraryMap({
         return activities;
     }, [activities, days, activeDay]);
 
+    const [resolvedCoordinates, setResolvedCoordinates] = useState<Record<string, Coordinate>>({});
+
+    useEffect(() => {
+        let cancelled = false;
+
+        const unresolved = activeActivities
+            .map((activity, index) => ({
+                index,
+                activity,
+                query: cleanActivityQuery(activity),
+            }))
+            .filter(({ activity, query }) => !hasValidCoordinates(activity.coordinates) && query);
+
+        if (unresolved.length === 0) return;
+
+        void (async () => {
+            const nextEntries = await Promise.all(
+                unresolved.map(async ({ index, activity, query }) => {
+                    const resolved = await geocodeActivityLocation(query, destination);
+                    return resolved ? [`${activeDay}:${index}:${activity.title}`, resolved] as const : null;
+                }),
+            );
+
+            if (cancelled) return;
+
+            setResolvedCoordinates((previous) => {
+                const merged = { ...previous };
+                for (const entry of nextEntries) {
+                    if (!entry) continue;
+                    merged[entry[0]] = entry[1];
+                }
+                return merged;
+            });
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [activeActivities, activeDay, destination]);
+
+    const resolvedActivities = useMemo<ResolvedActivity[]>(
+        () =>
+            activeActivities.map((activity, index) => ({
+                ...activity,
+                resolvedCoordinates:
+                    hasValidCoordinates(activity.coordinates)
+                        ? activity.coordinates
+                        : resolvedCoordinates[`${activeDay}:${index}:${activity.title}`],
+            })),
+        [activeActivities, activeDay, resolvedCoordinates],
+    );
+
     const valid = useMemo(
         () =>
-            activeActivities.filter(
-                (a) =>
-                    a.coordinates &&
-                    typeof a.coordinates.lat === "number" &&
-                    typeof a.coordinates.lng === "number" &&
-                    a.coordinates.lat !== 0 &&
-                    a.coordinates.lng !== 0
-            ),
-        [activeActivities]
+            resolvedActivities.filter((activity) => hasValidCoordinates(activity.resolvedCoordinates)),
+        [resolvedActivities]
     );
 
     const positions = useMemo<[number, number][]>(
-        () => valid.map((a) => [a.coordinates!.lat, a.coordinates!.lng]),
+        () => valid.map((a) => [a.resolvedCoordinates!.lat, a.resolvedCoordinates!.lng]),
         [valid]
     );
 
@@ -415,7 +558,7 @@ export default function ItineraryMap({
                 {valid.map((act, idx) => (
                     <Marker
                         key={idx}
-                        position={[act.coordinates!.lat, act.coordinates!.lng]}
+                        position={[act.resolvedCoordinates!.lat, act.resolvedCoordinates!.lng]}
                         icon={makeNumberedIcon(idx + 1)}
                     >
                         <Popup>
