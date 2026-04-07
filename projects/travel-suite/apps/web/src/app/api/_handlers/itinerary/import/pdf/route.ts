@@ -3,8 +3,7 @@ import { apiError } from "@/lib/api/response";
 import { createClient } from "@/lib/supabase/server";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { safeErrorMessage } from "@/lib/security/safe-error";
-import { extractTourFromPDF } from "@/lib/import/pdf-extractor";
-import { normalizeImportedItineraryDraft } from "@/lib/import/trip-draft";
+import { importTripDraftFromPdf } from "@/lib/import/trip-import";
 
 export const dynamic = "force-dynamic";
 
@@ -46,15 +45,16 @@ export async function POST(req: Request) {
       return apiError("Only PDF files are supported", 400);
     }
 
-    const extraction = await extractTourFromPDF(file);
-    if (!extraction.success || !extraction.data) {
-      return apiError(extraction.error || "Failed to extract itinerary from PDF", 422);
-    }
-
-    const draft = normalizeImportedItineraryDraft(extraction.data, {
+    const result = await importTripDraftFromPdf(file, {
       filename: file.name,
       source: "pdf",
     });
+
+    if (!result.success || !result.draft) {
+      return apiError(result.error || "Failed to extract itinerary from PDF", 422);
+    }
+
+    const draft = result.draft;
 
     return NextResponse.json({
       success: true,

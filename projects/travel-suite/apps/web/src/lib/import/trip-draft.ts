@@ -8,6 +8,7 @@ import type {
 
 export interface ImportedItineraryDraftSourceMeta {
   filename?: string;
+  url?: string;
   extraction_confidence?: number;
   source?: string;
 }
@@ -294,6 +295,9 @@ export function normalizeImportedItineraryDraft(
       filename:
         sourceMeta?.filename ??
         toTrimmedString(asRecord(merged.source_meta)?.filename),
+      url:
+        sourceMeta?.url ??
+        toTrimmedString(asRecord(merged.source_meta)?.url),
       extraction_confidence:
         sourceMeta?.extraction_confidence ??
         toFiniteNumber(asRecord(merged.source_meta)?.extraction_confidence),

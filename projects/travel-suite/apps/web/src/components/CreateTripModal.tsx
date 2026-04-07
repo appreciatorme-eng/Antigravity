@@ -432,11 +432,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to import from URL");
 
-      setDraftData(
-        normalizeImportedItineraryDraft(data.itinerary, {
-          source: "url",
-        }),
-      );
+      setDraftData(data.draft);
     } catch (error) {
       logError("URL import error", error);
       toast({
@@ -490,9 +486,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Failed to parse text");
-    return normalizeImportedItineraryDraft(data.itinerary, {
-      source: "text",
-    });
+    return data.draft;
   };
 
   const handleImportText = async () => {
@@ -532,7 +526,16 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
       return;
     }
 
-    if (draftData && draftErrors.length > 0) {
+    if (!draftData) {
+      toast({
+        title: "Extract and review first",
+        description: "Import a draft itinerary and review it before creating the trip.",
+        variant: "warning",
+      });
+      return;
+    }
+
+    if (draftErrors.length > 0) {
       toast({
         title: "Review required",
         description: draftErrors[0],
@@ -543,42 +546,15 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
 
     setCreating(true);
     try {
-      let resolvedDraft = draftData;
-      if (!resolvedDraft && importMode === "text" && importText.trim().length >= 50) {
-        try {
-          setIsGenerating(true);
-          resolvedDraft = await parseImportText();
-          setDraftData(resolvedDraft);
-        } catch (error) {
-          logError("Auto-parse on create error", error);
-          toast({
-            title: "Text parsing failed",
-            description: error instanceof Error ? error.message : "Could not extract itinerary from the pasted text.",
-            variant: "error",
-          });
-          setCreating(false);
-          setIsGenerating(false);
-          return;
-        } finally {
-          setIsGenerating(false);
-        }
-      }
+      const resolvedDraft = draftData;
 
-      const itineraryPayload = resolvedDraft
-        ? {
-            trip_title: resolvedDraft.trip_title,
-            destination: resolvedDraft.destination,
-            summary: resolvedDraft.summary,
-            duration_days: resolvedDraft.duration_days || resolvedDraft.days.length || 1,
-            raw_data: buildItineraryRawDataFromDraft(resolvedDraft),
-          }
-        : {
-            trip_title: "New Trip",
-            destination: "TBD",
-            summary: "",
-            duration_days: 1,
-            raw_data: { days: [] },
-          };
+      const itineraryPayload = {
+        trip_title: resolvedDraft.trip_title,
+        destination: resolvedDraft.destination,
+        summary: resolvedDraft.summary,
+        duration_days: resolvedDraft.duration_days || resolvedDraft.days.length || 1,
+        raw_data: buildItineraryRawDataFromDraft(resolvedDraft),
+      };
 
       const response = await authedFetch("/api/admin/trips", {
         method: "POST",
@@ -640,7 +616,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
       onOpenChange(false);
       onSuccess();
 
-      if (resolvedDraft && tripId) {
+      if (tripId) {
         router.push(`/trips/${tripId}`);
         return;
       }
@@ -1065,6 +1041,11 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
                     {draftData.source_meta?.filename && (
                       <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
                         {draftData.source_meta.filename}
+                      </span>
+                    )}
+                    {draftData.source_meta?.url && (
+                      <span className="max-w-full truncate rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                        {draftData.source_meta.url}
                       </span>
                     )}
                   </div>
@@ -1572,7 +1553,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
           </Button>
           <Button
             onClick={handleCreateTrip}
-            disabled={creating || !clientId || !startDate || !endDate || Boolean(draftData && draftErrors.length > 0)}
+            disabled={creating || !clientId || !startDate || !endDate || !draftData || draftErrors.length > 0}
             className="bg-primary hover:bg-primary/90"
           >
             {creating ? (
