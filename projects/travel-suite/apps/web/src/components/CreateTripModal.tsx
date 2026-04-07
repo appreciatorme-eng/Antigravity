@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -78,6 +78,95 @@ interface CreateTripModalProps {
 
 type ImportMode = "saved" | "ai" | "url" | "pdf" | "text";
 type DraftListField = "interests" | "tips" | "inclusions" | "exclusions";
+type ReviewSectionTone = "slate" | "sky" | "amber" | "emerald" | "violet" | "rose";
+
+const reviewSectionToneClasses: Record<
+  ReviewSectionTone,
+  {
+    container: string;
+    title: string;
+    muted: string;
+  }
+> = {
+  slate: {
+    container: "border-slate-200 bg-slate-50/70",
+    title: "text-slate-900",
+    muted: "text-slate-600",
+  },
+  sky: {
+    container: "border-sky-200 bg-sky-50/70",
+    title: "text-sky-900",
+    muted: "text-sky-700",
+  },
+  amber: {
+    container: "border-amber-200 bg-amber-50/80",
+    title: "text-amber-900",
+    muted: "text-amber-700",
+  },
+  emerald: {
+    container: "border-emerald-200 bg-emerald-50/70",
+    title: "text-emerald-900",
+    muted: "text-emerald-700",
+  },
+  violet: {
+    container: "border-violet-200 bg-violet-50/70",
+    title: "text-violet-900",
+    muted: "text-violet-700",
+  },
+  rose: {
+    container: "border-rose-200 bg-rose-50/70",
+    title: "text-rose-900",
+    muted: "text-rose-700",
+  },
+};
+
+const draftListFieldStyles: Record<
+  DraftListField,
+  {
+    tone: ReviewSectionTone;
+    hint: string;
+  }
+> = {
+  interests: {
+    tone: "sky",
+    hint: "Themes and traveler intent.",
+  },
+  tips: {
+    tone: "violet",
+    hint: "Operator reminders and traveler notes.",
+  },
+  inclusions: {
+    tone: "emerald",
+    hint: "What the package already covers.",
+  },
+  exclusions: {
+    tone: "rose",
+    hint: "What still needs to be arranged or paid.",
+  },
+};
+
+const itineraryDayStyles = [
+  {
+    card: "border-emerald-200 bg-emerald-50/70",
+    badge: "bg-emerald-600 text-white",
+    activity: "border-emerald-200 bg-white/80",
+  },
+  {
+    card: "border-sky-200 bg-sky-50/70",
+    badge: "bg-sky-600 text-white",
+    activity: "border-sky-200 bg-white/80",
+  },
+  {
+    card: "border-amber-200 bg-amber-50/70",
+    badge: "bg-amber-600 text-white",
+    activity: "border-amber-200 bg-white/80",
+  },
+  {
+    card: "border-violet-200 bg-violet-50/70",
+    badge: "bg-violet-600 text-white",
+    activity: "border-violet-200 bg-white/80",
+  },
+] as const;
 
 function parseListInput(value: string): string[] | undefined {
   const entries = value
@@ -151,6 +240,35 @@ function ReviewNotice({
         </div>
       </div>
     </div>
+  );
+}
+
+function ReviewBlock({
+  title,
+  description,
+  tone,
+  action,
+  children,
+}: {
+  title: string;
+  description?: string;
+  tone: ReviewSectionTone;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
+  const styles = reviewSectionToneClasses[tone];
+
+  return (
+    <section className={`rounded-xl border p-4 ${styles.container}`}>
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <h4 className={`text-sm font-semibold ${styles.title}`}>{title}</h4>
+          {description ? <p className={`mt-1 text-xs ${styles.muted}`}>{description}</p> : null}
+        </div>
+        {action ? <div className="shrink-0">{action}</div> : null}
+      </div>
+      {children}
+    </section>
   );
 }
 
@@ -1058,78 +1176,92 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
               <ReviewNotice title="Review warnings" tone="warning" items={draftData.warnings} />
               <ReviewNotice title="Fix before creating the trip" tone="error" items={draftErrors} />
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Trip Title</label>
-                  <Input
-                    value={draftData.trip_title}
-                    onChange={(e) =>
-                      updateDraft((current) => ({
-                        ...current,
-                        trip_title: e.target.value,
-                      }))
-                    }
-                  />
+              <ReviewBlock
+                title="Trip Basics"
+                description="Core trip identity and dates."
+                tone="slate"
+              >
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Trip Title</label>
+                    <Input
+                      value={draftData.trip_title}
+                      onChange={(e) =>
+                        updateDraft((current) => ({
+                          ...current,
+                          trip_title: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Destination</label>
+                    <Input
+                      value={draftData.destination}
+                      onChange={(e) =>
+                        updateDraft((current) => ({
+                          ...current,
+                          destination: e.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Duration (Days)</label>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={draftData.duration_days}
+                      onChange={(e) =>
+                        updateDraft((current) => ({
+                          ...current,
+                          duration_days: Math.max(1, Number(e.target.value) || 1),
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Budget</label>
+                    <Input
+                      value={draftData.budget ?? ""}
+                      onChange={(e) =>
+                        updateDraft((current) => ({
+                          ...current,
+                          budget: e.target.value.trim() || undefined,
+                        }))
+                      }
+                      placeholder="Budget / Moderate / Luxury"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Destination</label>
-                  <Input
-                    value={draftData.destination}
-                    onChange={(e) =>
-                      updateDraft((current) => ({
-                        ...current,
-                        destination: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Duration (Days)</label>
-                  <Input
-                    type="number"
-                    min="1"
-                    value={draftData.duration_days}
-                    onChange={(e) =>
-                      updateDraft((current) => ({
-                        ...current,
-                        duration_days: Math.max(1, Number(e.target.value) || 1),
-                      }))
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Budget</label>
-                  <Input
-                    value={draftData.budget ?? ""}
-                    onChange={(e) =>
-                      updateDraft((current) => ({
-                        ...current,
-                        budget: e.target.value.trim() || undefined,
-                      }))
-                    }
-                    placeholder="Budget / Moderate / Luxury"
-                  />
-                </div>
-              </div>
+              </ReviewBlock>
 
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Summary</label>
-                <Textarea
-                  rows={3}
-                  value={draftData.summary}
-                  onChange={(e) =>
-                    updateDraft((current) => ({
-                      ...current,
-                      summary: e.target.value,
-                    }))
-                  }
-                />
-              </div>
+              <ReviewBlock
+                title="Summary"
+                description="High-level narrative used across the trip record."
+                tone="sky"
+              >
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Summary</label>
+                  <Textarea
+                    rows={3}
+                    value={draftData.summary}
+                    onChange={(e) =>
+                      updateDraft((current) => ({
+                        ...current,
+                        summary: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              </ReviewBlock>
 
-              <div className="rounded-xl border bg-white p-4">
-                <div className="mb-3 flex items-center justify-between">
-                  <h4 className="text-sm font-semibold text-gray-900">Package Pricing</h4>
-                  {draftData.pricing ? (
+              <ReviewBlock
+                title="Package Pricing"
+                description="Imported package totals, currency, and notes."
+                tone="amber"
+                action={
+                  draftData.pricing ? (
                     <Button
                       type="button"
                       variant="ghost"
@@ -1157,10 +1289,10 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
                     >
                       Add pricing
                     </Button>
-                  )}
-                </div>
-
-                {draftData.pricing && (
+                  )
+                }
+              >
+                {draftData.pricing ? (
                   <div className="grid gap-3 md:grid-cols-2">
                     <Input
                       type="number"
@@ -1234,31 +1366,45 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
                       />
                     </div>
                   </div>
+                ) : (
+                  <p className="text-sm text-amber-800">No pricing extracted yet. Add it here if needed.</p>
                 )}
-              </div>
+              </ReviewBlock>
 
               <div className="grid gap-4 md:grid-cols-2">
-                {(["interests", "tips", "inclusions", "exclusions"] as DraftListField[]).map((field) => (
-                  <div key={field} className="space-y-2 rounded-xl border bg-white p-4">
-                    <label className="text-sm font-medium capitalize">{field.replace("_", " ")}</label>
-                    <Textarea
-                      rows={4}
-                      placeholder="One item per line"
-                      value={listToText(draftData[field])}
-                      onChange={(e) =>
-                        updateDraft((current) => ({
-                          ...current,
-                          [field]: parseListInput(e.target.value),
-                        }))
-                      }
-                    />
-                  </div>
-                ))}
+                {(["interests", "tips", "inclusions", "exclusions"] as DraftListField[]).map((field) => {
+                  const style = draftListFieldStyles[field];
+                  return (
+                    <ReviewBlock
+                      key={field}
+                      title={field.charAt(0).toUpperCase() + field.slice(1)}
+                      description={style.hint}
+                      tone={style.tone}
+                    >
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium capitalize">{field.replace("_", " ")}</label>
+                        <Textarea
+                          rows={4}
+                          placeholder="One item per line"
+                          value={listToText(draftData[field])}
+                          onChange={(e) =>
+                            updateDraft((current) => ({
+                              ...current,
+                              [field]: parseListInput(e.target.value),
+                            }))
+                          }
+                        />
+                      </div>
+                    </ReviewBlock>
+                  );
+                })}
               </div>
 
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-semibold text-gray-900">Itinerary Days</h4>
+              <ReviewBlock
+                title="Itinerary Days"
+                description="Each day uses a different accent so imported sections are easier to scan."
+                tone="emerald"
+                action={
                   <Button
                     type="button"
                     variant="outline"
@@ -1273,246 +1419,152 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
                     <Plus className="mr-1 h-4 w-4" />
                     Add day
                   </Button>
-                </div>
-
+                }
+              >
                 <div className="space-y-4">
-                  {draftData.days.map((day, dayIndex) => (
-                    <div key={`${day.day_number}-${dayIndex}`} className="rounded-xl border bg-white p-4">
-                      <div className="mb-4 flex items-center justify-between gap-2">
-                        <Badge variant="secondary">Day {dayIndex + 1}</Badge>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() =>
-                            updateDraft((current) => ({
-                              ...current,
-                              days: current.days.filter((_, index) => index !== dayIndex),
-                            }))
-                          }
-                          className="text-gray-500 hover:text-red-500"
-                        >
-                          <Trash2 className="mr-1 h-4 w-4" />
-                          Remove day
-                        </Button>
-                      </div>
-
-                      <div className="grid gap-3 md:grid-cols-2">
-                        <Input
-                          value={day.title ?? ""}
-                          placeholder="Day title"
-                          onChange={(e) =>
-                            updateDraft((current) => ({
-                              ...current,
-                              days: current.days.map((entry, index) =>
-                                index === dayIndex
-                                  ? {
-                                      ...entry,
-                                      title: e.target.value,
-                                      theme: e.target.value || entry.theme,
-                                    }
-                                  : entry,
-                              ),
-                            }))
-                          }
-                        />
-                        <Input
-                          value={day.theme}
-                          placeholder="Day theme"
-                          onChange={(e) =>
-                            updateDraft((current) => ({
-                              ...current,
-                              days: current.days.map((entry, index) =>
-                                index === dayIndex
-                                  ? {
-                                      ...entry,
-                                      theme: e.target.value,
-                                    }
-                                  : entry,
-                              ),
-                            }))
-                          }
-                        />
-                      </div>
-
-                      <div className="mt-3">
-                        <Textarea
-                          rows={2}
-                          placeholder="Day summary"
-                          value={day.summary ?? ""}
-                          onChange={(e) =>
-                            updateDraft((current) => ({
-                              ...current,
-                              days: current.days.map((entry, index) =>
-                                index === dayIndex
-                                  ? {
-                                      ...entry,
-                                      summary: e.target.value,
-                                    }
-                                  : entry,
-                              ),
-                            }))
-                          }
-                        />
-                      </div>
-
-                      <div className="mt-4 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium text-gray-700">Activities</p>
+                  {draftData.days.map((day, dayIndex) => {
+                    const dayStyle = itineraryDayStyles[dayIndex % itineraryDayStyles.length];
+                    return (
+                      <div key={`${day.day_number}-${dayIndex}`} className={`rounded-xl border p-4 ${dayStyle.card}`}>
+                        <div className="mb-4 flex items-center justify-between gap-2">
+                          <span className={`inline-flex rounded-md px-2 py-1 text-xs font-semibold ${dayStyle.badge}`}>
+                            Day {dayIndex + 1}
+                          </span>
                           <Button
                             type="button"
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
                             onClick={() =>
+                              updateDraft((current) => ({
+                                ...current,
+                                days: current.days.filter((_, index) => index !== dayIndex),
+                              }))
+                            }
+                            className="text-gray-500 hover:text-red-500"
+                          >
+                            <Trash2 className="mr-1 h-4 w-4" />
+                            Remove day
+                          </Button>
+                        </div>
+
+                        <div className="grid gap-3 md:grid-cols-2">
+                          <Input
+                            value={day.title ?? ""}
+                            placeholder="Day title"
+                            onChange={(e) =>
                               updateDraft((current) => ({
                                 ...current,
                                 days: current.days.map((entry, index) =>
                                   index === dayIndex
                                     ? {
                                         ...entry,
-                                        activities: [...entry.activities, createEmptyActivity()],
+                                        title: e.target.value,
+                                        theme: e.target.value || entry.theme,
                                       }
                                     : entry,
                                 ),
                               }))
                             }
-                          >
-                            <Plus className="mr-1 h-4 w-4" />
-                            Add activity
-                          </Button>
+                          />
+                          <Input
+                            value={day.theme}
+                            placeholder="Day theme"
+                            onChange={(e) =>
+                              updateDraft((current) => ({
+                                ...current,
+                                days: current.days.map((entry, index) =>
+                                  index === dayIndex
+                                    ? {
+                                        ...entry,
+                                        theme: e.target.value,
+                                      }
+                                    : entry,
+                                ),
+                              }))
+                            }
+                          />
                         </div>
 
-                        {day.activities.map((activity, activityIndex) => (
-                          <div key={`${dayIndex}-${activityIndex}`} className="rounded-lg border bg-gray-50 p-3">
-                            <div className="mb-3 flex items-center justify-between">
-                              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                Activity {activityIndex + 1}
-                              </p>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() =>
-                                  updateDraft((current) => ({
-                                    ...current,
-                                    days: current.days.map((entry, index) =>
-                                      index === dayIndex
-                                        ? {
-                                            ...entry,
-                                            activities: entry.activities.filter((_, idx) => idx !== activityIndex),
-                                          }
-                                        : entry,
-                                    ),
-                                  }))
-                                }
-                                className="text-gray-500 hover:text-red-500"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
+                        <div className="mt-3">
+                          <Textarea
+                            rows={2}
+                            placeholder="Day summary"
+                            value={day.summary ?? ""}
+                            onChange={(e) =>
+                              updateDraft((current) => ({
+                                ...current,
+                                days: current.days.map((entry, index) =>
+                                  index === dayIndex
+                                    ? {
+                                        ...entry,
+                                        summary: e.target.value,
+                                      }
+                                    : entry,
+                                ),
+                              }))
+                            }
+                          />
+                        </div>
 
-                            <div className="grid gap-3 md:grid-cols-2">
-                              <Input
-                                value={activity.title}
-                                placeholder="Activity title"
-                                onChange={(e) =>
-                                  updateDraft((current) => ({
-                                    ...current,
-                                    days: current.days.map((entry, index) =>
-                                      index === dayIndex
-                                        ? {
-                                            ...entry,
-                                            activities: entry.activities.map((item, idx) =>
-                                              idx === activityIndex
-                                                ? {
-                                                    ...item,
-                                                    title: e.target.value,
-                                                  }
-                                                : item,
-                                            ),
-                                          }
-                                        : entry,
-                                    ),
-                                  }))
-                                }
-                              />
-                              <Input
-                                value={activity.time}
-                                placeholder="Time"
-                                onChange={(e) =>
-                                  updateDraft((current) => ({
-                                    ...current,
-                                    days: current.days.map((entry, index) =>
-                                      index === dayIndex
-                                        ? {
-                                            ...entry,
-                                            activities: entry.activities.map((item, idx) =>
-                                              idx === activityIndex
-                                                ? {
-                                                    ...item,
-                                                    time: e.target.value,
-                                                  }
-                                                : item,
-                                            ),
-                                          }
-                                        : entry,
-                                    ),
-                                  }))
-                                }
-                              />
-                              <Input
-                                value={activity.location}
-                                placeholder="Location"
-                                onChange={(e) =>
-                                  updateDraft((current) => ({
-                                    ...current,
-                                    days: current.days.map((entry, index) =>
-                                      index === dayIndex
-                                        ? {
-                                            ...entry,
-                                            activities: entry.activities.map((item, idx) =>
-                                              idx === activityIndex
-                                                ? {
-                                                    ...item,
-                                                    location: e.target.value,
-                                                  }
-                                                : item,
-                                            ),
-                                          }
-                                        : entry,
-                                    ),
-                                  }))
-                                }
-                              />
-                              <Input
-                                value={activity.cost ?? ""}
-                                placeholder="Cost / Included / Self-pay"
-                                onChange={(e) =>
-                                  updateDraft((current) => ({
-                                    ...current,
-                                    days: current.days.map((entry, index) =>
-                                      index === dayIndex
-                                        ? {
-                                            ...entry,
-                                            activities: entry.activities.map((item, idx) =>
-                                              idx === activityIndex
-                                                ? {
-                                                    ...item,
-                                                    cost: e.target.value || undefined,
-                                                  }
-                                                : item,
-                                            ),
-                                          }
-                                        : entry,
-                                    ),
-                                  }))
-                                }
-                              />
-                              <div className="md:col-span-2">
-                                <Textarea
-                                  rows={2}
-                                  placeholder="Activity description"
-                                  value={activity.description}
+                        <div className="mt-4 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-medium text-gray-700">Activities</p>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                updateDraft((current) => ({
+                                  ...current,
+                                  days: current.days.map((entry, index) =>
+                                    index === dayIndex
+                                      ? {
+                                          ...entry,
+                                          activities: [...entry.activities, createEmptyActivity()],
+                                        }
+                                      : entry,
+                                  ),
+                                }))
+                              }
+                            >
+                              <Plus className="mr-1 h-4 w-4" />
+                              Add activity
+                            </Button>
+                          </div>
+
+                        {day.activities.map((activity, activityIndex) => (
+                          <div key={`${dayIndex}-${activityIndex}`} className={`rounded-lg border p-3 ${dayStyle.activity}`}>
+                              <div className="mb-3 flex items-center justify-between">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                  Activity {activityIndex + 1}
+                                </p>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() =>
+                                    updateDraft((current) => ({
+                                      ...current,
+                                      days: current.days.map((entry, index) =>
+                                        index === dayIndex
+                                          ? {
+                                              ...entry,
+                                              activities: entry.activities.filter((_, idx) => idx !== activityIndex),
+                                            }
+                                          : entry,
+                                      ),
+                                    }))
+                                  }
+                                  className="text-gray-500 hover:text-red-500"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+
+                              <div className="grid gap-3 md:grid-cols-2">
+                                <Input
+                                  value={activity.title}
+                                  placeholder="Activity title"
                                   onChange={(e) =>
                                     updateDraft((current) => ({
                                       ...current,
@@ -1524,7 +1576,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
                                                 idx === activityIndex
                                                   ? {
                                                       ...item,
-                                                      description: e.target.value,
+                                                      title: e.target.value,
                                                     }
                                                   : item,
                                               ),
@@ -1534,15 +1586,113 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
                                     }))
                                   }
                                 />
+                                <Input
+                                  value={activity.time}
+                                  placeholder="Time"
+                                  onChange={(e) =>
+                                    updateDraft((current) => ({
+                                      ...current,
+                                      days: current.days.map((entry, index) =>
+                                        index === dayIndex
+                                          ? {
+                                              ...entry,
+                                              activities: entry.activities.map((item, idx) =>
+                                                idx === activityIndex
+                                                  ? {
+                                                      ...item,
+                                                      time: e.target.value,
+                                                    }
+                                                  : item,
+                                              ),
+                                            }
+                                          : entry,
+                                      ),
+                                    }))
+                                  }
+                                />
+                                <Input
+                                  value={activity.location}
+                                  placeholder="Location"
+                                  onChange={(e) =>
+                                    updateDraft((current) => ({
+                                      ...current,
+                                      days: current.days.map((entry, index) =>
+                                        index === dayIndex
+                                          ? {
+                                              ...entry,
+                                              activities: entry.activities.map((item, idx) =>
+                                                idx === activityIndex
+                                                  ? {
+                                                      ...item,
+                                                      location: e.target.value,
+                                                    }
+                                                  : item,
+                                              ),
+                                            }
+                                          : entry,
+                                      ),
+                                    }))
+                                  }
+                                />
+                                <Input
+                                  value={activity.cost ?? ""}
+                                  placeholder="Cost / Included / Self-pay"
+                                  onChange={(e) =>
+                                    updateDraft((current) => ({
+                                      ...current,
+                                      days: current.days.map((entry, index) =>
+                                        index === dayIndex
+                                          ? {
+                                              ...entry,
+                                              activities: entry.activities.map((item, idx) =>
+                                                idx === activityIndex
+                                                  ? {
+                                                      ...item,
+                                                      cost: e.target.value || undefined,
+                                                    }
+                                                  : item,
+                                              ),
+                                            }
+                                          : entry,
+                                      ),
+                                    }))
+                                  }
+                                />
+                                <div className="md:col-span-2">
+                                  <Textarea
+                                    rows={2}
+                                    placeholder="Activity description"
+                                    value={activity.description}
+                                    onChange={(e) =>
+                                      updateDraft((current) => ({
+                                        ...current,
+                                        days: current.days.map((entry, index) =>
+                                          index === dayIndex
+                                            ? {
+                                                ...entry,
+                                                activities: entry.activities.map((item, idx) =>
+                                                  idx === activityIndex
+                                                    ? {
+                                                        ...item,
+                                                        description: e.target.value,
+                                                      }
+                                                    : item,
+                                                ),
+                                              }
+                                            : entry,
+                                        ),
+                                      }))
+                                    }
+                                  />
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                  )})}
                 </div>
-              </div>
+              </ReviewBlock>
             </div>
           )}
         </div>
