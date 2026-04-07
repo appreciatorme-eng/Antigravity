@@ -89,7 +89,7 @@ export async function GET(
     const { data: addOns, error } = await admin.adminClient
       .from("proposal_add_ons")
       .select(
-        "id, proposal_id, name, category, unit_price, quantity, is_selected, description, image_url",
+        "id, add_on_id, proposal_id, name, category, unit_price, quantity, is_selected, description, image_url",
       )
       .in("proposal_id", proposalIds)
       .order("category", { ascending: true });
@@ -195,7 +195,7 @@ export async function PATCH(
       .eq("id", body.addOnId)
       .eq("proposal_id", addOnRow.proposal_id)
       .select(
-        "id, name, category, unit_price, quantity, is_selected, description, image_url",
+        "id, add_on_id, name, category, unit_price, quantity, is_selected, description, image_url",
       )
       .single();
 
@@ -231,28 +231,8 @@ export async function POST(
 
     const { admin, tripId } = access;
     const body = await req.json().catch(() => null);
-
-    const name = typeof body?.name === "string" ? body.name.trim() : "";
-    const category = typeof body?.category === "string" ? body.category.trim() : "";
-    const description =
-      typeof body?.description === "string" && body.description.trim().length > 0
-        ? body.description.trim()
-        : null;
-    const unitPrice = Number(body?.unit_price);
     const quantity = body?.quantity === undefined ? 1 : Number(body.quantity);
     const isSelected = body?.is_selected === undefined ? true : Boolean(body.is_selected);
-
-    if (!name) {
-      return NextResponse.json({ error: "Add-on name is required" }, { status: 400 });
-    }
-
-    if (!category) {
-      return NextResponse.json({ error: "Category is required" }, { status: 400 });
-    }
-
-    if (!Number.isFinite(unitPrice) || unitPrice < 0) {
-      return NextResponse.json({ error: "Invalid unit_price" }, { status: 400 });
-    }
 
     if (!Number.isFinite(quantity) || quantity < 1) {
       return NextResponse.json({ error: "Invalid quantity" }, { status: 400 });
@@ -287,9 +267,66 @@ export async function POST(
       );
     }
 
-    const { data: addOn, error } = await admin.adminClient
-      .from("proposal_add_ons")
-      .insert({
+    let insertPayload: {
+      proposal_id: string;
+      add_on_id?: string | null;
+      name: string;
+      category: string;
+      description: string | null;
+      unit_price: number;
+      quantity: number;
+      is_selected: boolean;
+      image_url?: string | null;
+    };
+
+    if (typeof body?.addOnId === "string" && UUID_REGEX.test(body.addOnId)) {
+      let catalogQuery = admin.adminClient
+        .from("add_ons")
+        .select("id, name, category, description, price, image_url, is_active")
+        .eq("id", body.addOnId)
+      if (!admin.isSuperAdmin) {
+        catalogQuery = catalogQuery.eq("organization_id", admin.organizationId ?? "");
+      }
+
+      const { data: catalogAddOn, error: catalogError } = await catalogQuery.maybeSingle();
+
+      if (catalogError || !catalogAddOn) {
+        return NextResponse.json({ error: "Catalog add-on not found" }, { status: 404 });
+      }
+
+      insertPayload = {
+        proposal_id: proposalId,
+        add_on_id: catalogAddOn.id,
+        name: catalogAddOn.name,
+        category: catalogAddOn.category,
+        description: catalogAddOn.description,
+        unit_price: Number(catalogAddOn.price || 0),
+        quantity,
+        is_selected: isSelected,
+        image_url: catalogAddOn.image_url,
+      };
+    } else {
+      const name = typeof body?.name === "string" ? body.name.trim() : "";
+      const category = typeof body?.category === "string" ? body.category.trim() : "";
+      const description =
+        typeof body?.description === "string" && body.description.trim().length > 0
+          ? body.description.trim()
+          : null;
+      const unitPrice = Number(body?.unit_price);
+
+      if (!name) {
+        return NextResponse.json({ error: "Add-on name is required" }, { status: 400 });
+      }
+
+      if (!category) {
+        return NextResponse.json({ error: "Category is required" }, { status: 400 });
+      }
+
+      if (!Number.isFinite(unitPrice) || unitPrice < 0) {
+        return NextResponse.json({ error: "Invalid unit_price" }, { status: 400 });
+      }
+
+      insertPayload = {
         proposal_id: proposalId,
         name,
         category,
@@ -297,9 +334,14 @@ export async function POST(
         unit_price: unitPrice,
         quantity,
         is_selected: isSelected,
-      })
+      };
+    }
+
+    const { data: addOn, error } = await admin.adminClient
+      .from("proposal_add_ons")
+      .insert(insertPayload)
       .select(
-        "id, name, category, unit_price, quantity, is_selected, description, image_url",
+        "id, add_on_id, name, category, unit_price, quantity, is_selected, description, image_url",
       )
       .single();
 

@@ -195,9 +195,14 @@ export function TripFinancialSummary({
       {isEditable ? (
         <div className="mt-6 space-y-4 border-t border-white/30 pt-4 dark:border-slate-700/30">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-              Edit Package Pricing
-            </p>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+                Edit Package Pricing
+              </p>
+              <p className="mt-1 text-xs text-text-muted">
+                Update the numbers here, then click `Save Changes` in the header.
+              </p>
+            </div>
             {resolvedPricing.currency && resolvedPricing.currency.toUpperCase() !== "INR" ? (
               <GlassButton
                 variant="outline"
@@ -212,71 +217,96 @@ export function TripFinancialSummary({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <input
-              type="number"
-              min={0}
-              placeholder="Quoted total"
-              value={resolvedPricing.total_cost ?? ""}
-              onChange={(e) =>
-                onPackagePricingChange({
-                  ...resolvedPricing,
-                  total_cost: e.target.value === "" ? undefined : Number(e.target.value),
-                })
-              }
-              className="w-full px-3 py-2 text-sm rounded-lg border border-white/40 bg-white/60 dark:bg-slate-800/50 dark:border-slate-700/40 text-secondary dark:text-white focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-            <input
-              type="number"
-              min={0}
-              placeholder="Per person"
-              value={resolvedPricing.per_person_cost ?? ""}
-              onChange={(e) =>
-                onPackagePricingChange({
-                  ...resolvedPricing,
-                  per_person_cost: e.target.value === "" ? undefined : Number(e.target.value),
-                })
-              }
-              className="w-full px-3 py-2 text-sm rounded-lg border border-white/40 bg-white/60 dark:bg-slate-800/50 dark:border-slate-700/40 text-secondary dark:text-white focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-            <input
-              type="text"
-              placeholder="Currency"
-              value={resolvedPricing.currency ?? "INR"}
-              onChange={(e) =>
-                onPackagePricingChange({
-                  ...resolvedPricing,
-                  currency: e.target.value.toUpperCase(),
-                })
-              }
-              className="w-full px-3 py-2 text-sm rounded-lg border border-white/40 bg-white/60 dark:bg-slate-800/50 dark:border-slate-700/40 text-secondary dark:text-white focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-            <input
-              type="number"
-              min={1}
-              placeholder="Travelers"
-              value={resolvedPricing.pax_count ?? ""}
-              onChange={(e) =>
-                onPackagePricingChange({
-                  ...resolvedPricing,
-                  pax_count: e.target.value === "" ? undefined : Number(e.target.value),
-                })
-              }
-              className="w-full px-3 py-2 text-sm rounded-lg border border-white/40 bg-white/60 dark:bg-slate-800/50 dark:border-slate-700/40 text-secondary dark:text-white focus:outline-none focus:ring-1 focus:ring-primary"
-            />
+            <label className="space-y-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
+                Quoted Total
+              </span>
+              <input
+                type="number"
+                min={0}
+                placeholder="Quoted total"
+                value={resolvedPricing.total_cost ?? ""}
+                onChange={(e) =>
+                  onPackagePricingChange({
+                    ...resolvedPricing,
+                    total_cost: e.target.value === "" ? undefined : Number(e.target.value),
+                  })
+                }
+                className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 bg-slate-50 shadow-inner dark:bg-slate-900/60 dark:border-slate-700 text-secondary dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
+                Per Person
+              </span>
+              <input
+                type="number"
+                min={0}
+                placeholder="Per person"
+                value={resolvedPricing.per_person_cost ?? ""}
+                onChange={(e) =>
+                  onPackagePricingChange({
+                    ...resolvedPricing,
+                    per_person_cost: e.target.value === "" ? undefined : Number(e.target.value),
+                  })
+                }
+                className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 bg-slate-50 shadow-inner dark:bg-slate-900/60 dark:border-slate-700 text-secondary dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
+                Currency
+              </span>
+              <input
+                type="text"
+                placeholder="Currency"
+                value={resolvedPricing.currency ?? "INR"}
+                onChange={(e) =>
+                  onPackagePricingChange({
+                    ...resolvedPricing,
+                    currency: e.target.value.toUpperCase(),
+                  })
+                }
+                className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 bg-slate-50 shadow-inner dark:bg-slate-900/60 dark:border-slate-700 text-secondary dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
+                Travelers
+              </span>
+              <input
+                type="number"
+                min={1}
+                placeholder="Travelers"
+                value={resolvedPricing.pax_count ?? ""}
+                onChange={(e) =>
+                  onPackagePricingChange({
+                    ...resolvedPricing,
+                    pax_count: e.target.value === "" ? undefined : Number(e.target.value),
+                  })
+                }
+                className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 bg-slate-50 shadow-inner dark:bg-slate-900/60 dark:border-slate-700 text-secondary dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+            </label>
           </div>
 
-          <textarea
-            rows={2}
-            placeholder="Pricing notes"
-            value={resolvedPricing.notes ?? ""}
-            onChange={(e) =>
-              onPackagePricingChange({
-                ...resolvedPricing,
-                notes: e.target.value,
-              })
-            }
-            className="w-full px-3 py-2 text-sm rounded-lg border border-white/40 bg-white/60 dark:bg-slate-800/50 dark:border-slate-700/40 text-secondary dark:text-white focus:outline-none focus:ring-1 focus:ring-primary"
-          />
+          <label className="space-y-1 block">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
+              Pricing Notes
+            </span>
+            <textarea
+              rows={3}
+              placeholder="Pricing notes"
+              value={resolvedPricing.notes ?? ""}
+              onChange={(e) =>
+                onPackagePricingChange({
+                  ...resolvedPricing,
+                  notes: e.target.value,
+                })
+              }
+              className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 bg-slate-50 shadow-inner dark:bg-slate-900/60 dark:border-slate-700 text-secondary dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+          </label>
         </div>
       ) : null}
 

@@ -1,13 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Package, Plus } from "lucide-react";
+import { Package, Plus, Search } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassBadge } from "@/components/glass/GlassBadge";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { formatINR } from "@/features/trip-detail/utils";
 import { cn } from "@/lib/utils";
-import type { TripAddOn } from "@/features/trip-detail/types";
+import type { AvailableAddOn, TripAddOn } from "@/features/trip-detail/types";
 
 // ---------------------------------------------------------------------------
 // Props
@@ -15,6 +15,7 @@ import type { TripAddOn } from "@/features/trip-detail/types";
 
 interface TripAddOnsEditorProps {
   addOns: TripAddOn[];
+  availableAddOns: AvailableAddOn[];
   loading: boolean;
   onToggle: (addOnId: string, isSelected: boolean) => void;
   onQuantityChange: (addOnId: string, quantity: number) => void;
@@ -25,6 +26,10 @@ interface TripAddOnsEditorProps {
     unit_price: number;
     quantity: number;
     description?: string;
+  }) => Promise<boolean>;
+  onAttachCatalogAddOn: (input: {
+    addOnId: string;
+    quantity: number;
   }) => Promise<boolean>;
   saving?: boolean;
 }
@@ -48,6 +53,17 @@ function computeSelectedTotal(addOns: readonly TripAddOn[]): number {
   return addOns
     .filter((a) => a.is_selected)
     .reduce((sum, a) => sum + a.quantity * a.unit_price, 0);
+}
+
+function getCatalogCategories(addOns: readonly AvailableAddOn[]): readonly string[] {
+  const seen = new Set<string>();
+  return addOns.reduce<string[]>((acc, addOn) => {
+    if (!seen.has(addOn.category)) {
+      seen.add(addOn.category);
+      return [...acc, addOn.category];
+    }
+    return acc;
+  }, []);
 }
 
 // ---------------------------------------------------------------------------
@@ -309,17 +325,144 @@ function AddOnComposer({
   );
 }
 
+function CatalogPicker({
+  availableAddOns,
+  linkedAddOns,
+  onAttachCatalogAddOn,
+  saving = false,
+}: {
+  availableAddOns: AvailableAddOn[];
+  linkedAddOns: TripAddOn[];
+  onAttachCatalogAddOn: (input: { addOnId: string; quantity: number }) => Promise<boolean>;
+  saving?: boolean;
+}) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+
+  const categories = useMemo(
+    () => getCatalogCategories(availableAddOns.filter((item) => item.is_active !== false)),
+    [availableAddOns],
+  );
+
+  const linkedCatalogIds = useMemo(
+    () => new Set(linkedAddOns.map((item) => item.add_on_id).filter(Boolean)),
+    [linkedAddOns],
+  );
+
+  const filteredCatalog = useMemo(() => {
+    return availableAddOns
+      .filter((item) => item.is_active !== false)
+      .filter((item) =>
+        activeCategory === null ? true : item.category === activeCategory,
+      )
+      .filter((item) => {
+        const query = searchQuery.trim().toLowerCase();
+        if (!query) return true;
+        return (
+          item.name.toLowerCase().includes(query) ||
+          item.description?.toLowerCase().includes(query) ||
+          item.category.toLowerCase().includes(query)
+        );
+      });
+  }, [activeCategory, availableAddOns, searchQuery]);
+
+  return (
+    <div className="space-y-4 rounded-xl border border-white/40 bg-white/20 p-4 dark:border-slate-700/40 dark:bg-slate-800/20">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-bold text-secondary dark:text-white">
+            Add From Catalog
+          </p>
+          <p className="text-xs text-text-muted">
+            Reuse the same add-ons configured on the add-ons page.
+          </p>
+        </div>
+      </div>
+
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+        <input
+          type="text"
+          placeholder="Search add-ons..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full pl-10 pr-3 py-2.5 text-sm rounded-xl border border-white/40 bg-white/70 dark:bg-slate-800/50 dark:border-slate-700/40 text-secondary dark:text-white focus:outline-none focus:ring-1 focus:ring-primary"
+        />
+      </div>
+
+      {categories.length > 1 ? (
+        <CategoryPills
+          categories={categories}
+          activeCategory={activeCategory}
+          onSelect={setActiveCategory}
+        />
+      ) : null}
+
+      <div className="max-h-72 space-y-3 overflow-y-auto pr-1">
+        {filteredCatalog.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-white/40 p-4 text-center text-sm text-text-muted">
+            No add-ons match the current filters.
+          </div>
+        ) : (
+          filteredCatalog.map((addOn) => {
+            const alreadyLinked = linkedCatalogIds.has(addOn.id);
+            return (
+              <div
+                key={addOn.id}
+                className="rounded-xl border border-white/40 bg-white/40 p-4 dark:border-slate-700/40 dark:bg-slate-800/30"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-bold text-secondary dark:text-white">
+                        {addOn.name}
+                      </p>
+                      <GlassBadge variant="secondary" size="sm" className="capitalize">
+                        {addOn.category}
+                      </GlassBadge>
+                    </div>
+                    {addOn.description ? (
+                      <p className="text-xs leading-5 text-text-muted">
+                        {addOn.description}
+                      </p>
+                    ) : null}
+                    <div className="flex flex-wrap items-center gap-3 text-xs font-semibold text-primary">
+                      <span>{formatINR(Number(addOn.price || 0))}</span>
+                      {addOn.duration ? <span className="text-text-muted">{addOn.duration}</span> : null}
+                    </div>
+                  </div>
+                  <GlassButton
+                    variant={alreadyLinked ? "secondary" : "primary"}
+                    size="sm"
+                    disabled={alreadyLinked || saving}
+                    onClick={() => void onAttachCatalogAddOn({ addOnId: addOn.id, quantity: 1 })}
+                  >
+                    <Plus className="w-4 h-4" />
+                    {alreadyLinked ? "Added" : "Add"}
+                  </GlassButton>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Main Component
 // ---------------------------------------------------------------------------
 
 export function TripAddOnsEditor({
   addOns,
+  availableAddOns,
   loading,
   onToggle,
   onQuantityChange,
   onUnitPriceChange,
   onCreateAddOn,
+  onAttachCatalogAddOn,
   saving = false,
 }: TripAddOnsEditorProps) {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -372,6 +515,12 @@ export function TripAddOnsEditor({
               No add-ons linked
             </p>
           </div>
+          <CatalogPicker
+            availableAddOns={availableAddOns}
+            linkedAddOns={addOns}
+            onAttachCatalogAddOn={onAttachCatalogAddOn}
+            saving={saving}
+          />
           <AddOnComposer onCreateAddOn={onCreateAddOn} saving={saving} />
         </div>
       ) : (
@@ -404,6 +553,15 @@ export function TripAddOnsEditor({
             <span className="text-lg font-black text-primary tabular-nums">
               {formatINR(selectedTotal)}
             </span>
+          </div>
+
+          <div className="pt-2">
+            <CatalogPicker
+              availableAddOns={availableAddOns}
+              linkedAddOns={addOns}
+              onAttachCatalogAddOn={onAttachCatalogAddOn}
+              saving={saving}
+            />
           </div>
 
           <div className="pt-2">

@@ -6,6 +6,7 @@ import type {
   TripInvoice,
   TripNotificationEntry,
   TripAddOn,
+  AvailableAddOn,
   TripItineraryRawData,
 } from "@/features/trip-detail/types";
 import type { Json } from "@/lib/database.types";
@@ -21,6 +22,7 @@ export const tripDetailKeys = {
   notifications: (id: string) =>
     ["trips", "detail", id, "notifications"] as const,
   addOns: (id: string) => ["trips", "detail", id, "add-ons"] as const,
+  addOnCatalog: ["trips", "detail", "add-on-catalog"] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -85,6 +87,17 @@ export function useTripAddOns(tripId: string) {
       return response.json();
     },
     enabled: !!tripId,
+  });
+}
+
+export function useAvailableAddOnsCatalog() {
+  return useQuery({
+    queryKey: tripDetailKeys.addOnCatalog,
+    queryFn: async (): Promise<{ addOns: AvailableAddOn[] }> => {
+      const response = await authedFetch("/api/add-ons");
+      if (!response.ok) throw new Error("Failed to fetch add-on catalog");
+      return response.json();
+    },
   });
 }
 
@@ -210,12 +223,13 @@ export function useUpdateTripAddOn() {
 
 interface CreateTripAddOnInput {
   tripId: string;
-  name: string;
-  category: string;
-  unit_price: number;
+  name?: string;
+  category?: string;
+  unit_price?: number;
   quantity?: number;
   description?: string;
   is_selected?: boolean;
+  addOnId?: string;
 }
 
 export function useCreateTripAddOn() {

@@ -22,6 +22,7 @@ import { useToast } from "@/components/ui/toast";
 import {
   useTripInvoices,
   useTripAddOns,
+  useAvailableAddOnsCatalog,
   useCreateTripInvoice,
   useCreateTripAddOn,
   useUpdateTripAddOn,
@@ -534,6 +535,7 @@ export function FinancialsTab({
 
   const invoicesQuery = useTripInvoices(trip.id);
   const addOnsQuery = useTripAddOns(trip.id);
+  const catalogQuery = useAvailableAddOnsCatalog();
   const updateAddOn = useUpdateTripAddOn();
   const createAddOn = useCreateTripAddOn();
 
@@ -542,6 +544,7 @@ export function FinancialsTab({
     [invoicesQuery.data?.invoices]
   );
   const addOns = addOnsQuery.data?.addOns ?? [];
+  const availableAddOns = catalogQuery.data?.addOns ?? [];
 
   const recentPayments = useMemo(
     () => collectRecentPayments(invoices),
@@ -710,6 +713,33 @@ export function FinancialsTab({
     [createAddOn, toast, trip.id],
   );
 
+  const handleAttachCatalogAddOn = useCallback(
+    async (input: { addOnId: string; quantity: number }) => {
+      try {
+        await createAddOn.mutateAsync({
+          tripId: trip.id,
+          addOnId: input.addOnId,
+          quantity: input.quantity,
+          is_selected: true,
+        });
+        toast({
+          title: "Add-on attached",
+          description: "The catalog add-on is now linked to this trip.",
+          variant: "success",
+        });
+        return true;
+      } catch (error) {
+        toast({
+          title: "Could not attach add-on",
+          description: error instanceof Error ? error.message : "Try again.",
+          variant: "error",
+        });
+        return false;
+      }
+    },
+    [createAddOn, toast, trip.id],
+  );
+
   return (
     <>
       <div className="grid grid-cols-12 gap-6">
@@ -742,12 +772,14 @@ export function FinancialsTab({
         <div className="col-span-12 xl:col-span-4 space-y-6">
           <TripAddOnsEditor
             addOns={addOns}
+            availableAddOns={availableAddOns}
             loading={addOnsQuery.isLoading}
             onToggle={handleAddOnToggle}
             onQuantityChange={handleAddOnQuantityChange}
             onUnitPriceChange={handleAddOnUnitPriceChange}
             onCreateAddOn={handleCreateAddOn}
-            saving={createAddOn.isPending || updateAddOn.isPending}
+            onAttachCatalogAddOn={handleAttachCatalogAddOn}
+            saving={createAddOn.isPending || updateAddOn.isPending || catalogQuery.isLoading}
           />
 
           <PaymentSummaryCard payments={recentPayments} />

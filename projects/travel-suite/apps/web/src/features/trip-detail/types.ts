@@ -204,6 +204,7 @@ export interface TripNotificationEntry {
 
 export interface TripAddOn {
   id: string;
+  add_on_id?: string | null;
   name: string;
   category: string;
   unit_price: number;
@@ -211,6 +212,17 @@ export interface TripAddOn {
   is_selected: boolean;
   description: string | null;
   image_url: string | null;
+}
+
+export interface AvailableAddOn {
+  id: string;
+  name: string;
+  category: string;
+  price: number;
+  description: string | null;
+  image_url: string | null;
+  duration: string | null;
+  is_active: boolean;
 }
 
 // ---------------------------------------------------------------------------
