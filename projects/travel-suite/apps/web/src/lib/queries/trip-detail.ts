@@ -123,10 +123,17 @@ export function useCreateTripInvoice() {
 
   return useMutation({
     mutationFn: async (input: CreateInvoiceInput) => {
+      const items = input.items.map((item) => ({
+        description: item.description,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+        tax_rate: typeof item.tax_rate === "number" ? item.tax_rate : 0,
+      }));
+
       const body = {
         ...(input.tripId ? { trip_id: input.tripId } : {}),
         ...(input.clientId ? { client_id: input.clientId } : {}),
-        items: input.items,
+        items,
         ...(input.dueDate ? { due_date: input.dueDate } : {}),
         ...(input.notes ? { notes: input.notes } : {}),
         status: "issued" as const,
