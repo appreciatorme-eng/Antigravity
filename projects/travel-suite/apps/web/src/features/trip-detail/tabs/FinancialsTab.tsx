@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   IndianRupee,
   CheckCircle,
@@ -23,8 +23,11 @@ import {
   useTripInvoices,
   useTripAddOns,
   useCreateTripInvoice,
+  useCreateTripAddOn,
+  useUpdateTripAddOn,
 } from "@/lib/queries/trip-detail";
-import type { Trip, TripInvoiceSummaryData, TripPayment } from "@/features/trip-detail/types";
+import { authedFetch } from "@/lib/api/authed-fetch";
+import type { Trip, TripInvoiceSummaryData, TripPayment, TripPricing } from "@/features/trip-detail/types";
 
 // ---------------------------------------------------------------------------
 // Props
@@ -33,6 +36,7 @@ import type { Trip, TripInvoiceSummaryData, TripPayment } from "@/features/trip-
 interface FinancialsTabProps {
   trip: Trip;
   invoiceSummary: TripInvoiceSummaryData | null;
+  onPricingChange?: (pricing: TripPricing) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -518,11 +522,20 @@ function collectRecentPayments(
 // Main Component
 // ---------------------------------------------------------------------------
 
-export function FinancialsTab({ trip, invoiceSummary }: FinancialsTabProps) {
+export function FinancialsTab({
+  trip,
+  invoiceSummary,
+  onPricingChange,
+}: FinancialsTabProps) {
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [convertingCurrency, setConvertingCurrency] = useState(false);
+  const autoConvertedPricingRef = useRef<string | null>(null);
+  const { toast } = useToast();
 
   const invoicesQuery = useTripInvoices(trip.id);
   const addOnsQuery = useTripAddOns(trip.id);
+  const updateAddOn = useUpdateTripAddOn();
+  const createAddOn = useCreateTripAddOn();
 
   const invoices = useMemo(
     () => invoicesQuery.data?.invoices ?? [],
@@ -536,6 +549,75 @@ export function FinancialsTab({ trip, invoiceSummary }: FinancialsTabProps) {
   );
 
   const packagePricing = trip.itineraries?.raw_data?.pricing ?? null;
+  const itineraryId = trip.itineraries?.id ?? null;
+
+  const handlePricingChange = useCallback(
+    (pricing: TripPricing) => {
+      onPricingChange?.({
+        ...pricing,
+        currency: pricing.currency?.trim().toUpperCase() || "INR",
+      });
+    },
+    [onPricingChange],
+  );
+
+  const handleConvertPricingToINR = useCallback(async () => {
+    if (!packagePricing || !onPricingChange) return;
+
+    const sourceCurrency = packagePricing.currency?.toUpperCase();
+    if (!sourceCurrency || sourceCurrency === "INR") return;
+
+    setConvertingCurrency(true);
+    try {
+      const [totalResponse, perPersonResponse] = await Promise.all([
+        typeof packagePricing.total_cost === "number"
+          ? authedFetch(
+              `/api/currency?amount=${packagePricing.total_cost}&from=${sourceCurrency}&to=INR`,
+            ).then((res) => (res.ok ? res.json() : null))
+          : Promise.resolve(null),
+        typeof packagePricing.per_person_cost === "number"
+          ? authedFetch(
+              `/api/currency?amount=${packagePricing.per_person_cost}&from=${sourceCurrency}&to=INR`,
+            ).then((res) => (res.ok ? res.json() : null))
+          : Promise.resolve(null),
+      ]);
+
+      onPricingChange({
+        ...packagePricing,
+        total_cost:
+          totalResponse && typeof totalResponse.result === "number"
+            ? Math.round(totalResponse.result)
+            : packagePricing.total_cost,
+        per_person_cost:
+          perPersonResponse && typeof perPersonResponse.result === "number"
+            ? Math.round(perPersonResponse.result)
+            : packagePricing.per_person_cost,
+        currency: "INR",
+      });
+
+      toast({
+        title: "Converted pricing to INR",
+        description: "Review the values and click Save Changes to persist them.",
+        variant: "success",
+      });
+    } catch (error) {
+      toast({
+        title: "Currency conversion failed",
+        description: error instanceof Error ? error.message : "Could not convert pricing right now.",
+        variant: "error",
+      });
+    } finally {
+      setConvertingCurrency(false);
+    }
+  }, [onPricingChange, packagePricing, toast]);
+
+  useEffect(() => {
+    if (!packagePricing || !onPricingChange || !itineraryId) return;
+    if ((packagePricing.currency ?? "INR").toUpperCase() === "INR") return;
+    if (autoConvertedPricingRef.current === itineraryId) return;
+    autoConvertedPricingRef.current = itineraryId;
+    void handleConvertPricingToINR();
+  }, [handleConvertPricingToINR, itineraryId, onPricingChange, packagePricing]);
 
   const handleOpenCreate = useCallback(() => {
     setShowCreateModal(true);
@@ -545,22 +627,87 @@ export function FinancialsTab({ trip, invoiceSummary }: FinancialsTabProps) {
     setShowCreateModal(false);
   }, []);
 
-  // Add-on handlers (optimistic local state is not needed since these
-  // are informational toggles; the parent or API would persist changes)
   const handleAddOnToggle = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    (_addOnId: string, _isSelected: boolean) => {
-      // Future: call mutation to toggle add-on selection
+    (addOnId: string, isSelected: boolean) => {
+      updateAddOn.mutate(
+        { tripId: trip.id, addOnId, is_selected: isSelected },
+        {
+          onError: (error) =>
+            toast({
+              title: "Failed to update add-on",
+              description: error instanceof Error ? error.message : "Try again.",
+              variant: "error",
+            }),
+        },
+      );
     },
-    []
+    [toast, trip.id, updateAddOn],
   );
 
   const handleAddOnQuantityChange = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    (_addOnId: string, _quantity: number) => {
-      // Future: call mutation to update add-on quantity
+    (addOnId: string, quantity: number) => {
+      updateAddOn.mutate(
+        { tripId: trip.id, addOnId, quantity },
+        {
+          onError: (error) =>
+            toast({
+              title: "Failed to update quantity",
+              description: error instanceof Error ? error.message : "Try again.",
+              variant: "error",
+            }),
+        },
+      );
     },
-    []
+    [toast, trip.id, updateAddOn],
+  );
+
+  const handleAddOnUnitPriceChange = useCallback(
+    (addOnId: string, unitPrice: number) => {
+      updateAddOn.mutate(
+        { tripId: trip.id, addOnId, unit_price: unitPrice },
+        {
+          onError: (error) =>
+            toast({
+              title: "Failed to update price",
+              description: error instanceof Error ? error.message : "Try again.",
+              variant: "error",
+            }),
+        },
+      );
+    },
+    [toast, trip.id, updateAddOn],
+  );
+
+  const handleCreateAddOn = useCallback(
+    async (input: {
+      name: string;
+      category: string;
+      unit_price: number;
+      quantity: number;
+      description?: string;
+    }) => {
+      try {
+        await createAddOn.mutateAsync({
+          tripId: trip.id,
+          ...input,
+          is_selected: true,
+        });
+        toast({
+          title: "Add-on created",
+          description: "The extra is now available on this trip.",
+          variant: "success",
+        });
+        return true;
+      } catch (error) {
+        toast({
+          title: "Could not add extra",
+          description: error instanceof Error ? error.message : "Try again.",
+          variant: "error",
+        });
+        return false;
+      }
+    },
+    [createAddOn, toast, trip.id],
   );
 
   return (
@@ -572,6 +719,9 @@ export function FinancialsTab({ trip, invoiceSummary }: FinancialsTabProps) {
             invoiceSummary={invoiceSummary}
             packagePricing={packagePricing}
             loading={invoicesQuery.isLoading}
+            onPackagePricingChange={handlePricingChange}
+            onConvertToINR={handleConvertPricingToINR}
+            convertingCurrency={convertingCurrency}
           />
 
           <RevenueBreakdownCard
@@ -595,6 +745,9 @@ export function FinancialsTab({ trip, invoiceSummary }: FinancialsTabProps) {
             loading={addOnsQuery.isLoading}
             onToggle={handleAddOnToggle}
             onQuantityChange={handleAddOnQuantityChange}
+            onUnitPriceChange={handleAddOnUnitPriceChange}
+            onCreateAddOn={handleCreateAddOn}
+            saving={createAddOn.isPending || updateAddOn.isPending}
           />
 
           <PaymentSummaryCard payments={recentPayments} />

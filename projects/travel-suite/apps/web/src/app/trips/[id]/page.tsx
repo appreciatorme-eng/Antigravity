@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Plane } from "lucide-react";
 
@@ -11,7 +11,7 @@ import { ItineraryTab } from "@/features/trip-detail/tabs/ItineraryTab";
 import { FinancialsTab } from "@/features/trip-detail/tabs/FinancialsTab";
 import { ClientCommsTab } from "@/features/trip-detail/tabs/ClientCommsTab";
 import { buildDaySchedule } from "@/features/trip-detail/utils";
-import type { TripDetailTab, Day } from "@/features/trip-detail/types";
+import type { TripDetailTab, Day, TripItineraryRawData, TripPricing } from "@/features/trip-detail/types";
 
 import { useTripDetail, useSaveTripItinerary } from "@/lib/queries/trip-detail";
 import { authedFetch } from "@/lib/api/authed-fetch";
@@ -48,26 +48,53 @@ export default function TripDetailPage() {
   const [notificationBody, setNotificationBody] = useState("");
   const [deletingTrip, setDeletingTrip] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [editableRawData, setEditableRawData] = useState<TripItineraryRawData | null>(null);
 
   // --- Derived data ---
   const trip = data?.trip ?? null;
   const invoiceSummary = data?.invoiceSummary ?? null;
 
+  useEffect(() => {
+    if (!trip?.itineraries?.raw_data) {
+      setEditableRawData(null);
+      return;
+    }
+
+    setEditableRawData(
+      JSON.parse(JSON.stringify(trip.itineraries.raw_data)) as TripItineraryRawData,
+    );
+  }, [trip?.id, trip?.itineraries?.id, trip?.itineraries?.raw_data]);
+
+  const tripWithDraft = useMemo(() => {
+    if (!trip) return null;
+    if (!trip.itineraries || !editableRawData) return trip;
+    return {
+      ...trip,
+      itineraries: {
+        ...trip.itineraries,
+        raw_data: editableRawData,
+      },
+    };
+  }, [editableRawData, trip]);
+
   const itineraryDays: readonly Day[] = useMemo(
     () =>
-      (trip?.itineraries?.raw_data?.days ?? []).map(buildDaySchedule),
-    [trip?.itineraries?.raw_data?.days],
+      (editableRawData?.days ?? trip?.itineraries?.raw_data?.days ?? []).map(buildDaySchedule),
+    [editableRawData?.days, trip?.itineraries?.raw_data?.days],
   );
 
   // --- Handlers ---
   const handleSave = () => {
-    if (!trip?.itineraries) return;
+    if (!trip?.itineraries || !editableRawData) return;
     saveMutation.mutate(
       {
         tripId,
         itineraryId: trip.itineraries.id,
         days: [...itineraryDays],
-        rawData: trip.itineraries.raw_data,
+        rawData: {
+          ...editableRawData,
+          days: [...itineraryDays],
+        },
       },
       {
         onSuccess: () =>
@@ -151,7 +178,7 @@ export default function TripDetailPage() {
       case "overview":
         return (
           <OverviewTab
-            trip={trip}
+            trip={tripWithDraft ?? trip}
             invoiceSummary={invoiceSummary}
             loading={isLoading}
             onTabChange={setActiveTab}
@@ -160,8 +187,13 @@ export default function TripDetailPage() {
       case "itinerary":
         return (
           <ItineraryTab
-            trip={trip}
+            trip={tripWithDraft ?? trip}
             itineraryDays={itineraryDays}
+            onItineraryDaysChange={(days) =>
+              setEditableRawData((current) =>
+                current ? { ...current, days } : current,
+              )
+            }
             activeDay={activeDay}
             onActiveDayChange={setActiveDay}
             drivers={data?.drivers ?? []}
@@ -177,8 +209,13 @@ export default function TripDetailPage() {
       case "financials":
         return (
           <FinancialsTab
-            trip={trip}
+            trip={tripWithDraft ?? trip}
             invoiceSummary={invoiceSummary}
+            onPricingChange={(pricing: TripPricing) =>
+              setEditableRawData((current) =>
+                current ? { ...current, pricing: { ...pricing } } : current,
+              )
+            }
           />
         );
       case "comms":

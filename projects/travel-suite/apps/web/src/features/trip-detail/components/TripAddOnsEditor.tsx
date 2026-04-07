@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Package } from "lucide-react";
+import { Package, Plus } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassBadge } from "@/components/glass/GlassBadge";
+import { GlassButton } from "@/components/glass/GlassButton";
 import { formatINR } from "@/features/trip-detail/utils";
 import { cn } from "@/lib/utils";
 import type { TripAddOn } from "@/features/trip-detail/types";
@@ -17,6 +18,15 @@ interface TripAddOnsEditorProps {
   loading: boolean;
   onToggle: (addOnId: string, isSelected: boolean) => void;
   onQuantityChange: (addOnId: string, quantity: number) => void;
+  onUnitPriceChange: (addOnId: string, unitPrice: number) => void;
+  onCreateAddOn: (input: {
+    name: string;
+    category: string;
+    unit_price: number;
+    quantity: number;
+    description?: string;
+  }) => Promise<boolean>;
+  saving?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -123,10 +133,12 @@ function AddOnCard({
   addOn,
   onToggle,
   onQuantityChange,
+  onUnitPriceChange,
 }: {
   addOn: TripAddOn;
   onToggle: (id: string, selected: boolean) => void;
   onQuantityChange: (id: string, quantity: number) => void;
+  onUnitPriceChange: (id: string, unitPrice: number) => void;
 }) {
   const lineTotal = addOn.quantity * addOn.unit_price;
 
@@ -147,11 +159,25 @@ function AddOnCard({
         />
       </div>
 
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-text-muted">
-          {formatINR(addOn.unit_price)} / unit
-        </span>
-        <div className="flex items-center gap-2">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <label className="text-[10px] font-bold uppercase tracking-wider text-text-muted">
+            Unit Price
+          </label>
+          <input
+            type="number"
+            min={0}
+            value={addOn.unit_price}
+            onChange={(e) => {
+              const parsed = parseInt(e.target.value, 10);
+              if (!Number.isNaN(parsed) && parsed >= 0) {
+                onUnitPriceChange(addOn.id, parsed);
+              }
+            }}
+            className="w-full px-2 py-1.5 text-xs rounded-lg border border-white/40 bg-white/50 dark:bg-slate-800/50 dark:border-slate-700/40 text-secondary dark:text-white focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+        </div>
+        <div className="space-y-1">
           <label className="text-xs text-text-muted" htmlFor={`qty-${addOn.id}`}>
             Qty
           </label>
@@ -182,6 +208,107 @@ function AddOnCard({
   );
 }
 
+function AddOnComposer({
+  onCreateAddOn,
+  saving = false,
+}: {
+  onCreateAddOn: (input: {
+    name: string;
+    category: string;
+    unit_price: number;
+    quantity: number;
+    description?: string;
+  }) => Promise<boolean>;
+  saving?: boolean;
+}) {
+  const [name, setName] = useState("");
+  const [category, setCategory] = useState("extras");
+  const [unitPrice, setUnitPrice] = useState("");
+  const [quantity, setQuantity] = useState("1");
+  const [description, setDescription] = useState("");
+
+  return (
+    <div className="rounded-xl border border-dashed border-primary/30 bg-primary/5 p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <Plus className="w-4 h-4 text-primary" />
+        <p className="text-sm font-bold text-secondary dark:text-white">
+          Add New Extra
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <input
+          type="text"
+          placeholder="Add-on name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="w-full px-3 py-2 text-sm rounded-lg border border-white/40 bg-white/70 dark:bg-slate-800/50 dark:border-slate-700/40 text-secondary dark:text-white focus:outline-none focus:ring-1 focus:ring-primary"
+        />
+        <input
+          type="text"
+          placeholder="Category"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          className="w-full px-3 py-2 text-sm rounded-lg border border-white/40 bg-white/70 dark:bg-slate-800/50 dark:border-slate-700/40 text-secondary dark:text-white focus:outline-none focus:ring-1 focus:ring-primary"
+        />
+        <input
+          type="number"
+          placeholder="Unit price (INR)"
+          min={0}
+          value={unitPrice}
+          onChange={(e) => setUnitPrice(e.target.value)}
+          className="w-full px-3 py-2 text-sm rounded-lg border border-white/40 bg-white/70 dark:bg-slate-800/50 dark:border-slate-700/40 text-secondary dark:text-white focus:outline-none focus:ring-1 focus:ring-primary"
+        />
+        <input
+          type="number"
+          placeholder="Qty"
+          min={1}
+          value={quantity}
+          onChange={(e) => setQuantity(e.target.value)}
+          className="w-full px-3 py-2 text-sm rounded-lg border border-white/40 bg-white/70 dark:bg-slate-800/50 dark:border-slate-700/40 text-secondary dark:text-white focus:outline-none focus:ring-1 focus:ring-primary"
+        />
+      </div>
+
+      <textarea
+        rows={2}
+        placeholder="Description (optional)"
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        className="w-full px-3 py-2 text-sm rounded-lg border border-white/40 bg-white/70 dark:bg-slate-800/50 dark:border-slate-700/40 text-secondary dark:text-white focus:outline-none focus:ring-1 focus:ring-primary"
+      />
+
+      <GlassButton
+        variant="primary"
+        size="sm"
+        loading={saving}
+        onClick={async () => {
+          const parsedPrice = Number(unitPrice);
+          const parsedQuantity = Number(quantity);
+          if (!name.trim() || !category.trim() || !Number.isFinite(parsedPrice) || parsedPrice < 0) {
+            return;
+          }
+          const created = await onCreateAddOn({
+            name: name.trim(),
+            category: category.trim(),
+            unit_price: parsedPrice,
+            quantity: Number.isFinite(parsedQuantity) && parsedQuantity > 0 ? parsedQuantity : 1,
+            description: description.trim() || undefined,
+          });
+          if (!created) return;
+          setName("");
+          setCategory("extras");
+          setUnitPrice("");
+          setQuantity("1");
+          setDescription("");
+        }}
+      >
+        <Plus className="w-4 h-4" />
+        Add Extra
+      </GlassButton>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Main Component
 // ---------------------------------------------------------------------------
@@ -191,6 +318,9 @@ export function TripAddOnsEditor({
   loading,
   onToggle,
   onQuantityChange,
+  onUnitPriceChange,
+  onCreateAddOn,
+  saving = false,
 }: TripAddOnsEditorProps) {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
@@ -235,11 +365,14 @@ export function TripAddOnsEditor({
       </div>
 
       {addOns.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-10 text-center">
-          <Package className="w-10 h-10 text-gray-300 mb-3" />
-          <p className="text-sm font-medium text-gray-400">
-            No add-ons linked
-          </p>
+        <div className="space-y-5">
+          <div className="flex flex-col items-center justify-center py-6 text-center">
+            <Package className="w-10 h-10 text-gray-300 mb-3" />
+            <p className="text-sm font-medium text-gray-400">
+              No add-ons linked
+            </p>
+          </div>
+          <AddOnComposer onCreateAddOn={onCreateAddOn} saving={saving} />
         </div>
       ) : (
         <>
@@ -258,6 +391,7 @@ export function TripAddOnsEditor({
                 addOn={addOn}
                 onToggle={onToggle}
                 onQuantityChange={onQuantityChange}
+                onUnitPriceChange={onUnitPriceChange}
               />
             ))}
           </div>
@@ -270,6 +404,10 @@ export function TripAddOnsEditor({
             <span className="text-lg font-black text-primary tabular-nums">
               {formatINR(selectedTotal)}
             </span>
+          </div>
+
+          <div className="pt-2">
+            <AddOnComposer onCreateAddOn={onCreateAddOn} saving={saving} />
           </div>
         </>
       )}

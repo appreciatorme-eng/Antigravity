@@ -6,9 +6,11 @@ import {
   AlertCircle,
   FileText,
   Users,
+  RefreshCw,
 } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
-import type { TripInvoiceSummaryData } from "@/features/trip-detail/types";
+import { GlassButton } from "@/components/glass/GlassButton";
+import type { TripInvoiceSummaryData, TripPricing } from "@/features/trip-detail/types";
 
 // ---------------------------------------------------------------------------
 // Props
@@ -16,14 +18,11 @@ import type { TripInvoiceSummaryData } from "@/features/trip-detail/types";
 
 interface TripFinancialSummaryProps {
   invoiceSummary: TripInvoiceSummaryData | null;
-  packagePricing?: {
-    per_person_cost?: number;
-    total_cost?: number;
-    currency?: string;
-    pax_count?: number;
-    notes?: string;
-  } | null;
+  packagePricing?: TripPricing | null;
   loading?: boolean;
+  onPackagePricingChange?: (pricing: TripPricing) => void;
+  onConvertToINR?: () => void;
+  convertingCurrency?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -128,6 +127,9 @@ export function TripFinancialSummary({
   invoiceSummary,
   packagePricing = null,
   loading = false,
+  onPackagePricingChange,
+  onConvertToINR,
+  convertingCurrency = false,
 }: TripFinancialSummaryProps) {
   if (loading) {
     return (
@@ -153,6 +155,8 @@ export function TripFinancialSummary({
   }
 
   const kpis = invoiceSummary ? buildKpis(invoiceSummary) : buildPackageKpis(packagePricing!);
+  const isEditable = !invoiceSummary && !!onPackagePricingChange;
+  const resolvedPricing = packagePricing ?? {};
 
   return (
     <GlassCard padding="xl">
@@ -187,7 +191,96 @@ export function TripFinancialSummary({
           );
         })}
       </div>
-      {!invoiceSummary && packagePricing?.notes ? (
+
+      {isEditable ? (
+        <div className="mt-6 space-y-4 border-t border-white/30 pt-4 dark:border-slate-700/30">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+              Edit Package Pricing
+            </p>
+            {resolvedPricing.currency && resolvedPricing.currency.toUpperCase() !== "INR" ? (
+              <GlassButton
+                variant="outline"
+                size="sm"
+                loading={convertingCurrency}
+                onClick={onConvertToINR}
+              >
+                <RefreshCw className="w-4 h-4" />
+                Convert To INR
+              </GlassButton>
+            ) : null}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <input
+              type="number"
+              min={0}
+              placeholder="Quoted total"
+              value={resolvedPricing.total_cost ?? ""}
+              onChange={(e) =>
+                onPackagePricingChange({
+                  ...resolvedPricing,
+                  total_cost: e.target.value === "" ? undefined : Number(e.target.value),
+                })
+              }
+              className="w-full px-3 py-2 text-sm rounded-lg border border-white/40 bg-white/60 dark:bg-slate-800/50 dark:border-slate-700/40 text-secondary dark:text-white focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <input
+              type="number"
+              min={0}
+              placeholder="Per person"
+              value={resolvedPricing.per_person_cost ?? ""}
+              onChange={(e) =>
+                onPackagePricingChange({
+                  ...resolvedPricing,
+                  per_person_cost: e.target.value === "" ? undefined : Number(e.target.value),
+                })
+              }
+              className="w-full px-3 py-2 text-sm rounded-lg border border-white/40 bg-white/60 dark:bg-slate-800/50 dark:border-slate-700/40 text-secondary dark:text-white focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <input
+              type="text"
+              placeholder="Currency"
+              value={resolvedPricing.currency ?? "INR"}
+              onChange={(e) =>
+                onPackagePricingChange({
+                  ...resolvedPricing,
+                  currency: e.target.value.toUpperCase(),
+                })
+              }
+              className="w-full px-3 py-2 text-sm rounded-lg border border-white/40 bg-white/60 dark:bg-slate-800/50 dark:border-slate-700/40 text-secondary dark:text-white focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <input
+              type="number"
+              min={1}
+              placeholder="Travelers"
+              value={resolvedPricing.pax_count ?? ""}
+              onChange={(e) =>
+                onPackagePricingChange({
+                  ...resolvedPricing,
+                  pax_count: e.target.value === "" ? undefined : Number(e.target.value),
+                })
+              }
+              className="w-full px-3 py-2 text-sm rounded-lg border border-white/40 bg-white/60 dark:bg-slate-800/50 dark:border-slate-700/40 text-secondary dark:text-white focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+
+          <textarea
+            rows={2}
+            placeholder="Pricing notes"
+            value={resolvedPricing.notes ?? ""}
+            onChange={(e) =>
+              onPackagePricingChange({
+                ...resolvedPricing,
+                notes: e.target.value,
+              })
+            }
+            className="w-full px-3 py-2 text-sm rounded-lg border border-white/40 bg-white/60 dark:bg-slate-800/50 dark:border-slate-700/40 text-secondary dark:text-white focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+        </div>
+      ) : null}
+
+      {!invoiceSummary && !isEditable && packagePricing?.notes ? (
         <p className="mt-4 text-xs italic text-text-muted">{packagePricing.notes}</p>
       ) : null}
     </GlassCard>

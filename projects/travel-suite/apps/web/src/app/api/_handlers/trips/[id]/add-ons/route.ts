@@ -218,3 +218,105 @@ export async function PATCH(
     );
   }
 }
+
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ id?: string }> },
+) {
+  try {
+    const access = await requireTripAdminAccess(req, params);
+    if ("error" in access) {
+      return access.error;
+    }
+
+    const { admin, tripId } = access;
+    const body = await req.json().catch(() => null);
+
+    const name = typeof body?.name === "string" ? body.name.trim() : "";
+    const category = typeof body?.category === "string" ? body.category.trim() : "";
+    const description =
+      typeof body?.description === "string" && body.description.trim().length > 0
+        ? body.description.trim()
+        : null;
+    const unitPrice = Number(body?.unit_price);
+    const quantity = body?.quantity === undefined ? 1 : Number(body.quantity);
+    const isSelected = body?.is_selected === undefined ? true : Boolean(body.is_selected);
+
+    if (!name) {
+      return NextResponse.json({ error: "Add-on name is required" }, { status: 400 });
+    }
+
+    if (!category) {
+      return NextResponse.json({ error: "Category is required" }, { status: 400 });
+    }
+
+    if (!Number.isFinite(unitPrice) || unitPrice < 0) {
+      return NextResponse.json({ error: "Invalid unit_price" }, { status: 400 });
+    }
+
+    if (!Number.isFinite(quantity) || quantity < 1) {
+      return NextResponse.json({ error: "Invalid quantity" }, { status: 400 });
+    }
+
+    let proposalQuery = admin.adminClient
+      .from("proposals")
+      .select("id")
+      .eq("trip_id", tripId)
+      .order("updated_at", { ascending: false })
+      .limit(1);
+
+    if (!admin.isSuperAdmin) {
+      proposalQuery = proposalQuery.eq("organization_id", admin.organizationId ?? "");
+    }
+
+    const { data: proposals, error: proposalError } = await proposalQuery;
+
+    if (proposalError) {
+      logError("Failed to look up proposal for trip add-on create", proposalError);
+      return NextResponse.json(
+        { error: "Failed to prepare add-on creation" },
+        { status: 500 },
+      );
+    }
+
+    const proposalId = proposals?.[0]?.id;
+    if (!proposalId) {
+      return NextResponse.json(
+        { error: "Create a proposal for this trip before adding extras." },
+        { status: 409 },
+      );
+    }
+
+    const { data: addOn, error } = await admin.adminClient
+      .from("proposal_add_ons")
+      .insert({
+        proposal_id: proposalId,
+        name,
+        category,
+        description,
+        unit_price: unitPrice,
+        quantity,
+        is_selected: isSelected,
+      })
+      .select(
+        "id, name, category, unit_price, quantity, is_selected, description, image_url",
+      )
+      .single();
+
+    if (error) {
+      logError("Failed to create trip add-on", error);
+      return NextResponse.json(
+        { error: "Failed to create add-on" },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({ addOn });
+  } catch (error) {
+    logError("Trip add-on create error", error);
+    return NextResponse.json(
+      { error: safeErrorMessage(error, "Request failed") },
+      { status: 500 },
+    );
+  }
+}

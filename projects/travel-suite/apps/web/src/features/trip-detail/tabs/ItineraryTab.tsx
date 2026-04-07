@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { validateDaySchedule } from "@/lib/trips/conflict-detection";
 import type { Conflict } from "@/lib/trips/conflict-detection";
@@ -27,6 +27,7 @@ import type {
 interface ItineraryTabProps {
   trip: Trip;
   itineraryDays: readonly Day[];
+  onItineraryDaysChange: (days: Day[]) => void;
   activeDay: number;
   onActiveDayChange: (day: number) => void;
   drivers: Driver[];
@@ -92,7 +93,7 @@ function DaySelector({
                 : "text-text-muted hover:text-secondary dark:hover:text-white",
             )}
           >
-            Cycle {day.day_number}
+            Day {day.day_number}
           </button>
         );
       })}
@@ -114,6 +115,7 @@ const handleAccommodationChange = () => {};
 export function ItineraryTab({
   trip,
   itineraryDays,
+  onItineraryDaysChange,
   activeDay,
   onActiveDayChange,
   drivers,
@@ -140,6 +142,65 @@ export function ItineraryTab({
   const currentAssignment = assignments[activeDay];
   const currentAccommodation = accommodations[activeDay];
   const currentBusyDriverIds = busyDriversByDay[activeDay] ?? [];
+
+  const handleUpdateActivity = useCallback(
+    (activityIndex: number, nextActivity: Activity) => {
+      onItineraryDaysChange(
+        itineraryDays.map((day) =>
+          day.day_number !== activeDay
+            ? day
+            : {
+                ...day,
+                activities: day.activities.map((activity, index) =>
+                  index === activityIndex ? nextActivity : activity,
+                ),
+              },
+        ),
+      );
+    },
+    [activeDay, itineraryDays, onItineraryDaysChange],
+  );
+
+  const handleDeleteActivity = useCallback(
+    (activityIndex: number) => {
+      onItineraryDaysChange(
+        itineraryDays.map((day) =>
+          day.day_number !== activeDay
+            ? day
+            : {
+                ...day,
+                activities: day.activities.filter((_, index) => index !== activityIndex),
+              },
+        ),
+      );
+    },
+    [activeDay, itineraryDays, onItineraryDaysChange],
+  );
+
+  const handleAddActivity = useCallback(
+    () => {
+      onItineraryDaysChange(
+        itineraryDays.map((day) =>
+          day.day_number !== activeDay
+            ? day
+            : {
+                ...day,
+                activities: [
+                  ...day.activities,
+                  {
+                    title: "New Activity",
+                    description: "",
+                    location: "",
+                    cost: "",
+                    duration_minutes: 60,
+                  },
+                ],
+              },
+        ),
+      );
+    },
+    [activeDay, itineraryDays, onItineraryDaysChange],
+  );
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-12 gap-10">
@@ -168,6 +229,9 @@ export function ItineraryTab({
           activities={[...activities]}
           dayNumber={activeDay}
           conflicts={conflicts}
+          onAddActivity={handleAddActivity}
+          onUpdateActivity={handleUpdateActivity}
+          onDeleteActivity={handleDeleteActivity}
         />
       </div>
 

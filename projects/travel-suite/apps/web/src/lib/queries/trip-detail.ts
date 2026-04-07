@@ -6,6 +6,7 @@ import type {
   TripInvoice,
   TripNotificationEntry,
   TripAddOn,
+  TripItineraryRawData,
 } from "@/features/trip-detail/types";
 import type { Json } from "@/lib/database.types";
 
@@ -147,7 +148,7 @@ interface SaveItineraryInput {
   tripId: string;
   itineraryId: string;
   days: unknown[];
-  rawData?: Record<string, unknown> | null;
+  rawData?: TripItineraryRawData | null;
 }
 
 export function useSaveTripItinerary() {
@@ -170,6 +171,72 @@ export function useSaveTripItinerary() {
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({
         queryKey: tripDetailKeys.detail(variables.tripId),
+      });
+    },
+  });
+}
+
+interface UpdateTripAddOnInput {
+  tripId: string;
+  addOnId: string;
+  quantity?: number;
+  unit_price?: number;
+  is_selected?: boolean;
+}
+
+export function useUpdateTripAddOn() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: UpdateTripAddOnInput) => {
+      const response = await authedFetch(`/api/trips/${input.tripId}/add-ons`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to update add-on");
+      }
+      return response.json();
+    },
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({
+        queryKey: tripDetailKeys.addOns(variables.tripId),
+      });
+    },
+  });
+}
+
+interface CreateTripAddOnInput {
+  tripId: string;
+  name: string;
+  category: string;
+  unit_price: number;
+  quantity?: number;
+  description?: string;
+  is_selected?: boolean;
+}
+
+export function useCreateTripAddOn() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: CreateTripAddOnInput) => {
+      const response = await authedFetch(`/api/trips/${input.tripId}/add-ons`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to create add-on");
+      }
+      return response.json();
+    },
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({
+        queryKey: tripDetailKeys.addOns(variables.tripId),
       });
     },
   });

@@ -39,12 +39,42 @@ export interface Activity {
   location?: string;
   coordinates?: { lat: number; lng: number };
   description?: string;
+  cost?: string;
+  transport?: string;
+  image?: string;
+  imageUrl?: string;
 }
 
 export interface Day {
   day_number: number;
   theme: string;
+  title?: string;
+  summary?: string;
   activities: Activity[];
+}
+
+export interface TripPricing {
+  per_person_cost?: number;
+  total_cost?: number;
+  currency?: string;
+  pax_count?: number;
+  notes?: string;
+}
+
+export interface TripItineraryRawData {
+  trip_title?: string;
+  destination?: string;
+  duration_days?: number;
+  summary?: string;
+  days: Day[];
+  flights?: FlightDetails[];
+  budget?: string;
+  interests?: string[];
+  tips?: string[];
+  inclusions?: string[];
+  exclusions?: string[];
+  pricing?: TripPricing;
+  image_search_version?: number;
 }
 
 export interface TripProfile {
@@ -66,26 +96,7 @@ export interface TripItinerary {
   trip_title: string;
   duration_days: number;
   destination?: string | null;
-  raw_data: {
-    trip_title?: string;
-    destination?: string;
-    duration_days?: number;
-    summary?: string;
-    days: Day[];
-    flights?: FlightDetails[];
-    budget?: string;
-    interests?: string[];
-    tips?: string[];
-    inclusions?: string[];
-    exclusions?: string[];
-    pricing?: {
-      per_person_cost?: number;
-      total_cost?: number;
-      currency?: string;
-      pax_count?: number;
-      notes?: string;
-    };
-  };
+  raw_data: TripItineraryRawData;
 }
 
 export interface Trip {
