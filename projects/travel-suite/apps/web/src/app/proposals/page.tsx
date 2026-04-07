@@ -223,6 +223,80 @@ export default function ProposalsPage() {
     }
   }
 
+  async function handleBackfillFromTrips() {
+    if (backfillMutation.isPending) return;
+
+    try {
+      const collectedTripIds: string[] = [];
+      let cursor: string | null = null;
+
+      while (true) {
+        const params = new URLSearchParams({
+          status: 'all',
+          limit: '100',
+        });
+        if (cursor) {
+          params.set('cursor', cursor);
+        }
+
+        const tripsResponse = await authedFetch(`/api/trips?${params.toString()}`);
+        const tripsPayload = await tripsResponse.json().catch(() => ({}));
+
+        if (!tripsResponse.ok) {
+          throw new Error(tripsPayload?.error || 'Failed to load trips for backfill');
+        }
+
+        const pageTripIds = Array.isArray(tripsPayload?.trips)
+          ? tripsPayload.trips.map((trip: { id?: string | null }) => String(trip?.id || '')).filter(Boolean)
+          : [];
+
+        collectedTripIds.push(...pageTripIds);
+
+        if (!tripsPayload?.hasMore || !tripsPayload?.nextCursor) {
+          break;
+        }
+
+        cursor = String(tripsPayload.nextCursor);
+      }
+
+      const uniqueTripIds = [...new Set(collectedTripIds)];
+
+      if (uniqueTripIds.length === 0) {
+        toast({
+          title: 'No trips available to backfill',
+          description: 'The live trips feed returned no trips for this account.',
+          variant: 'info',
+        });
+        return;
+      }
+
+      backfillMutation.mutate(uniqueTripIds, {
+        onSuccess: (payload) => {
+          const data = payload as { created?: number; skipped?: number; failed?: number };
+          void loadProposals();
+          toast({
+            title: 'Proposal backfill finished',
+            description: `${data.created ?? 0} linked, ${data.skipped ?? 0} skipped, ${data.failed ?? 0} failed.`,
+            variant: data.failed ? 'warning' : 'success',
+          });
+        },
+        onError: (error) => {
+          toast({
+            title: 'Backfill failed',
+            description: error instanceof Error ? error.message : 'Unable to backfill linked proposals.',
+            variant: 'error',
+          });
+        },
+      });
+    } catch (error) {
+      toast({
+        title: 'Backfill failed',
+        description: error instanceof Error ? error.message : 'Unable to load trips for backfill.',
+        variant: 'error',
+      });
+    }
+  }
+
   return (
     <div className="space-y-8 pb-12">
       <GuidedTour />
@@ -308,26 +382,7 @@ export default function ProposalsPage() {
               description="Create your first proposal, or backfill linked proposals from existing trips."
               action={{
                 label: backfillMutation.isPending ? 'Linking Trips…' : 'Backfill From Trips',
-                onClick: () => {
-                  backfillMutation.mutate(undefined, {
-                    onSuccess: (payload) => {
-                      const data = payload as { created?: number; skipped?: number; failed?: number };
-                      void loadProposals();
-                      toast({
-                        title: 'Proposal backfill finished',
-                        description: `${data.created ?? 0} linked, ${data.skipped ?? 0} skipped, ${data.failed ?? 0} failed.`,
-                        variant: data.failed ? 'warning' : 'success',
-                      });
-                    },
-                    onError: (error) => {
-                      toast({
-                        title: 'Backfill failed',
-                        description: error instanceof Error ? error.message : 'Unable to backfill linked proposals.',
-                        variant: 'error',
-                      });
-                    },
-                  });
-                },
+                onClick: () => { void handleBackfillFromTrips(); },
               }}
               className="py-20"
             />
