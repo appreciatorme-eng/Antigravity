@@ -45,14 +45,40 @@ Return ONLY valid raw JSON and absolutely nothing else.
 Note: For coordinates, if you know the exact lat/lng of the tourist attraction, provide it. Otherwise provide the coordinates of the destination city or generic 0,0.`;
 
 async function extractPdfText(buffer: Buffer): Promise<string> {
-    // Dynamic import avoids module-level initialization errors in serverless
-    const { PDFParse } = await import('pdf-parse');
-    // Disable worker thread — required for Vercel serverless (no Worker support)
-    PDFParse.setWorker('');
-    const parser = new PDFParse({ data: new Uint8Array(buffer) });
-    const result = await parser.getText();
-    await parser.destroy();
-    return result.text.replace(/\s+/g, ' ').trim();
+    // Dynamic import keeps initialization errors inside our try-catch
+    // pdfjs-dist must be in serverExternalPackages to avoid bundling
+    const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+
+    const uint8 = new Uint8Array(buffer);
+    const loadingTask = pdfjsLib.getDocument({
+        data: uint8,
+        // Serverless-safe options: disable all optional async features
+        useSystemFonts: true,      // skip font file fetching
+        disableFontFace: true,     // skip font face rendering
+        isEvalSupported: false,    // no eval() needed for text
+        disableRange: true,        // no range requests
+        disableStream: true,       // no streaming
+        disableAutoFetch: true,    // no auto-fetching
+        cMapPacked: false,         // skip CMap loading
+    });
+
+    const pdf = await loadingTask.promise;
+    const textParts: string[] = [];
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items
+            .map((item: Record<string, unknown>) => typeof item.str === 'string' ? item.str : '')
+            .join(' ');
+        if (pageText.trim()) {
+            textParts.push(pageText);
+        }
+        page.cleanup();
+    }
+
+    await pdf.destroy();
+    return textParts.join('\n').replace(/\s+/g, ' ').trim();
 }
 
 export async function POST(req: Request) {
@@ -96,11 +122,9 @@ export async function POST(req: Request) {
             return apiError('Only PDF files are supported', 400);
         }
 
-        // Extract raw buffer from file upload
         const arrayBuffer = await file.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
 
-        // Parse text from PDF (dynamic import keeps errors catchable)
         const rawText = await extractPdfText(buffer);
 
         if (!rawText || rawText.length < 50) {
@@ -131,7 +155,6 @@ export async function POST(req: Request) {
         });
 
     } catch (error: unknown) {
-        // Temporary: emit plain-text error so Vercel log search can find it
         const rawMsg = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
         process.stderr.write(`PDF_ERR_RAW: ${rawMsg}\n`);
         logError("PDF Import Error", error);
