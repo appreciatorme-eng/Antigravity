@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Calendar,
   Check,
+  ClipboardPaste,
   FileText,
   FolderOpen,
   Globe,
@@ -15,6 +17,7 @@ import {
   Sparkles,
   Trash2,
   User,
+  UserPlus,
   Clock,
   TriangleAlert,
 } from "lucide-react";
@@ -33,6 +36,9 @@ import {
   type ImportedItineraryDraft,
 } from "@/lib/import/trip-draft";
 import { formatFeatureLimitError } from "@/lib/subscriptions/feature-limit-error";
+import { logError } from "@/lib/observability/logger";
+import { useDemoMode } from "@/lib/demo/demo-mode-context";
+import { authedFetch } from "@/lib/api/authed-fetch";
 
 interface SavedItinerary {
   id: string;
@@ -70,7 +76,7 @@ interface CreateTripModalProps {
   onSuccess: () => void;
 }
 
-type ImportMode = "saved" | "ai" | "url" | "pdf";
+type ImportMode = "saved" | "ai" | "url" | "pdf" | "text";
 type DraftListField = "interests" | "tips" | "inclusions" | "exclusions";
 
 function parseListInput(value: string): string[] | undefined {
@@ -151,12 +157,15 @@ function ReviewNotice({
 export default function CreateTripModal({ open, onOpenChange, onSuccess }: CreateTripModalProps) {
   const supabase = createClient();
   const { toast } = useToast();
+  const { isDemoMode } = useDemoMode();
+  const router = useRouter();
 
   const [clientId, setClientId] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [prompt, setPrompt] = useState("");
   const [importUrl, setImportUrl] = useState("");
+  const [importText, setImportText] = useState("");
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -169,20 +178,17 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
   const [clients, setClients] = useState<Client[]>([]);
   const [loadingClients, setLoadingClients] = useState(false);
   const [tripLimit, setTripLimit] = useState<FeatureLimitSnapshot | null>(null);
+  const [showNewClient, setShowNewClient] = useState(false);
+  const [newClientName, setNewClientName] = useState("");
+  const [newClientEmail, setNewClientEmail] = useState("");
+  const [newClientPhone, setNewClientPhone] = useState("");
+  const [creatingClient, setCreatingClient] = useState(false);
 
   const draftErrors = draftData ? getImportedItineraryDraftErrors(draftData) : [];
 
   const fetchClients = useCallback(async () => {
     setLoadingClients(true);
-
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    const response = await fetch("/api/admin/clients", {
-      headers: {
-        Authorization: `Bearer ${session?.access_token}`,
-      },
-    });
+    const response = await authedFetch("/api/admin/clients");
 
     if (!response.ok) {
       const error = await response.json();
@@ -202,17 +208,65 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
     setLoadingClients(false);
   }, [supabase]);
 
+  const handleCreateClient = async () => {
+    if (!newClientName.trim() || !newClientEmail.trim()) {
+      toast({ title: "Name and email required", variant: "warning" });
+      return;
+    }
+
+    setCreatingClient(true);
+    try {
+      const response = await authedFetch("/api/admin/clients", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          full_name: newClientName.trim(),
+          email: newClientEmail.trim(),
+          phone: newClientPhone.trim() || undefined,
+        }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || "Failed to create client");
+      }
+
+      const data = await response.json();
+      const newClient: Client = {
+        id: data.client?.id || data.id,
+        full_name: newClientName.trim(),
+        email: newClientEmail.trim(),
+      };
+
+      setClients((prev) => [newClient, ...prev]);
+      setClientId(newClient.id);
+      setShowNewClient(false);
+      setNewClientName("");
+      setNewClientEmail("");
+      setNewClientPhone("");
+      toast({
+        title: "Client created!",
+        description: `${newClient.full_name} added and selected.`,
+        variant: "success",
+      });
+    } catch (error) {
+      logError("Inline client creation failed", error);
+      toast({
+        title: "Failed to create client",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "error",
+      });
+    } finally {
+      setCreatingClient(false);
+    }
+  };
+
   const fetchSavedItineraries = useCallback(async () => {
     setLoadingSaved(true);
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      const response = await fetch("/api/itineraries", {
-        headers: {
-          Authorization: `Bearer ${session?.access_token}`,
-        },
-      });
+      const response = await authedFetch("/api/itineraries");
 
       if (!response.ok) {
         console.error("Error fetching saved itineraries");
@@ -261,11 +315,16 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
     setEndDate("");
     setPrompt("");
     setImportUrl("");
+    setImportText("");
     setPdfFile(null);
     setDraftData(null);
     setCreating(false);
     setImportMode("saved");
     setSelectedSavedId(null);
+    setShowNewClient(false);
+    setNewClientName("");
+    setNewClientEmail("");
+    setNewClientPhone("");
   }, [open, fetchClients, fetchSavedItineraries, loadTripLimit]);
 
   const updateDraft = useCallback((updater: (current: ImportedItineraryDraft) => ImportedItineraryDraft) => {
@@ -315,7 +374,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
         variant: "success",
       });
     } catch (error) {
-      console.error("Error loading itinerary raw data:", error);
+      logError("Error loading itinerary raw data", error);
       toast({
         title: "Load failed",
         description: "Something went wrong loading the itinerary.",
@@ -334,7 +393,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
       const daysMatch = prompt.match(/(\d+)\s*days?/i);
       const days = daysMatch ? parseInt(daysMatch[1], 10) : 3;
 
-      const res = await fetch("/api/itinerary/generate", {
+      const res = await authedFetch("/api/itinerary/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt, days }),
@@ -349,7 +408,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
         }),
       );
     } catch (error) {
-      console.error("AI Generation Error:", error);
+      logError("AI generation error", error);
       toast({
         title: "Generation failed",
         description: error instanceof Error ? `Failed to generate: ${error.message}` : "Failed to generate itinerary. Please try again.",
@@ -364,7 +423,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
     if (!importUrl) return;
     setIsGenerating(true);
     try {
-      const res = await fetch("/api/itinerary/import/url", {
+      const res = await authedFetch("/api/itinerary/import/url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: importUrl }),
@@ -379,7 +438,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
         }),
       );
     } catch (error) {
-      console.error("URL Import Error:", error);
+      logError("URL import error", error);
       toast({
         title: "URL import failed",
         description: error instanceof Error ? error.message : "Failed to import from URL.",
@@ -397,7 +456,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
       const formData = new FormData();
       formData.append("file", pdfFile);
 
-      const res = await fetch("/api/itinerary/import/pdf", {
+      const res = await authedFetch("/api/itinerary/import/pdf", {
         method: "POST",
         body: formData,
       });
@@ -412,7 +471,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
         }),
       );
     } catch (error) {
-      console.error("PDF Import Error:", error);
+      logError("PDF Import Error", error);
       toast({
         title: "PDF import failed",
         description: error instanceof Error ? error.message : "Failed to parse PDF.",
@@ -423,7 +482,47 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
     }
   };
 
+  const parseImportText = async (): Promise<ImportedItineraryDraft> => {
+    const res = await authedFetch("/api/itinerary/import/text", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: importText }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to parse text");
+    return normalizeImportedItineraryDraft(data.itinerary, {
+      source: "text",
+    });
+  };
+
+  const handleImportText = async () => {
+    if (!importText) return;
+    setIsGenerating(true);
+    try {
+      const itinerary = await parseImportText();
+      setDraftData(itinerary);
+    } catch (error) {
+      logError("Text import error", error);
+      toast({
+        title: "Text import failed",
+        description: error instanceof Error ? error.message : "Failed to parse the pasted text.",
+        variant: "error",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const handleCreateTrip = async () => {
+    if (isDemoMode) {
+      toast({
+        title: "Demo Mode Active",
+        description: "Toggle off Demo Mode to create real trips.",
+        variant: "warning",
+      });
+      return;
+    }
+
     if (!clientId || !startDate || !endDate) {
       toast({
         title: "Missing required fields",
@@ -444,17 +543,34 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
 
     setCreating(true);
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      let resolvedDraft = draftData;
+      if (!resolvedDraft && importMode === "text" && importText.trim().length >= 50) {
+        try {
+          setIsGenerating(true);
+          resolvedDraft = await parseImportText();
+          setDraftData(resolvedDraft);
+        } catch (error) {
+          logError("Auto-parse on create error", error);
+          toast({
+            title: "Text parsing failed",
+            description: error instanceof Error ? error.message : "Could not extract itinerary from the pasted text.",
+            variant: "error",
+          });
+          setCreating(false);
+          setIsGenerating(false);
+          return;
+        } finally {
+          setIsGenerating(false);
+        }
+      }
 
-      const itineraryPayload = draftData
+      const itineraryPayload = resolvedDraft
         ? {
-            trip_title: draftData.trip_title,
-            destination: draftData.destination,
-            summary: draftData.summary,
-            duration_days: draftData.duration_days || draftData.days.length || 1,
-            raw_data: buildItineraryRawDataFromDraft(draftData),
+            trip_title: resolvedDraft.trip_title,
+            destination: resolvedDraft.destination,
+            summary: resolvedDraft.summary,
+            duration_days: resolvedDraft.duration_days || resolvedDraft.days.length || 1,
+            raw_data: buildItineraryRawDataFromDraft(resolvedDraft),
           }
         : {
             trip_title: "New Trip",
@@ -464,11 +580,10 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
             raw_data: { days: [] },
           };
 
-      const response = await fetch("/api/admin/trips", {
+      const response = await authedFetch("/api/admin/trips", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session?.access_token}`,
         },
         body: JSON.stringify({
           clientId,
@@ -498,43 +613,56 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
       }
 
       const payloadData = await response.json();
-      const itineraryId = payloadData.itineraryId;
+      const tripId = payloadData.tripId;
 
+      let shareLinkCopied = false;
       try {
-        const token = crypto.randomUUID();
-        const expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + 30);
-
-        const { error: shareError } = await supabase.from("shared_itineraries").insert({
-          itinerary_id: itineraryId,
-          share_code: token,
-          expires_at: expiresAt.toISOString(),
-          template_id: "safari_story",
+        const shareLinkResponse = await authedFetch(`/api/admin/trips/${tripId}/share-link`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ templateId: "safari_story" }),
         });
 
-        if (shareError) throw shareError;
+        if (!shareLinkResponse.ok) throw new Error("Share link creation failed");
 
-        const shareLink = `${window.location.origin}/share/${token}`;
-        await navigator.clipboard.writeText(shareLink);
-
-        toast({
-          title: "Trip Created & Link Copied!",
-          description: "Share this magic quote with your client to close the deal.",
-          durationMs: 4000,
-          variant: "success",
-        });
+        const shareLinkData = await shareLinkResponse.json();
+        const shareUrl = shareLinkData?.data?.shareUrl;
+        if (shareUrl) {
+          await navigator.clipboard.writeText(shareUrl);
+          shareLinkCopied = true;
+        }
       } catch {
-        toast({
-          title: "Trip created",
-          description: "Trip was created successfully.",
-          variant: "success",
-        });
+        // best-effort
       }
 
-      onSuccess();
       onOpenChange(false);
+      onSuccess();
+
+      if (resolvedDraft && tripId) {
+        router.push(`/trips/${tripId}`);
+        return;
+      }
+
+      setTimeout(() => {
+        if (shareLinkCopied) {
+          toast({
+            title: "Trip Created & Link Copied",
+            description: "Share this magic quote with your client to close the deal.",
+            durationMs: 4000,
+            variant: "success",
+          });
+        } else {
+          toast({
+            title: "Trip created",
+            description: "Trip was created successfully.",
+            variant: "success",
+          });
+        }
+      }, 100);
     } catch (error) {
-      console.error("Error creating trip:", error);
+      logError("Error creating trip", error);
       toast({
         title: "Trip creation failed",
         description: error instanceof Error ? error.message : "Failed to create trip. Please try again.",
@@ -588,44 +716,96 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
             </div>
           )}
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-sm font-medium">
                 <User className="h-4 w-4" /> Client
               </label>
-              <select
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                value={clientId}
-                onChange={(e) => setClientId(e.target.value)}
-              >
-                <option value="" disabled>
-                  Select a client
-                </option>
-                {loadingClients ? (
-                  <option disabled>Loading...</option>
-                ) : (
-                  clients.map((client) => (
-                    <option key={client.id} value={client.id}>
-                      {client.full_name} ({client.email})
-                    </option>
-                  ))
-                )}
-              </select>
+              <div className="flex min-w-0 gap-2">
+                <select
+                  className="h-10 min-w-0 flex-1 rounded-md border border-input bg-background px-3 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  value={clientId}
+                  onChange={(e) => setClientId(e.target.value)}
+                >
+                  <option value="" disabled>
+                    Select a client
+                  </option>
+                  {loadingClients ? (
+                    <option disabled>Loading...</option>
+                  ) : (
+                    clients.map((client) => (
+                      <option key={client.id} value={client.id}>
+                        {client.full_name} ({client.email})
+                      </option>
+                    ))
+                  )}
+                </select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-10 w-10 shrink-0"
+                  onClick={() => setShowNewClient((value) => !value)}
+                  title="Add new client"
+                >
+                  <UserPlus className="h-4 w-4" />
+                </Button>
+              </div>
+              {showNewClient && (
+                <div className="mt-2 space-y-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-800 dark:bg-emerald-950/30">
+                  <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">Quick Add Client</p>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <Input
+                      placeholder="Full name *"
+                      value={newClientName}
+                      onChange={(e) => setNewClientName(e.target.value)}
+                      className="h-9 bg-white text-sm dark:bg-slate-900"
+                    />
+                    <Input
+                      placeholder="Email *"
+                      type="email"
+                      value={newClientEmail}
+                      onChange={(e) => setNewClientEmail(e.target.value)}
+                      className="h-9 bg-white text-sm dark:bg-slate-900"
+                    />
+                  </div>
+                  <Input
+                    placeholder="Phone (optional)"
+                    type="tel"
+                    value={newClientPhone}
+                    onChange={(e) => setNewClientPhone(e.target.value)}
+                    className="h-9 bg-white text-sm dark:bg-slate-900"
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button type="button" variant="ghost" size="sm" onClick={() => setShowNewClient(false)}>
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={creatingClient || !newClientName.trim() || !newClientEmail.trim()}
+                      onClick={handleCreateClient}
+                      className="bg-emerald-600 text-white hover:bg-emerald-700"
+                    >
+                      {creatingClient ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
+                      Add & Select
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-medium">
-                  <Calendar className="h-4 w-4" /> Start Date
-                </label>
-                <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-medium">
-                  <Calendar className="h-4 w-4" /> End Date
-                </label>
-                <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-              </div>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <Calendar className="h-4 w-4" /> Start Date
+              </label>
+              <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <Calendar className="h-4 w-4" /> End Date
+              </label>
+              <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
             </div>
           </div>
 
@@ -672,6 +852,14 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
                   }`}
                 >
                   <FileText className="h-4 w-4" /> From PDF Upload
+                </button>
+                <button
+                  onClick={() => setImportMode("text")}
+                  className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                    importMode === "text" ? "bg-amber-100 text-amber-700" : "text-gray-500 hover:bg-gray-100"
+                  }`}
+                >
+                  <ClipboardPaste className="h-4 w-4" /> Copy Text
                 </button>
               </div>
 
@@ -831,6 +1019,30 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
                   <p className="text-xs text-gray-500">
                     Upload a brochure PDF. The system will extract a draft itinerary for review, including package details when available.
                   </p>
+                </div>
+              )}
+
+              {importMode === "text" && (
+                <div className="space-y-4 pt-2">
+                  <Textarea
+                    placeholder="Paste your itinerary text here — day-by-day plan, tour description, WhatsApp notes, anything..."
+                    value={importText}
+                    onChange={(e) => setImportText(e.target.value)}
+                    rows={8}
+                    className="resize-none bg-white text-sm"
+                  />
+                  <div className="flex items-center justify-between gap-4">
+                    <p className="text-xs text-gray-500">
+                      Paste any raw itinerary text. The AI will structure it into a reviewable day-by-day trip draft.
+                    </p>
+                    <Button
+                      onClick={handleImportText}
+                      disabled={isGenerating || importText.trim().length < 50}
+                      className="shrink-0 bg-amber-600 text-white hover:bg-amber-700"
+                    >
+                      {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Parse Text"}
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
