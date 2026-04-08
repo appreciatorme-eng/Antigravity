@@ -29,6 +29,7 @@ import { SetupGuide } from "@/components/dashboard/SetupGuide";
 import { GuidedTour } from "@/components/tour/GuidedTour";
 import { useToast } from "@/components/ui/toast";
 import { authedFetch } from "@/lib/api/authed-fetch";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const SORT_OPTIONS: { value: TripSortKey; label: string }[] = [
     { value: "departure", label: "Departure Date" },
@@ -61,6 +62,7 @@ export default function TripsPage() {
     const [quickFilters, setQuickFilters] = useState<Set<QuickFilter>>(new Set());
     const [activeDrill, setActiveDrill] = useState<TripKPIDrillAction | null>(null);
     const [deletingTripId, setDeletingTripId] = useState<string | null>(null);
+    const [tripPendingDelete, setTripPendingDelete] = useState<EnrichedTrip | null>(null);
 
     const departingSoonRef = useRef<HTMLDivElement>(null);
 
@@ -118,9 +120,16 @@ export default function TripsPage() {
         setQuickFilters(new Set());
     }, []);
 
-    const handleDeleteTrip = useCallback(async (tripId: string) => {
+    const requestDeleteTrip = useCallback((tripId: string) => {
+        const trip = trips.find((item) => item.id === tripId) || null;
+        if (!trip || deletingTripId) return;
+        setTripPendingDelete(trip);
+    }, [deletingTripId, trips]);
+
+    const handleDeleteTrip = useCallback(async () => {
+        if (!tripPendingDelete || deletingTripId) return;
+        const tripId = tripPendingDelete.id;
         if (deletingTripId) return;
-        if (!confirm("Delete this trip? All trip data will be permanently removed.")) return;
 
         setDeletingTripId(tripId);
         try {
@@ -128,6 +137,7 @@ export default function TripsPage() {
             if (!response.ok) {
                 throw new Error("Failed to delete trip");
             }
+            setTripPendingDelete(null);
             toast({
                 title: "Trip deleted",
                 description: "The trip has been removed.",
@@ -143,7 +153,7 @@ export default function TripsPage() {
         } finally {
             setDeletingTripId(null);
         }
-    }, [deletingTripId, fetchTrips, toast]);
+    }, [deletingTripId, fetchTrips, toast, tripPendingDelete]);
 
     return (
         <div className="space-y-8 pb-20">
@@ -397,7 +407,7 @@ export default function TripsPage() {
                             <div key={trip.id} {...(idx === 0 ? { 'data-tour': 'trip-row-first' } : {})}>
                                 <TripListRow
                                     trip={trip}
-                                    onDelete={handleDeleteTrip}
+                                    onDelete={requestDeleteTrip}
                                     deleting={deletingTripId === trip.id}
                                 />
                             </div>
@@ -410,7 +420,7 @@ export default function TripsPage() {
                         <TripGridCard
                             key={trip.id}
                             trip={trip}
-                            onDelete={handleDeleteTrip}
+                            onDelete={requestDeleteTrip}
                             deleting={deletingTripId === trip.id}
                         />
                     ))}
@@ -424,6 +434,60 @@ export default function TripsPage() {
                     void fetchTrips();
                 }}
             />
+
+            <Dialog open={Boolean(tripPendingDelete)} onOpenChange={(open) => { if (!open && !deletingTripId) setTripPendingDelete(null); }}>
+                <DialogContent className="max-w-md overflow-hidden border border-rose-200/60 bg-white/95 p-0 shadow-[0_30px_80px_-40px_rgba(244,63,94,0.45)] backdrop-blur-xl dark:border-rose-900/40 dark:bg-slate-950/95">
+                    <div className="bg-gradient-to-br from-rose-500/10 via-white to-orange-500/10 px-6 py-6 dark:from-rose-500/15 dark:via-slate-950 dark:to-orange-500/10">
+                        <DialogHeader className="space-y-3 text-left">
+                            <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-500 dark:border-rose-900/40 dark:bg-rose-950/40 dark:text-rose-300">
+                                <X className="h-5 w-5" />
+                            </div>
+                            <DialogTitle className="text-2xl font-semibold tracking-tight text-secondary dark:text-white">
+                                Delete Trip
+                            </DialogTitle>
+                            <DialogDescription className="max-w-sm text-sm leading-6 text-text-muted dark:text-slate-300">
+                                This will permanently remove the trip, its operations context, and linked trip-side records that depend on it.
+                            </DialogDescription>
+                        </DialogHeader>
+                    </div>
+
+                    <div className="space-y-4 px-6 py-5">
+                        <div className="rounded-2xl border border-slate-200/70 bg-slate-50/80 p-4 dark:border-slate-800 dark:bg-slate-900/80">
+                            <div className="text-[10px] font-black uppercase tracking-[0.22em] text-text-muted">Trip</div>
+                            <div className="mt-2 text-lg font-semibold text-secondary dark:text-white">
+                                {tripPendingDelete?.itineraries?.trip_title || tripPendingDelete?.destination || "Untitled trip"}
+                            </div>
+                            <div className="mt-1 text-sm text-text-muted dark:text-slate-400">
+                                {tripPendingDelete?.profiles?.full_name || "Walk-in client"}
+                                {tripPendingDelete?.start_date ? ` · ${new Date(tripPendingDelete.start_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}` : ""}
+                            </div>
+                        </div>
+
+                        <p className="text-sm text-text-muted dark:text-slate-400">
+                            This action cannot be undone.
+                        </p>
+                    </div>
+
+                    <DialogFooter className="border-t border-slate-200/70 px-6 py-4 dark:border-slate-800">
+                        <button
+                            type="button"
+                            onClick={() => setTripPendingDelete(null)}
+                            disabled={Boolean(deletingTripId)}
+                            className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 px-5 text-sm font-semibold text-secondary transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:text-white dark:hover:bg-slate-900"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleDeleteTrip}
+                            disabled={Boolean(deletingTripId)}
+                            className="inline-flex h-11 items-center justify-center rounded-xl bg-rose-500 px-5 text-sm font-semibold text-white shadow-lg shadow-rose-500/20 transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            {deletingTripId ? "Deleting..." : "Delete trip"}
+                        </button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
