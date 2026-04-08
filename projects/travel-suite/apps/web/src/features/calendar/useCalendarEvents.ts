@@ -8,6 +8,7 @@ import type {
   InvoiceEventData,
   PaymentEventData,
   ProposalEventData,
+  FollowUpEventData,
   SocialPostEventData,
   ConciergeEventData,
 } from "./types";
@@ -163,6 +164,16 @@ interface ConciergeRow {
   status: string | null;
   created_at: string | null;
   clients: { full_name?: string; organization_id?: string } | null;
+}
+
+interface FollowUpRow {
+  id: string;
+  notification_type: string | null;
+  status: string | null;
+  scheduled_for: string;
+  trip_id: string | null;
+  recipient_phone: string | null;
+  recipient_email: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -543,6 +554,93 @@ async function fetchPersonalEvents(
   }));
 }
 
+async function queryFollowUpsByColumn(
+  supabase: SupabaseClient,
+  column: "user_id" | "trip_id",
+  ids: string[],
+  windowStart: string,
+  windowEnd: string,
+): Promise<FollowUpRow[]> {
+  const rows: FollowUpRow[] = [];
+
+  for (let index = 0; index < ids.length; index += 200) {
+    const chunk = ids.slice(index, index + 200);
+    if (chunk.length === 0) continue;
+
+    const { data, error } = await untypedFrom(supabase, "notification_queue")
+      .select("id,notification_type,status,scheduled_for,trip_id,recipient_phone,recipient_email")
+      .or("status.eq.pending,status.eq.queued,status.eq.retry,status.eq.failed")
+      .gte("scheduled_for", windowStart)
+      .lte("scheduled_for", windowEnd)
+      .in(column, chunk)
+      .order("scheduled_for", { ascending: true })
+      .limit(150);
+
+    if (error) throw error;
+    rows.push(...((data ?? []) as unknown as FollowUpRow[]));
+  }
+
+  return rows;
+}
+
+async function fetchFollowUps(
+  supabase: SupabaseClient,
+  orgId: string,
+  windowStart: string,
+  windowEnd: string,
+): Promise<CalendarEvent[]> {
+  const [orgUsersResult, orgTripsResult] = await Promise.all([
+    supabase.from("profiles").select("id").eq("organization_id", orgId).limit(5000),
+    supabase.from("trips").select("id").eq("organization_id", orgId).limit(5000),
+  ]);
+
+  if (orgUsersResult.error) throw orgUsersResult.error;
+  if (orgTripsResult.error) throw orgTripsResult.error;
+
+  const userIds = (orgUsersResult.data || []).map((row) => row.id).filter(Boolean);
+  const tripIds = (orgTripsResult.data || []).map((row) => row.id).filter(Boolean);
+
+  const [byUser, byTrip] = await Promise.all([
+    queryFollowUpsByColumn(supabase, "user_id", userIds, windowStart, windowEnd),
+    queryFollowUpsByColumn(supabase, "trip_id", tripIds, windowStart, windowEnd),
+  ]);
+
+  const deduped = new Map<string, FollowUpRow>();
+  for (const row of [...byUser, ...byTrip]) {
+    deduped.set(row.id, row);
+  }
+
+  return Array.from(deduped.values())
+    .sort((left, right) => new Date(left.scheduled_for).getTime() - new Date(right.scheduled_for).getTime())
+    .map((row) => {
+      const recipient = row.recipient_phone || row.recipient_email || null;
+      const overdue = new Date(row.scheduled_for).getTime() < Date.now();
+      const entityData: FollowUpEventData = {
+        type: "follow_up",
+        notificationType: row.notification_type ?? "follow_up",
+        recipient,
+        tripId: row.trip_id ?? null,
+        overdue,
+      };
+
+      return {
+        id: row.id,
+        type: "follow_up" as const,
+        title: (row.notification_type || "Follow-up").replace(/_/g, " "),
+        subtitle: recipient || "Pending recipient",
+        startDate: row.scheduled_for,
+        endDate: null,
+        status: row.status ?? "pending",
+        statusVariant: getStatusVariant(row.status ?? "pending"),
+        amount: null,
+        currency: null,
+        href: "/admin/notifications",
+        drillHref: null,
+        entityData,
+      };
+    });
+}
+
 // ---------------------------------------------------------------------------
 // Main hook
 // ---------------------------------------------------------------------------
@@ -573,6 +671,7 @@ export function useCalendarEvents(month: number, year: number) {
         fetchInvoices(supabase, orgId, startIso, endIso),
         fetchPayments(supabase, orgId, startIso, endIso),
         fetchProposals(supabase, orgId, startIso, endIso),
+        fetchFollowUps(supabase, orgId, startIso, endIso),
         fetchSocialPosts(supabase, orgId, startIso, endIso),
         fetchConciergeRequests(supabase, orgId, startIso, endIso),
         fetchPersonalEvents(supabase, orgId, startIso, endIso),

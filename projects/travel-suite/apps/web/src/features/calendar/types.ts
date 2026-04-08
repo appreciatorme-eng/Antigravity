@@ -9,6 +9,7 @@ export type CalendarEventType =
   | "invoice"
   | "payment"
   | "proposal"
+  | "follow_up"
   | "social_post"
   | "concierge"
   | "personal";
@@ -46,6 +47,7 @@ export interface CalendarEvent {
     | InvoiceEventData
     | ProposalEventData
     | PaymentEventData
+    | FollowUpEventData
     | SocialPostEventData
     | ConciergeEventData
     | PersonalEventData;
@@ -89,6 +91,14 @@ export interface PaymentEventData {
   invoiceNumber: string;
   method: string | null;
   reference: string | null;
+}
+
+export interface FollowUpEventData {
+  type: "follow_up";
+  notificationType: string;
+  recipient: string | null;
+  tripId: string | null;
+  overdue: boolean;
 }
 
 export interface SocialPostEventData {

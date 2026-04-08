@@ -11,6 +11,7 @@ import {
   Pencil,
   ArrowRightLeft,
   Clock,
+  BellRing,
   Eye,
   ExternalLink,
   UserCircle,
@@ -69,13 +70,23 @@ export const EVENT_TYPE_CONFIG: Record<CalendarEventType, EventTypeConfig> = {
     icon: FileSearch,
     badgeVariant: "info",
   },
-  social_post: {
-    label: "Social Posts",
+  follow_up: {
+    label: "Follow-ups",
     color: "#8b5cf6",
     textColor: "text-violet-800",
     borderColor: "border-violet-300",
     dotColor: "bg-violet-500",
     bgColor: "bg-violet-100",
+    icon: BellRing,
+    badgeVariant: "secondary",
+  },
+  social_post: {
+    label: "Social Posts",
+    color: "#a855f7",
+    textColor: "text-purple-800",
+    borderColor: "border-purple-300",
+    dotColor: "bg-purple-500",
+    bgColor: "bg-purple-100",
     icon: Share2,
     badgeVariant: "secondary",
   },
@@ -121,6 +132,9 @@ export const QUICK_ACTIONS: Record<CalendarEventType, QuickAction[]> = {
     { label: "Send", icon: Send, action: "send" },
     { label: "Convert", icon: ArrowRightLeft, action: "convert" },
   ],
+  follow_up: [
+    { label: "Open Queue", icon: Eye, action: "view_queue" },
+  ],
   social_post: [
     { label: "Edit", icon: Pencil, action: "edit" },
     { label: "Reschedule", icon: Clock, action: "reschedule" },
@@ -153,6 +167,9 @@ export const STATUS_VARIANT_MAP: Record<string, BadgeVariant> = {
   sent: "info",
   viewed: "info",
   scheduled: "info",
+  queued: "warning",
+  retry: "warning",
+  failed: "danger",
   partial: "warning",
 };
 
@@ -190,6 +207,7 @@ export const ALL_EVENT_TYPES: CalendarEventType[] = [
   "invoice",
   "payment",
   "proposal",
+  "follow_up",
   "social_post",
   "concierge",
   "personal",

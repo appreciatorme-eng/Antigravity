@@ -10,6 +10,7 @@ import { TripEventDetail } from "./details/TripEventDetail";
 import { InvoiceEventDetail } from "./details/InvoiceEventDetail";
 import { ProposalEventDetail } from "./details/ProposalEventDetail";
 import { PaymentEventDetail } from "./details/PaymentEventDetail";
+import { FollowUpEventDetail } from "./details/FollowUpEventDetail";
 import { SocialPostEventDetail } from "./details/SocialPostEventDetail";
 import { ConciergeEventDetail } from "./details/ConciergeEventDetail";
 import { PersonalEventDetail } from "./details/PersonalEventDetail";
@@ -57,6 +58,10 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
       case "payment":
         return (
           <PaymentEventDetail data={event.entityData} event={event} />
+        );
+      case "follow_up":
+        return (
+          <FollowUpEventDetail data={event.entityData} event={event} />
         );
       case "social_post":
         return (
