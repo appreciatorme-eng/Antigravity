@@ -24,6 +24,8 @@ import { formatDate, formatMoney, statusTone } from "./helpers";
 
 interface InvoiceListPanelProps {
   invoices: InvoiceRecord[];
+  totalInvoiceCount: number;
+  loadedInvoiceTotal: number;
   selectedInvoiceId: string | null;
   loading: boolean;
   onSelectInvoice: (id: string) => void;
@@ -53,6 +55,8 @@ interface InvoiceListPanelProps {
 
 export default function InvoiceListPanel({
   invoices,
+  totalInvoiceCount,
+  loadedInvoiceTotal,
   selectedInvoiceId,
   loading,
   onSelectInvoice,
@@ -87,6 +91,12 @@ export default function InvoiceListPanel({
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  const coverageLabel =
+    totalInvoiceCount > invoices.length
+      ? `Showing latest ${invoices.length} of ${totalInvoiceCount}. Summary cards reflect this loaded set.`
+      : `Summary cards reflect these ${invoices.length} invoice${invoices.length === 1 ? "" : "s"}.`;
+
   return (
     <div className="space-y-4">
       <button
@@ -107,11 +117,19 @@ export default function InvoiceListPanel({
         <div className="mb-3 flex items-center gap-2">
           <FileSpreadsheet className="h-4 w-4 text-slate-500" />
           <h3 className="text-sm font-semibold text-slate-900">
-            Recent Invoices
+            Loaded Invoices
           </h3>
           <span className="ml-auto rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
             {invoices.length}
           </span>
+        </div>
+        <div className="mb-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+          <p className="text-[11px] font-medium text-slate-700">
+            {coverageLabel}
+          </p>
+          <p className="mt-1 text-[11px] text-slate-500">
+            Loaded total: {formatMoney(loadedInvoiceTotal, "INR")}
+          </p>
         </div>
 
         {loading ? (

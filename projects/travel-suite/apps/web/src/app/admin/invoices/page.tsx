@@ -37,6 +37,7 @@ export default function AdminInvoicesPage() {
 
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
+  const [invoiceTotalCount, setInvoiceTotalCount] = useState(0);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceRecord | null>(null);
   const [orgSnapshot, setOrgSnapshot] = useState<OrganizationSnapshot | null>(null);
@@ -113,6 +114,7 @@ export default function AdminInvoicesPage() {
 
       const list = (payload?.invoices || []) as InvoiceRecord[];
       setInvoices(list);
+      setInvoiceTotalCount(Number(payload?.total || 0));
       setSelectedInvoiceId((prev) => {
         if (prev && list.some((inv) => inv.id === prev)) return prev;
         return list[0]?.id || null;
@@ -553,6 +555,16 @@ export default function AdminInvoicesPage() {
     };
   }, [invoices]);
 
+  const invoiceCoverageLabel = useMemo(() => {
+    if (invoiceTotalCount > invoices.length) {
+      return `Showing latest ${invoices.length} of ${invoiceTotalCount} invoices on this page.`;
+    }
+    if (invoices.length === 1) {
+      return "Showing the 1 invoice loaded on this page.";
+    }
+    return `Showing all ${invoices.length} invoices loaded on this page.`;
+  }, [invoiceTotalCount, invoices.length]);
+
   return (
     <div className="mx-auto max-w-[1600px] space-y-6 pb-10">
       <GuidedTour />
@@ -585,18 +597,24 @@ export default function AdminInvoicesPage() {
         <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
           <div className="rounded-2xl border border-slate-200 bg-white p-3.5">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-              Total Invoiced
+              Loaded Invoice Total
             </p>
             <p className="mt-1 text-lg font-semibold text-slate-900">
               {formatMoney(totalsOverview.totalInvoiced, "INR")}
             </p>
+            <p className="mt-1 text-[11px] text-slate-500">
+              {invoiceCoverageLabel}
+            </p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-3.5">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-              Outstanding
+              Loaded Outstanding
             </p>
             <p className="mt-1 text-lg font-semibold text-amber-700">
               {formatMoney(totalsOverview.totalOutstanding, "INR")}
+            </p>
+            <p className="mt-1 text-[11px] text-slate-500">
+              Based on the same loaded invoice set.
             </p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-white p-3.5">
@@ -699,6 +717,8 @@ export default function AdminInvoicesPage() {
         <GlassCard padding="md" className="border-slate-200 xl:max-h-[calc(100vh-220px)] xl:overflow-y-auto" data-tour="invoice-list">
           <InvoiceListPanel
             invoices={invoices}
+            totalInvoiceCount={invoiceTotalCount}
+            loadedInvoiceTotal={totalsOverview.totalInvoiced}
             selectedInvoiceId={selectedInvoiceId}
             loading={loading}
             onSelectInvoice={handleSelectInvoice}
