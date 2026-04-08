@@ -14,7 +14,10 @@ import {
   normalizeSharePaymentConfig,
   type SharePaymentOption,
 } from "@/lib/share/payment-config";
-import { withOptionalSharedItineraryPaymentConfig } from "@/lib/share/payment-config-compat";
+import {
+  readSharePaymentConfigFromRawData,
+  withOptionalSharedItineraryPaymentConfig,
+} from "@/lib/share/payment-config-compat";
 
 const tokenSchema = z.string().min(8).max(200);
 const bodySchema = z.object({
@@ -64,7 +67,12 @@ export async function POST(
     const admin = createAdminClient();
 
     const { data: share, paymentConfigSupported } = await withOptionalSharedItineraryPaymentConfig<
-      ({ id: string; expires_at: string | null; payment_config?: unknown; itineraries: { id: string; user_id: string | null; trip_title: string; destination: string } | null } | null)
+      ({
+        id: string;
+        expires_at: string | null;
+        payment_config?: unknown;
+        itineraries: { id: string; user_id: string | null; trip_title: string; destination: string; raw_data?: unknown } | null;
+      } | null)
     >(
       async () =>
         admin
@@ -77,7 +85,8 @@ export async function POST(
               id,
               user_id,
               trip_title,
-              destination
+              destination,
+              raw_data
             )
           `)
           .eq("share_code", parsedToken.data)
@@ -92,7 +101,8 @@ export async function POST(
               id,
               user_id,
               trip_title,
-              destination
+              destination,
+              raw_data
             )
           `)
           .eq("share_code", parsedToken.data)
@@ -110,7 +120,9 @@ export async function POST(
     const paymentConfig = normalizeSharePaymentConfig(
       paymentConfigSupported && share && typeof share === "object" && "payment_config" in share
         ? share.payment_config
-        : null,
+        : readSharePaymentConfigFromRawData(
+            Array.isArray(share.itineraries) ? share.itineraries[0]?.raw_data : share.itineraries?.raw_data,
+          ),
     );
     if (!paymentConfig) {
       return apiError("Payment is not enabled for this share", 400);

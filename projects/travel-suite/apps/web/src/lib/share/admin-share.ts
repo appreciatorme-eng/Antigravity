@@ -3,7 +3,10 @@ import type { Database } from "@/lib/database.types";
 import type { ItineraryResult } from "@/types/itinerary";
 import type { SharePaymentConfig, SharePaymentDefaults } from "@/lib/share/payment-config";
 import { normalizeSharePaymentConfig } from "@/lib/share/payment-config";
-import { withOptionalSharedItineraryPaymentConfig } from "@/lib/share/payment-config-compat";
+import {
+  readSharePaymentConfigFromRawData,
+  withOptionalSharedItineraryPaymentConfig,
+} from "@/lib/share/payment-config-compat";
 
 type AdminClient = SupabaseClient<Database>;
 
@@ -116,7 +119,7 @@ export async function resolveSharePaymentContext({
   const existingPaymentConfig = normalizeSharePaymentConfig(
     shareResult.paymentConfigSupported && shareResult.data && typeof shareResult.data === "object" && "payment_config" in shareResult.data
       ? shareResult.data.payment_config
-      : null,
+      : readSharePaymentConfigFromRawData(resolvedItinerary?.raw_data),
   );
   const resolvedTripTitle =
     resolvedItinerary?.trip_title?.trim() ||

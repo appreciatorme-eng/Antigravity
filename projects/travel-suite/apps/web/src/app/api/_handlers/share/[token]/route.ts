@@ -7,7 +7,10 @@ import { safeErrorMessage } from '@/lib/security/safe-error';
 import { sanitizeText } from '@/lib/security/sanitize';
 import { enforceRateLimit, type RateLimitResult } from "@/lib/security/rate-limit";
 import type { Json } from '@/lib/database.types';
-import { withOptionalSharedItineraryPaymentConfig } from "@/lib/share/payment-config-compat";
+import {
+  readSharePaymentConfigFromRawData,
+  withOptionalSharedItineraryPaymentConfig,
+} from "@/lib/share/payment-config-compat";
 import {
   buildPublicShareResponse,
   parseCommentArray,
@@ -132,7 +135,7 @@ export async function GET(
           supabaseAdmin
             .from('shared_itineraries')
             .select(
-              'id, itinerary_id, client_comments, expires_at, status, approved_by, approved_at, client_preferences, wishlist_items, self_service_status, offline_pack_ready'
+              'id, itinerary_id, client_comments, expires_at, status, approved_by, approved_at, client_preferences, wishlist_items, self_service_status, offline_pack_ready, itineraries(raw_data)'
             )
             .eq('share_code', token)
             .single(),
@@ -147,12 +150,21 @@ export async function GET(
       return apiError('Share link has expired', 410);
     }
 
+    const rawDataFallback =
+      share && typeof share === "object" && "itineraries" in share
+        ? (
+            Array.isArray(share.itineraries)
+              ? share.itineraries[0]
+              : share.itineraries
+          ) as { raw_data?: Json | null } | null
+        : null;
+
     return apiSuccess(buildPublicShareResponse({
       ...share,
       payment_config:
         paymentConfigSupported && share && "payment_config" in share
           ? share.payment_config ?? null
-          : null,
+          : readSharePaymentConfigFromRawData(rawDataFallback?.raw_data ?? null),
     } as ShareRow));
   } catch {
     return apiError('Internal Error', 500);

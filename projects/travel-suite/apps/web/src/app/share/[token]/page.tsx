@@ -17,7 +17,10 @@ import {
 } from "@/lib/image-search";
 import type { Json } from "@/lib/supabase/database.types";
 import { normalizeSharePaymentConfig } from "@/lib/share/payment-config";
-import { withOptionalSharedItineraryPaymentConfig } from "@/lib/share/payment-config-compat";
+import {
+    readSharePaymentConfigFromRawData,
+    withOptionalSharedItineraryPaymentConfig,
+} from "@/lib/share/payment-config-compat";
 
 export async function generateMetadata({
     params,
@@ -281,7 +284,9 @@ export default async function SharedTripPage({
     // Resolve the template (default to safari_story — the first premium template)
     const templateId: string = shareRecord.template_id || "safari_story";
     const paymentConfig = normalizeSharePaymentConfig(
-        paymentConfigSupported ? shareRecord.payment_config ?? null : null,
+        paymentConfigSupported
+            ? shareRecord.payment_config ?? null
+            : readSharePaymentConfigFromRawData(itinerary.raw_data),
     );
 
     // Delegate rendering to a client component — all template components use "use client"

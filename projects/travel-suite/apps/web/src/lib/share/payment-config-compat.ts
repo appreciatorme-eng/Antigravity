@@ -1,5 +1,7 @@
 import type { Json } from "@/lib/database.types";
 
+const RAW_DATA_SHARE_PAYMENT_CONFIG_KEY = "share_payment_config";
+
 export function isMissingSharedItineraryPaymentConfigColumn(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
   const message =
@@ -41,4 +43,31 @@ export function maybeAttachSharedItineraryPaymentConfig<T extends Record<string,
     ...payload,
     payment_config: paymentConfig,
   };
+}
+
+export function readSharePaymentConfigFromRawData(rawData: unknown): Json | null {
+  if (!rawData || typeof rawData !== "object" || Array.isArray(rawData)) {
+    return null;
+  }
+
+  const record = rawData as Record<string, unknown>;
+  return (record[RAW_DATA_SHARE_PAYMENT_CONFIG_KEY] as Json | undefined) ?? null;
+}
+
+export function writeSharePaymentConfigToRawData(
+  rawData: unknown,
+  paymentConfig: Json | null,
+): Json {
+  const base =
+    rawData && typeof rawData === "object" && !Array.isArray(rawData)
+      ? { ...(rawData as Record<string, unknown>) }
+      : {};
+
+  if (paymentConfig === null) {
+    delete base[RAW_DATA_SHARE_PAYMENT_CONFIG_KEY];
+  } else {
+    base[RAW_DATA_SHARE_PAYMENT_CONFIG_KEY] = paymentConfig;
+  }
+
+  return base as Json;
 }

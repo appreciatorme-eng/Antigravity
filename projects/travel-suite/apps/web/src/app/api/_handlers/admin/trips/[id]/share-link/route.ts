@@ -8,6 +8,7 @@ import { resolveSharePaymentContext } from "@/lib/share/admin-share";
 import { normalizeSharePaymentConfig } from "@/lib/share/payment-config";
 import {
   maybeAttachSharedItineraryPaymentConfig,
+  writeSharePaymentConfigToRawData,
   withOptionalSharedItineraryPaymentConfig,
 } from "@/lib/share/payment-config-compat";
 
@@ -91,7 +92,7 @@ async function findOrCreateShareLink(
         .update(updates)
         .eq("id", existing.id);
     }
-    return { shareCode: existing.share_code, error: null };
+    return { shareCode: existing.share_code, error: null, paymentConfigSupported };
   }
 
   // Create a new shared itinerary
@@ -110,7 +111,31 @@ async function findOrCreateShareLink(
     return { shareCode: null, error: insertError };
   }
 
-  return { shareCode, error: null };
+  return { shareCode, error: null, paymentConfigSupported };
+}
+
+async function persistPaymentConfigFallback(
+  adminClient: ReturnType<typeof import("@/lib/supabase/admin").createAdminClient>,
+  itineraryId: string,
+  paymentConfig: ReturnType<typeof normalizeSharePaymentConfig> | undefined,
+) {
+  if (paymentConfig === undefined) return;
+
+  const { data: itinerary } = await adminClient
+    .from("itineraries")
+    .select("raw_data")
+    .eq("id", itineraryId)
+    .maybeSingle();
+
+  const nextRawData = writeSharePaymentConfigToRawData(
+    itinerary?.raw_data ?? null,
+    (paymentConfig || null) as unknown as Json,
+  );
+
+  await adminClient
+    .from("itineraries")
+    .update({ raw_data: nextRawData })
+    .eq("id", itineraryId);
 }
 
 export async function GET(
@@ -189,7 +214,7 @@ export async function POST(
     tripId,
   });
 
-  const { shareCode, error } = await findOrCreateShareLink(adminClient, itineraryId, {
+  const { shareCode, error, paymentConfigSupported } = await findOrCreateShareLink(adminClient, itineraryId, {
     templateId,
     expiresAt,
     paymentConfig,
@@ -197,6 +222,10 @@ export async function POST(
   if (error || !shareCode) {
     logError("Failed to create share link (POST)", error);
     return apiError("Failed to create share link", 500);
+  }
+
+  if (!paymentConfigSupported) {
+    await persistPaymentConfigFallback(adminClient, itineraryId, paymentConfig);
   }
 
   return apiSuccess({

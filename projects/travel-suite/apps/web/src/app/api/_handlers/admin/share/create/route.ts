@@ -13,6 +13,7 @@ import { resolveSharePaymentContext } from "@/lib/share/admin-share";
 import { normalizeSharePaymentConfig } from "@/lib/share/payment-config";
 import {
   maybeAttachSharedItineraryPaymentConfig,
+  writeSharePaymentConfigToRawData,
   withOptionalSharedItineraryPaymentConfig,
 } from "@/lib/share/payment-config-compat";
 
@@ -101,6 +102,7 @@ export async function POST(request: NextRequest) {
   if (!itineraryId) {
     return apiError("Either itineraryId or rawItineraryData is required", 400);
   }
+  const resolvedItineraryId = itineraryId;
 
   // Verify the itinerary belongs to this user/org
   const { data: itinerary } = await adminClient
@@ -112,6 +114,7 @@ export async function POST(request: NextRequest) {
   if (!itinerary) {
     return apiError("Itinerary not found", 404);
   }
+  const resolvedItinerary = itinerary;
 
   // Backfill images for any activities missing them (not just when zero have images)
   const rawData = itinerary.raw_data as {
@@ -135,7 +138,7 @@ export async function POST(request: NextRequest) {
       try {
         const withImages = await populateItineraryImages(
           {
-            destination: rawData.destination ?? itinerary.destination ?? "travel",
+            destination: rawData.destination ?? resolvedItinerary.destination ?? "travel",
             image_search_version: currentImageSearchVersion,
             days: rawData.days.map((d) => ({
               ...d,
@@ -148,7 +151,7 @@ export async function POST(request: NextRequest) {
         await adminClient
           .from("itineraries")
           .update({ raw_data: updatedRawData as unknown as Json })
-          .eq("id", itineraryId);
+          .eq("id", resolvedItineraryId);
       } catch (imgErr) {
         logError("Image backfill failed during share creation", imgErr);
       }
@@ -160,6 +163,26 @@ export async function POST(request: NextRequest) {
     itineraryId,
   });
 
+  async function persistPaymentConfigFallback() {
+    if (paymentConfig === undefined) return;
+
+    const { data: latestItinerary } = await adminClient
+      .from("itineraries")
+      .select("raw_data")
+      .eq("id", resolvedItineraryId)
+      .maybeSingle();
+
+    const nextRawData = writeSharePaymentConfigToRawData(
+      latestItinerary?.raw_data ?? resolvedItinerary.raw_data ?? null,
+      (paymentConfig || null) as unknown as Json,
+    );
+
+    await adminClient
+      .from("itineraries")
+      .update({ raw_data: nextRawData })
+      .eq("id", resolvedItineraryId);
+  }
+
   // Check for existing share link
   const { data: existing, paymentConfigSupported } = await withOptionalSharedItineraryPaymentConfig<
     { id: string; share_code: string; payment_config?: Json | null } | { id: string; share_code: string } | null
@@ -168,13 +191,13 @@ export async function POST(request: NextRequest) {
       adminClient
         .from("shared_itineraries")
         .select("id, share_code, payment_config")
-        .eq("itinerary_id", itineraryId)
+        .eq("itinerary_id", resolvedItineraryId)
         .maybeSingle(),
     async () =>
       adminClient
         .from("shared_itineraries")
         .select("id, share_code")
-        .eq("itinerary_id", itineraryId)
+        .eq("itinerary_id", resolvedItineraryId)
         .maybeSingle(),
   );
 
@@ -189,10 +212,14 @@ export async function POST(request: NextRequest) {
       .update(updates)
       .eq("id", existing.id);
 
+    if (!paymentConfigSupported) {
+      await persistPaymentConfigFallback();
+    }
+
     return apiSuccess({
       shareCode: existing.share_code,
       shareUrl: `https://tripbuilt.com/share/${existing.share_code}`,
-      itineraryId,
+      itineraryId: resolvedItineraryId,
       paymentEligible: paymentContext.paymentEligible,
       paymentDisabledReason: paymentContext.paymentDisabledReason,
       paymentDefaults: paymentContext.paymentDefaults,
@@ -208,7 +235,7 @@ export async function POST(request: NextRequest) {
   const { error: insertError } = await adminClient
     .from("shared_itineraries")
     .insert(maybeAttachSharedItineraryPaymentConfig({
-      itinerary_id: itineraryId,
+      itinerary_id: resolvedItineraryId,
       share_code: shareCode,
       status: "active",
       template_id: templateId,
@@ -220,10 +247,14 @@ export async function POST(request: NextRequest) {
     return apiError("Failed to create share link", 500);
   }
 
+  if (!paymentConfigSupported) {
+    await persistPaymentConfigFallback();
+  }
+
   return apiSuccess({
     shareCode,
-    shareUrl: `https://tripbuilt.com/share/${shareCode}`,
-    itineraryId,
+      shareUrl: `https://tripbuilt.com/share/${shareCode}`,
+      itineraryId: resolvedItineraryId,
     paymentEligible: paymentContext.paymentEligible,
     paymentDisabledReason: paymentContext.paymentDisabledReason,
     paymentDefaults: paymentContext.paymentDefaults,
