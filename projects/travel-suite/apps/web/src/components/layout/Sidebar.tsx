@@ -46,18 +46,12 @@ function toNavItem(config: NavItemConfig): NavItem {
     };
 }
 
-// Desktop sidebar shows primary items + Settings/Billing at top,
-// then all secondary sections under "More"
-const PRIMARY_ITEMS: NavItem[] = [
-    ...getPrimaryItems().map(toNavItem),
-    // Settings + Billing are primary on desktop sidebar (not in "More")
-    { icon: resolveIcon("Settings"), label: "Settings", href: "/settings", badgeColor: "#00d084" },
-    { icon: resolveIcon("CreditCard"), label: "Billing", href: "/billing", badgeColor: "#8b5cf6" },
-];
+const PRIMARY_ITEMS: NavItem[] = getPrimaryItems().map(toNavItem);
 
-const SECONDARY_ITEMS: NavItem[] = getSecondaryGrouped()
-    .filter((g) => g.section !== "account") // account items are in primary on desktop
-    .flatMap((g) => g.items.map(toNavItem));
+const SECONDARY_GROUPS = getSecondaryGrouped().map((group) => ({
+    ...group,
+    items: group.items.map(toNavItem),
+}));
 
 interface BadgeProps {
     count: number;
@@ -189,11 +183,13 @@ export default function Sidebar({ className }: SidebarProps) {
     const { isTourActive, startPageTour, stopTour, hasCurrentPageTour, progress } = useTourToggle();
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isMoreOpen, setIsMoreOpen] = useState(
-        () =>
-            SECONDARY_ITEMS.some(
-                (item) =>
-                    pathname === item.href ||
-                    (item.href !== "/" && pathname?.startsWith(item.href))
+            () =>
+            SECONDARY_GROUPS.some((group) =>
+                group.items.some(
+                    (item) =>
+                        pathname === item.href ||
+                        (item.href !== "/" && pathname?.startsWith(item.href))
+                )
             )
     );
     const [user, setUser] = useState<SupabaseUser | null>(null);
@@ -341,26 +337,37 @@ export default function Sidebar({ className }: SidebarProps) {
                                 className="overflow-hidden space-y-1"
                             >
                                 {!isCollapsed && (
-                                    <div className="pl-3 border-l border-white/10 ml-4 space-y-0.5 py-1">
-                                        {SECONDARY_ITEMS.map((item) => (
-                                            <NavItemRow
-                                                key={item.href}
-                                                item={item}
-                                                isActive={isActivePath(item.href)}
-                                                isCollapsed={false}
-                                            />
+                                    <div className="pl-3 border-l border-white/10 ml-4 space-y-3 py-1">
+                                        {SECONDARY_GROUPS.map((group) => (
+                                            <div key={group.section} className="space-y-1">
+                                                <p className="px-3 text-[9px] font-bold tracking-widest text-slate-600 uppercase pt-1">
+                                                    {group.label}
+                                                </p>
+                                                {group.items.map((item) => (
+                                                    <NavItemRow
+                                                        key={item.href}
+                                                        item={item}
+                                                        isActive={isActivePath(item.href)}
+                                                        isCollapsed={false}
+                                                    />
+                                                ))}
+                                            </div>
                                         ))}
                                     </div>
                                 )}
                                 {isCollapsed && (
-                                    <div className="space-y-1">
-                                        {SECONDARY_ITEMS.map((item) => (
-                                            <NavItemRow
-                                                key={item.href}
-                                                item={item}
-                                                isActive={isActivePath(item.href)}
-                                                isCollapsed={true}
-                                            />
+                                    <div className="space-y-3">
+                                        {SECONDARY_GROUPS.map((group) => (
+                                            <div key={group.section} className="space-y-1">
+                                                {group.items.map((item) => (
+                                                    <NavItemRow
+                                                        key={item.href}
+                                                        item={item}
+                                                        isActive={isActivePath(item.href)}
+                                                        isCollapsed={true}
+                                                    />
+                                                ))}
+                                            </div>
                                         ))}
                                     </div>
                                 )}

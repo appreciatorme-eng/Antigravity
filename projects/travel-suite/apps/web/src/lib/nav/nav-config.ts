@@ -24,6 +24,7 @@ export type NavSection =
   | "daily"
   | "operations"
   | "growth"
+  | "admin"
   | "account";
 
 export interface NavItemConfig {
@@ -147,14 +148,16 @@ export const NAV_ITEMS: readonly NavItemConfig[] = [
     section: "operations",
   },
 
-  // ── ACCOUNT ─────────────────────────────────────────────────────────
-  { icon: "Settings", label: "Settings", href: "/settings", section: "account" },
+  // ── ADMIN ──────────────────────────────────────────────────────────
+  { icon: "Settings", label: "Settings", href: "/settings", section: "admin" },
   {
     icon: "CreditCard",
     label: "Billing",
     href: "/billing",
-    section: "account",
+    section: "admin",
   },
+
+  // ── ACCOUNT ─────────────────────────────────────────────────────────
   { icon: "LifeBuoy", label: "Support", href: "/support", section: "account" },
 ];
 
@@ -212,6 +215,7 @@ export const SECTION_LABELS: Record<NavSection, string> = {
   daily: "Daily Workflow",
   operations: "Operations",
   growth: "Growth",
+  admin: "Admin",
   account: "Account",
 };
 
@@ -246,7 +250,7 @@ export function getSecondaryGrouped(
     ? NAV_ITEMS.filter((i) => i.section === "primary" && !mobileTabHrefs.includes(i.href))
     : [];
 
-  const sections: NavSection[] = ["daily", "operations", "growth", "account"];
+  const sections: NavSection[] = ["daily", "operations", "growth", "admin", "account"];
   return sections
     .map((section) => {
       const sectionItems = getNavSection(section);
