@@ -581,7 +581,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { startDateOnly, endDateOnly, startIso, endIso } = getMonthWindow(year, month);
-    const results = await Promise.all([
+    const results = await Promise.allSettled([
       fetchTrips(admin.adminClient, admin.organizationId, startDateOnly, endDateOnly),
       fetchInvoices(admin.adminClient, admin.organizationId, startDateOnly, endDateOnly),
       fetchPayments(admin.adminClient, admin.organizationId, startIso, endIso),
@@ -592,7 +592,27 @@ export async function GET(request: NextRequest) {
       fetchPersonalEvents(admin.adminClient, admin.organizationId, startIso, endIso),
     ]);
 
-    const events = results.flat().sort((left, right) => {
+    const sourceLabels = [
+      "trips",
+      "invoices",
+      "payments",
+      "proposals",
+      "follow_ups",
+      "social_posts",
+      "concierge",
+      "personal",
+    ] as const;
+
+    const sourceErrors = results.flatMap((result, index) => {
+      if (result.status === "fulfilled") return [];
+      const label = sourceLabels[index];
+      logError(`[/api/calendar/events:GET] ${label} source failed`, result.reason);
+      return [{ source: label }];
+    });
+
+    const events = results.flatMap((result) =>
+      result.status === "fulfilled" ? result.value : [],
+    ).sort((left, right) => {
       return new Date(left.startDate).getTime() - new Date(right.startDate).getTime();
     });
 
@@ -606,6 +626,7 @@ export async function GET(request: NextRequest) {
         proposals: events.filter((event) => event.type === "proposal").length,
         followUps: events.filter((event) => event.type === "follow_up").length,
       },
+      sourceErrors,
       events,
     });
   } catch (error) {
