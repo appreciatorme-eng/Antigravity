@@ -64,6 +64,51 @@ function parseRupeesToPaise(value: string): number {
     return Math.round(normalized * 100);
 }
 
+const PAYMENT_MODE_OPTIONS: Array<{
+    value: SharePaymentMode;
+    label: string;
+    hint: string;
+    selectedClassName: string;
+    iconClassName: string;
+}> = [
+    {
+        value: "full_only",
+        label: "Full amount only",
+        hint: "Single checkout for the entire trip amount.",
+        selectedClassName: "border-emerald-300 bg-emerald-50 text-emerald-950 shadow-[inset_0_0_0_1px_rgba(16,185,129,0.16)]",
+        iconClassName: "bg-emerald-500/12 text-emerald-700",
+    },
+    {
+        value: "deposit_only",
+        label: "Deposit only",
+        hint: "Collect a booking deposit before confirmations.",
+        selectedClassName: "border-amber-300 bg-amber-50 text-amber-950 shadow-[inset_0_0_0_1px_rgba(245,158,11,0.16)]",
+        iconClassName: "bg-amber-500/12 text-amber-700",
+    },
+    {
+        value: "client_choice",
+        label: "Client chooses full or deposit",
+        hint: "Offer both options directly on the share page.",
+        selectedClassName: "border-sky-300 bg-sky-50 text-sky-950 shadow-[inset_0_0_0_1px_rgba(14,165,233,0.16)]",
+        iconClassName: "bg-sky-500/12 text-sky-700",
+    },
+];
+
+const DEPOSIT_PRESET_STYLES: Record<SharePaymentDepositPreset, { selectedClassName: string; idleClassName: string }> = {
+    25: {
+        selectedClassName: "border-violet-300 bg-violet-50 text-violet-950 shadow-[inset_0_0_0_1px_rgba(139,92,246,0.16)]",
+        idleClassName: "border-gray-200 bg-white text-gray-700 hover:border-violet-200 hover:bg-violet-50/60",
+    },
+    30: {
+        selectedClassName: "border-cyan-300 bg-cyan-50 text-cyan-950 shadow-[inset_0_0_0_1px_rgba(6,182,212,0.16)]",
+        idleClassName: "border-gray-200 bg-white text-gray-700 hover:border-cyan-200 hover:bg-cyan-50/60",
+    },
+    50: {
+        selectedClassName: "border-rose-300 bg-rose-50 text-rose-950 shadow-[inset_0_0_0_1px_rgba(244,63,94,0.16)]",
+        idleClassName: "border-gray-200 bg-white text-gray-700 hover:border-rose-200 hover:bg-rose-50/60",
+    },
+};
+
 export default function ShareTripModal({
     isOpen,
     onClose,
@@ -300,7 +345,7 @@ export default function ShareTripModal({
                             />
 
                             <section className="rounded-2xl border border-gray-200 bg-white">
-                                <div className="flex items-start justify-between gap-4 border-b border-gray-100 px-5 py-4">
+                                <div className="flex items-start justify-between gap-4 border-b border-gray-100 bg-gradient-to-r from-emerald-50 via-white to-sky-50 px-5 py-4">
                                     <div>
                                         <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
                                             <CreditCard className="h-4 w-4 text-primary" />
@@ -330,33 +375,39 @@ export default function ShareTripModal({
                                     ) : paymentEnabled ? (
                                         <>
                                             <div className="grid gap-4 md:grid-cols-2">
-                                                <div className="space-y-2">
+                                                <div className="space-y-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
                                                     <label className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
                                                         Payment mode
                                                     </label>
                                                     <div className="grid grid-cols-1 gap-2">
-                                                        {[
-                                                            { value: "full_only", label: "Full amount only" },
-                                                            { value: "deposit_only", label: "Deposit only" },
-                                                            { value: "client_choice", label: "Client chooses full or deposit" },
-                                                        ].map((option) => (
+                                                        {PAYMENT_MODE_OPTIONS.map((option) => (
                                                             <button
                                                                 key={option.value}
                                                                 type="button"
-                                                                onClick={() => setPaymentMode(option.value as SharePaymentMode)}
-                                                                className={`rounded-xl border px-3 py-2 text-left text-sm transition ${
+                                                                onClick={() => setPaymentMode(option.value)}
+                                                                className={`rounded-2xl border px-3 py-3 text-left text-sm transition ${
                                                                     paymentMode === option.value
-                                                                        ? "border-slate-900 bg-slate-900 text-white"
-                                                                        : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                                                                        ? option.selectedClassName
+                                                                        : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50"
                                                                 }`}
                                                             >
-                                                                {option.label}
+                                                                <div className="flex items-start gap-3">
+                                                                    <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${paymentMode === option.value ? option.iconClassName : "bg-gray-100 text-gray-500"}`}>
+                                                                        {option.value === "full_only" ? "F" : option.value === "deposit_only" ? "D" : "C"}
+                                                                    </div>
+                                                                    <div className="space-y-1">
+                                                                        <div className="font-semibold">{option.label}</div>
+                                                                        <div className={`text-xs ${paymentMode === option.value ? "text-current/80" : "text-gray-500"}`}>
+                                                                            {option.hint}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
                                                             </button>
                                                         ))}
                                                     </div>
                                                 </div>
 
-                                                <div className="space-y-2">
+                                                <div className="space-y-3 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4">
                                                     <label className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
                                                         Full amount (INR)
                                                     </label>
@@ -370,14 +421,24 @@ export default function ShareTripModal({
                                                             placeholder={formatRupeesFromPaise(paymentDefaults?.full_amount_paise)}
                                                         />
                                                     </div>
-                                                    <p className="text-xs text-gray-500">
+                                                    <div className="rounded-xl border border-white/80 bg-white/90 px-3 py-2">
+                                                        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">
+                                                            Live summary
+                                                        </div>
+                                                        <div className="mt-1 text-lg font-semibold text-emerald-950">
+                                                            {parseRupeesToPaise(fullAmountInput) > 0
+                                                                ? `₹${Math.round(parseRupeesToPaise(fullAmountInput) / 100).toLocaleString("en-IN")}`
+                                                                : "Enter amount"}
+                                                        </div>
+                                                    </div>
+                                                    <p className="text-xs text-gray-600">
                                                         Confirm the final INR amount the client should see on the share page.
                                                     </p>
                                                 </div>
                                             </div>
 
                                             {(paymentMode === "deposit_only" || paymentMode === "client_choice") ? (
-                                                <div className="space-y-2">
+                                                <div className="space-y-3 rounded-2xl border border-indigo-200 bg-indigo-50/55 p-4">
                                                     <label className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
                                                         Deposit preset
                                                     </label>
@@ -389,22 +450,27 @@ export default function ShareTripModal({
                                                                 onClick={() => setDepositPercent(preset)}
                                                                 className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
                                                                     depositPercent === preset
-                                                                        ? "border-slate-900 bg-slate-900 text-white"
-                                                                        : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                                                                        ? DEPOSIT_PRESET_STYLES[preset].selectedClassName
+                                                                        : DEPOSIT_PRESET_STYLES[preset].idleClassName
                                                                 }`}
                                                             >
                                                                 {preset}% deposit
                                                             </button>
                                                         ))}
                                                     </div>
-                                                    <p className="text-xs text-gray-500">
-                                                        Deposit amount: {depositAmountPaise > 0 ? `₹${Math.round(depositAmountPaise / 100).toLocaleString("en-IN")}` : "Enter the full amount first"}
-                                                    </p>
+                                                    <div className="flex flex-wrap items-center gap-3 text-xs">
+                                                        <span className="rounded-full bg-white px-3 py-1 font-semibold text-indigo-900 shadow-sm">
+                                                            Deposit amount: {depositAmountPaise > 0 ? `₹${Math.round(depositAmountPaise / 100).toLocaleString("en-IN")}` : "Enter the full amount first"}
+                                                        </span>
+                                                        <span className="text-indigo-700">
+                                                            The selected preset will appear as the quick-pay option on the client share page.
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             ) : null}
 
                                             <div className="grid gap-4 md:grid-cols-2">
-                                                <div className="space-y-2">
+                                                <div className="space-y-2 rounded-2xl border border-gray-200 bg-white p-4">
                                                     <label className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
                                                         Payment title
                                                     </label>
@@ -414,7 +480,7 @@ export default function ShareTripModal({
                                                         placeholder={paymentDefaults?.title || `${tripTitle} payment`}
                                                     />
                                                 </div>
-                                                <div className="space-y-2">
+                                                <div className="space-y-2 rounded-2xl border border-gray-200 bg-white p-4">
                                                     <label className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
                                                         Notes for client
                                                     </label>
