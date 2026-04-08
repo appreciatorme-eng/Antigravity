@@ -117,6 +117,9 @@ async function dispatch(
       routePath.startsWith("cron/") ||
       routePath === "auth/password-login" ||
       routePath === "onboarding/setup" ||
+      routePath.startsWith("share/") ||
+      routePath === "payments/verify" ||
+      routePath.startsWith("payments/links/") ||
       routePath === "payments/webhook" ||
       routePath === "whatsapp/webhook" ||
       routePath.startsWith("webhooks/");
