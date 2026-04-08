@@ -9,9 +9,8 @@ import {
     Calendar,
     Check,
     Clock3,
-    Copy,
-    FileText,
     Hotel,
+    Link2,
     Loader2,
     MapPin,
     ShieldCheck,
@@ -129,7 +128,7 @@ function ReadinessPill({
 
 export function TripGridCard({ trip, onDelete, deleting = false }: TripGridCardProps) {
     const { toast } = useToast();
-    const [copiedPortal, setCopiedPortal] = useState(false);
+    const [copiedShare, setCopiedShare] = useState(false);
     const readiness = computeReadiness(trip);
     const tripStatus = getStatusStyles(trip.status || "");
     const countdown = formatDepartureCountdown(trip.days_until_departure);
@@ -144,18 +143,17 @@ export function TripGridCard({ trip, onDelete, deleting = false }: TripGridCardP
     const durationLabel = formatDurationLabel(trip.itineraries?.duration_days);
     const clientLabel = trip.profiles?.full_name || "Walk-in client";
     const heroImage = useMemo(() => trip.hero_image || "", [trip.hero_image]);
-    const canCreateProposal = Boolean(trip.itinerary_id && trip.client_id && !trip.proposal_id);
 
-    const copyClientPortal = async () => {
-        if (!trip.proposal_share_token) return;
+    const copyShareLink = async () => {
+        if (!trip.share_code) return;
         try {
-            const url = `${window.location.origin}/p/${trip.proposal_share_token}`;
+            const url = `${window.location.origin}/share/${trip.share_code}`;
             await navigator.clipboard.writeText(url);
-            setCopiedPortal(true);
-            toast({ title: "Client portal copied", variant: "success" });
-            window.setTimeout(() => setCopiedPortal(false), 1800);
+            setCopiedShare(true);
+            toast({ title: "Client share link copied", variant: "success" });
+            window.setTimeout(() => setCopiedShare(false), 1800);
         } catch {
-            toast({ title: "Copy failed", description: "Unable to copy the client portal link right now.", variant: "error" });
+            toast({ title: "Copy failed", description: "Unable to copy the client share link right now.", variant: "error" });
         }
     };
 
@@ -232,7 +230,7 @@ export function TripGridCard({ trip, onDelete, deleting = false }: TripGridCardP
                 <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 space-y-2">
                         <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/40">
-                            <span>Commercial</span>
+                            <span>Tracker</span>
                             <span className={COMMERCIAL_COLORS[commercialStage]}>{COMMERCIAL_LABELS[commercialStage]}</span>
                         </div>
                         <PipelineRail stage={commercialStage} />
@@ -246,7 +244,7 @@ export function TripGridCard({ trip, onDelete, deleting = false }: TripGridCardP
                             </div>
                         ) : (
                             <div className="text-[11px] font-medium text-white/45">
-                                {trip.proposal_title || (trip.proposal_status ? `Proposal ${trip.proposal_status}` : "Commercial timeline is clear")}
+                                {trip.share_code ? "Client share is active" : "Client share not sent yet"}
                             </div>
                         )}
                         <div className="text-[11px] font-medium text-white/55" title={trip.viewed_at ? new Date(trip.viewed_at).toLocaleString("en-US") : undefined}>
@@ -307,53 +305,37 @@ export function TripGridCard({ trip, onDelete, deleting = false }: TripGridCardP
                     </div>
 
                     <div className="mt-4 grid gap-2 sm:grid-cols-2">
-                        {trip.proposal_id ? (
-                            <Link
-                                href={`/proposals/${trip.proposal_id}`}
-                                className="flex items-center gap-2 rounded-2xl border border-violet-400/20 bg-violet-500/10 px-3 py-3 text-sm font-medium text-violet-100 transition hover:bg-violet-500/18"
-                            >
-                                <FileText className="h-4 w-4 shrink-0" />
-                                <span className="truncate">{trip.proposal_status ? `Proposal ${trip.proposal_status}` : "Open proposal"}</span>
-                            </Link>
-                        ) : canCreateProposal ? (
-                            <Link
-                                href={`/proposals/create?clientId=${encodeURIComponent(trip.client_id || "")}&title=${encodeURIComponent(trip.itineraries?.trip_title || trip.destination || "")}&itineraryId=${encodeURIComponent(trip.itinerary_id || "")}`}
-                                className="flex items-center gap-2 rounded-2xl border border-violet-400/20 bg-violet-500/10 px-3 py-3 text-sm font-medium text-violet-100 transition hover:bg-violet-500/18"
-                            >
-                                <FileText className="h-4 w-4 shrink-0" />
-                                <span>Create proposal</span>
-                            </Link>
-                        ) : (
-                            <div className="flex items-center gap-2 rounded-2xl border border-white/8 bg-white/[0.04] px-3 py-3 text-sm text-white/40">
-                                <FileText className="h-4 w-4 shrink-0" />
-                                <span>Proposal not ready</span>
-                            </div>
-                        )}
-
-                        {trip.proposal_share_token ? (
+                        {trip.share_code ? (
                             <button
                                 type="button"
-                                onClick={copyClientPortal}
+                                onClick={copyShareLink}
                                 className="flex items-center justify-between gap-2 rounded-2xl border border-sky-400/20 bg-sky-500/10 px-3 py-3 text-sm font-medium text-sky-100 transition hover:bg-sky-500/18"
                             >
                                 <span className="flex items-center gap-2">
-                                    {copiedPortal ? <Check className="h-4 w-4 shrink-0" /> : <Copy className="h-4 w-4 shrink-0" />}
-                                    {copiedPortal ? "Portal copied" : "Client portal"}
+                                    {copiedShare ? <Check className="h-4 w-4 shrink-0" /> : <Link2 className="h-4 w-4 shrink-0" />}
+                                    {copiedShare ? "Link copied" : "Client share link"}
                                 </span>
                                 <ArrowUpRight className="h-3.5 w-3.5 opacity-70" />
                             </button>
-                        ) : trip.share_code ? (
+                        ) : (
+                            <div className="flex items-center gap-2 rounded-2xl border border-white/8 bg-white/[0.04] px-3 py-3 text-sm text-white/40">
+                                <Link2 className="h-4 w-4 shrink-0" />
+                                <span>No client share link yet</span>
+                            </div>
+                        )}
+
+                        {trip.share_code ? (
                             <Link
                                 href={`/share/${trip.share_code}`}
                                 className="flex items-center justify-between gap-2 rounded-2xl border border-white/8 bg-white/[0.04] px-3 py-3 text-sm font-medium text-white/75 transition hover:bg-white/[0.08]"
                             >
-                                <span className="truncate">Preview share</span>
+                                <span className="truncate">Open share preview</span>
                                 <ArrowUpRight className="h-3.5 w-3.5 opacity-70" />
                             </Link>
                         ) : (
                             <div className="flex items-center gap-2 rounded-2xl border border-white/8 bg-white/[0.04] px-3 py-3 text-sm text-white/40">
                                 <ShieldCheck className="h-4 w-4 shrink-0" />
-                                <span>No share touchpoint yet</span>
+                                <span>Waiting for operator share</span>
                             </div>
                         )}
                     </div>
