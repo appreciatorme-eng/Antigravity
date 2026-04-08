@@ -16,6 +16,9 @@ import { CheckCircle2, DownloadCloud, ShieldAlert } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { ItineraryBrandedFooter, type OrganizationBranding } from "@/components/itinerary-templates/ItineraryBrandedFooter";
 import { RouteSummary } from "@/components/itinerary-templates/RouteSummary";
+import type { SharePaymentConfig } from "@/lib/share/payment-config";
+import { authedFetch } from "@/lib/api/authed-fetch";
+import { SharePaymentSection } from "./SharePaymentSection";
 
 interface ShareTemplateRendererProps {
     token: string;
@@ -24,6 +27,7 @@ interface ShareTemplateRendererProps {
     organizationName: string;
     organizationBranding?: OrganizationBranding;
     client: { name: string; email?: string } | null;
+    paymentConfig: SharePaymentConfig | null;
 }
 
 export default function ShareTemplateRenderer({
@@ -33,6 +37,7 @@ export default function ShareTemplateRenderer({
     organizationName,
     organizationBranding,
     client,
+    paymentConfig,
 }: ShareTemplateRendererProps) {
     const { toast } = useToast();
     const [caching, setCaching] = useState(false);
@@ -47,7 +52,7 @@ export default function ShareTemplateRenderer({
                     urls: [window.location.href, `/api/share/${token}`],
                 });
             }
-            await fetch(`/api/share/${token}`, {
+            await authedFetch(`/api/share/${token}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ action: "mark_offline_ready" }),
@@ -209,6 +214,14 @@ export default function ShareTemplateRenderer({
                     <InteractivePricing pricing={itinerary.pricing ?? itinerary.extracted_pricing} />
                 </div>
             )}
+
+            {paymentConfig ? (
+                <SharePaymentSection
+                    token={token}
+                    tripTitle={itinerary.trip_title || itinerary.destination || "Trip"}
+                    paymentConfig={paymentConfig}
+                />
+            ) : null}
 
             {/* Client Approval & Feedback Section */}
             <div className="bg-gray-50 dark:bg-slate-950 border-t border-gray-100 dark:border-white/5">

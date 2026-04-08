@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
-import { Copy, Check, Clock, MapPin, Search, UserPlus, Plus, Loader2, Eye, FileText, Briefcase, Link2 } from "lucide-react";
+import { Copy, Check, Clock, MapPin, Search, UserPlus, Plus, Loader2, Eye, Briefcase, Link2 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,7 @@ import { useUpdateItinerary } from "@/lib/queries/itineraries";
 import { useQueryClient } from "@tanstack/react-query";
 import { authedFetch } from "@/lib/api/authed-fetch";
 import type { ClientComment } from "@/types/feedback";
+import { buildSharePaymentSummaryLabel, type SharePaymentSummary } from "@/lib/share/payment-config";
 
 interface PastItineraryCardProps {
     itinerary: {
@@ -32,6 +33,7 @@ interface PastItineraryCardProps {
         proposal_status?: string | null;
         proposal_share_token?: string | null;
         proposal_title?: string | null;
+        share_payment_summary?: SharePaymentSummary | null;
         client_comments?: ClientComment[];
         client_preferences?: import("@/types/feedback").ClientPreferences | null;
         wishlist_items?: string[];
@@ -265,6 +267,7 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
     const [nowMs] = useState(() => Date.now());
     const daysSinceCreation = Math.floor((nowMs - new Date(itinerary.created_at).getTime()) / 86_400_000);
     const isStale = daysSinceCreation > 7 && stage === "draft";
+    const paymentSummaryLabel = buildSharePaymentSummaryLabel(itinerary.share_payment_summary ?? null);
 
     const copyShareLink = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -274,14 +277,6 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
         setLinkCopied(true);
         setTimeout(() => setLinkCopied(false), 2000);
         toast({ title: "Link copied!", description: "Share this with your client." });
-    };
-
-    const copyClientPortalLink = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (!itinerary.proposal_share_token) return;
-        const url = `${window.location.origin}/p/${itinerary.proposal_share_token}`;
-        navigator.clipboard.writeText(url);
-        toast({ title: "Client portal copied", description: "Proposal portal link copied for the client.", variant: "success" });
     };
 
     const handleCardClick = () => {
@@ -525,7 +520,7 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
                 </div>
             )}
 
-            {(itinerary.trip_id || itinerary.proposal_id || (itinerary.share_code && itinerary.client_id && stage !== "converted")) && (
+            {(itinerary.trip_id || itinerary.share_code) && (
                 <div className="mx-4 mb-2 grid gap-2">
                     {itinerary.trip_id ? (
                         <Link
@@ -535,49 +530,35 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
                         >
                             <Briefcase className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                             <span className="text-[11px] font-semibold text-emerald-300">Open Linked Trip</span>
-                            <span className="text-[10px] text-emerald-400/70 ml-auto">Ops, pricing, client updates</span>
+                            <span className="text-[10px] text-emerald-400/70 ml-auto">Ops, pricing, traveler updates</span>
                         </Link>
                     ) : null}
 
-                    {itinerary.proposal_id ? (
-                        <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
-                            <Link
-                                href={`/proposals/${itinerary.proposal_id}`}
-                                onClick={(e) => e.stopPropagation()}
-                                className="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 transition-colors"
+                    {itinerary.share_code ? (
+                        <div className="grid gap-2 sm:grid-cols-2">
+                            <button
+                                type="button"
+                                onClick={copyShareLink}
+                                className="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 transition-colors"
                             >
-                                <FileText className="w-3.5 h-3.5 text-violet-400 shrink-0" />
-                                <span className="text-[11px] font-semibold text-violet-300">
-                                    {itinerary.proposal_status ? `Proposal: ${itinerary.proposal_status}` : "Open Proposal"}
-                                </span>
-                                <span className="text-[10px] text-violet-400/70 ml-auto truncate">
-                                    {itinerary.proposal_title || "Client quote"}
-                                </span>
+                                <Copy className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                                <span className="text-[11px] font-semibold text-sky-200">Copy client share link</span>
+                            </button>
+                            <Link
+                                href={`/share/${itinerary.share_code}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-colors"
+                            >
+                                <Link2 className="w-3.5 h-3.5 text-white/70 shrink-0" />
+                                <span className="text-[11px] font-semibold text-white/85">Open share preview</span>
                             </Link>
-
-                            {itinerary.proposal_share_token ? (
-                                <button
-                                    type="button"
-                                    onClick={copyClientPortalLink}
-                                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 transition-colors"
-                                >
-                                    <Link2 className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                                    <span className="text-[11px] font-semibold text-blue-300">Client Portal</span>
-                                </button>
-                            ) : null}
                         </div>
                     ) : null}
 
-                    {!itinerary.proposal_id && itinerary.share_code && itinerary.client_id && stage !== "converted" ? (
-                        <Link
-                            href={`/proposals/create?clientId=${encodeURIComponent(itinerary.client_id)}&title=${encodeURIComponent(itinerary.trip_title || itinerary.destination || "")}&itineraryId=${encodeURIComponent(itinerary.id)}`}
-                            onClick={(e) => e.stopPropagation()}
-                            className="flex items-center gap-2 w-full px-3 py-2 rounded-lg bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 transition-colors"
-                        >
-                            <FileText className="w-3.5 h-3.5 text-violet-400 shrink-0" />
-                            <span className="text-[11px] font-semibold text-violet-300">Create Proposal</span>
-                            <span className="text-[10px] text-violet-400/70 ml-auto">Add pricing & close the deal</span>
-                        </Link>
+                    {paymentSummaryLabel ? (
+                        <div className="rounded-lg border border-white/8 bg-white/5 px-3 py-2 text-[11px] text-white/72">
+                            {paymentSummaryLabel}
+                        </div>
                     ) : null}
                 </div>
             )}

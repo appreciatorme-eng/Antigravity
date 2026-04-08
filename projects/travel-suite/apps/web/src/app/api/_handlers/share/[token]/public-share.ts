@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 
 import type { Json } from "@/lib/database.types";
+import { normalizeSharePaymentConfig } from "@/lib/share/payment-config";
 import { sanitizeText } from "@/lib/security/sanitize";
 
 export const SHARE_PUBLIC_STATE_SELECT = [
@@ -15,6 +16,7 @@ export const SHARE_PUBLIC_STATE_SELECT = [
   "wishlist_items",
   "self_service_status",
   "offline_pack_ready",
+  "payment_config",
 ].join(", ");
 
 export type ShareComment = {
@@ -49,6 +51,7 @@ export type ShareRow = {
   wishlist_items?: Json;
   self_service_status?: string | null;
   offline_pack_ready?: boolean | null;
+  payment_config?: Json | null;
 };
 
 export function parseCommentArray(value: Json | null | undefined): ShareComment[] {
@@ -152,5 +155,6 @@ export function buildPublicShareResponse(share: ShareRow) {
       sanitizeText(share.self_service_status, { maxLength: 24 }) || "active",
     offline_pack_ready: share.offline_pack_ready === true,
     expires_at: share.expires_at || null,
+    payment_config: normalizeSharePaymentConfig(share.payment_config),
   };
 }

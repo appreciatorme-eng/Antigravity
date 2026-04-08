@@ -14,6 +14,7 @@ import {
 import { GlassBadge } from "@/components/glass/GlassBadge";
 import { cn } from "@/lib/utils";
 import { formatINRShort } from "@/lib/india/formats";
+import { buildSharePaymentSummaryLabel } from "@/lib/share/payment-config";
 import { useUpdateTripStatus } from "@/lib/queries/trips";
 import type { EnrichedTrip } from "./types";
 import { STATUS_OPTIONS } from "./types";
@@ -45,6 +46,7 @@ export function TripListRow({ trip, onDelete, deleting = false }: TripListRowPro
     const urgencyColor = departureUrgencyColor(trip.days_until_departure);
     const urgencyBg = departureUrgencyBg(trip.days_until_departure);
     const commercialStage = deriveCommercialStage(trip);
+    const paymentSummaryLabel = buildSharePaymentSummaryLabel(trip.share_payment_summary ?? null);
     const updateStatus = useUpdateTripStatus();
 
     const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -98,6 +100,13 @@ export function TripListRow({ trip, onDelete, deleting = false }: TripListRowPro
                                 {trip.viewed_at ? `Last viewed ${formatRelativeTime(trip.viewed_at)}` : "Last viewed never"}
                             </span>
                         </div>
+                        {paymentSummaryLabel ? (
+                            <div className="flex items-center gap-1.5 text-text-muted">
+                                <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest">
+                                    {paymentSummaryLabel}
+                                </span>
+                            </div>
+                        ) : null}
                     </div>
                 </div>
             </div>

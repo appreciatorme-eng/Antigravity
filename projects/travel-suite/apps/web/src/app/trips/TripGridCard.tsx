@@ -21,6 +21,7 @@ import {
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { formatINRShort } from "@/lib/india/formats";
+import { buildSharePaymentSummaryLabel } from "@/lib/share/payment-config";
 import type { EnrichedTrip, ReadinessLevel } from "./types";
 import {
     computeReadiness,
@@ -134,6 +135,7 @@ export function TripGridCard({ trip, onDelete, deleting = false }: TripGridCardP
     const countdown = formatDepartureCountdown(trip.days_until_departure);
     const commercialStage = deriveCommercialStage(trip);
     const clientActivity = hasTripClientActivity(trip);
+    const paymentSummaryLabel = buildSharePaymentSummaryLabel(trip.share_payment_summary ?? null);
     const amountLabel = trip.invoice?.total_amount
         ? formatINRShort(trip.invoice.total_amount)
         : "Pricing pending";
@@ -250,6 +252,11 @@ export function TripGridCard({ trip, onDelete, deleting = false }: TripGridCardP
                         <div className="text-[11px] font-medium text-white/55" title={trip.viewed_at ? new Date(trip.viewed_at).toLocaleString("en-US") : undefined}>
                             {trip.viewed_at ? `Last viewed ${formatRelativeTime(trip.viewed_at)}` : "Last viewed never"}
                         </div>
+                        {paymentSummaryLabel ? (
+                            <div className="text-[11px] font-medium text-white/55">
+                                {paymentSummaryLabel}
+                            </div>
+                        ) : null}
                     </div>
 
                     <div className="text-right">

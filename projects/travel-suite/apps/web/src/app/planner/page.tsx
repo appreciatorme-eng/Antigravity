@@ -41,6 +41,7 @@ import { GuidedTour } from '@/components/tour/GuidedTour';
 import type { ClientComment, ClientPreferences } from "@/types/feedback";
 import type { ItineraryLike, ItineraryStage } from "./planner.types";
 import { logError } from "@/lib/observability/logger";
+import type { SharePaymentSummary } from "@/lib/share/payment-config";
 
 /** Shape returned by the itineraries API and consumed by PastItineraryCard */
 interface PastItineraryItem extends ItineraryLike {
@@ -57,6 +58,7 @@ interface PastItineraryItem extends ItineraryLike {
     proposal_status?: string | null;
     proposal_share_token?: string | null;
     proposal_title?: string | null;
+    share_payment_summary?: SharePaymentSummary | null;
     client_comments?: ClientComment[];
     client_preferences?: ClientPreferences | null;
     wishlist_items?: string[];

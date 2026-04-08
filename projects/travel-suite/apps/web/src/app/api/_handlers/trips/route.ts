@@ -5,6 +5,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { logError } from "@/lib/observability/logger";
 import { getDeterministicFallback } from "@/lib/image-search";
+import type { SharePaymentSummary } from "@/lib/share/payment-config";
+import { normalizeSharePaymentConfig } from "@/lib/share/payment-config";
 
 const supabaseAdmin = createAdminClient();
 
@@ -70,6 +72,7 @@ interface SharedItineraryRow {
     itinerary_id: string;
     share_code: string | null;
     status: string | null;
+    payment_config: unknown;
     client_comments: unknown;
     client_preferences: unknown;
     wishlist_items: unknown;
@@ -88,6 +91,13 @@ interface ProposalRow {
     created_at: string;
 }
 
+interface PaymentLinkSummaryRow {
+    booking_id: string | null;
+    status: "pending" | "viewed" | "paid" | "expired" | "cancelled" | null;
+    paid_at: string | null;
+    created_at: string;
+}
+
 interface TripPresentationMetadata {
     hero_image: string;
     share_code: string | null;
@@ -99,6 +109,7 @@ interface TripPresentationMetadata {
     client_comments: unknown[];
     client_preferences: unknown | null;
     wishlist_items: string[];
+    share_payment_summary: SharePaymentSummary | null;
     proposal_id: string | null;
     proposal_status: string | null;
     proposal_share_token: string | null;
@@ -151,11 +162,11 @@ async function loadTripPresentationMetadata(
 
     const tripIds = rows.map((row) => row.id);
 
-    const [sharesResult, proposalsResult] = await Promise.all([
+    const [sharesResult, proposalsResult, paymentLinksResult] = await Promise.all([
         itineraryIds.length > 0
             ? supabaseAdmin
                 .from("shared_itineraries")
-                .select("itinerary_id, share_code, status, client_comments, client_preferences, wishlist_items, viewed_at, approved_at, approved_by, self_service_status")
+                .select("itinerary_id, share_code, status, payment_config, client_comments, client_preferences, wishlist_items, viewed_at, approved_at, approved_by, self_service_status")
                 .in("itinerary_id", itineraryIds)
             : Promise.resolve({ data: [], error: null }),
         tripIds.length > 0
@@ -163,6 +174,13 @@ async function loadTripPresentationMetadata(
                 .from("proposals")
                 .select("id, trip_id, status, share_token, title, created_at")
                 .in("trip_id", tripIds)
+                .order("created_at", { ascending: false })
+            : Promise.resolve({ data: [], error: null }),
+        tripIds.length > 0
+            ? supabaseAdmin
+                .from("payment_links")
+                .select("booking_id, status, paid_at, created_at")
+                .in("booking_id", tripIds)
                 .order("created_at", { ascending: false })
             : Promise.resolve({ data: [], error: null }),
     ]);
@@ -179,11 +197,19 @@ async function loadTripPresentationMetadata(
         proposalMap.set(proposal.trip_id, proposal);
     }
 
+    const paymentLinkMap = new Map<string, PaymentLinkSummaryRow>();
+    for (const paymentLink of (paymentLinksResult.data || []) as PaymentLinkSummaryRow[]) {
+        if (!paymentLink.booking_id || paymentLinkMap.has(paymentLink.booking_id)) continue;
+        paymentLinkMap.set(paymentLink.booking_id, paymentLink);
+    }
+
     const metadataMap = new Map<string, TripPresentationMetadata>();
     for (const row of rows) {
         const itinerary = Array.isArray(row.itineraries) ? row.itineraries[0] : row.itineraries;
         const share = itinerary?.id ? shareMap.get(itinerary.id) : undefined;
         const proposal = proposalMap.get(row.id);
+        const latestPaymentLink = paymentLinkMap.get(row.id);
+        const paymentConfig = normalizeSharePaymentConfig(share?.payment_config ?? null);
 
         metadataMap.set(row.id, {
             hero_image: extractHeroImage(itinerary?.raw_data, itinerary?.destination),
@@ -196,6 +222,11 @@ async function loadTripPresentationMetadata(
             client_comments: Array.isArray(share?.client_comments) ? share.client_comments : [],
             client_preferences: share?.client_preferences ?? null,
             wishlist_items: Array.isArray(share?.wishlist_items) ? (share.wishlist_items as string[]) : [],
+            share_payment_summary: paymentConfig ? {
+                config: paymentConfig,
+                latest_status: latestPaymentLink?.status ?? null,
+                latest_paid_at: latestPaymentLink?.paid_at ?? null,
+            } : null,
             proposal_id: proposal?.id ?? null,
             proposal_status: proposal?.status ?? null,
             proposal_share_token: proposal?.share_token ?? null,
@@ -419,6 +450,7 @@ export async function GET(req: NextRequest) {
                     client_comments: presentation?.client_comments ?? [],
                     client_preferences: presentation?.client_preferences ?? null,
                     wishlist_items: presentation?.wishlist_items ?? [],
+                    share_payment_summary: presentation?.share_payment_summary ?? null,
                     proposal_id: presentation?.proposal_id ?? null,
                     proposal_status: presentation?.proposal_status ?? null,
                     proposal_share_token: presentation?.proposal_share_token ?? null,
@@ -542,6 +574,7 @@ export async function GET(req: NextRequest) {
                 client_comments: presentation?.client_comments ?? [],
                 client_preferences: presentation?.client_preferences ?? null,
                 wishlist_items: presentation?.wishlist_items ?? [],
+                share_payment_summary: presentation?.share_payment_summary ?? null,
                 proposal_id: presentation?.proposal_id ?? null,
                 proposal_status: presentation?.proposal_status ?? null,
                 proposal_share_token: presentation?.proposal_share_token ?? null,

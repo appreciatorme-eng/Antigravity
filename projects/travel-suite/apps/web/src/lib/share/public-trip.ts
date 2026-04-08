@@ -1,6 +1,7 @@
 export const SHARED_ITINERARY_PUBLIC_SELECT = `
   id,
   expires_at,
+  payment_config,
   template_id,
   status,
   viewed_at,

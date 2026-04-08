@@ -3,6 +3,9 @@ import { randomUUID } from "crypto";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { logError } from "@/lib/observability/logger";
+import type { Json } from "@/lib/database.types";
+import { resolveSharePaymentContext } from "@/lib/share/admin-share";
+import { normalizeSharePaymentConfig } from "@/lib/share/payment-config";
 
 /** Resolve the itinerary_id for a trip, scoped to the admin's org. */
 async function resolveItineraryId(
@@ -42,7 +45,11 @@ async function findLinkedProposalShare(
 async function findOrCreateShareLink(
   adminClient: ReturnType<typeof import("@/lib/supabase/admin").createAdminClient>,
   itineraryId: string,
-  options: { templateId?: string; expiresAt?: string } = {},
+  options: {
+    templateId?: string;
+    expiresAt?: string;
+    paymentConfig?: ReturnType<typeof normalizeSharePaymentConfig> | undefined;
+  } = {},
 ) {
   // Check if a shared_itineraries row already exists
   const { data: existing } = await adminClient
@@ -52,11 +59,21 @@ async function findOrCreateShareLink(
     .maybeSingle();
 
   if (existing?.share_code) {
-    // If a template was requested, update it on the existing row
+    const updates: Record<string, unknown> = {};
     if (options.templateId) {
+      updates.template_id = options.templateId;
+    }
+    if (options.expiresAt) {
+      updates.expires_at = options.expiresAt;
+    }
+    if (options.paymentConfig !== undefined) {
+      updates.payment_config = (options.paymentConfig || null) as unknown as Json;
+    }
+
+    if (Object.keys(updates).length > 0) {
       await adminClient
         .from("shared_itineraries")
-        .update({ template_id: options.templateId })
+        .update(updates)
         .eq("id", existing.id);
     }
     return { shareCode: existing.share_code, error: null };
@@ -72,6 +89,7 @@ async function findOrCreateShareLink(
       status: "active",
       ...(options.templateId ? { template_id: options.templateId } : {}),
       ...(options.expiresAt ? { expires_at: options.expiresAt } : {}),
+      payment_config: (options.paymentConfig || null) as unknown as Json,
     });
 
   if (insertError) {
@@ -96,6 +114,11 @@ export async function GET(
   if (!itineraryId) {
     return apiError("Trip has no itinerary", 404);
   }
+  const paymentContext = await resolveSharePaymentContext({
+    adminClient,
+    itineraryId,
+    tripId,
+  });
 
   const { shareCode, error } = await findOrCreateShareLink(adminClient, itineraryId);
   if (error || !shareCode) {
@@ -104,13 +127,15 @@ export async function GET(
   }
 
   return apiSuccess({
-    shareUrl: linkedProposalShareToken
-      ? `https://tripbuilt.com/portal/${linkedProposalShareToken}`
-      : `https://tripbuilt.com/share/${shareCode}`,
+    shareUrl: `https://tripbuilt.com/share/${shareCode}`,
     previewUrl: `https://tripbuilt.com/share/${shareCode}`,
     portalUrl: linkedProposalShareToken
       ? `https://tripbuilt.com/portal/${linkedProposalShareToken}`
       : null,
+    paymentEligible: paymentContext.paymentEligible,
+    paymentDisabledReason: paymentContext.paymentDisabledReason,
+    paymentDefaults: paymentContext.paymentDefaults,
+    paymentConfig: paymentContext.existingPaymentConfig,
   });
 }
 
@@ -132,17 +157,28 @@ export async function POST(
 
   let templateId: string | undefined;
   let expiresAt: string | undefined;
+  let paymentConfig: ReturnType<typeof normalizeSharePaymentConfig> | undefined;
   try {
     const body = await request.json();
     templateId = typeof body.templateId === "string" ? body.templateId : undefined;
     expiresAt = typeof body.expiresAt === "string" ? body.expiresAt : undefined;
+    if (Object.prototype.hasOwnProperty.call(body, "paymentConfig")) {
+      paymentConfig = normalizeSharePaymentConfig(body.paymentConfig ?? null);
+    }
   } catch {
     // Body is optional for POST — defaults are fine
   }
 
+  const paymentContext = await resolveSharePaymentContext({
+    adminClient,
+    itineraryId,
+    tripId,
+  });
+
   const { shareCode, error } = await findOrCreateShareLink(adminClient, itineraryId, {
     templateId,
     expiresAt,
+    paymentConfig,
   });
   if (error || !shareCode) {
     logError("Failed to create share link (POST)", error);
@@ -151,12 +187,14 @@ export async function POST(
 
   return apiSuccess({
     shareCode,
-    shareUrl: linkedProposalShareToken
-      ? `https://tripbuilt.com/portal/${linkedProposalShareToken}`
-      : `https://tripbuilt.com/share/${shareCode}`,
+    shareUrl: `https://tripbuilt.com/share/${shareCode}`,
     previewUrl: `https://tripbuilt.com/share/${shareCode}`,
     portalUrl: linkedProposalShareToken
       ? `https://tripbuilt.com/portal/${linkedProposalShareToken}`
       : null,
+    paymentEligible: paymentContext.paymentEligible,
+    paymentDisabledReason: paymentContext.paymentDisabledReason,
+    paymentDefaults: paymentContext.paymentDefaults,
+    paymentConfig: paymentConfig === undefined ? paymentContext.existingPaymentConfig : paymentConfig,
   });
 }

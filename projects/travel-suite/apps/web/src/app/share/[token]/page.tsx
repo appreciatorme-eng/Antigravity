@@ -16,6 +16,7 @@ import {
     populateItineraryImages,
 } from "@/lib/image-search";
 import type { Json } from "@/lib/supabase/database.types";
+import { normalizeSharePaymentConfig } from "@/lib/share/payment-config";
 
 export async function generateMetadata({
     params,
@@ -148,6 +149,7 @@ export default async function SharedTripPage({
             };
         } | null;
         template_id?: string;
+        payment_config?: Json | null;
     };
     const itinerary = shareRecord.itineraries;
     if (!itinerary) {
@@ -239,6 +241,7 @@ export default async function SharedTripPage({
 
     // Resolve the template (default to safari_story — the first premium template)
     const templateId: string = shareRecord.template_id || "safari_story";
+    const paymentConfig = normalizeSharePaymentConfig(shareRecord.payment_config ?? null);
 
     // Delegate rendering to a client component — all template components use "use client"
     // and cannot be dynamically resolved inside a server component.
@@ -250,6 +253,7 @@ export default async function SharedTripPage({
             organizationName={organizationName}
             organizationBranding={organizationBranding}
             client={clientName ? { name: clientName } : null}
+            paymentConfig={paymentConfig}
         />
     );
 }

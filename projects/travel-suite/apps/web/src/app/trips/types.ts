@@ -1,4 +1,5 @@
 import type { ClientComment, ClientPreferences } from "@/types/feedback";
+import type { SharePaymentSummary } from "@/lib/share/payment-config";
 
 export interface TripInvoiceSummary {
     total_amount: number;
@@ -42,6 +43,7 @@ export interface EnrichedTrip {
     client_comments?: ClientComment[];
     client_preferences?: ClientPreferences | null;
     wishlist_items?: string[];
+    share_payment_summary?: SharePaymentSummary | null;
     proposal_id?: string | null;
     proposal_status?: string | null;
     proposal_share_token?: string | null;

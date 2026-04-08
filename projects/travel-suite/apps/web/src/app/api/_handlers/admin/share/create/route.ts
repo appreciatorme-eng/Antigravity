@@ -9,6 +9,8 @@ import {
   populateItineraryImages,
 } from "@/lib/image-search";
 import type { Json } from "@/lib/database.types";
+import { resolveSharePaymentContext } from "@/lib/share/admin-share";
+import { normalizeSharePaymentConfig } from "@/lib/share/payment-config";
 
 /**
  * POST /api/admin/share/create
@@ -40,6 +42,10 @@ export async function POST(request: NextRequest) {
   const rawItineraryData = body.rawItineraryData as Record<string, unknown> | undefined;
   const templateId =
     typeof body.templateId === "string" ? body.templateId : "safari_story";
+  const paymentConfig =
+    Object.prototype.hasOwnProperty.call(body, "paymentConfig")
+      ? normalizeSharePaymentConfig(body.paymentConfig ?? null)
+      : undefined;
 
   // Auto-save unsaved itinerary if needed
   if (!itineraryId && rawItineraryData) {
@@ -145,6 +151,11 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  const paymentContext = await resolveSharePaymentContext({
+    adminClient,
+    itineraryId,
+  });
+
   // Check for existing share link
   const { data: existing } = await adminClient
     .from("shared_itineraries")
@@ -153,16 +164,24 @@ export async function POST(request: NextRequest) {
     .maybeSingle();
 
   if (existing?.share_code) {
-    // Update template on existing row
+    const updates: Record<string, unknown> = { template_id: templateId };
+    if (paymentConfig !== undefined) {
+      updates.payment_config = (paymentConfig || null) as unknown as Json;
+    }
+
     await adminClient
       .from("shared_itineraries")
-      .update({ template_id: templateId })
+      .update(updates)
       .eq("id", existing.id);
 
     return apiSuccess({
       shareCode: existing.share_code,
       shareUrl: `https://tripbuilt.com/share/${existing.share_code}`,
       itineraryId,
+      paymentEligible: paymentContext.paymentEligible,
+      paymentDisabledReason: paymentContext.paymentDisabledReason,
+      paymentDefaults: paymentContext.paymentDefaults,
+      paymentConfig: paymentConfig === undefined ? paymentContext.existingPaymentConfig : paymentConfig,
     });
   }
 
@@ -179,6 +198,7 @@ export async function POST(request: NextRequest) {
       status: "active",
       template_id: templateId,
       expires_at: expiresAt.toISOString(),
+      payment_config: (paymentConfig || null) as unknown as Json,
     });
 
   if (insertError) {
@@ -190,5 +210,9 @@ export async function POST(request: NextRequest) {
     shareCode,
     shareUrl: `https://tripbuilt.com/share/${shareCode}`,
     itineraryId,
+    paymentEligible: paymentContext.paymentEligible,
+    paymentDisabledReason: paymentContext.paymentDisabledReason,
+    paymentDefaults: paymentContext.paymentDefaults,
+    paymentConfig: paymentConfig === undefined ? paymentContext.existingPaymentConfig : paymentConfig,
   });
 }

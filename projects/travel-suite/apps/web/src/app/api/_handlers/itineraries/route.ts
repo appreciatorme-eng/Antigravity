@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import { logError, logWarn } from "@/lib/observability/logger";
 import { getDeterministicFallback, getWikiImage } from "@/lib/image-search";
+import { normalizeSharePaymentConfig } from "@/lib/share/payment-config";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -61,6 +62,7 @@ export async function GET(request: NextRequest) {
     const shareMap: Record<string, {
       share_code: string;
       status: string | null;
+      payment_config: unknown;
       client_comments: unknown;
       client_preferences: unknown;
       wishlist_items: unknown;
@@ -73,7 +75,7 @@ export async function GET(request: NextRequest) {
     if (itineraryIds.length > 0) {
       const { data: shares } = await supabase
         .from("shared_itineraries")
-        .select("itinerary_id, share_code, status, client_comments, client_preferences, wishlist_items, viewed_at, approved_at, approved_by, self_service_status")
+        .select("itinerary_id, share_code, status, payment_config, client_comments, client_preferences, wishlist_items, viewed_at, approved_at, approved_by, self_service_status")
         .in("itinerary_id", itineraryIds);
 
       if (shares) {
@@ -82,6 +84,7 @@ export async function GET(request: NextRequest) {
             shareMap[s.itinerary_id] = {
               share_code: s.share_code,
               status: s.status,
+              payment_config: s.payment_config ?? null,
               client_comments: s.client_comments ?? [],
               client_preferences: s.client_preferences ?? null,
               wishlist_items: s.wishlist_items ?? [],
@@ -116,12 +119,20 @@ export async function GET(request: NextRequest) {
 
     const proposalMap: Record<string, { id: string; status: string | null; share_token: string | null; title: string | null }> = {};
     const linkedTripIds = [...new Set(Object.values(tripIdByItineraryId))];
+    const paymentLinkMap: Record<string, { status: "pending" | "viewed" | "paid" | "expired" | "cancelled" | null; paid_at: string | null }> = {};
     if (linkedTripIds.length > 0) {
-      const { data: proposals } = await supabase
-        .from("proposals")
-        .select("id, trip_id, status, share_token, title, created_at")
-        .in("trip_id", linkedTripIds)
-        .order("created_at", { ascending: false });
+      const [{ data: proposals }, { data: paymentLinks }] = await Promise.all([
+        supabase
+          .from("proposals")
+          .select("id, trip_id, status, share_token, title, created_at")
+          .in("trip_id", linkedTripIds)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("payment_links")
+          .select("booking_id, status, paid_at, created_at")
+          .in("booking_id", linkedTripIds)
+          .order("created_at", { ascending: false }),
+      ]);
 
       if (proposals) {
         for (const proposal of proposals) {
@@ -131,6 +142,16 @@ export async function GET(request: NextRequest) {
             status: proposal.status ?? null,
             share_token: proposal.share_token ?? null,
             title: proposal.title ?? null,
+          };
+        }
+      }
+
+      if (paymentLinks) {
+        for (const paymentLink of paymentLinks) {
+          if (!paymentLink.booking_id || paymentLinkMap[paymentLink.booking_id]) continue;
+          paymentLinkMap[paymentLink.booking_id] = {
+            status: paymentLink.status as "pending" | "viewed" | "paid" | "expired" | "cancelled" | null,
+            paid_at: paymentLink.paid_at ?? null,
           };
         }
       }
@@ -192,6 +213,8 @@ export async function GET(request: NextRequest) {
       const share = shareMap[id];
       const tripId = tripMap[id]?.id ?? null;
       const linkedProposal = tripId ? proposalMap[tripId] : null;
+      const paymentConfig = normalizeSharePaymentConfig(share?.payment_config ?? null);
+      const latestPaymentLink = tripId ? paymentLinkMap[tripId] : null;
 
 
       // Strip raw_data from response (too large for list view)
@@ -214,6 +237,11 @@ export async function GET(request: NextRequest) {
         client_comments: share?.client_comments ?? [],
         client_preferences: share?.client_preferences ?? null,
         wishlist_items: share?.wishlist_items ?? [],
+        share_payment_summary: paymentConfig ? {
+          config: paymentConfig,
+          latest_status: latestPaymentLink?.status ?? null,
+          latest_paid_at: latestPaymentLink?.paid_at ?? null,
+        } : null,
         viewed_at: share?.viewed_at ?? null,
         approved_at: share?.approved_at ?? null,
         approved_by: share?.approved_by ?? null,

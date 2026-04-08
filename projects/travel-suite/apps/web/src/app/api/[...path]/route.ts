@@ -104,6 +104,7 @@ const routes = createCatchAllHandlers([
   ["settings/team/:id", () => import("@/app/api/_handlers/settings/team/[id]/route")],
   ["settings/team", () => import("@/app/api/_handlers/settings/team/route")],
   ["settings/upi",              () => import("@/app/api/_handlers/settings/upi/route")],
+  ["share/:token/payment", () => import("@/app/api/_handlers/share/[token]/payment/route")],
   ["share/:token", () => import("@/app/api/_handlers/share/[token]/route")],
   ["subscriptions/cancel", () => import("@/app/api/_handlers/subscriptions/cancel/route")],
   ["subscriptions/downgrade", () => import("@/app/api/_handlers/subscriptions/downgrade/route")],

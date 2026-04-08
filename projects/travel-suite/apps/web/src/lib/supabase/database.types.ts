@@ -5232,6 +5232,7 @@ export type Database = {
           id: string
           itinerary_id: string | null
           offline_pack_ready: boolean | null
+          payment_config: Json | null
           recipient_phone: string | null
           self_service_status: string | null
           share_code: string
@@ -5250,6 +5251,7 @@ export type Database = {
           id?: string
           itinerary_id?: string | null
           offline_pack_ready?: boolean | null
+          payment_config?: Json | null
           recipient_phone?: string | null
           self_service_status?: string | null
           share_code: string
@@ -5268,6 +5270,7 @@ export type Database = {
           id?: string
           itinerary_id?: string | null
           offline_pack_ready?: boolean | null
+          payment_config?: Json | null
           recipient_phone?: string | null
           self_service_status?: string | null
           share_code?: string
