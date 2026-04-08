@@ -165,18 +165,6 @@ export async function resolveSharePaymentContext({
   const pricingAmountPaise = extractConfiguredAmountPaise(resolvedItinerary.raw_data);
   const fullAmountPaise = invoiceTotalPaise > 0 ? invoiceTotalPaise : pricingAmountPaise;
 
-  if (fullAmountPaise <= 0) {
-    return {
-      linkedTripId: linkedTrip.id,
-      linkedClientId: linkedTrip.client_id,
-      paymentEligible: false,
-      paymentDisabledReason: "Add or confirm the payable INR amount before enabling payment.",
-      paymentDefaults: null,
-      tripTitle: resolvedTripTitle,
-      existingPaymentConfig,
-    };
-  }
-
   const client = (clientResult.data as ClientProfileRow | null) ?? null;
 
   return {
@@ -185,7 +173,8 @@ export async function resolveSharePaymentContext({
     paymentEligible: true,
     paymentDisabledReason: null,
     paymentDefaults: {
-      full_amount_paise: fullAmountPaise,
+      // Missing pricing should not block payment setup; the operator can confirm the INR amount in the modal.
+      full_amount_paise: Math.max(fullAmountPaise, 0),
       currency: "INR",
       client_name: client?.full_name ?? null,
       client_email: client?.email ?? null,
