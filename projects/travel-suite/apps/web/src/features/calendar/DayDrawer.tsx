@@ -9,15 +9,17 @@ import { DayEventRow } from "./DayEventRow";
 import { EVENT_TYPE_CONFIG, ALL_EVENT_TYPES } from "./constants";
 import { isToday } from "./utils";
 import type { CalendarEvent, CalendarEventType } from "./types";
+import type { CalendarSourceError } from "./useCalendarEvents";
 
 interface DayDrawerProps {
   day: { year: number; month: number; day: number };
   events: CalendarEvent[];
+  sourceErrors: CalendarSourceError[];
   onClose: () => void;
   onEventClick: (event: CalendarEvent) => void;
 }
 
-export function DayDrawer({ day, events, onClose, onEventClick }: DayDrawerProps) {
+export function DayDrawer({ day, events, sourceErrors, onClose, onEventClick }: DayDrawerProps) {
   const dateLabel = new Date(day.year, day.month, day.day).toLocaleDateString("en-US", {
     weekday: "long", month: "long", day: "numeric",
   });
@@ -122,6 +124,11 @@ export function DayDrawer({ day, events, onClose, onEventClick }: DayDrawerProps
             <div className="flex flex-col items-center justify-center h-full text-center">
               <Calendar className="w-10 h-10 text-slate-300 mb-3" />
               <p className="text-sm text-slate-400">No events on this day</p>
+              {sourceErrors.length > 0 && (
+                <p className="mt-2 max-w-[220px] text-[11px] text-amber-600">
+                  Some event sources failed to load for this month.
+                </p>
+              )}
             </div>
           ) : (
             <div className="space-y-5">
@@ -160,7 +167,9 @@ export function DayDrawer({ day, events, onClose, onEventClick }: DayDrawerProps
           <p className="text-center text-[11px] font-medium text-slate-400">
             {events.length > 0
               ? "Click any event for details."
-              : "No linked records for this date."}
+              : sourceErrors.length > 0
+                ? "Some sources failed to load for this date."
+                : "No linked records for this date."}
           </p>
         </div>
       </motion.div>

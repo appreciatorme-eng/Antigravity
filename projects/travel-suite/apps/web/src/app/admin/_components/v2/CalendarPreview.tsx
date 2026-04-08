@@ -1,10 +1,15 @@
 'use client';
 
 import Link from 'next/link';
+import { useMemo } from 'react';
+import { useQueries } from '@tanstack/react-query';
 import { CalendarDays, ChevronRight } from 'lucide-react';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { GlassSkeleton } from '@/components/glass/GlassSkeleton';
 import { cn } from '@/lib/utils';
+import { fetchCalendarFeed, calendarKeys } from '@/features/calendar/useCalendarEvents';
+import { getEventsForDay } from '@/features/calendar/utils';
+import type { CalendarEvent } from '@/features/calendar/types';
 import type { DashboardV2State } from './types';
 
 // ---------------------------------------------------------------------------
@@ -22,8 +27,7 @@ interface DayEvents {
   quotes: number;
 }
 
-function buildWeekDays(data: DashboardV2State): DayEvents[] {
-  const cc = data.critical?.commandCenter;
+function buildWeekDays(events: CalendarEvent[]): DayEvents[] {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -32,38 +36,18 @@ function buildWeekDays(data: DashboardV2State): DayEvents[] {
   for (let i = 0; i < 7; i++) {
     const date = new Date(today);
     date.setDate(today.getDate() + i);
-    const dateStr = [
+
+    const dayEvents = getEventsForDay(
+      events,
       date.getFullYear(),
-      String(date.getMonth() + 1).padStart(2, "0"),
-      String(date.getDate()).padStart(2, "0"),
-    ].join("-");
+      date.getMonth(),
+      date.getDate(),
+    );
 
-    let departures = 0;
-    let payments = 0;
-    let followUps = 0;
-    let quotes = 0;
-
-    if (cc) {
-      departures = cc.departures.filter((d) => {
-        if (!d.start_date) return false;
-        return d.start_date.slice(0, 10) === dateStr;
-      }).length;
-
-      payments = cc.pending_payments.filter((p) => {
-        if (!p.due_date) return false;
-        return p.due_date.slice(0, 10) === dateStr;
-      }).length;
-
-      followUps = cc.follow_ups.filter((f) => {
-        if (!f.scheduled_for) return false;
-        return f.scheduled_for.slice(0, 10) === dateStr;
-      }).length;
-
-      quotes = cc.expiring_quotes.filter((q) => {
-        if (!q.expires_at) return false;
-        return q.expires_at.slice(0, 10) === dateStr;
-      }).length;
-    }
+    const departures = dayEvents.filter((event) => event.type === 'trip').length;
+    const payments = dayEvents.filter((event) => event.type === 'invoice').length;
+    const followUps = dayEvents.filter((event) => event.type === 'follow_up').length;
+    const quotes = dayEvents.filter((event) => event.type === 'proposal').length;
 
     days.push({
       date,
@@ -111,7 +95,44 @@ interface CalendarPreviewProps {
 }
 
 export function CalendarPreview({ data }: CalendarPreviewProps) {
-  const isLoading = data.phase === 'loading';
+  const today = useMemo(() => {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    return date;
+  }, []);
+  const lastPreviewDay = useMemo(() => {
+    const date = new Date(today);
+    date.setDate(date.getDate() + 6);
+    return date;
+  }, [today]);
+  const monthRequests = useMemo(() => {
+    const first = { month: today.getMonth(), year: today.getFullYear() };
+    const second = { month: lastPreviewDay.getMonth(), year: lastPreviewDay.getFullYear() };
+    if (first.month === second.month && first.year === second.year) {
+      return [first];
+    }
+    return [first, second];
+  }, [lastPreviewDay, today]);
+  const queries = useQueries({
+    queries: monthRequests.map((request) => ({
+      queryKey: calendarKeys.events(request.month, request.year),
+      queryFn: () => fetchCalendarFeed(request.month, request.year),
+      staleTime: 30_000,
+    })),
+  });
+  const isLoading = data.phase === 'loading' || queries.some((query) => query.isLoading);
+  const calendarEvents = useMemo(() => {
+    const deduped = new Map<string, CalendarEvent>();
+    queries.forEach((query) => {
+      query.data?.events.forEach((event) => {
+        deduped.set(`${event.type}:${event.id}`, event);
+      });
+    });
+    return Array.from(deduped.values());
+  }, [queries]);
+  const sourceErrors = useMemo(() => {
+    return queries.flatMap((query) => query.data?.sourceErrors ?? []);
+  }, [queries]);
 
   if (isLoading) {
     return (
@@ -126,7 +147,7 @@ export function CalendarPreview({ data }: CalendarPreviewProps) {
     );
   }
 
-  const days = buildWeekDays(data);
+  const days = buildWeekDays(calendarEvents);
   const hasAnyEvents = days.some(
     (d) => d.departures + d.payments + d.followUps + d.quotes > 0,
   );
@@ -147,6 +168,12 @@ export function CalendarPreview({ data }: CalendarPreviewProps) {
           Calendar <ChevronRight className="h-3 w-3" />
         </Link>
       </div>
+
+      {sourceErrors.length > 0 && (
+        <p className="mb-3 text-[11px] font-medium text-amber-600">
+          Some calendar sources are unavailable, so this preview may be partial.
+        </p>
+      )}
 
       {/* Legend */}
       <div className="mb-3 flex flex-wrap gap-3">

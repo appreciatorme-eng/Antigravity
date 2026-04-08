@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertCircle } from "lucide-react";
@@ -35,8 +34,21 @@ import { GuidedTour } from '@/components/tour/GuidedTour';
 
 export function CalendarCommandCenter() {
   const searchParams = useSearchParams();
+  const focusedDayFromQuery = useMemo(() => {
+    const rawDate = searchParams.get("date");
+    if (!rawDate) {
+      return null;
+    }
+
+    const parsed = new Date(`${rawDate}T00:00:00`);
+    if (!Number.isFinite(parsed.getTime())) {
+      return null;
+    }
+
+    return parsed;
+  }, [searchParams]);
   // ---- State ----
-  const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
+  const [currentDate, setCurrentDate] = useState<Date>(() => focusedDayFromQuery ?? new Date());
   const [viewMode, setViewMode] = useState<CalendarViewMode>(
     () => typeof window !== "undefined" && window.innerWidth < 768 ? "day" : "month"
   );
@@ -48,7 +60,15 @@ export function CalendarCommandCenter() {
     year: number;
     month: number;
     day: number;
-  } | null>(null);
+  } | null>(() =>
+    focusedDayFromQuery
+      ? {
+          year: focusedDayFromQuery.getFullYear(),
+          month: focusedDayFromQuery.getMonth(),
+          day: focusedDayFromQuery.getDate(),
+        }
+      : null,
+  );
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(
     null,
   );
@@ -59,27 +79,14 @@ export function CalendarCommandCenter() {
     hour: number | null;
   } | null>(null);
 
-  useEffect(() => {
-    const rawDate = searchParams.get("date");
-    if (!rawDate) return;
-
-    const parsed = new Date(`${rawDate}T00:00:00`);
-    if (!Number.isFinite(parsed.getTime())) return;
-
-    setCurrentDate(parsed);
-    setSelectedDay({
-      year: parsed.getFullYear(),
-      month: parsed.getMonth(),
-      day: parsed.getDate(),
-    });
-  }, [searchParams]);
-
   // ---- Data fetching ----
   const {
-    data: events = [],
+    data: calendarFeed,
     isLoading,
     error,
   } = useCalendarEvents(currentDate.getMonth(), currentDate.getFullYear());
+  const events = useMemo(() => calendarFeed?.events ?? [], [calendarFeed]);
+  const sourceErrors = calendarFeed?.sourceErrors ?? [];
   const {
     data: blockedSlots = [],
     refetch: refetchBlockedSlots,
@@ -201,7 +208,7 @@ export function CalendarCommandCenter() {
           Your entire operation at a glance — act on anything, right here.
         </p>
         {selectedDay && (
-          <p className="mt-2 text-xs font-medium text-primary">
+        <p className="mt-2 text-xs font-medium text-primary">
             Focused on {new Date(selectedDay.year, selectedDay.month, selectedDay.day).toLocaleDateString("en-US", {
               weekday: "long",
               month: "short",
@@ -210,6 +217,31 @@ export function CalendarCommandCenter() {
           </p>
         )}
       </motion.div>
+
+      {!isLoading && !error && sourceErrors.length > 0 && (
+        <GlassCard padding="md" className="border-amber-200 bg-amber-50/80">
+          <p className="text-sm font-semibold text-amber-900">
+            Some event sources failed to load.
+          </p>
+          <p className="mt-1 text-xs text-amber-700">
+            Showing partial calendar data while these sources recover:{" "}
+            {sourceErrors.map((entry) => entry.source.replace(/_/g, " ")).join(", ")}.
+          </p>
+        </GlassCard>
+      )}
+
+      {!isLoading && !error && filteredEvents.length === 0 && (
+        <GlassCard padding="md" className="border-slate-200 bg-slate-50/80">
+          <p className="text-sm font-semibold text-slate-800">
+            No calendar events found for this view.
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            {events.length > 0
+              ? "All current events are filtered out. Re-enable event types above to see them."
+              : "There are no records scheduled in this month window."}
+          </p>
+        </GlassCard>
+      )}
 
       {/* Calendar Header */}
       <div data-tour="calendar-filters">
@@ -279,6 +311,7 @@ export function CalendarCommandCenter() {
           <DayDrawer
             day={selectedDay}
             events={drawerEvents}
+            sourceErrors={sourceErrors}
             onClose={() => setSelectedDay(null)}
             onEventClick={setSelectedEvent}
           />
