@@ -54,6 +54,12 @@ export const NAV_ITEMS: readonly NavItemConfig[] = [
     section: "primary",
   },
   {
+    icon: "Map",
+    label: "Planner",
+    href: "/planner",
+    section: "primary",
+  },
+  {
     icon: "Briefcase",
     label: "Trips",
     href: "/trips",
@@ -67,12 +73,6 @@ export const NAV_ITEMS: readonly NavItemConfig[] = [
     href: "/clients",
     badgeKey: "reviewsNeedingResponse",
     badgeColor: "#3b82f6",
-    section: "primary",
-  },
-  {
-    icon: "Map",
-    label: "Planner",
-    href: "/planner",
     section: "primary",
   },
 
