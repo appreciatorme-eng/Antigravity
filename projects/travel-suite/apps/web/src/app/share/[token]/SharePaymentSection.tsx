@@ -188,6 +188,10 @@ export function SharePaymentSection({
             try {
                 await openCheckout(link);
             } catch (checkoutError) {
+                if (link.paymentUrl && typeof window !== "undefined") {
+                    window.location.assign(link.paymentUrl);
+                    return;
+                }
                 setError(
                     checkoutError instanceof Error
                         ? `${checkoutError.message} You can continue on the hosted payment page instead.`
