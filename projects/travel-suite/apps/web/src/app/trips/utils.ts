@@ -203,12 +203,11 @@ export function paymentBadgeLabel(status: string): string {
     }
 }
 
-export type TripCommercialStage = "draft" | "shared" | "viewed" | "feedback" | "approved" | "proposal";
+export type TripCommercialStage = "draft" | "shared" | "viewed" | "approved" | "won";
 
 export function deriveCommercialStage(trip: EnrichedTrip): TripCommercialStage {
-    if (trip.proposal_id) return "proposal";
+    if (trip.status && trip.status !== "draft") return "won";
     if (trip.share_status === "approved") return "approved";
-    if (trip.share_status === "commented") return "feedback";
     if (trip.share_status === "viewed" || (trip.viewed_at && trip.share_code)) return "viewed";
     if (trip.share_code) return "shared";
     return "draft";

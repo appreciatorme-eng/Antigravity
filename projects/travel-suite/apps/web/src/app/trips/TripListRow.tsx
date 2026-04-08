@@ -9,6 +9,7 @@ import {
     ChevronRight,
     Trash2,
     Loader2,
+    Eye,
 } from "lucide-react";
 import { GlassBadge } from "@/components/glass/GlassBadge";
 import { cn } from "@/lib/utils";
@@ -23,6 +24,8 @@ import {
     formatDepartureCountdown,
     departureUrgencyColor,
     departureUrgencyBg,
+    deriveCommercialStage,
+    formatRelativeTime,
     readinessDotColor,
     readinessLabel,
     paymentBadgeVariant,
@@ -41,6 +44,7 @@ export function TripListRow({ trip, onDelete, deleting = false }: TripListRowPro
     const countdown = formatDepartureCountdown(trip.days_until_departure);
     const urgencyColor = departureUrgencyColor(trip.days_until_departure);
     const urgencyBg = departureUrgencyBg(trip.days_until_departure);
+    const commercialStage = deriveCommercialStage(trip);
     const updateStatus = useUpdateTripStatus();
 
     const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -69,6 +73,9 @@ export function TripListRow({ trip, onDelete, deleting = false }: TripListRowPro
                     </div>
 
                     <div className="flex flex-wrap items-center gap-y-1 gap-x-3 md:gap-x-5">
+                        <div className="flex items-center gap-1.5 text-text-muted">
+                            <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-primary">{commercialStage}</span>
+                        </div>
                         <div className="flex items-center gap-1.5 md:gap-2 text-text-muted">
                             <div className="w-4 h-4 md:w-5 md:h-5 rounded-full bg-slate-100 dark:bg-slate-800 border-2 border-white dark:border-slate-700 flex items-center justify-center overflow-hidden">
                                 <User className="h-2.5 w-2.5 md:h-3 md:w-3" />
@@ -85,6 +92,12 @@ export function TripListRow({ trip, onDelete, deleting = false }: TripListRowPro
                                 <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest">{trip.itineraries.duration_days}D</span>
                             </div>
                         )}
+                        <div className="flex items-center gap-1 md:gap-1.5 text-text-muted">
+                            <Eye className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                            <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest">
+                                {trip.viewed_at ? `Last viewed ${formatRelativeTime(trip.viewed_at)}` : "Last viewed never"}
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>

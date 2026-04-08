@@ -48,20 +48,18 @@ const COMMERCIAL_LABELS = {
     draft: "Draft",
     shared: "Shared",
     viewed: "Viewed",
-    feedback: "Needs attention",
     approved: "Approved",
-    proposal: "Proposal linked",
+    won: "Won",
 } as const;
 
-const COMMERCIAL_STEPS = ["draft", "shared", "viewed", "feedback", "approved", "proposal"] as const;
+const COMMERCIAL_STEPS = ["draft", "shared", "viewed", "approved", "won"] as const;
 
 const COMMERCIAL_COLORS = {
     draft: "text-slate-300",
     shared: "text-sky-300",
     viewed: "text-violet-300",
-    feedback: "text-amber-300",
     approved: "text-emerald-300",
-    proposal: "text-emerald-300",
+    won: "text-emerald-300",
 } as const;
 
 function readinessTone(level: ReadinessLevel) {
@@ -81,17 +79,32 @@ function PipelineRail({ stage }: { stage: keyof typeof COMMERCIAL_LABELS }) {
     const activeIndex = COMMERCIAL_STEPS.indexOf(stage);
 
     return (
-        <div className="flex items-center gap-1.5">
-            {COMMERCIAL_STEPS.map((step, index) => (
-                <span
-                    key={step}
-                    className={cn(
-                        "h-1.5 rounded-full transition-all",
-                        index <= activeIndex ? "bg-emerald-400" : "bg-white/10",
-                        index === activeIndex ? "w-6" : "w-3"
-                    )}
-                />
-            ))}
+        <div className="space-y-2">
+            <div className="flex items-center gap-1.5">
+                {COMMERCIAL_STEPS.map((step, index) => (
+                    <span
+                        key={step}
+                        className={cn(
+                            "h-1.5 rounded-full transition-all",
+                            index <= activeIndex ? "bg-emerald-400" : "bg-white/10",
+                            index === activeIndex ? "w-6" : "w-3"
+                        )}
+                    />
+                ))}
+            </div>
+            <div className="flex items-center justify-between gap-2 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/38">
+                {COMMERCIAL_STEPS.map((step, index) => (
+                    <span
+                        key={step}
+                        className={cn(
+                            "truncate transition-colors",
+                            index <= activeIndex ? COMMERCIAL_COLORS[step] : "text-white/28"
+                        )}
+                    >
+                        {COMMERCIAL_LABELS[step]}
+                    </span>
+                ))}
+            </div>
         </div>
     );
 }
@@ -233,9 +246,12 @@ export function TripGridCard({ trip, onDelete, deleting = false }: TripGridCardP
                             </div>
                         ) : (
                             <div className="text-[11px] font-medium text-white/45">
-                                {trip.proposal_title || (trip.proposal_status ? `Proposal ${trip.proposal_status}` : "No client-side feedback yet")}
+                                {trip.proposal_title || (trip.proposal_status ? `Proposal ${trip.proposal_status}` : "Commercial timeline is clear")}
                             </div>
                         )}
+                        <div className="text-[11px] font-medium text-white/55" title={trip.viewed_at ? new Date(trip.viewed_at).toLocaleString("en-US") : undefined}>
+                            {trip.viewed_at ? `Last viewed ${formatRelativeTime(trip.viewed_at)}` : "Last viewed never"}
+                        </div>
                     </div>
 
                     <div className="text-right">
