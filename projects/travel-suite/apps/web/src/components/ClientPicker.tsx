@@ -21,11 +21,13 @@ interface Client {
 interface ClientPickerProps {
   shareLink: string;
   itineraryId?: string;
+  tripId?: string;
+  onAssigned?: () => void;
 }
 
 type SendChannel = "whatsapp" | "email" | "both";
 
-export default function ClientPicker({ shareLink, itineraryId }: ClientPickerProps) {
+export default function ClientPicker({ shareLink, itineraryId, tripId, onAssigned }: ClientPickerProps) {
   const { data: clients, isLoading: clientsLoading } = useClients();
   const [search, setSearch] = useState("");
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -61,9 +63,25 @@ export default function ClientPicker({ shareLink, itineraryId }: ClientPickerPro
           .eq("id", itineraryId);
         if (error) throw error;
       }
+
+      if (tripId) {
+        const { error } = await supabase
+          .from("trips")
+          .update({ client_id: client.id })
+          .eq("id", tripId);
+        if (error) throw error;
+      } else if (itineraryId) {
+        const { error } = await supabase
+          .from("trips")
+          .update({ client_id: client.id })
+          .eq("itinerary_id", itineraryId);
+        if (error) throw error;
+      }
+
       setSelectedClient(client);
       setInlinePhone("");
       setInlineEmail("");
+      onAssigned?.();
     } catch (err) {
       logError("[ClientPicker] Failed to assign client", err);
       toast({

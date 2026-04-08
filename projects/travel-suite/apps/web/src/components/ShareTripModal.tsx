@@ -292,6 +292,10 @@ export default function ShareTripModal({
                             <ClientPicker
                                 shareLink={shareLink}
                                 itineraryId={resolvedIdRef.current}
+                                tripId={tripId}
+                                onAssigned={() => {
+                                    void generateShareLink();
+                                }}
                             />
 
                             <section className="rounded-2xl border border-gray-200 bg-white">
