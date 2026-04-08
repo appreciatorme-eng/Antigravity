@@ -7,6 +7,7 @@ import {
     Briefcase,
 } from "lucide-react";
 import type { EnrichedTrip, TripReadiness, ReadinessLevel, TripSortKey, QuickFilter } from "./types";
+import type { ClientComment } from "@/types/feedback";
 
 export function computeReadiness(trip: EnrichedTrip): TripReadiness {
     const totalDays = trip.itineraries?.duration_days || 0;
@@ -200,4 +201,54 @@ export function paymentBadgeLabel(status: string): string {
         case "unpaid": return "Due";
         default: return "No Invoice";
     }
+}
+
+export type TripCommercialStage = "draft" | "shared" | "viewed" | "feedback" | "approved" | "proposal";
+
+export function deriveCommercialStage(trip: EnrichedTrip): TripCommercialStage {
+    if (trip.proposal_id) return "proposal";
+    if (trip.share_status === "approved") return "approved";
+    if (trip.share_status === "commented") return "feedback";
+    if (trip.share_status === "viewed" || (trip.viewed_at && trip.share_code)) return "viewed";
+    if (trip.share_code) return "shared";
+    return "draft";
+}
+
+export function hasTripClientActivity(trip: EnrichedTrip): boolean {
+    const comments: ClientComment[] = trip.client_comments ?? [];
+    const prefs = trip.client_preferences;
+    const wishlist = trip.wishlist_items ?? [];
+    const selfService = trip.self_service_status;
+
+    if (comments.some((comment) => !comment.resolved_at)) return true;
+    if (prefs && Object.keys(prefs).length > 0) return true;
+    if (wishlist.length > 0) return true;
+    if (selfService === "updated") return true;
+
+    return false;
+}
+
+export function formatDurationLabel(days: number | null | undefined): string {
+    if (!days || days <= 0) return "Itinerary pending";
+    if (days === 1) return "1 day";
+    return `${days} days`;
+}
+
+export function formatRelativeTime(dateString: string | null | undefined): string {
+    if (!dateString) return "Recently";
+    const now = Date.now();
+    const then = new Date(dateString).getTime();
+    const diffMs = now - then;
+    const diffMin = Math.floor(diffMs / 60_000);
+    if (diffMin < 1) return "Just now";
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHours = Math.floor(diffMin / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 7) return `${diffDays}d ago`;
+    if (diffDays < 14) return "Last week";
+    const diffWeeks = Math.floor(diffDays / 7);
+    if (diffWeeks < 5) return `${diffWeeks}w ago`;
+    const diffMonths = Math.floor(diffDays / 30);
+    return `${diffMonths}mo ago`;
 }

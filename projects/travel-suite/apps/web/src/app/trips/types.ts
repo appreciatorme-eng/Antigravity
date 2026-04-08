@@ -1,3 +1,5 @@
+import type { ClientComment, ClientPreferences } from "@/types/feedback";
+
 export interface TripInvoiceSummary {
     total_amount: number;
     paid_amount: number;
@@ -12,6 +14,7 @@ export interface CoverageSummary {
 
 export interface EnrichedTrip {
     id: string;
+    client_id?: string | null;
     status: string | null;
     start_date: string | null;
     end_date: string | null;
@@ -29,6 +32,20 @@ export interface EnrichedTrip {
         destination?: string | null;
     } | null;
     itinerary_id?: string | null;
+    hero_image?: string | null;
+    share_code?: string | null;
+    share_status?: string | null;
+    viewed_at?: string | null;
+    approved_at?: string | null;
+    approved_by?: string | null;
+    self_service_status?: string | null;
+    client_comments?: ClientComment[];
+    client_preferences?: ClientPreferences | null;
+    wishlist_items?: string[];
+    proposal_id?: string | null;
+    proposal_status?: string | null;
+    proposal_share_token?: string | null;
+    proposal_title?: string | null;
     invoice: TripInvoiceSummary;
     driver_coverage: CoverageSummary;
     accommodation_coverage: CoverageSummary;

@@ -56,7 +56,7 @@ export default function TripsPage() {
             setIsCreateModalOpen(true);
         }
     }, [searchParams]);
-    const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+    const [viewMode, setViewMode] = useState<"list" | "grid">("grid");
     const [sortKey, setSortKey] = useState<TripSortKey>("departure");
     const [quickFilters, setQuickFilters] = useState<Set<QuickFilter>>(new Set());
     const [activeDrill, setActiveDrill] = useState<TripKPIDrillAction | null>(null);
@@ -231,103 +231,125 @@ export default function TripsPage() {
                 </div>
             )}
 
+            {/* Workspace Toolbar */}
+            <GlassCard
+                padding="none"
+                className="overflow-hidden border-gray-100 dark:border-slate-800 shadow-[0_24px_70px_-45px_rgba(15,23,42,0.35)]"
+                data-tour="trip-search"
+            >
+                <div className="border-b border-gray-100 bg-gradient-to-r from-emerald-50/80 via-white to-sky-50/70 px-5 py-4 dark:border-slate-800 dark:from-slate-900 dark:via-slate-950 dark:to-slate-900">
+                    <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                        <div className="space-y-1">
+                            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-primary">Trips Workspace</p>
+                            <h2 className="text-xl font-semibold tracking-tight text-secondary dark:text-white">
+                                Browse operations with commercial context built in
+                            </h2>
+                        </div>
+
+                        <div className="flex items-center gap-2 self-start rounded-full border border-gray-200 bg-white/80 p-1 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900/80">
+                            <button
+                                onClick={() => setViewMode("grid")}
+                                className={cn(
+                                    "inline-flex items-center gap-2 rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] transition-all",
+                                    viewMode === "grid"
+                                        ? "bg-secondary text-white shadow-md dark:bg-white dark:text-slate-900"
+                                        : "text-text-muted hover:text-primary"
+                                )}
+                            >
+                                <LayoutGrid className="h-4 w-4" />
+                                Tiles
+                            </button>
+                            <button
+                                onClick={() => setViewMode("list")}
+                                className={cn(
+                                    "inline-flex items-center gap-2 rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] transition-all",
+                                    viewMode === "list"
+                                        ? "bg-secondary text-white shadow-md dark:bg-white dark:text-slate-900"
+                                        : "text-text-muted hover:text-primary"
+                                )}
+                            >
+                                <ListIcon className="h-4 w-4" />
+                                List
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="space-y-4 px-5 py-5">
+                    <div className="flex flex-col gap-4 xl:flex-row xl:items-center">
+                        <div className="flex min-w-0 flex-1 items-center rounded-2xl border border-gray-100 bg-white px-5 py-1 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                            <Search className="mr-4 h-5 w-5 text-text-muted" />
+                            <input
+                                type="text"
+                                placeholder="Search by destination, client, or reference..."
+                                className="h-12 flex-1 border-none bg-transparent text-sm font-medium text-secondary placeholder:text-text-muted/50 focus:ring-0 dark:text-white"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-3">
+                            <div className="flex min-w-[200px] items-center gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                                <Filter className="h-4 w-4 shrink-0 text-primary" />
+                                <select
+                                    value={statusFilter}
+                                    onChange={(e) => { setStatusFilter(e.target.value); setActiveDrill(null); }}
+                                    className="flex-1 cursor-pointer border-none bg-transparent text-[10px] font-black uppercase tracking-widest text-secondary focus:ring-0 dark:text-white"
+                                >
+                                    {STATUS_OPTIONS.map((opt) => (
+                                        <option key={opt.value} value={opt.value} className="bg-white dark:bg-slate-900">{opt.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="flex min-w-[200px] items-center gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                                <ArrowDownUp className="h-4 w-4 shrink-0 text-primary" />
+                                <select
+                                    value={sortKey}
+                                    onChange={(e) => setSortKey(e.target.value as TripSortKey)}
+                                    className="flex-1 cursor-pointer border-none bg-transparent text-[10px] font-black uppercase tracking-widest text-secondary focus:ring-0 dark:text-white"
+                                >
+                                    {SORT_OPTIONS.map((opt) => (
+                                        <option key={opt.value} value={opt.value} className="bg-white dark:bg-slate-900">{opt.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                        {QUICK_FILTER_OPTIONS.map((opt) => {
+                            const isActive = quickFilters.has(opt.value);
+                            return (
+                                <button
+                                    key={opt.value}
+                                    onClick={() => { toggleQuickFilter(opt.value); setActiveDrill(null); }}
+                                    className={cn(
+                                        "rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all",
+                                        isActive
+                                            ? "border-primary bg-primary text-white shadow-md shadow-primary/20"
+                                            : "border-gray-200 bg-white text-text-muted hover:border-primary/40 hover:text-primary dark:border-slate-700 dark:bg-slate-900"
+                                    )}
+                                >
+                                    {opt.label}
+                                </button>
+                            );
+                        })}
+                        {quickFilters.size > 0 ? (
+                            <button
+                                onClick={() => { setQuickFilters(new Set()); setActiveDrill(null); }}
+                                className="rounded-full px-3 py-2 text-[10px] font-black uppercase tracking-widest text-text-muted transition-colors hover:text-rose-500"
+                            >
+                                Clear filters
+                            </button>
+                        ) : null}
+                    </div>
+                </div>
+            </GlassCard>
+
             {/* Departing Soon */}
             <div ref={departingSoonRef}>
                 {!loading && <DepartingSoonSection trips={trips} />}
-            </div>
-
-            {/* Command Bar */}
-            <div className="flex flex-col lg:flex-row gap-4 items-center" data-tour="trip-search">
-                <GlassCard padding="none" className="flex-1 w-full overflow-hidden border-gray-100 dark:border-slate-800 shadow-sm">
-                    <div className="flex items-center px-6 py-1">
-                        <Search className="w-5 h-5 text-text-muted mr-4" />
-                        <input
-                            type="text"
-                            placeholder="Search by destination, client, or reference..."
-                            className="flex-1 bg-transparent border-none focus:ring-0 text-secondary dark:text-white placeholder:text-text-muted/50 text-sm h-12 font-medium"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                    </div>
-                </GlassCard>
-
-                <div className="flex items-center gap-2 md:gap-3 w-full lg:w-auto flex-wrap">
-                    <div className="flex items-center gap-2 md:gap-3 bg-white dark:bg-slate-900 px-3 md:px-5 h-11 md:h-14 rounded-xl md:rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm flex-1 md:flex-initial md:min-w-[200px]">
-                        <Filter className="w-4 h-4 text-primary shrink-0" />
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => { setStatusFilter(e.target.value); setActiveDrill(null); }}
-                            className="bg-transparent border-none focus:ring-0 text-[10px] md:text-xs font-black uppercase tracking-widest text-secondary dark:text-white flex-1 cursor-pointer"
-                        >
-                            {STATUS_OPTIONS.map((opt) => (
-                                <option key={opt.value} value={opt.value} className="bg-white dark:bg-slate-900">{opt.label}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="flex items-center gap-2 md:gap-3 bg-white dark:bg-slate-900 px-3 md:px-5 h-11 md:h-14 rounded-xl md:rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm flex-1 md:flex-initial md:min-w-[200px]">
-                        <ArrowDownUp className="w-4 h-4 text-primary shrink-0" />
-                        <select
-                            value={sortKey}
-                            onChange={(e) => setSortKey(e.target.value as TripSortKey)}
-                            className="bg-transparent border-none focus:ring-0 text-[10px] md:text-xs font-black uppercase tracking-widest text-secondary dark:text-white flex-1 cursor-pointer"
-                        >
-                            {SORT_OPTIONS.map((opt) => (
-                                <option key={opt.value} value={opt.value} className="bg-white dark:bg-slate-900">{opt.label}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="flex items-center bg-gray-100/50 dark:bg-slate-800/50 p-1 rounded-xl border border-gray-100 dark:border-slate-800">
-                        <button
-                            onClick={() => setViewMode("list")}
-                            className={cn(
-                                "p-2.5 rounded-lg transition-all",
-                                viewMode === "list" ? "bg-white dark:bg-slate-700 shadow-sm text-primary" : "text-text-muted"
-                            )}
-                        >
-                            <ListIcon className="w-4 h-4" />
-                        </button>
-                        <button
-                            onClick={() => setViewMode("grid")}
-                            className={cn(
-                                "p-2.5 rounded-lg transition-all",
-                                viewMode === "grid" ? "bg-white dark:bg-slate-700 shadow-sm text-primary" : "text-text-muted"
-                            )}
-                        >
-                            <LayoutGrid className="w-4 h-4" />
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            {/* Quick Filter Pills */}
-            <div className="flex items-center gap-2 flex-wrap">
-                {QUICK_FILTER_OPTIONS.map((opt) => {
-                    const isActive = quickFilters.has(opt.value);
-                    return (
-                        <button
-                            key={opt.value}
-                            onClick={() => { toggleQuickFilter(opt.value); setActiveDrill(null); }}
-                            className={cn(
-                                "px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all",
-                                isActive
-                                    ? "bg-primary text-white border-primary shadow-md shadow-primary/20"
-                                    : "bg-white dark:bg-slate-900 text-text-muted border-gray-200 dark:border-slate-700 hover:border-primary/50 hover:text-primary"
-                            )}
-                        >
-                            {opt.label}
-                        </button>
-                    );
-                })}
-                {quickFilters.size > 0 && (
-                    <button
-                        onClick={() => { setQuickFilters(new Set()); setActiveDrill(null); }}
-                        className="px-3 py-2 rounded-full text-[10px] font-black uppercase tracking-widest text-text-muted hover:text-rose-500 transition-colors"
-                    >
-                        Clear filters
-                    </button>
-                )}
             </div>
 
             {/* Trip List */}
@@ -383,7 +405,7 @@ export default function TripsPage() {
                     </div>
                 </GlassCard>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 2xl:grid-cols-3">
                     {processedTrips.map((trip) => (
                         <TripGridCard
                             key={trip.id}

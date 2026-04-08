@@ -4,6 +4,7 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sanitizeText } from "@/lib/security/sanitize";
 import { logError } from "@/lib/observability/logger";
+import { getDeterministicFallback } from "@/lib/image-search";
 
 const supabaseAdmin = createAdminClient();
 
@@ -63,6 +64,146 @@ function computeDaysUntilDeparture(startDate: string | null): number | null {
     const departure = new Date(startDate);
     departure.setHours(0, 0, 0, 0);
     return Math.ceil((departure.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+interface SharedItineraryRow {
+    itinerary_id: string;
+    share_code: string | null;
+    status: string | null;
+    client_comments: unknown;
+    client_preferences: unknown;
+    wishlist_items: unknown;
+    viewed_at: string | null;
+    approved_at: string | null;
+    approved_by: string | null;
+    self_service_status: string | null;
+}
+
+interface ProposalRow {
+    id: string;
+    trip_id: string | null;
+    status: string | null;
+    share_token: string | null;
+    title: string | null;
+    created_at: string;
+}
+
+interface TripPresentationMetadata {
+    hero_image: string;
+    share_code: string | null;
+    share_status: string | null;
+    viewed_at: string | null;
+    approved_at: string | null;
+    approved_by: string | null;
+    self_service_status: string | null;
+    client_comments: unknown[];
+    client_preferences: unknown | null;
+    wishlist_items: string[];
+    proposal_id: string | null;
+    proposal_status: string | null;
+    proposal_share_token: string | null;
+    proposal_title: string | null;
+}
+
+function extractHeroImage(rawData: unknown, destination: string | null | undefined): string {
+    const data = rawData as {
+        hero_image?: string;
+        heroImage?: string;
+        days?: Array<{
+            activities?: Array<{
+                image?: string;
+                imageUrl?: string;
+            }>;
+        }>;
+    } | null;
+
+    if (typeof data?.hero_image === "string" && data.hero_image.trim()) {
+        return data.hero_image;
+    }
+
+    if (typeof data?.heroImage === "string" && data.heroImage.trim()) {
+        return data.heroImage;
+    }
+
+    if (Array.isArray(data?.days)) {
+        for (const day of data.days) {
+            for (const activity of day.activities ?? []) {
+                if (activity.image?.trim()) return activity.image;
+                if (activity.imageUrl?.trim()) return activity.imageUrl;
+            }
+        }
+    }
+
+    return getDeterministicFallback(destination || "travel");
+}
+
+async function loadTripPresentationMetadata(
+    rows: TripListRow[]
+): Promise<Map<string, TripPresentationMetadata>> {
+    const itineraryIds = [...new Set(
+        rows
+            .map((row) => {
+                const itinerary = Array.isArray(row.itineraries) ? row.itineraries[0] : row.itineraries;
+                return itinerary?.id ?? null;
+            })
+            .filter((value): value is string => Boolean(value))
+    )];
+
+    const tripIds = rows.map((row) => row.id);
+
+    const [sharesResult, proposalsResult] = await Promise.all([
+        itineraryIds.length > 0
+            ? supabaseAdmin
+                .from("shared_itineraries")
+                .select("itinerary_id, share_code, status, client_comments, client_preferences, wishlist_items, viewed_at, approved_at, approved_by, self_service_status")
+                .in("itinerary_id", itineraryIds)
+            : Promise.resolve({ data: [], error: null }),
+        tripIds.length > 0
+            ? supabaseAdmin
+                .from("proposals")
+                .select("id, trip_id, status, share_token, title, created_at")
+                .in("trip_id", tripIds)
+                .order("created_at", { ascending: false })
+            : Promise.resolve({ data: [], error: null }),
+    ]);
+
+    const shareMap = new Map<string, SharedItineraryRow>();
+    for (const share of (sharesResult.data || []) as SharedItineraryRow[]) {
+        if (!share.itinerary_id || shareMap.has(share.itinerary_id)) continue;
+        shareMap.set(share.itinerary_id, share);
+    }
+
+    const proposalMap = new Map<string, ProposalRow>();
+    for (const proposal of (proposalsResult.data || []) as ProposalRow[]) {
+        if (!proposal.trip_id || proposalMap.has(proposal.trip_id)) continue;
+        proposalMap.set(proposal.trip_id, proposal);
+    }
+
+    const metadataMap = new Map<string, TripPresentationMetadata>();
+    for (const row of rows) {
+        const itinerary = Array.isArray(row.itineraries) ? row.itineraries[0] : row.itineraries;
+        const share = itinerary?.id ? shareMap.get(itinerary.id) : undefined;
+        const proposal = proposalMap.get(row.id);
+
+        metadataMap.set(row.id, {
+            hero_image: extractHeroImage(itinerary?.raw_data, itinerary?.destination),
+            share_code: share?.share_code ?? null,
+            share_status: share?.status ?? null,
+            viewed_at: share?.viewed_at ?? null,
+            approved_at: share?.approved_at ?? null,
+            approved_by: share?.approved_by ?? null,
+            self_service_status: share?.self_service_status ?? null,
+            client_comments: Array.isArray(share?.client_comments) ? share.client_comments : [],
+            client_preferences: share?.client_preferences ?? null,
+            wishlist_items: Array.isArray(share?.wishlist_items) ? (share.wishlist_items as string[]) : [],
+            proposal_id: proposal?.id ?? null,
+            proposal_status: proposal?.status ?? null,
+            proposal_share_token: proposal?.share_token ?? null,
+            proposal_title: proposal?.title ?? null,
+        });
+    }
+
+    return metadataMap;
 }
 
 async function enrichTrips(
@@ -130,6 +271,7 @@ async function enrichTrips(
 
 interface TripListRow {
     id: string;
+    client_id: string | null;
     status: string | null;
     start_date: string | null;
     end_date: string | null;
@@ -151,12 +293,14 @@ interface TripListRow {
         trip_title: string | null;
         duration_days: number | null;
         destination: string | null;
+        raw_data?: unknown;
     }
     | Array<{
         id: string | null;
         trip_title: string | null;
         duration_days: number | null;
         destination: string | null;
+        raw_data?: unknown;
     }>
     | null;
 }
@@ -192,6 +336,7 @@ export async function GET(req: NextRequest) {
                 .from("trips")
                 .select(`
                     id,
+                    client_id,
                     status,
                     start_date,
                     end_date,
@@ -201,7 +346,8 @@ export async function GET(req: NextRequest) {
                         id,
                         trip_title,
                         duration_days,
-                        destination
+                        destination,
+                        raw_data
                     )
                 `)
                 .eq("client_id", user.id);
@@ -232,10 +378,12 @@ export async function GET(req: NextRequest) {
 
             const tripIds = rawTrips.map((t) => t.id);
             const enrichmentMap = await enrichTrips(tripIds, rawTrips);
+            const presentationMap = await loadTripPresentationMetadata((data || []) as unknown as TripListRow[]);
 
             const enrichedTrips = ((data || []) as unknown as TripListRow[]).map((t) => {
                 const itinerary = Array.isArray(t.itineraries) ? t.itineraries[0] : t.itineraries;
                 const enrichment = enrichmentMap.get(t.id);
+                const presentation = presentationMap.get(t.id);
                 const defaults = {
                     invoice: { total_amount: 0, paid_amount: 0, balance_amount: 0, payment_status: "none" },
                     driver_coverage: { covered_days: 0, total_days: 0 },
@@ -246,6 +394,7 @@ export async function GET(req: NextRequest) {
 
                 return {
                     id: t.id,
+                    client_id: t.client_id,
                     status: t.status,
                     start_date: t.start_date,
                     end_date: t.end_date,
@@ -260,6 +409,20 @@ export async function GET(req: NextRequest) {
                     } : null,
                     itinerary_id: itinerary?.id || null,
                     destination: itinerary?.destination || "TBD",
+                    hero_image: presentation?.hero_image ?? getDeterministicFallback(itinerary?.destination || "travel"),
+                    share_code: presentation?.share_code ?? null,
+                    share_status: presentation?.share_status ?? null,
+                    viewed_at: presentation?.viewed_at ?? null,
+                    approved_at: presentation?.approved_at ?? null,
+                    approved_by: presentation?.approved_by ?? null,
+                    self_service_status: presentation?.self_service_status ?? null,
+                    client_comments: presentation?.client_comments ?? [],
+                    client_preferences: presentation?.client_preferences ?? null,
+                    wishlist_items: presentation?.wishlist_items ?? [],
+                    proposal_id: presentation?.proposal_id ?? null,
+                    proposal_status: presentation?.proposal_status ?? null,
+                    proposal_share_token: presentation?.proposal_share_token ?? null,
+                    proposal_title: presentation?.proposal_title ?? null,
                     ...(enrichment || defaults),
                 };
             });
@@ -285,6 +448,7 @@ export async function GET(req: NextRequest) {
             .from("trips")
             .select(`
                 id,
+                client_id,
                 status,
                 start_date,
                 end_date,
@@ -298,7 +462,8 @@ export async function GET(req: NextRequest) {
                     id,
                     trip_title,
                     duration_days,
-                    destination
+                    destination,
+                    raw_data
                 )
             `)
             .eq("organization_id", scopedOrganizationId);
@@ -332,11 +497,13 @@ export async function GET(req: NextRequest) {
 
         const tripIds = rawTrips.map((t) => t.id);
         const enrichmentMap = await enrichTrips(tripIds, rawTrips);
+        const presentationMap = await loadTripPresentationMetadata((data || []) as unknown as TripListRow[]);
 
         const trips = ((data || []) as unknown as TripListRow[]).map((t) => {
             const profile = Array.isArray(t.profiles) ? t.profiles[0] : t.profiles;
             const itinerary = Array.isArray(t.itineraries) ? t.itineraries[0] : t.itineraries;
             const enrichment = enrichmentMap.get(t.id);
+            const presentation = presentationMap.get(t.id);
             const defaults = {
                 invoice: { total_amount: 0, paid_amount: 0, balance_amount: 0, payment_status: "none" },
                 driver_coverage: { covered_days: 0, total_days: 0 },
@@ -347,6 +514,7 @@ export async function GET(req: NextRequest) {
 
             return {
                 id: t.id,
+                client_id: t.client_id,
                 status: t.status,
                 start_date: t.start_date,
                 end_date: t.end_date,
@@ -364,6 +532,20 @@ export async function GET(req: NextRequest) {
                 } : null,
                 itinerary_id: itinerary?.id || null,
                 destination: itinerary?.destination || "TBD",
+                hero_image: presentation?.hero_image ?? getDeterministicFallback(itinerary?.destination || "travel"),
+                share_code: presentation?.share_code ?? null,
+                share_status: presentation?.share_status ?? null,
+                viewed_at: presentation?.viewed_at ?? null,
+                approved_at: presentation?.approved_at ?? null,
+                approved_by: presentation?.approved_by ?? null,
+                self_service_status: presentation?.self_service_status ?? null,
+                client_comments: presentation?.client_comments ?? [],
+                client_preferences: presentation?.client_preferences ?? null,
+                wishlist_items: presentation?.wishlist_items ?? [],
+                proposal_id: presentation?.proposal_id ?? null,
+                proposal_status: presentation?.proposal_status ?? null,
+                proposal_share_token: presentation?.proposal_share_token ?? null,
+                proposal_title: presentation?.proposal_title ?? null,
                 ...(enrichment || defaults),
             };
         });
