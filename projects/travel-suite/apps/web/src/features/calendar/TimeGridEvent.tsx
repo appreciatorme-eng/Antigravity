@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { GlassBadge } from "@/components/glass/GlassBadge";
 import { EVENT_TYPE_CONFIG } from "./constants";
-import { getStatusVariant, formatAmount } from "./utils";
+import { getStatusVariant, formatAmount, parseCalendarDate } from "./utils";
 import type { CalendarEvent } from "./types";
 
 interface TimeGridEventProps {
@@ -30,14 +30,14 @@ export function TimeGridEvent({
   const amount = formatAmount(event.amount, event.currency);
   const isCompact = heightPx < 40;
 
-  const startTime = new Date(event.startDate).toLocaleTimeString("en-US", {
+  const startTime = parseCalendarDate(event.startDate).toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
   });
 
   const endTime = event.endDate
-    ? new Date(event.endDate).toLocaleTimeString("en-US", {
+    ? parseCalendarDate(event.endDate).toLocaleTimeString("en-US", {
         hour: "numeric",
         minute: "2-digit",
         hour12: true,

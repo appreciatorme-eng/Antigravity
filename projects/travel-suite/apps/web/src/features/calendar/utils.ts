@@ -31,6 +31,20 @@ export function getMonthDays(year: number, month: number): (number | null)[] {
 // Event filtering
 // ---------------------------------------------------------------------------
 
+const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+export function isDateOnlyValue(value: string | null | undefined): boolean {
+  return Boolean(value && DATE_ONLY_RE.test(value));
+}
+
+export function parseCalendarDate(value: string): Date {
+  if (DATE_ONLY_RE.test(value)) {
+    const [year, month, day] = value.split("-").map(Number);
+    return new Date(year, month - 1, day, 0, 0, 0, 0);
+  }
+  return new Date(value);
+}
+
 /**
  * Returns events whose date range overlaps with the given day.
  */
@@ -44,8 +58,15 @@ export function getEventsForDay(
   const dayEnd = new Date(year, month, day, 23, 59, 59, 999);
 
   return events.filter((event) => {
-    const eventStart = new Date(event.startDate);
-    const eventEnd = event.endDate ? new Date(event.endDate) : eventStart;
+    const eventStart = parseCalendarDate(event.startDate);
+    const parsedEnd = event.endDate ? parseCalendarDate(event.endDate) : null;
+    const eventEnd = parsedEnd
+      ? isDateOnlyValue(event.endDate)
+        ? new Date(parsedEnd.getFullYear(), parsedEnd.getMonth(), parsedEnd.getDate(), 23, 59, 59, 999)
+        : parsedEnd
+      : isDateOnlyValue(event.startDate)
+        ? new Date(eventStart.getFullYear(), eventStart.getMonth(), eventStart.getDate(), 23, 59, 59, 999)
+        : eventStart;
 
     return eventStart <= dayEnd && eventEnd >= dayStart;
   });
@@ -135,13 +156,13 @@ export function isSameDay(d1: Date, d2: Date): boolean {
  * Formats a date range as "Mar 3" or "Mar 3 — Mar 8".
  */
 export function formatDateRange(start: string, end: string | null): string {
-  const startDate = new Date(start);
+  const startDate = parseCalendarDate(start);
   const fmt = (d: Date) =>
     d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
   if (!end) return fmt(startDate);
 
-  const endDate = new Date(end);
+  const endDate = parseCalendarDate(end);
   if (isSameDay(startDate, endDate)) return fmt(startDate);
 
   return `${fmt(startDate)} — ${fmt(endDate)}`;
@@ -199,8 +220,8 @@ export function computeEventLanes(
   const multiDayEvents = events.filter((event) => {
     if (!event.endDate) return false;
 
-    const eventStart = new Date(event.startDate);
-    const eventEnd = new Date(event.endDate);
+    const eventStart = parseCalendarDate(event.startDate);
+    const eventEnd = parseCalendarDate(event.endDate);
 
     // Must span more than a single calendar day
     if (isSameDay(eventStart, eventEnd)) return false;
@@ -211,12 +232,12 @@ export function computeEventLanes(
 
   // Sort: earliest start first, then longest duration first
   const sorted = [...multiDayEvents].sort((a, b) => {
-    const aStart = new Date(a.startDate).getTime();
-    const bStart = new Date(b.startDate).getTime();
+    const aStart = parseCalendarDate(a.startDate).getTime();
+    const bStart = parseCalendarDate(b.startDate).getTime();
     if (aStart !== bStart) return aStart - bStart;
 
-    const aEnd = new Date(a.endDate!).getTime();
-    const bEnd = new Date(b.endDate!).getTime();
+    const aEnd = parseCalendarDate(a.endDate!).getTime();
+    const bEnd = parseCalendarDate(b.endDate!).getTime();
     return bEnd - bStart - (aEnd - aStart); // longer first
   });
 
@@ -225,8 +246,8 @@ export function computeEventLanes(
   const lanes: Set<number>[] = [];
 
   return sorted.map((event) => {
-    const eventStart = new Date(event.startDate);
-    const eventEnd = new Date(event.endDate!);
+    const eventStart = parseCalendarDate(event.startDate);
+    const eventEnd = parseCalendarDate(event.endDate!);
 
     // Clamp to week + month boundaries
     const clampedStart = new Date(
@@ -299,14 +320,15 @@ export function partitionDayEvents(
   const timed: CalendarEvent[] = [];
 
   for (const event of dayEvents) {
-    const start = new Date(event.startDate);
-    const end = event.endDate ? new Date(event.endDate) : start;
+    const start = parseCalendarDate(event.startDate);
+    const end = event.endDate ? parseCalendarDate(event.endDate) : start;
     const isMultiDay = !isSameDay(start, end);
     const isAllDay =
       event.entityData.type === "personal" &&
       (event.entityData as PersonalEventData).allDay;
+    const implicitAllDay = isDateOnlyValue(event.startDate) && (!event.endDate || isDateOnlyValue(event.endDate));
 
-    if (isMultiDay || isAllDay) {
+    if (isMultiDay || isAllDay || implicitAllDay) {
       allDay.push(event);
     } else {
       timed.push(event);
@@ -326,11 +348,11 @@ export function computeTimeGridColumns(
   if (events.length === 0) return [];
 
   const sorted = [...events].sort((a, b) => {
-    const aStart = new Date(a.startDate).getTime();
-    const bStart = new Date(b.startDate).getTime();
+    const aStart = parseCalendarDate(a.startDate).getTime();
+    const bStart = parseCalendarDate(b.startDate).getTime();
     if (aStart !== bStart) return aStart - bStart;
-    const aEnd = a.endDate ? new Date(a.endDate).getTime() : aStart + 3600000;
-    const bEnd = b.endDate ? new Date(b.endDate).getTime() : bStart + 3600000;
+    const aEnd = a.endDate ? parseCalendarDate(a.endDate).getTime() : aStart + 3600000;
+    const bEnd = b.endDate ? parseCalendarDate(b.endDate).getTime() : bStart + 3600000;
     return (bEnd - bStart) - (aEnd - aStart);
   });
 
@@ -339,9 +361,9 @@ export function computeTimeGridColumns(
   let clusterEnd = 0;
 
   for (const event of sorted) {
-    const eventStart = new Date(event.startDate).getTime();
-    const eventEnd = event.endDate
-      ? new Date(event.endDate).getTime()
+      const eventStart = parseCalendarDate(event.startDate).getTime();
+      const eventEnd = event.endDate
+      ? parseCalendarDate(event.endDate).getTime()
       : eventStart + 3600000;
 
     if (currentCluster.length === 0 || eventStart < clusterEnd) {
@@ -363,14 +385,14 @@ export function computeTimeGridColumns(
     const columns: CalendarEvent[][] = [];
 
     for (const event of cluster) {
-      const eventStart = new Date(event.startDate).getTime();
+      const eventStart = parseCalendarDate(event.startDate).getTime();
       let placed = false;
 
       for (let col = 0; col < columns.length; col++) {
         const lastInCol = columns[col][columns[col].length - 1];
         const lastEnd = lastInCol.endDate
-          ? new Date(lastInCol.endDate).getTime()
-          : new Date(lastInCol.startDate).getTime() + 3600000;
+          ? parseCalendarDate(lastInCol.endDate).getTime()
+          : parseCalendarDate(lastInCol.startDate).getTime() + 3600000;
 
         if (eventStart >= lastEnd) {
           columns[col].push(event);

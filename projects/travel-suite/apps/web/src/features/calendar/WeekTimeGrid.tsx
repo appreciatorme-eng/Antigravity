@@ -17,6 +17,7 @@ import {
   computeTimeGridColumns,
   formatHourLabel,
   isToday,
+  parseCalendarDate,
 } from "./utils";
 import type { CalendarEvent } from "./types";
 
@@ -188,9 +189,9 @@ export function WeekTimeGrid({
                 {/* Events */}
                 <div className="absolute inset-0 px-0.5">
                   {dayColEvents.map(({ event, column, totalColumns }) => {
-                    const eventStart = new Date(event.startDate);
+                    const eventStart = parseCalendarDate(event.startDate);
                     const eventEnd = event.endDate
-                      ? new Date(event.endDate)
+                      ? parseCalendarDate(event.endDate)
                       : new Date(eventStart.getTime() + 3600000);
 
                     const topPx = timeToPixelOffset(

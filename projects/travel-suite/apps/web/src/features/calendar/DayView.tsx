@@ -23,6 +23,7 @@ import {
   computeTimeGridColumns,
   formatHourLabel,
   isToday,
+  parseCalendarDate,
 } from "./utils";
 import type { CalendarEvent } from "./types";
 
@@ -210,9 +211,9 @@ export function DayView({
             }}
           >
             {timedWithColumns.map(({ event, column, totalColumns }) => {
-              const eventStart = new Date(event.startDate);
+              const eventStart = parseCalendarDate(event.startDate);
               const eventEnd = event.endDate
-                ? new Date(event.endDate)
+                ? parseCalendarDate(event.endDate)
                 : new Date(eventStart.getTime() + 3600000);
 
               const topPx = timeToPixelOffset(
