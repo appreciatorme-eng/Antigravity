@@ -32,7 +32,11 @@ function buildWeekDays(data: DashboardV2State): DayEvents[] {
   for (let i = 0; i < 7; i++) {
     const date = new Date(today);
     date.setDate(today.getDate() + i);
-    const dateStr = date.toISOString().slice(0, 10);
+    const dateStr = [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, "0"),
+      String(date.getDate()).padStart(2, "0"),
+    ].join("-");
 
     let departures = 0;
     let payments = 0;
@@ -166,17 +170,30 @@ export function CalendarPreview({ data }: CalendarPreviewProps) {
         {days.map((day) => {
           const eventCount =
             day.departures + day.payments + day.followUps + day.quotes;
+          const href = `/calendar?date=${
+            [
+              day.date.getFullYear(),
+              String(day.date.getMonth() + 1).padStart(2, "0"),
+              String(day.date.getDate()).padStart(2, "0"),
+            ].join("-")
+          }`;
           return (
-            <div
+            <Link
               key={day.label}
+              href={href}
               className={cn(
-                'flex flex-col items-center rounded-xl px-1 py-2 transition-colors',
+                'flex flex-col items-center rounded-xl px-1 py-2 transition-colors hover:bg-primary/5',
                 day.isToday
                   ? 'bg-primary/10 ring-1 ring-primary/30'
                   : eventCount > 0
                     ? 'bg-white/50 dark:bg-white/[0.03]'
                     : '',
               )}
+              title={
+                eventCount > 0
+                  ? `${eventCount} item${eventCount === 1 ? "" : "s"} on ${day.label}`
+                  : `No items on ${day.label}`
+              }
             >
               <span
                 className={cn(
@@ -197,7 +214,7 @@ export function CalendarPreview({ data }: CalendarPreviewProps) {
                 {day.date.getDate()}
               </span>
               <DotRow day={day} />
-            </div>
+            </Link>
           );
         })}
       </div>

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
+import { useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -32,6 +34,7 @@ import { GuidedTour } from '@/components/tour/GuidedTour';
 // ---------------------------------------------------------------------------
 
 export function CalendarCommandCenter() {
+  const searchParams = useSearchParams();
   // ---- State ----
   const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
   const [viewMode, setViewMode] = useState<CalendarViewMode>(
@@ -55,6 +58,21 @@ export function CalendarCommandCenter() {
     date: Date;
     hour: number | null;
   } | null>(null);
+
+  useEffect(() => {
+    const rawDate = searchParams.get("date");
+    if (!rawDate) return;
+
+    const parsed = new Date(`${rawDate}T00:00:00`);
+    if (!Number.isFinite(parsed.getTime())) return;
+
+    setCurrentDate(parsed);
+    setSelectedDay({
+      year: parsed.getFullYear(),
+      month: parsed.getMonth(),
+      day: parsed.getDate(),
+    });
+  }, [searchParams]);
 
   // ---- Data fetching ----
   const {
@@ -182,6 +200,15 @@ export function CalendarCommandCenter() {
         <p className="mt-1 md:mt-2 text-sm md:text-lg text-slate-500">
           Your entire operation at a glance — act on anything, right here.
         </p>
+        {selectedDay && (
+          <p className="mt-2 text-xs font-medium text-primary">
+            Focused on {new Date(selectedDay.year, selectedDay.month, selectedDay.day).toLocaleDateString("en-US", {
+              weekday: "long",
+              month: "short",
+              day: "numeric",
+            })}
+          </p>
+        )}
       </motion.div>
 
       {/* Calendar Header */}

@@ -181,7 +181,8 @@ async function fetchTrips(
       "*, profiles(full_name), itineraries(destination, trip_title, duration_days)",
     )
     .eq("organization_id", orgId)
-    .gte("end_date", windowStart)
+    .not("start_date", "is", null)
+    .gte("start_date", windowStart)
     .lte("start_date", windowEnd);
 
   if (error) throw error;
@@ -339,8 +340,9 @@ async function fetchProposals(
     .from("proposals")
     .select("*, clients(full_name)")
     .eq("organization_id", orgId)
-    .gte("created_at", windowStart)
-    .lte("created_at", windowEnd);
+    .not("expires_at", "is", null)
+    .gte("expires_at", windowStart)
+    .lte("expires_at", windowEnd);
 
   if (error) throw error;
 
@@ -361,7 +363,7 @@ async function fetchProposals(
       type: "proposal" as const,
       title: proposal.title ?? "Proposal",
       subtitle: client?.full_name ?? "Unknown Client",
-      startDate: proposal.created_at ?? new Date().toISOString(),
+      startDate: proposal.expires_at ?? proposal.created_at ?? new Date().toISOString(),
       endDate: null,
       status: proposal.status ?? "draft",
       statusVariant: getStatusVariant(proposal.status ?? "draft"),
