@@ -11,6 +11,10 @@ import {
 import type { Json } from "@/lib/database.types";
 import { resolveSharePaymentContext } from "@/lib/share/admin-share";
 import { normalizeSharePaymentConfig } from "@/lib/share/payment-config";
+import {
+  maybeAttachSharedItineraryPaymentConfig,
+  withOptionalSharedItineraryPaymentConfig,
+} from "@/lib/share/payment-config-compat";
 
 /**
  * POST /api/admin/share/create
@@ -157,15 +161,26 @@ export async function POST(request: NextRequest) {
   });
 
   // Check for existing share link
-  const { data: existing } = await adminClient
-    .from("shared_itineraries")
-    .select("id, share_code")
-    .eq("itinerary_id", itineraryId)
-    .maybeSingle();
+  const { data: existing, paymentConfigSupported } = await withOptionalSharedItineraryPaymentConfig<
+    { id: string; share_code: string; payment_config?: Json | null } | { id: string; share_code: string } | null
+  >(
+    async () =>
+      adminClient
+        .from("shared_itineraries")
+        .select("id, share_code, payment_config")
+        .eq("itinerary_id", itineraryId)
+        .maybeSingle(),
+    async () =>
+      adminClient
+        .from("shared_itineraries")
+        .select("id, share_code")
+        .eq("itinerary_id", itineraryId)
+        .maybeSingle(),
+  );
 
   if (existing?.share_code) {
     const updates: Record<string, unknown> = { template_id: templateId };
-    if (paymentConfig !== undefined) {
+    if (paymentConfig !== undefined && paymentConfigSupported) {
       updates.payment_config = (paymentConfig || null) as unknown as Json;
     }
 
@@ -192,14 +207,13 @@ export async function POST(request: NextRequest) {
 
   const { error: insertError } = await adminClient
     .from("shared_itineraries")
-    .insert({
+    .insert(maybeAttachSharedItineraryPaymentConfig({
       itinerary_id: itineraryId,
       share_code: shareCode,
       status: "active",
       template_id: templateId,
       expires_at: expiresAt.toISOString(),
-      payment_config: (paymentConfig || null) as unknown as Json,
-    });
+    }, paymentConfigSupported, (paymentConfig || null) as unknown as Json));
 
   if (insertError) {
     logError("Failed to create share link", insertError);

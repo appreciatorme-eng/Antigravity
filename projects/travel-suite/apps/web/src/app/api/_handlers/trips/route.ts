@@ -7,6 +7,7 @@ import { logError } from "@/lib/observability/logger";
 import { getDeterministicFallback } from "@/lib/image-search";
 import type { SharePaymentSummary } from "@/lib/share/payment-config";
 import { normalizeSharePaymentConfig } from "@/lib/share/payment-config";
+import { withOptionalSharedItineraryPaymentConfig } from "@/lib/share/payment-config-compat";
 
 const supabaseAdmin = createAdminClient();
 
@@ -164,11 +165,19 @@ async function loadTripPresentationMetadata(
 
     const [sharesResult, proposalsResult, paymentLinksResult] = await Promise.all([
         itineraryIds.length > 0
-            ? supabaseAdmin
-                .from("shared_itineraries")
-                .select("itinerary_id, share_code, status, payment_config, client_comments, client_preferences, wishlist_items, viewed_at, approved_at, approved_by, self_service_status")
-                .in("itinerary_id", itineraryIds)
-            : Promise.resolve({ data: [], error: null }),
+            ? withOptionalSharedItineraryPaymentConfig<SharedItineraryRow[]>(
+                async () =>
+                    supabaseAdmin
+                        .from("shared_itineraries")
+                        .select("itinerary_id, share_code, status, payment_config, client_comments, client_preferences, wishlist_items, viewed_at, approved_at, approved_by, self_service_status")
+                        .in("itinerary_id", itineraryIds),
+                async () =>
+                    supabaseAdmin
+                        .from("shared_itineraries")
+                        .select("itinerary_id, share_code, status, client_comments, client_preferences, wishlist_items, viewed_at, approved_at, approved_by, self_service_status")
+                        .in("itinerary_id", itineraryIds),
+            )
+            : Promise.resolve({ data: [] as SharedItineraryRow[], error: null, paymentConfigSupported: false }),
         tripIds.length > 0
             ? supabaseAdmin
                 .from("proposals")
@@ -188,7 +197,13 @@ async function loadTripPresentationMetadata(
     const shareMap = new Map<string, SharedItineraryRow>();
     for (const share of (sharesResult.data || []) as SharedItineraryRow[]) {
         if (!share.itinerary_id || shareMap.has(share.itinerary_id)) continue;
-        shareMap.set(share.itinerary_id, share);
+        shareMap.set(share.itinerary_id, {
+            ...share,
+            payment_config:
+                sharesResult.paymentConfigSupported && "payment_config" in share
+                    ? share.payment_config ?? null
+                    : null,
+        });
     }
 
     const proposalMap = new Map<string, ProposalRow>();

@@ -17,6 +17,7 @@ import {
 } from "@/lib/image-search";
 import type { Json } from "@/lib/supabase/database.types";
 import { normalizeSharePaymentConfig } from "@/lib/share/payment-config";
+import { withOptionalSharedItineraryPaymentConfig } from "@/lib/share/payment-config-compat";
 
 export async function generateMetadata({
     params,
@@ -84,18 +85,56 @@ export default async function SharedTripPage({
 
     // Fetch only the safe public share payload needed to render the itinerary.
     // Do not resolve traveler contact information from a bearer share token.
-    const { data: share, error: shareError } = await supabaseAdmin
-        .from("shared_itineraries")
-        .select(SHARED_ITINERARY_PUBLIC_SELECT)
-        .eq("share_code", token)
-        .single();
+    const { data: share, error: shareError, paymentConfigSupported } =
+        await withOptionalSharedItineraryPaymentConfig(
+            async () =>
+                supabaseAdmin
+                    .from("shared_itineraries")
+                    .select(SHARED_ITINERARY_PUBLIC_SELECT)
+                    .eq("share_code", token)
+                    .single(),
+            async () =>
+                supabaseAdmin
+                    .from("shared_itineraries")
+                    .select(`
+                        id,
+                        expires_at,
+                        template_id,
+                        status,
+                        viewed_at,
+                        itineraries (
+                          id,
+                          raw_data,
+                          trip_title,
+                          destination,
+                          duration_days,
+                          budget,
+                          interests,
+                          summary,
+                          user_id,
+                          client_id,
+                          profiles!itineraries_user_id_fkey (
+                            organizations!profiles_organization_id_fkey ( name, logo_url, primary_color, billing_city, billing_state )
+                          )
+                        )
+                    `)
+                    .eq("share_code", token)
+                    .single(),
+        );
 
-    if (shareError || !share) {
+    const shareRow = share as {
+        id: string;
+        expires_at?: string | null;
+        viewed_at?: string | null;
+        status?: string | null;
+    } | null;
+
+    if (shareError || !shareRow) {
         notFound();
     }
 
     // Check if expired
-    if (share.expires_at && new Date(share.expires_at) < new Date()) {
+    if (shareRow.expires_at && new Date(shareRow.expires_at) < new Date()) {
         return (
             <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 via-white to-sky-50 p-4">
                 <div className="text-center">
@@ -121,16 +160,16 @@ export default async function SharedTripPage({
     }
 
     // Track the view — set both viewed_at and status so the planner pipeline reflects "Viewed"
-    const isFirstView = !share.viewed_at;
+    const isFirstView = !shareRow.viewed_at;
     const viewUpdate: Record<string, string> = { viewed_at: new Date().toISOString() };
     // Only promote status to "viewed" if it hasn't progressed further (commented/approved)
-    if (isFirstView && (!share.status || share.status === "active")) {
+    if (isFirstView && (!shareRow.status || shareRow.status === "active")) {
         viewUpdate.status = "viewed";
     }
     await supabaseAdmin
         .from("shared_itineraries")
         .update(viewUpdate)
-        .eq("id", share.id);
+        .eq("id", shareRow.id);
 
     const shareRecord = share as unknown as {
         itineraries: {
@@ -241,7 +280,9 @@ export default async function SharedTripPage({
 
     // Resolve the template (default to safari_story — the first premium template)
     const templateId: string = shareRecord.template_id || "safari_story";
-    const paymentConfig = normalizeSharePaymentConfig(shareRecord.payment_config ?? null);
+    const paymentConfig = normalizeSharePaymentConfig(
+        paymentConfigSupported ? shareRecord.payment_config ?? null : null,
+    );
 
     // Delegate rendering to a client component — all template components use "use client"
     // and cannot be dynamically resolved inside a server component.

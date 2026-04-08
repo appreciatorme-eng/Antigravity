@@ -14,6 +14,7 @@ import {
   normalizeSharePaymentConfig,
   type SharePaymentOption,
 } from "@/lib/share/payment-config";
+import { withOptionalSharedItineraryPaymentConfig } from "@/lib/share/payment-config-compat";
 
 const tokenSchema = z.string().min(8).max(200);
 const bodySchema = z.object({
@@ -62,21 +63,41 @@ export async function POST(
     const option: SharePaymentOption = parsedBody.data.option;
     const admin = createAdminClient();
 
-    const { data: share } = await admin
-      .from("shared_itineraries")
-      .select(`
-        id,
-        expires_at,
-        payment_config,
-        itineraries (
-          id,
-          user_id,
-          trip_title,
-          destination
-        )
-      `)
-      .eq("share_code", parsedToken.data)
-      .maybeSingle();
+    const { data: share, paymentConfigSupported } = await withOptionalSharedItineraryPaymentConfig<
+      ({ id: string; expires_at: string | null; payment_config?: unknown; itineraries: { id: string; user_id: string | null; trip_title: string; destination: string } | null } | null)
+    >(
+      async () =>
+        admin
+          .from("shared_itineraries")
+          .select(`
+            id,
+            expires_at,
+            payment_config,
+            itineraries (
+              id,
+              user_id,
+              trip_title,
+              destination
+            )
+          `)
+          .eq("share_code", parsedToken.data)
+          .maybeSingle(),
+      async () =>
+        admin
+          .from("shared_itineraries")
+          .select(`
+            id,
+            expires_at,
+            itineraries (
+              id,
+              user_id,
+              trip_title,
+              destination
+            )
+          `)
+          .eq("share_code", parsedToken.data)
+          .maybeSingle(),
+    );
 
     if (!share || !share.itineraries) {
       return apiError("Shared itinerary not found", 404);
@@ -86,7 +107,11 @@ export async function POST(
       return apiError("This share link has expired", 410);
     }
 
-    const paymentConfig = normalizeSharePaymentConfig(share.payment_config);
+    const paymentConfig = normalizeSharePaymentConfig(
+      paymentConfigSupported && share && typeof share === "object" && "payment_config" in share
+        ? share.payment_config
+        : null,
+    );
     if (!paymentConfig) {
       return apiError("Payment is not enabled for this share", 400);
     }

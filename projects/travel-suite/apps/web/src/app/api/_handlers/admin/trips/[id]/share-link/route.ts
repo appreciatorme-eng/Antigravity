@@ -6,6 +6,10 @@ import { logError } from "@/lib/observability/logger";
 import type { Json } from "@/lib/database.types";
 import { resolveSharePaymentContext } from "@/lib/share/admin-share";
 import { normalizeSharePaymentConfig } from "@/lib/share/payment-config";
+import {
+  maybeAttachSharedItineraryPaymentConfig,
+  withOptionalSharedItineraryPaymentConfig,
+} from "@/lib/share/payment-config-compat";
 
 /** Resolve the itinerary_id for a trip, scoped to the admin's org. */
 async function resolveItineraryId(
@@ -52,11 +56,22 @@ async function findOrCreateShareLink(
   } = {},
 ) {
   // Check if a shared_itineraries row already exists
-  const { data: existing } = await adminClient
-    .from("shared_itineraries")
-    .select("share_code, id")
-    .eq("itinerary_id", itineraryId)
-    .maybeSingle();
+  const { data: existing, paymentConfigSupported } = await withOptionalSharedItineraryPaymentConfig<
+    { share_code: string; id: string; payment_config?: Json | null } | { share_code: string; id: string } | null
+  >(
+    async () =>
+      adminClient
+        .from("shared_itineraries")
+        .select("share_code, id, payment_config")
+        .eq("itinerary_id", itineraryId)
+        .maybeSingle(),
+    async () =>
+      adminClient
+        .from("shared_itineraries")
+        .select("share_code, id")
+        .eq("itinerary_id", itineraryId)
+        .maybeSingle(),
+  );
 
   if (existing?.share_code) {
     const updates: Record<string, unknown> = {};
@@ -66,7 +81,7 @@ async function findOrCreateShareLink(
     if (options.expiresAt) {
       updates.expires_at = options.expiresAt;
     }
-    if (options.paymentConfig !== undefined) {
+    if (options.paymentConfig !== undefined && paymentConfigSupported) {
       updates.payment_config = (options.paymentConfig || null) as unknown as Json;
     }
 
@@ -83,14 +98,13 @@ async function findOrCreateShareLink(
   const shareCode = randomUUID().replace(/-/g, "").slice(0, 16);
   const { error: insertError } = await adminClient
     .from("shared_itineraries")
-    .insert({
+    .insert(maybeAttachSharedItineraryPaymentConfig({
       itinerary_id: itineraryId,
       share_code: shareCode,
       status: "active",
       ...(options.templateId ? { template_id: options.templateId } : {}),
       ...(options.expiresAt ? { expires_at: options.expiresAt } : {}),
-      payment_config: (options.paymentConfig || null) as unknown as Json,
-    });
+    }, paymentConfigSupported, (options.paymentConfig || null) as unknown as Json));
 
   if (insertError) {
     return { shareCode: null, error: insertError };

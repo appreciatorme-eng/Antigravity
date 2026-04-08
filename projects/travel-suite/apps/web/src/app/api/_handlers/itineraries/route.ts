@@ -5,6 +5,7 @@ import { safeErrorMessage } from "@/lib/security/safe-error";
 import { logError, logWarn } from "@/lib/observability/logger";
 import { getDeterministicFallback, getWikiImage } from "@/lib/image-search";
 import { normalizeSharePaymentConfig } from "@/lib/share/payment-config";
+import { withOptionalSharedItineraryPaymentConfig } from "@/lib/share/payment-config-compat";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -73,10 +74,32 @@ export async function GET(request: NextRequest) {
     }> = {};
 
     if (itineraryIds.length > 0) {
-      const { data: shares } = await supabase
-        .from("shared_itineraries")
-        .select("itinerary_id, share_code, status, payment_config, client_comments, client_preferences, wishlist_items, viewed_at, approved_at, approved_by, self_service_status")
-        .in("itinerary_id", itineraryIds);
+      const { data: shares, paymentConfigSupported } = await withOptionalSharedItineraryPaymentConfig<
+        Array<{
+          itinerary_id: string | null;
+          share_code: string;
+          status: string | null;
+          payment_config?: unknown;
+          client_comments: unknown;
+          client_preferences: unknown;
+          wishlist_items: unknown;
+          viewed_at: string | null;
+          approved_at: string | null;
+          approved_by: string | null;
+          self_service_status: string | null;
+        }>
+      >(
+        async () =>
+          supabase
+            .from("shared_itineraries")
+            .select("itinerary_id, share_code, status, payment_config, client_comments, client_preferences, wishlist_items, viewed_at, approved_at, approved_by, self_service_status")
+            .in("itinerary_id", itineraryIds),
+        async () =>
+          supabase
+            .from("shared_itineraries")
+            .select("itinerary_id, share_code, status, client_comments, client_preferences, wishlist_items, viewed_at, approved_at, approved_by, self_service_status")
+            .in("itinerary_id", itineraryIds),
+      );
 
       if (shares) {
         for (const s of shares) {
@@ -84,7 +107,7 @@ export async function GET(request: NextRequest) {
             shareMap[s.itinerary_id] = {
               share_code: s.share_code,
               status: s.status,
-              payment_config: s.payment_config ?? null,
+              payment_config: paymentConfigSupported && "payment_config" in s ? s.payment_config ?? null : null,
               client_comments: s.client_comments ?? [],
               client_preferences: s.client_preferences ?? null,
               wishlist_items: s.wishlist_items ?? [],

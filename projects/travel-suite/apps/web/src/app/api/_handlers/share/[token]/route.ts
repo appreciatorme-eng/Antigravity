@@ -7,6 +7,7 @@ import { safeErrorMessage } from '@/lib/security/safe-error';
 import { sanitizeText } from '@/lib/security/sanitize';
 import { enforceRateLimit, type RateLimitResult } from "@/lib/security/rate-limit";
 import type { Json } from '@/lib/database.types';
+import { withOptionalSharedItineraryPaymentConfig } from "@/lib/share/payment-config-compat";
 import {
   buildPublicShareResponse,
   parseCommentArray,
@@ -119,11 +120,23 @@ export async function GET(
       return withRateLimitHeaders(response, limiter);
     }
 
-    const { data: shareData, error: shareError } = await supabaseAdmin
-      .from('shared_itineraries')
-      .select(SHARE_PUBLIC_STATE_SELECT)
-      .eq('share_code', token)
-      .single();
+    const { data: shareData, error: shareError, paymentConfigSupported } =
+      await withOptionalSharedItineraryPaymentConfig(
+        async () =>
+          supabaseAdmin
+            .from('shared_itineraries')
+            .select(SHARE_PUBLIC_STATE_SELECT)
+            .eq('share_code', token)
+            .single(),
+        async () =>
+          supabaseAdmin
+            .from('shared_itineraries')
+            .select(
+              'id, itinerary_id, client_comments, expires_at, status, approved_by, approved_at, client_preferences, wishlist_items, self_service_status, offline_pack_ready'
+            )
+            .eq('share_code', token)
+            .single(),
+      );
 
     const share = shareData as ShareRow | null;
     if (shareError || !share) {
@@ -134,7 +147,13 @@ export async function GET(
       return apiError('Share link has expired', 410);
     }
 
-    return apiSuccess(buildPublicShareResponse(share as ShareRow));
+    return apiSuccess(buildPublicShareResponse({
+      ...share,
+      payment_config:
+        paymentConfigSupported && share && "payment_config" in share
+          ? share.payment_config ?? null
+          : null,
+    } as ShareRow));
   } catch {
     return apiError('Internal Error', 500);
   }

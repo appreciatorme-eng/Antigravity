@@ -3,6 +3,7 @@ import type { Database } from "@/lib/database.types";
 import type { ItineraryResult } from "@/types/itinerary";
 import type { SharePaymentConfig, SharePaymentDefaults } from "@/lib/share/payment-config";
 import { normalizeSharePaymentConfig } from "@/lib/share/payment-config";
+import { withOptionalSharedItineraryPaymentConfig } from "@/lib/share/payment-config-compat";
 
 type AdminClient = SupabaseClient<Database>;
 
@@ -94,16 +95,29 @@ export async function resolveSharePaymentContext({
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle(),
-    adminClient
-      .from("shared_itineraries")
-      .select("payment_config")
-      .eq("itinerary_id", itineraryId)
-      .maybeSingle(),
+    withOptionalSharedItineraryPaymentConfig<{ payment_config?: unknown } | { id: string } | null>(
+      async () =>
+        adminClient
+          .from("shared_itineraries")
+          .select("payment_config")
+          .eq("itinerary_id", itineraryId)
+          .maybeSingle(),
+      async () =>
+        adminClient
+          .from("shared_itineraries")
+          .select("id")
+          .eq("itinerary_id", itineraryId)
+          .maybeSingle(),
+    ),
   ]);
 
   const linkedTrip = (linkedTripResult.data as LinkedTripRow | null) ?? null;
   const resolvedItinerary = (itinerary as ItineraryPaymentRow | null) ?? null;
-  const existingPaymentConfig = normalizeSharePaymentConfig(shareResult.data?.payment_config ?? null);
+  const existingPaymentConfig = normalizeSharePaymentConfig(
+    shareResult.paymentConfigSupported && shareResult.data && typeof shareResult.data === "object" && "payment_config" in shareResult.data
+      ? shareResult.data.payment_config
+      : null,
+  );
   const resolvedTripTitle =
     resolvedItinerary?.trip_title?.trim() ||
     resolvedItinerary?.destination?.trim() ||
