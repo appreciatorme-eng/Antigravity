@@ -379,18 +379,25 @@ export async function loadPipelineDrill(
   win: TimeWindow,
   status?: string | null,
   statusGroup?: string | null,
+  limit = 50,
 ): Promise<DrillResult> {
+  const isOpenPipeline = statusGroup === "open";
+  const openStatuses = ["draft", "sent", "viewed"];
+
   let query = supabase
     .from("proposals")
     .select("id, title, status, total_price, created_at, viewed_at")
     .eq("organization_id", orgId)
-    .gte("created_at", win.startISO)
-    .lt("created_at", win.endISO)
     .order("created_at", { ascending: false })
-    .limit(100);
+    .limit(Math.max(1, Math.min(limit, 100)));
 
-  if (status) {
-    query = query.eq("status", status);
+  if (isOpenPipeline) {
+    query = query.in("status", openStatuses);
+  } else {
+    query = query.gte("created_at", win.startISO).lt("created_at", win.endISO);
+    if (status) {
+      query = query.eq("status", status);
+    }
   }
 
   const { data, error } = await query;
@@ -398,14 +405,14 @@ export async function loadPipelineDrill(
 
   const rawProposalRows = (data || []) as ProposalDrillRow[];
   const proposalRows =
-    statusGroup === "open"
+    isOpenPipeline
       ? rawProposalRows.filter((proposal) =>
-          ["draft", "sent", "viewed"].includes((proposal.status || "").toLowerCase()),
+          openStatuses.includes((proposal.status || "").toLowerCase()),
         )
       : rawProposalRows;
   const totalValue = proposalRows.reduce((sum, p) => sum + Number(p.total_price || 0), 0);
   const statusLabel =
-    statusGroup === "open"
+    isOpenPipeline
       ? "open pipeline"
       : status
         ? status.replace(/_/g, " ")
@@ -416,10 +423,10 @@ export async function loadPipelineDrill(
       label: `${statusLabel.charAt(0).toUpperCase() + statusLabel.slice(1)} proposals`,
       primaryValue: statusGroup === "open" ? formatINR(totalValue) : `${proposalRows.length}`,
       secondaryValue:
-        statusGroup === "open"
-          ? `${proposalRows.length} proposal${proposalRows.length === 1 ? "" : "s"} in active pipeline`
+        isOpenPipeline
+          ? `${proposalRows.length} proposal${proposalRows.length === 1 ? "" : "s"} contributing to pipeline value`
           : `${formatINR(totalValue)} total value`,
-      windowLabel: win.label,
+      windowLabel: isOpenPipeline ? `Latest ${proposalRows.length}` : win.label,
     },
     rows: proposalRows.map((p) => ({
       id: p.id,

@@ -128,7 +128,7 @@ export function PipelineFunnel({ data }: PipelineFunnelProps) {
           </h2>
         </div>
         <Link
-          href="/admin/insights"
+          href="/analytics/drill-through?type=pipeline&status_group=open&limit=50"
           className="flex items-center gap-1 text-xs font-bold text-primary hover:underline"
         >
           Details <ChevronRight className="h-3 w-3" />

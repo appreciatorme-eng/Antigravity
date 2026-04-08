@@ -56,7 +56,7 @@ function buildCards(data: DashboardV2State): KPICard[] {
   const departureCount = cc?.departures.length ?? stats?.activeTrips ?? 0;
   const winRate = winLoss?.totals.win_rate;
   const conversionRate = brief?.metrics_snapshot.conversion_rate_30d;
-  const pipelineHref = '/analytics/drill-through?type=pipeline&status_group=open&range=1m';
+  const pipelineHref = '/analytics/drill-through?type=pipeline&status_group=open&limit=50';
 
   return [
     {
