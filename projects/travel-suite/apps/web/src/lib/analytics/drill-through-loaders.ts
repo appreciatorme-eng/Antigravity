@@ -378,6 +378,7 @@ export async function loadPipelineDrill(
   orgId: string,
   win: TimeWindow,
   status?: string | null,
+  statusGroup?: string | null,
 ): Promise<DrillResult> {
   let query = supabase
     .from("proposals")
@@ -395,15 +396,29 @@ export async function loadPipelineDrill(
   const { data, error } = await query;
   if (error) throw error;
 
-  const proposalRows = (data || []) as ProposalDrillRow[];
+  const rawProposalRows = (data || []) as ProposalDrillRow[];
+  const proposalRows =
+    statusGroup === "open"
+      ? rawProposalRows.filter((proposal) =>
+          ["draft", "sent", "viewed"].includes((proposal.status || "").toLowerCase()),
+        )
+      : rawProposalRows;
   const totalValue = proposalRows.reduce((sum, p) => sum + Number(p.total_price || 0), 0);
-  const statusLabel = status ? status.replace(/_/g, " ") : "all";
+  const statusLabel =
+    statusGroup === "open"
+      ? "open pipeline"
+      : status
+        ? status.replace(/_/g, " ")
+        : "all";
 
   return {
     summary: {
       label: `${statusLabel.charAt(0).toUpperCase() + statusLabel.slice(1)} proposals`,
-      primaryValue: `${proposalRows.length}`,
-      secondaryValue: `${formatINR(totalValue)} total value`,
+      primaryValue: statusGroup === "open" ? formatINR(totalValue) : `${proposalRows.length}`,
+      secondaryValue:
+        statusGroup === "open"
+          ? `${proposalRows.length} proposal${proposalRows.length === 1 ? "" : "s"} in active pipeline`
+          : `${formatINR(totalValue)} total value`,
       windowLabel: win.label,
     },
     rows: proposalRows.map((p) => ({

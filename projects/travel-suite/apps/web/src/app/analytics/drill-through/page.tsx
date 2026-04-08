@@ -82,6 +82,7 @@ function DrillThroughContent() {
   const month = searchParams.get("month");
   const destination = searchParams.get("destination");
   const status = searchParams.get("status");
+  const statusGroup = searchParams.get("status_group");
   const season = searchParams.get("season");
   const subtype = searchParams.get("subtype");
 
@@ -125,7 +126,7 @@ function DrillThroughContent() {
           destinations: () => loadDestinationsDrill(supabase, orgId, win, destination),
           "destination-revenue": () => loadDestinationRevenueDrill(supabase, orgId, win, destination),
           season: () => loadSeasonDrill(supabase, orgId, season),
-          pipeline: () => loadPipelineDrill(supabase, orgId, win, status),
+          pipeline: () => loadPipelineDrill(supabase, orgId, win, status, statusGroup),
           operations: () => loadOperationsDrill(supabase, orgId, subtype),
         };
 
@@ -142,7 +143,7 @@ function DrillThroughContent() {
     };
 
     void loadData();
-  }, [destination, month, range, season, status, subtype, supabase, type]);
+  }, [destination, month, range, season, status, statusGroup, subtype, supabase, type]);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
