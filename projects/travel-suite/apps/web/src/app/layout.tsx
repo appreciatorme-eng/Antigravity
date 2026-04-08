@@ -5,6 +5,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import "./globals.css";
 import "@/styles/print.css";
+import { BoneyardRegistry } from "@/bones/BoneyardRegistry";
 import AppProviders from "@/components/providers/AppProviders";
 import AppShell from "@/components/layout/AppShell";
 import { ServiceWorkerRegistrar } from "@/components/pwa/ServiceWorkerRegistrar";
@@ -112,6 +113,7 @@ export default async function RootLayout({
           Skip to main content
         </a>
         <NextIntlClientProvider locale={locale} messages={messages}>
+          <BoneyardRegistry />
           <AppProviders>
             <Suspense fallback={null}>
               <AppShell>{children}</AppShell>

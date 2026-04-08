@@ -6,6 +6,7 @@ import { useDemoMode } from '@/lib/demo/demo-mode-context';
 import { AlertTriangle, X } from 'lucide-react';
 import { ErrorSection } from '@/components/ui/ErrorSection';
 import { InboxSkeleton } from '@/components/ui/skeletons/InboxSkeleton';
+import { InboxShellBone } from '@/components/ui/skeletons/InboxShellBone';
 import { type WhatsAppTemplate } from '@/lib/whatsapp/india-templates';
 import { UnifiedInboxContextPanel } from './UnifiedInboxContextPanel';
 import { useInboxData } from './useInboxData';
@@ -89,7 +90,7 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
   }, []);
 
   if (inbox.isLoadingConvs && !isDemoMode && inbox.conversations.length === 0) {
-    return <InboxSkeleton />;
+    return <InboxShellBone loading fallback={<InboxSkeleton />} />;
   }
 
   return (

@@ -28,6 +28,7 @@ import { TripGridCard } from "./TripGridCard";
 import { SetupGuide } from "@/components/dashboard/SetupGuide";
 import { GuidedTour } from "@/components/tour/GuidedTour";
 import { useToast } from "@/components/ui/toast";
+import { TripTileBone } from "@/components/ui/skeletons/TripTileBone";
 import { authedFetch } from "@/lib/api/authed-fetch";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -332,9 +333,17 @@ export default function TripsPage() {
 
             {/* Trip List */}
             {loading ? (
-                <div className="grid grid-cols-1 gap-4">
-                    <GlassListSkeleton items={6} />
-                </div>
+                viewMode === "list" ? (
+                    <div className="grid grid-cols-1 gap-4">
+                        <GlassListSkeleton items={6} />
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 2xl:grid-cols-3">
+                        {Array.from({ length: 6 }).map((_, index) => (
+                            <TripTileBone key={index} />
+                        ))}
+                    </div>
+                )
             ) : processedTrips.length === 0 ? (
                 <GlassCard padding="none" className="overflow-hidden border-gray-100 dark:border-slate-800 bg-gray-50/30">
                     <div className="py-24 text-center">

@@ -34,7 +34,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     // Avoid double shelling for admin routes because /admin has its own layout shell.
     const isAdminPage = pathname?.startsWith("/admin");
     // Marketing, auth, and welcome pages bypass the SaaS shell entirely.
-    const MARKETING_PATHS = ["/", "/pricing", "/about", "/blog", "/demo", "/solutions"];
+    const MARKETING_PATHS = ["/", "/pricing", "/about", "/blog", "/demo", "/solutions", "/bones"];
     const isMarketingPage = MARKETING_PATHS.some(
         (p) => pathname === p || pathname?.startsWith(p + "/")
     );

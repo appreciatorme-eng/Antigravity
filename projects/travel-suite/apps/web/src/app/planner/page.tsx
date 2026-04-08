@@ -35,6 +35,7 @@ import { PastItineraryCard } from "./PastItineraryCard";
 import { ItineraryFilterBar, matchesFilter } from "./ItineraryFilterBar";
 import { NeedsAttentionQueue } from "./NeedsAttentionQueue";
 import { SetupGuide } from "@/components/dashboard/SetupGuide";
+import { PlannerItineraryCardBone } from "@/components/ui/skeletons/PlannerItineraryCardBone";
 import { PlannerHero } from "./PlannerHero";
 import { GuidedTour } from '@/components/tour/GuidedTour';
 import type { ClientComment, ClientPreferences } from "@/types/feedback";
@@ -638,7 +639,7 @@ export default function PlannerPage() {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {[1, 2, 3].map((i) => (
-                                <div key={i} className="h-48 bg-slate-100 dark:bg-slate-800/50 rounded-2xl animate-pulse" />
+                                <PlannerItineraryCardBone key={i} />
                             ))}
                         </div>
                     </div>
