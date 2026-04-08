@@ -55,6 +55,7 @@ interface ProposalDrillRow {
   title: string;
   status: string | null;
   total_price: number | null;
+  client_selected_price: number | null;
   created_at: string | null;
   viewed_at: string | null;
 }
@@ -78,6 +79,10 @@ function getItinerary(value: TripDrillRow["itineraries"]): ItineraryLite | null 
 
 function formatINR(amount: number): string {
   return `₹${amount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+}
+
+function getProposalValue(proposal: ProposalDrillRow): number {
+  return Number(proposal.client_selected_price ?? proposal.total_price ?? 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -170,7 +175,7 @@ export async function loadConversionDrill(
 ): Promise<DrillResult> {
   const { data, error } = await supabase
     .from("proposals")
-    .select("id, title, status, total_price, created_at, viewed_at")
+    .select("id, title, status, total_price, client_selected_price, created_at, viewed_at")
     .eq("organization_id", orgId)
     .gte("created_at", win.startISO)
     .lt("created_at", win.endISO)
@@ -196,7 +201,7 @@ export async function loadConversionDrill(
       id: p.id,
       title: p.title,
       subtitle: p.viewed_at ? "Viewed by client" : "Awaiting client view",
-      amountLabel: formatINR(Number(p.total_price || 0)),
+      amountLabel: formatINR(getProposalValue(p)),
       status: p.status || "draft",
       dateLabel: formatDate(p.created_at),
       href: `/proposals/${p.id}`,
@@ -386,7 +391,7 @@ export async function loadPipelineDrill(
 
   let query = supabase
     .from("proposals")
-    .select("id, title, status, total_price, created_at, viewed_at")
+    .select("id, title, status, total_price, client_selected_price, created_at, viewed_at")
     .eq("organization_id", orgId)
     .order("created_at", { ascending: false })
     .limit(Math.max(1, Math.min(limit, 100)));
@@ -410,7 +415,7 @@ export async function loadPipelineDrill(
           openStatuses.includes((proposal.status || "").toLowerCase()),
         )
       : rawProposalRows;
-  const totalValue = proposalRows.reduce((sum, p) => sum + Number(p.total_price || 0), 0);
+  const totalValue = proposalRows.reduce((sum, p) => sum + getProposalValue(p), 0);
   const statusLabel =
     isOpenPipeline
       ? "open pipeline"
@@ -432,7 +437,7 @@ export async function loadPipelineDrill(
       id: p.id,
       title: p.title,
       subtitle: p.viewed_at ? "Viewed by client" : "Awaiting client view",
-      amountLabel: formatINR(Number(p.total_price || 0)),
+      amountLabel: formatINR(getProposalValue(p)),
       status: p.status || "draft",
       dateLabel: formatDate(p.created_at),
       href: `/proposals/${p.id}`,
