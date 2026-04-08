@@ -54,7 +54,6 @@ async function fetchMetrics(organizationId: string | undefined): Promise<Realtim
     todayRevenueRes,
     pendingQuotesRes,
     newLeadsTodayRes,
-    unreadWhatsAppRes,
   ] = await Promise.all([
     supabase
       .from('trips')
@@ -88,13 +87,21 @@ async function fetchMetrics(organizationId: string | undefined): Promise<Realtim
       .eq('lifecycle_stage', 'lead')
       .gte('created_at', `${today}T00:00:00.000Z`)
       .match(organizationId ? { organization_id: organizationId } : {}),
-
-    supabase
-      .from('whatsapp_webhook_events')
-      .select('id', { count: 'exact', head: true })
-      .eq('processing_status', 'pending')
-      .gte('received_at', `${today}T00:00:00.000Z`),
   ])
+
+  let unreadWhatsApp = 0
+  try {
+    const navCountsResponse = await fetch('/api/nav/counts', { cache: 'no-store' })
+    if (navCountsResponse.ok) {
+      const navCountsJson = await navCountsResponse.json() as {
+        data?: { inboxUnread?: number }
+        inboxUnread?: number
+      }
+      unreadWhatsApp = navCountsJson.data?.inboxUnread ?? navCountsJson.inboxUnread ?? 0
+    }
+  } catch {
+    unreadWhatsApp = 0
+  }
 
   const todayRevenue = (todayRevenueRes.data ?? []).reduce(
     (sum, row) => sum + (row.amount_paise ?? 0),
@@ -107,7 +114,7 @@ async function fetchMetrics(organizationId: string | undefined): Promise<Realtim
     todayRevenue,
     pendingQuotes: pendingQuotesRes.count ?? 0,
     newLeadsToday: newLeadsTodayRes.count ?? 0,
-    unreadWhatsApp: unreadWhatsAppRes.count ?? 0,
+    unreadWhatsApp,
     lastUpdated: new Date(),
     isLive: true,
   }
@@ -208,17 +215,6 @@ export function useRealtimeUpdates(options?: UseRealtimeUpdatesOptions): {
         })
         refreshMetrics()
       })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'whatsapp_webhook_events' }, (payload) => {
-        const row = payload.new as { event_type?: string; wa_id?: string }
-        pushUpdate({
-          type: 'new_whatsapp',
-          title: 'New WhatsApp message',
-          description: `Incoming ${row.event_type ?? 'message'}${row.wa_id ? ` from ${row.wa_id}` : ''}`,
-          timestamp: new Date(),
-          id: makeUpdateId(),
-        })
-        refreshMetrics()
-      })
       .subscribe((status) => {
         const connected = status === 'SUBSCRIBED'
         setIsConnected(connected)
@@ -235,6 +231,16 @@ export function useRealtimeUpdates(options?: UseRealtimeUpdatesOptions): {
       })
     }
   }, [enabled, organizationId, pushUpdate, refreshMetrics])
+
+  useEffect(() => {
+    if (!enabled) return
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        refreshMetrics()
+      }
+    }, 30_000)
+    return () => clearInterval(interval)
+  }, [enabled, refreshMetrics])
 
   return {
     metrics,

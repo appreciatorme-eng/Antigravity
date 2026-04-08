@@ -350,17 +350,21 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
 
   useEffect(() => {
     if (isDemoMode) return;
+    const tick = () => {
+      if (document.visibilityState === 'visible') {
+        void loadLiveConversations();
+        void loadWhatsAppHealth();
+      }
+    };
+    const interval = setInterval(tick, 15_000);
+    return () => clearInterval(interval);
+  }, [isDemoMode, loadLiveConversations, loadWhatsAppHealth]);
+
+  useEffect(() => {
+    if (isDemoMode) return;
 
     const channel = supabase
       .channel('inbox-realtime')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'whatsapp_webhook_events' },
-        () => {
-          void loadLiveConversations();
-          void loadWhatsAppHealth();
-        },
-      )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'whatsapp_connections' },
