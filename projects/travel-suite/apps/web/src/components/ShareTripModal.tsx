@@ -170,8 +170,9 @@ export default function ShareTripModal({
                     body.paymentConfig = overridePaymentConfig;
                 }
             } else {
-                body.itineraryId = itineraryId ?? undefined;
-                body.rawItineraryData = !itineraryId && rawItineraryData ? rawItineraryData : undefined;
+                const resolvedItineraryId = resolvedIdRef.current ?? itineraryId ?? undefined;
+                body.itineraryId = resolvedItineraryId;
+                body.rawItineraryData = !resolvedItineraryId && rawItineraryData ? rawItineraryData : undefined;
                 if (overridePaymentConfig !== undefined) {
                     body.paymentConfig = overridePaymentConfig;
                 }
