@@ -4,7 +4,6 @@ import { useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import { X, Calendar, DollarSign, TrendingUp, Plane } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassBadge } from "@/components/glass/GlassBadge";
 import { DayEventRow } from "./DayEventRow";
 import { EVENT_TYPE_CONFIG, ALL_EVENT_TYPES } from "./constants";
@@ -157,19 +156,12 @@ export function DayDrawer({ day, events, onClose, onEventClick }: DayDrawerProps
           )}
         </div>
 
-        {/* Footer */}
         <div className="p-4 border-t border-gray-100">
-          <GlassButton
-            variant="outline"
-            size="sm"
-            className="w-full text-xs"
-            onClick={() => {
-              const params = new URLSearchParams({ type: "revenue", range: "1m" });
-              window.location.href = `/analytics/drill-through?${params.toString()}`;
-            }}
-          >
-            Drill Through Analytics
-          </GlassButton>
+          <p className="text-center text-[11px] font-medium text-slate-400">
+            {events.length > 0
+              ? "Click any event for details."
+              : "No linked records for this date."}
+          </p>
         </div>
       </motion.div>
     </>
