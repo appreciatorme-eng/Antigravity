@@ -16,7 +16,9 @@ interface SaveItineraryButtonProps {
     days: number;
     budget: string;
     interests: string[];
+    itineraryId?: string;
     templateId?: string;
+    onSaved?: (payload: { itineraryId: string; tripId: string | null }) => void;
 }
 
 export default function SaveItineraryButton({
@@ -25,7 +27,9 @@ export default function SaveItineraryButton({
     days,
     budget,
     interests,
+    itineraryId,
     templateId = "safari_story",
+    onSaved,
 }: SaveItineraryButtonProps) {
     const queryClient = useQueryClient();
     const supabase = createClient();
@@ -68,59 +72,106 @@ export default function SaveItineraryButton({
             };
 
             let insertedItinerary: { id: string } | null = null;
-            const { data: insertData, error: insertError } = await supabase
-                .from("itineraries")
-                .insert(itineraryRow)
-                .select("id")
-                .single();
 
-            if (insertError) {
-                // If template_id column doesn't exist, retry without it
-                if (insertError.message?.includes("template_id") || insertError.code === "PGRST204") {
-                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                    const { template_id: _templateId, ...rowWithoutTemplate } = itineraryRow;
-                    const { data: retryData, error: retryError } = await supabase
-                        .from("itineraries")
-                        .insert(rowWithoutTemplate)
-                        .select("id")
-                        .single();
-                    if (retryError) throw retryError;
-                    insertedItinerary = retryData;
+            if (itineraryId) {
+                const { data: updateData, error: updateError } = await supabase
+                    .from("itineraries")
+                    .update(itineraryRow)
+                    .eq("id", itineraryId)
+                    .select("id")
+                    .single();
+
+                if (updateError) {
+                    // If template_id column doesn't exist, retry without it
+                    if (updateError.message?.includes("template_id") || updateError.code === "PGRST204") {
+                        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                        const { template_id: _templateId, ...rowWithoutTemplate } = itineraryRow;
+                        const { data: retryData, error: retryError } = await supabase
+                            .from("itineraries")
+                            .update(rowWithoutTemplate)
+                            .eq("id", itineraryId)
+                            .select("id")
+                            .single();
+                        if (retryError) throw retryError;
+                        insertedItinerary = retryData;
+                    } else {
+                        throw updateError;
+                    }
                 } else {
-                    throw insertError;
+                    insertedItinerary = updateData;
                 }
             } else {
-                insertedItinerary = insertData;
+                const { data: insertData, error: insertError } = await supabase
+                    .from("itineraries")
+                    .insert(itineraryRow)
+                    .select("id")
+                    .single();
+
+                if (insertError) {
+                    // If template_id column doesn't exist, retry without it
+                    if (insertError.message?.includes("template_id") || insertError.code === "PGRST204") {
+                        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                        const { template_id: _templateId, ...rowWithoutTemplate } = itineraryRow;
+                        const { data: retryData, error: retryError } = await supabase
+                            .from("itineraries")
+                            .insert(rowWithoutTemplate)
+                            .select("id")
+                            .single();
+                        if (retryError) throw retryError;
+                        insertedItinerary = retryData;
+                    } else {
+                        throw insertError;
+                    }
+                } else {
+                    insertedItinerary = insertData;
+                }
             }
 
             if (!insertedItinerary) throw new Error("Insert succeeded but returned no data");
 
-            // Also create a trip record so it shows up on the Trips page
-            const { data: insertedTrip, error: tripError } = await supabase
+            let tripId: string | null = null;
+            const { data: existingTrip } = await supabase
                 .from("trips")
-                .insert({
-                    itinerary_id: insertedItinerary.id,
-                    client_id: user.id,
-                    organization_id: profile?.organization_id ?? null,
-                    status: "draft",
-                    destination: itineraryData.destination || destination,
-                })
                 .select("id")
-                .single();
+                .eq("itinerary_id", insertedItinerary.id)
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
 
-            if (tripError) {
-                logError("Trip record creation failed (itinerary saved)", tripError);
-                // Itinerary still saved — show success and refresh list
-                setSaved(true);
-                queryClient.invalidateQueries({ queryKey: itinerariesKeys.all });
-                return;
+            if (existingTrip?.id) {
+                tripId = existingTrip.id;
+            } else {
+                // Also create a trip record so it shows up on the Trips page
+                const { data: insertedTrip, error: tripError } = await supabase
+                    .from("trips")
+                    .insert({
+                        itinerary_id: insertedItinerary.id,
+                        client_id: user.id,
+                        organization_id: profile?.organization_id ?? null,
+                        status: "draft",
+                        destination: itineraryData.destination || destination,
+                    })
+                    .select("id")
+                    .single();
+
+                if (tripError) {
+                    logError("Trip record creation failed (itinerary saved)", tripError);
+                    // Itinerary still saved — show success and refresh list
+                    setSaved(true);
+                    queryClient.invalidateQueries({ queryKey: itinerariesKeys.all });
+                    onSaved?.({ itineraryId: insertedItinerary.id, tripId: null });
+                    return;
+                }
+
+                tripId = insertedTrip.id;
             }
 
             // Stay on page, refresh itinerary list, show success
             setSaved(true);
-            setSavedTripId(insertedTrip.id);
+            setSavedTripId(tripId);
             // Invalidate the query so the saved list re-fetches and shows this new itinerary
             queryClient.invalidateQueries({ queryKey: itinerariesKeys.all });
+            onSaved?.({ itineraryId: insertedItinerary.id, tripId });
 
             // Smooth scroll to the saved section
             setTimeout(() => {

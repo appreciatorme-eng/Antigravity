@@ -317,7 +317,10 @@ export default function PlannerPage() {
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => setResult(null)}
+                                    onClick={() => {
+                                        setResult(null);
+                                        setCurrentItineraryId(null);
+                                    }}
                                     className="text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-all font-semibold rounded-xl text-xs md:text-sm px-2 md:px-4"
                                 >
                                     <span className="md:hidden">←</span>
@@ -330,7 +333,9 @@ export default function PlannerPage() {
                                         days={days}
                                         budget={budget}
                                         interests={interests}
+                                        itineraryId={currentItineraryId ?? undefined}
                                         templateId={selectedTemplate}
+                                        onSaved={({ itineraryId }) => setCurrentItineraryId(itineraryId)}
                                     />
                                     <Button
                                         variant="outline"
@@ -590,6 +595,7 @@ export default function PlannerPage() {
                     <ShareTripModal
                         isOpen={isShareOpen}
                         onClose={() => setIsShareOpen(false)}
+                        itineraryId={currentItineraryId ?? undefined}
                         tripTitle={result.trip_title}
                         rawItineraryData={result}
                         initialTemplateId={selectedTemplate}
