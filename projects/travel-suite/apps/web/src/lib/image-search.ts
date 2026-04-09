@@ -974,7 +974,7 @@ export async function populateItineraryImages<T extends ItineraryForImages>(
         }
 
         const activitiesCount = updatedDays.reduce((n, d) => n + d.activities.length, 0);
-        logEvent('info', `[Images] Populated photos for up to ${activitiesCount} activities (max ${WIKI_CONCURRENCY_LIMIT} concurrent)`);
+        logEvent('info', `[Images] Populated photos for up to ${activitiesCount} activities`);
 
         return {
             ...itinerary,
