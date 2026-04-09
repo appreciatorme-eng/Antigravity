@@ -674,22 +674,40 @@ const PRINT_CSS = `
   }
   .summary-band__card--number {
     min-height: 108px;
-    display: grid;
-    align-content: start;
-    gap: 8px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0;
+    border: none;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.07), 0 0 0 1px rgba(17,24,39,0.07);
+  }
+  .summary-band__accent-bar {
+    height: 4px;
+    flex-shrink: 0;
+  }
+  .summary-band__card-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 11px 14px 12px;
   }
   .summary-band__number {
-    font-size: 38px;
+    font-size: 40px;
     line-height: 0.95;
     letter-spacing: -0.05em;
-    font-weight: 700;
-    color: #171717;
+    font-weight: 800;
+  }
+  .summary-band__rule {
+    height: 1px;
+    background: rgba(17,24,39,0.08);
+    margin: 3px 0 1px;
   }
   .summary-band__unit {
-    font-size: 10px;
-    letter-spacing: 0.16em;
+    font-size: 9px;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: rgba(17,24,39,0.44);
+    color: rgba(17,24,39,0.40);
     font-weight: 700;
   }
   .summary-band__value--price {
@@ -1186,21 +1204,33 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                 {payload.coverImage ? <img className="safari-overview__hero" src={payload.coverImage} alt={payload.itinerary.trip_title} /> : null}
                 <div className="summary-band summary-band--numbers">
                   <div className="summary-band__card summary-band__card--number">
-                    <div className="summary-band__label">Duration</div>
-                    <div className="summary-band__number">{payload.itinerary.duration_days}</div>
-                    <div className="summary-band__unit">Days</div>
-                  </div>
-                  <div className="summary-band__card summary-band__card--number">
-                    <div className="summary-band__label">Stops</div>
-                    <div className="summary-band__number">{payload.itinerary.days.reduce((sum, day) => sum + day.activities.length, 0)}</div>
-                    <div className="summary-band__unit">Stops</div>
-                  </div>
-                  <div className="summary-band__card summary-band__card--number">
-                    <div className="summary-band__label">Estimated value</div>
-                    <div className="summary-band__number" style={{ fontSize: '28px', lineHeight: 1.02 }}>
-                      {formatCurrency(payload.itinerary) || 'Custom'}
+                    <div className="summary-band__accent-bar" style={{ background: payload.branding.primaryColor || '#9a6c2f' }} />
+                    <div className="summary-band__card-body">
+                      <div className="summary-band__label">Duration</div>
+                      <div className="summary-band__number" style={{ color: payload.branding.primaryColor || '#9a6c2f' }}>{payload.itinerary.duration_days}</div>
+                      <div className="summary-band__rule" />
+                      <div className="summary-band__unit">Days</div>
                     </div>
-                    <div className="summary-band__unit">Estimate</div>
+                  </div>
+                  <div className="summary-band__card summary-band__card--number">
+                    <div className="summary-band__accent-bar" style={{ background: payload.branding.primaryColor || '#9a6c2f' }} />
+                    <div className="summary-band__card-body">
+                      <div className="summary-band__label">Stops</div>
+                      <div className="summary-band__number" style={{ color: payload.branding.primaryColor || '#9a6c2f' }}>{payload.itinerary.days.reduce((sum, day) => sum + day.activities.length, 0)}</div>
+                      <div className="summary-band__rule" />
+                      <div className="summary-band__unit">Stops</div>
+                    </div>
+                  </div>
+                  <div className="summary-band__card summary-band__card--number">
+                    <div className="summary-band__accent-bar" style={{ background: payload.branding.primaryColor || '#9a6c2f' }} />
+                    <div className="summary-band__card-body">
+                      <div className="summary-band__label">Estimated value</div>
+                      <div className="summary-band__number" style={{ fontSize: '26px', lineHeight: 1.05, color: payload.branding.primaryColor || '#9a6c2f' }}>
+                        {formatCurrency(payload.itinerary) || 'Custom'}
+                      </div>
+                      <div className="summary-band__rule" />
+                      <div className="summary-band__unit">Estimate</div>
+                    </div>
                   </div>
                 </div>
               </div>
