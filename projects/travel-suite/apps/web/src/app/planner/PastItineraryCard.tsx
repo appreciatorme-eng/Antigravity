@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
-import { Copy, Check, Clock, MapPin, Search, UserPlus, Plus, Loader2, Eye, Briefcase, Link2, CalendarHeart } from "lucide-react";
+import { Copy, Check, Clock, MapPin, Search, UserPlus, Plus, Loader2, Eye, Briefcase, Link2, CalendarHeart, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
@@ -52,6 +52,7 @@ interface PastItineraryCardProps {
     compact?: boolean;
     onOpen?: (id: string) => void;
     isLoading?: boolean;
+    onDeleteRequest?: (id: string) => void;
 }
 
 const PIPELINE_STAGES = ["draft", "shared", "viewed", "approved", "converted"] as const;
@@ -179,7 +180,7 @@ function SkeletonShimmer() {
     );
 }
 
-export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoading = false }: PastItineraryCardProps) {
+export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoading = false, onDeleteRequest }: PastItineraryCardProps) {
     const { toast } = useToast();
     const [linkCopied, setLinkCopied] = useState(false);
     const [showClientPicker, setShowClientPicker] = useState(false);
@@ -342,9 +343,25 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
                 </div>
 
                 {/* Duration chip - top right */}
-                <div className="absolute top-3 right-3 flex items-center gap-1 px-2.5 py-1 rounded-full backdrop-blur-md bg-white/20 text-white">
-                    <Clock className="w-3 h-3" />
-                    <span className="text-[10px] font-bold">{itinerary.duration_days}D</span>
+                <div className="absolute top-3 right-3 flex items-center gap-2">
+                    {onDeleteRequest ? (
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onDeleteRequest(itinerary.id);
+                            }}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-full backdrop-blur-md bg-black/30 text-white/80 transition hover:bg-rose-500/85 hover:text-white"
+                            aria-label={`Delete itinerary ${itinerary.trip_title || itinerary.destination || itinerary.id}`}
+                            title="Delete itinerary"
+                        >
+                            <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                    ) : null}
+                    <div className="flex items-center gap-1 px-2.5 py-1 rounded-full backdrop-blur-md bg-white/20 text-white">
+                        <Clock className="w-3 h-3" />
+                        <span className="text-[10px] font-bold">{itinerary.duration_days}D</span>
+                    </div>
                 </div>
 
                 {/* Destination + title - bottom left */}

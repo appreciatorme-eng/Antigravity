@@ -20,6 +20,7 @@ import CurrencyConverter from "@/components/CurrencyConverter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Activity, Day, ItineraryResult } from "@/types/itinerary";
 import type { Json } from "@/lib/database.types";
 import { SafariStoryView, UrbanBriefView, ProfessionalView, LuxuryResortView, VisualJourneyView, BentoJourneyView, TemplateSwitcher, ItineraryTemplateId } from "@/components/itinerary-templates";
@@ -76,7 +77,7 @@ export default function PlannerPage() {
     const supabase = createClient();
     const { toast } = useToast();
     const analytics = useAnalytics();
-    const { data: pastItineraries, isLoading: isLoadingItineraries } = useItineraries();
+    const { data: pastItineraries, isLoading: isLoadingItineraries, refetch: refetchItineraries } = useItineraries();
     const [prompt, setPrompt] = useState("");
     const [days, setDays] = useState(5);
     const [budget, setBudget] = useState("Moderate");
@@ -92,6 +93,8 @@ export default function PlannerPage() {
     const [currentItineraryId, setCurrentItineraryId] = useState<string | null>(null);
     const [filterStage, setFilterStage] = useState<ItineraryStage>("all");
     const [searchQuery, setSearchQuery] = useState("");
+    const [itineraryPendingDelete, setItineraryPendingDelete] = useState<PastItineraryItem | null>(null);
+    const [deletingItineraryId, setDeletingItineraryId] = useState<string | null>(null);
 
     const handleOpenItinerary = useCallback(async (itineraryId: string) => {
         setOpeningItineraryId(itineraryId);
@@ -275,6 +278,49 @@ export default function PlannerPage() {
         }
         return items;
     }, [pastItineraries, filterStage, searchQuery]);
+
+    const requestDeleteItinerary = useCallback((itineraryId: string) => {
+        const itinerary = filteredItineraries.find((item: PastItineraryItem) => item.id === itineraryId) ?? null;
+        if (!itinerary || deletingItineraryId) return;
+        setItineraryPendingDelete(itinerary);
+    }, [deletingItineraryId, filteredItineraries]);
+
+    const handleDeleteItinerary = useCallback(async () => {
+        if (!itineraryPendingDelete || deletingItineraryId) return;
+
+        setDeletingItineraryId(itineraryPendingDelete.id);
+        try {
+            const response = await authedFetch(`/api/itineraries/${itineraryPendingDelete.id}`, {
+                method: "DELETE",
+            });
+
+            if (!response.ok) {
+                const payload = await response.json().catch(() => ({}));
+                throw new Error(payload.error || "Failed to delete itinerary");
+            }
+
+            if (currentItineraryId === itineraryPendingDelete.id) {
+                setCurrentItineraryId(null);
+                setResult(null);
+            }
+
+            setItineraryPendingDelete(null);
+            await refetchItineraries();
+            toast({
+                title: "Itinerary deleted",
+                description: "The planner tile and its linked records have been removed.",
+                variant: "success",
+            });
+        } catch (error) {
+            toast({
+                title: "Delete failed",
+                description: error instanceof Error ? error.message : "Unable to delete this itinerary right now.",
+                variant: "error",
+            });
+        } finally {
+            setDeletingItineraryId(null);
+        }
+    }, [currentItineraryId, deletingItineraryId, itineraryPendingDelete, refetchItineraries, toast]);
 
     const isFiltering = filterStage !== "all" || searchQuery.trim().length > 0;
 
@@ -707,6 +753,7 @@ export default function PlannerPage() {
                                         itinerary={itinerary}
                                         onOpen={handleOpenItinerary}
                                         isLoading={openingItineraryId === itinerary.id}
+                                        onDeleteRequest={requestDeleteItinerary}
                                     />
                                 ))}
                             </div>
@@ -721,6 +768,60 @@ export default function PlannerPage() {
                         <span>Pro tip: Assign a client, then share a live preview link — no WhatsApp forwarding needed!</span>
                     </div>
                 )}
+
+                <Dialog open={Boolean(itineraryPendingDelete)} onOpenChange={(open) => !open && !deletingItineraryId && setItineraryPendingDelete(null)}>
+                    <DialogContent className="overflow-hidden border-slate-200/80 bg-white p-0 shadow-[0_32px_100px_-28px_rgba(15,23,42,0.45)] sm:max-w-lg dark:border-slate-800 dark:bg-slate-950">
+                        <div className="border-b border-slate-200/70 bg-gradient-to-br from-rose-50 via-white to-orange-50 px-6 py-6 dark:border-slate-800 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900">
+                            <DialogHeader className="space-y-3 text-left">
+                                <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-500">
+                                    <FolderOpen className="h-5 w-5" />
+                                </div>
+                                <DialogTitle className="text-2xl font-semibold tracking-tight text-secondary dark:text-white">
+                                    Delete Itinerary
+                                </DialogTitle>
+                                <DialogDescription className="max-w-sm text-sm leading-6 text-text-muted dark:text-slate-300">
+                                    This will permanently remove the planner tile, its share link, and any linked trip-side records created from it.
+                                </DialogDescription>
+                            </DialogHeader>
+                        </div>
+
+                        <div className="space-y-4 px-6 py-5">
+                            <div className="rounded-2xl border border-slate-200/70 bg-slate-50/80 p-4 dark:border-slate-800 dark:bg-slate-900/80">
+                                <div className="text-[10px] font-black uppercase tracking-[0.22em] text-text-muted">Itinerary</div>
+                                <div className="mt-2 text-lg font-semibold text-secondary dark:text-white">
+                                    {itineraryPendingDelete?.trip_title || itineraryPendingDelete?.destination || "Untitled itinerary"}
+                                </div>
+                                <div className="mt-1 text-sm text-text-muted dark:text-slate-400">
+                                    {itineraryPendingDelete?.client?.full_name || "Unassigned client"}
+                                    {itineraryPendingDelete?.destination ? ` · ${itineraryPendingDelete.destination}` : ""}
+                                </div>
+                            </div>
+
+                            <p className="text-sm text-text-muted dark:text-slate-400">
+                                This action cannot be undone.
+                            </p>
+                        </div>
+
+                        <DialogFooter className="border-t border-slate-200/70 px-6 py-4 dark:border-slate-800">
+                            <button
+                                type="button"
+                                onClick={() => setItineraryPendingDelete(null)}
+                                disabled={Boolean(deletingItineraryId)}
+                                className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 px-5 text-sm font-semibold text-secondary transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:text-white dark:hover:bg-slate-900"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleDeleteItinerary}
+                                disabled={Boolean(deletingItineraryId)}
+                                className="inline-flex h-11 items-center justify-center rounded-xl bg-rose-500 px-5 text-sm font-semibold text-white shadow-lg shadow-rose-500/20 transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                {deletingItineraryId ? "Deleting..." : "Delete itinerary"}
+                            </button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
         </main>
     );
