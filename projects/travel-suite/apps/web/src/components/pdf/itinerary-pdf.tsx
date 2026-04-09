@@ -182,6 +182,11 @@ export const downloadItineraryPdf = async ({
     throw new Error(payload?.error || 'Failed to generate itinerary PDF');
   }
 
+  const renderer = response.headers.get('x-itinerary-pdf-renderer');
+  if (renderer === 'legacy-react-pdf') {
+    throw new Error('The premium print PDF renderer is unavailable right now. The server fell back to the old export path.');
+  }
+
   const blob = await response.blob();
   const responseFileName = getFileNameFromDisposition(response.headers.get('content-disposition'));
   const finalFileName = responseFileName || computedFileName;

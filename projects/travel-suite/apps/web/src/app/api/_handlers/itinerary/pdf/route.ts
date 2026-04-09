@@ -273,6 +273,7 @@ export async function POST(request: Request) {
           headers: {
             'Content-Type': 'application/pdf',
             'Content-Disposition': `attachment; filename="${fileName}"`,
+            'X-Itinerary-PDF-Renderer': 'print-html',
           },
         });
       } finally {
@@ -288,6 +289,7 @@ export async function POST(request: Request) {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${fileName}"`,
+        'X-Itinerary-PDF-Renderer': 'legacy-react-pdf',
       },
     });
   } catch (error) {
