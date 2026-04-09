@@ -4,7 +4,6 @@ import Image from 'next/image';
 import { Activity, Day } from '@/types/itinerary';
 import { ItineraryTemplateProps } from './types';
 import { Badge } from '@/components/ui/badge';
-import { getContextualFallback } from '@/lib/image-search';
 import { ChevronDown, ChevronUp, Clock, MapPin, Compass, Check, Sun, Plane } from 'lucide-react';
 
 export const SafariStoryView: React.FC<ItineraryTemplateProps> = ({ itinerary, organizationName, organizationBranding, client }) => {
@@ -282,11 +281,7 @@ export const SafariStoryView: React.FC<ItineraryTemplateProps> = ({ itinerary, o
                       <div className="space-y-6 mt-8">
                         {day.activities?.map((activity: Activity, actIndex: number) => {
                           const activityImage = activity.image || activity.imageUrl;
-                          const fallbackImage =
-                            getContextualFallback(
-                              `${activity.title} ${activity.location ?? ''} ${itinerary.destination ?? ''}`,
-                            ) ||
-                            "/unsplash-img/photo-1469854523086-cc02fe5d8800?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3";
+                          const loadFailurePlaceholder = "/place-image-unavailable.svg";
 
                           return (
                             <div key={actIndex} className="bg-white border border-stone-200 p-6 md:p-8 flex flex-col md:flex-row gap-8 hover:border-stone-300 transition-colors">
@@ -300,7 +295,7 @@ export const SafariStoryView: React.FC<ItineraryTemplateProps> = ({ itinerary, o
                                       alt={activity.title}
                                       className="w-full h-full object-cover filter contrast-[1.05] grayscale-[0.1]"
                                       onError={(e) => {
-                                        e.currentTarget.src = fallbackImage;
+                                        e.currentTarget.src = loadFailurePlaceholder;
                                         e.currentTarget.onerror = null;
                                       }}
                                     />

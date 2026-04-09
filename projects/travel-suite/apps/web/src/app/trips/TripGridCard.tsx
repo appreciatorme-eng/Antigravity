@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import {
     ArrowUpRight,
     Briefcase,
@@ -23,6 +24,7 @@ import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { formatINRShort } from "@/lib/india/formats";
 import { buildSharePaymentSummaryLabel } from "@/lib/share/payment-config";
+import { getDeterministicFallback } from "@/lib/image-search";
 import type { EnrichedTrip, ReadinessLevel } from "./types";
 import {
     computeReadiness,
@@ -129,8 +131,10 @@ function ReadinessPill({
 }
 
 export function TripGridCard({ trip, onDelete, deleting = false }: TripGridCardProps) {
+    const router = useRouter();
     const { toast } = useToast();
     const [copiedShare, setCopiedShare] = useState(false);
+    const [heroImageSrc, setHeroImageSrc] = useState("");
     const readiness = computeReadiness(trip);
     const tripStatus = getStatusStyles(trip.status || "");
     const countdown = formatDepartureCountdown(trip.days_until_departure);
@@ -145,7 +149,15 @@ export function TripGridCard({ trip, onDelete, deleting = false }: TripGridCardP
         : null;
     const durationLabel = formatDurationLabel(trip.itineraries?.duration_days);
     const clientLabel = trip.profiles?.full_name || "Walk-in client";
-    const heroImage = useMemo(() => trip.hero_image || "", [trip.hero_image]);
+    const fallbackHeroImage = useMemo(
+        () => getDeterministicFallback(trip.destination || trip.itineraries?.destination || "travel"),
+        [trip.destination, trip.itineraries?.destination],
+    );
+    const heroImage = useMemo(
+        () => trip.hero_image?.trim() || fallbackHeroImage,
+        [trip.hero_image, fallbackHeroImage],
+    );
+    const displayHeroImage = heroImageSrc || heroImage;
 
     const copyShareLink = async () => {
         if (!trip.share_code) return;
@@ -161,11 +173,31 @@ export function TripGridCard({ trip, onDelete, deleting = false }: TripGridCardP
     };
 
     return (
-        <article className="group overflow-hidden rounded-[28px] border border-slate-200/70 bg-[#0b1220] text-white shadow-[0_24px_80px_-32px_rgba(15,23,42,0.45)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_30px_90px_-30px_rgba(15,23,42,0.55)]">
+        <article
+            role="link"
+            tabIndex={0}
+            onClick={() => router.push(`/trips/${trip.id}`)}
+            onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    router.push(`/trips/${trip.id}`);
+                }
+            }}
+            className="group cursor-pointer overflow-hidden rounded-[28px] border border-slate-200/70 bg-[#0b1220] text-white shadow-[0_24px_80px_-32px_rgba(15,23,42,0.45)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_30px_90px_-30px_rgba(15,23,42,0.55)] focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+            aria-label={`Open trip ${trip.itineraries?.trip_title || trip.destination || trip.id}`}
+        >
             <div className="relative h-52 overflow-hidden">
-                <div
-                    className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-[1.035]"
-                    style={{ backgroundImage: `url("${heroImage}")` }}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                    src={displayHeroImage}
+                    alt={trip.itineraries?.trip_title || trip.destination || "Trip cover"}
+                    className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.035]"
+                    onError={(event) => {
+                        if (event.currentTarget.src === fallbackHeroImage || event.currentTarget.src.endsWith(fallbackHeroImage)) {
+                            return;
+                        }
+                        setHeroImageSrc(fallbackHeroImage);
+                    }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-b from-slate-950/15 via-slate-950/30 to-slate-950/88" />
 
@@ -311,6 +343,7 @@ export function TripGridCard({ trip, onDelete, deleting = false }: TripGridCardP
                         </div>
                         <Link
                             href={`/trips/${trip.id}`}
+                            onClick={(event) => event.stopPropagation()}
                             className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-500/12 px-4 py-2 text-[11px] font-semibold text-emerald-200 transition hover:bg-emerald-500/20"
                         >
                             Open trip
@@ -322,7 +355,11 @@ export function TripGridCard({ trip, onDelete, deleting = false }: TripGridCardP
                         {trip.share_code ? (
                             <button
                                 type="button"
-                                onClick={copyShareLink}
+                                onClick={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    void copyShareLink();
+                                }}
                                 className="flex items-center justify-between gap-2 rounded-2xl border border-sky-400/20 bg-sky-500/10 px-3 py-3 text-sm font-medium text-sky-100 transition hover:bg-sky-500/18"
                             >
                                 <span className="flex items-center gap-2">
@@ -341,6 +378,7 @@ export function TripGridCard({ trip, onDelete, deleting = false }: TripGridCardP
                         {trip.share_code ? (
                             <Link
                                 href={`/share/${trip.share_code}`}
+                                onClick={(event) => event.stopPropagation()}
                                 className="flex items-center justify-between gap-2 rounded-2xl border border-white/8 bg-white/[0.04] px-3 py-3 text-sm font-medium text-white/75 transition hover:bg-white/[0.08]"
                             >
                                 <span className="truncate">Open share preview</span>

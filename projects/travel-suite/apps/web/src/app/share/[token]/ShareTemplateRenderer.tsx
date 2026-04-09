@@ -20,6 +20,7 @@ import type { SharePaymentConfig } from "@/lib/share/payment-config";
 import { authedFetch } from "@/lib/api/authed-fetch";
 import { SharePaymentSection } from "./SharePaymentSection";
 import WeatherWidget from "@/components/WeatherWidget";
+import { toPublicShareImageUrl } from "@/lib/share/public-image";
 
 interface ShareTemplateRendererProps {
     token: string;
@@ -77,6 +78,17 @@ export default function ShareTemplateRenderer({
     // Merge organization branding into itinerary so templates render it natively in their hero
     const brandedItinerary: ItineraryResult = {
         ...itinerary,
+        days: itinerary.days.map((day) => ({
+            ...day,
+            activities: day.activities.map((activity) => {
+                const proxiedImage = toPublicShareImageUrl(activity.image || activity.imageUrl);
+                return {
+                    ...activity,
+                    image: proxiedImage ?? activity.image,
+                    imageUrl: proxiedImage ?? activity.imageUrl,
+                };
+            }),
+        })),
         branding: {
             ...itinerary.branding,
             organizationName: organizationBranding?.name || organizationName,
@@ -88,8 +100,8 @@ export default function ShareTemplateRenderer({
     const commonProps = { itinerary: brandedItinerary, organizationName, organizationBranding, client };
     const legacyProps = { itineraryData: brandedItinerary, organizationName, client };
     const hasPackageScope =
-        (Array.isArray(itinerary.inclusions) && itinerary.inclusions.length > 0) ||
-        (Array.isArray(itinerary.exclusions) && itinerary.exclusions.length > 0);
+        (Array.isArray(brandedItinerary.inclusions) && brandedItinerary.inclusions.length > 0) ||
+        (Array.isArray(brandedItinerary.exclusions) && brandedItinerary.exclusions.length > 0);
 
     const renderTemplate = () => {
         switch (templateId) {
@@ -150,7 +162,7 @@ export default function ShareTemplateRenderer({
                         </div>
 
                         <div className="grid gap-6 md:grid-cols-2">
-                            {itinerary.inclusions && itinerary.inclusions.length > 0 && (
+                            {brandedItinerary.inclusions && brandedItinerary.inclusions.length > 0 && (
                                 <div className="rounded-[28px] border border-emerald-200 bg-white p-6 shadow-sm">
                                     <div className="mb-5 flex items-center gap-3">
                                         <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700">
@@ -164,7 +176,7 @@ export default function ShareTemplateRenderer({
                                         </div>
                                     </div>
                                     <div className="space-y-3">
-                                        {itinerary.inclusions.map((item, index) => (
+                                        {brandedItinerary.inclusions.map((item, index) => (
                                             <div
                                                 key={`${item}-${index}`}
                                                 className="rounded-2xl border border-emerald-100 bg-emerald-50/60 px-4 py-3 text-sm text-stone-700"
@@ -176,7 +188,7 @@ export default function ShareTemplateRenderer({
                                 </div>
                             )}
 
-                            {itinerary.exclusions && itinerary.exclusions.length > 0 && (
+                            {brandedItinerary.exclusions && brandedItinerary.exclusions.length > 0 && (
                                 <div className="rounded-[28px] border border-amber-200 bg-white p-6 shadow-sm">
                                     <div className="mb-5 flex items-center gap-3">
                                         <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-100 text-amber-700">
@@ -190,7 +202,7 @@ export default function ShareTemplateRenderer({
                                         </div>
                                     </div>
                                     <div className="space-y-3">
-                                        {itinerary.exclusions.map((item, index) => (
+                                        {brandedItinerary.exclusions.map((item, index) => (
                                             <div
                                                 key={`${item}-${index}`}
                                                 className="rounded-2xl border border-amber-100 bg-amber-50/60 px-4 py-3 text-sm text-stone-700"
@@ -207,16 +219,16 @@ export default function ShareTemplateRenderer({
             )}
 
             {/* Route Summary — numbered stops with distances */}
-            <RouteSummary itinerary={itinerary} />
+            <RouteSummary itinerary={brandedItinerary} />
 
             {/* Inject dynamic pricing module at the bottom if configured */}
-            {(itinerary.pricing || itinerary.extracted_pricing) && (
+            {(brandedItinerary.pricing || brandedItinerary.extracted_pricing) && (
                 <div className="bg-gray-50 dark:bg-slate-950 py-12 border-t border-gray-200 dark:border-white/10">
-                    <InteractivePricing pricing={itinerary.pricing ?? itinerary.extracted_pricing} />
+                    <InteractivePricing pricing={brandedItinerary.pricing ?? brandedItinerary.extracted_pricing} />
                 </div>
             )}
 
-            {itinerary.destination ? (
+            {brandedItinerary.destination ? (
                 <section className="border-t border-sky-100 bg-gradient-to-b from-sky-50 to-white px-6 py-12">
                     <div className="mx-auto max-w-5xl">
                         <div className="mb-5">
