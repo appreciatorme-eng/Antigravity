@@ -35,6 +35,7 @@ const PRINT_CSS = `
   .page {
     position: relative;
     width: 210mm;
+    height: 297mm;
     min-height: 296mm;
     page-break-after: always;
     overflow: hidden;
@@ -45,8 +46,8 @@ const PRINT_CSS = `
   .page--light { background: #f8f6f1; color: #171717; }
   .page--white { background: #ffffff; color: #111827; }
   .page--dark { background: #09090b; color: #f8fafc; }
-  .page__inner { padding: 18mm 16mm 16mm; position: relative; min-height: 296mm; }
-  .page__inner--wide { padding: 0; min-height: 296mm; }
+  .page__inner { padding: 14mm 16mm 14mm; position: relative; height: 297mm; min-height: 297mm; }
+  .page__inner--wide { padding: 0; height: 297mm; min-height: 297mm; }
   .page__footer {
     position: absolute;
     left: 16mm;
@@ -118,7 +119,8 @@ const PRINT_CSS = `
 
   .cover {
     position: relative;
-    min-height: 296mm;
+    height: 297mm;
+    min-height: 297mm;
   }
   .cover__image {
     position: absolute;
@@ -135,8 +137,9 @@ const PRINT_CSS = `
   .cover__content {
     position: relative;
     z-index: 1;
-    min-height: 296mm;
-    padding: 18mm 16mm 16mm;
+    height: 297mm;
+    min-height: 297mm;
+    padding: 14mm 16mm 14mm;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -1800,7 +1803,7 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
         {payload.itinerary.days.flatMap((day, index) => {
           const [featured, ...remaining] = day.activities;
           const supportActivities = remaining.slice(0, 2);
-          const continuationChunks = chunkItems(remaining.slice(2), 4);
+          const continuationChunks = chunkItems(remaining.slice(2), 3);
           const dayLocations = getDayLocations(day, 4);
           const accommodation = getDayAccommodation(payload, day.day_number);
           const tripNotes = (payload.itinerary.tips || payload.itinerary.inclusions || []).slice(0, 3);
