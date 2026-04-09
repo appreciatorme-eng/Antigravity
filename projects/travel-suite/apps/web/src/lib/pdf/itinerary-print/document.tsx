@@ -338,6 +338,166 @@ const PRINT_CSS = `
     opacity: 0.56;
   }
 
+  .safari-overview {
+    display: grid;
+    grid-template-columns: 1.06fr 0.94fr;
+    gap: 12mm;
+    align-items: start;
+  }
+  .safari-overview__lead {
+    display: grid;
+    gap: 8mm;
+  }
+  .safari-overview__hero {
+    width: 100%;
+    height: 100mm;
+    object-fit: cover;
+    border-radius: 20px;
+    display: block;
+  }
+  .safari-overview__stack {
+    display: grid;
+    gap: 8px;
+  }
+  .safari-overview__panel {
+    border-top: 1px solid rgba(24, 24, 27, 0.10);
+    padding-top: 10px;
+  }
+  .safari-overview__panel:first-child {
+    border-top: 0;
+    padding-top: 0;
+  }
+  .safari-overview__meta {
+    font-size: 9px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    opacity: 0.55;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .safari-overview__title {
+    margin: 0 0 5px;
+    font-size: 15px;
+    line-height: 1.3;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .safari-overview__copy {
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.6;
+    color: rgba(17, 24, 39, 0.76);
+  }
+  .safari-day {
+    display: grid;
+    gap: 9mm;
+  }
+  .safari-day__head {
+    display: grid;
+    grid-template-columns: 1.02fr 0.98fr;
+    gap: 10mm;
+    align-items: end;
+  }
+  .safari-day__hero {
+    width: 100%;
+    height: 78mm;
+    object-fit: cover;
+    border-radius: 18px;
+    display: block;
+  }
+  .safari-day__eyebrow {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    opacity: 0.52;
+  }
+  .safari-day__title {
+    margin: 8px 0 8px;
+    font-size: 29px;
+    line-height: 1.04;
+    letter-spacing: -0.04em;
+    font-weight: 700;
+    font-family: Georgia, "Times New Roman", serif;
+  }
+  .safari-day__summary {
+    margin: 12px 0 0;
+    font-size: 12px;
+    line-height: 1.7;
+    color: rgba(17,24,39,0.74);
+  }
+  .safari-feature {
+    display: grid;
+    grid-template-columns: 0.92fr 1.08fr;
+    gap: 10px;
+    border: 1px solid rgba(17, 24, 39, 0.10);
+    border-radius: 18px;
+    overflow: hidden;
+    background: rgba(255,255,255,0.98);
+  }
+  .safari-feature__image {
+    width: 100%;
+    height: 100%;
+    min-height: 64mm;
+    object-fit: cover;
+    display: block;
+    background: rgba(17,24,39,0.06);
+  }
+  .safari-feature__body {
+    padding: 14px 15px;
+    display: grid;
+    gap: 6px;
+    align-content: start;
+  }
+  .safari-feature__title {
+    margin: 0;
+    font-size: 22px;
+    line-height: 1.12;
+    letter-spacing: -0.03em;
+    font-weight: 700;
+  }
+  .safari-support-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+  }
+  .safari-note {
+    display: grid;
+    grid-template-columns: 34mm 1fr;
+    gap: 10px;
+    border-top: 1px solid rgba(17,24,39,0.10);
+    padding-top: 9px;
+  }
+  .safari-note:first-child {
+    border-top: 0;
+    padding-top: 0;
+  }
+  .safari-note__image {
+    width: 100%;
+    height: 28mm;
+    object-fit: cover;
+    border-radius: 10px;
+    display: block;
+    background: rgba(17,24,39,0.06);
+  }
+  .safari-note__title {
+    margin: 0 0 4px;
+    font-size: 13px;
+    line-height: 1.25;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .safari-note__desc {
+    margin: 0;
+    font-size: 10.5px;
+    line-height: 1.55;
+    color: rgba(17,24,39,0.74);
+  }
+  .safari-continuation {
+    display: grid;
+    gap: 8mm;
+  }
+
   .mosaic {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
@@ -700,6 +860,14 @@ const getTopLocations = (payload: PreparedPrintPayload, limit = 3) => {
   return [...new Set(values)].slice(0, limit);
 };
 
+const chunkItems = <T,>(items: T[], size: number) => {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
+};
+
 const BrandRow = ({
   branding,
   dark = false,
@@ -948,63 +1116,179 @@ const SummaryPage = ({
   );
 };
 
-const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => (
-  <>
-    <section className="page page--light immersive">
-      <div className="cover">
-        {payload.coverImage ? <img className="cover__image" src={payload.coverImage} alt={payload.itinerary.trip_title} /> : null}
-        <div className="cover__overlay" style={{ background: 'linear-gradient(180deg, rgba(47,33,10,0.08), rgba(44,32,18,0.82))' }} />
-        <div className="cover__content">
-          <BrandRow branding={payload.branding} dark />
-          <div>
-            <p className="cover__kicker">Safari Story</p>
-            <h1 className="cover__title" style={{ color: '#fff7ed', fontFamily: 'Georgia, Times New Roman, serif' }}>{payload.itinerary.trip_title}</h1>
-            <p className="cover__subtitle" style={{ color: 'rgba(255,247,237,0.88)' }}>{payload.itinerary.destination} • {payload.itinerary.summary}</p>
-            <div className="cover__meta">
-              <span className="meta-pill">{payload.itinerary.duration_days} Days</span>
-              {payload.itinerary.start_date ? <span className="meta-pill">{formatDateLabel(payload.itinerary.start_date)}</span> : null}
+const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
+  const featuredActivities = getFeaturedActivities(payload, 4);
+
+  return (
+    <>
+        <section className="page page--light immersive">
+          <div className="cover">
+            {payload.coverImage ? <img className="cover__image" src={payload.coverImage} alt={payload.itinerary.trip_title} /> : null}
+            <div className="cover__overlay" style={{ background: 'linear-gradient(180deg, rgba(47,33,10,0.08), rgba(44,32,18,0.82))' }} />
+            <div className="cover__content">
+              <BrandRow branding={payload.branding} dark />
+              <div>
+                <p className="cover__kicker">Safari Story</p>
+                <h1 className="cover__title" style={{ color: '#fff7ed', fontFamily: 'Georgia, Times New Roman, serif' }}>{payload.itinerary.trip_title}</h1>
+                <p className="cover__subtitle" style={{ color: 'rgba(255,247,237,0.88)' }}>{payload.itinerary.destination} • {payload.itinerary.summary}</p>
+                <div className="cover__meta">
+                  <span className="meta-pill">{payload.itinerary.duration_days} Days</span>
+                  {payload.itinerary.start_date ? <span className="meta-pill">{formatDateLabel(payload.itinerary.start_date)}</span> : null}
+                </div>
+              </div>
+              <PageFooter branding={payload.branding} />
             </div>
           </div>
-          <PageFooter branding={payload.branding} />
-        </div>
-      </div>
-    </section>
-    <SummaryPage payload={payload} title="Trip Story" leadClassName="lede-serif" />
-    {payload.itinerary.days.map((day, index) => (
-      <section key={`safari-day-${index}`} className={`page page--light ${payload.density}`}>
-        <div className="page__inner">
-          <div className="day-hero">
-            {day.dayHeroImage ? <img className="day-hero__image" src={day.dayHeroImage} alt={day.theme} /> : <div className="panel panel--muted" style={{ minHeight: '82mm' }} />}
-            <div>
-              <div className="accent-line" style={{ background: payload.branding.primaryColor || '#9a6c2f' }} />
-              <p className="day-hero__eyebrow">Day {day.day_number}</p>
-              <h2 className="day-hero__title" style={{ fontFamily: 'Georgia, Times New Roman, serif' }}>{day.theme}</h2>
-              <div className="day-hero__date">{formatDateLabel(day.date) || payload.itinerary.destination}</div>
-              {day.summary ? <p className="body-copy" style={{ marginTop: 12 }}>{day.summary}</p> : null}
+        </section>
+        <section className="page page--light">
+          <div className="page__inner">
+            <BrandRow branding={payload.branding} />
+            <div className="safari-overview">
+              <div className="safari-overview__lead">
+                <div>
+                  <div className="accent-line" style={{ background: payload.branding.primaryColor || '#9a6c2f' }} />
+                  <p className="section-kicker">Overview</p>
+                  <h2 style={{ fontSize: 34, lineHeight: 1.02, letterSpacing: '-0.05em', margin: '8px 0 12px', fontFamily: 'Georgia, Times New Roman, serif' }}>
+                    Trip Story
+                  </h2>
+                  <p className="lede-serif" style={{ margin: 0 }}>{payload.itinerary.summary}</p>
+                </div>
+                {payload.coverImage ? <img className="safari-overview__hero" src={payload.coverImage} alt={payload.itinerary.trip_title} /> : null}
+                <div className="summary-band">
+                  <div className="summary-band__card">
+                    <div className="summary-band__label">Duration</div>
+                    <div className="summary-band__value">{payload.itinerary.duration_days} days</div>
+                    <div className="summary-band__copy">Balanced pacing with editorial day chapters.</div>
+                  </div>
+                  <div className="summary-band__card">
+                    <div className="summary-band__label">Stops</div>
+                    <div className="summary-band__value">{payload.itinerary.days.reduce((sum, day) => sum + day.activities.length, 0)}</div>
+                    <div className="summary-band__copy">Carefully ordered to keep each day printable and scannable.</div>
+                  </div>
+                  <div className="summary-band__card">
+                    <div className="summary-band__label">Value posture</div>
+                    <div className="summary-band__value">{formatCurrency(payload.itinerary) || 'Custom quote'}</div>
+                    <div className="summary-band__copy">Presented as a crafted travel brief, not a web export snapshot.</div>
+                  </div>
+                </div>
+              </div>
+              <div className="safari-overview__stack">
+                <div className="panel panel--muted">
+                  <p className="panel__title">Featured stops</p>
+                  {featuredActivities.slice(0, 4).map((activity, index) => (
+                    <div key={`safari-featured-${index}`} className="safari-overview__panel">
+                      <div className="safari-overview__meta">Day {activity.dayNumber} • {activity.location || activity.dayTheme}</div>
+                      <h3 className="safari-overview__title">{activity.title}</h3>
+                      <p className="safari-overview__copy">{activity.description}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="panel">
+                  <p className="panel__title">Safari structure</p>
+                  <p className="body-copy" style={{ margin: 0 }}>
+                    Each day opens with a lead visual and featured stop, then continues as concise field notes so the itinerary feels authored and easy to run on paper.
+                  </p>
+                </div>
+              </div>
             </div>
+            <PageFooter branding={payload.branding} />
           </div>
-          <div className="activity-list">
-            {day.activities.map((activity, activityIndex) => <ActivityCard key={`safari-activity-${activityIndex}`} activity={activity} />)}
+        </section>
+        {payload.itinerary.days.flatMap((day, index) => {
+          const [featured, ...remaining] = day.activities;
+          const supportActivities = remaining.slice(0, 2);
+          const continuationChunks = chunkItems(remaining.slice(2), 4);
+
+          const pages: React.ReactElement[] = [
+            <section key={`safari-day-${index}`} className={`page page--light ${payload.density}`}>
+              <div className="page__inner">
+                <div className="safari-day">
+                  <div className="safari-day__head">
+                    <div>
+                      <div className="accent-line" style={{ background: payload.branding.primaryColor || '#9a6c2f' }} />
+                      <p className="safari-day__eyebrow">Day {day.day_number}</p>
+                      <h2 className="safari-day__title">{day.theme}</h2>
+                      <div className="day-hero__date">{formatDateLabel(day.date) || payload.itinerary.destination}</div>
+                      {day.summary ? <p className="safari-day__summary">{day.summary}</p> : null}
+                    </div>
+                    {day.dayHeroImage ? <img className="safari-day__hero" src={day.dayHeroImage} alt={day.theme} /> : <div className="panel panel--muted" style={{ minHeight: '78mm' }} />}
+                  </div>
+                  {featured ? (
+                    <div className="safari-feature">
+                      {featured.printImage ? <img className="safari-feature__image" src={featured.printImage} alt={featured.title} /> : null}
+                      <div className="safari-feature__body">
+                        <div className="activity-card__meta">
+                          {featured.time ? <span>{featured.time}</span> : null}
+                          {featured.location ? <span>{featured.location}</span> : null}
+                        </div>
+                        <h3 className="safari-feature__title">{featured.title}</h3>
+                        <p className="body-copy" style={{ margin: 0 }}>{featured.description}</p>
+                      </div>
+                    </div>
+                  ) : null}
+                  {supportActivities.length ? (
+                    <div className="safari-support-grid">
+                      {supportActivities.map((activity, activityIndex) => (
+                        <ActivityCard key={`safari-support-${activityIndex}`} activity={activity} />
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+                <PageFooter branding={payload.branding} />
+              </div>
+            </section>,
+          ];
+
+          continuationChunks.forEach((chunk, chunkIndex) => {
+            pages.push(
+              <section key={`safari-day-${index}-cont-${chunkIndex}`} className={`page page--light ${payload.density}`}>
+                <div className="page__inner">
+                  <div className="safari-continuation">
+                    <div>
+                      <div className="accent-line" style={{ background: payload.branding.primaryColor || '#9a6c2f' }} />
+                      <p className="section-kicker">Day {day.day_number} continuation</p>
+                      <h2 style={{ fontSize: 26, lineHeight: 1.08, letterSpacing: '-0.04em', margin: '8px 0 0', fontFamily: 'Georgia, Times New Roman, serif' }}>{day.theme}</h2>
+                    </div>
+                    <div className="panel">
+                      {chunk.map((activity, activityIndex) => (
+                        <div key={`safari-note-${activityIndex}`} className="safari-note">
+                          {activity.printImage ? <img className="safari-note__image" src={activity.printImage} alt={activity.title} /> : <div className="safari-note__image" />}
+                          <div>
+                            <div className="activity-card__meta">
+                              {activity.time ? <span>{activity.time}</span> : null}
+                              {activity.location ? <span>{activity.location}</span> : null}
+                            </div>
+                            <h3 className="safari-note__title">{activity.title}</h3>
+                            <p className="safari-note__desc">{activity.description}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <PageFooter branding={payload.branding} />
+                </div>
+              </section>,
+            );
+          });
+
+          return pages;
+        })}
+        <section className="page page--light">
+          <div className="page__inner">
+            <BrandRow branding={payload.branding} />
+            <div className="accent-line" style={{ background: payload.branding.primaryColor || '#9a6c2f' }} />
+            <p className="section-kicker">The final brief</p>
+            <h2 style={{ fontSize: 30, lineHeight: 1.08, letterSpacing: '-0.04em', margin: '8px 0 12px', fontFamily: 'Georgia, Times New Roman, serif' }}>
+              Ready for a polished departure
+            </h2>
+            <p className="body-copy">This itinerary is arranged as a clean field guide: memorable days first, logistics where they are needed, and only the visual moments strong enough to carry a printed brochure.</p>
+            <PackagePanels payload={payload} />
+            <PageFooter branding={payload.branding} />
           </div>
-          <PageFooter branding={payload.branding} />
-        </div>
-      </section>
-    ))}
-    <section className="page page--light">
-      <div className="page__inner">
-        <BrandRow branding={payload.branding} />
-        <div className="accent-line" style={{ background: payload.branding.primaryColor || '#9a6c2f' }} />
-        <p className="section-kicker">The final brief</p>
-        <h2 style={{ fontSize: 30, lineHeight: 1.08, letterSpacing: '-0.04em', margin: '8px 0 12px', fontFamily: 'Georgia, Times New Roman, serif' }}>
-          Ready for a polished departure
-        </h2>
-        <p className="body-copy">This itinerary is arranged as a clean field guide: memorable days first, logistics where they are needed, and only the visual moments strong enough to carry a printed brochure.</p>
-        <PackagePanels payload={payload} />
-        <PageFooter branding={payload.branding} />
-      </div>
-    </section>
-  </>
-);
+        </section>
+    </>
+  );
+};
 
 const LuxuryTemplate = ({ payload }: { payload: PreparedPrintPayload }) => (
   <>
