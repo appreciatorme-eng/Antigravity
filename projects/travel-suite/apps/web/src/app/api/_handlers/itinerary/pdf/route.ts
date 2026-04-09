@@ -59,6 +59,21 @@ type ProfilePreferencesRow = {
 
 const sanitizeFileName = (value: string) => value.replace(/[^a-zA-Z0-9-_]+/g, '_');
 
+const resolveCompanyName = (
+  organizationName: string | null | undefined,
+  email: string | null | undefined,
+): string => {
+  const trimmedOrg = organizationName?.trim();
+  if (trimmedOrg && trimmedOrg.toLowerCase() !== 'tripbuilt') return trimmedOrg;
+  const emailLocal = email?.split('@')[0]?.trim();
+  if (emailLocal) {
+    return (
+      emailLocal.replace(/[._-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) + ' Travel'
+    );
+  }
+  return 'Your Journey Curator';
+};
+
 const normalizeRelation = <T,>(value: T | T[] | null | undefined): T | null => {
   if (!value) return null;
   return Array.isArray(value) ? value[0] || null : value;
@@ -152,7 +167,7 @@ async function fetchServerPdfPreferences(userId: string, adminClient: unknown) {
 
     return {
       branding: {
-        companyName: organization?.name || DEFAULT_ITINERARY_BRANDING.companyName,
+        companyName: resolveCompanyName(organization?.name, profile?.email),
         logoUrl: organization?.logo_url || null,
         primaryColor: organization?.primary_color || DEFAULT_ITINERARY_BRANDING.primaryColor,
         contactEmail: profile?.email || null,

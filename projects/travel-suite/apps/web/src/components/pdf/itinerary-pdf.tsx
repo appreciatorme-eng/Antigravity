@@ -38,6 +38,21 @@ interface ProfilePreferencesRow {
 
 const sanitizeFileName = (value: string) => value.replace(/[^a-zA-Z0-9-_]+/g, '_');
 
+const resolveCompanyName = (
+  organizationName: string | null | undefined,
+  email: string | null | undefined,
+): string => {
+  const trimmedOrg = organizationName?.trim();
+  if (trimmedOrg && trimmedOrg.toLowerCase() !== 'tripbuilt') return trimmedOrg;
+  const emailLocal = email?.split('@')[0]?.trim();
+  if (emailLocal) {
+    return (
+      emailLocal.replace(/[._-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) + ' Travel'
+    );
+  }
+  return 'Your Journey Curator';
+};
+
 const normalizeItinerary = (input: ItineraryResult): ItineraryResult => {
   const duration = input.duration_days || input.days?.length || 1;
   return {
@@ -112,14 +127,19 @@ export const fetchItineraryPdfPreferences = async (): Promise<ItineraryPdfPrefer
 
     if (!organization) {
       return {
-        branding: DEFAULT_ITINERARY_BRANDING,
+        branding: {
+          ...DEFAULT_ITINERARY_BRANDING,
+          companyName: resolveCompanyName(null, profile?.email),
+          contactEmail: profile?.email || null,
+          contactPhone: profile?.phone || null,
+        },
         defaultTemplate: DEFAULT_ITINERARY_TEMPLATE,
       };
     }
 
     return {
       branding: {
-        companyName: organization.name || DEFAULT_ITINERARY_BRANDING.companyName,
+        companyName: resolveCompanyName(organization.name, profile?.email),
         logoUrl: organization.logo_url || null,
         primaryColor: organization.primary_color || DEFAULT_ITINERARY_BRANDING.primaryColor,
         contactEmail: profile?.email || null,

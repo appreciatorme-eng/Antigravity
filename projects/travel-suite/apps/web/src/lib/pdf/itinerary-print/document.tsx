@@ -8,6 +8,8 @@ import type {
 } from './assets';
 
 const PRINT_CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Noto+Serif:wght@400;600;700&display=swap');
+
   @page {
     size: A4 portrait;
     margin: 0;
@@ -19,7 +21,7 @@ const PRINT_CSS = `
     padding: 0;
     background: #ffffff;
     color: #111827;
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    font-family: "Noto Sans", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
@@ -226,7 +228,7 @@ const PRINT_CSS = `
     letter-spacing: -0.02em;
   }
   .lede-serif {
-    font-family: Georgia, "Times New Roman", serif;
+    font-family: "Noto Serif", Georgia, "Times New Roman", serif;
     font-size: 20px;
     line-height: 1.6;
   }
@@ -418,7 +420,7 @@ const PRINT_CSS = `
     line-height: 1.04;
     letter-spacing: -0.04em;
     font-weight: 700;
-    font-family: Georgia, "Times New Roman", serif;
+    font-family: "Noto Serif", Georgia, "Times New Roman", serif;
   }
   .safari-day__summary {
     margin: 12px 0 0;
@@ -884,6 +886,7 @@ const formatCurrency = (itinerary: PreparedPrintPayload['itinerary']) => {
   return new Intl.NumberFormat('en-IN', {
     style: 'currency',
     currency,
+    currencyDisplay: 'narrowSymbol',
     maximumFractionDigits: 0,
   }).format(total);
 };
@@ -1182,8 +1185,23 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
               <BrandRow branding={payload.branding} dark />
               <div>
                 <p className="cover__kicker">Crafted Journey</p>
-                <h1 className="cover__title" style={{ color: '#fff7ed', fontFamily: 'Georgia, Times New Roman, serif' }}>{payload.itinerary.trip_title}</h1>
+                <h1 className="cover__title" style={{ color: '#fff7ed', fontFamily: '"Noto Serif", Georgia, Times New Roman, serif' }}>{payload.itinerary.trip_title}</h1>
                 <p className="cover__subtitle" style={{ color: 'rgba(255,247,237,0.88)' }}>{payload.itinerary.destination} • {payload.itinerary.summary}</p>
+                {payload.branding.clientName ? (
+                  <p
+                    className="cover__prepared-for"
+                    style={{
+                      color: 'rgba(255,247,237,0.92)',
+                      fontSize: 13,
+                      letterSpacing: '0.18em',
+                      textTransform: 'uppercase',
+                      margin: '18px 0 0',
+                      fontFamily: '"Noto Serif", Georgia, Times New Roman, serif',
+                    }}
+                  >
+                    Prepared for <span style={{ fontWeight: 700 }}>{payload.branding.clientName}</span>
+                  </p>
+                ) : null}
                 <div className="cover__meta">
                   <span className="meta-pill">{payload.itinerary.duration_days} Days</span>
                   {payload.itinerary.start_date && payload.itinerary.end_date ? (
@@ -1205,7 +1223,7 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                 <div>
                   <div className="accent-line" style={{ background: payload.branding.primaryColor || '#9a6c2f' }} />
                   <p className="section-kicker">Overview</p>
-                  <h2 style={{ fontSize: 34, lineHeight: 1.02, letterSpacing: '-0.05em', margin: '8px 0 12px', fontFamily: 'Georgia, Times New Roman, serif' }}>
+                  <h2 style={{ fontSize: 34, lineHeight: 1.02, letterSpacing: '-0.05em', margin: '8px 0 12px', fontFamily: '"Noto Serif", Georgia, Times New Roman, serif' }}>
                     Trip Story
                   </h2>
                   <p className="lede-serif" style={{ margin: 0 }}>{payload.itinerary.summary}</p>
@@ -1312,7 +1330,7 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                     <div>
                       <div className="accent-line" style={{ background: payload.branding.primaryColor || '#9a6c2f' }} />
                       <p className="section-kicker">Day {day.day_number} continuation</p>
-                      <h2 style={{ fontSize: 26, lineHeight: 1.08, letterSpacing: '-0.04em', margin: '8px 0 0', fontFamily: 'Georgia, Times New Roman, serif' }}>{day.theme}</h2>
+                      <h2 style={{ fontSize: 26, lineHeight: 1.08, letterSpacing: '-0.04em', margin: '8px 0 0', fontFamily: '"Noto Serif", Georgia, Times New Roman, serif' }}>{day.theme}</h2>
                     </div>
                     <div className="panel">
                       {chunk.map((activity, activityIndex) => (
@@ -1343,7 +1361,7 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
             <BrandRow branding={payload.branding} />
             <div className="accent-line" style={{ background: payload.branding.primaryColor || '#9a6c2f' }} />
             <p className="section-kicker">The final brief</p>
-            <h2 style={{ fontSize: 30, lineHeight: 1.08, letterSpacing: '-0.04em', margin: '8px 0 12px', fontFamily: 'Georgia, Times New Roman, serif' }}>
+            <h2 style={{ fontSize: 30, lineHeight: 1.08, letterSpacing: '-0.04em', margin: '8px 0 12px', fontFamily: '"Noto Serif", Georgia, Times New Roman, serif' }}>
               Ready for a polished departure
             </h2>
             <p className="body-copy">This itinerary is arranged as a clean field guide: memorable days first, logistics where they are needed, and only the visual moments strong enough to carry a printed brochure.</p>
