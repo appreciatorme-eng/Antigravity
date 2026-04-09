@@ -20,12 +20,19 @@ import {
   Image,
 } from '@react-pdf/renderer';
 import type { ItineraryResult } from '@/types/itinerary';
-import type { ItineraryBranding } from '../itinerary-types';
+import type { ItineraryBranding, ItineraryTemplateId } from '../itinerary-types';
+import { getActivitiesPerBlock, getBlocksPerPage, getPdfTemplateMeta } from './sections/shared';
 
 interface Props {
   itinerary: ItineraryResult;
   branding?: ItineraryBranding;
+  template?: ItineraryTemplateId;
 }
+
+type ProfessionalDayBlock = ItineraryResult['days'][number] & {
+  blockIndex: number;
+  totalBlocks: number;
+};
 
 // Register fonts for better typography
 // Note: These would need to be added to the project
@@ -313,15 +320,40 @@ const createStyles = (primaryColor: string = '#00d084') => StyleSheet.create({
   },
 });
 
-export default function ProfessionalTemplate({ itinerary, branding }: Props) {
-  const primaryColor = branding?.primaryColor || '#00d084';
+export default function ProfessionalTemplate({ itinerary, branding, template = 'professional' }: Props) {
+  const templateMeta = getPdfTemplateMeta(template);
+  const primaryColor = branding?.primaryColor || templateMeta.accentFallback;
   const styles = createStyles(primaryColor);
+  const activitiesPerBlock = getActivitiesPerBlock(itinerary, 'professional');
+  const blocksPerPage = getBlocksPerPage(itinerary, 'professional');
 
   // Split tips into inclusions/exclusions (first half = inclusions)
   const tips = itinerary.tips || [];
   const midpoint = Math.ceil(tips.length / 2);
   const inclusions = tips.slice(0, midpoint);
   const exclusions = tips.slice(midpoint);
+  const dayBlocks: ProfessionalDayBlock[] = itinerary.days.flatMap((day) => {
+    const activities = day.activities || [];
+    if (activities.length === 0) {
+      return [{ ...day, activities: [], blockIndex: 0, totalBlocks: 1 }];
+    }
+
+    const blocks: ProfessionalDayBlock[] = [];
+    for (let index = 0; index < activities.length; index += activitiesPerBlock) {
+      blocks.push({
+        ...day,
+        activities: activities.slice(index, index + activitiesPerBlock),
+        blockIndex: Math.floor(index / activitiesPerBlock),
+        totalBlocks: Math.ceil(activities.length / activitiesPerBlock),
+      });
+    }
+
+    return blocks;
+  });
+  const pagedDayBlocks: ProfessionalDayBlock[][] = [];
+  for (let index = 0; index < dayBlocks.length; index += blocksPerPage) {
+    pagedDayBlocks.push(dayBlocks.slice(index, index + blocksPerPage));
+  }
 
   return (
     <Document>
@@ -337,7 +369,7 @@ export default function ProfessionalTemplate({ itinerary, branding }: Props) {
             {/* Destination Badge */}
             <View style={styles.destinationBadge}>
               <Text style={styles.destinationText}>
-                📍 {itinerary.destination}
+                {itinerary.destination}
               </Text>
             </View>
 
@@ -362,13 +394,13 @@ export default function ProfessionalTemplate({ itinerary, branding }: Props) {
             <View style={styles.metadataRow}>
               <View style={styles.metadataItem}>
                 <Text style={styles.metadataText}>
-                  📅 {itinerary.duration_days} Days
+                  {itinerary.duration_days} Days
                 </Text>
               </View>
               {itinerary.budget && (
                 <View style={styles.metadataItem}>
                   <Text style={styles.metadataText}>
-                    💰 {itinerary.budget}
+                    {itinerary.budget}
                   </Text>
                 </View>
               )}
@@ -377,93 +409,82 @@ export default function ProfessionalTemplate({ itinerary, branding }: Props) {
         </View>
       </Page>
 
-      {/* Day-by-Day Itinerary */}
-      <Page size="A4" style={styles.page}>
-        <Text style={styles.sectionTitle}>Day-by-Day Itinerary</Text>
+      {pagedDayBlocks.map((pageBlocks, pageIndex) => (
+        <Page key={`professional-days-${pageIndex}`} size="A4" style={styles.page}>
+          <Text style={styles.sectionTitle}>{templateMeta.overviewTitle}</Text>
 
-        {itinerary.days.map((day) => (
-          <View key={day.day_number} style={styles.dayCard} wrap={false}>
-            {/* Day Header */}
-            <View style={styles.dayHeader}>
-              <View style={styles.dayBadge}>
-                <Text style={styles.dayBadgeText}>
-                  Day {day.day_number}
+          {pageBlocks.map((day) => (
+            <View key={`${day.day_number}-${day.blockIndex}`} style={styles.dayCard} wrap={false}>
+              <View style={styles.dayHeader}>
+                <View style={styles.dayBadge}>
+                  <Text style={styles.dayBadgeText}>
+                    Day {day.day_number}
+                  </Text>
+                </View>
+                <Text style={styles.dayTheme}>{day.theme}</Text>
+                <Text style={styles.dayMeta}>
+                  {(day.activities?.length || 0)} {(day.activities?.length || 0) === 1 ? 'Activity in this section' : 'Activities in this section'}
+                  {day.totalBlocks > 1 ? ` • Part ${day.blockIndex + 1}/${day.totalBlocks}` : ''}
                 </Text>
               </View>
-              <Text style={styles.dayTheme}>{day.theme}</Text>
-              <Text style={styles.dayMeta}>
-                {day.activities?.length || 0} {day.activities?.length === 1 ? 'Activity' : 'Activities'}
-              </Text>
-            </View>
 
-            {/* Activities */}
-            {day.activities?.map((activity, actIndex) => (
-              <View
-                key={actIndex}
-                style={[
-                  styles.activityContainer,
-                  ...(actIndex === day.activities.length - 1 ? [styles.activityLastChild] : [])
-                ]}
-              >
-                {/* Activity Image (if available) */}
-                {activity.image && (
-                  <Image src={activity.image} style={styles.activityImage} />
-                )}
-
-                {/* Activity Title & Location */}
-                <Text style={styles.activityTitle}>{activity.title}</Text>
-                {activity.location && (
-                  <Text style={styles.activityLocation}>
-                    📍 {activity.location}
-                  </Text>
-                )}
-
-                {/* Metadata Row */}
-                <View style={styles.metadataContainer}>
-                  {activity.time && (
-                    <View style={styles.metadata}>
-                      <Text style={styles.metadataLabel}>
-                        🕐 {activity.time}
-                      </Text>
-                    </View>
+              {day.activities?.map((activity, actIndex) => (
+                <View
+                  key={actIndex}
+                  style={[
+                    styles.activityContainer,
+                    ...(actIndex === day.activities.length - 1 ? [styles.activityLastChild] : []),
+                  ]}
+                >
+                  {activity.image && (
+                    <Image src={activity.image} style={styles.activityImage} />
                   )}
-                  {activity.duration && (
-                    <View style={styles.metadata}>
-                      <Text style={styles.metadataLabel}>
-                        ⏱️ {activity.duration}
-                      </Text>
-                    </View>
+
+                  <Text style={styles.activityTitle}>{activity.title}</Text>
+                  {activity.location && (
+                    <Text style={styles.activityLocation}>
+                      {activity.location}
+                    </Text>
                   )}
-                  {activity.cost && (
-                    <View style={styles.metadata}>
-                      <Text style={styles.metadataLabel}>
-                        💵 {activity.cost}
+
+                  <View style={styles.metadataContainer}>
+                    {activity.time && (
+                      <View style={styles.metadata}>
+                        <Text style={styles.metadataLabel}>{activity.time}</Text>
+                      </View>
+                    )}
+                    {activity.duration && (
+                      <View style={styles.metadata}>
+                        <Text style={styles.metadataLabel}>{activity.duration}</Text>
+                      </View>
+                    )}
+                    {activity.cost && (
+                      <View style={styles.metadata}>
+                        <Text style={styles.metadataLabel}>{activity.cost}</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  {activity.description && (
+                    <Text style={styles.activityDescription}>
+                      {activity.description}
+                    </Text>
+                  )}
+
+                  {activity.transport && (
+                    <View style={styles.transportBox}>
+                      <Text style={styles.transportText}>
+                        <Text style={styles.transportLabel}>Getting there: </Text>
+                        {activity.transport}
                       </Text>
                     </View>
                   )}
                 </View>
-
-                {/* Description */}
-                {activity.description && (
-                  <Text style={styles.activityDescription}>
-                    {activity.description}
-                  </Text>
-                )}
-
-                {/* Transport Info */}
-                {activity.transport && (
-                  <View style={styles.transportBox}>
-                    <Text style={styles.transportText}>
-                      <Text style={styles.transportLabel}>Getting there: </Text>
-                      {activity.transport}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            ))}
-          </View>
-        ))}
-      </Page>
+              ))}
+            </View>
+          ))}
+        </Page>
+      ))}
 
       {/* Inclusions & Exclusions (if tips provided) */}
       {tips.length > 0 && (

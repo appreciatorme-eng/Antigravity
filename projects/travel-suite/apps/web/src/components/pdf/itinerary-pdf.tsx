@@ -1,5 +1,6 @@
 "use client";
 
+import { authedFetch } from '@/lib/api/authed-fetch';
 import type { ItineraryResult } from '@/types/itinerary';
 import { createClient } from '@/lib/supabase/client';
 import type { ItineraryBranding, ItineraryTemplateId } from './itinerary-types';
@@ -48,78 +49,6 @@ const normalizeItinerary = (input: ItineraryResult): ItineraryResult => {
     days: input.days || [],
   };
 };
-
-const fetchImageForLocation = async (location: string): Promise<string | null> => {
-  try {
-    const response = await fetch(`/api/images?query=${encodeURIComponent(location)}`);
-    if (!response.ok) return null;
-    const payload = await response.json();
-    return typeof payload?.url === 'string' ? payload.url : null;
-  } catch {
-    return null;
-  }
-};
-
-const hydrateItineraryImages = async (itinerary: ItineraryResult): Promise<ItineraryResult> => {
-  const clonedDays = itinerary.days.map((day) => ({
-    ...day,
-    activities: (day.activities || []).map((activity) => ({ ...activity })),
-  }));
-
-  const locationCandidates = Array.from(
-    new Set(
-      clonedDays
-        .flatMap((day) => day.activities)
-        .filter((activity) => !activity.image && activity.location)
-        .map((activity) => activity.location.trim())
-    )
-  ).slice(0, 18);
-
-  if (!locationCandidates.length) {
-    return { ...itinerary, days: clonedDays };
-  }
-
-  const resolvedEntries = await Promise.all(
-    locationCandidates.map(async (location) => ({
-      location,
-      image: await fetchImageForLocation(location),
-    }))
-  );
-
-  const imageByLocation = new Map<string, string>();
-  for (const entry of resolvedEntries) {
-    if (entry.image) {
-      imageByLocation.set(entry.location, entry.image);
-    }
-  }
-
-  for (const day of clonedDays) {
-    for (const activity of day.activities) {
-      if (!activity.image && activity.location) {
-        const fallbackImage = imageByLocation.get(activity.location.trim());
-        if (fallbackImage) {
-          activity.image = fallbackImage;
-        }
-      }
-    }
-  }
-
-  return {
-    ...itinerary,
-    days: clonedDays,
-  };
-};
-
-const stripActivityImages = (itinerary: ItineraryResult): ItineraryResult => ({
-  ...itinerary,
-  days: itinerary.days.map((day) => ({
-    ...day,
-    activities: (day.activities || []).map((activity) => ({
-      ...activity,
-      image: undefined,
-    })),
-  })),
-});
 
 const normalizeOrganizationRelation = (profile: ProfilePreferencesRow | null): OrganizationPreferencesRow | null => {
   const rawOrg = profile?.organizations;
@@ -211,51 +140,56 @@ export const fetchItineraryBranding = async (): Promise<ItineraryBranding> => {
   return preferences.branding;
 };
 
+const getFileNameFromDisposition = (header: string | null): string | null => {
+  if (!header) return null;
+  const utf8Match = header.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8Match?.[1]) {
+    return decodeURIComponent(utf8Match[1]);
+  }
+  const simpleMatch = header.match(/filename="?([^"]+)"?/i);
+  return simpleMatch?.[1] || null;
+};
+
 export const downloadItineraryPdf = async ({
   itinerary,
   template,
   fileName,
   branding,
 }: DownloadItineraryPdfParams): Promise<void> => {
-  const { pdf } = await import('@react-pdf/renderer');
-  const { default: ItineraryDocument } = await import('./ItineraryDocument');
-
   const preferences = await fetchItineraryPdfPreferences();
   const resolvedTemplate = template || preferences.defaultTemplate;
-
   const normalizedItinerary = normalizeItinerary(itinerary);
-  const itineraryWithImages = await hydrateItineraryImages(normalizedItinerary);
   const resolvedBranding = {
     ...preferences.branding,
     ...(branding || {}),
   };
-
-  let blob: Blob;
-  try {
-    blob = await pdf(
-      <ItineraryDocument
-        data={itineraryWithImages}
-        template={resolvedTemplate}
-        branding={resolvedBranding}
-      />
-    ).toBlob();
-  } catch {
-    blob = await pdf(
-      <ItineraryDocument
-        data={stripActivityImages(normalizedItinerary)}
-        template={resolvedTemplate}
-        branding={resolvedBranding}
-      />
-    ).toBlob();
-  }
-
   const computedFileName =
     fileName || `${sanitizeFileName(normalizedItinerary.trip_title || 'itinerary')}_${resolvedTemplate}.pdf`;
+
+  const response = await authedFetch('/api/itinerary/pdf', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      itinerary: normalizedItinerary,
+      template: resolvedTemplate,
+      branding: resolvedBranding,
+      fileName: computedFileName,
+    }),
+  });
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    throw new Error(payload?.error || 'Failed to generate itinerary PDF');
+  }
+
+  const blob = await response.blob();
+  const responseFileName = getFileNameFromDisposition(response.headers.get('content-disposition'));
+  const finalFileName = responseFileName || computedFileName;
 
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = computedFileName;
+  link.download = finalFileName;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

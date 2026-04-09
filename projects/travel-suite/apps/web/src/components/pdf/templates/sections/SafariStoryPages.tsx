@@ -1,14 +1,27 @@
 /* eslint-disable jsx-a11y/alt-text */
 import React from 'react';
 import { Image, Page, Text, View } from '@react-pdf/renderer';
-import { PageFooter, PAGE_SIZE, TemplateRendererProps, buildDayActivityBlocks, chunkDayBlocks, getAllActivities, getCoverImage, getDayHero } from './shared';
+import {
+  PageFooter,
+  PAGE_SIZE,
+  TemplateRendererProps,
+  buildDayActivityBlocks,
+  chunkDayBlocks,
+  getActivitiesPerBlock,
+  getAllActivities,
+  getBlocksPerPage,
+  getCoverImage,
+  getDayHero,
+  getPdfTemplateMeta,
+} from './shared';
 import { safariStyles } from './safariStyles';
 
-const SafariStoryCoverPage = ({ itinerary, branding, brandColor, coverImage, activityCount, dayCount }: TemplateRendererProps & {
+const SafariStoryCoverPage = ({ itinerary, branding, brandColor, coverImage, activityCount, dayCount, templateMeta }: TemplateRendererProps & {
   brandColor: string;
   coverImage: string | null;
   activityCount: number;
   dayCount: number;
+  templateMeta: ReturnType<typeof getPdfTemplateMeta>;
 }) => (
   <Page size={PAGE_SIZE} style={safariStyles.coverPage}>
     {coverImage ? <Image src={coverImage} style={safariStyles.coverImage} /> : null}
@@ -20,7 +33,7 @@ const SafariStoryCoverPage = ({ itinerary, branding, brandColor, coverImage, act
         {branding.logoUrl ? <Image src={branding.logoUrl} style={safariStyles.coverLogo} /> : null}
       </View>
 
-      <Text style={safariStyles.coverKicker}>Curated Itinerary</Text>
+      <Text style={safariStyles.coverKicker}>{templateMeta.coverKicker}</Text>
       <Text style={safariStyles.coverTitle}>{itinerary.trip_title}</Text>
       {branding.clientName ? (
         <Text style={{ fontSize: 24, fontStyle: 'italic', marginBottom: 16, color: brandColor }}>
@@ -44,13 +57,16 @@ const SafariStoryCoverPage = ({ itinerary, branding, brandColor, coverImage, act
       </View>
       <View style={safariStyles.coverBottomCell}>
         <Text style={safariStyles.coverBottomLabel}>Style</Text>
-        <Text style={safariStyles.coverBottomValue}>{itinerary.budget || 'Custom'}</Text>
+        <Text style={safariStyles.coverBottomValue}>{templateMeta.styleLabel}</Text>
       </View>
     </View>
   </Page>
 );
 
-const SafariStoryOverviewPage = ({ itinerary, branding, brandColor }: TemplateRendererProps & { brandColor: string }) => {
+const SafariStoryOverviewPage = ({ itinerary, branding, brandColor, templateMeta }: TemplateRendererProps & {
+  brandColor: string;
+  templateMeta: ReturnType<typeof getPdfTemplateMeta>;
+}) => {
   const expectationTips = (itinerary.tips && itinerary.tips.length > 0
     ? itinerary.tips
     : [
@@ -62,12 +78,12 @@ const SafariStoryOverviewPage = ({ itinerary, branding, brandColor }: TemplateRe
   return (
     <Page size={PAGE_SIZE} style={safariStyles.page}>
       <View style={safariStyles.storyCard}>
-        <Text style={[safariStyles.pageTitle, { color: brandColor }]}>Trip Story</Text>
+        <Text style={[safariStyles.pageTitle, { color: brandColor }]}>{templateMeta.overviewTitle}</Text>
         <Text style={safariStyles.pageSubtitle}>
           {itinerary.description || itinerary.summary || 'Built around your preferences, this plan balances logistics, pace, and memorable moments.'}
         </Text>
         <Text style={safariStyles.pageSubtitle}>
-          This template keeps the visual structure fixed while adapting page count and activity density automatically for shorter or longer trips.
+          This {templateMeta.styleLabel.toLowerCase()} print layout adapts page count and activity density automatically so shorter trips stay generous and longer trips stay readable.
         </Text>
 
         <View style={safariStyles.highlightsRow}>
@@ -83,8 +99,8 @@ const SafariStoryOverviewPage = ({ itinerary, branding, brandColor }: TemplateRe
           </View>
           <View style={[safariStyles.highlightCard, safariStyles.highlightCardLast]}>
             <Text style={safariStyles.highlightLabel}>Flow</Text>
-            <Text style={safariStyles.highlightValue}>Day-by-day</Text>
-            <Text style={safariStyles.highlightText}>Automatic pagination for length</Text>
+            <Text style={safariStyles.highlightValue}>{templateMeta.styleLabel}</Text>
+            <Text style={safariStyles.highlightText}>Adaptive pagination for itinerary length</Text>
           </View>
         </View>
       </View>
@@ -104,7 +120,9 @@ const SafariStoryOverviewPage = ({ itinerary, branding, brandColor }: TemplateRe
 };
 
 const SafariStoryDayPages = ({ itinerary, branding, brandColor }: TemplateRendererProps & { brandColor: string }) => {
-  const dayGroups = chunkDayBlocks(buildDayActivityBlocks(itinerary.days || [], 5), 2);
+  const activitiesPerBlock = getActivitiesPerBlock(itinerary, 'safari_story');
+  const blocksPerPage = getBlocksPerPage(itinerary, 'safari_story');
+  const dayGroups = chunkDayBlocks(buildDayActivityBlocks(itinerary.days || [], activitiesPerBlock), blocksPerPage);
 
   return (
     <>
@@ -167,13 +185,16 @@ const SafariStoryDayPages = ({ itinerary, branding, brandColor }: TemplateRender
   );
 };
 
-const SafariStoryClosingPage = ({ branding, brandColor }: TemplateRendererProps & { brandColor: string }) => (
+const SafariStoryClosingPage = ({ branding, brandColor, templateMeta }: TemplateRendererProps & {
+  brandColor: string;
+  templateMeta: ReturnType<typeof getPdfTemplateMeta>;
+}) => (
   <Page size={PAGE_SIZE} style={safariStyles.page}>
     <View style={safariStyles.closingCard}>
       <Text style={[safariStyles.closingTitle, { color: brandColor }]}>Ready To Share</Text>
       <View style={[safariStyles.closingAccentLine, { backgroundColor: brandColor }]} />
       <Text style={safariStyles.closingBody}>
-        This proposal-ready itinerary can be shared as-is, or attached to your interactive proposal flow where clients can choose vehicle type and optional upgrades.
+        This {templateMeta.styleLabel.toLowerCase()} document is designed for direct client sharing, with a print rhythm optimized for both shorter brochure decks and longer day-by-day itineraries.
       </Text>
       <Text style={safariStyles.closingContact}>Operator: {branding.companyName}</Text>
       {branding.contactPhone ? <Text style={safariStyles.closingContact}>Phone: {branding.contactPhone}</Text> : null}
@@ -184,22 +205,25 @@ const SafariStoryClosingPage = ({ branding, brandColor }: TemplateRendererProps 
   </Page>
 );
 
-export const SafariStoryPages = ({ itinerary, branding }: TemplateRendererProps) => {
-  const brandColor = branding.primaryColor || '#f26430';
+export const SafariStoryPages = ({ itinerary, branding, template = 'safari_story' }: TemplateRendererProps) => {
+  const templateMeta = getPdfTemplateMeta(template);
+  const brandColor = branding.primaryColor || templateMeta.accentFallback;
 
   return (
     <>
       <SafariStoryCoverPage
         itinerary={itinerary}
         branding={branding}
+        template={template}
         brandColor={brandColor}
+        templateMeta={templateMeta}
         coverImage={getCoverImage(itinerary)}
         activityCount={getAllActivities(itinerary).length}
         dayCount={(itinerary.days || []).length}
       />
-      <SafariStoryOverviewPage itinerary={itinerary} branding={branding} brandColor={brandColor} />
-      <SafariStoryDayPages itinerary={itinerary} branding={branding} brandColor={brandColor} />
-      <SafariStoryClosingPage itinerary={itinerary} branding={branding} brandColor={brandColor} />
+      <SafariStoryOverviewPage itinerary={itinerary} branding={branding} template={template} brandColor={brandColor} templateMeta={templateMeta} />
+      <SafariStoryDayPages itinerary={itinerary} branding={branding} template={template} brandColor={brandColor} />
+      <SafariStoryClosingPage itinerary={itinerary} branding={branding} template={template} brandColor={brandColor} templateMeta={templateMeta} />
     </>
   );
 };

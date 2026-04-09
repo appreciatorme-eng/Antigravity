@@ -398,6 +398,7 @@ export default function PlannerPage() {
                                     </button>
                                     <DownloadPDFButton
                                         data={result}
+                                        template={selectedTemplate}
                                         fileName={`${result.trip_title.replace(/\s+/g, '_')}_Itinerary.pdf`}
                                     />
                                 </div>

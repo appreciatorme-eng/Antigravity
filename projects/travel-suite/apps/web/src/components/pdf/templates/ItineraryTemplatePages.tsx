@@ -1,6 +1,10 @@
 import React from 'react';
 import type { ItineraryResult } from '@/types/itinerary';
-import type { ItineraryBranding, ItineraryTemplateId } from '../itinerary-types';
+import {
+  resolveItineraryPrintFamily,
+  type ItineraryBranding,
+  type ItineraryTemplateId,
+} from '../itinerary-types';
 import { SafariStoryPages } from './sections/SafariStoryPages';
 import { UrbanBriefPages } from './sections/UrbanBriefPages';
 
@@ -15,15 +19,15 @@ export const ItineraryTemplatePages: React.FC<ItineraryTemplatePagesProps> = ({
   branding,
   template,
 }) => {
-  // Note: Professional template is imported as a complete Document.
-  // So we return null here and handle it separately in ItineraryDocument.
-  if (template === 'professional') {
+  const family = resolveItineraryPrintFamily(template);
+
+  if (family === 'professional') {
     return null;
   }
 
-  if (template === 'urban_brief') {
-    return <UrbanBriefPages itinerary={itinerary} branding={branding} />;
+  if (family === 'urban_brief') {
+    return <UrbanBriefPages itinerary={itinerary} branding={branding} template={template} />;
   }
 
-  return <SafariStoryPages itinerary={itinerary} branding={branding} />;
+  return <SafariStoryPages itinerary={itinerary} branding={branding} template={template} />;
 };

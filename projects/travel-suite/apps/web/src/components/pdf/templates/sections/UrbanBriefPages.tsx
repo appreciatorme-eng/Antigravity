@@ -1,14 +1,26 @@
 /* eslint-disable jsx-a11y/alt-text */
 import React from 'react';
 import { Image, Page, Text, View } from '@react-pdf/renderer';
-import { PageFooter, PAGE_SIZE, TemplateRendererProps, buildDayActivityBlocks, chunkDayBlocks, getAllActivities, getCoverImage } from './shared';
+import {
+  PageFooter,
+  PAGE_SIZE,
+  TemplateRendererProps,
+  buildDayActivityBlocks,
+  chunkDayBlocks,
+  getActivitiesPerBlock,
+  getAllActivities,
+  getBlocksPerPage,
+  getCoverImage,
+  getPdfTemplateMeta,
+} from './shared';
 import { urbanStyles } from './urbanStyles';
 
-const UrbanBriefHeroPage = ({ itinerary, branding, accent, coverImage, activityCount, dayCount }: TemplateRendererProps & {
+const UrbanBriefHeroPage = ({ itinerary, branding, accent, coverImage, activityCount, dayCount, templateMeta }: TemplateRendererProps & {
   accent: string;
   coverImage: string | null;
   activityCount: number;
   dayCount: number;
+  templateMeta: ReturnType<typeof getPdfTemplateMeta>;
 }) => (
   <Page size={PAGE_SIZE} style={urbanStyles.page}>
     <View style={urbanStyles.masthead}>
@@ -38,15 +50,15 @@ const UrbanBriefHeroPage = ({ itinerary, branding, accent, coverImage, activityC
         </View>
         <View>
           <Text style={urbanStyles.heroPriceLabel}>Template</Text>
-          <Text style={[urbanStyles.heroPrice, { color: accent }]}>Brief</Text>
+          <Text style={[urbanStyles.heroPrice, { color: accent }]}>{templateMeta.styleLabel}</Text>
         </View>
       </View>
     </View>
 
-    <Text style={urbanStyles.sectionTitle}>Overview</Text>
+    <Text style={urbanStyles.sectionTitle}>{templateMeta.overviewTitle}</Text>
     <View style={[urbanStyles.activityCard, { marginBottom: 12 }]}> 
       <Text style={urbanStyles.activityDescription}>
-        {itinerary.summary || 'A fixed-format itinerary brief with dynamic day count and pricing-ready sections.'}
+        {itinerary.summary || `A ${templateMeta.styleLabel.toLowerCase()} built for clear client handoff, reliable pagination, and practical day sequencing.`}
       </Text>
     </View>
 
@@ -68,7 +80,9 @@ const UrbanBriefHeroPage = ({ itinerary, branding, accent, coverImage, activityC
 );
 
 const UrbanBriefItineraryPages = ({ itinerary, branding, accent }: TemplateRendererProps & { accent: string }) => {
-  const dayGroups = chunkDayBlocks(buildDayActivityBlocks(itinerary.days || [], 4), 3);
+  const activitiesPerBlock = getActivitiesPerBlock(itinerary, 'urban_brief');
+  const blocksPerPage = getBlocksPerPage(itinerary, 'urban_brief');
+  const dayGroups = chunkDayBlocks(buildDayActivityBlocks(itinerary.days || [], activitiesPerBlock), blocksPerPage);
 
   return (
     <>
@@ -150,22 +164,24 @@ const UrbanBriefClosingPage = ({ branding, accent }: TemplateRendererProps & { a
   </Page>
 );
 
-export const UrbanBriefPages = ({ itinerary, branding }: TemplateRendererProps) => {
-  const accent = branding.primaryColor || '#1d4ed8';
+export const UrbanBriefPages = ({ itinerary, branding, template = 'urban_brief' }: TemplateRendererProps) => {
+  const templateMeta = getPdfTemplateMeta(template);
+  const accent = branding.primaryColor || templateMeta.accentFallback;
 
   return (
     <>
       <UrbanBriefHeroPage
         itinerary={itinerary}
         branding={branding}
+        template={template}
         accent={accent}
+        templateMeta={templateMeta}
         coverImage={getCoverImage(itinerary)}
         activityCount={getAllActivities(itinerary).length}
         dayCount={(itinerary.days || []).length}
       />
-      <UrbanBriefItineraryPages itinerary={itinerary} branding={branding} accent={accent} />
-      <UrbanBriefClosingPage itinerary={itinerary} branding={branding} accent={accent} />
+      <UrbanBriefItineraryPages itinerary={itinerary} branding={branding} template={template} accent={accent} />
+      <UrbanBriefClosingPage itinerary={itinerary} branding={branding} template={template} accent={accent} />
     </>
   );
 };
-;

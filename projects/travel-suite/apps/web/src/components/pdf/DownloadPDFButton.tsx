@@ -4,20 +4,16 @@ import React, { useState } from 'react';
 import { Loader2, Download } from 'lucide-react';
 import type { ItineraryResult } from '@/types/itinerary';
 import { useToast } from '@/components/ui/toast';
-
-interface JsPDFInstance {
-  internal: { pageSize: { getWidth: () => number; getHeight: () => number } };
-  addImage: (data: string, format: string, x: number, y: number, w: number, h: number) => void;
-  addPage: () => void;
-  save: (name: string) => void;
-}
+import { downloadItineraryPdf } from './itinerary-pdf';
+import type { ItineraryTemplateId } from './itinerary-types';
 
 interface DownloadPDFButtonProps {
   data: ItineraryResult;
   fileName?: string;
+  template?: ItineraryTemplateId;
 }
 
-const DownloadPDFButton: React.FC<DownloadPDFButtonProps> = ({ data, fileName }) => {
+const DownloadPDFButton: React.FC<DownloadPDFButtonProps> = ({ data, fileName, template }) => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -26,85 +22,16 @@ const DownloadPDFButton: React.FC<DownloadPDFButtonProps> = ({ data, fileName })
     setLoading(true);
 
     try {
-      // Find the element to convert
-      const element = document.getElementById('itinerary-pdf-content');
-      if (!element) {
-        throw new Error("Could not find the itinerary content to generate PDF");
-      }
-
-      // Add a class that templates can hook into via '[.pdf-exporting_&]:property' to expand accordions and un-hide elements
-      element.classList.add('pdf-exporting');
-
-      let imgData;
-      try {
-        const htmlToImage = await import('html-to-image');
-        const jspdfModule = await import('jspdf');
-        const jsPDF = jspdfModule.jsPDF || jspdfModule.default || jspdfModule;
-
-        imgData = await htmlToImage.toPng(element, {
-          pixelRatio: 2, // higher scale for better resolution
-          backgroundColor: '#ffffff',
-          imagePlaceholder: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
-          cacheBust: true, // Bypass browser cache forcing CORS refresh on opaque cached images
-          fetchRequestInit: { cache: 'no-cache' }, // Prevent Vercel/Cloudflare edge fetching errors
-          skipFonts: true, // Prevents toPng() from notoriously crashing on web font CSS loads
-          filter: (node: HTMLElement) => {
-            if (node.classList && typeof node.classList.contains === 'function' && node.classList.contains('print:hidden')) {
-              return false;
-            }
-            return true;
-          }
-        });
-
-        const img = new Image();
-        img.src = imgData;
-        await new Promise((resolve, reject) => {
-          img.onload = resolve;
-          img.onerror = () => reject(new Error("Failed to load generated PDF image data"));
-        });
-
-        const canvasWidth = img.width;
-        const canvasHeight = img.height;
-
-        const pdf: JsPDFInstance = new (jsPDF as unknown as new (...args: string[]) => JsPDFInstance)('p', 'mm', 'a4');
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
-        const pdfHeight = (canvasHeight * pdfWidth) / canvasWidth;
-
-        let heightLeft = pdfHeight;
-        let position = 0;
-
-        // Add first page
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
-        heightLeft -= pageHeight;
-
-        // Add subsequent pages if content is longer than one page
-        while (heightLeft > 0) {
-          position -= pageHeight; // Move the position up by exactly one page height
-          pdf.addPage();
-          pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
-          heightLeft -= pageHeight;
-        }
-
-        const computedFileName = fileName || (data.trip_title ? `${data.trip_title.replace(/\s+/g, '_')}_Itinerary.pdf` : 'itinerary.pdf');
-        pdf.save(computedFileName);
-      } finally {
-        element.classList.remove('pdf-exporting');
-      }
-
+      await downloadItineraryPdf({
+        itinerary: data,
+        template,
+        fileName: fileName || (data.trip_title ? `${data.trip_title.replace(/\s+/g, '_')}_Itinerary.pdf` : 'itinerary.pdf'),
+      });
     } catch (error) {
-      console.error("Failed to generate PDF", error);
-      let errorMessage = 'Unknown error';
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'object' && error !== null && 'type' in error) {
-        errorMessage = 'Failed to load a custom font or external image. Please try again.';
-      } else {
-        errorMessage = String(error);
-      }
+      const message = error instanceof Error ? error.message : 'Unknown error';
       toast({
         title: 'PDF generation failed',
-        description: `Failed to generate PDF: ${errorMessage}`,
+        description: `Failed to generate PDF: ${message}`,
         variant: 'error',
       });
     } finally {
@@ -116,7 +43,7 @@ const DownloadPDFButton: React.FC<DownloadPDFButtonProps> = ({ data, fileName })
     <button
       onClick={handleDownload}
       disabled={loading}
-      className="h-9 md:h-10 px-2 md:px-4 py-2 bg-primary text-white font-bold rounded-lg hover:bg-opacity-90 transition-all flex items-center gap-2 shadow-sm disabled:opacity-70 text-xs md:text-sm"
+      className="h-9 md:h-10 px-2 md:px-4 bg-primary text-white font-bold rounded-lg hover:bg-opacity-90 transition-all flex items-center gap-2 shadow-sm disabled:opacity-70 text-xs md:text-sm"
       aria-label="Download itinerary as PDF"
     >
       {loading ? (

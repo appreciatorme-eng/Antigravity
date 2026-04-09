@@ -225,15 +225,16 @@ export default function TripsPage() {
                             </h2>
                         </div>
 
-                        <div className="flex items-center gap-2 self-start rounded-full border border-gray-200 bg-white/80 p-1 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900/80">
+                        <div className="flex items-center gap-2 self-start rounded-full border border-slate-300 bg-slate-50/95 p-1.5 shadow-[0_10px_30px_-18px_rgba(15,23,42,0.45)] backdrop-blur dark:border-slate-700 dark:bg-slate-900/90">
                             <button
                                 onClick={() => setViewMode("grid")}
                                 className={cn(
-                                    "inline-flex items-center gap-2 rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] transition-all",
+                                    "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] transition-all",
                                     viewMode === "grid"
-                                        ? "bg-secondary text-white shadow-md dark:bg-white dark:text-slate-900"
-                                        : "text-text-muted hover:text-primary"
+                                        ? "border-emerald-500/40 bg-secondary text-white shadow-md shadow-emerald-500/20 dark:bg-white dark:text-slate-900 dark:border-white/60"
+                                        : "border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:text-emerald-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-emerald-500/50 dark:hover:text-emerald-300"
                                 )}
+                                aria-pressed={viewMode === "grid"}
                             >
                                 <LayoutGrid className="h-4 w-4" />
                                 Tiles
@@ -241,11 +242,12 @@ export default function TripsPage() {
                             <button
                                 onClick={() => setViewMode("list")}
                                 className={cn(
-                                    "inline-flex items-center gap-2 rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] transition-all",
+                                    "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-[0.18em] transition-all",
                                     viewMode === "list"
-                                        ? "bg-secondary text-white shadow-md dark:bg-white dark:text-slate-900"
-                                        : "text-text-muted hover:text-primary"
+                                        ? "border-emerald-500/40 bg-secondary text-white shadow-md shadow-emerald-500/20 dark:bg-white dark:text-slate-900 dark:border-white/60"
+                                        : "border-slate-200 bg-white text-slate-700 hover:border-emerald-300 hover:text-emerald-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-emerald-500/50 dark:hover:text-emerald-300"
                                 )}
+                                aria-pressed={viewMode === "list"}
                             >
                                 <ListIcon className="h-4 w-4" />
                                 List
