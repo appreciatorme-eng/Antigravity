@@ -38,10 +38,11 @@ const resolveExecutablePath = async (): Promise<string> => {
 };
 
 export const launchItineraryPdfBrowser = async () => {
+  chromium.setGraphicsMode = false;
   const executablePath = await resolveExecutablePath();
   const args =
     process.env.VERCEL || process.platform === 'linux'
-      ? chromium.args
+      ? [...chromium.args, '--hide-scrollbars']
       : ['--disable-dev-shm-usage', '--font-render-hinting=medium'];
 
   return playwrightChromium.launch({

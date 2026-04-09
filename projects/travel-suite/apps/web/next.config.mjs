@@ -106,6 +106,12 @@ const nextConfig = {
     "@sparticuz/chromium",
     "playwright-core",
   ],
+  outputFileTracingIncludes: {
+    '/api/itinerary/pdf': [
+      './node_modules/@sparticuz/chromium/bin/**',
+      './node_modules/@sparticuz/chromium/build/**',
+    ],
+  },
   outputFileTracingRoot: projectRoot,
   images: {
     remotePatterns,
