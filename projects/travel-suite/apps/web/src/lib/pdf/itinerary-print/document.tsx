@@ -572,6 +572,11 @@ const PRINT_CSS = `
   .activity-card--text {
     grid-template-columns: 1fr;
   }
+  .activity-card--compact {
+    grid-template-columns: 1fr;
+    gap: 0;
+    align-self: start;
+  }
   .activity-card--dark {
     border-color: rgba(255,255,255,0.10);
     background: rgba(255,255,255,0.05);
@@ -583,9 +588,16 @@ const PRINT_CSS = `
     object-fit: cover;
     background: rgba(17,24,39,0.06);
   }
+  .activity-card--compact .activity-card__media {
+    height: 28mm;
+    min-height: 28mm;
+  }
   .activity-card__body {
     padding: 11px 12px;
     min-width: 0;
+  }
+  .activity-card--compact .activity-card__body {
+    padding: 10px 11px 11px;
   }
   .activity-card__meta {
     display: flex;
@@ -598,6 +610,10 @@ const PRINT_CSS = `
     opacity: 0.55;
     font-weight: 700;
   }
+  .activity-card--compact .activity-card__meta {
+    margin-bottom: 5px;
+    font-size: 8px;
+  }
   .activity-card__title {
     margin: 0 0 6px;
     font-size: 16px;
@@ -605,11 +621,24 @@ const PRINT_CSS = `
     letter-spacing: -0.03em;
     font-weight: 700;
   }
+  .activity-card--compact .activity-card__title {
+    margin-bottom: 4px;
+    font-size: 14px;
+    line-height: 1.18;
+  }
   .activity-card__desc {
     margin: 0;
     font-size: 11.5px;
     line-height: 1.56;
     color: rgba(17, 24, 39, 0.74);
+  }
+  .activity-card--compact .activity-card__desc {
+    font-size: 10.5px;
+    line-height: 1.48;
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
   .page--dark .activity-card__desc { color: rgba(248,250,252,0.72); }
   .activity-card__footer {
@@ -744,6 +773,7 @@ const PRINT_CSS = `
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 9px;
+    align-items: start;
   }
   .safari-note {
     display: grid;
@@ -1460,13 +1490,15 @@ const Metrics = ({
 const ActivityCard = ({
   activity,
   dark = false,
+  compact = false,
 }: {
   activity: PreparedPrintActivity;
   dark?: boolean;
+  compact?: boolean;
 }) => {
   const hasImage = Boolean(activity.printImage);
   return (
-    <article className={`activity-card ${!hasImage ? 'activity-card--text' : ''} ${dark ? 'activity-card--dark' : ''}`}>
+    <article className={`activity-card ${!hasImage ? 'activity-card--text' : ''} ${compact ? 'activity-card--compact' : ''} ${dark ? 'activity-card--dark' : ''}`}>
       {hasImage ? <img className="activity-card__media" src={activity.printImage!} alt={activity.title} /> : null}
       <div className="activity-card__body">
         <div className="activity-card__meta">
@@ -1843,7 +1875,7 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                       {supportActivities.length ? (
                         <div className="safari-support-grid">
                           {supportActivities.map((activity, activityIndex) => (
-                            <ActivityCard key={`safari-support-${activityIndex}`} activity={activity} />
+                            <ActivityCard key={`safari-support-${activityIndex}`} activity={activity} compact />
                           ))}
                         </div>
                       ) : (
@@ -1904,7 +1936,7 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                         {continuedSupport.length ? (
                           <div className="safari-support-grid">
                             {continuedSupport.map((activity, activityIndex) => (
-                              <ActivityCard key={`safari-cont-support-${activityIndex}`} activity={activity} />
+                              <ActivityCard key={`safari-cont-support-${activityIndex}`} activity={activity} compact />
                             ))}
                           </div>
                         ) : (
