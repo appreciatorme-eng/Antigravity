@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logError } from "@/lib/observability/logger";
 
-const ITINERARY_DETAIL_SELECT = "id, user_id, client_id, trip_title, destination, duration_days, budget, raw_data, created_at, updated_at";
+const ITINERARY_DETAIL_SELECT = "id, user_id, client_id, trip_title, destination, duration_days, budget, interests, summary, template_id, raw_data, created_at, updated_at";
 const supabaseAdmin = createAdminClient();
 
 export async function GET(

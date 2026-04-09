@@ -99,17 +99,22 @@ export default function PlannerPage() {
     const handleOpenItinerary = useCallback(async (itineraryId: string) => {
         setOpeningItineraryId(itineraryId);
         try {
-            const { data, error: fetchError } = await supabase
-                .from("itineraries")
-                .select("raw_data, trip_title, destination, duration_days, budget, interests, template_id")
-                .eq("id", itineraryId)
-                .single();
+            const response = await authedFetch(`/api/itineraries/${itineraryId}`);
+            const payload = await response.json().catch(() => null);
 
-            if (fetchError || !data?.raw_data) {
+            if (!response.ok || !payload?.itinerary?.raw_data) {
                 toast({ title: "Failed to load itinerary", description: "Could not fetch itinerary data.", variant: "error" });
                 return;
             }
 
+            const data = payload.itinerary as {
+                raw_data: ItineraryResult;
+                destination?: string | null;
+                duration_days?: number | null;
+                budget?: string | null;
+                interests?: string[] | null;
+                template_id?: string | null;
+            };
             const itineraryData = data.raw_data as unknown as ItineraryResult;
             setCurrentItineraryId(itineraryId);
             setResult(itineraryData);
@@ -135,7 +140,7 @@ export default function PlannerPage() {
             setOpeningItineraryId(null);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchImagesForItinerary reads current state; adding it would loop
-    }, [supabase, toast]);
+    }, [toast]);
 
     const [images, setImages] = useState<Record<string, string | null>>({});
     const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]));
