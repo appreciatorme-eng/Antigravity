@@ -890,14 +890,17 @@ const formatCurrency = (itinerary: PreparedPrintPayload['itinerary']) => {
 
 const getFeaturedActivities = (payload: PreparedPrintPayload, limit = 4) =>
   payload.itinerary.days
-    .flatMap((day) =>
-      day.activities.map((activity) => ({
-        ...activity,
+    .slice(0, limit)
+    .map((day) => {
+      const first = day.activities[0];
+      if (!first) return null;
+      return {
+        ...first,
         dayNumber: day.day_number,
         dayTheme: day.theme,
-      })),
-    )
-    .slice(0, limit);
+      };
+    })
+    .filter((activity): activity is NonNullable<typeof activity> => activity !== null && Boolean(activity.title));
 
 const getTopLocations = (payload: PreparedPrintPayload, limit = 3) => {
   const values = payload.itinerary.days
@@ -986,10 +989,9 @@ const ActivityCard = ({
         </div>
         <h3 className="activity-card__title">{activity.title}</h3>
         <p className="activity-card__desc">{activity.description}</p>
-        {(activity.duration || activity.cost) ? (
+        {activity.duration ? (
           <div className="activity-card__footer">
-            {activity.duration ? <span>{activity.duration}</span> : null}
-            {activity.cost ? <span>{activity.cost}</span> : null}
+            <span>{activity.duration}</span>
           </div>
         ) : null}
       </div>
@@ -1075,12 +1077,15 @@ const LogisticsPanel = ({ payload, dark = false }: { payload: PreparedPrintPaylo
   );
 };
 
-const PageFooter = ({ branding }: { branding: PreparedPrintPayload['branding'] }) => (
-  <div className="page__footer">
-    <span>{branding.companyName}</span>
-    <span className="page__number" />
-  </div>
-);
+const PageFooter = ({ branding }: { branding: PreparedPrintPayload['branding'] }) => {
+  const contactBits = [branding.companyName, branding.contactEmail, branding.contactPhone].filter(Boolean);
+  return (
+    <div className="page__footer">
+      <span>{contactBits.join('  •  ')}</span>
+      <span className="page__number" />
+    </div>
+  );
+};
 
 const SummaryPage = ({
   payload,
@@ -1176,12 +1181,16 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
             <div className="cover__content">
               <BrandRow branding={payload.branding} dark />
               <div>
-                <p className="cover__kicker">Safari Story</p>
+                <p className="cover__kicker">Crafted Journey</p>
                 <h1 className="cover__title" style={{ color: '#fff7ed', fontFamily: 'Georgia, Times New Roman, serif' }}>{payload.itinerary.trip_title}</h1>
                 <p className="cover__subtitle" style={{ color: 'rgba(255,247,237,0.88)' }}>{payload.itinerary.destination} • {payload.itinerary.summary}</p>
                 <div className="cover__meta">
                   <span className="meta-pill">{payload.itinerary.duration_days} Days</span>
-                  {payload.itinerary.start_date ? <span className="meta-pill">{formatDateLabel(payload.itinerary.start_date)}</span> : null}
+                  {payload.itinerary.start_date && payload.itinerary.end_date ? (
+                    <span className="meta-pill">{formatDateLabel(payload.itinerary.start_date)} – {formatDateLabel(payload.itinerary.end_date)}</span>
+                  ) : payload.itinerary.start_date ? (
+                    <span className="meta-pill">{formatDateLabel(payload.itinerary.start_date)}</span>
+                  ) : null}
                 </div>
               </div>
               <PageFooter branding={payload.branding} />
@@ -1339,6 +1348,27 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
             </h2>
             <p className="body-copy">This itinerary is arranged as a clean field guide: memorable days first, logistics where they are needed, and only the visual moments strong enough to carry a printed brochure.</p>
             <PackagePanels payload={payload} />
+            <LogisticsPanel payload={payload} />
+            {payload.itinerary.interests?.length ? (
+              <div className="panel" style={{ marginTop: 14 }}>
+                <p className="panel__title">Tailored Around</p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                  {payload.itinerary.interests.map((interest, index) => (
+                    <span key={`interest-${index}`} className="meta-pill" style={{ background: 'rgba(17,24,39,0.06)', color: 'rgba(17,24,39,0.75)', border: '1px solid rgba(17,24,39,0.08)' }}>{interest}</span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            {(payload.branding.contactEmail || payload.branding.contactPhone) ? (
+              <div className="panel panel--muted" style={{ marginTop: 14 }}>
+                <p className="panel__title">Your Journey Curator</p>
+                <div style={{ fontWeight: 700, fontSize: 15, marginTop: 2 }}>{payload.branding.companyName}</div>
+                <div className="body-copy" style={{ marginTop: 6, opacity: 0.8 }}>
+                  {[payload.branding.contactEmail, payload.branding.contactPhone].filter(Boolean).join('  •  ')}
+                </div>
+                <p className="body-copy" style={{ marginTop: 10, fontStyle: 'italic', opacity: 0.7 }}>Thank you for letting us craft this journey — we can&apos;t wait for you to experience it.</p>
+              </div>
+            ) : null}
             <PageFooter branding={payload.branding} />
           </div>
         </section>
