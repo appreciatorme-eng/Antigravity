@@ -249,7 +249,7 @@ export async function POST(request: Request) {
     try {
       const origin = new URL(request.url).origin;
       const prepared = await prepareItineraryPrintPayload(imageReadyItinerary, branding, template, origin);
-      const html = renderItineraryPrintHtml(prepared);
+      const html = await renderItineraryPrintHtml(prepared);
       const browser = await launchItineraryPdfBrowser();
 
       try {

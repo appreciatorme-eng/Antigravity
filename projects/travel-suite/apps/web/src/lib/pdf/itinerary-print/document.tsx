@@ -1,6 +1,6 @@
 /* eslint-disable @next/next/no-img-element, @next/next/no-head-element */
 import React from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
+import { prerender } from 'react-dom/static';
 import type { ItineraryTemplateId } from '@/components/pdf/itinerary-types';
 import type {
   PreparedPrintActivity,
@@ -1069,5 +1069,16 @@ const ItineraryPrintDocument = ({ payload }: { payload: PreparedPrintPayload }) 
   );
 };
 
-export const renderItineraryPrintHtml = (payload: PreparedPrintPayload) =>
-  `<!DOCTYPE html>${renderToStaticMarkup(<ItineraryPrintDocument payload={payload} />)}`;
+export const renderItineraryPrintHtml = async (payload: PreparedPrintPayload) => {
+  const { prelude } = await prerender(<ItineraryPrintDocument payload={payload} />, {
+    bootstrapScripts: [],
+  });
+  const chunks: Buffer[] = [];
+  const reader = prelude.getReader();
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(Buffer.from(value));
+  }
+  return Buffer.concat(chunks).toString('utf8');
+};
