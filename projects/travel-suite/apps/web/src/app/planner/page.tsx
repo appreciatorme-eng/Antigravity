@@ -279,6 +279,11 @@ export default function PlannerPage() {
         return items;
     }, [pastItineraries, filterStage, searchQuery]);
 
+    const currentItineraryClientName = useMemo(() => {
+        if (!currentItineraryId || !pastItineraries) return null;
+        return pastItineraries.find((item: PastItineraryItem) => item.id === currentItineraryId)?.client?.full_name ?? null;
+    }, [currentItineraryId, pastItineraries]);
+
     const requestDeleteItinerary = useCallback((itineraryId: string) => {
         const itinerary = filteredItineraries.find((item: PastItineraryItem) => item.id === itineraryId) ?? null;
         if (!itinerary || deletingItineraryId) return;
@@ -398,6 +403,7 @@ export default function PlannerPage() {
                                     </button>
                                     <DownloadPDFButton
                                         data={result}
+                                        clientName={currentItineraryClientName}
                                         template={selectedTemplate}
                                         fileName={`${result.trip_title.replace(/\s+/g, '_')}_Itinerary.pdf`}
                                     />

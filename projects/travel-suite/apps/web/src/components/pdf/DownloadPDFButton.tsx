@@ -5,15 +5,23 @@ import { Loader2, Download } from 'lucide-react';
 import type { ItineraryResult } from '@/types/itinerary';
 import { useToast } from '@/components/ui/toast';
 import { downloadItineraryPdf } from './itinerary-pdf';
-import type { ItineraryTemplateId } from './itinerary-types';
+import type { ItineraryPrintExtras, ItineraryTemplateId } from './itinerary-types';
 
 interface DownloadPDFButtonProps {
   data: ItineraryResult;
   fileName?: string;
   template?: ItineraryTemplateId;
+  clientName?: string | null;
+  printExtras?: ItineraryPrintExtras;
 }
 
-const DownloadPDFButton: React.FC<DownloadPDFButtonProps> = ({ data, fileName, template }) => {
+const DownloadPDFButton: React.FC<DownloadPDFButtonProps> = ({
+  data,
+  fileName,
+  template,
+  clientName,
+  printExtras,
+}) => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -25,6 +33,8 @@ const DownloadPDFButton: React.FC<DownloadPDFButtonProps> = ({ data, fileName, t
       await downloadItineraryPdf({
         itinerary: data,
         template,
+        branding: clientName ? { clientName } : undefined,
+        printExtras,
         fileName: fileName || (data.trip_title ? `${data.trip_title.replace(/\s+/g, '_')}_Itinerary.pdf` : 'itinerary.pdf'),
       });
     } catch (error) {

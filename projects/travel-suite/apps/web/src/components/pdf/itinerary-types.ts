@@ -17,6 +17,29 @@ export interface ItineraryBranding {
   clientName?: string | null;
 }
 
+export interface ItineraryPrintAccommodation {
+  dayNumber: number;
+  hotelName: string;
+  starRating?: number | null;
+  roomType?: string | null;
+  amenities?: string[] | null;
+  imageUrl?: string | null;
+}
+
+export interface ItineraryPrintAddOn {
+  name: string;
+  category?: string | null;
+  description?: string | null;
+  unitPrice?: number | null;
+  quantity?: number | null;
+  imageUrl?: string | null;
+}
+
+export interface ItineraryPrintExtras {
+  dayAccommodations?: ItineraryPrintAccommodation[];
+  selectedAddOns?: ItineraryPrintAddOn[];
+}
+
 export const DEFAULT_ITINERARY_BRANDING: ItineraryBranding = {
   companyName: 'TripBuilt',
   logoUrl: null,

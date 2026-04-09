@@ -12,6 +12,7 @@ import {
 import {
   DEFAULT_ITINERARY_TEMPLATE,
   ITINERARY_TEMPLATE_OPTIONS,
+  type ItineraryPrintExtras,
   type ItineraryTemplateId,
 } from './itinerary-types';
 
@@ -20,6 +21,7 @@ interface PDFDownloadButtonProps {
   className?: string;
   showTemplateSelector?: boolean;
   clientName?: string | null;
+  printExtras?: ItineraryPrintExtras;
 }
 
 export default function PDFDownloadButton({
@@ -27,6 +29,7 @@ export default function PDFDownloadButton({
   className = '',
   showTemplateSelector = true,
   clientName,
+  printExtras,
 }: PDFDownloadButtonProps) {
   const [generating, setGenerating] = useState(false);
   const [template, setTemplate] = useState<ItineraryTemplateId>(DEFAULT_ITINERARY_TEMPLATE);
@@ -55,6 +58,7 @@ export default function PDFDownloadButton({
         itinerary,
         template,
         branding: clientName ? { clientName } : undefined,
+        printExtras,
         fileName: `${(itinerary.trip_title || 'itinerary').replace(/[^a-zA-Z0-9-_]+/g, '_')}_${template}.pdf`,
       });
     } catch (error) {

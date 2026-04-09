@@ -3,7 +3,7 @@
 import { authedFetch } from '@/lib/api/authed-fetch';
 import type { ItineraryResult } from '@/types/itinerary';
 import { createClient } from '@/lib/supabase/client';
-import type { ItineraryBranding, ItineraryTemplateId } from './itinerary-types';
+import type { ItineraryBranding, ItineraryPrintExtras, ItineraryTemplateId } from './itinerary-types';
 import {
   DEFAULT_ITINERARY_BRANDING,
   DEFAULT_ITINERARY_TEMPLATE,
@@ -15,6 +15,7 @@ interface DownloadItineraryPdfParams {
   template?: ItineraryTemplateId;
   fileName?: string;
   branding?: Partial<ItineraryBranding>;
+  printExtras?: ItineraryPrintExtras;
 }
 
 export interface ItineraryPdfPreferences {
@@ -175,6 +176,7 @@ export const downloadItineraryPdf = async ({
   template,
   fileName,
   branding,
+  printExtras,
 }: DownloadItineraryPdfParams): Promise<void> => {
   const preferences = await fetchItineraryPdfPreferences();
   const resolvedTemplate = template || preferences.defaultTemplate;
@@ -193,6 +195,7 @@ export const downloadItineraryPdf = async ({
       itinerary: normalizedItinerary,
       template: resolvedTemplate,
       branding: resolvedBranding,
+      printExtras,
       fileName: computedFileName,
     }),
   });

@@ -1,6 +1,12 @@
 import sharp from 'sharp';
 import type { Activity, Day, ItineraryResult } from '@/types/itinerary';
-import type { ItineraryBranding, ItineraryTemplateId } from '@/components/pdf/itinerary-types';
+import type {
+  ItineraryBranding,
+  ItineraryPrintAccommodation,
+  ItineraryPrintAddOn,
+  ItineraryPrintExtras,
+  ItineraryTemplateId,
+} from '@/components/pdf/itinerary-types';
 
 export type ItineraryPrintDensity = 'immersive' | 'balanced' | 'dense';
 
@@ -23,11 +29,25 @@ export interface PreparedPrintBranding extends ItineraryBranding {
   logoDataUrl?: string | null;
 }
 
+export interface PreparedPrintAccommodation extends ItineraryPrintAccommodation {
+  printImage?: string | null;
+}
+
+export interface PreparedPrintAddOn extends ItineraryPrintAddOn {
+  printImage?: string | null;
+}
+
+export interface PreparedPrintExtras {
+  dayAccommodations: PreparedPrintAccommodation[];
+  selectedAddOns: PreparedPrintAddOn[];
+}
+
 export interface PreparedPrintPayload {
   itinerary: PreparedPrintItinerary;
   branding: PreparedPrintBranding;
   template: ItineraryTemplateId;
   density: ItineraryPrintDensity;
+  printExtras: PreparedPrintExtras;
   coverImage?: string | null;
   imageStats: {
     uniqueActivityImages: number;
@@ -156,6 +176,7 @@ export const prepareItineraryPrintPayload = async (
   branding: ItineraryBranding,
   template: ItineraryTemplateId,
   baseUrl: string,
+  printExtras?: ItineraryPrintExtras,
 ): Promise<PreparedPrintPayload> => {
   const density = resolvePrintDensity(itinerary);
   const assetCache = new Map<string, Promise<string | null>>();
@@ -256,6 +277,23 @@ export const prepareItineraryPrintPayload = async (
     }),
   );
 
+  const preparedPrintExtras: PreparedPrintExtras = {
+    dayAccommodations: await Promise.all(
+      (printExtras?.dayAccommodations || []).map(async (accommodation) => ({
+        ...accommodation,
+        printImage: accommodation.imageUrl
+          ? await getCachedAsset(accommodation.imageUrl, 'supporting')
+          : null,
+      })),
+    ),
+    selectedAddOns: await Promise.all(
+      (printExtras?.selectedAddOns || []).map(async (addOn) => ({
+        ...addOn,
+        printImage: addOn.imageUrl ? await getCachedAsset(addOn.imageUrl, 'supporting') : null,
+      })),
+    ),
+  };
+
   return {
     itinerary: {
       ...itinerary,
@@ -267,6 +305,7 @@ export const prepareItineraryPrintPayload = async (
     },
     template,
     density,
+    printExtras: preparedPrintExtras,
     coverImage,
     imageStats: {
       uniqueActivityImages,

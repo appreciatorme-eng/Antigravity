@@ -8,6 +8,7 @@ import {
   DEFAULT_ITINERARY_TEMPLATE,
   normalizeItineraryTemplateId,
   type ItineraryBranding,
+  type ItineraryPrintExtras,
 } from '@/components/pdf/itinerary-types';
 import { stripRepeatedPdfImages } from '@/components/pdf/templates/sections/shared';
 import { apiError } from '@/lib/api/response';
@@ -32,6 +33,25 @@ const brandingSchema = z.object({
   clientName: z.string().nullable().optional(),
 });
 
+const printExtrasSchema = z.object({
+  dayAccommodations: z.array(z.object({
+    dayNumber: z.number().int().positive(),
+    hotelName: z.string().min(1),
+    starRating: z.number().nullable().optional(),
+    roomType: z.string().nullable().optional(),
+    amenities: z.array(z.string()).nullable().optional(),
+    imageUrl: z.string().nullable().optional(),
+  })).optional(),
+  selectedAddOns: z.array(z.object({
+    name: z.string().min(1),
+    category: z.string().nullable().optional(),
+    description: z.string().nullable().optional(),
+    unitPrice: z.number().nullable().optional(),
+    quantity: z.number().nullable().optional(),
+    imageUrl: z.string().nullable().optional(),
+  })).optional(),
+});
+
 const bodySchema = z.object({
   itinerary: z.custom<ItineraryResult>((value) => {
     if (!value || typeof value !== 'object') return false;
@@ -40,6 +60,7 @@ const bodySchema = z.object({
   }, 'Invalid itinerary payload'),
   template: z.string().optional(),
   branding: brandingSchema.partial().optional(),
+  printExtras: printExtrasSchema.optional(),
   fileName: z.string().optional(),
 });
 
@@ -249,6 +270,7 @@ export async function POST(request: Request) {
       ...preferences.branding,
       ...(parsed.data.branding || {}),
     };
+    const printExtras = parsed.data.printExtras as ItineraryPrintExtras | undefined;
     const normalizedItinerary = normalizeItinerary(parsed.data.itinerary);
     const imageReadyItinerary = await populateItineraryImages(
       normalizedItinerary as unknown as Parameters<typeof populateItineraryImages>[0],
@@ -265,7 +287,7 @@ export async function POST(request: Request) {
 
     try {
       const origin = new URL(request.url).origin;
-      const prepared = await prepareItineraryPrintPayload(imageReadyItinerary, branding, template, origin);
+      const prepared = await prepareItineraryPrintPayload(imageReadyItinerary, branding, template, origin, printExtras);
       const html = await renderItineraryPrintHtml(prepared);
       const browser = await launchItineraryPdfBrowser();
 

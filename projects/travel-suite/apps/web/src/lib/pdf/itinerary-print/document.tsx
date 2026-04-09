@@ -3,7 +3,9 @@ import React from 'react';
 import { prerender } from 'react-dom/static';
 import type { ItineraryTemplateId } from '@/components/pdf/itinerary-types';
 import type {
+  PreparedPrintAccommodation,
   PreparedPrintActivity,
+  PreparedPrintAddOn,
   PreparedPrintPayload,
 } from './assets';
 
@@ -93,6 +95,26 @@ const PRINT_CSS = `
     text-transform: uppercase;
     opacity: 0.66;
   }
+  .brand-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid rgba(17,24,39,0.10);
+    border-radius: 999px;
+    padding: 7px 11px;
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    background: rgba(255,255,255,0.78);
+    color: rgba(17,24,39,0.68);
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .page--dark .brand-badge {
+    border-color: rgba(255,255,255,0.16);
+    background: rgba(255,255,255,0.06);
+    color: rgba(248,250,252,0.72);
+  }
 
   .cover {
     position: relative;
@@ -159,6 +181,263 @@ const PRINT_CSS = `
     letter-spacing: 0.12em;
     text-transform: uppercase;
     background: rgba(255,255,255,0.08);
+  }
+  .cover-dossier {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 18px;
+  }
+  .cover-dossier__card {
+    border: 1px solid rgba(255,255,255,0.16);
+    border-radius: 16px;
+    padding: 12px 13px;
+    background: rgba(18,16,14,0.32);
+    backdrop-filter: blur(8px);
+  }
+  .cover-dossier__label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(255,247,237,0.58);
+  }
+  .cover-dossier__value {
+    margin-top: 8px;
+    font-size: 15px;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    color: #fff7ed;
+    font-weight: 700;
+  }
+  .cover-dossier__value--small {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  .trip-brief {
+    display: grid;
+    grid-template-columns: 1.08fr 0.92fr;
+    gap: 10mm;
+  }
+  .trip-brief__lead {
+    display: grid;
+    gap: 8mm;
+  }
+  .trip-brief__headline {
+    display: grid;
+    gap: 12px;
+  }
+  .trip-brief__cards {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .trip-brief__card {
+    border: 1px solid rgba(17,24,39,0.08);
+    border-radius: 18px;
+    padding: 14px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,246,241,0.94));
+  }
+  .trip-brief__label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    opacity: 0.54;
+  }
+  .trip-brief__value {
+    margin-top: 8px;
+    font-size: 21px;
+    line-height: 1.12;
+    letter-spacing: -0.03em;
+    font-weight: 700;
+  }
+  .trip-brief__copy {
+    margin-top: 6px;
+    font-size: 11px;
+    line-height: 1.55;
+    color: rgba(17,24,39,0.72);
+  }
+  .trip-brief__sidebar {
+    display: grid;
+    gap: 8px;
+  }
+  .operator-card {
+    border: 1px solid rgba(17,24,39,0.08);
+    border-radius: 18px;
+    padding: 16px;
+    background: rgba(255,255,255,0.96);
+  }
+  .operator-card__name {
+    margin-top: 8px;
+    font-size: 20px;
+    line-height: 1.15;
+    letter-spacing: -0.03em;
+    font-weight: 700;
+  }
+  .operator-card__copy {
+    margin-top: 8px;
+    font-size: 11px;
+    line-height: 1.6;
+    color: rgba(17,24,39,0.74);
+  }
+  .location-ribbon {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+  .location-ribbon__stop {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+  }
+  .location-ribbon__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    flex-shrink: 0;
+  }
+  .location-ribbon__name {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(17,24,39,0.62);
+  }
+  .location-ribbon__line {
+    width: 14px;
+    height: 1px;
+    background: rgba(17,24,39,0.18);
+    flex-shrink: 0;
+  }
+  .day-dossier {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .day-dossier__card {
+    border: 1px solid rgba(17,24,39,0.08);
+    border-radius: 14px;
+    padding: 10px 12px;
+    background: rgba(255,255,255,0.92);
+  }
+  .day-dossier__value {
+    margin-top: 6px;
+    font-size: 13px;
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+    font-weight: 700;
+  }
+  .continuation-layout {
+    display: grid;
+    grid-template-columns: 1.08fr 0.92fr;
+    gap: 10mm;
+    align-items: start;
+  }
+  .continuation-main {
+    display: grid;
+    gap: 8px;
+  }
+  .continuation-sidebar {
+    display: grid;
+    gap: 8px;
+  }
+  .sidebar-panel {
+    border: 1px solid rgba(17,24,39,0.08);
+    border-radius: 18px;
+    padding: 14px;
+    background: rgba(255,255,255,0.96);
+  }
+  .sidebar-panel__title {
+    margin: 0 0 8px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(17,24,39,0.56);
+  }
+  .stay-card {
+    display: grid;
+    gap: 10px;
+  }
+  .stay-card__image {
+    width: 100%;
+    height: 34mm;
+    object-fit: cover;
+    border-radius: 12px;
+    display: block;
+    background: rgba(17,24,39,0.06);
+  }
+  .stay-card__title {
+    margin: 0;
+    font-size: 16px;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+  }
+  .mini-list {
+    display: grid;
+    gap: 6px;
+  }
+  .mini-list__item {
+    display: grid;
+    grid-template-columns: 18px 1fr;
+    gap: 8px;
+    align-items: start;
+  }
+  .mini-list__index {
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    border: 1px solid rgba(17,24,39,0.12);
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(17,24,39,0.6);
+  }
+  .addon-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .addon-card {
+    border: 1px solid rgba(17,24,39,0.08);
+    border-radius: 14px;
+    overflow: hidden;
+    background: rgba(255,255,255,0.96);
+  }
+  .addon-card__image {
+    width: 100%;
+    height: 24mm;
+    object-fit: cover;
+    display: block;
+    background: rgba(17,24,39,0.06);
+  }
+  .addon-card__body {
+    padding: 10px 11px 11px;
+  }
+  .addon-card__title {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+    font-weight: 700;
+  }
+  .operator-signoff {
+    display: grid;
+    grid-template-columns: 1.08fr 0.92fr;
+    gap: 10mm;
+    align-items: start;
+  }
+  .operator-signoff__lead {
+    display: grid;
+    gap: 12px;
   }
 
   .metrics {
@@ -922,6 +1201,207 @@ const chunkItems = <T,>(items: T[], size: number) => {
   return chunks;
 };
 
+const resolveAccentColor = (payload: PreparedPrintPayload) => payload.branding.primaryColor || '#9a6c2f';
+
+const formatStandaloneCurrency = (value?: number | null, currency = 'INR') => {
+  if (typeof value !== 'number' || Number.isNaN(value) || value <= 0) return null;
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency,
+    currencyDisplay: 'narrowSymbol',
+    maximumFractionDigits: 0,
+  }).format(value);
+};
+
+const getItineraryCurrency = (payload: PreparedPrintPayload) =>
+  payload.itinerary.extracted_pricing?.currency || 'INR';
+
+const getDayLocations = (
+  day: PreparedPrintPayload['itinerary']['days'][number],
+  limit = 4,
+) => {
+  const values = day.activities
+    .map((activity) => activity.location?.trim())
+    .filter((value): value is string => Boolean(value));
+
+  return [...new Set(values)].slice(0, limit);
+};
+
+const getDayAccommodation = (payload: PreparedPrintPayload, dayNumber: number) =>
+  payload.printExtras.dayAccommodations.find((accommodation) => accommodation.dayNumber === dayNumber) || null;
+
+const getSelectedAddOns = (payload: PreparedPrintPayload, limit = 4) =>
+  payload.printExtras.selectedAddOns.slice(0, limit);
+
+const getTravelWindowLabel = (payload: PreparedPrintPayload) => {
+  if (payload.itinerary.start_date && payload.itinerary.end_date) {
+    return `${formatDateLabel(payload.itinerary.start_date)} – ${formatDateLabel(payload.itinerary.end_date)}`;
+  }
+  return formatDateLabel(payload.itinerary.start_date) || 'Dates to be confirmed';
+};
+
+const LocationRibbon = ({
+  locations,
+  accent,
+}: {
+  locations: string[];
+  accent: string;
+}) => {
+  if (!locations.length) return null;
+
+  return (
+    <div className="location-ribbon">
+      {locations.map((location, index) => (
+        <React.Fragment key={`${location}-${index}`}>
+          <div className="location-ribbon__stop">
+            <span className="location-ribbon__dot" style={{ background: accent }} />
+            <span className="location-ribbon__name">{location}</span>
+          </div>
+          {index < locations.length - 1 ? <span className="location-ribbon__line" /> : null}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+};
+
+const StayPanel = ({
+  accommodation,
+}: {
+  accommodation: PreparedPrintAccommodation | null;
+}) => {
+  if (!accommodation) return null;
+
+  const amenityLine = accommodation.amenities?.slice(0, 3).join(' • ');
+  const starLine = accommodation.starRating ? `${accommodation.starRating}-star stay` : null;
+
+  return (
+    <div className="sidebar-panel">
+      <p className="sidebar-panel__title">Stay Tonight</p>
+      <div className="stay-card">
+        {accommodation.printImage ? (
+          <img
+            className="stay-card__image"
+            src={accommodation.printImage}
+            alt={accommodation.hotelName}
+          />
+        ) : null}
+        <div>
+          <h3 className="stay-card__title">{accommodation.hotelName}</h3>
+          {(accommodation.roomType || starLine) ? (
+            <p className="body-copy" style={{ margin: '6px 0 0' }}>
+              {[accommodation.roomType, starLine].filter(Boolean).join(' • ')}
+            </p>
+          ) : null}
+          {amenityLine ? (
+            <p className="body-copy" style={{ margin: '8px 0 0', fontSize: 10.5 }}>
+              {amenityLine}
+            </p>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const MiniListPanel = ({
+  title,
+  items,
+}: {
+  title: string;
+  items: string[];
+}) => {
+  if (!items.length) return null;
+
+  return (
+    <div className="sidebar-panel">
+      <p className="sidebar-panel__title">{title}</p>
+      <div className="mini-list">
+        {items.map((item, index) => (
+          <div key={`${title}-${index}`} className="mini-list__item">
+            <div className="mini-list__index">{index + 1}</div>
+            <div className="body-copy" style={{ margin: 0 }}>{item}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const AddOnPanel = ({
+  addOns,
+  payload,
+}: {
+  addOns: PreparedPrintAddOn[];
+  payload: PreparedPrintPayload;
+}) => {
+  if (!addOns.length) return null;
+
+  return (
+    <div className="sidebar-panel">
+      <p className="sidebar-panel__title">Available Upgrades</p>
+      <div className="addon-grid">
+        {addOns.map((addOn, index) => (
+          <div key={`${addOn.name}-${index}`} className="addon-card">
+            {addOn.printImage ? <img className="addon-card__image" src={addOn.printImage} alt={addOn.name} /> : null}
+            <div className="addon-card__body">
+              <div className="activity-card__meta" style={{ marginBottom: 5 }}>
+                {addOn.category ? <span>{addOn.category}</span> : null}
+                {addOn.quantity && addOn.quantity > 1 ? <span>x{addOn.quantity}</span> : null}
+              </div>
+              <h3 className="addon-card__title">{addOn.name}</h3>
+              {addOn.description ? (
+                <p className="body-copy" style={{ margin: '5px 0 0', fontSize: 10.5 }}>
+                  {addOn.description}
+                </p>
+              ) : null}
+              {addOn.unitPrice ? (
+                <div className="body-copy" style={{ marginTop: 6, fontWeight: 700, color: 'rgba(17,24,39,0.78)' }}>
+                  {formatStandaloneCurrency(addOn.unitPrice, getItineraryCurrency(payload))}
+                </div>
+              ) : null}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const DayDossier = ({
+  payload,
+  day,
+}: {
+  payload: PreparedPrintPayload;
+  day: PreparedPrintPayload['itinerary']['days'][number];
+}) => {
+  const accommodation = getDayAccommodation(payload, day.day_number);
+  const locations = getDayLocations(day, 3);
+  const logisticsLine = [
+    payload.itinerary.logistics?.flights?.length ? `${payload.itinerary.logistics.flights.length} flight${payload.itinerary.logistics.flights.length > 1 ? 's' : ''}` : null,
+    payload.itinerary.logistics?.hotels?.length ? `${payload.itinerary.logistics.hotels.length} stay${payload.itinerary.logistics.hotels.length > 1 ? 's' : ''}` : null,
+  ].filter(Boolean).join(' • ');
+
+  return (
+    <div className="day-dossier">
+      <div className="day-dossier__card">
+        <div className="trip-brief__label">Route sequence</div>
+        <div className="day-dossier__value">{locations[0] || day.theme}</div>
+        <div className="trip-brief__copy">{locations.slice(1).join(' • ') || 'Operator-curated day flow.'}</div>
+      </div>
+      <div className="day-dossier__card">
+        <div className="trip-brief__label">Stay tonight</div>
+        <div className="day-dossier__value">{accommodation?.hotelName || 'Operator to confirm'}</div>
+        <div className="trip-brief__copy">{accommodation?.roomType || 'Accommodation details slot into the dossier when assigned.'}</div>
+      </div>
+      <div className="day-dossier__card">
+        <div className="trip-brief__label">Operational pulse</div>
+        <div className="day-dossier__value">{day.activities.length} planned moments</div>
+        <div className="trip-brief__copy">{logisticsLine || 'Built to keep the day moving cleanly between stops.'}</div>
+      </div>
+    </div>
+  );
+};
+
 const BrandRow = ({
   branding,
   dark = false,
@@ -941,8 +1421,8 @@ const BrandRow = ({
         ) : null}
       </div>
     </div>
-    <div className="brand-contact" style={{ color: dark ? 'rgba(248,250,252,0.72)' : undefined }}>
-      Crafted itinerary
+    <div className="brand-badge" style={dark ? { color: 'rgba(248,250,252,0.78)' } : undefined}>
+      {branding.clientName ? `Prepared for ${branding.clientName}` : 'Client itinerary'}
     </div>
   </div>
 );
@@ -1174,6 +1654,13 @@ const SummaryPage = ({
 
 const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
   const featuredActivities = getFeaturedActivities(payload, 4);
+  const accent = resolveAccentColor(payload);
+  const price = formatCurrency(payload.itinerary);
+  const topLocations = getTopLocations(payload, 5);
+  const selectedAddOns = getSelectedAddOns(payload, 4);
+  const totalActivities = payload.itinerary.days.reduce((sum, day) => sum + day.activities.length, 0);
+  const flightsCount = payload.itinerary.logistics?.flights?.length || 0;
+  const staysCount = payload.itinerary.logistics?.hotels?.length || payload.printExtras.dayAccommodations.length || 0;
 
   return (
     <>
@@ -1184,9 +1671,9 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
             <div className="cover__content">
               <BrandRow branding={payload.branding} dark />
               <div>
-                <p className="cover__kicker">Crafted Journey</p>
+                <p className="cover__kicker" style={{ color: 'rgba(255,247,237,0.78)' }}>{payload.itinerary.destination}</p>
                 <h1 className="cover__title" style={{ color: '#fff7ed', fontFamily: '"Noto Serif", Georgia, Times New Roman, serif' }}>{payload.itinerary.trip_title}</h1>
-                <p className="cover__subtitle" style={{ color: 'rgba(255,247,237,0.88)' }}>{payload.itinerary.destination} • {payload.itinerary.summary}</p>
+                <p className="cover__subtitle" style={{ color: 'rgba(255,247,237,0.88)' }}>{payload.itinerary.summary}</p>
                 {payload.branding.clientName ? (
                   <p
                     className="cover__prepared-for"
@@ -1204,11 +1691,26 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                 ) : null}
                 <div className="cover__meta">
                   <span className="meta-pill">{payload.itinerary.duration_days} Days</span>
-                  {payload.itinerary.start_date && payload.itinerary.end_date ? (
-                    <span className="meta-pill">{formatDateLabel(payload.itinerary.start_date)} – {formatDateLabel(payload.itinerary.end_date)}</span>
-                  ) : payload.itinerary.start_date ? (
-                    <span className="meta-pill">{formatDateLabel(payload.itinerary.start_date)}</span>
-                  ) : null}
+                  <span className="meta-pill">{getTravelWindowLabel(payload)}</span>
+                  {price ? <span className="meta-pill">{price}</span> : null}
+                </div>
+                <div className="cover-dossier">
+                  <div className="cover-dossier__card">
+                    <div className="cover-dossier__label">Destination</div>
+                    <div className="cover-dossier__value">{payload.itinerary.destination}</div>
+                  </div>
+                  <div className="cover-dossier__card">
+                    <div className="cover-dossier__label">Prepared by</div>
+                    <div className="cover-dossier__value">{payload.branding.companyName}</div>
+                  </div>
+                  <div className="cover-dossier__card">
+                    <div className="cover-dossier__label">Travel window</div>
+                    <div className="cover-dossier__value cover-dossier__value--small">{getTravelWindowLabel(payload)}</div>
+                  </div>
+                  <div className="cover-dossier__card">
+                    <div className="cover-dossier__label">Trip posture</div>
+                    <div className="cover-dossier__value">{price || `${totalActivities} planned moments`}</div>
+                  </div>
                 </div>
               </div>
               <PageFooter branding={payload.branding} />
@@ -1218,52 +1720,62 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
         <section className="page page--light">
           <div className="page__inner">
             <BrandRow branding={payload.branding} />
-            <div className="safari-overview">
-              <div className="safari-overview__lead">
-                <div>
-                  <div className="accent-line" style={{ background: payload.branding.primaryColor || '#9a6c2f' }} />
-                  <p className="section-kicker">Overview</p>
-                  <h2 style={{ fontSize: 34, lineHeight: 1.02, letterSpacing: '-0.05em', margin: '8px 0 12px', fontFamily: '"Noto Serif", Georgia, Times New Roman, serif' }}>
-                    Trip Story
-                  </h2>
-                  <p className="lede-serif" style={{ margin: 0 }}>{payload.itinerary.summary}</p>
+            <div className="trip-brief">
+              <div className="trip-brief__lead">
+                <div className="trip-brief__headline">
+                  <div>
+                    <div className="accent-line" style={{ background: accent }} />
+                    <p className="section-kicker">Trip Brief</p>
+                    <h2 style={{ fontSize: 34, lineHeight: 1.02, letterSpacing: '-0.05em', margin: '8px 0 12px', fontFamily: '"Noto Serif", Georgia, Times New Roman, serif' }}>
+                      Designed for a client-ready handoff
+                    </h2>
+                    <p className="lede-serif" style={{ margin: 0 }}>{payload.itinerary.summary}</p>
+                  </div>
+                  <LocationRibbon locations={topLocations} accent={accent} />
                 </div>
                 {payload.coverImage ? <img className="safari-overview__hero" src={payload.coverImage} alt={payload.itinerary.trip_title} /> : null}
-                <div className="summary-band summary-band--numbers">
-                  <div className="summary-band__card summary-band__card--number">
-                    <div className="summary-band__accent-bar" style={{ background: payload.branding.primaryColor || '#9a6c2f' }} />
-                    <div className="summary-band__card-body">
-                      <div className="summary-band__label">Duration</div>
-                      <div className="summary-band__number" style={{ color: payload.branding.primaryColor || '#9a6c2f' }}>{payload.itinerary.duration_days}</div>
-                      <div className="summary-band__rule" />
-                      <div className="summary-band__unit">Days</div>
-                    </div>
+                <div className="trip-brief__cards">
+                  <div className="trip-brief__card">
+                    <div className="trip-brief__label">Duration</div>
+                    <div className="trip-brief__value" style={{ color: accent }}>{payload.itinerary.duration_days} days</div>
+                    <div className="trip-brief__copy">{payload.itinerary.days.length} day chapters shaped into one printable narrative.</div>
                   </div>
-                  <div className="summary-band__card summary-band__card--number">
-                    <div className="summary-band__accent-bar" style={{ background: payload.branding.primaryColor || '#9a6c2f' }} />
-                    <div className="summary-band__card-body">
-                      <div className="summary-band__label">Stops</div>
-                      <div className="summary-band__number" style={{ color: payload.branding.primaryColor || '#9a6c2f' }}>{payload.itinerary.days.reduce((sum, day) => sum + day.activities.length, 0)}</div>
-                      <div className="summary-band__rule" />
-                      <div className="summary-band__unit">Stops</div>
+                  <div className="trip-brief__card">
+                    <div className="trip-brief__label">Trip rhythm</div>
+                    <div className="trip-brief__value">
+                      {payload.density === 'immersive' ? 'Slow + spacious' : payload.density === 'dense' ? 'Dense + eventful' : 'Balanced pacing'}
                     </div>
+                    <div className="trip-brief__copy">Built around {totalActivities} planned moments with space for client-facing polish.</div>
                   </div>
-                  <div className="summary-band__card summary-band__card--number">
-                    <div className="summary-band__accent-bar" style={{ background: payload.branding.primaryColor || '#9a6c2f' }} />
-                    <div className="summary-band__card-body">
-                      <div className="summary-band__label">Estimated value</div>
-                      <div className="summary-band__number" style={{ fontSize: '26px', lineHeight: 1.05, color: payload.branding.primaryColor || '#9a6c2f' }}>
-                        {formatCurrency(payload.itinerary) || 'Custom'}
-                      </div>
-                      <div className="summary-band__rule" />
-                      <div className="summary-band__unit">Estimate</div>
-                    </div>
+                  <div className="trip-brief__card">
+                    <div className="trip-brief__label">Travel window</div>
+                    <div className="trip-brief__value">{getTravelWindowLabel(payload)}</div>
+                    <div className="trip-brief__copy">Presented in a simple dossier band so operators can send it directly.</div>
+                  </div>
+                  <div className="trip-brief__card">
+                    <div className="trip-brief__label">Operations snapshot</div>
+                    <div className="trip-brief__value">{[flightsCount ? `${flightsCount} flights` : null, staysCount ? `${staysCount} stays` : null].filter(Boolean).join(' • ') || 'Ground plan only'}</div>
+                    <div className="trip-brief__copy">{price || 'Pricing can remain flexible while the itinerary stays presentation-ready.'}</div>
                   </div>
                 </div>
               </div>
-              <div className="safari-overview__stack">
+              <div className="trip-brief__sidebar">
+                <div className="operator-card">
+                  <p className="panel__title">Operator dossier</p>
+                  <div className="operator-card__name">{payload.branding.companyName}</div>
+                  <p className="operator-card__copy">
+                    {payload.branding.clientName
+                      ? `Prepared for ${payload.branding.clientName}. This version is structured for direct client delivery with branding, logistics, and key experiences all in one print sequence.`
+                      : 'Built as a ready-to-send client-facing itinerary, with operator branding leading every page.'}
+                  </p>
+                  {(payload.branding.contactEmail || payload.branding.contactPhone) ? (
+                    <div className="body-copy" style={{ marginTop: 10 }}>
+                      {[payload.branding.contactEmail, payload.branding.contactPhone].filter(Boolean).join('  •  ')}
+                    </div>
+                  ) : null}
+                </div>
                 <div className="panel panel--muted">
-                  <p className="panel__title">Featured stops</p>
+                  <p className="panel__title">Standout moments</p>
                   {featuredActivities.slice(0, 4).map((activity, index) => (
                     <div key={`safari-featured-${index}`} className="safari-overview__panel">
                       <div className="safari-overview__meta">Day {activity.dayNumber} • {activity.location || activity.dayTheme}</div>
@@ -1272,6 +1784,14 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                     </div>
                   ))}
                 </div>
+                {selectedAddOns.length ? (
+                  <AddOnPanel addOns={selectedAddOns.slice(0, 2)} payload={payload} />
+                ) : (
+                  <MiniListPanel
+                    title="What shapes the trip"
+                    items={(payload.itinerary.interests?.slice(0, 4) || payload.itinerary.tips?.slice(0, 4) || topLocations.slice(0, 4))}
+                  />
+                )}
               </div>
             </div>
             <PageFooter branding={payload.branding} />
@@ -1281,6 +1801,9 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
           const [featured, ...remaining] = day.activities;
           const supportActivities = remaining.slice(0, 2);
           const continuationChunks = chunkItems(remaining.slice(2), 4);
+          const dayLocations = getDayLocations(day, 4);
+          const accommodation = getDayAccommodation(payload, day.day_number);
+          const tripNotes = (payload.itinerary.tips || payload.itinerary.inclusions || []).slice(0, 3);
 
           const pages: React.ReactElement[] = [
             <section key={`safari-day-${index}`} className={`page page--light ${payload.density}`}>
@@ -1288,11 +1811,14 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                 <div className="safari-day">
                   <div className="safari-day__head">
                     <div>
-                      <div className="accent-line" style={{ background: payload.branding.primaryColor || '#9a6c2f' }} />
+                      <div className="accent-line" style={{ background: accent }} />
                       <p className="safari-day__eyebrow">Day {day.day_number}</p>
                       <h2 className="safari-day__title">{day.theme}</h2>
                       <div className="day-hero__date">{formatDateLabel(day.date) || payload.itinerary.destination}</div>
                       {day.summary ? <p className="safari-day__summary">{day.summary}</p> : null}
+                      <div style={{ marginTop: 12 }}>
+                        <LocationRibbon locations={dayLocations} accent={accent} />
+                      </div>
                     </div>
                     {day.dayHeroImage ? <img className="safari-day__hero" src={day.dayHeroImage} alt={day.theme} /> : <div className="panel panel--muted" style={{ minHeight: '78mm' }} />}
                   </div>
@@ -1309,13 +1835,30 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                       </div>
                     </div>
                   ) : null}
-                  {supportActivities.length ? (
-                    <div className="safari-support-grid">
-                      {supportActivities.map((activity, activityIndex) => (
-                        <ActivityCard key={`safari-support-${activityIndex}`} activity={activity} />
-                      ))}
+                  <div className="continuation-layout">
+                    <div className="continuation-main">
+                      {supportActivities.length ? (
+                        <div className="safari-support-grid">
+                          {supportActivities.map((activity, activityIndex) => (
+                            <ActivityCard key={`safari-support-${activityIndex}`} activity={activity} />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="panel panel--muted">
+                          <p className="panel__title">Day note</p>
+                          <p className="body-copy" style={{ margin: 0 }}>
+                            {day.summary || 'This chapter stays intentionally light so the operator can keep the pacing calm and client-facing.'}
+                          </p>
+                        </div>
+                      )}
+                      <DayDossier payload={payload} day={day} />
                     </div>
-                  ) : null}
+                    <div className="continuation-sidebar">
+                      <StayPanel accommodation={accommodation} />
+                      <MiniListPanel title={"Today's route"} items={dayLocations} />
+                      {!accommodation && tripNotes.length ? <MiniListPanel title="Travel notes" items={tripNotes} /> : null}
+                    </div>
+                  </div>
                 </div>
                 <PageFooter branding={payload.branding} />
               </div>
@@ -1323,29 +1866,68 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
           ];
 
           continuationChunks.forEach((chunk, chunkIndex) => {
+            const [continuedFeatured, ...continuedSupport] = chunk;
+            const continuationNotes =
+              (payload.itinerary.tips || payload.itinerary.inclusions || [])
+                .slice(chunkIndex * 3, chunkIndex * 3 + 3);
+
             pages.push(
               <section key={`safari-day-${index}-cont-${chunkIndex}`} className={`page page--light ${payload.density}`}>
                 <div className="page__inner">
                   <div className="safari-continuation">
                     <div>
-                      <div className="accent-line" style={{ background: payload.branding.primaryColor || '#9a6c2f' }} />
+                      <div className="accent-line" style={{ background: accent }} />
                       <p className="section-kicker">Day {day.day_number} continuation</p>
                       <h2 style={{ fontSize: 26, lineHeight: 1.08, letterSpacing: '-0.04em', margin: '8px 0 0', fontFamily: '"Noto Serif", Georgia, Times New Roman, serif' }}>{day.theme}</h2>
+                      <div style={{ marginTop: 10 }}>
+                        <LocationRibbon locations={dayLocations} accent={accent} />
+                      </div>
                     </div>
-                    <div className="panel">
-                      {chunk.map((activity, activityIndex) => (
-                        <div key={`safari-note-${activityIndex}`} className="safari-note">
-                          {activity.printImage ? <img className="safari-note__image" src={activity.printImage} alt={activity.title} /> : <div className="safari-note__image" />}
-                          <div>
-                            <div className="activity-card__meta">
-                              {activity.time ? <span>{activity.time}</span> : null}
-                              {activity.location ? <span>{activity.location}</span> : null}
+                    <div className="continuation-layout">
+                      <div className="continuation-main">
+                        {continuedFeatured ? (
+                          <div className="safari-feature">
+                            {continuedFeatured.printImage ? <img className="safari-feature__image" src={continuedFeatured.printImage} alt={continuedFeatured.title} /> : null}
+                            <div className="safari-feature__body">
+                              <div className="activity-card__meta">
+                                {continuedFeatured.time ? <span>{continuedFeatured.time}</span> : null}
+                                {continuedFeatured.location ? <span>{continuedFeatured.location}</span> : null}
+                              </div>
+                              <h3 className="safari-feature__title">{continuedFeatured.title}</h3>
+                              <p className="body-copy" style={{ margin: 0 }}>{continuedFeatured.description}</p>
                             </div>
-                            <h3 className="safari-note__title">{activity.title}</h3>
-                            <p className="safari-note__desc">{activity.description}</p>
                           </div>
-                        </div>
-                      ))}
+                        ) : null}
+                        {continuedSupport.length ? (
+                          <div className="safari-support-grid">
+                            {continuedSupport.map((activity, activityIndex) => (
+                              <ActivityCard key={`safari-cont-support-${activityIndex}`} activity={activity} />
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="panel panel--muted">
+                            <p className="panel__title">Continuation note</p>
+                            <p className="body-copy" style={{ margin: 0 }}>
+                              The rest of this day is intentionally summarized here so the page keeps its editorial rhythm instead of falling back to a plain list.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="continuation-sidebar">
+                        <StayPanel accommodation={accommodation} />
+                        <MiniListPanel
+                          title="Continue with"
+                          items={continuedSupport.length ? continuedSupport.map((activity) => activity.title).slice(0, 3) : dayLocations}
+                        />
+                        {chunkIndex === 0 && selectedAddOns.length ? (
+                          <AddOnPanel addOns={selectedAddOns.slice(0, 2)} payload={payload} />
+                        ) : (
+                          <MiniListPanel
+                            title="Travel notes"
+                            items={continuationNotes.length ? continuationNotes : (payload.itinerary.exclusions || []).slice(0, 3)}
+                          />
+                        )}
+                      </div>
                     </div>
                   </div>
                   <PageFooter branding={payload.branding} />
@@ -1359,34 +1941,51 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
         <section className="page page--light">
           <div className="page__inner">
             <BrandRow branding={payload.branding} />
-            <div className="accent-line" style={{ background: payload.branding.primaryColor || '#9a6c2f' }} />
-            <p className="section-kicker">The final brief</p>
-            <h2 style={{ fontSize: 30, lineHeight: 1.08, letterSpacing: '-0.04em', margin: '8px 0 12px', fontFamily: '"Noto Serif", Georgia, Times New Roman, serif' }}>
-              Ready for a polished departure
-            </h2>
-            <p className="body-copy">This itinerary is arranged as a clean field guide: memorable days first, logistics where they are needed, and only the visual moments strong enough to carry a printed brochure.</p>
-            <PackagePanels payload={payload} />
-            <LogisticsPanel payload={payload} />
-            {payload.itinerary.interests?.length ? (
-              <div className="panel" style={{ marginTop: 14 }}>
-                <p className="panel__title">Tailored Around</p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-                  {payload.itinerary.interests.map((interest, index) => (
-                    <span key={`interest-${index}`} className="meta-pill" style={{ background: 'rgba(17,24,39,0.06)', color: 'rgba(17,24,39,0.75)', border: '1px solid rgba(17,24,39,0.08)' }}>{interest}</span>
-                  ))}
+            <div className="operator-signoff">
+              <div className="operator-signoff__lead">
+                <div>
+                  <div className="accent-line" style={{ background: accent }} />
+                  <p className="section-kicker">Before Departure</p>
+                  <h2 style={{ fontSize: 30, lineHeight: 1.08, letterSpacing: '-0.04em', margin: '8px 0 12px', fontFamily: '"Noto Serif", Georgia, Times New Roman, serif' }}>
+                    A polished finish, ready to send
+                  </h2>
+                  <p className="body-copy" style={{ margin: 0 }}>
+                    The itinerary now reads like an operator-branded dossier: highlights up front, daily chapters with visual structure, and logistics or package detail where they support the client handoff.
+                  </p>
                 </div>
+                <PackagePanels payload={payload} />
+                <LogisticsPanel payload={payload} />
               </div>
-            ) : null}
-            {(payload.branding.contactEmail || payload.branding.contactPhone) ? (
-              <div className="panel panel--muted" style={{ marginTop: 14 }}>
-                <p className="panel__title">Your Journey Curator</p>
-                <div style={{ fontWeight: 700, fontSize: 15, marginTop: 2 }}>{payload.branding.companyName}</div>
-                <div className="body-copy" style={{ marginTop: 6, opacity: 0.8 }}>
-                  {[payload.branding.contactEmail, payload.branding.contactPhone].filter(Boolean).join('  •  ')}
+              <div className="trip-brief__sidebar">
+                <div className="operator-card">
+                  <p className="panel__title">Operator contact</p>
+                  <div className="operator-card__name">{payload.branding.companyName}</div>
+                  <p className="operator-card__copy">
+                    {payload.branding.clientName
+                      ? `Prepared for ${payload.branding.clientName}. Final confirmations, booking references, and last-mile notes can be layered into this packet before dispatch.`
+                      : 'Use this page as the operator sign-off area for final contact details, confirmations, and curated notes.'}
+                  </p>
+                  {(payload.branding.contactEmail || payload.branding.contactPhone) ? (
+                    <div className="body-copy" style={{ marginTop: 10 }}>
+                      {[payload.branding.contactEmail, payload.branding.contactPhone].filter(Boolean).join('  •  ')}
+                    </div>
+                  ) : null}
                 </div>
-                <p className="body-copy" style={{ marginTop: 10, fontStyle: 'italic', opacity: 0.7 }}>Thank you for letting us craft this journey — we can&apos;t wait for you to experience it.</p>
+                {payload.itinerary.interests?.length ? (
+                  <div className="sidebar-panel">
+                    <p className="sidebar-panel__title">Tailored around</p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                      {payload.itinerary.interests.map((interest, index) => (
+                        <span key={`interest-${index}`} className="meta-pill" style={{ background: 'rgba(17,24,39,0.06)', color: 'rgba(17,24,39,0.75)', border: '1px solid rgba(17,24,39,0.08)' }}>{interest}</span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                {!payload.itinerary.interests?.length && selectedAddOns.length ? (
+                  <AddOnPanel addOns={selectedAddOns.slice(0, 4)} payload={payload} />
+                ) : null}
               </div>
-            ) : null}
+            </div>
             <PageFooter branding={payload.branding} />
           </div>
         </section>
