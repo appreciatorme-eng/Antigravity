@@ -11,9 +11,9 @@ import {
 } from '@/components/pdf/itinerary-types';
 import { stripRepeatedPdfImages } from '@/components/pdf/templates/sections/shared';
 import { apiError } from '@/lib/api/response';
+import { requireAdmin } from '@/lib/auth/admin';
 import { populateItineraryImages } from '@/lib/image-search';
 import { logError } from '@/lib/observability/logger';
-import { createClient } from '@/lib/supabase/server';
 import type { ItineraryResult } from '@/types/itinerary';
 
 const brandingSchema = z.object({
@@ -96,56 +96,70 @@ const stripActivityImages = (itinerary: ItineraryResult): ItineraryResult => ({
   })),
 });
 
-async function fetchServerPdfPreferences() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+const stripAllPdfImages = (
+  itinerary: ItineraryResult,
+  branding: ItineraryBranding,
+): { itinerary: ItineraryResult; branding: ItineraryBranding } => ({
+  itinerary: stripActivityImages(itinerary),
+  branding: {
+    ...branding,
+    logoUrl: null,
+  },
+});
 
-  if (!user) {
+async function fetchServerPdfPreferences(userId: string, adminClient: unknown) {
+  try {
+    const supabase = adminClient as {
+      from: (table: string) => {
+        select: (query: string) => {
+          eq: (column: string, value: string) => {
+            single: () => Promise<{ data: unknown; error: unknown }>;
+          };
+        };
+      };
+    };
+    const primaryResult = await supabase
+      .from('profiles')
+      .select('email, phone, organization_id, organizations(name, logo_url, primary_color, itinerary_template)')
+      .eq('id', userId)
+      .single();
+
+    let profile = primaryResult.data as ProfilePreferencesRow | null;
+    let error = primaryResult.error;
+
+    if (error && isMissingColumnError(error, 'itinerary_template')) {
+      const fallbackResult = await supabase
+        .from('profiles')
+        .select('email, phone, organization_id, organizations(name, logo_url, primary_color)')
+        .eq('id', userId)
+        .single();
+      profile = fallbackResult.data as ProfilePreferencesRow | null;
+      error = fallbackResult.error;
+    }
+
+    if (error) {
+      throw error;
+    }
+
+    const organization = normalizeRelation(profile?.organizations || null);
+
     return {
-      userId: null,
+      branding: {
+        companyName: organization?.name || DEFAULT_ITINERARY_BRANDING.companyName,
+        logoUrl: organization?.logo_url || null,
+        primaryColor: organization?.primary_color || DEFAULT_ITINERARY_BRANDING.primaryColor,
+        contactEmail: profile?.email || null,
+        contactPhone: profile?.phone || null,
+      } satisfies ItineraryBranding,
+      defaultTemplate: normalizeItineraryTemplateId(organization?.itinerary_template),
+    };
+  } catch (error) {
+    logError('Falling back to default itinerary PDF branding', error);
+    return {
       branding: DEFAULT_ITINERARY_BRANDING,
       defaultTemplate: DEFAULT_ITINERARY_TEMPLATE,
     };
   }
-
-  const primaryResult = await supabase
-    .from('profiles')
-    .select('email, phone, organization_id, organizations(name, logo_url, primary_color, itinerary_template)')
-    .eq('id', user.id)
-    .single();
-
-  let profile = primaryResult.data as ProfilePreferencesRow | null;
-  let error = primaryResult.error;
-
-  if (error && isMissingColumnError(error, 'itinerary_template')) {
-    const fallbackResult = await supabase
-      .from('profiles')
-      .select('email, phone, organization_id, organizations(name, logo_url, primary_color)')
-      .eq('id', user.id)
-      .single();
-    profile = fallbackResult.data as ProfilePreferencesRow | null;
-    error = fallbackResult.error;
-  }
-
-  if (error) {
-    throw error;
-  }
-
-  const organization = normalizeRelation(profile?.organizations || null);
-
-  return {
-    userId: user.id,
-    branding: {
-      companyName: organization?.name || DEFAULT_ITINERARY_BRANDING.companyName,
-      logoUrl: organization?.logo_url || null,
-      primaryColor: organization?.primary_color || DEFAULT_ITINERARY_BRANDING.primaryColor,
-      contactEmail: profile?.email || null,
-      contactPhone: profile?.phone || null,
-    } satisfies ItineraryBranding,
-    defaultTemplate: normalizeItineraryTemplateId(organization?.itinerary_template),
-  };
 }
 
 export async function POST(request: Request) {
@@ -157,10 +171,11 @@ export async function POST(request: Request) {
       });
     }
 
-    const preferences = await fetchServerPdfPreferences();
-    if (!preferences.userId) {
-      return apiError('Unauthorized', 401);
+    const admin = await requireAdmin(request, { requireOrganization: false });
+    if (!admin.ok) {
+      return admin.response;
     }
+    const preferences = await fetchServerPdfPreferences(admin.userId, admin.adminClient);
 
     const template = normalizeItineraryTemplateId(parsed.data.template ?? preferences.defaultTemplate);
     const branding = {
@@ -187,12 +202,23 @@ export async function POST(request: Request) {
       stream = await renderToStream(document);
     } catch (error) {
       logError('Primary itinerary PDF render failed, retrying without activity images', error);
-      const fallbackDocument = React.createElement(ItineraryDocument, {
-        data: stripActivityImages(normalizedItinerary),
-        template,
-        branding,
-      }) as unknown as React.ReactElement<DocumentProps>;
-      stream = await renderToStream(fallbackDocument);
+      try {
+        const fallbackDocument = React.createElement(ItineraryDocument, {
+          data: stripActivityImages(normalizedItinerary),
+          template,
+          branding,
+        }) as unknown as React.ReactElement<DocumentProps>;
+        stream = await renderToStream(fallbackDocument);
+      } catch (secondaryError) {
+        logError('Secondary itinerary PDF render failed, retrying without remote images', secondaryError);
+        const stripped = stripAllPdfImages(normalizedItinerary, branding);
+        const finalDocument = React.createElement(ItineraryDocument, {
+          data: stripped.itinerary,
+          template,
+          branding: stripped.branding,
+        }) as unknown as React.ReactElement<DocumentProps>;
+        stream = await renderToStream(finalDocument);
+      }
     }
 
     const chunks: Buffer[] = [];
