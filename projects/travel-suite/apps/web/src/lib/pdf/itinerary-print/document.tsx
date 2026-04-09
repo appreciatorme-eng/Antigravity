@@ -627,10 +627,10 @@ const PRINT_CSS = `
     gap: 8px;
   }
   .summary-band__card {
-    border: 1px solid rgba(17,24,39,0.10);
-    border-radius: 14px;
-    padding: 12px;
-    background: rgba(255,255,255,0.92);
+    border: 1px solid rgba(17,24,39,0.08);
+    border-radius: 18px;
+    padding: 14px 14px 13px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(249,246,239,0.92));
   }
   .summary-band__label {
     font-size: 9px;
@@ -668,6 +668,29 @@ const PRINT_CSS = `
   }
   .summary-band--featured {
     grid-template-columns: 1.05fr 0.95fr 1fr;
+  }
+  .summary-band--numbers {
+    gap: 10px;
+  }
+  .summary-band__card--number {
+    min-height: 108px;
+    display: grid;
+    align-content: start;
+    gap: 8px;
+  }
+  .summary-band__number {
+    font-size: 38px;
+    line-height: 0.95;
+    letter-spacing: -0.05em;
+    font-weight: 700;
+    color: #171717;
+  }
+  .summary-band__unit {
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(17,24,39,0.44);
+    font-weight: 700;
   }
   .summary-band__value--price {
     font-size: 24px;
@@ -1161,21 +1184,23 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                   <p className="lede-serif" style={{ margin: 0 }}>{payload.itinerary.summary}</p>
                 </div>
                 {payload.coverImage ? <img className="safari-overview__hero" src={payload.coverImage} alt={payload.itinerary.trip_title} /> : null}
-                <div className="summary-band summary-band--featured">
-                  <div className="summary-band__card">
+                <div className="summary-band summary-band--numbers">
+                  <div className="summary-band__card summary-band__card--number">
                     <div className="summary-band__label">Duration</div>
-                    <div className="summary-band__value">{payload.itinerary.duration_days} days</div>
-                    <div className="summary-band__copy">Balanced pacing with room for arrivals, headline stops, and cleaner handoff between days.</div>
+                    <div className="summary-band__number">{payload.itinerary.duration_days}</div>
+                    <div className="summary-band__unit">Days</div>
                   </div>
-                  <div className="summary-band__card">
+                  <div className="summary-band__card summary-band__card--number">
                     <div className="summary-band__label">Stops</div>
-                    <div className="summary-band__value">{payload.itinerary.days.reduce((sum, day) => sum + day.activities.length, 0)}</div>
-                    <div className="summary-band__copy">Curated into a paced route so the itinerary stays readable in print and practical on the ground.</div>
+                    <div className="summary-band__number">{payload.itinerary.days.reduce((sum, day) => sum + day.activities.length, 0)}</div>
+                    <div className="summary-band__unit">Stops</div>
                   </div>
-                  <div className="summary-band__card">
+                  <div className="summary-band__card summary-band__card--number">
                     <div className="summary-band__label">Estimated value</div>
-                    <div className="summary-band__value summary-band__value--price">{formatCurrency(payload.itinerary) || 'Custom quote'}</div>
-                    <div className="summary-band__copy">Indicative trip value for planning and client review. Final pricing can be refined before confirmation.</div>
+                    <div className="summary-band__number" style={{ fontSize: '28px', lineHeight: 1.02 }}>
+                      {formatCurrency(payload.itinerary) || 'Custom'}
+                    </div>
+                    <div className="summary-band__unit">Estimate</div>
                   </div>
                 </div>
               </div>
