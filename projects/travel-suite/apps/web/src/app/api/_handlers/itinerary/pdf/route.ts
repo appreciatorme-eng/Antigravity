@@ -246,6 +246,8 @@ export async function POST(request: Request) {
       parsed.data.fileName ||
       `${sanitizeFileName(normalizedItinerary.trip_title || 'itinerary')}_${template}.pdf`;
 
+    let printErrorMessage: string | null = null;
+
     try {
       const origin = new URL(request.url).origin;
       const prepared = await prepareItineraryPrintPayload(imageReadyItinerary, branding, template, origin);
@@ -281,6 +283,7 @@ export async function POST(request: Request) {
       }
     } catch (printError) {
       logError('HTML itinerary PDF render failed, falling back to legacy renderer', printError);
+      printErrorMessage = printError instanceof Error ? printError.message : 'Unknown print renderer error';
     }
 
     const legacyPdf = await renderLegacyPdfBuffer(imageReadyItinerary, template, branding);
@@ -290,6 +293,7 @@ export async function POST(request: Request) {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${fileName}"`,
         'X-Itinerary-PDF-Renderer': 'legacy-react-pdf',
+        ...(printErrorMessage ? { 'X-Itinerary-PDF-Error': encodeURIComponent(printErrorMessage).slice(0, 240) } : {}),
       },
     });
   } catch (error) {

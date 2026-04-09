@@ -107,7 +107,7 @@ const nextConfig = {
     "playwright-core",
   ],
   outputFileTracingIncludes: {
-    '/api/itinerary/pdf': [
+    '/api/[...path]': [
       './node_modules/@sparticuz/chromium/bin/**',
       './node_modules/@sparticuz/chromium/build/**',
     ],

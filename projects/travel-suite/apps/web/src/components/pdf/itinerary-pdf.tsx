@@ -184,7 +184,13 @@ export const downloadItineraryPdf = async ({
 
   const renderer = response.headers.get('x-itinerary-pdf-renderer');
   if (renderer === 'legacy-react-pdf') {
-    throw new Error('The premium print PDF renderer is unavailable right now. The server fell back to the old export path.');
+    const rawError = response.headers.get('x-itinerary-pdf-error');
+    const printError = rawError ? decodeURIComponent(rawError) : null;
+    throw new Error(
+      printError
+        ? `The premium print PDF renderer failed: ${printError}`
+        : 'The premium print PDF renderer is unavailable right now. The server fell back to the old export path.',
+    );
   }
 
   const blob = await response.blob();
