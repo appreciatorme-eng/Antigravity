@@ -43,6 +43,10 @@ export interface Activity {
   transport?: string;
   image?: string;
   imageUrl?: string;
+  image_source?: string;
+  image_confidence?: "high" | "medium" | "low";
+  image_query?: string;
+  image_entity_id?: string;
 }
 
 export interface Day {
