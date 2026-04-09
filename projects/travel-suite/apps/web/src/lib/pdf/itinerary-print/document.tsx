@@ -387,6 +387,126 @@ const PRINT_CSS = `
     color: rgba(17,24,39,0.5);
   }
 
+  .summary-shell {
+    display: grid;
+    gap: 10mm;
+  }
+  .summary-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 10mm;
+    align-items: start;
+  }
+  .summary-intro {
+    display: grid;
+    gap: 8mm;
+  }
+  .summary-sidebar {
+    display: grid;
+    gap: 8px;
+  }
+  .summary-image {
+    width: 100%;
+    height: 78mm;
+    object-fit: cover;
+    border-radius: 18px;
+    display: block;
+  }
+  .summary-highlights {
+    display: grid;
+    gap: 8px;
+  }
+  .summary-highlight {
+    display: grid;
+    grid-template-columns: 24px 1fr;
+    gap: 10px;
+    align-items: start;
+    padding: 10px 0;
+    border-top: 1px solid rgba(17,24,39,0.08);
+  }
+  .summary-highlight:first-child {
+    border-top: 0;
+    padding-top: 0;
+  }
+  .summary-highlight__index {
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    border: 1px solid rgba(17,24,39,0.14);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .summary-highlight__title {
+    margin: 0 0 4px;
+    font-size: 13px;
+    line-height: 1.3;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .summary-highlight__meta {
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0.55;
+    margin-bottom: 4px;
+  }
+  .summary-highlight__desc {
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.55;
+    color: rgba(17,24,39,0.72);
+  }
+  .summary-band {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .summary-band__card {
+    border: 1px solid rgba(17,24,39,0.10);
+    border-radius: 14px;
+    padding: 12px;
+    background: rgba(255,255,255,0.92);
+  }
+  .summary-band__label {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    opacity: 0.55;
+  }
+  .summary-band__value {
+    margin-top: 8px;
+    font-size: 16px;
+    line-height: 1.25;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .summary-band__copy {
+    margin-top: 6px;
+    font-size: 11px;
+    line-height: 1.45;
+    color: rgba(17,24,39,0.72);
+  }
+  .page--dark .summary-band__card {
+    border-color: rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.05);
+  }
+  .page--dark .summary-highlight {
+    border-top-color: rgba(255,255,255,0.12);
+  }
+  .page--dark .summary-highlight__index {
+    border-color: rgba(255,255,255,0.18);
+  }
+  .page--dark .summary-highlight__desc,
+  .page--dark .summary-band__copy {
+    color: rgba(248,250,252,0.72);
+  }
+
   .bento {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
@@ -404,6 +524,82 @@ const PRINT_CSS = `
   .bento__tile--stats { grid-column: span 2; padding: 12px; }
   .bento__tile--copy { grid-column: span 3; padding: 14px; }
   .bento__tile--mini { grid-column: span 2; padding: 12px; }
+  .bento-day-shell {
+    display: grid;
+    gap: 10mm;
+  }
+  .bento-day-top {
+    display: grid;
+    grid-template-columns: 0.92fr 1.08fr;
+    gap: 10mm;
+    align-items: stretch;
+  }
+  .bento-day-hero {
+    width: 100%;
+    height: 108mm;
+    object-fit: cover;
+    border-radius: 18px;
+    display: block;
+  }
+  .bento-rail {
+    display: grid;
+    gap: 8px;
+  }
+  .bento-panel {
+    border: 1px solid rgba(17,24,39,0.10);
+    border-radius: 16px;
+    background: rgba(255,255,255,0.98);
+    overflow: hidden;
+  }
+  .bento-panel__body {
+    padding: 12px 13px;
+  }
+  .bento-panel__image {
+    width: 100%;
+    height: 40mm;
+    object-fit: cover;
+    display: block;
+    background: rgba(17,24,39,0.06);
+  }
+  .bento-panel__title {
+    margin: 0 0 5px;
+    font-size: 14px;
+    line-height: 1.25;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .bento-panel__desc {
+    margin: 0;
+    font-size: 10.5px;
+    line-height: 1.5;
+    color: rgba(17,24,39,0.74);
+  }
+  .bento-panel__meta {
+    font-size: 8.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0.56;
+    margin-bottom: 6px;
+    font-weight: 700;
+  }
+  .bento-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .bento-summary-card {
+    display: grid;
+    gap: 8px;
+  }
+  .bento-summary-card .lead {
+    font-size: 17px;
+    line-height: 1.45;
+  }
+  .bento-day-meta {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
 
   .dense .activity-card {
     grid-template-columns: 32mm 1fr;
@@ -482,6 +678,26 @@ const formatCurrency = (itinerary: PreparedPrintPayload['itinerary']) => {
     currency,
     maximumFractionDigits: 0,
   }).format(total);
+};
+
+const getFeaturedActivities = (payload: PreparedPrintPayload, limit = 4) =>
+  payload.itinerary.days
+    .flatMap((day) =>
+      day.activities.map((activity) => ({
+        ...activity,
+        dayNumber: day.day_number,
+        dayTheme: day.theme,
+      })),
+    )
+    .slice(0, limit);
+
+const getTopLocations = (payload: PreparedPrintPayload, limit = 3) => {
+  const values = payload.itinerary.days
+    .flatMap((day) => day.activities.map((activity) => activity.location).filter(Boolean) as string[])
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  return [...new Set(values)].slice(0, limit);
 };
 
 const BrandRow = ({
@@ -660,22 +876,77 @@ const SummaryPage = ({
   dark?: boolean;
   title: string;
   leadClassName?: string;
-}) => (
-  <section className={`page ${dark ? 'page--dark' : 'page--white'}`}>
-    <div className="page__inner">
-      <BrandRow branding={payload.branding} dark={dark} />
-      <div className="accent-line" style={{ background: payload.branding.primaryColor || '#1d4ed8' }} />
-      <p className="section-kicker">Overview</p>
-      <h2 style={{ fontSize: 30, lineHeight: 1.08, letterSpacing: '-0.04em', margin: '8px 0 12px' }}>{title}</h2>
-      <p className={leadClassName}>{payload.itinerary.summary}</p>
-      <Metrics payload={payload} dark={dark} />
-      <div style={{ marginTop: '12mm' }}>
-        <LogisticsPanel payload={payload} dark={dark} />
+}) => {
+  const featuredActivities = getFeaturedActivities(payload, 4);
+  const topLocations = getTopLocations(payload, 3);
+  const price = formatCurrency(payload.itinerary);
+
+  return (
+    <section className={`page ${dark ? 'page--dark' : 'page--white'}`}>
+      <div className="page__inner">
+        <BrandRow branding={payload.branding} dark={dark} />
+        <div className="summary-shell">
+          <div className="summary-grid">
+            <div className="summary-intro">
+              <div>
+                <div className="accent-line" style={{ background: payload.branding.primaryColor || '#1d4ed8' }} />
+                <p className="section-kicker">Overview</p>
+                <h2 style={{ fontSize: 30, lineHeight: 1.08, letterSpacing: '-0.04em', margin: '8px 0 12px' }}>{title}</h2>
+                <p className={leadClassName}>{payload.itinerary.summary}</p>
+              </div>
+              {payload.coverImage ? <img className="summary-image" src={payload.coverImage} alt={payload.itinerary.trip_title} /> : null}
+              <div className="summary-band">
+                <div className="summary-band__card">
+                  <div className="summary-band__label">Trip rhythm</div>
+                  <div className="summary-band__value">{payload.density === 'immersive' ? 'Slow + spacious' : payload.density === 'balanced' ? 'Balanced pacing' : 'Packed schedule'}</div>
+                  <div className="summary-band__copy">Structured for {payload.itinerary.duration_days} days with {payload.itinerary.days.length} day chapters.</div>
+                </div>
+                <div className="summary-band__card">
+                  <div className="summary-band__label">Destination spread</div>
+                  <div className="summary-band__value">{topLocations[0] || payload.itinerary.destination}</div>
+                  <div className="summary-band__copy">{topLocations.slice(1).join(' • ') || 'Core destination-led plan'}</div>
+                </div>
+                <div className="summary-band__card">
+                  <div className="summary-band__label">Value posture</div>
+                  <div className="summary-band__value">{price || 'Custom quote'}</div>
+                  <div className="summary-band__copy">Client-facing estimate presented with print-safe, lighter image density.</div>
+                </div>
+              </div>
+            </div>
+            <div className="summary-sidebar">
+              <Metrics payload={payload} dark={dark} />
+              <div className={`panel ${dark ? 'panel--dark' : ''}`}>
+                <p className="panel__title">Featured stops</p>
+                <div className="summary-highlights">
+                  {featuredActivities.slice(0, 3).map((activity, index) => (
+                    <div key={`featured-${index}`} className="summary-highlight">
+                      <div className="summary-highlight__index">{activity.dayNumber}</div>
+                      <div>
+                        <div className="summary-highlight__meta">Day {activity.dayNumber} • {activity.location || activity.dayTheme}</div>
+                        <h3 className="summary-highlight__title">{activity.title}</h3>
+                        <p className="summary-highlight__desc">{activity.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className={`panel ${dark ? 'panel--dark' : ''}`}>
+                <p className="panel__title">Print treatment</p>
+                <div className="body-copy">
+                  Hero images are prioritized, repeated visuals are reduced, and the day sequence is restructured for a brochure rhythm instead of a web snapshot.
+                </div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <LogisticsPanel payload={payload} dark={dark} />
+          </div>
+        </div>
+        <PageFooter branding={payload.branding} />
       </div>
-      <PageFooter branding={payload.branding} />
-    </div>
-  </section>
-);
+    </section>
+  );
+};
 
 const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => (
   <>
@@ -891,32 +1162,63 @@ const BentoTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
       {payload.itinerary.days.map((day, index) => (
         <section key={`bento-day-${index}`} className={`page page--white ${payload.density}`}>
           <div className="page__inner">
-            <div className="accent-line" style={{ background: payload.branding.primaryColor || '#6366f1' }} />
-            <p className="section-kicker">Day {day.day_number}</p>
-            <h2 style={{ fontSize: 30, lineHeight: 1.05, letterSpacing: '-0.04em', margin: '8px 0 10px' }}>{day.theme}</h2>
-            <div className="bento">
-              {day.activities.map((activity, activityIndex) => {
-                const tileClass =
-                  activityIndex === 0 && activity.printImage
-                    ? 'bento__tile bento__tile--hero'
-                    : activity.printImage
-                      ? 'bento__tile bento__tile--wide'
-                      : 'bento__tile bento__tile--mini';
-
-                return (
-                  <div key={`bento-activity-${activityIndex}`} className={tileClass}>
-                    {activity.printImage ? <img src={activity.printImage} alt={activity.title} /> : null}
-                    <div style={{ padding: 12 }}>
-                      <div className="activity-card__meta">
-                        {activity.time ? <span>{activity.time}</span> : null}
-                        {activity.location ? <span>{activity.location}</span> : null}
-                      </div>
-                      <h3 className="activity-card__title">{activity.title}</h3>
-                      <p className="activity-card__desc">{activity.description}</p>
+            <div className="bento-day-shell">
+              <div>
+                <div className="accent-line" style={{ background: payload.branding.primaryColor || '#6366f1' }} />
+                <p className="section-kicker">Day {day.day_number}</p>
+                <h2 style={{ fontSize: 30, lineHeight: 1.05, letterSpacing: '-0.04em', margin: '8px 0 10px' }}>{day.theme}</h2>
+              </div>
+              <div className="bento-day-top">
+                <div className="bento-summary-card">
+                  {day.dayHeroImage ? <img className="bento-day-hero" src={day.dayHeroImage} alt={day.theme} /> : <div className="panel" style={{ minHeight: '108mm' }} />}
+                  <div className="bento-day-meta">
+                    <div className="summary-band__card">
+                      <div className="summary-band__label">Date</div>
+                      <div className="summary-band__value">{formatShortDate(day.date) || `Day ${day.day_number}`}</div>
+                    </div>
+                    <div className="summary-band__card">
+                      <div className="summary-band__label">Stops</div>
+                      <div className="summary-band__value">{day.activities.length}</div>
+                    </div>
+                    <div className="summary-band__card">
+                      <div className="summary-band__label">Focus</div>
+                      <div className="summary-band__value">{day.activities[0]?.location || payload.itinerary.destination}</div>
                     </div>
                   </div>
-                );
-              })}
+                </div>
+                <div className="bento-rail">
+                  <div className="panel">
+                    <p className="panel__title">Day brief</p>
+                    <p className="lead" style={{ margin: 0 }}>{day.summary || 'A modular sequence built to feel visual and easy to scan in print.'}</p>
+                  </div>
+                  {day.activities.slice(0, 2).map((activity, activityIndex) => (
+                    <div key={`bento-top-${activityIndex}`} className="bento-panel">
+                      {activity.printImage ? <img className="bento-panel__image" src={activity.printImage} alt={activity.title} /> : null}
+                      <div className="bento-panel__body">
+                        <div className="bento-panel__meta">
+                          {[activity.time, activity.location].filter(Boolean).join(' • ')}
+                        </div>
+                        <h3 className="bento-panel__title">{activity.title}</h3>
+                        <p className="bento-panel__desc">{activity.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="bento-grid">
+                {day.activities.slice(2).map((activity, activityIndex) => (
+                  <div key={`bento-activity-${activityIndex}`} className="bento-panel">
+                    {activity.printImage ? <img className="bento-panel__image" src={activity.printImage} alt={activity.title} /> : null}
+                    <div className="bento-panel__body">
+                      <div className="bento-panel__meta">
+                        {[activity.time, activity.location].filter(Boolean).join(' • ')}
+                      </div>
+                      <h3 className="bento-panel__title">{activity.title}</h3>
+                      <p className="bento-panel__desc">{activity.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
             <PageFooter branding={payload.branding} />
           </div>
