@@ -641,10 +641,10 @@ const PRINT_CSS = `
   }
   .summary-band__value {
     margin-top: 8px;
-    font-size: 16px;
-    line-height: 1.25;
+    font-size: 20px;
+    line-height: 1.18;
     font-weight: 700;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.03em;
   }
   .summary-band__copy {
     margin-top: 6px;
@@ -665,6 +665,13 @@ const PRINT_CSS = `
   .page--dark .summary-highlight__desc,
   .page--dark .summary-band__copy {
     color: rgba(248,250,252,0.72);
+  }
+  .summary-band--featured {
+    grid-template-columns: 1.05fr 0.95fr 1fr;
+  }
+  .summary-band__value--price {
+    font-size: 24px;
+    line-height: 1.08;
   }
 
   .bento {
@@ -1154,21 +1161,21 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                   <p className="lede-serif" style={{ margin: 0 }}>{payload.itinerary.summary}</p>
                 </div>
                 {payload.coverImage ? <img className="safari-overview__hero" src={payload.coverImage} alt={payload.itinerary.trip_title} /> : null}
-                <div className="summary-band">
+                <div className="summary-band summary-band--featured">
                   <div className="summary-band__card">
                     <div className="summary-band__label">Duration</div>
                     <div className="summary-band__value">{payload.itinerary.duration_days} days</div>
-                    <div className="summary-band__copy">Balanced pacing with editorial day chapters.</div>
+                    <div className="summary-band__copy">Balanced pacing with room for arrivals, headline stops, and cleaner handoff between days.</div>
                   </div>
                   <div className="summary-band__card">
                     <div className="summary-band__label">Stops</div>
                     <div className="summary-band__value">{payload.itinerary.days.reduce((sum, day) => sum + day.activities.length, 0)}</div>
-                    <div className="summary-band__copy">Carefully ordered to keep each day printable and scannable.</div>
+                    <div className="summary-band__copy">Curated into a paced route so the itinerary stays readable in print and practical on the ground.</div>
                   </div>
                   <div className="summary-band__card">
-                    <div className="summary-band__label">Value posture</div>
-                    <div className="summary-band__value">{formatCurrency(payload.itinerary) || 'Custom quote'}</div>
-                    <div className="summary-band__copy">Presented as a crafted travel brief, not a web export snapshot.</div>
+                    <div className="summary-band__label">Estimated value</div>
+                    <div className="summary-band__value summary-band__value--price">{formatCurrency(payload.itinerary) || 'Custom quote'}</div>
+                    <div className="summary-band__copy">Indicative trip value for planning and client review. Final pricing can be refined before confirmation.</div>
                   </div>
                 </div>
               </div>
@@ -1182,12 +1189,6 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                       <p className="safari-overview__copy">{activity.description}</p>
                     </div>
                   ))}
-                </div>
-                <div className="panel">
-                  <p className="panel__title">Safari structure</p>
-                  <p className="body-copy" style={{ margin: 0 }}>
-                    Each day opens with a lead visual and featured stop, then continues as concise field notes so the itinerary feels authored and easy to run on paper.
-                  </p>
                 </div>
               </div>
             </div>
