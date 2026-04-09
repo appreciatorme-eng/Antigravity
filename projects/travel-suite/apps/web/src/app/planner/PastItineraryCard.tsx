@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
-import { Copy, Check, Clock, MapPin, Search, UserPlus, Plus, Loader2, Eye, Briefcase, Link2 } from "lucide-react";
+import { Copy, Check, Clock, MapPin, Search, UserPlus, Plus, Loader2, Eye, Briefcase, Link2, CalendarHeart } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
@@ -42,6 +42,12 @@ interface PastItineraryCardProps {
         approved_at?: string | null;
         self_service_status?: string | null;
         hero_image?: string | null;
+        holiday_summary?: {
+            holidayName: string;
+            date: string;
+            country: string;
+            countryCode: string;
+        } | null;
     };
     compact?: boolean;
     onOpen?: (id: string) => void;
@@ -251,6 +257,17 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
             setQuickEmail("");
             setQuickPhone("");
             toast({ title: "Client created & assigned", description: `${name} was added and assigned.`, variant: "success" });
+            const warnings = [
+                ...(Array.isArray(data.validation?.emailWarnings) ? data.validation.emailWarnings : []),
+                ...(Array.isArray(data.validation?.phoneWarnings) ? data.validation.phoneWarnings : []),
+            ];
+            if (warnings.length > 0) {
+                toast({
+                    title: "Contact warning",
+                    description: warnings[0],
+                    variant: "warning",
+                });
+            }
         } catch (err) {
             toast({ title: "Create failed", description: err instanceof Error ? err.message : "Unknown error", variant: "error" });
         } finally {
@@ -341,6 +358,12 @@ export function PastItineraryCard({ itinerary, compact = false, onOpen, isLoadin
                             {itinerary.trip_title}
                         </p>
                     )}
+                    {itinerary.holiday_summary ? (
+                        <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-rose-300/30 bg-rose-500/15 px-2.5 py-1 text-[10px] font-semibold text-rose-100 backdrop-blur-sm">
+                            <CalendarHeart className="h-3 w-3" />
+                            {itinerary.holiday_summary.holidayName}
+                        </div>
+                    ) : null}
                 </div>
             </div>
 

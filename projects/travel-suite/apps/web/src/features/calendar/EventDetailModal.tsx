@@ -9,6 +9,7 @@ import { useCalendarActions } from "./useCalendarActions";
 import { TripEventDetail } from "./details/TripEventDetail";
 import { InvoiceEventDetail } from "./details/InvoiceEventDetail";
 import { ProposalEventDetail } from "./details/ProposalEventDetail";
+import { HolidayEventDetail } from "./details/HolidayEventDetail";
 import { PaymentEventDetail } from "./details/PaymentEventDetail";
 import { FollowUpEventDetail } from "./details/FollowUpEventDetail";
 import { SocialPostEventDetail } from "./details/SocialPostEventDetail";
@@ -55,6 +56,8 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
             onClose={onClose}
           />
         );
+      case "holiday":
+        return <HolidayEventDetail data={event.entityData} event={event} />;
       case "payment":
         return (
           <PaymentEventDetail data={event.entityData} event={event} />
@@ -117,7 +120,7 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
 
       {/* Footer with View Details link */}
       <div className="mt-6 pt-4 border-t border-gray-100 flex justify-between items-center">
-        {event.type !== "personal" && (
+        {event.type !== "personal" && event.type !== "holiday" && (
           <GlassButton
             variant="primary"
             size="sm"

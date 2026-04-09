@@ -7,6 +7,7 @@ import { getFeatureLimitStatus } from "@/lib/subscriptions/limits";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveDemoOrg, blockDemoMutation } from "@/lib/auth/demo-org-resolver";
 import { passesMutationCsrfGuard } from "@/lib/security/admin-mutation-csrf";
+import { validateContactInfo } from "@/lib/external/contact-validation";
 import type { Database } from "@/lib/database.types";
 
 const supabaseAdmin = createAdminClient();
@@ -168,7 +169,6 @@ export async function POST(req: Request) {
             ? sanitizeText(body.full_name, { maxLength: 200, stripHtml: true })
             : "";
         const phone = String(body.phone || "").trim();
-        const normalizedPhone = phone ? phone.replace(/\D/g, "") : "";
         const preferredDestination = String(body.preferredDestination || "").trim();
         const travelStyle = String(body.travelStyle || "").trim();
         const homeAirport = String(body.homeAirport || "").trim();
@@ -201,6 +201,9 @@ export async function POST(req: Request) {
         if (!EMAIL_REGEX.test(email)) {
             return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
         }
+
+        const contactValidation = await validateContactInfo({ email, phone });
+        const normalizedPhone = contactValidation.normalizedPhone || "";
 
         let { data: existingProfile } = await supabaseAdmin
             .from("profiles")
@@ -290,7 +293,15 @@ export async function POST(req: Request) {
                 return NextResponse.json({ error: "Failed to process client data" }, { status: 400 });
             }
 
-            return NextResponse.json({ success: true, userId: existingProfile.id, status: "updated_existing" });
+            return NextResponse.json({
+                success: true,
+                userId: existingProfile.id,
+                status: "updated_existing",
+                validation: {
+                    emailWarnings: contactValidation.emailWarnings,
+                    phoneWarnings: contactValidation.phoneWarnings,
+                },
+            });
         }
 
         const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
@@ -336,7 +347,14 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "Failed to process client data" }, { status: 400 });
         }
 
-        return NextResponse.json({ success: true, userId: newUser.user.id });
+        return NextResponse.json({
+            success: true,
+            userId: newUser.user.id,
+            validation: {
+                emailWarnings: contactValidation.emailWarnings,
+                phoneWarnings: contactValidation.phoneWarnings,
+            },
+        });
     } catch {
         return NextResponse.json({ error: "Failed to process client data" }, { status: 500 });
     }
@@ -545,7 +563,7 @@ export async function PATCH(req: Request) {
             ? sanitizeText(body.full_name, { maxLength: 200, stripHtml: true }) || undefined
             : undefined;
         const phone = typeof body.phone === "string" ? body.phone.trim() : undefined;
-        // email is not updated here to avoid auth sync issues for now
+        const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : undefined;
         const preferredDestination = typeof body.preferredDestination === "string" ? body.preferredDestination.trim() : undefined;
         const travelersCount = Number.isFinite(Number(body.travelersCount)) ? Number(body.travelersCount) : undefined;
         const budgetMin = Number.isFinite(Number(body.budgetMin)) ? Number(body.budgetMin) : undefined;
@@ -570,7 +588,7 @@ export async function PATCH(req: Request) {
 
         // We allow updates if at least one field is provided
         const hasUpdates = role || lifecycleStage || clientTag || phaseNotificationsEnabled !== null ||
-            fullName !== undefined || phone !== undefined || preferredDestination !== undefined ||
+            fullName !== undefined || phone !== undefined || email !== undefined || preferredDestination !== undefined ||
             travelersCount !== undefined || budgetMin !== undefined || budgetMax !== undefined ||
             travelStyle !== undefined || interests !== undefined || homeAirport !== undefined ||
             notes !== undefined || marketingOptIn !== undefined || referralSource !== undefined ||
@@ -578,6 +596,13 @@ export async function PATCH(req: Request) {
 
         if (!hasUpdates) {
             return NextResponse.json({ error: "No fields to update provided" }, { status: 400 });
+        }
+
+        if (email !== undefined && email.length > 0) {
+            const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!EMAIL_REGEX.test(email)) {
+                return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
+            }
         }
 
         if (role && role !== "client" && role !== "driver") {
@@ -629,6 +654,11 @@ export async function PATCH(req: Request) {
             }
         }
 
+        const contactValidation = await validateContactInfo({
+            email: email ?? existingProfile.email,
+            phone: phone ?? existingProfile.phone,
+        });
+
         const updates: Record<string, string | number | boolean | string[] | null> = {};
         if (role) updates.role = role;
         if (lifecycleStage) updates.lifecycle_stage = lifecycleStage;
@@ -645,8 +675,9 @@ export async function PATCH(req: Request) {
         if (fullName !== undefined) updates.full_name = fullName;
         if (phone !== undefined) {
             updates.phone = phone;
-            updates.phone_normalized = phone.replace(/\D/g, "");
+            updates.phone_normalized = contactValidation.normalizedPhone;
         }
+        if (email !== undefined) updates.email = email || null;
         if (preferredDestination !== undefined) updates.preferred_destination = preferredDestination;
         if (travelersCount !== undefined) updates.travelers_count = travelersCount;
         if (budgetMin !== undefined) updates.budget_min = budgetMin;
@@ -702,7 +733,17 @@ export async function PATCH(req: Request) {
 
             const clientNotificationsEnabled = existingProfile.phase_notifications_enabled ?? true;
             if (!notifyClient || !clientNotificationsEnabled) {
-                return NextResponse.json({ success: true, id: profileId, role: role || null, lifecycle_stage: lifecycleStage || null, client_tag: clientTag || null });
+                return NextResponse.json({
+                    success: true,
+                    id: profileId,
+                    role: role || null,
+                    lifecycle_stage: lifecycleStage || null,
+                    client_tag: clientTag || null,
+                    validation: {
+                        emailWarnings: contactValidation.emailWarnings,
+                        phoneWarnings: contactValidation.phoneWarnings,
+                    },
+                });
             }
 
             const templateKey = lifecycleTemplateByStage[lifecycleStage];
@@ -731,7 +772,17 @@ export async function PATCH(req: Request) {
             });
         }
 
-        return NextResponse.json({ success: true, id: profileId, role: role || null, lifecycle_stage: lifecycleStage || null, client_tag: clientTag || null });
+        return NextResponse.json({
+            success: true,
+            id: profileId,
+            role: role || null,
+            lifecycle_stage: lifecycleStage || null,
+            client_tag: clientTag || null,
+            validation: {
+                emailWarnings: contactValidation.emailWarnings,
+                phoneWarnings: contactValidation.phoneWarnings,
+            },
+        });
     } catch {
         return NextResponse.json({ error: "Failed to process client data" }, { status: 500 });
     }

@@ -6,6 +6,7 @@ import { logError, logWarn } from "@/lib/observability/logger";
 import { getDeterministicFallback, getWikiImage } from "@/lib/image-search";
 import { normalizeSharePaymentConfig } from "@/lib/share/payment-config";
 import { withOptionalSharedItineraryPaymentConfig } from "@/lib/share/payment-config-compat";
+import { getHolidayOverlapSummary } from "@/lib/external/holidays";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -122,18 +123,23 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch trip links for all itineraries (include status to derive pipeline stage)
-    const tripMap: Record<string, { id: string; status: string }> = {};
+    const tripMap: Record<string, { id: string; status: string; start_date: string | null; end_date: string | null }> = {};
     const tripIdByItineraryId: Record<string, string> = {};
     if (itineraryIds.length > 0) {
       const { data: trips } = await supabase
         .from("trips")
-        .select("id, itinerary_id, status")
+        .select("id, itinerary_id, status, start_date, end_date")
         .in("itinerary_id", itineraryIds);
 
       if (trips) {
         for (const t of trips) {
           if (t.itinerary_id) {
-            tripMap[t.itinerary_id] = { id: t.id, status: t.status ?? "draft" };
+            tripMap[t.itinerary_id] = {
+              id: t.id,
+              status: t.status ?? "draft",
+              start_date: t.start_date ?? null,
+              end_date: t.end_date ?? null,
+            };
             tripIdByItineraryId[t.itinerary_id] = t.id;
           }
         }
@@ -230,6 +236,22 @@ export async function GET(request: NextRequest) {
     }
 
     // Second pass: build response objects
+    const holidaySummaries = await Promise.all(
+      preEnriched.map(async ({ itin }) => {
+        const rawData = (itin.raw_data ?? null) as { start_date?: string; end_date?: string; destination?: string } | null;
+        const tripInfo = tripMap[itin.id as string];
+        return [
+          itin.id as string,
+          await getHolidayOverlapSummary({
+            destination: (itin.destination as string | null) ?? rawData?.destination ?? null,
+            startDate: tripInfo?.start_date ?? rawData?.start_date ?? null,
+            endDate: tripInfo?.end_date ?? rawData?.end_date ?? tripInfo?.start_date ?? rawData?.start_date ?? null,
+          }),
+        ] as const;
+      }),
+    );
+    const holidaySummaryMap = new Map(holidaySummaries);
+
     const enriched = preEnriched.map(({ itin, heroImage }) => {
       const id = itin.id as string;
       const clientId = itin.client_id as string | null;
@@ -256,6 +278,7 @@ export async function GET(request: NextRequest) {
         proposal_status: linkedProposal?.status ?? null,
         proposal_share_token: linkedProposal?.share_token ?? null,
         proposal_title: linkedProposal?.title ?? null,
+        holiday_summary: holidaySummaryMap.get(id) ?? null,
         // Client feedback fields
         client_comments: share?.client_comments ?? [],
         client_preferences: share?.client_preferences ?? null,

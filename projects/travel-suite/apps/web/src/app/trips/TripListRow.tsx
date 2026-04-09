@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
     MapPin,
     Calendar,
+    CalendarHeart,
     User,
     Clock,
     ChevronRight,
@@ -104,6 +105,14 @@ export function TripListRow({ trip, onDelete, deleting = false }: TripListRowPro
                             <div className="flex items-center gap-1.5 text-text-muted">
                                 <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest">
                                     {paymentSummaryLabel}
+                                </span>
+                            </div>
+                        ) : null}
+                        {trip.holiday_summary ? (
+                            <div className="flex items-center gap-1.5 text-rose-600">
+                                <CalendarHeart className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                                <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest">
+                                    {trip.holiday_summary.holidayName}
                                 </span>
                             </div>
                         ) : null}

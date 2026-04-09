@@ -9,6 +9,7 @@ export type CalendarEventType =
   | "invoice"
   | "payment"
   | "proposal"
+  | "holiday"
   | "follow_up"
   | "social_post"
   | "concierge"
@@ -46,6 +47,7 @@ export interface CalendarEvent {
     | TripEventData
     | InvoiceEventData
     | ProposalEventData
+    | HolidayEventData
     | PaymentEventData
     | FollowUpEventData
     | SocialPostEventData
@@ -83,6 +85,16 @@ export interface ProposalEventData {
   totalPrice: number | null;
   viewedAt: string | null;
   expiresAt: string | null;
+}
+
+export interface HolidayEventData {
+  type: "holiday";
+  country: string;
+  countryCode: string;
+  localName: string;
+  global: boolean;
+  destinationLabel: string | null;
+  types: string[];
 }
 
 export interface PaymentEventData {

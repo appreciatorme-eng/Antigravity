@@ -25,6 +25,7 @@ interface DayEvents {
   payments: number;
   followUps: number;
   quotes: number;
+  holidays: number;
 }
 
 function buildWeekDays(events: CalendarEvent[]): DayEvents[] {
@@ -48,6 +49,7 @@ function buildWeekDays(events: CalendarEvent[]): DayEvents[] {
     const payments = dayEvents.filter((event) => event.type === 'invoice').length;
     const followUps = dayEvents.filter((event) => event.type === 'follow_up').length;
     const quotes = dayEvents.filter((event) => event.type === 'proposal').length;
+    const holidays = dayEvents.filter((event) => event.type === 'holiday').length;
 
     days.push({
       date,
@@ -58,6 +60,7 @@ function buildWeekDays(events: CalendarEvent[]): DayEvents[] {
       payments,
       followUps,
       quotes,
+      holidays,
     });
   }
 
@@ -74,6 +77,7 @@ function DotRow({ day }: { day: DayEvents }) {
   if (day.payments > 0) dots.push({ color: 'bg-rose-500', label: `${day.payments} payment${day.payments > 1 ? 's' : ''}` });
   if (day.quotes > 0) dots.push({ color: 'bg-amber-500', label: `${day.quotes} quote${day.quotes > 1 ? 's' : ''}` });
   if (day.followUps > 0) dots.push({ color: 'bg-violet-500', label: `${day.followUps} follow-up${day.followUps > 1 ? 's' : ''}` });
+  if (day.holidays > 0) dots.push({ color: 'bg-rose-500', label: `${day.holidays} holiday${day.holidays > 1 ? 's' : ''}` });
 
   if (dots.length === 0) return null;
 
@@ -149,7 +153,7 @@ export function CalendarPreview({ data }: CalendarPreviewProps) {
 
   const days = buildWeekDays(calendarEvents);
   const hasAnyEvents = days.some(
-    (d) => d.departures + d.payments + d.followUps + d.quotes > 0,
+    (d) => d.departures + d.payments + d.followUps + d.quotes + d.holidays > 0,
   );
 
   return (
@@ -182,6 +186,7 @@ export function CalendarPreview({ data }: CalendarPreviewProps) {
           { color: 'bg-rose-500', label: 'Payments' },
           { color: 'bg-amber-500', label: 'Quotes' },
           { color: 'bg-violet-500', label: 'Follow-ups' },
+          { color: 'bg-rose-500', label: 'Holidays' },
         ].map((item) => (
           <div key={item.label} className="flex items-center gap-1">
             <span className={cn('h-1.5 w-1.5 rounded-full', item.color)} />
@@ -196,7 +201,7 @@ export function CalendarPreview({ data }: CalendarPreviewProps) {
       <div className="grid grid-cols-7 gap-1.5">
         {days.map((day) => {
           const eventCount =
-            day.departures + day.payments + day.followUps + day.quotes;
+            day.departures + day.payments + day.followUps + day.quotes + day.holidays;
           const href = `/calendar?date=${
             [
               day.date.getFullYear(),

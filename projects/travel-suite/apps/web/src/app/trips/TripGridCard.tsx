@@ -7,6 +7,7 @@ import {
     ArrowUpRight,
     Briefcase,
     Calendar,
+    CalendarHeart,
     Check,
     Clock3,
     Hotel,
@@ -217,14 +218,20 @@ export function TripGridCard({ trip, onDelete, deleting = false }: TripGridCardP
                             <h3 className="max-w-[90%] text-2xl font-semibold leading-tight tracking-tight text-white">
                                 {trip.itineraries?.trip_title || trip.destination || "Untitled trip"}
                             </h3>
-                            <div className="mt-2 flex items-center gap-2 text-[11px] font-medium text-white/65">
-                                <Calendar className="h-3.5 w-3.5 shrink-0" />
-                                <span>{formatDate(trip.start_date || "")}</span>
-                                {trip.end_date ? <span className="text-white/35">to</span> : null}
-                                {trip.end_date ? <span>{formatDate(trip.end_date)}</span> : null}
-                            </div>
+                        <div className="mt-2 flex items-center gap-2 text-[11px] font-medium text-white/65">
+                            <Calendar className="h-3.5 w-3.5 shrink-0" />
+                            <span>{formatDate(trip.start_date || "")}</span>
+                            {trip.end_date ? <span className="text-white/35">to</span> : null}
+                            {trip.end_date ? <span>{formatDate(trip.end_date)}</span> : null}
                         </div>
+                        {trip.holiday_summary ? (
+                            <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-rose-300/30 bg-rose-500/15 px-2.5 py-1 text-[10px] font-semibold text-rose-100">
+                                <CalendarHeart className="h-3 w-3" />
+                                Overlaps {trip.holiday_summary.holidayName}
+                            </div>
+                        ) : null}
                     </div>
+                </div>
                 </div>
             </div>
 

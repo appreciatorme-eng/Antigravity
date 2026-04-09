@@ -8,6 +8,7 @@ import { getDeterministicFallback } from "@/lib/image-search";
 import type { SharePaymentSummary } from "@/lib/share/payment-config";
 import { normalizeSharePaymentConfig } from "@/lib/share/payment-config";
 import { withOptionalSharedItineraryPaymentConfig } from "@/lib/share/payment-config-compat";
+import { getHolidayOverlapSummary } from "@/lib/external/holidays";
 
 const supabaseAdmin = createAdminClient();
 
@@ -115,6 +116,12 @@ interface TripPresentationMetadata {
     proposal_status: string | null;
     proposal_share_token: string | null;
     proposal_title: string | null;
+    holiday_summary: {
+        holidayName: string;
+        date: string;
+        country: string;
+        countryCode: string;
+    } | null;
 }
 
 function extractHeroImage(rawData: unknown, destination: string | null | undefined): string {
@@ -218,6 +225,21 @@ async function loadTripPresentationMetadata(
         paymentLinkMap.set(paymentLink.booking_id, paymentLink);
     }
 
+    const holidaySummaries = await Promise.all(
+        rows.map(async (row) => {
+            const itinerary = Array.isArray(row.itineraries) ? row.itineraries[0] : row.itineraries;
+            return [
+                row.id,
+                await getHolidayOverlapSummary({
+                    destination: itinerary?.destination ?? null,
+                    startDate: row.start_date,
+                    endDate: row.end_date ?? row.start_date,
+                }),
+            ] as const;
+        }),
+    );
+    const holidaySummaryMap = new Map(holidaySummaries);
+
     const metadataMap = new Map<string, TripPresentationMetadata>();
     for (const row of rows) {
         const itinerary = Array.isArray(row.itineraries) ? row.itineraries[0] : row.itineraries;
@@ -246,6 +268,7 @@ async function loadTripPresentationMetadata(
             proposal_status: proposal?.status ?? null,
             proposal_share_token: proposal?.share_token ?? null,
             proposal_title: proposal?.title ?? null,
+            holiday_summary: holidaySummaryMap.get(row.id) ?? null,
         });
     }
 

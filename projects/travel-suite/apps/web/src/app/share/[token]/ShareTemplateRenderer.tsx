@@ -19,6 +19,7 @@ import { RouteSummary } from "@/components/itinerary-templates/RouteSummary";
 import type { SharePaymentConfig } from "@/lib/share/payment-config";
 import { authedFetch } from "@/lib/api/authed-fetch";
 import { SharePaymentSection } from "./SharePaymentSection";
+import WeatherWidget from "@/components/WeatherWidget";
 
 interface ShareTemplateRendererProps {
     token: string;
@@ -214,6 +215,25 @@ export default function ShareTemplateRenderer({
                     <InteractivePricing pricing={itinerary.pricing ?? itinerary.extracted_pricing} />
                 </div>
             )}
+
+            {itinerary.destination ? (
+                <section className="border-t border-sky-100 bg-gradient-to-b from-sky-50 to-white px-6 py-12">
+                    <div className="mx-auto max-w-5xl">
+                        <div className="mb-5">
+                            <p className="text-xs font-semibold uppercase tracking-[0.32em] text-sky-600">
+                                Destination Weather
+                            </p>
+                            <h2 className="mt-3 text-3xl font-serif text-slate-900">
+                                Plan Around The Forecast
+                            </h2>
+                            <p className="mt-2 max-w-2xl text-sm text-slate-600">
+                                Live forecast for {itinerary.destination}, surfaced directly from Open-Meteo so travelers can align their packing and day plans before departure.
+                            </p>
+                        </div>
+                        <WeatherWidget destination={itinerary.destination} days={Math.max(3, Math.min(itinerary.duration_days || 7, 7))} />
+                    </div>
+                </section>
+            ) : null}
 
             {paymentConfig ? (
                 <SharePaymentSection

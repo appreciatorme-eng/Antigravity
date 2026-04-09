@@ -9,6 +9,7 @@ import {
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassBadge } from "@/components/glass/GlassBadge";
+import WeatherWidget from "@/components/WeatherWidget";
 import { TripClientCard } from "@/features/trip-detail/components/TripClientCard";
 import { TripFinancialSummary } from "@/features/trip-detail/components/TripFinancialSummary";
 import { TripFlightDetails } from "@/features/trip-detail/components/TripFlightDetails";
@@ -457,6 +458,23 @@ function ExtractedDetailsCard({ trip }: { trip: Trip }) {
   );
 }
 
+function TripWeatherCard({ trip }: { trip: Trip }) {
+  if (!trip.destination) return null;
+
+  return (
+    <GlassCard padding="xl">
+      <SectionHeader icon={Clock} label="Destination Weather" />
+      <p className="mb-4 text-sm text-slate-500">
+        Current forecast for {trip.destination}, powered by Open-Meteo for quick packing and on-ground planning.
+      </p>
+      <WeatherWidget
+        destination={trip.destination}
+        days={Math.max(3, Math.min(trip.itineraries?.duration_days ?? 7, 7))}
+      />
+    </GlassCard>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Main Component
 // ---------------------------------------------------------------------------
@@ -477,6 +495,7 @@ export function OverviewTab({ trip, invoiceSummary, loading, onTabChange }: Over
       {/* Right column */}
       <div className="col-span-12 xl:col-span-4 space-y-6">
         <TripClientCard client={trip.profiles} />
+        <TripWeatherCard trip={trip} />
         <ExtractedPricingCard trip={trip} />
         <ExtractedDetailsCard trip={trip} />
         <TripFlightDetails flights={[...flights]} />

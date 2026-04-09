@@ -3,10 +3,12 @@ import { apiError } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { logError } from "@/lib/observability/logger";
 import { getStatusVariant } from "@/features/calendar/utils";
+import { getDestinationHolidays, type HolidayRecord } from "@/lib/external/holidays";
 import type {
   CalendarEvent,
   ConciergeEventData,
   FollowUpEventData,
+  HolidayEventData,
   InvoiceEventData,
   PaymentEventData,
   PersonalEventData,
@@ -23,6 +25,7 @@ type CalendarSource =
   | "invoices"
   | "payments"
   | "proposals"
+  | "holidays"
   | "follow_ups"
   | "social_posts"
   | "concierge"
@@ -40,6 +43,7 @@ type CalendarEventsPayload = {
     invoices: number;
     payments: number;
     proposals: number;
+    holidays: number;
     followUps: number;
     socialPosts: number;
     concierge: number;
@@ -153,6 +157,20 @@ type ItineraryLookupRow = {
   trip_title: string | null;
   destination: string | null;
   duration_days: number | null;
+};
+
+type TripHolidayLookupRow = {
+  id: string;
+  start_date: string | null;
+  end_date: string | null;
+  itineraries:
+    | {
+        destination: string | null;
+      }
+    | {
+        destination: string | null;
+      }[]
+    | null;
 };
 
 const SOCIAL_POST_SELECT = [
@@ -637,6 +655,92 @@ async function fetchPersonalEvents(
   });
 }
 
+async function fetchHolidays(
+  client: AdminClient,
+  organizationId: string,
+  year: number,
+  month: number,
+  startDateOnly: string,
+  endDateOnly: string,
+): Promise<CalendarEvent[]> {
+  const { data, error } = await client
+    .from("trips")
+    .select("id,start_date,end_date,itineraries(destination)")
+    .eq("organization_id", organizationId)
+    .not("start_date", "is", null)
+    .gte("start_date", startDateOnly)
+    .lte("start_date", endDateOnly)
+    .limit(250);
+
+  if (error) {
+    throw error;
+  }
+
+  const rows = (data ?? []) as TripHolidayLookupRow[];
+  const uniqueDestinations = Array.from(
+    new Set(
+      rows
+        .map((row) => {
+          const itinerary = Array.isArray(row.itineraries) ? row.itineraries[0] : row.itineraries;
+          return itinerary?.destination?.trim() || null;
+        })
+        .filter((value): value is string => Boolean(value)),
+    ),
+  );
+
+  const holidayResults = await Promise.all(
+    uniqueDestinations.map(async (destination) => ({
+      destination,
+      result: await getDestinationHolidays(destination, year, month),
+    })),
+  );
+
+  const holidaysByCountry = new Map<string, { country: string; destinationLabel: string; holidays: HolidayRecord[] }>();
+  for (const entry of holidayResults) {
+    if (!entry.result) continue;
+    const key = entry.result.countryCode;
+    if (holidaysByCountry.has(key)) continue;
+    holidaysByCountry.set(key, {
+      country: entry.result.country,
+      destinationLabel: entry.destination,
+      holidays: entry.result.holidays,
+    });
+  }
+
+  const events: CalendarEvent[] = [];
+  for (const [countryCode, entry] of holidaysByCountry.entries()) {
+    for (const holiday of entry.holidays) {
+      const entityData: HolidayEventData = {
+        type: "holiday",
+        country: entry.country,
+        countryCode,
+        localName: holiday.localName || holiday.name,
+        global: holiday.global,
+        destinationLabel: entry.destinationLabel,
+        types: holiday.types,
+      };
+
+      events.push({
+        id: `${countryCode}:${holiday.date}`,
+        type: "holiday",
+        title: holiday.localName || holiday.name,
+        subtitle: `${entry.country} holiday`,
+        startDate: holiday.date,
+        endDate: null,
+        status: holiday.global ? "global" : "local",
+        statusVariant: "danger",
+        amount: null,
+        currency: null,
+        href: "/calendar",
+        drillHref: null,
+        entityData,
+      });
+    }
+  }
+
+  return events;
+}
+
 async function queryFollowUpsByColumn(
   client: AdminClient,
   column: "user_id" | "trip_id",
@@ -758,6 +862,7 @@ export async function GET(request: NextRequest) {
       ["invoices", () => fetchInvoices(admin.adminClient, admin.organizationId!, startDateOnly, endDateOnly)],
       ["payments", () => fetchPayments(admin.adminClient, admin.organizationId!, startIso, endIso)],
       ["proposals", () => fetchProposals(admin.adminClient, admin.organizationId!, startIso, endIso)],
+      ["holidays", () => fetchHolidays(admin.adminClient, admin.organizationId!, year, month, startDateOnly, endDateOnly)],
       ["follow_ups", () => fetchFollowUps(admin.adminClient, admin.organizationId!, startIso, endIso)],
       ["social_posts", () => fetchSocialPosts(admin.adminClient, admin.organizationId!, startIso, endIso)],
       ["concierge", () => fetchConciergeRequests(admin.adminClient, admin.organizationId!, startIso, endIso)],
@@ -787,6 +892,7 @@ export async function GET(request: NextRequest) {
         invoices: events.filter((event) => event.type === "invoice").length,
         payments: events.filter((event) => event.type === "payment").length,
         proposals: events.filter((event) => event.type === "proposal").length,
+        holidays: events.filter((event) => event.type === "holiday").length,
         followUps: events.filter((event) => event.type === "follow_up").length,
         socialPosts: events.filter((event) => event.type === "social_post").length,
         concierge: events.filter((event) => event.type === "concierge").length,

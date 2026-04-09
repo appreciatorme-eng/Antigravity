@@ -8,6 +8,7 @@ export type CalendarSource =
   | "invoices"
   | "payments"
   | "proposals"
+  | "holidays"
   | "follow_ups"
   | "social_posts"
   | "concierge"
@@ -25,6 +26,7 @@ export type CalendarFeedResponse = {
     invoices: number;
     payments: number;
     proposals: number;
+    holidays: number;
     followUps: number;
     socialPosts: number;
     concierge: number;

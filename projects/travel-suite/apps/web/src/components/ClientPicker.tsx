@@ -18,6 +18,11 @@ interface Client {
   phone: string | null;
 }
 
+interface ValidationWarnings {
+  emailWarnings: string[];
+  phoneWarnings: string[];
+}
+
 interface ClientPickerProps {
   shareLink: string;
   itineraryId?: string;
@@ -37,6 +42,7 @@ export default function ClientPicker({ shareLink, itineraryId, tripId, onAssigne
   const [inlineEmail, setInlineEmail] = useState("");
   const [savingPhone, setSavingPhone] = useState(false);
   const [savingEmail, setSavingEmail] = useState(false);
+  const [validationWarnings, setValidationWarnings] = useState<ValidationWarnings | null>(null);
   const { toast } = useToast();
   const supabase = createClient();
 
@@ -81,6 +87,7 @@ export default function ClientPicker({ shareLink, itineraryId, tripId, onAssigne
       setSelectedClient(client);
       setInlinePhone("");
       setInlineEmail("");
+      setValidationWarnings(null);
       onAssigned?.();
     } catch (err) {
       logError("[ClientPicker] Failed to assign client", err);
@@ -100,34 +107,45 @@ export default function ClientPicker({ shareLink, itineraryId, tripId, onAssigne
     const setter = field === "phone" ? setSavingPhone : setSavingEmail;
     setter(true);
     try {
-      const updates: Record<string, string> = {};
-      if (field === "phone") {
-        updates.phone = value;
-        updates.phone_normalized = value.replace(/\D/g, "");
-      } else {
-        updates.email = value;
+      const response = await authedFetch("/api/admin/clients", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: selectedClient.id,
+          ...(field === "phone" ? { phone: value } : { email: value }),
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.error || `Failed to save ${field}`);
       }
-
-      const { error } = await supabase
-        .from("profiles")
-        .update(updates)
-        .eq("id", selectedClient.id);
-
-      if (error) throw error;
 
       // Update local state immutably
       setSelectedClient({
         ...selectedClient,
         [field]: value,
       });
+      setValidationWarnings(payload.validation ?? null);
       toast({
         title: `${field === "phone" ? "Phone" : "Email"} saved`,
         durationMs: 2000,
       });
+      const warnings = field === "phone"
+        ? payload.validation?.phoneWarnings
+        : payload.validation?.emailWarnings;
+      if (Array.isArray(warnings) && warnings.length > 0) {
+        toast({
+          title: "Contact warning",
+          description: warnings[0],
+          variant: "warning",
+          durationMs: 4000,
+        });
+      }
     } catch (err) {
       logError(`[ClientPicker] Failed to save ${field}`, err);
       toast({
         title: `Failed to save ${field}`,
+        description: err instanceof Error ? err.message : undefined,
         variant: "error",
         durationMs: 3000,
       });
@@ -160,6 +178,7 @@ export default function ClientPicker({ shareLink, itineraryId, tripId, onAssigne
       }
 
       const results = data.results as Record<string, { success: boolean; error?: string }>;
+      setValidationWarnings(data.validation ?? null);
       const failures = Object.entries(results)
         .filter(([, r]) => !r.success)
         .map(([ch, r]) => `${ch}: ${r.error}`);
@@ -315,6 +334,12 @@ export default function ClientPicker({ shareLink, itineraryId, tripId, onAssigne
               Send via Both
             </Button>
           )}
+
+          {validationWarnings && (validationWarnings.emailWarnings.length > 0 || validationWarnings.phoneWarnings.length > 0) ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              {[...validationWarnings.emailWarnings, ...validationWarnings.phoneWarnings].join(" ")}
+            </div>
+          ) : null}
         </div>
       </div>
     );

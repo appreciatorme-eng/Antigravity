@@ -6,6 +6,7 @@ import { sendWhatsAppText } from "@/lib/whatsapp.server";
 import { sendEmail } from "@/lib/email/send";
 import { logError, logWarn } from "@/lib/observability/logger";
 import { ShareItineraryEmail } from "@/lib/email/share-itinerary-email";
+import { validateContactInfo } from "@/lib/external/contact-validation";
 
 const supabaseAdmin = createAdminClient();
 
@@ -57,6 +58,10 @@ export async function POST(req: Request) {
     const resolvedPhone = phone || client.phone || "";
     const resolvedEmail = email || client.email || "";
     const clientName = client.full_name || "Traveler";
+    const validation = await validateContactInfo({
+      email: resolvedEmail,
+      phone: resolvedPhone,
+    });
 
     // Extract trip title from share link path (best effort)
     const tripTitle = "your itinerary";
@@ -66,6 +71,8 @@ export async function POST(req: Request) {
     if (channel === "whatsapp" || channel === "both") {
       if (!resolvedPhone) {
         results.whatsapp = { success: false, error: "No phone number available" };
+      } else if (validation.phoneWarnings.length > 0) {
+        results.whatsapp = { success: false, error: validation.phoneWarnings[0] };
       } else {
         const message = `Hi ${clientName}, your itinerary '${tripTitle}' is ready! View it here: ${shareLink}`;
         const waResult = await sendWhatsAppText(resolvedPhone, message);
@@ -79,6 +86,8 @@ export async function POST(req: Request) {
     if (channel === "email" || channel === "both") {
       if (!resolvedEmail) {
         results.email = { success: false, error: "No email address available" };
+      } else if (validation.emailWarnings.length > 0) {
+        results.email = { success: false, error: validation.emailWarnings[0] };
       } else {
         const emailSent = await sendEmail({
           to: resolvedEmail,
@@ -95,7 +104,14 @@ export async function POST(req: Request) {
       }
     }
 
-    return NextResponse.json({ success: true, results });
+    return NextResponse.json({
+      success: true,
+      results,
+      validation: {
+        emailWarnings: validation.emailWarnings,
+        phoneWarnings: validation.phoneWarnings,
+      },
+    });
   } catch (err) {
     logError("[share/send] Unhandled error", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

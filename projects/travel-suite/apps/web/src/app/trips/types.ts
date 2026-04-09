@@ -48,6 +48,12 @@ export interface EnrichedTrip {
     proposal_status?: string | null;
     proposal_share_token?: string | null;
     proposal_title?: string | null;
+    holiday_summary?: {
+        holidayName: string;
+        date: string;
+        country: string;
+        countryCode: string;
+    } | null;
     invoice: TripInvoiceSummary;
     driver_coverage: CoverageSummary;
     accommodation_coverage: CoverageSummary;

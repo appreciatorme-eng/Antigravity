@@ -65,6 +65,8 @@ const OpenMeteoGeocodeSchema = z.object({
                 latitude: z.number(),
                 longitude: z.number(),
                 name: z.string(),
+                country: z.string().optional(),
+                country_code: z.string().optional(),
             })
         )
         .optional(),
@@ -83,7 +85,15 @@ const OpenMeteoForecastSchema = z.object({
 /**
  * Geocode a location name to get coordinates
  */
-async function geocodeLocation(locationName: string): Promise<{ lat: number; lon: number; name: string } | null> {
+export interface ResolvedLocationMetadata {
+    lat: number;
+    lon: number;
+    name: string;
+    country: string | null;
+    countryCode: string | null;
+}
+
+export async function resolveLocationMetadata(locationName: string): Promise<ResolvedLocationMetadata | null> {
     try {
         const response = await fetchWithRetry(
             `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(locationName)}&count=1&language=en&format=json`,
@@ -113,6 +123,8 @@ async function geocodeLocation(locationName: string): Promise<{ lat: number; lon
             lat: result.latitude,
             lon: result.longitude,
             name: result.name,
+            country: result.country ?? null,
+            countryCode: result.country_code?.toUpperCase() ?? null,
         };
     } catch (error) {
         logError(`Geocoding error for ${locationName}`, error);
@@ -185,7 +197,7 @@ export async function getWeatherForLocation(
     locationName: string,
     days: number = 7
 ): Promise<LocationWeather | null> {
-    const coords = await geocodeLocation(locationName);
+    const coords = await resolveLocationMetadata(locationName);
 
     if (!coords) {
         return null;
