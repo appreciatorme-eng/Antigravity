@@ -1962,7 +1962,6 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
               </div>
               <div className="trip-brief__sidebar">
                 <div className="operator-card">
-                  <p className="panel__title">Operator dossier</p>
                   <div className="operator-card__name">{payload.branding.companyName}</div>
                   <p className="operator-card__copy">
                     {payload.branding.clientName
