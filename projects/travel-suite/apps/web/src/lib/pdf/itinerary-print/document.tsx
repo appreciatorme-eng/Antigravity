@@ -270,6 +270,44 @@ const PRINT_CSS = `
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
+  .trip-brief--safe {
+    grid-template-columns: 1.02fr 0.98fr;
+    gap: 8mm;
+  }
+  .trip-brief--safe .trip-brief__lead {
+    gap: 5mm;
+  }
+  .trip-brief--safe .trip-brief__headline {
+    gap: 8px;
+  }
+  .trip-brief--safe .lede-serif {
+    -webkit-line-clamp: 3;
+  }
+  .trip-brief--safe .safari-overview__hero {
+    height: 66mm;
+    border-radius: 14px;
+  }
+  .trip-brief--safe .trip-brief__cards {
+    gap: 6px;
+  }
+  .trip-brief--safe .trip-brief__card {
+    border-radius: 12px;
+    padding: 9px 10px;
+  }
+  .trip-brief--safe .trip-brief__value {
+    margin-top: 5px;
+    font-size: 16px;
+    line-height: 1.14;
+  }
+  .trip-brief--safe .trip-brief__copy {
+    margin-top: 4px;
+    font-size: 9.5px;
+    line-height: 1.32;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
   .operator-card {
     border: 1px solid rgba(17,24,39,0.08);
     border-radius: 18px;
@@ -1901,13 +1939,13 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
         <section className="page page--light">
           <div className="page__inner">
             <BrandRow branding={payload.branding} />
-            <div className="trip-brief">
+            <div className="trip-brief trip-brief--safe">
               <div className="trip-brief__lead">
                 <div className="trip-brief__headline">
                   <div>
                     <div className="accent-line" style={{ background: accent }} />
                     <p className="section-kicker">Trip Brief</p>
-                    <h2 style={{ fontSize: 34, lineHeight: 1.02, letterSpacing: '-0.05em', margin: '8px 0 12px', fontFamily: '"Noto Serif", Georgia, Times New Roman, serif' }}>
+                    <h2 style={{ fontSize: 29, lineHeight: 1.04, letterSpacing: '-0.045em', margin: '8px 0 10px', fontFamily: '"Noto Serif", Georgia, Times New Roman, serif' }}>
                       Designed for a client-ready handoff
                     </h2>
                     <p className="lede-serif" style={{ margin: 0 }}>{payload.itinerary.summary}</p>
