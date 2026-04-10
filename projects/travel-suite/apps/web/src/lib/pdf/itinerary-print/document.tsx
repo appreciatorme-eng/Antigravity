@@ -265,6 +265,12 @@ const PRINT_CSS = `
     display: grid;
     gap: 8px;
   }
+  .trip-brief .lede-serif {
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
   .operator-card {
     border: 1px solid rgba(17,24,39,0.08);
     border-radius: 18px;
@@ -323,15 +329,27 @@ const PRINT_CSS = `
   .day-dossier__card {
     border: 1px solid rgba(17,24,39,0.08);
     border-radius: 14px;
-    padding: 10px 12px;
+    padding: 9px 10px;
     background: rgba(255,255,255,0.92);
   }
   .day-dossier__value {
     margin-top: 6px;
-    font-size: 13px;
-    line-height: 1.35;
+    font-size: 12.5px;
+    line-height: 1.25;
     letter-spacing: -0.01em;
     font-weight: 700;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .day-dossier .trip-brief__copy {
+    font-size: 10px;
+    line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
   .continuation-layout {
     display: grid;
@@ -353,6 +371,10 @@ const PRINT_CSS = `
     padding: 14px;
     background: rgba(255,255,255,0.96);
   }
+  .sidebar-panel--compact {
+    border-radius: 15px;
+    padding: 10px 11px;
+  }
   .sidebar-panel__title {
     margin: 0 0 8px;
     font-size: 11px;
@@ -361,9 +383,19 @@ const PRINT_CSS = `
     text-transform: uppercase;
     color: rgba(17,24,39,0.56);
   }
+  .sidebar-panel--compact .sidebar-panel__title {
+    margin-bottom: 6px;
+    font-size: 9px;
+    letter-spacing: 0.14em;
+  }
   .stay-card {
     display: grid;
     gap: 10px;
+  }
+  .stay-card--compact {
+    grid-template-columns: 24mm 1fr;
+    gap: 8px;
+    align-items: start;
   }
   .stay-card__image {
     width: 100%;
@@ -373,6 +405,10 @@ const PRINT_CSS = `
     display: block;
     background: rgba(17,24,39,0.06);
   }
+  .stay-card--compact .stay-card__image {
+    height: 22mm;
+    border-radius: 10px;
+  }
   .stay-card__title {
     margin: 0;
     font-size: 16px;
@@ -380,15 +416,34 @@ const PRINT_CSS = `
     letter-spacing: -0.02em;
     font-weight: 700;
   }
+  .stay-card--compact .stay-card__title {
+    font-size: 13px;
+    line-height: 1.18;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
   .mini-list {
     display: grid;
     gap: 6px;
+  }
+  .sidebar-panel--compact .mini-list {
+    gap: 4px;
   }
   .mini-list__item {
     display: grid;
     grid-template-columns: 18px 1fr;
     gap: 8px;
     align-items: start;
+  }
+  .mini-list__text--compact {
+    font-size: 10px;
+    line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
   .mini-list__index {
     width: 18px;
@@ -700,6 +755,10 @@ const PRINT_CSS = `
     font-size: 11px;
     line-height: 1.6;
     color: rgba(17, 24, 39, 0.76);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
   .safari-day {
     display: grid;
@@ -934,6 +993,18 @@ const PRINT_CSS = `
     font-size: 11px;
     line-height: 1.55;
     color: rgba(17,24,39,0.72);
+  }
+  .summary-highlights--paged {
+    margin-top: 9mm;
+  }
+  .summary-highlights--paged .summary-highlight {
+    padding: 9px 0;
+  }
+  .summary-highlights--paged .summary-highlight__desc {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
   .summary-band {
     display: grid;
@@ -1299,8 +1370,10 @@ const LocationRibbon = ({
 
 const StayPanel = ({
   accommodation,
+  compact = false,
 }: {
   accommodation: PreparedPrintAccommodation | null;
+  compact?: boolean;
 }) => {
   if (!accommodation) return null;
 
@@ -1308,9 +1381,9 @@ const StayPanel = ({
   const starLine = accommodation.starRating ? `${accommodation.starRating}-star stay` : null;
 
   return (
-    <div className="sidebar-panel">
+    <div className={`sidebar-panel ${compact ? 'sidebar-panel--compact' : ''}`}>
       <p className="sidebar-panel__title">Stay Tonight</p>
-      <div className="stay-card">
+      <div className={`stay-card ${compact ? 'stay-card--compact' : ''}`}>
         {accommodation.printImage ? (
           <img
             className="stay-card__image"
@@ -1339,20 +1412,25 @@ const StayPanel = ({
 const MiniListPanel = ({
   title,
   items,
+  compact = false,
+  maxItems,
 }: {
   title: string;
   items: string[];
+  compact?: boolean;
+  maxItems?: number;
 }) => {
-  if (!items.length) return null;
+  const visibleItems = typeof maxItems === 'number' ? items.slice(0, maxItems) : items;
+  if (!visibleItems.length) return null;
 
   return (
-    <div className="sidebar-panel">
+    <div className={`sidebar-panel ${compact ? 'sidebar-panel--compact' : ''}`}>
       <p className="sidebar-panel__title">{title}</p>
       <div className="mini-list">
-        {items.map((item, index) => (
+        {visibleItems.map((item, index) => (
           <div key={`${title}-${index}`} className="mini-list__item">
             <div className="mini-list__index">{index + 1}</div>
-            <div className="body-copy" style={{ margin: 0 }}>{item}</div>
+            <div className={`body-copy ${compact ? 'mini-list__text--compact' : ''}`} style={{ margin: 0 }}>{item}</div>
           </div>
         ))}
       </div>
@@ -1687,8 +1765,73 @@ const SummaryPage = ({
   );
 };
 
+const SafariHighlightsPage = ({
+  payload,
+  activities,
+  pageIndex,
+  totalPages,
+  accent,
+  topLocations,
+  selectedAddOns,
+}: {
+  payload: PreparedPrintPayload;
+  activities: ReturnType<typeof getFeaturedActivities>;
+  pageIndex: number;
+  totalPages: number;
+  accent: string;
+  topLocations: string[];
+  selectedAddOns: PreparedPrintAddOn[];
+}) => {
+  const notes = (payload.itinerary.tips || payload.itinerary.inclusions || payload.itinerary.exclusions || [])
+    .slice(pageIndex * 3, pageIndex * 3 + 3);
+  const upgradeItems = selectedAddOns
+    .map((addOn) => [addOn.name, addOn.category, addOn.unitPrice ? formatStandaloneCurrency(addOn.unitPrice, getItineraryCurrency(payload)) : null].filter(Boolean).join(' • '))
+    .slice(0, 3);
+
+  return (
+    <section className="page page--light">
+      <div className="page__inner">
+        <BrandRow branding={payload.branding} />
+        <div className="summary-grid">
+          <div>
+            <div className="accent-line" style={{ background: accent }} />
+            <p className="section-kicker">
+              Trip Brief {totalPages > 1 ? `Continuation ${pageIndex + 1}` : 'Continuation'}
+            </p>
+            <h2 style={{ fontSize: 30, lineHeight: 1.06, letterSpacing: '-0.04em', margin: '8px 0 0', fontFamily: '"Noto Serif", Georgia, Times New Roman, serif' }}>
+              Additional highlights for the client handoff
+            </h2>
+            <div className="summary-highlights summary-highlights--paged">
+              {activities.map((activity, index) => (
+                <div key={`safari-brief-extra-${pageIndex}-${index}`} className="summary-highlight">
+                  <div className="summary-highlight__index">{activity.dayNumber}</div>
+                  <div>
+                    <div className="summary-highlight__meta">Day {activity.dayNumber} • {activity.location || activity.dayTheme}</div>
+                    <h3 className="summary-highlight__title">{activity.title}</h3>
+                    <p className="summary-highlight__desc">{activity.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="summary-sidebar">
+            <MiniListPanel title="Route Sequence" items={topLocations} compact maxItems={5} />
+            {upgradeItems.length ? (
+              <MiniListPanel title="Available Upgrades" items={upgradeItems} compact maxItems={3} />
+            ) : (
+              <MiniListPanel title="What Shapes The Trip" items={(payload.itinerary.interests || topLocations).slice(0, 4)} compact maxItems={4} />
+            )}
+            <MiniListPanel title="Client Handoff Notes" items={notes.length ? notes : topLocations} compact maxItems={3} />
+          </div>
+        </div>
+        <PageFooter branding={payload.branding} />
+      </div>
+    </section>
+  );
+};
+
 const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
-  const featuredActivities = getFeaturedActivities(payload, 4);
+  const featuredActivities = getFeaturedActivities(payload, Math.min(payload.itinerary.days.length, 8));
   const accent = resolveAccentColor(payload);
   const price = formatCurrency(payload.itinerary);
   const topLocations = getTopLocations(payload, 5);
@@ -1696,6 +1839,8 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
   const totalActivities = payload.itinerary.days.reduce((sum, day) => sum + day.activities.length, 0);
   const flightsCount = payload.itinerary.logistics?.flights?.length || 0;
   const staysCount = payload.itinerary.logistics?.hotels?.length || payload.printExtras.dayAccommodations.length || 0;
+  const briefHighlights = featuredActivities.slice(0, 2);
+  const extraHighlightPages = chunkItems(featuredActivities.slice(2), 4);
 
   return (
     <>
@@ -1811,7 +1956,7 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                 </div>
                 <div className="panel panel--muted">
                   <p className="panel__title">Standout moments</p>
-                  {featuredActivities.slice(0, 4).map((activity, index) => (
+                  {briefHighlights.map((activity, index) => (
                     <div key={`safari-featured-${index}`} className="safari-overview__panel">
                       <div className="safari-overview__meta">Day {activity.dayNumber} • {activity.location || activity.dayTheme}</div>
                       <h3 className="safari-overview__title">{activity.title}</h3>
@@ -1820,11 +1965,18 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                   ))}
                 </div>
                 {selectedAddOns.length ? (
-                  <AddOnPanel addOns={selectedAddOns.slice(0, 2)} payload={payload} />
+                  <MiniListPanel
+                    title="Available upgrades"
+                    items={selectedAddOns.map((addOn) => [addOn.name, addOn.category].filter(Boolean).join(' • '))}
+                    compact
+                    maxItems={3}
+                  />
                 ) : (
                   <MiniListPanel
                     title="What shapes the trip"
                     items={(payload.itinerary.interests?.slice(0, 4) || payload.itinerary.tips?.slice(0, 4) || topLocations.slice(0, 4))}
+                    compact
+                    maxItems={4}
                   />
                 )}
               </div>
@@ -1832,10 +1984,22 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
             <PageFooter branding={payload.branding} />
           </div>
         </section>
+        {extraHighlightPages.map((activities, index) => (
+          <SafariHighlightsPage
+            key={`safari-brief-extra-${index}`}
+            payload={payload}
+            activities={activities}
+            pageIndex={index}
+            totalPages={extraHighlightPages.length}
+            accent={accent}
+            topLocations={topLocations}
+            selectedAddOns={selectedAddOns}
+          />
+        ))}
         {payload.itinerary.days.flatMap((day, index) => {
           const [featured, ...remaining] = day.activities;
           const supportActivities = remaining.slice(0, 2);
-          const continuationChunks = chunkItems(remaining.slice(2), 3);
+          const continuationChunks = chunkItems(remaining.slice(2), 2);
           const dayLocations = getDayLocations(day, 4);
           const accommodation = getDayAccommodation(payload, day.day_number);
           const tripNotes = (payload.itinerary.tips || payload.itinerary.inclusions || []).slice(0, 3);
@@ -1889,9 +2053,9 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                       <DayDossier payload={payload} day={day} />
                     </div>
                     <div className="continuation-sidebar">
-                      <StayPanel accommodation={accommodation} />
-                      <MiniListPanel title={"Today's route"} items={dayLocations} />
-                      {!accommodation && tripNotes.length ? <MiniListPanel title="Travel notes" items={tripNotes} /> : null}
+                      <StayPanel accommodation={accommodation} compact />
+                      <MiniListPanel title={"Today's route"} items={dayLocations} compact maxItems={3} />
+                      {!accommodation && tripNotes.length ? <MiniListPanel title="Travel notes" items={tripNotes} compact maxItems={3} /> : null}
                     </div>
                   </div>
                 </div>
@@ -1949,17 +2113,26 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                         )}
                       </div>
                       <div className="continuation-sidebar">
-                        <StayPanel accommodation={accommodation} />
+                        <StayPanel accommodation={accommodation} compact />
                         <MiniListPanel
                           title="Continue with"
                           items={continuedSupport.length ? continuedSupport.map((activity) => activity.title).slice(0, 3) : dayLocations}
+                          compact
+                          maxItems={2}
                         />
                         {chunkIndex === 0 && selectedAddOns.length ? (
-                          <AddOnPanel addOns={selectedAddOns.slice(0, 2)} payload={payload} />
+                          <MiniListPanel
+                            title="Available upgrades"
+                            items={selectedAddOns.map((addOn) => [addOn.name, addOn.category].filter(Boolean).join(' • '))}
+                            compact
+                            maxItems={2}
+                          />
                         ) : (
                           <MiniListPanel
                             title="Travel notes"
                             items={continuationNotes.length ? continuationNotes : (payload.itinerary.exclusions || []).slice(0, 3)}
+                            compact
+                            maxItems={2}
                           />
                         )}
                       </div>
