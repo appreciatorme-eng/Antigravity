@@ -30,6 +30,7 @@ interface ItineraryTabProps {
   onItineraryDaysChange: (days: Day[]) => void;
   activeDay: number;
   onActiveDayChange: (day: number) => void;
+  startDate?: string;
   drivers: Driver[];
   assignments: Record<number, DriverAssignment>;
   accommodations: Record<number, Accommodation>;
@@ -68,32 +69,47 @@ function getActiveDayData(
 // Day Selector
 // ---------------------------------------------------------------------------
 
+function formatDayDate(startDate: string, dayNumber: number): string {
+  const base = new Date(startDate);
+  const date = new Date(base.getTime() + (dayNumber - 1) * 86_400_000);
+  return date.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
 function DaySelector({
   days,
   activeDay,
   onActiveDayChange,
+  startDate,
 }: {
   days: readonly Day[];
   activeDay: number;
   onActiveDayChange: (day: number) => void;
+  startDate?: string;
 }) {
   return (
     <div className="flex gap-2 p-1 bg-gray-100 dark:bg-slate-900 rounded-2xl overflow-x-auto w-full max-w-fit border border-gray-200 dark:border-slate-800">
       {days.map((day) => {
         const isActive = day.day_number === activeDay;
+        const dateLabel = startDate ? formatDayDate(startDate, day.day_number) : null;
         return (
           <button
             key={day.day_number}
             type="button"
             onClick={() => onActiveDayChange(day.day_number)}
             className={cn(
-              "px-10 py-3.5 rounded-xl text-xs font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap",
+              "px-10 rounded-xl text-xs font-black uppercase tracking-[0.2em] transition-all whitespace-nowrap",
+              dateLabel ? "py-2" : "py-3.5",
               isActive
                 ? "bg-white dark:bg-slate-800 text-primary shadow-sm"
                 : "text-text-muted hover:text-secondary dark:hover:text-white",
             )}
           >
             Day {day.day_number}
+            {dateLabel && (
+              <span className="block text-[10px] font-normal normal-case tracking-normal opacity-70 mt-0.5">
+                {dateLabel}
+              </span>
+            )}
           </button>
         );
       })}
@@ -118,6 +134,7 @@ export function ItineraryTab({
   onItineraryDaysChange,
   activeDay,
   onActiveDayChange,
+  startDate,
   drivers,
   assignments,
   accommodations,
@@ -210,6 +227,7 @@ export function ItineraryTab({
           days={itineraryDays}
           activeDay={activeDay}
           onActiveDayChange={onActiveDayChange}
+          startDate={startDate}
         />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

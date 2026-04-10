@@ -261,6 +261,7 @@ export default function TripDetailPage() {
             }
             activeDay={activeDay}
             onActiveDayChange={setActiveDay}
+            startDate={trip.start_date ?? undefined}
             drivers={data?.drivers ?? []}
             assignments={data?.assignments ?? {}}
             accommodations={data?.accommodations ?? {}}

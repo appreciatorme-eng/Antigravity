@@ -3,6 +3,7 @@ import { apiError } from "@/lib/api/response";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logError } from "@/lib/observability/logger";
+import type { Json } from "@/lib/supabase/database.types";
 
 const ITINERARY_DETAIL_SELECT = "id, user_id, client_id, trip_title, destination, duration_days, budget, interests, summary, template_id, raw_data, created_at, updated_at";
 const supabaseAdmin = createAdminClient();
@@ -73,7 +74,7 @@ export async function PATCH(
         const body = await request.json();
 
         // Create an update object containing only fields we expect
-        const updates: { client_id?: string | null; budget?: string } = {};
+        const updates: { client_id?: string | null; budget?: string; raw_data?: Json } = {};
 
         if (body.client_id !== undefined) {
             updates.client_id = body.client_id;
@@ -81,6 +82,10 @@ export async function PATCH(
 
         if (body.budget !== undefined) {
             updates.budget = body.budget;
+        }
+
+        if (body.raw_data !== undefined && body.raw_data !== null && typeof body.raw_data === 'object') {
+            updates.raw_data = body.raw_data as Json;
         }
 
         if (Object.keys(updates).length === 0) {
