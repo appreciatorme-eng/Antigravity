@@ -116,6 +116,24 @@ const PRINT_CSS = `
     background: rgba(255,255,255,0.06);
     color: rgba(248,250,252,0.72);
   }
+  .brief-continuation-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 12mm;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(17,24,39,0.58);
+  }
+  .brief-continuation-row__title {
+    max-width: 96mm;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 
   .cover {
     position: relative;
@@ -1791,7 +1809,10 @@ const SafariHighlightsPage = ({
   return (
     <section className="page page--light">
       <div className="page__inner">
-        <BrandRow branding={payload.branding} />
+        <div className="brief-continuation-row">
+          <span className="brief-continuation-row__title">{payload.itinerary.trip_title}</span>
+          {payload.branding.clientName ? <span>Prepared for {payload.branding.clientName}</span> : <span>Trip brief continuation</span>}
+        </div>
         <div className="summary-grid">
           <div>
             <div className="accent-line" style={{ background: accent }} />
