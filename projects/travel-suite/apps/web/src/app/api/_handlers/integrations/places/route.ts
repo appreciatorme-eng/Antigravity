@@ -167,10 +167,11 @@ export async function POST(request: NextRequest) {
     const body = (await request.json().catch(() => ({}))) as PlacesRequestBody;
     const googlePlaceId = body.googlePlaceId?.trim();
 
-    await validatePlacesApiKey(googlePlaceId);
-
     const supabaseAdmin = admin.adminClient;
+
     if (googlePlaceId) {
+      // Only validate the API key when a Place ID is being saved
+      await validatePlacesApiKey(googlePlaceId);
       await ensureGooglePlaceConfigured(supabaseAdmin, organizationId, googlePlaceId);
       return NextResponse.json({
         success: true,
@@ -179,6 +180,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Plain activation (no Place ID) — just enable the feature flag
     const { error: settingsUpsertError } = await supabaseAdmin.from("organization_settings").upsert(
       {
         organization_id: organizationId,
