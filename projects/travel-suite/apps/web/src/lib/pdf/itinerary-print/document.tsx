@@ -116,25 +116,6 @@ const PRINT_CSS = `
     background: rgba(255,255,255,0.06);
     color: rgba(248,250,252,0.72);
   }
-  .brief-continuation-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 12mm;
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: rgba(17,24,39,0.58);
-  }
-  .brief-continuation-row__title {
-    max-width: 96mm;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
   .cover {
     position: relative;
     height: 297mm;
@@ -1534,16 +1515,18 @@ const DayDossier = ({
 const BrandRow = ({
   branding,
   dark = false,
+  showContact = false,
 }: {
   branding: PreparedPrintPayload['branding'];
   dark?: boolean;
+  showContact?: boolean;
 }) => (
   <div className="brand-row">
     <div className="brand-mark">
       {branding.logoDataUrl ? <img className="brand-logo" src={branding.logoDataUrl} alt={branding.companyName} /> : null}
       <div className="brand-meta">
         <div className="brand-name">{branding.companyName}</div>
-        {(branding.contactEmail || branding.contactPhone) ? (
+        {showContact && (branding.contactEmail || branding.contactPhone) ? (
           <div className="brand-contact">
             {[branding.contactEmail, branding.contactPhone].filter(Boolean).join('  •  ')}
           </div>
@@ -1696,7 +1679,7 @@ const PageFooter = ({ branding }: { branding: PreparedPrintPayload['branding'] }
   return (
     <div className="page__footer">
       <span>{contactBits.join('  •  ')}</span>
-      <span className="page__number" />
+      <span>Powered by TripBuilt • <span className="page__number" /></span>
     </div>
   );
 };
@@ -1809,10 +1792,7 @@ const SafariHighlightsPage = ({
   return (
     <section className="page page--light">
       <div className="page__inner">
-        <div className="brief-continuation-row">
-          <span className="brief-continuation-row__title">{payload.itinerary.trip_title}</span>
-          {payload.branding.clientName ? <span>Prepared for {payload.branding.clientName}</span> : <span>Trip brief continuation</span>}
-        </div>
+        <BrandRow branding={payload.branding} />
         <div className="summary-grid">
           <div>
             <div className="accent-line" style={{ background: accent }} />
@@ -1870,7 +1850,7 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
             {payload.coverImage ? <img className="cover__image" src={payload.coverImage} alt={payload.itinerary.trip_title} /> : null}
             <div className="cover__overlay" style={{ background: 'linear-gradient(180deg, rgba(47,33,10,0.08), rgba(44,32,18,0.82))' }} />
             <div className="cover__content">
-              <BrandRow branding={payload.branding} dark />
+              <BrandRow branding={payload.branding} dark showContact />
               <div>
                 <p className="cover__kicker" style={{ color: 'rgba(255,247,237,0.78)' }}>{payload.itinerary.destination}</p>
                 <h1 className="cover__title" style={{ color: '#fff7ed', fontFamily: '"Noto Serif", Georgia, Times New Roman, serif' }}>{payload.itinerary.trip_title}</h1>

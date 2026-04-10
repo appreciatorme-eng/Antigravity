@@ -28,6 +28,7 @@ interface OrganizationPreferencesRow {
   logo_url: string | null;
   primary_color: string | null;
   itinerary_template?: string | null;
+  billing_address?: unknown;
 }
 
 interface ProfilePreferencesRow {
@@ -54,6 +55,21 @@ const resolveCompanyName = (
   return 'Your Journey Curator';
 };
 
+const normalizePdfBranding = (branding: ItineraryBranding, fallback: ItineraryBranding): ItineraryBranding => {
+  const name = branding.companyName?.trim();
+  if (name && name.toLowerCase() !== 'tripbuilt') {
+    return { ...branding, companyName: name };
+  }
+  const fallbackName = fallback.companyName?.trim();
+  return {
+    ...branding,
+    companyName:
+      fallbackName && fallbackName.toLowerCase() !== 'tripbuilt'
+        ? fallbackName
+        : DEFAULT_ITINERARY_BRANDING.companyName,
+  };
+};
+
 const normalizeItinerary = (input: ItineraryResult): ItineraryResult => {
   const duration = input.duration_days || input.days?.length || 1;
   return {
@@ -69,6 +85,17 @@ const normalizeItinerary = (input: ItineraryResult): ItineraryResult => {
 const normalizeOrganizationRelation = (profile: ProfilePreferencesRow | null): OrganizationPreferencesRow | null => {
   const rawOrg = profile?.organizations;
   return Array.isArray(rawOrg) ? rawOrg[0] || null : rawOrg || null;
+};
+
+const getBillingContact = (billingAddress: unknown): { email: string | null; phone: string | null } => {
+  if (!billingAddress || typeof billingAddress !== 'object' || Array.isArray(billingAddress)) {
+    return { email: null, phone: null };
+  }
+  const record = billingAddress as Record<string, unknown>;
+  return {
+    email: typeof record.email === 'string' && record.email.trim() ? record.email.trim() : null,
+    phone: typeof record.phone === 'string' && record.phone.trim() ? record.phone.trim() : null,
+  };
 };
 
 const isMissingColumnError = (error: unknown, column: string): boolean => {
@@ -103,7 +130,7 @@ export const fetchItineraryPdfPreferences = async (): Promise<ItineraryPdfPrefer
 
     const primaryResult = await supabase
       .from('profiles')
-      .select('email, phone, organization_id, organizations(name, logo_url, primary_color, itinerary_template)')
+      .select('email, phone, organization_id, organizations!profiles_organization_id_fkey(name, logo_url, primary_color, itinerary_template, billing_address)')
       .eq('id', user.id)
       .single();
 
@@ -113,7 +140,7 @@ export const fetchItineraryPdfPreferences = async (): Promise<ItineraryPdfPrefer
     if (error && isMissingColumnError(error, 'itinerary_template')) {
       const fallbackResult = await supabase
         .from('profiles')
-        .select('email, phone, organization_id, organizations(name, logo_url, primary_color)')
+        .select('email, phone, organization_id, organizations!profiles_organization_id_fkey(name, logo_url, primary_color, billing_address)')
         .eq('id', user.id)
         .single();
       profile = fallbackResult.data as ProfilePreferencesRow | null;
@@ -125,14 +152,15 @@ export const fetchItineraryPdfPreferences = async (): Promise<ItineraryPdfPrefer
     }
 
     const organization = normalizeOrganizationRelation(profile);
+    const billingContact = getBillingContact(organization?.billing_address);
 
     if (!organization) {
       return {
         branding: {
           ...DEFAULT_ITINERARY_BRANDING,
           companyName: resolveCompanyName(null, profile?.email),
-          contactEmail: profile?.email || null,
-          contactPhone: profile?.phone || null,
+          contactEmail: billingContact.email || profile?.email || null,
+          contactPhone: billingContact.phone || profile?.phone || null,
         },
         defaultTemplate: DEFAULT_ITINERARY_TEMPLATE,
       };
@@ -143,8 +171,8 @@ export const fetchItineraryPdfPreferences = async (): Promise<ItineraryPdfPrefer
         companyName: resolveCompanyName(organization.name, profile?.email),
         logoUrl: organization.logo_url || null,
         primaryColor: organization.primary_color || DEFAULT_ITINERARY_BRANDING.primaryColor,
-        contactEmail: profile?.email || null,
-        contactPhone: profile?.phone || null,
+        contactEmail: billingContact.email || profile?.email || null,
+        contactPhone: billingContact.phone || profile?.phone || null,
       },
       defaultTemplate: normalizeItineraryTemplateId(organization.itinerary_template),
     };
@@ -181,10 +209,10 @@ export const downloadItineraryPdf = async ({
   const preferences = await fetchItineraryPdfPreferences();
   const resolvedTemplate = template || preferences.defaultTemplate;
   const normalizedItinerary = normalizeItinerary(itinerary);
-  const resolvedBranding = {
+  const resolvedBranding = normalizePdfBranding({
     ...preferences.branding,
     ...(branding || {}),
-  };
+  }, preferences.branding);
   const computedFileName =
     fileName || `${sanitizeFileName(normalizedItinerary.trip_title || 'itinerary')}_${resolvedTemplate}.pdf`;
 

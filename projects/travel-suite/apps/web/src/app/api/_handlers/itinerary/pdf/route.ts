@@ -69,6 +69,7 @@ type OrganizationPreferencesRow = {
   logo_url: string | null;
   primary_color: string | null;
   itinerary_template?: string | null;
+  billing_address?: unknown;
 };
 
 type ProfilePreferencesRow = {
@@ -95,9 +96,35 @@ const resolveCompanyName = (
   return 'Your Journey Curator';
 };
 
+const normalizePdfBranding = (branding: ItineraryBranding, fallback: ItineraryBranding): ItineraryBranding => {
+  const name = branding.companyName?.trim();
+  if (name && name.toLowerCase() !== 'tripbuilt') {
+    return { ...branding, companyName: name };
+  }
+  const fallbackName = fallback.companyName?.trim();
+  return {
+    ...branding,
+    companyName:
+      fallbackName && fallbackName.toLowerCase() !== 'tripbuilt'
+        ? fallbackName
+        : DEFAULT_ITINERARY_BRANDING.companyName,
+  };
+};
+
 const normalizeRelation = <T,>(value: T | T[] | null | undefined): T | null => {
   if (!value) return null;
   return Array.isArray(value) ? value[0] || null : value;
+};
+
+const getBillingContact = (billingAddress: unknown): { email: string | null; phone: string | null } => {
+  if (!billingAddress || typeof billingAddress !== 'object' || Array.isArray(billingAddress)) {
+    return { email: null, phone: null };
+  }
+  const record = billingAddress as Record<string, unknown>;
+  return {
+    email: typeof record.email === 'string' && record.email.trim() ? record.email.trim() : null,
+    phone: typeof record.phone === 'string' && record.phone.trim() ? record.phone.trim() : null,
+  };
 };
 
 const isMissingColumnError = (error: unknown, column: string): boolean => {
@@ -163,7 +190,7 @@ async function fetchServerPdfPreferences(userId: string, adminClient: unknown) {
     };
     const primaryResult = await supabase
       .from('profiles')
-      .select('email, phone, organization_id, organizations(name, logo_url, primary_color, itinerary_template)')
+      .select('email, phone, organization_id, organizations!profiles_organization_id_fkey(name, logo_url, primary_color, itinerary_template, billing_address)')
       .eq('id', userId)
       .single();
 
@@ -173,7 +200,7 @@ async function fetchServerPdfPreferences(userId: string, adminClient: unknown) {
     if (error && isMissingColumnError(error, 'itinerary_template')) {
       const fallbackResult = await supabase
         .from('profiles')
-        .select('email, phone, organization_id, organizations(name, logo_url, primary_color)')
+        .select('email, phone, organization_id, organizations!profiles_organization_id_fkey(name, logo_url, primary_color, billing_address)')
         .eq('id', userId)
         .single();
       profile = fallbackResult.data as ProfilePreferencesRow | null;
@@ -185,14 +212,15 @@ async function fetchServerPdfPreferences(userId: string, adminClient: unknown) {
     }
 
     const organization = normalizeRelation(profile?.organizations || null);
+    const billingContact = getBillingContact(organization?.billing_address);
 
     return {
       branding: {
         companyName: resolveCompanyName(organization?.name, profile?.email),
         logoUrl: organization?.logo_url || null,
         primaryColor: organization?.primary_color || DEFAULT_ITINERARY_BRANDING.primaryColor,
-        contactEmail: profile?.email || null,
-        contactPhone: profile?.phone || null,
+        contactEmail: billingContact.email || profile?.email || null,
+        contactPhone: billingContact.phone || profile?.phone || null,
       } satisfies ItineraryBranding,
       defaultTemplate: normalizeItineraryTemplateId(organization?.itinerary_template),
     };
@@ -266,10 +294,10 @@ export async function POST(request: Request) {
     const preferences = await fetchServerPdfPreferences(admin.userId, admin.adminClient);
 
     const template = normalizeItineraryTemplateId(parsed.data.template ?? preferences.defaultTemplate);
-    const branding = {
+    const branding = normalizePdfBranding({
       ...preferences.branding,
       ...(parsed.data.branding || {}),
-    };
+    }, preferences.branding);
     const printExtras = parsed.data.printExtras as ItineraryPrintExtras | undefined;
     const normalizedItinerary = normalizeItinerary(parsed.data.itinerary);
     const imageReadyItinerary = await populateItineraryImages(

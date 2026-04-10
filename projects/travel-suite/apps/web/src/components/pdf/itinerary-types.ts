@@ -41,7 +41,7 @@ export interface ItineraryPrintExtras {
 }
 
 export const DEFAULT_ITINERARY_BRANDING: ItineraryBranding = {
-  companyName: 'TripBuilt',
+  companyName: 'Your Travel Company',
   logoUrl: null,
   primaryColor: '#f26430',
   contactPhone: null,
