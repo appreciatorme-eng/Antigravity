@@ -2007,6 +2007,36 @@ const PRINT_CSS = `
     display: grid;
     gap: 8px;
   }
+  .visual-sidebar--overview {
+    gap: 6px;
+  }
+  .visual-sidebar--overview .visual-panel {
+    padding: 9px 10px;
+  }
+  .visual-sidebar--overview .visual-panel__value {
+    font-size: 15px;
+    line-height: 1.14;
+  }
+  .visual-sidebar--overview .visual-panel__copy {
+    font-size: 9.5px;
+    line-height: 1.34;
+    -webkit-line-clamp: 2;
+  }
+  .visual-sidebar--overview .summary-highlight {
+    gap: 7px;
+  }
+  .visual-sidebar--overview .summary-highlight__title {
+    font-size: 12px;
+    line-height: 1.2;
+  }
+  .visual-sidebar--overview .summary-highlight__desc {
+    font-size: 9.5px;
+    line-height: 1.34;
+    -webkit-line-clamp: 2;
+  }
+  .visual-sidebar--overview .mini-list__text--compact {
+    -webkit-line-clamp: 1;
+  }
   .visual-overview-image {
     width: 100%;
     height: 72mm;
@@ -3619,7 +3649,7 @@ const VisualOverviewPage = ({ payload }: { payload: PreparedPrintPayload }) => {
             {payload.coverImage ? <img className="visual-overview-image" src={payload.coverImage} alt={payload.itinerary.trip_title} /> : null}
             <VisualDossierCards payload={payload} />
           </div>
-          <div className="visual-sidebar">
+          <div className="visual-sidebar visual-sidebar--overview">
             <div className="visual-panel">
               <p className="visual-panel__label">Operator handoff</p>
               <p className="visual-panel__value">{payload.branding.companyName}</p>
@@ -3632,7 +3662,7 @@ const VisualOverviewPage = ({ payload }: { payload: PreparedPrintPayload }) => {
             <div className="visual-panel">
               <p className="visual-panel__label">Standout frames</p>
               <div className="summary-highlights">
-                {featuredActivities.map((activity, index) => (
+                {featuredActivities.slice(0, 2).map((activity, index) => (
                   <div key={`visual-highlight-${index}`} className="summary-highlight">
                     <div className="summary-highlight__index">{activity.dayNumber}</div>
                     <div>
@@ -3644,8 +3674,8 @@ const VisualOverviewPage = ({ payload }: { payload: PreparedPrintPayload }) => {
                 ))}
               </div>
             </div>
-            <VisualMiniPanel title="Route sequence" items={topLocations} maxItems={5} />
-            <VisualMiniPanel title="Client context" items={contextItems} maxItems={3} />
+            <VisualMiniPanel title="Route sequence" items={topLocations} maxItems={4} />
+            <VisualMiniPanel title="Client context" items={contextItems} maxItems={2} />
           </div>
         </div>
         <PageFooter branding={payload.branding} />
