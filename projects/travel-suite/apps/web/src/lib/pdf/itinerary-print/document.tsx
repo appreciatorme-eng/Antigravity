@@ -1341,7 +1341,7 @@ const PRINT_CSS = `
   }
   .professional-brief-grid {
     display: grid;
-    grid-template-columns: 1.04fr 0.96fr;
+    grid-template-columns: 1.08fr 0.92fr;
     gap: 9mm;
     align-items: start;
   }
@@ -1472,6 +1472,44 @@ const PRINT_CSS = `
   .professional-sidebar {
     display: grid;
     gap: 8px;
+  }
+  .professional-sidebar--brief {
+    gap: 6px;
+  }
+  .professional-sidebar--brief .operator-card,
+  .professional-sidebar--brief .panel,
+  .professional-sidebar--brief .sidebar-panel {
+    border-radius: 10px;
+    padding: 9px 10px;
+  }
+  .professional-sidebar--brief .operator-card__name {
+    margin-top: 4px;
+    font-size: 15px;
+    line-height: 1.12;
+  }
+  .professional-sidebar--brief .operator-card__copy {
+    margin-top: 5px;
+    font-size: 9.5px;
+    line-height: 1.36;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .professional-sidebar--brief .summary-highlight {
+    gap: 7px;
+  }
+  .professional-sidebar--brief .summary-highlight__title {
+    font-size: 11.5px;
+    line-height: 1.2;
+  }
+  .professional-sidebar--brief .summary-highlight__desc {
+    font-size: 9.5px;
+    line-height: 1.34;
+    -webkit-line-clamp: 2;
+  }
+  .professional-sidebar--brief .mini-list__text--compact {
+    -webkit-line-clamp: 1;
   }
   .professional-closing {
     display: grid;
@@ -3408,7 +3446,7 @@ const ProfessionalLogisticsSnapshot = ({ payload }: { payload: PreparedPrintPayl
     ),
   ];
 
-  return <MiniListPanel title="Travel logistics" items={logisticsItems} compact maxItems={4} />;
+  return <MiniListPanel title="Travel logistics" items={logisticsItems} compact maxItems={3} />;
 };
 
 const ProfessionalBriefPage = ({ payload }: { payload: PreparedPrintPayload }) => {
@@ -3420,7 +3458,9 @@ const ProfessionalBriefPage = ({ payload }: { payload: PreparedPrintPayload }) =
     payload.itinerary.interests?.length
       ? payload.itinerary.interests
       : [...(payload.itinerary.tips || []), ...topLocations]
-  ).slice(0, 4);
+  )
+    .map((item) => item.length > 92 ? `${item.slice(0, 89).trim()}...` : item)
+    .slice(0, 3);
 
   return (
     <section className="page page--white">
@@ -3450,7 +3490,7 @@ const ProfessionalBriefPage = ({ payload }: { payload: PreparedPrintPayload }) =
               </div>
             </div>
           </div>
-          <div className="professional-sidebar">
+          <div className="professional-sidebar professional-sidebar--brief">
             <ProfessionalLogisticsSnapshot payload={payload} />
             <div className="operator-card">
               <p className="panel__title">Operator handoff</p>
@@ -3481,10 +3521,10 @@ const ProfessionalBriefPage = ({ payload }: { payload: PreparedPrintPayload }) =
                 title="Available upgrades"
                 items={selectedAddOns.map((addOn) => [addOn.name, addOn.category].filter(Boolean).join(' • '))}
                 compact
-                maxItems={3}
+                maxItems={2}
               />
             ) : (
-              <MiniListPanel title="Client context" items={contextItems} compact maxItems={4} />
+              <MiniListPanel title="Client context" items={contextItems} compact maxItems={3} />
             )}
           </div>
         </div>
