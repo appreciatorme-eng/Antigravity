@@ -53,6 +53,20 @@ type OrganizationApiPayload = {
     error?: string | null;
 };
 
+type ProfileSettings = {
+    id: string;
+    full_name: string;
+    email: string;
+    avatar_url: string | null;
+};
+
+type ProfileApiPayload = {
+    data?: {
+        profile?: ProfileSettings | null;
+    } | null;
+    error?: string | null;
+};
+
 type SettingsTab =
     | 'organization' | 'profile' | 'branding' | 'messaging' | 'payments'
     | 'e-invoicing' | 'reviews' | 'social' | 'maps' | 'billing' | 'security'
@@ -112,6 +126,9 @@ export default function SettingsPage() {
     const [organization, setOrganization] = useState<Organization | null>(null);
     const [saving, setSaving] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
+    const [profileSettings, setProfileSettings] = useState<ProfileSettings | null>(null);
+    const [profileSaving, setProfileSaving] = useState(false);
+    const [profileShowSuccess, setProfileShowSuccess] = useState(false);
 
     // Workflow rules (Notifications tab)
     const [workflowRules, setWorkflowRules] = useState<WorkflowRule[]>([]);
@@ -257,6 +274,21 @@ export default function SettingsPage() {
                 billing_state: typeof orgRecord.billing_state === 'string' ? orgRecord.billing_state : null,
                 billing_address: mergeBillingAddressFields(orgRecord.billing_address, organizationRow),
             });
+
+            const profileResponse = await authedFetch('/api/admin/profile', { cache: 'no-store' });
+            const profilePayload = (await profileResponse.json()) as ProfileApiPayload;
+            if (!profileResponse.ok) {
+                throw new Error(profilePayload.error || 'Failed to load profile settings');
+            }
+            const profile = profilePayload.data?.profile ?? null;
+            if (profile) {
+                setProfileSettings({
+                    id: profile.id,
+                    full_name: profile.full_name || '',
+                    email: profile.email || '',
+                    avatar_url: profile.avatar_url || null,
+                });
+            }
 
             const { data: { session } } = await supabase.auth.getSession();
 
@@ -426,13 +458,42 @@ export default function SettingsPage() {
         }
     };
 
-    const handleSave = useCallback(() => {
-        setLoading(true);
-        setTimeout(() => {
-            setLoading(false);
+    const handleSaveProfile = useCallback(async () => {
+        if (!profileSettings) return;
+        setProfileSaving(true);
+        try {
+            const response = await authedFetch('/api/admin/profile', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    full_name: profileSettings.full_name.trim(),
+                    email: profileSettings.email.trim(),
+                    avatar_url: profileSettings.avatar_url,
+                }),
+            });
+            const payload = (await response.json()) as ProfileApiPayload;
+            if (!response.ok) {
+                throw new Error(payload.error || 'Failed to save profile settings');
+            }
+            const savedProfile = payload.data?.profile;
+            if (savedProfile) {
+                setProfileSettings({
+                    id: savedProfile.id,
+                    full_name: savedProfile.full_name || '',
+                    email: savedProfile.email || '',
+                    avatar_url: savedProfile.avatar_url || null,
+                });
+            }
+            setProfileShowSuccess(true);
+            setTimeout(() => setProfileShowSuccess(false), 3000);
             toast({ title: t('messages.settingsSaved'), description: t('messages.settingsSavedDescription'), variant: 'success' });
-        }, 800);
-    }, [toast, t]);
+        } catch (error) {
+            logError('Error saving profile settings', error);
+            toast({ title: 'Save failed', description: 'Failed to save profile settings. Please try again.', variant: 'error' });
+        } finally {
+            setProfileSaving(false);
+        }
+    }, [profileSettings, toast, t]);
 
     const toggleWorkflowRule = (stage: string) => {
         setWorkflowRules((prev) =>
@@ -598,16 +659,26 @@ export default function SettingsPage() {
                                 />
                             )}
 
-                            {activeTab === 'profile' && (
+                            {activeTab === 'profile' && profileSettings && (
                                 <ProfileTab
+                                    fullName={profileSettings.full_name}
+                                    email={profileSettings.email}
+                                    avatarUrl={profileSettings.avatar_url}
                                     draftTimezone={draftTimezone}
                                     timezone={timezone}
                                     timezoneOptions={timezoneOptions}
                                     savingTimezone={savingTimezone}
-                                    loading={false}
+                                    loading={profileSaving}
+                                    showSuccess={profileShowSuccess}
+                                    onFullNameChange={(value) => {
+                                        setProfileSettings((prev) => prev ? { ...prev, full_name: value } : prev);
+                                    }}
+                                    onEmailChange={(value) => {
+                                        setProfileSettings((prev) => prev ? { ...prev, email: value } : prev);
+                                    }}
                                     onDraftTimezoneChange={handleDraftTimezoneChange}
                                     onSaveTimezone={handleSaveTimezoneClick}
-                                    onSave={handleSave}
+                                    onSave={handleSaveProfile}
                                 />
                             )}
 
