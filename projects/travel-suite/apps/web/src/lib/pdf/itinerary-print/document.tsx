@@ -1231,6 +1231,302 @@ const PRINT_CSS = `
     gap: 8px;
   }
 
+  .print-page-stack {
+    display: grid;
+    gap: 8mm;
+  }
+  .print-title {
+    margin: 8px 0 10px;
+    font-size: 30px;
+    line-height: 1.06;
+    letter-spacing: -0.04em;
+    font-weight: 800;
+  }
+  .print-copy-clamp {
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .professional-cover {
+    border-top: 4px solid var(--accent);
+    padding-top: 9mm;
+  }
+  .professional-letterhead {
+    border-bottom: 1px solid rgba(17,24,39,0.10);
+    padding-bottom: 10mm;
+  }
+  .professional-day-header {
+    display: grid;
+    grid-template-columns: 18mm 1fr auto;
+    gap: 12px;
+    align-items: center;
+    border: 1px solid rgba(17,24,39,0.10);
+    border-radius: 14px;
+    background: #ffffff;
+    padding: 12px 14px;
+  }
+  .professional-day-number {
+    width: 14mm;
+    height: 14mm;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+  }
+  .professional-activity-list {
+    display: grid;
+    gap: 9px;
+  }
+  .professional-activity-list .activity-card__desc,
+  .urban-activity__copy,
+  .visual-story-card__copy,
+  .luxury-card__copy,
+  .bento-print-card__copy {
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .urban-masthead {
+    border-top: 4px solid var(--accent);
+    border-bottom: 1px solid rgba(17,24,39,0.12);
+    padding: 8mm 0 7mm;
+  }
+  .urban-cover-grid {
+    display: grid;
+    grid-template-columns: 1.12fr 0.88fr;
+    gap: 12mm;
+    align-items: start;
+  }
+  .urban-metric-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+    margin-top: 8mm;
+  }
+  .urban-day-card {
+    border: 1px solid rgba(17,24,39,0.14);
+    border-radius: 10px;
+    overflow: hidden;
+    background: #ffffff;
+  }
+  .urban-day-card__head {
+    display: grid;
+    grid-template-columns: 12mm 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 10px 12px;
+    background: color-mix(in srgb, var(--accent) 10%, #ffffff);
+  }
+  .urban-day-card__number {
+    width: 10mm;
+    height: 10mm;
+    border-radius: 8px;
+    background: var(--accent);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 800;
+  }
+  .urban-activity {
+    display: grid;
+    grid-template-columns: 8mm 1fr auto;
+    gap: 10px;
+    padding: 9px 12px;
+    border-top: 1px solid rgba(17,24,39,0.10);
+  }
+  .urban-activity__thumb {
+    width: 7mm;
+    height: 7mm;
+    border-radius: 6px;
+    object-fit: cover;
+    background: rgba(17,24,39,0.08);
+  }
+  .luxury-sheet {
+    background: #050505;
+    color: #fffaf0;
+  }
+  .luxury-brand-panel {
+    display: grid;
+    gap: 5mm;
+    max-width: 150mm;
+  }
+  .luxury-logistics-grid,
+  .luxury-card-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .luxury-card {
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 16px;
+    overflow: hidden;
+    background: rgba(255,255,255,0.06);
+  }
+  .luxury-card__image {
+    width: 100%;
+    height: 34mm;
+    object-fit: cover;
+    display: block;
+    opacity: 0.86;
+  }
+  .luxury-card__body {
+    padding: 12px 13px;
+  }
+  .luxury-card__title {
+    margin: 0 0 6px;
+    font-family: "Noto Serif", Georgia, "Times New Roman", serif;
+    font-size: 17px;
+    line-height: 1.22;
+  }
+  .luxury-card__copy {
+    margin: 0;
+    font-size: 10.5px;
+    line-height: 1.55;
+    color: rgba(255,250,240,0.66);
+  }
+  .visual-cover-mark {
+    position: absolute;
+    left: 16mm;
+    right: 16mm;
+    top: 14mm;
+    z-index: 2;
+  }
+  .visual-day-hero {
+    position: relative;
+    height: 98mm;
+    overflow: hidden;
+    border-radius: 18px;
+    margin-bottom: 8mm;
+    background: #0f172a;
+  }
+  .visual-day-hero img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .visual-day-hero__overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(15,23,42,0.12), rgba(15,23,42,0.78));
+  }
+  .visual-day-hero__content {
+    position: absolute;
+    left: 12mm;
+    right: 12mm;
+    bottom: 10mm;
+    color: #ffffff;
+  }
+  .visual-story-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+  }
+  .visual-story-card {
+    display: grid;
+    grid-template-columns: 34mm 1fr;
+    gap: 10px;
+    border: 1px solid rgba(17,24,39,0.10);
+    border-radius: 14px;
+    background: #ffffff;
+    overflow: hidden;
+  }
+  .visual-story-card__image {
+    width: 100%;
+    height: 100%;
+    min-height: 36mm;
+    object-fit: cover;
+  }
+  .visual-story-card__body {
+    padding: 10px 11px;
+  }
+  .visual-story-card__title {
+    margin: 0 0 5px;
+    font-size: 15px;
+    line-height: 1.22;
+    letter-spacing: -0.02em;
+  }
+  .visual-story-card__copy {
+    margin: 0;
+    font-size: 10.5px;
+    line-height: 1.5;
+    color: rgba(17,24,39,0.72);
+  }
+  .bento-print-cover {
+    background: #f0f2f5;
+  }
+  .bento-brand-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 14px;
+    border: 1px solid rgba(15,23,42,0.08);
+    border-radius: 22px;
+    background: #ffffff;
+    padding: 14px 16px;
+    margin-bottom: 10mm;
+  }
+  .bento-brand-banner .brand-row {
+    flex: 1;
+    margin-bottom: 0;
+  }
+  .bento-print-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-auto-rows: 42mm;
+    gap: 8px;
+  }
+  .bento-print-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 18px;
+    background: #0f172a;
+    color: #ffffff;
+    border: 1px solid rgba(15,23,42,0.08);
+  }
+  .bento-print-card--hero {
+    grid-column: span 2;
+    grid-row: span 2;
+  }
+  .bento-print-card--wide {
+    grid-column: span 2;
+  }
+  .bento-print-card img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0.74;
+  }
+  .bento-print-card__body {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 12px;
+    background: linear-gradient(180deg, transparent, rgba(2,6,23,0.88));
+  }
+  .bento-print-card__title {
+    margin: 0;
+    font-size: 17px;
+    line-height: 1.15;
+    letter-spacing: -0.03em;
+  }
+  .bento-print-card__copy {
+    margin: 6px 0 0;
+    font-size: 10px;
+    line-height: 1.4;
+    color: rgba(255,255,255,0.78);
+  }
+
   .dense .activity-card {
     grid-template-columns: 32mm 1fr;
   }
@@ -2239,343 +2535,412 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
   );
 };
 
-const LuxuryTemplate = ({ payload }: { payload: PreparedPrintPayload }) => (
-  <>
-    <section className="page page--dark immersive">
-      <div className="cover">
-        {payload.coverImage ? <img className="cover__image" src={payload.coverImage} alt={payload.itinerary.trip_title} /> : null}
-        <div className="cover__overlay" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.18), rgba(5,5,5,0.88))' }} />
-        <div className="cover__content">
-          <BrandRow branding={payload.branding} dark />
-          <div>
-            <p className="cover__kicker" style={{ color: payload.branding.primaryColor || '#ccb27a' }}>Luxury Resort</p>
-            <h1 className="cover__title" style={{ color: '#fffaf0' }}>{payload.itinerary.trip_title}</h1>
-            <p className="cover__subtitle" style={{ color: 'rgba(255,250,240,0.82)' }}>{payload.itinerary.summary}</p>
-            <div className="cover__meta">
-              <span className="meta-pill" style={{ borderColor: 'rgba(204,178,122,0.52)', color: '#f8e8c5' }}>{payload.itinerary.destination}</span>
-              <span className="meta-pill" style={{ borderColor: 'rgba(204,178,122,0.52)', color: '#f8e8c5' }}>{payload.itinerary.duration_days} Days</span>
-            </div>
-          </div>
-          <PageFooter branding={payload.branding} />
-        </div>
-      </div>
-    </section>
-    <SummaryPage payload={payload} dark title="Private escape overview" />
-    {payload.itinerary.days.map((day, index) => (
-      <section key={`luxury-day-${index}`} className={`page page--dark ${payload.density}`}>
-        <div className="page__inner">
-          <div className="day-hero">
-            {day.dayHeroImage ? <img className="day-hero__image" src={day.dayHeroImage} alt={day.theme} /> : <div className="panel panel--dark" style={{ minHeight: '82mm' }} />}
-            <div>
-              <div className="accent-line" style={{ background: payload.branding.primaryColor || '#ccb27a' }} />
-              <p className="day-hero__eyebrow">Day {day.day_number}</p>
-              <h2 className="day-hero__title" style={{ color: '#fffaf0' }}>{day.theme}</h2>
-              <div className="day-hero__date">{formatDateLabel(day.date) || payload.itinerary.destination}</div>
-              {day.summary ? <p className="body-copy" style={{ marginTop: 12 }}>{day.summary}</p> : null}
-            </div>
-          </div>
-          <div className="three-col">
-            {day.activities.map((activity, activityIndex) => (
-              <div key={`lux-activity-${activityIndex}`} style={{ gridColumn: activity.printImageVariant === 'feature' ? 'span 2' : 'span 1' }}>
-                <ActivityCard activity={activity} dark />
-              </div>
-            ))}
-          </div>
-          <PageFooter branding={payload.branding} />
-        </div>
-      </section>
-    ))}
-    <section className="page page--dark">
+const activityLine = (activity: PreparedPrintActivity, fallbackLocation?: string) =>
+  [activity.time, activity.location || fallbackLocation, activity.duration].filter(Boolean).join(' • ');
+
+const LuxuryCard = ({ activity }: { activity: PreparedPrintActivity }) => (
+  <article className="luxury-card">
+    {activity.printImage ? <img className="luxury-card__image" src={activity.printImage} alt={activity.title} /> : null}
+    <div className="luxury-card__body">
+      <div className="activity-card__meta" style={{ color: 'rgba(255,250,240,0.70)' }}>{activityLine(activity)}</div>
+      <h3 className="luxury-card__title">{activity.title}</h3>
+      <p className="luxury-card__copy">{activity.description}</p>
+    </div>
+  </article>
+);
+
+const VisualStoryCard = ({
+  activity,
+  fallbackLocation,
+}: {
+  activity: PreparedPrintActivity;
+  fallbackLocation: string;
+}) => (
+  <article className="visual-story-card">
+    {activity.printImage ? <img className="visual-story-card__image" src={activity.printImage} alt={activity.title} /> : <div className="visual-story-card__image" />}
+    <div className="visual-story-card__body">
+      <div className="activity-card__meta">{activityLine(activity, fallbackLocation)}</div>
+      <h3 className="visual-story-card__title">{activity.title}</h3>
+      <p className="visual-story-card__copy">{activity.description}</p>
+    </div>
+  </article>
+);
+
+const BentoPrintCard = ({
+  activity,
+  fallbackLocation,
+  hero = false,
+  wide = false,
+}: {
+  activity: PreparedPrintActivity;
+  fallbackLocation: string;
+  hero?: boolean;
+  wide?: boolean;
+}) => (
+  <article className={`bento-print-card ${hero ? 'bento-print-card--hero' : ''} ${wide ? 'bento-print-card--wide' : ''}`}>
+    {activity.printImage ? <img src={activity.printImage} alt={activity.title} /> : null}
+    <div className="bento-print-card__body">
+      <div className="bento-panel__meta" style={{ color: 'rgba(255,255,255,0.68)' }}>{activityLine(activity, fallbackLocation)}</div>
+      <h3 className="bento-print-card__title">{activity.title}</h3>
+      <p className="bento-print-card__copy">{activity.description}</p>
+    </div>
+  </article>
+);
+
+const UrbanActivityRow = ({
+  activity,
+  fallbackLocation,
+}: {
+  activity: PreparedPrintActivity;
+  fallbackLocation: string;
+}) => (
+  <div className="urban-activity">
+    {activity.printImage ? <img className="urban-activity__thumb" src={activity.printImage} alt={activity.title} /> : <div className="urban-activity__thumb" />}
+    <div>
+      <div style={{ fontWeight: 700, fontSize: 12.5 }}>{activity.title}</div>
+      <div className="urban-activity__copy body-copy" style={{ marginTop: 3 }}>{activity.description}</div>
+    </div>
+    <div style={{ fontSize: 10, color: 'rgba(17,24,39,0.58)', textAlign: 'right', maxWidth: '30mm' }}>
+      {activity.time || 'Flexible'}<br />
+      {activity.location || fallbackLocation}
+    </div>
+  </div>
+);
+
+const TipsPage = ({
+  payload,
+  title,
+  dark = false,
+}: {
+  payload: PreparedPrintPayload;
+  title: string;
+  dark?: boolean;
+}) => {
+  const tips = payload.itinerary.tips || [];
+  if (!tips.length) return null;
+
+  return (
+    <section className={`page ${dark ? 'page--dark' : 'page--white'}`}>
       <div className="page__inner">
-        <BrandRow branding={payload.branding} dark />
-        <div className="accent-line" style={{ background: payload.branding.primaryColor || '#ccb27a' }} />
-        <p className="section-kicker" style={{ color: 'rgba(248,250,252,0.68)' }}>Concierge finish</p>
-        <h2 style={{ fontSize: 30, lineHeight: 1.08, letterSpacing: '-0.04em', margin: '8px 0 12px', color: '#fffaf0' }}>
-          Resort pacing, without losing the operational detail
-        </h2>
-        <PackagePanels payload={payload} dark />
+        <BrandRow branding={payload.branding} dark={dark} />
+        <div className="accent-line" style={{ background: resolveAccentColor(payload) }} />
+        <h2 className="print-title" style={dark ? { color: '#fffaf0' } : undefined}>{title}</h2>
+        <div className="summary-highlights summary-highlights--paged">
+          {tips.slice(0, 8).map((tip, index) => (
+            <div key={`tip-${index}`} className="summary-highlight">
+              <div className="summary-highlight__index">{index + 1}</div>
+              <p className="summary-highlight__desc" style={{ margin: 0 }}>{tip}</p>
+            </div>
+          ))}
+        </div>
         <PageFooter branding={payload.branding} />
       </div>
     </section>
-  </>
-);
+  );
+};
 
-const VisualTemplate = ({ payload }: { payload: PreparedPrintPayload }) => (
-  <>
-    <section className="page page--white immersive">
-      <div className="cover">
-        {payload.coverImage ? <img className="cover__image" src={payload.coverImage} alt={payload.itinerary.trip_title} /> : null}
-        <div className="cover__overlay" style={{ background: 'linear-gradient(180deg, rgba(9,15,30,0.12), rgba(9,15,30,0.70))' }} />
-        <div className="cover__content">
-          <BrandRow branding={payload.branding} dark />
-          <div>
-            <p className="cover__kicker" style={{ color: '#fecdd3' }}>Visual Journey</p>
-            <h1 className="cover__title" style={{ color: '#ffffff', maxWidth: '165mm' }}>{payload.itinerary.trip_title}</h1>
-            <p className="cover__subtitle" style={{ color: 'rgba(255,255,255,0.88)' }}>{payload.itinerary.destination} in a more photographic, story-led print sequence.</p>
-          </div>
-          <PageFooter branding={payload.branding} />
-        </div>
-      </div>
-    </section>
-    <SummaryPage payload={payload} title="Journey Overview" />
-    {payload.itinerary.days.map((day, index) => (
-      <section key={`visual-day-${index}`} className={`page page--white ${payload.density}`}>
-        <div className="page__inner">
-          {day.dayHeroImage ? (
-            <img
-              src={day.dayHeroImage}
-              alt={day.theme}
-              style={{ width: '100%', height: '88mm', objectFit: 'cover', borderRadius: 24, marginBottom: '10mm' }}
-            />
-          ) : null}
-          <div className="accent-line" style={{ background: payload.branding.primaryColor || '#e11d48' }} />
-          <p className="section-kicker">Day {day.day_number}</p>
-          <h2 style={{ fontSize: 34, lineHeight: 1.04, letterSpacing: '-0.04em', margin: '8px 0 10px' }}>{day.theme}</h2>
-          {day.summary ? <p className="lead">{day.summary}</p> : null}
-          <div className="stack" style={{ marginTop: '10mm' }}>
-            {day.activities.map((activity, activityIndex) => (
-              <div
-                key={`visual-activity-${activityIndex}`}
-                className="two-col"
-                style={{
-                  gridTemplateColumns: activityIndex % 2 === 0 ? '0.85fr 1.15fr' : '1.15fr 0.85fr',
-                  direction: activityIndex % 2 === 0 ? 'ltr' : 'rtl',
-                }}
-              >
-                <div style={{ direction: 'ltr' }}>
-                  {activity.printImage ? (
-                    <img src={activity.printImage} alt={activity.title} style={{ width: '100%', height: '64mm', objectFit: 'cover', borderRadius: 18 }} />
-                  ) : (
-                    <div className="panel" style={{ minHeight: '64mm' }} />
-                  )}
-                </div>
-                <div className="panel" style={{ direction: 'ltr', alignSelf: 'stretch' }}>
-                  <div className="activity-card__meta">
-                    {activity.time ? <span>{activity.time}</span> : null}
-                    {activity.location ? <span>{activity.location}</span> : null}
-                  </div>
-                  <h3 className="activity-card__title" style={{ fontSize: 22 }}>{activity.title}</h3>
-                  <p className="body-copy">{activity.description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-          <PageFooter branding={payload.branding} />
-        </div>
-      </section>
-    ))}
-  </>
-);
-
-const BentoTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
-  const mosaicImages = payload.itinerary.days
-    .flatMap((day) => day.activities.map((activity) => activity.printImage).filter(Boolean))
-    .slice(0, 5) as string[];
+const LuxuryTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
+  const accent = payload.branding.primaryColor || '#ccb27a';
 
   return (
     <>
-      <section className="page page--white immersive">
-        <div className="page__inner">
-          <BrandRow branding={payload.branding} />
-          <div className="accent-line" style={{ background: payload.branding.primaryColor || '#6366f1' }} />
-          <p className="section-kicker">Bento Journey</p>
-          <h1 className="cover__title" style={{ marginTop: 0 }}>{payload.itinerary.trip_title}</h1>
-          <p className="lead">{payload.itinerary.summary}</p>
-          <div className="mosaic">
-            {mosaicImages[0] ? <div className="mosaic__cell mosaic__cell--a"><img className="mosaic__tile" src={mosaicImages[0]} alt="" /></div> : null}
-            {mosaicImages[1] ? <div className="mosaic__cell mosaic__cell--b"><img className="mosaic__tile" src={mosaicImages[1]} alt="" /></div> : null}
-            {mosaicImages[2] ? <div className="mosaic__cell mosaic__cell--c"><img className="mosaic__tile" src={mosaicImages[2]} alt="" /></div> : null}
-            {mosaicImages[3] ? <div className="mosaic__cell mosaic__cell--d"><img className="mosaic__tile" src={mosaicImages[3]} alt="" /></div> : null}
-            {mosaicImages[4] ? <div className="mosaic__cell mosaic__cell--e"><img className="mosaic__tile" src={mosaicImages[4]} alt="" /></div> : null}
-          </div>
-          <Metrics payload={payload} />
-          <PageFooter branding={payload.branding} />
-        </div>
-      </section>
-      {payload.itinerary.days.map((day, index) => (
-        <section key={`bento-day-${index}`} className={`page page--white ${payload.density}`}>
-          <div className="page__inner">
-            <div className="bento-day-shell">
-              <div>
-                <div className="accent-line" style={{ background: payload.branding.primaryColor || '#6366f1' }} />
-                <p className="section-kicker">Day {day.day_number}</p>
-                <h2 style={{ fontSize: 30, lineHeight: 1.05, letterSpacing: '-0.04em', margin: '8px 0 10px' }}>{day.theme}</h2>
-              </div>
-              <div className="bento-day-top">
-                <div className="bento-summary-card">
-                  {day.dayHeroImage ? <img className="bento-day-hero" src={day.dayHeroImage} alt={day.theme} /> : <div className="panel" style={{ minHeight: '108mm' }} />}
-                  <div className="bento-day-meta">
-                    <div className="summary-band__card">
-                      <div className="summary-band__label">Date</div>
-                      <div className="summary-band__value">{formatShortDate(day.date) || `Day ${day.day_number}`}</div>
-                    </div>
-                    <div className="summary-band__card">
-                      <div className="summary-band__label">Stops</div>
-                      <div className="summary-band__value">{day.activities.length}</div>
-                    </div>
-                    <div className="summary-band__card">
-                      <div className="summary-band__label">Focus</div>
-                      <div className="summary-band__value">{day.activities[0]?.location || payload.itinerary.destination}</div>
-                    </div>
-                  </div>
-                </div>
-                <div className="bento-rail">
-                  <div className="panel">
-                    <p className="panel__title">Day brief</p>
-                    <p className="lead" style={{ margin: 0 }}>{day.summary || 'A modular sequence built to feel visual and easy to scan in print.'}</p>
-                  </div>
-                  {day.activities.slice(0, 2).map((activity, activityIndex) => (
-                    <div key={`bento-top-${activityIndex}`} className="bento-panel">
-                      {activity.printImage ? <img className="bento-panel__image" src={activity.printImage} alt={activity.title} /> : null}
-                      <div className="bento-panel__body">
-                        <div className="bento-panel__meta">
-                          {[activity.time, activity.location].filter(Boolean).join(' • ')}
-                        </div>
-                        <h3 className="bento-panel__title">{activity.title}</h3>
-                        <p className="bento-panel__desc">{activity.description}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="bento-grid">
-                {day.activities.slice(2).map((activity, activityIndex) => (
-                  <div key={`bento-activity-${activityIndex}`} className="bento-panel">
-                    {activity.printImage ? <img className="bento-panel__image" src={activity.printImage} alt={activity.title} /> : null}
-                    <div className="bento-panel__body">
-                      <div className="bento-panel__meta">
-                        {[activity.time, activity.location].filter(Boolean).join(' • ')}
-                      </div>
-                      <h3 className="bento-panel__title">{activity.title}</h3>
-                      <p className="bento-panel__desc">{activity.description}</p>
-                    </div>
-                  </div>
-                ))}
+      <section className="page page--dark immersive luxury-sheet">
+        <div className="cover">
+          {payload.coverImage ? <img className="cover__image" src={payload.coverImage} alt={payload.itinerary.trip_title} /> : null}
+          <div className="cover__overlay" style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.12), rgba(5,5,5,0.90))' }} />
+          <div className="cover__content">
+            <BrandRow branding={payload.branding} dark showContact />
+            <div className="luxury-brand-panel">
+              <p className="cover__kicker" style={{ color: accent }}>VIP Experience</p>
+              <h1 className="cover__title" style={{ color: '#fffaf0', fontFamily: '"Noto Serif", Georgia, Times New Roman, serif' }}>{payload.itinerary.trip_title}</h1>
+              {payload.branding.clientName ? <p className="cover__subtitle" style={{ color: accent }}>Prepared exclusively for {payload.branding.clientName}</p> : null}
+              <p className="cover__subtitle" style={{ color: 'rgba(255,250,240,0.76)' }}>{payload.itinerary.summary}</p>
+              <div className="cover__meta">
+                <span className="meta-pill" style={{ borderColor: 'rgba(204,178,122,0.52)', color: '#f8e8c5' }}>{payload.itinerary.destination}</span>
+                <span className="meta-pill" style={{ borderColor: 'rgba(204,178,122,0.52)', color: '#f8e8c5' }}>{payload.itinerary.duration_days} Days</span>
               </div>
             </div>
             <PageFooter branding={payload.branding} />
           </div>
-        </section>
-      ))}
+        </div>
+      </section>
+      <SummaryPage payload={payload} dark title="Private escape overview" />
+      {payload.itinerary.days.flatMap((day, dayIndex) =>
+        chunkItems(day.activities, 4).map((chunk, chunkIndex) => (
+          <section key={`luxury-day-${dayIndex}-${chunkIndex}`} className="page page--dark luxury-sheet">
+            <div className="page__inner">
+              <BrandRow branding={payload.branding} dark />
+              <div className="day-hero" style={{ marginBottom: '8mm' }}>
+                {chunkIndex === 0 && day.dayHeroImage ? <img className="day-hero__image" src={day.dayHeroImage} alt={day.theme} /> : <div className="panel panel--dark" style={{ minHeight: '62mm' }} />}
+                <div>
+                  <div className="accent-line" style={{ background: accent }} />
+                  <p className="day-hero__eyebrow">Day {day.day_number}{chunkIndex > 0 ? ' continuation' : ''}</p>
+                  <h2 className="day-hero__title" style={{ color: '#fffaf0', fontFamily: '"Noto Serif", Georgia, Times New Roman, serif' }}>{day.theme}</h2>
+                  <div className="day-hero__date">{formatDateLabel(day.date) || payload.itinerary.destination}</div>
+                  {chunkIndex === 0 && day.summary ? <p className="body-copy print-copy-clamp" style={{ marginTop: 12 }}>{day.summary}</p> : null}
+                </div>
+              </div>
+              <div className="luxury-card-grid">
+                {chunk.map((activity, activityIndex) => <LuxuryCard key={`luxury-card-${activityIndex}`} activity={activity} />)}
+              </div>
+              <PageFooter branding={payload.branding} />
+            </div>
+          </section>
+        )),
+      )}
+      <TipsPage payload={payload} title="Concierge notes" dark />
     </>
   );
 };
 
-const UrbanTemplate = ({ payload }: { payload: PreparedPrintPayload }) => (
-  <>
-    <section className="page page--white immersive">
-      <div className="page__inner">
-        <BrandRow branding={payload.branding} />
-        <div style={{ height: 5, width: '100%', background: payload.branding.primaryColor || '#124ea2', marginBottom: '10mm', borderRadius: 999 }} />
-        <div className="brief-grid">
-          <div>
-            <p className="section-kicker">Urban Brief</p>
-            <h1 className="cover__title" style={{ marginTop: 0 }}>{payload.itinerary.trip_title}</h1>
-            <p className="lead">{payload.itinerary.summary}</p>
-            <Metrics payload={payload} />
+const VisualTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
+  const accent = payload.branding.primaryColor || '#e11d48';
+
+  return (
+    <>
+      <section className="page page--white immersive">
+        <div className="cover">
+          {payload.coverImage ? <img className="cover__image" src={payload.coverImage} alt={payload.itinerary.trip_title} /> : null}
+          <div className="cover__overlay" style={{ background: 'linear-gradient(180deg, rgba(9,15,30,0.08), rgba(9,15,30,0.76))' }} />
+          <div className="visual-cover-mark">
+            <BrandRow branding={payload.branding} dark showContact />
           </div>
-          <div className="panel">
-            <p className="panel__title">Executive Summary</p>
-            <div className="stack--tight">
-              <div className="body-copy"><strong>Destination</strong><br />{payload.itinerary.destination}</div>
-              <div className="body-copy"><strong>Trip Dates</strong><br />{formatShortDate(payload.itinerary.start_date) || 'Flexible'}{payload.itinerary.end_date ? ` — ${formatShortDate(payload.itinerary.end_date)}` : ''}</div>
-              <div className="body-copy"><strong>Image Quality</strong><br />{payload.imageStats.uniqueActivityImages} unique visual assets prepared</div>
+          <div className="cover__content">
+            <div>
+              <p className="cover__kicker" style={{ color: '#fecdd3' }}>{payload.itinerary.duration_days} Day Photo Journey</p>
+              <h1 className="cover__title" style={{ color: '#ffffff', maxWidth: '165mm' }}>{payload.itinerary.destination || payload.itinerary.trip_title}</h1>
+              {payload.branding.clientName ? <p className="cover__subtitle" style={{ color: 'rgba(255,255,255,0.86)' }}>A bespoke journey for {payload.branding.clientName}</p> : null}
+              <p className="cover__subtitle" style={{ color: 'rgba(255,255,255,0.82)' }}>{payload.itinerary.summary}</p>
             </div>
+            <PageFooter branding={payload.branding} />
           </div>
         </div>
-        <PageFooter branding={payload.branding} />
-      </div>
-    </section>
-    {payload.itinerary.days.map((day, index) => (
-      <section key={`urban-day-${index}`} className={`page page--white ${payload.density}`}>
-        <div className="page__inner">
-          <div className="brief-grid">
+      </section>
+      <SummaryPage payload={payload} title="Journey Overview" />
+      {payload.itinerary.days.flatMap((day, dayIndex) =>
+        chunkItems(day.activities, 4).map((chunk, chunkIndex) => (
+          <section key={`visual-day-${dayIndex}-${chunkIndex}`} className="page page--white">
+            <div className="page__inner">
+              <BrandRow branding={payload.branding} />
+              {chunkIndex === 0 ? (
+                <div className="visual-day-hero">
+                  {day.dayHeroImage ? <img src={day.dayHeroImage} alt={day.theme} /> : null}
+                  <div className="visual-day-hero__overlay" />
+                  <div className="visual-day-hero__content">
+                    <p className="section-kicker" style={{ color: 'rgba(255,255,255,0.72)' }}>Day {day.day_number}</p>
+                    <h2 style={{ fontSize: 34, lineHeight: 1.02, letterSpacing: '-0.04em', margin: '6px 0 0' }}>{day.theme}</h2>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ marginBottom: '8mm' }}>
+                  <div className="accent-line" style={{ background: accent }} />
+                  <p className="section-kicker">Day {day.day_number} continuation</p>
+                  <h2 className="print-title">{day.theme}</h2>
+                </div>
+              )}
+              {chunkIndex === 0 && day.summary ? <p className="lead print-copy-clamp" style={{ margin: '0 0 8mm' }}>{day.summary}</p> : null}
+              <div className="visual-story-grid">
+                {chunk.map((activity, activityIndex) => (
+                  <VisualStoryCard key={`visual-story-${activityIndex}`} activity={activity} fallbackLocation={payload.itinerary.destination} />
+                ))}
+              </div>
+              <PageFooter branding={payload.branding} />
+            </div>
+          </section>
+        )),
+      )}
+      <TipsPage payload={payload} title="Before you go" />
+    </>
+  );
+};
+
+const BentoTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
+  const accent = payload.branding.primaryColor || '#6366f1';
+  const mosaicActivities = payload.itinerary.days.flatMap((day) => day.activities).slice(0, 5);
+
+  return (
+    <>
+      <section className="page page--white immersive bento-print-cover">
+        <div className="page__inner" style={{ ['--accent' as string]: accent }}>
+          <div className="bento-brand-banner">
+            <BrandRow branding={payload.branding} showContact />
+          </div>
+          <div className="accent-line" style={{ background: accent }} />
+          <p className="section-kicker">Immersive Travel Grid</p>
+          <h1 className="cover__title" style={{ marginTop: 0, maxWidth: '150mm' }}>{payload.itinerary.trip_title}</h1>
+          {payload.branding.clientName ? <div className="body-copy" style={{ color: accent, fontWeight: 700 }}>Prepared for {payload.branding.clientName}</div> : null}
+          <p className="lead print-copy-clamp">{payload.itinerary.summary}</p>
+          <div className="bento-print-grid" style={{ marginTop: '8mm' }}>
+            {mosaicActivities.map((activity, index) => (
+              <BentoPrintCard
+                key={`bento-cover-${index}`}
+                activity={activity}
+                fallbackLocation={payload.itinerary.destination}
+                hero={index === 0}
+                wide={index === 1}
+              />
+            ))}
+          </div>
+          <PageFooter branding={payload.branding} />
+        </div>
+      </section>
+      {payload.itinerary.days.flatMap((day, dayIndex) =>
+        chunkItems(day.activities, 5).map((chunk, chunkIndex) => (
+          <section key={`bento-day-${dayIndex}-${chunkIndex}`} className="page page--white bento-print-cover">
+            <div className="page__inner" style={{ ['--accent' as string]: accent }}>
+              <BrandRow branding={payload.branding} />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: '8mm', borderBottom: '1px solid rgba(15,23,42,0.12)', paddingBottom: '6mm' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div className="professional-day-number">{day.day_number}</div>
+                  <div>
+                    <p className="section-kicker">{chunkIndex > 0 ? 'Day continuation' : 'Day'}</p>
+                    <h2 className="print-title" style={{ margin: '4px 0 0' }}>{day.theme}</h2>
+                  </div>
+                </div>
+                <div className="day-hero__date">{formatDateLabel(day.date)}</div>
+              </div>
+              {chunkIndex === 0 && day.summary ? <p className="body-copy print-copy-clamp" style={{ marginBottom: '7mm' }}>{day.summary}</p> : null}
+              <div className="bento-print-grid">
+                {chunk.map((activity, activityIndex) => (
+                  <BentoPrintCard
+                    key={`bento-day-card-${activityIndex}`}
+                    activity={activity}
+                    fallbackLocation={payload.itinerary.destination}
+                    hero={activityIndex === 0}
+                    wide={activityIndex === 1}
+                  />
+                ))}
+              </div>
+              <PageFooter branding={payload.branding} />
+            </div>
+          </section>
+        )),
+      )}
+      <TipsPage payload={payload} title="Traveler insights" />
+    </>
+  );
+};
+
+const UrbanTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
+  const accent = payload.branding.primaryColor || '#124ea2';
+  const totalActivities = payload.itinerary.days.reduce((sum, day) => sum + day.activities.length, 0);
+
+  return (
+    <>
+      <section className="page page--white immersive">
+        <div className="page__inner" style={{ ['--accent' as string]: accent }}>
+          <div className="urban-masthead">
+            <BrandRow branding={payload.branding} showContact />
+          </div>
+          <div className="urban-cover-grid" style={{ marginTop: '9mm' }}>
             <div>
-              <p className="section-kicker">Day {day.day_number}</p>
-              <h2 style={{ fontSize: 28, lineHeight: 1.05, letterSpacing: '-0.04em', margin: '8px 0 10px' }}>{day.theme}</h2>
-              {day.summary ? <p className="body-copy">{day.summary}</p> : null}
-              {day.dayHeroImage ? (
-                <img src={day.dayHeroImage} alt={day.theme} style={{ width: '100%', height: '72mm', objectFit: 'cover', borderRadius: 16, marginTop: '8mm' }} />
-              ) : null}
+              <p className="section-kicker" style={{ color: accent }}>Travel itinerary</p>
+              <h1 className="cover__title" style={{ marginTop: 0 }}>{payload.itinerary.trip_title}</h1>
+              {payload.branding.clientName ? <div className="body-copy" style={{ color: accent, fontWeight: 700 }}>Prepared for {payload.branding.clientName}</div> : null}
+              <p className="lead print-copy-clamp">{payload.itinerary.summary}</p>
+              <div className="urban-metric-grid">
+                <div className="metric"><div className="metric__label">Duration</div><div className="metric__value">{payload.itinerary.duration_days} days</div></div>
+                <div className="metric"><div className="metric__label">Activities</div><div className="metric__value">{totalActivities}</div></div>
+                <div className="metric"><div className="metric__label">Destination</div><div className="metric__value">{payload.itinerary.destination}</div></div>
+              </div>
             </div>
             <div className="panel">
-              <p className="panel__title">Schedule Brief</p>
-              <table className="brief-table">
-                <thead>
-                  <tr>
-                    <th>Time</th>
-                    <th>Stop</th>
-                    <th>Location</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {day.activities.map((activity, activityIndex) => (
-                    <tr key={`urban-row-${activityIndex}`}>
-                      <td>{activity.time || 'Flexible'}</td>
-                      <td>
-                        <strong>{activity.title}</strong>
-                        <div style={{ color: 'rgba(17,24,39,0.62)', marginTop: 4 }}>{activity.description}</div>
-                      </td>
-                      <td>{activity.location || payload.itinerary.destination}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <p className="panel__title">Executive Summary</p>
+              <div className="stack--tight">
+                <div className="body-copy"><strong>Destination</strong><br />{payload.itinerary.destination}</div>
+                <div className="body-copy"><strong>Trip Dates</strong><br />{formatShortDate(payload.itinerary.start_date) || 'Flexible'}{payload.itinerary.end_date ? ` - ${formatShortDate(payload.itinerary.end_date)}` : ''}</div>
+                <div className="body-copy"><strong>Logistics</strong><br />{payload.itinerary.logistics?.flights?.length || 0} flights • {payload.itinerary.logistics?.hotels?.length || 0} stays</div>
+              </div>
             </div>
           </div>
           <PageFooter branding={payload.branding} />
         </div>
       </section>
-    ))}
-  </>
-);
+      {payload.itinerary.days.flatMap((day, dayIndex) =>
+        chunkItems(day.activities, 5).map((chunk, chunkIndex) => (
+          <section key={`urban-day-${dayIndex}-${chunkIndex}`} className="page page--white">
+            <div className="page__inner" style={{ ['--accent' as string]: accent }}>
+              <BrandRow branding={payload.branding} />
+              <div className="urban-day-card">
+                <div className="urban-day-card__head">
+                  <div className="urban-day-card__number">{day.day_number}</div>
+                  <div>
+                    <div style={{ fontSize: 16, fontWeight: 800 }}>{day.theme}</div>
+                    <div className="day-hero__date">{chunkIndex > 0 ? 'Continuation' : formatDateLabel(day.date) || payload.itinerary.destination}</div>
+                  </div>
+                  <div style={{ fontSize: 11, color: 'rgba(17,24,39,0.62)' }}>{day.activities.length} stops</div>
+                </div>
+                {chunkIndex === 0 && day.summary ? <div className="body-copy print-copy-clamp" style={{ padding: '10px 12px', borderTop: '1px solid rgba(17,24,39,0.10)' }}>{day.summary}</div> : null}
+                {chunk.map((activity, activityIndex) => (
+                  <UrbanActivityRow key={`urban-activity-${activityIndex}`} activity={activity} fallbackLocation={payload.itinerary.destination} />
+                ))}
+              </div>
+              <PageFooter branding={payload.branding} />
+            </div>
+          </section>
+        )),
+      )}
+      <TipsPage payload={payload} title="Key information" />
+    </>
+  );
+};
 
-const ProfessionalTemplate = ({ payload }: { payload: PreparedPrintPayload }) => (
-  <>
-    <section className="page page--white immersive">
-      <div className="page__inner">
-        <BrandRow branding={payload.branding} />
-        <div style={{ borderTop: `4px solid ${payload.branding.primaryColor || '#124ea2'}`, paddingTop: '9mm' }}>
-          <p className="section-kicker">Professional</p>
-          <h1 className="cover__title" style={{ marginTop: 0 }}>{payload.itinerary.trip_title}</h1>
-          <p className="lead">{payload.itinerary.summary}</p>
-          <Metrics payload={payload} />
-        </div>
-        <div style={{ marginTop: '10mm' }}>
-          <LogisticsPanel payload={payload} />
-        </div>
-        <PageFooter branding={payload.branding} />
-      </div>
-    </section>
-    {payload.itinerary.days.map((day, index) => (
-      <section key={`pro-day-${index}`} className={`page page--white ${payload.density}`}>
-        <div className="page__inner">
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: '8mm' }}>
-            <div>
-              <p className="section-kicker">Day {day.day_number}</p>
-              <h2 style={{ fontSize: 30, lineHeight: 1.06, letterSpacing: '-0.04em', margin: '8px 0 0' }}>{day.theme}</h2>
-            </div>
-            <div className="day-hero__date">{formatDateLabel(day.date)}</div>
+const ProfessionalTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
+  const accent = payload.branding.primaryColor || '#124ea2';
+
+  return (
+    <>
+      <section className="page page--white immersive">
+        <div className="page__inner" style={{ ['--accent' as string]: accent }}>
+          <div className="professional-letterhead">
+            <BrandRow branding={payload.branding} showContact />
           </div>
-          {day.summary ? <p className="body-copy" style={{ marginBottom: '8mm' }}>{day.summary}</p> : null}
-          <div className="activity-list">
-            {day.activities.map((activity, activityIndex) => <ActivityCard key={`pro-activity-${activityIndex}`} activity={activity} />)}
+          <div className="professional-cover">
+            <p className="section-kicker" style={{ color: accent }}>Prepared itinerary</p>
+            <h1 className="cover__title" style={{ marginTop: 0 }}>{payload.itinerary.trip_title}</h1>
+            {payload.branding.clientName ? <div className="body-copy" style={{ color: accent, fontWeight: 700 }}>Client: {payload.branding.clientName}</div> : null}
+            <p className="lead print-copy-clamp">{payload.itinerary.summary}</p>
+            <Metrics payload={payload} />
+          </div>
+          <div style={{ marginTop: '9mm' }}>
+            <LogisticsPanel payload={payload} />
           </div>
           <PageFooter branding={payload.branding} />
         </div>
       </section>
-    ))}
-    <section className="page page--white">
-      <div className="page__inner">
-        <BrandRow branding={payload.branding} />
-        <p className="section-kicker">Closing details</p>
-        <h2 style={{ fontSize: 28, lineHeight: 1.08, letterSpacing: '-0.04em', margin: '8px 0 10px' }}>Final package notes</h2>
-        <PackagePanels payload={payload} />
-        <PageFooter branding={payload.branding} />
-      </div>
-    </section>
-  </>
-);
+      {payload.itinerary.days.flatMap((day, dayIndex) =>
+        chunkItems(day.activities, 3).map((chunk, chunkIndex) => (
+          <section key={`pro-day-${dayIndex}-${chunkIndex}`} className="page page--white">
+            <div className="page__inner" style={{ ['--accent' as string]: accent }}>
+              <BrandRow branding={payload.branding} />
+              <div className="professional-day-header">
+                <div className="professional-day-number">{day.day_number}</div>
+                <div>
+                  <div className="day-hero__date">{chunkIndex > 0 ? 'Continuation' : formatDateLabel(day.date) || payload.itinerary.destination}</div>
+                  <h2 style={{ fontSize: 24, lineHeight: 1.08, letterSpacing: '-0.03em', margin: '4px 0 0' }}>{day.theme}</h2>
+                </div>
+                <div className="metric__label">{day.activities.length} activities</div>
+              </div>
+              {chunkIndex === 0 && day.summary ? <p className="body-copy print-copy-clamp" style={{ margin: '7mm 0' }}>{day.summary}</p> : <div style={{ height: '7mm' }} />}
+              <div className="professional-activity-list">
+                {chunk.map((activity, activityIndex) => <ActivityCard key={`pro-activity-${activityIndex}`} activity={activity} />)}
+              </div>
+              <PageFooter branding={payload.branding} />
+            </div>
+          </section>
+        )),
+      )}
+      <section className="page page--white">
+        <div className="page__inner">
+          <BrandRow branding={payload.branding} />
+          <h2 className="print-title">Final package notes</h2>
+          <PackagePanels payload={payload} />
+          <PageFooter branding={payload.branding} />
+        </div>
+      </section>
+    </>
+  );
+};
 
 const TEMPLATE_MAP: Record<ItineraryTemplateId, (props: { payload: PreparedPrintPayload }) => React.ReactElement> = {
   safari_story: SafariTemplate,
