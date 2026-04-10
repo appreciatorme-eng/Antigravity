@@ -2160,6 +2160,29 @@ const PRINT_CSS = `
     line-height: 1.5;
     color: rgba(17,24,39,0.72);
   }
+  .visual-day-main .visual-story-card {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .visual-day-main .visual-story-card__image {
+    height: 24mm;
+    min-height: 24mm;
+  }
+  .visual-day-main .visual-story-card__body {
+    padding: 9px 10px;
+  }
+  .visual-day-main .visual-story-card__title {
+    font-size: 13px;
+    line-height: 1.18;
+  }
+  .visual-day-main .visual-story-card__copy {
+    font-size: 9.5px;
+    line-height: 1.34;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
   .bento-print-cover {
     background: #f0f2f5;
   }
