@@ -1965,12 +1965,103 @@ const PRINT_CSS = `
     top: 14mm;
     z-index: 2;
   }
+  .visual-cover-dossier {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 16px;
+    max-width: 170mm;
+  }
+  .visual-cover-dossier__card {
+    border: 1px solid rgba(255,255,255,0.18);
+    background: rgba(0,0,0,0.26);
+    padding: 10px 11px;
+  }
+  .visual-cover-dossier__label {
+    font-size: 8.5px;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.56);
+  }
+  .visual-cover-dossier__value {
+    margin-top: 7px;
+    font-size: 13px;
+    line-height: 1.22;
+    color: #ffffff;
+    font-weight: 800;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .visual-overview-grid {
+    display: grid;
+    grid-template-columns: 1.08fr 0.92fr;
+    gap: 9mm;
+    align-items: start;
+  }
+  .visual-overview-lead,
+  .visual-sidebar,
+  .visual-day-main {
+    display: grid;
+    gap: 8px;
+  }
+  .visual-overview-image {
+    width: 100%;
+    height: 72mm;
+    object-fit: cover;
+    display: block;
+    border: 1px solid rgba(17,24,39,0.10);
+    background: rgba(17,24,39,0.06);
+  }
+  .visual-panel {
+    border: 1px solid rgba(17,24,39,0.10);
+    background: #ffffff;
+    padding: 11px 12px;
+  }
+  .visual-panel--muted {
+    background: #f8fafc;
+  }
+  .visual-panel__label {
+    margin: 0 0 7px;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(17,24,39,0.48);
+  }
+  .visual-panel__value {
+    margin: 0;
+    font-size: 18px;
+    line-height: 1.16;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .visual-panel__copy {
+    margin: 6px 0 0;
+    font-size: 10px;
+    line-height: 1.42;
+    color: rgba(17,24,39,0.64);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .visual-dossier-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
   .visual-day-hero {
     position: relative;
-    height: 98mm;
+    height: 76mm;
     overflow: hidden;
-    border-radius: 18px;
-    margin-bottom: 8mm;
+    margin-bottom: 7mm;
     background: #0f172a;
   }
   .visual-day-hero img {
@@ -1996,12 +2087,55 @@ const PRINT_CSS = `
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 9px;
   }
+  .visual-day-layout {
+    display: grid;
+    grid-template-columns: 1.08fr 0.92fr;
+    gap: 8mm;
+    align-items: start;
+  }
+  .visual-feature {
+    display: grid;
+    grid-template-columns: 0.95fr 1.05fr;
+    gap: 10px;
+    border: 1px solid rgba(17,24,39,0.10);
+    background: #ffffff;
+    overflow: hidden;
+  }
+  .visual-feature__image {
+    width: 100%;
+    height: 58mm;
+    object-fit: cover;
+    display: block;
+    background: rgba(17,24,39,0.06);
+  }
+  .visual-feature__body {
+    padding: 13px 14px;
+    display: grid;
+    gap: 7px;
+    align-content: start;
+  }
+  .visual-feature__title {
+    margin: 0;
+    font-size: 21px;
+    line-height: 1.12;
+    letter-spacing: -0.035em;
+    font-weight: 800;
+  }
+  .visual-feature__copy {
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.54;
+    color: rgba(17,24,39,0.70);
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
   .visual-story-card {
     display: grid;
     grid-template-columns: 34mm 1fr;
     gap: 10px;
     border: 1px solid rgba(17,24,39,0.10);
-    border-radius: 14px;
     background: #ffffff;
     overflow: hidden;
   }
@@ -2092,6 +2226,105 @@ const PRINT_CSS = `
     font-size: 10px;
     line-height: 1.4;
     color: rgba(255,255,255,0.78);
+  }
+  .bento-cover-layout {
+    display: grid;
+    grid-template-columns: 0.92fr 1.08fr;
+    gap: 9mm;
+    align-items: start;
+  }
+  .bento-cover-copy {
+    display: grid;
+    gap: 6mm;
+  }
+  .bento-cover-dossier,
+  .bento-overview-grid,
+  .bento-day-layout,
+  .bento-closing-grid {
+    display: grid;
+    grid-template-columns: 1.06fr 0.94fr;
+    gap: 8mm;
+    align-items: start;
+  }
+  .bento-panel-print {
+    border: 1px solid rgba(15,23,42,0.10);
+    background: #ffffff;
+    padding: 11px 12px;
+  }
+  .bento-panel-print--ink {
+    background: #111827;
+    color: #ffffff;
+    border-color: rgba(15,23,42,0.18);
+  }
+  .bento-panel-print__label {
+    margin: 0 0 7px;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(15,23,42,0.48);
+  }
+  .bento-panel-print--ink .bento-panel-print__label {
+    color: rgba(255,255,255,0.52);
+  }
+  .bento-panel-print__value {
+    margin: 0;
+    font-size: 18px;
+    line-height: 1.14;
+    font-weight: 800;
+    letter-spacing: -0.035em;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .bento-panel-print__copy {
+    margin: 6px 0 0;
+    font-size: 10px;
+    line-height: 1.42;
+    color: rgba(15,23,42,0.64);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .bento-panel-print--ink .bento-panel-print__copy {
+    color: rgba(255,255,255,0.66);
+  }
+  .bento-day-head {
+    display: grid;
+    grid-template-columns: 1fr 48mm;
+    gap: 8mm;
+    align-items: end;
+    margin-bottom: 7mm;
+    border-bottom: 1px solid rgba(15,23,42,0.12);
+    padding-bottom: 6mm;
+  }
+  .bento-day-number {
+    width: 13mm;
+    height: 13mm;
+    background: var(--accent);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    margin-bottom: 8px;
+  }
+  .bento-sidebar {
+    display: grid;
+    gap: 8px;
+  }
+  .bento-micro-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+  .bento-mosaic-compact {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: 34mm;
+    gap: 7px;
   }
 
   .dense .activity-card {
@@ -2582,88 +2815,6 @@ const PageFooter = ({ branding }: { branding: PreparedPrintPayload['branding'] }
       <span>{contactBits.join('  •  ')}</span>
       <span>Powered by TripBuilt • <span className="page__number" /></span>
     </div>
-  );
-};
-
-const SummaryPage = ({
-  payload,
-  dark = false,
-  title,
-  leadClassName = 'lead',
-}: {
-  payload: PreparedPrintPayload;
-  dark?: boolean;
-  title: string;
-  leadClassName?: string;
-}) => {
-  const featuredActivities = getFeaturedActivities(payload, 4);
-  const topLocations = getTopLocations(payload, 3);
-  const price = formatCurrency(payload.itinerary);
-
-  return (
-    <section className={`page ${dark ? 'page--dark' : 'page--white'}`}>
-      <div className="page__inner">
-        <BrandRow branding={payload.branding} dark={dark} />
-        <div className="summary-shell">
-          <div className="summary-grid">
-            <div className="summary-intro">
-              <div>
-                <div className="accent-line" style={{ background: payload.branding.primaryColor || '#1d4ed8' }} />
-                <p className="section-kicker">Overview</p>
-                <h2 style={{ fontSize: 30, lineHeight: 1.08, letterSpacing: '-0.04em', margin: '8px 0 12px' }}>{title}</h2>
-                <p className={leadClassName}>{payload.itinerary.summary}</p>
-              </div>
-              {payload.coverImage ? <img className="summary-image" src={payload.coverImage} alt={payload.itinerary.trip_title} /> : null}
-              <div className="summary-band">
-                <div className="summary-band__card">
-                  <div className="summary-band__label">Trip rhythm</div>
-                  <div className="summary-band__value">{payload.density === 'immersive' ? 'Slow + spacious' : payload.density === 'balanced' ? 'Balanced pacing' : 'Packed schedule'}</div>
-                  <div className="summary-band__copy">Structured for {payload.itinerary.duration_days} days with {payload.itinerary.days.length} day chapters.</div>
-                </div>
-                <div className="summary-band__card">
-                  <div className="summary-band__label">Destination spread</div>
-                  <div className="summary-band__value">{topLocations[0] || payload.itinerary.destination}</div>
-                  <div className="summary-band__copy">{topLocations.slice(1).join(' • ') || 'Core destination-led plan'}</div>
-                </div>
-                <div className="summary-band__card">
-                  <div className="summary-band__label">Value posture</div>
-                  <div className="summary-band__value">{price || 'Custom quote'}</div>
-                  <div className="summary-band__copy">Client-facing estimate presented with print-safe, lighter image density.</div>
-                </div>
-              </div>
-            </div>
-            <div className="summary-sidebar">
-              <Metrics payload={payload} dark={dark} />
-              <div className={`panel ${dark ? 'panel--dark' : ''}`}>
-                <p className="panel__title">Featured stops</p>
-                <div className="summary-highlights">
-                  {featuredActivities.slice(0, 3).map((activity, index) => (
-                    <div key={`featured-${index}`} className="summary-highlight">
-                      <div className="summary-highlight__index">{activity.dayNumber}</div>
-                      <div>
-                        <div className="summary-highlight__meta">Day {activity.dayNumber} • {activity.location || activity.dayTheme}</div>
-                        <h3 className="summary-highlight__title">{activity.title}</h3>
-                        <p className="summary-highlight__desc">{activity.description}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className={`panel ${dark ? 'panel--dark' : ''}`}>
-                <p className="panel__title">Print treatment</p>
-                <div className="body-copy">
-                  Hero images are prioritized, repeated visuals are reduced, and the day sequence is restructured for a brochure rhythm instead of a web snapshot.
-                </div>
-              </div>
-            </div>
-          </div>
-          <div>
-            <LogisticsPanel payload={payload} dark={dark} />
-          </div>
-        </div>
-        <PageFooter branding={payload.branding} />
-      </div>
-    </section>
   );
 };
 
@@ -3337,6 +3488,337 @@ const BentoPrintCard = ({
   </article>
 );
 
+const VisualFeatureCard = ({
+  activity,
+  fallbackLocation,
+}: {
+  activity: PreparedPrintActivity;
+  fallbackLocation: string;
+}) => (
+  <article className="visual-feature">
+    {activity.printImage ? (
+      <img className="visual-feature__image" src={activity.printImage} alt={activity.title} />
+    ) : (
+      <div className="visual-feature__image" />
+    )}
+    <div className="visual-feature__body">
+      <div className="activity-card__meta">
+        {activity.time ? <span>{activity.time}</span> : null}
+        <span>{activity.location || fallbackLocation}</span>
+        {activity.duration ? <span>{activity.duration}</span> : null}
+      </div>
+      <h3 className="visual-feature__title">{activity.title}</h3>
+      {activity.description ? <p className="visual-feature__copy">{activity.description}</p> : null}
+    </div>
+  </article>
+);
+
+const VisualDossierCards = ({ payload }: { payload: PreparedPrintPayload }) => {
+  const price = formatCurrency(payload.itinerary) || 'Custom quote';
+  const totalActivities = payload.itinerary.days.reduce((sum, day) => sum + day.activities.length, 0);
+  const cards = [
+    ['Duration', `${payload.itinerary.duration_days || payload.itinerary.days.length} days`],
+    ['Travel window', getTravelWindowLabel(payload)],
+    ['Frames', `${totalActivities} planned stops`],
+    ['Value', price],
+  ];
+
+  return (
+    <div className="visual-dossier-grid">
+      {cards.map(([label, value], index) => (
+        <div key={`visual-dossier-${index}`} className="visual-panel visual-panel--muted">
+          <p className="visual-panel__label">{label}</p>
+          <p className="visual-panel__value">{value}</p>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const VisualMiniPanel = ({
+  title,
+  items,
+  maxItems = 3,
+}: {
+  title: string;
+  items: string[];
+  maxItems?: number;
+}) => {
+  const visibleItems = items.filter(Boolean).slice(0, maxItems);
+  if (!visibleItems.length) return null;
+
+  return (
+    <div className="visual-panel">
+      <p className="visual-panel__label">{title}</p>
+      <div className="mini-list">
+        {visibleItems.map((item, index) => (
+          <div key={`${title}-${index}`} className="mini-list__item">
+            <div className="mini-list__index">{index + 1}</div>
+            <p className="body-copy mini-list__text--compact" style={{ margin: 0 }}>{item}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const VisualOverviewPage = ({ payload }: { payload: PreparedPrintPayload }) => {
+  const accent = payload.branding.primaryColor || '#e11d48';
+  const topLocations = getTopLocations(payload, 5);
+  const featuredActivities = getFeaturedActivities(payload, 3);
+  const contextItems = [
+    ...(payload.itinerary.interests || []),
+    ...(payload.itinerary.tips || []),
+    ...topLocations,
+  ].slice(0, 4);
+
+  return (
+    <section className="page page--white">
+      <div className="page__inner" style={{ ['--accent' as string]: accent }}>
+        <BrandRow branding={payload.branding} />
+        <div className="visual-overview-grid">
+          <div className="visual-overview-lead">
+            <div>
+              <div className="accent-line" style={{ background: accent }} />
+              <p className="section-kicker">Photo journey overview</p>
+              <h2 className="print-title" style={{ marginBottom: 8 }}>Story arc and travel rhythm</h2>
+              <p className="body-copy print-copy-clamp" style={{ margin: 0 }}>{payload.itinerary.summary}</p>
+            </div>
+            {payload.coverImage ? <img className="visual-overview-image" src={payload.coverImage} alt={payload.itinerary.trip_title} /> : null}
+            <VisualDossierCards payload={payload} />
+          </div>
+          <div className="visual-sidebar">
+            <div className="visual-panel">
+              <p className="visual-panel__label">Operator handoff</p>
+              <p className="visual-panel__value">{payload.branding.companyName}</p>
+              <p className="visual-panel__copy">
+                {payload.branding.clientName
+                  ? `Prepared for ${payload.branding.clientName}. This version keeps the route visual, paced, and ready for client review.`
+                  : 'This version keeps the route visual, paced, and ready for client review.'}
+              </p>
+            </div>
+            <div className="visual-panel">
+              <p className="visual-panel__label">Standout frames</p>
+              <div className="summary-highlights">
+                {featuredActivities.map((activity, index) => (
+                  <div key={`visual-highlight-${index}`} className="summary-highlight">
+                    <div className="summary-highlight__index">{activity.dayNumber}</div>
+                    <div>
+                      <div className="summary-highlight__meta">Day {activity.dayNumber} • {activity.location || activity.dayTheme}</div>
+                      <h3 className="summary-highlight__title">{activity.title}</h3>
+                      <p className="summary-highlight__desc">{activity.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <VisualMiniPanel title="Route sequence" items={topLocations} maxItems={5} />
+            <VisualMiniPanel title="Client context" items={contextItems} maxItems={3} />
+          </div>
+        </div>
+        <PageFooter branding={payload.branding} />
+      </div>
+    </section>
+  );
+};
+
+const VisualClosingPage = ({ payload }: { payload: PreparedPrintPayload }) => {
+  const accent = payload.branding.primaryColor || '#e11d48';
+  const notes = [
+    ...(payload.itinerary.tips || []),
+    ...(payload.itinerary.inclusions || []),
+  ].slice(0, 6);
+
+  if (!notes.length && !payload.printExtras.selectedAddOns.length) return null;
+
+  return (
+    <section className="page page--white">
+      <div className="page__inner" style={{ ['--accent' as string]: accent }}>
+        <BrandRow branding={payload.branding} />
+        <div className="visual-overview-grid">
+          <div className="visual-overview-lead">
+            <div>
+              <div className="accent-line" style={{ background: accent }} />
+              <p className="section-kicker">Before you go</p>
+              <h2 className="print-title" style={{ marginBottom: 8 }}>Client handoff notes</h2>
+              <p className="body-copy print-copy-clamp" style={{ margin: 0 }}>
+                Final notes, inclusions, and optional add-ons are grouped here so the photo journey closes with practical next steps.
+              </p>
+            </div>
+            <div className="visual-dossier-grid">
+              {notes.slice(0, 4).map((item, index) => (
+                <div key={`visual-closing-note-${index}`} className="visual-panel visual-panel--muted">
+                  <p className="visual-panel__label">{String(index + 1).padStart(2, '0')}</p>
+                  <p className="visual-panel__copy" style={{ WebkitLineClamp: 4 }}>{item}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="visual-sidebar">
+            <div className="visual-panel">
+              <p className="visual-panel__label">Operator contact</p>
+              <p className="visual-panel__value">{payload.branding.companyName}</p>
+              {(payload.branding.contactEmail || payload.branding.contactPhone) ? (
+                <p className="visual-panel__copy">{[payload.branding.contactEmail, payload.branding.contactPhone].filter(Boolean).join('  •  ')}</p>
+              ) : null}
+            </div>
+            <VisualMiniPanel
+              title="Selected add-ons"
+              items={payload.printExtras.selectedAddOns.map((addOn) => [addOn.name, addOn.category].filter(Boolean).join(' • '))}
+              maxItems={4}
+            />
+            <VisualMiniPanel title="Route sequence" items={getTopLocations(payload, 5)} maxItems={5} />
+          </div>
+        </div>
+        <PageFooter branding={payload.branding} />
+      </div>
+    </section>
+  );
+};
+
+const BentoPanelPrint = ({
+  label,
+  value,
+  copy,
+  ink = false,
+}: {
+  label: string;
+  value: string;
+  copy?: string;
+  ink?: boolean;
+}) => (
+  <div className={`bento-panel-print ${ink ? 'bento-panel-print--ink' : ''}`}>
+    <p className="bento-panel-print__label">{label}</p>
+    <p className="bento-panel-print__value">{value}</p>
+    {copy ? <p className="bento-panel-print__copy">{copy}</p> : null}
+  </div>
+);
+
+const BentoDossierGrid = ({ payload }: { payload: PreparedPrintPayload }) => {
+  const totalActivities = payload.itinerary.days.reduce((sum, day) => sum + day.activities.length, 0);
+  const price = formatCurrency(payload.itinerary) || 'Custom quote';
+
+  return (
+    <div className="bento-micro-grid">
+      <BentoPanelPrint label="Duration" value={`${payload.itinerary.duration_days || payload.itinerary.days.length} days`} />
+      <BentoPanelPrint label="Route stops" value={`${totalActivities}`} />
+      <BentoPanelPrint label="Travel window" value={getTravelWindowLabel(payload)} />
+      <BentoPanelPrint label="Value" value={price} />
+    </div>
+  );
+};
+
+const BentoMiniListPanel = ({
+  title,
+  items,
+  maxItems = 4,
+}: {
+  title: string;
+  items: string[];
+  maxItems?: number;
+}) => {
+  const visibleItems = items.filter(Boolean).slice(0, maxItems);
+  if (!visibleItems.length) return null;
+
+  return (
+    <div className="bento-panel-print">
+      <p className="bento-panel-print__label">{title}</p>
+      <div className="mini-list">
+        {visibleItems.map((item, index) => (
+          <div key={`${title}-${index}`} className="mini-list__item">
+            <div className="mini-list__index">{index + 1}</div>
+            <p className="body-copy mini-list__text--compact" style={{ margin: 0 }}>{item}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const BentoOverviewPage = ({ payload }: { payload: PreparedPrintPayload }) => {
+  const accent = payload.branding.primaryColor || '#6366f1';
+  const mosaicActivities = payload.itinerary.days.flatMap((day) => day.activities).slice(0, 4);
+  const topLocations = getTopLocations(payload, 5);
+
+  return (
+    <section className="page page--white bento-print-cover">
+      <div className="page__inner" style={{ ['--accent' as string]: accent }}>
+        <BrandRow branding={payload.branding} />
+        <div className="bento-overview-grid">
+          <div>
+            <div className="accent-line" style={{ background: accent }} />
+            <p className="section-kicker">Grid overview</p>
+            <h2 className="print-title" style={{ marginBottom: 8 }}>Modular trip structure</h2>
+            <p className="body-copy print-copy-clamp" style={{ margin: 0 }}>{payload.itinerary.summary}</p>
+            <div style={{ marginTop: '7mm' }}>
+              <BentoDossierGrid payload={payload} />
+            </div>
+          </div>
+          <div className="bento-mosaic-compact">
+            {mosaicActivities.map((activity, index) => (
+              <BentoPrintCard
+                key={`bento-overview-${index}`}
+                activity={activity}
+                fallbackLocation={payload.itinerary.destination}
+                wide={index === 0}
+              />
+            ))}
+          </div>
+        </div>
+        <div className="bento-overview-grid" style={{ marginTop: '7mm' }}>
+          <BentoMiniListPanel title="Route sequence" items={topLocations} maxItems={5} />
+          <BentoMiniListPanel
+            title="Client context"
+            items={[...(payload.itinerary.interests || []), ...(payload.itinerary.tips || []), ...topLocations]}
+            maxItems={4}
+          />
+        </div>
+        <PageFooter branding={payload.branding} />
+      </div>
+    </section>
+  );
+};
+
+const BentoClosingPage = ({ payload }: { payload: PreparedPrintPayload }) => {
+  const accent = payload.branding.primaryColor || '#6366f1';
+  const notes = [
+    ...(payload.itinerary.tips || []),
+    ...(payload.itinerary.inclusions || []),
+  ].slice(0, 6);
+
+  if (!notes.length && !payload.printExtras.selectedAddOns.length) return null;
+
+  return (
+    <section className="page page--white bento-print-cover">
+      <div className="page__inner" style={{ ['--accent' as string]: accent }}>
+        <BrandRow branding={payload.branding} />
+        <div className="bento-closing-grid">
+          <div>
+            <div className="accent-line" style={{ background: accent }} />
+            <p className="section-kicker">Traveler insights</p>
+            <h2 className="print-title" style={{ marginBottom: 8 }}>Final handoff grid</h2>
+            <div className="bento-micro-grid">
+              {notes.slice(0, 4).map((note, index) => (
+                <BentoPanelPrint key={`bento-note-${index}`} label={String(index + 1).padStart(2, '0')} value="Traveler note" copy={note} />
+              ))}
+            </div>
+          </div>
+          <div className="bento-sidebar">
+            <BentoPanelPrint label="Operator" value={payload.branding.companyName} copy={[payload.branding.contactEmail, payload.branding.contactPhone].filter(Boolean).join('  •  ')} ink />
+            <BentoMiniListPanel
+              title="Selected add-ons"
+              items={payload.printExtras.selectedAddOns.map((addOn) => [addOn.name, addOn.category].filter(Boolean).join(' • '))}
+              maxItems={4}
+            />
+            <BentoMiniListPanel title="Route sequence" items={getTopLocations(payload, 5)} maxItems={5} />
+          </div>
+        </div>
+        <PageFooter branding={payload.branding} />
+      </div>
+    </section>
+  );
+};
+
 const UrbanActivityRow = ({
   activity,
   fallbackLocation,
@@ -3478,38 +3960,6 @@ const UrbanKeyInfoPage = ({
             <div key={`urban-key-info-${index}`} className="urban-info-card">
               <div className="urban-info-card__index">{String(index + 1).padStart(2, '0')}</div>
               <p className="urban-info-card__copy">{item}</p>
-            </div>
-          ))}
-        </div>
-        <PageFooter branding={payload.branding} />
-      </div>
-    </section>
-  );
-};
-
-const TipsPage = ({
-  payload,
-  title,
-  dark = false,
-}: {
-  payload: PreparedPrintPayload;
-  title: string;
-  dark?: boolean;
-}) => {
-  const tips = payload.itinerary.tips || [];
-  if (!tips.length) return null;
-
-  return (
-    <section className={`page ${dark ? 'page--dark' : 'page--white'}`}>
-      <div className="page__inner">
-        <BrandRow branding={payload.branding} dark={dark} />
-        <div className="accent-line" style={{ background: resolveAccentColor(payload) }} />
-        <h2 className="print-title" style={dark ? { color: '#fffaf0' } : undefined}>{title}</h2>
-        <div className="summary-highlights summary-highlights--paged">
-          {tips.slice(0, 8).map((tip, index) => (
-            <div key={`tip-${index}`} className="summary-highlight">
-              <div className="summary-highlight__index">{index + 1}</div>
-              <p className="summary-highlight__desc" style={{ margin: 0 }}>{tip}</p>
             </div>
           ))}
         </div>
@@ -3673,6 +4123,8 @@ const LuxuryTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
 
 const VisualTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
   const accent = payload.branding.primaryColor || '#e11d48';
+  const totalActivities = payload.itinerary.days.reduce((sum, day) => sum + day.activities.length, 0);
+  const price = formatCurrency(payload.itinerary);
 
   return (
     <>
@@ -3689,16 +4141,34 @@ const VisualTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
               <h1 className="cover__title" style={{ color: '#ffffff', maxWidth: '165mm' }}>{payload.itinerary.destination || payload.itinerary.trip_title}</h1>
               {payload.branding.clientName ? <p className="cover__subtitle" style={{ color: 'rgba(255,255,255,0.86)' }}>A bespoke journey for {payload.branding.clientName}</p> : null}
               <p className="cover__subtitle" style={{ color: 'rgba(255,255,255,0.82)' }}>{payload.itinerary.summary}</p>
+              <div className="visual-cover-dossier">
+                <div className="visual-cover-dossier__card">
+                  <div className="visual-cover-dossier__label">Destination</div>
+                  <div className="visual-cover-dossier__value">{payload.itinerary.destination}</div>
+                </div>
+                <div className="visual-cover-dossier__card">
+                  <div className="visual-cover-dossier__label">Travel window</div>
+                  <div className="visual-cover-dossier__value">{getTravelWindowLabel(payload)}</div>
+                </div>
+                <div className="visual-cover-dossier__card">
+                  <div className="visual-cover-dossier__label">Story frames</div>
+                  <div className="visual-cover-dossier__value">{totalActivities}</div>
+                </div>
+                <div className="visual-cover-dossier__card">
+                  <div className="visual-cover-dossier__label">Value</div>
+                  <div className="visual-cover-dossier__value">{price || 'Custom quote'}</div>
+                </div>
+              </div>
             </div>
             <PageFooter branding={payload.branding} />
           </div>
         </div>
       </section>
-      <SummaryPage payload={payload} title="Journey Overview" />
+      <VisualOverviewPage payload={payload} />
       {payload.itinerary.days.flatMap((day, dayIndex) =>
-        chunkItems(day.activities, 4).map((chunk, chunkIndex) => (
+        chunkItems(day.activities, 3).map((chunk, chunkIndex) => (
           <section key={`visual-day-${dayIndex}-${chunkIndex}`} className="page page--white">
-            <div className="page__inner">
+            <div className="page__inner" style={{ ['--accent' as string]: accent }}>
               <BrandRow branding={payload.branding} />
               {chunkIndex === 0 ? (
                 <div className="visual-day-hero">
@@ -3717,24 +4187,40 @@ const VisualTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                 </div>
               )}
               {chunkIndex === 0 && day.summary ? <p className="lead print-copy-clamp" style={{ margin: '0 0 8mm' }}>{day.summary}</p> : null}
-              <div className="visual-story-grid">
-                {chunk.map((activity, activityIndex) => (
-                  <VisualStoryCard key={`visual-story-${activityIndex}`} activity={activity} fallbackLocation={payload.itinerary.destination} />
-                ))}
+              <div className="visual-day-layout">
+                <div className="visual-day-main">
+                  {chunk[0] ? <VisualFeatureCard activity={chunk[0]} fallbackLocation={payload.itinerary.destination} /> : null}
+                  {chunk.slice(1).length ? (
+                    <div className="visual-story-grid">
+                      {chunk.slice(1).map((activity, activityIndex) => (
+                        <VisualStoryCard key={`visual-story-${activityIndex}`} activity={activity} fallbackLocation={payload.itinerary.destination} />
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+                <div className="visual-sidebar">
+                  <VisualMiniPanel title="Day route" items={getDayLocations(day, 4)} maxItems={4} />
+                  <StayPanel accommodation={getDayAccommodation(payload, day.day_number)} compact />
+                  <VisualMiniPanel
+                    title="Travel notes"
+                    items={[...(payload.itinerary.tips || []), ...(payload.itinerary.inclusions || [])].slice(chunkIndex * 3, chunkIndex * 3 + 3)}
+                    maxItems={3}
+                  />
+                </div>
               </div>
               <PageFooter branding={payload.branding} />
             </div>
           </section>
         )),
       )}
-      <TipsPage payload={payload} title="Before you go" />
+      <VisualClosingPage payload={payload} />
     </>
   );
 };
 
 const BentoTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
   const accent = payload.branding.primaryColor || '#6366f1';
-  const mosaicActivities = payload.itinerary.days.flatMap((day) => day.activities).slice(0, 5);
+  const mosaicActivities = payload.itinerary.days.flatMap((day) => day.activities).slice(0, 4);
 
   return (
     <>
@@ -3743,58 +4229,78 @@ const BentoTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
           <div className="bento-brand-banner">
             <BrandRow branding={payload.branding} showContact />
           </div>
-          <div className="accent-line" style={{ background: accent }} />
-          <p className="section-kicker">Immersive Travel Grid</p>
-          <h1 className="cover__title" style={{ marginTop: 0, maxWidth: '150mm' }}>{payload.itinerary.trip_title}</h1>
-          {payload.branding.clientName ? <div className="body-copy" style={{ color: accent, fontWeight: 700 }}>Prepared for {payload.branding.clientName}</div> : null}
-          <p className="lead print-copy-clamp">{payload.itinerary.summary}</p>
-          <div className="bento-print-grid" style={{ marginTop: '8mm' }}>
-            {mosaicActivities.map((activity, index) => (
-              <BentoPrintCard
-                key={`bento-cover-${index}`}
-                activity={activity}
-                fallbackLocation={payload.itinerary.destination}
-                hero={index === 0}
-                wide={index === 1}
-              />
-            ))}
+          <div className="bento-cover-layout">
+            <div className="bento-cover-copy">
+              <div>
+                <div className="accent-line" style={{ background: accent }} />
+                <p className="section-kicker">Immersive Travel Grid</p>
+                <h1 className="cover__title" style={{ marginTop: 0 }}>{payload.itinerary.trip_title}</h1>
+              </div>
+              {payload.branding.clientName ? <div className="body-copy" style={{ color: accent, fontWeight: 700 }}>Prepared for {payload.branding.clientName}</div> : null}
+              <p className="lead print-copy-clamp">{payload.itinerary.summary}</p>
+              <BentoDossierGrid payload={payload} />
+            </div>
+            <div className="bento-mosaic-compact">
+              {mosaicActivities.map((activity, index) => (
+                <BentoPrintCard
+                  key={`bento-cover-${index}`}
+                  activity={activity}
+                  fallbackLocation={payload.itinerary.destination}
+                  wide={index === 0}
+                />
+              ))}
+            </div>
           </div>
           <PageFooter branding={payload.branding} />
         </div>
       </section>
+      <BentoOverviewPage payload={payload} />
       {payload.itinerary.days.flatMap((day, dayIndex) =>
-        chunkItems(day.activities, 5).map((chunk, chunkIndex) => (
+        chunkItems(day.activities, 4).map((chunk, chunkIndex) => (
           <section key={`bento-day-${dayIndex}-${chunkIndex}`} className="page page--white bento-print-cover">
             <div className="page__inner" style={{ ['--accent' as string]: accent }}>
               <BrandRow branding={payload.branding} />
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: '8mm', borderBottom: '1px solid rgba(15,23,42,0.12)', paddingBottom: '6mm' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div className="professional-day-number">{day.day_number}</div>
-                  <div>
-                    <p className="section-kicker">{chunkIndex > 0 ? 'Day continuation' : 'Day'}</p>
-                    <h2 className="print-title" style={{ margin: '4px 0 0' }}>{day.theme}</h2>
-                  </div>
+              <div className="bento-day-head">
+                <div>
+                  <div className="bento-day-number">{day.day_number}</div>
+                  <p className="section-kicker">{chunkIndex > 0 ? 'Day continuation' : 'Day'}</p>
+                  <h2 className="print-title" style={{ margin: '4px 0 0' }}>{day.theme}</h2>
+                  {chunkIndex === 0 && day.summary ? <p className="body-copy print-copy-clamp" style={{ margin: '6px 0 0' }}>{day.summary}</p> : null}
                 </div>
-                <div className="day-hero__date">{formatDateLabel(day.date)}</div>
+                <div className="bento-panel-print">
+                  <p className="bento-panel-print__label">Date</p>
+                  <p className="bento-panel-print__value">{formatDateLabel(day.date) || payload.itinerary.destination}</p>
+                  <p className="bento-panel-print__copy">{day.activities.length} planned stops</p>
+                </div>
               </div>
-              {chunkIndex === 0 && day.summary ? <p className="body-copy print-copy-clamp" style={{ marginBottom: '7mm' }}>{day.summary}</p> : null}
-              <div className="bento-print-grid">
-                {chunk.map((activity, activityIndex) => (
-                  <BentoPrintCard
-                    key={`bento-day-card-${activityIndex}`}
-                    activity={activity}
-                    fallbackLocation={payload.itinerary.destination}
-                    hero={activityIndex === 0}
-                    wide={activityIndex === 1}
+              <div className="bento-day-layout">
+                <div className="bento-print-grid">
+                  {chunk.map((activity, activityIndex) => (
+                    <BentoPrintCard
+                      key={`bento-day-card-${activityIndex}`}
+                      activity={activity}
+                      fallbackLocation={payload.itinerary.destination}
+                      hero={activityIndex === 0}
+                      wide={activityIndex === 1}
+                    />
+                  ))}
+                </div>
+                <div className="bento-sidebar">
+                  <BentoMiniListPanel title="Day route" items={getDayLocations(day, 4)} maxItems={4} />
+                  <StayPanel accommodation={getDayAccommodation(payload, day.day_number)} compact />
+                  <BentoMiniListPanel
+                    title="Travel notes"
+                    items={[...(payload.itinerary.tips || []), ...(payload.itinerary.inclusions || [])].slice(chunkIndex * 3, chunkIndex * 3 + 3)}
+                    maxItems={3}
                   />
-                ))}
+                </div>
               </div>
               <PageFooter branding={payload.branding} />
             </div>
           </section>
         )),
       )}
-      <TipsPage payload={payload} title="Traveler insights" />
+      <BentoClosingPage payload={payload} />
     </>
   );
 };
