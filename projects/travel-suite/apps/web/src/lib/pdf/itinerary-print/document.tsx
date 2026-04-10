@@ -3412,10 +3412,10 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                   <div className="accent-line" style={{ background: accent }} />
                   <p className="section-kicker">Before Departure</p>
                   <h2 style={{ fontSize: 30, lineHeight: 1.08, letterSpacing: '-0.04em', margin: '8px 0 12px', fontFamily: '"Noto Serif", Georgia, Times New Roman, serif' }}>
-                    A polished finish, ready to send
+                    Final trip details
                   </h2>
                   <p className="body-copy" style={{ margin: 0 }}>
-                    The itinerary now reads like an operator-branded dossier: highlights up front, daily chapters with visual structure, and logistics or package detail where they support the client handoff.
+                    Confirm inclusions, exclusions, travel notes, and booking references here before departure.
                   </p>
                 </div>
                 <PackagePanels payload={payload} />
