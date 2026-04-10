@@ -2,9 +2,15 @@ import type { ItineraryTemplateId } from "@/components/pdf/itinerary-types";
 
 export const ORGANIZATION_SETTINGS_SELECT = [
     "billing_address",
+    "billing_address_line1",
+    "billing_address_line2",
+    "billing_city",
+    "billing_pincode",
     "billing_state",
     "gstin",
     "id",
+    "itinerary_template",
+    "legal_name",
     "logo_url",
     "name",
     "primary_color",
@@ -16,6 +22,7 @@ export interface Organization {
     id: string;
     name: string;
     slug: string;
+    legal_name: string | null;
     logo_url: string | null;
     primary_color: string | null;
     itinerary_template: ItineraryTemplateId | null;
@@ -36,6 +43,10 @@ export interface Organization {
 
 export type OrganizationSettingsRow = Omit<Organization, "billing_address" | "itinerary_template"> & {
     billing_address?: unknown;
+    billing_address_line1?: string | null;
+    billing_address_line2?: string | null;
+    billing_city?: string | null;
+    billing_pincode?: string | null;
     itinerary_template?: string | null;
 };
 
@@ -101,5 +112,27 @@ export function normalizeBillingAddress(raw: unknown): Organization["billing_add
         country: typeof value.country === "string" ? value.country : "",
         phone: typeof value.phone === "string" ? value.phone : "",
         email: typeof value.email === "string" ? value.email : "",
+    };
+}
+
+export function mergeBillingAddressFields(
+    raw: unknown,
+    row?: {
+        billing_address_line1?: string | null;
+        billing_address_line2?: string | null;
+        billing_city?: string | null;
+        billing_state?: string | null;
+        billing_pincode?: string | null;
+    }
+): Organization["billing_address"] {
+    const address = normalizeBillingAddress(raw);
+
+    return {
+        ...address,
+        line1: address.line1 || row?.billing_address_line1 || "",
+        line2: address.line2 || row?.billing_address_line2 || "",
+        city: address.city || row?.billing_city || "",
+        state: address.state || row?.billing_state || "",
+        postal_code: address.postal_code || row?.billing_pincode || "",
     };
 }

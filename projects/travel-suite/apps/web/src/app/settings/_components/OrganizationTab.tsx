@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { Check, Save } from 'lucide-react';
 import { GlassButton } from '@/components/glass/GlassButton';
 import { getTimezoneDisplayName } from '@/lib/date/tz';
 import { validateGSTIN } from '@/lib/tax/gst-calculator';
+import type { Organization } from '../shared';
 
 const INPUT_CLASS = "w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-secondary dark:text-white";
 const LABEL_CLASS = "text-xs font-bold uppercase tracking-widest text-text-secondary dark:text-slate-300";
@@ -19,24 +20,46 @@ const INDIAN_STATES = [
 ];
 
 export interface OrganizationTabProps {
+    readonly organization: Organization;
+    readonly setOrganization: React.Dispatch<React.SetStateAction<Organization | null>>;
     readonly draftTimezone: string;
     readonly loading: boolean;
-    readonly onSave: () => void;
+    readonly showSuccess: boolean;
+    readonly onSave: () => Promise<void> | void;
 }
 
-export function OrganizationTab({ draftTimezone, loading, onSave }: OrganizationTabProps) {
-    const [gstin, setGstin] = useState('');
-    const [gstinError, setGstinError] = useState<string | null>(null);
+export function OrganizationTab({
+    organization,
+    setOrganization,
+    draftTimezone,
+    loading,
+    showSuccess,
+    onSave,
+}: OrganizationTabProps) {
+    const gstin = organization.gstin ?? '';
+    const gstinError = gstin && !validateGSTIN(gstin)
+        ? 'Invalid GSTIN format (e.g., 27AABCU9603R1ZX)'
+        : null;
+
+    const updateOrganization = (patch: Partial<Organization>) => {
+        setOrganization((prev) => (prev ? { ...prev, ...patch } : prev));
+    };
+
+    const updateBillingAddress = (key: keyof Organization['billing_address'], value: string) => {
+        setOrganization((prev) => {
+            if (!prev) return prev;
+            const billingAddress = { ...prev.billing_address, [key]: value };
+            return {
+                ...prev,
+                billing_state: key === 'state' ? value || null : prev.billing_state,
+                billing_address: billingAddress,
+            };
+        });
+    };
 
     const handleGstinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value.toUpperCase().replace(/\s/g, '');
-        setGstin(value);
-
-        if (value && !validateGSTIN(value)) {
-            setGstinError('Invalid GSTIN format (e.g., 27AABCU9603R1ZX)');
-        } else {
-            setGstinError(null);
-        }
+        updateOrganization({ gstin: value || null });
     };
 
     return (
@@ -49,11 +72,37 @@ export function OrganizationTab({ draftTimezone, loading, onSave }: Organization
             <div className="grid gap-6">
                 <div className="space-y-2">
                     <label className={LABEL_CLASS}>Official Name</label>
-                    <input type="text" defaultValue="TripBuilt Elite" aria-label="Official Name" className={INPUT_CLASS} />
+                    <input
+                        type="text"
+                        value={organization.name}
+                        onChange={(event) => updateOrganization({ name: event.target.value })}
+                        aria-label="Official Name"
+                        className={INPUT_CLASS}
+                    />
                 </div>
                 <div className="space-y-2">
-                    <label className={LABEL_CLASS}>Website Domain</label>
-                    <input type="text" defaultValue="www.tripbuilt.app" aria-label="Website Domain" className={INPUT_CLASS} />
+                    <label className={LABEL_CLASS}>Legal Name</label>
+                    <input
+                        type="text"
+                        value={organization.legal_name ?? ''}
+                        onChange={(event) => updateOrganization({ legal_name: event.target.value || null })}
+                        placeholder="Legal entity name for invoices and tax records"
+                        aria-label="Legal Name"
+                        className={INPUT_CLASS}
+                    />
+                </div>
+                <div className="space-y-2">
+                    <label className={LABEL_CLASS}>Workspace Slug</label>
+                    <input
+                        type="text"
+                        value={organization.slug}
+                        readOnly
+                        aria-label="Workspace Slug"
+                        className={`${INPUT_CLASS} cursor-not-allowed opacity-80`}
+                    />
+                    <p className="text-xs text-text-muted">
+                        The workspace slug is managed separately so existing share links stay stable.
+                    </p>
                 </div>
                 <div className="space-y-2">
                     <label className={LABEL_CLASS}>GSTIN</label>
@@ -87,20 +136,46 @@ export function OrganizationTab({ draftTimezone, loading, onSave }: Organization
                     <div className="grid gap-4">
                         <div className="space-y-2">
                             <label className={LABEL_CLASS}>Street Address</label>
-                            <input type="text" placeholder="Building name, street, area" aria-label="Street Address" className={INPUT_CLASS} />
+                            <input
+                                type="text"
+                                value={organization.billing_address.line1}
+                                onChange={(event) => updateBillingAddress('line1', event.target.value)}
+                                placeholder="Building name, street, area"
+                                aria-label="Street Address"
+                                className={INPUT_CLASS}
+                            />
                         </div>
                         <div className="space-y-2">
                             <label className={LABEL_CLASS}>Address Line 2</label>
-                            <input type="text" placeholder="Landmark, locality (optional)" aria-label="Address Line 2" className={INPUT_CLASS} />
+                            <input
+                                type="text"
+                                value={organization.billing_address.line2}
+                                onChange={(event) => updateBillingAddress('line2', event.target.value)}
+                                placeholder="Landmark, locality (optional)"
+                                aria-label="Address Line 2"
+                                className={INPUT_CLASS}
+                            />
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="space-y-2">
                                 <label className={LABEL_CLASS}>City</label>
-                                <input type="text" placeholder="e.g. Mumbai" aria-label="City" className={INPUT_CLASS} />
+                                <input
+                                    type="text"
+                                    value={organization.billing_address.city}
+                                    onChange={(event) => updateBillingAddress('city', event.target.value)}
+                                    placeholder="e.g. Mumbai"
+                                    aria-label="City"
+                                    className={INPUT_CLASS}
+                                />
                             </div>
                             <div className="space-y-2">
                                 <label className={LABEL_CLASS}>State</label>
-                                <select aria-label="State" className={INPUT_CLASS}>
+                                <select
+                                    value={organization.billing_address.state || organization.billing_state || ''}
+                                    onChange={(event) => updateBillingAddress('state', event.target.value)}
+                                    aria-label="State"
+                                    className={INPUT_CLASS}
+                                >
                                     <option value="">Select state</option>
                                     {INDIAN_STATES.map((s) => (
                                         <option key={s} value={s}>{s}</option>
@@ -109,7 +184,15 @@ export function OrganizationTab({ draftTimezone, loading, onSave }: Organization
                             </div>
                             <div className="space-y-2">
                                 <label className={LABEL_CLASS}>Pincode</label>
-                                <input type="text" placeholder="e.g. 400001" aria-label="Pincode" maxLength={6} className={INPUT_CLASS} />
+                                <input
+                                    type="text"
+                                    value={organization.billing_address.postal_code}
+                                    onChange={(event) => updateBillingAddress('postal_code', event.target.value.replace(/\D/g, '').slice(0, 6))}
+                                    placeholder="e.g. 400001"
+                                    aria-label="Pincode"
+                                    maxLength={6}
+                                    className={INPUT_CLASS}
+                                />
                             </div>
                         </div>
                     </div>
@@ -133,15 +216,12 @@ export function OrganizationTab({ draftTimezone, loading, onSave }: Organization
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <label className={LABEL_CLASS}>Base Currency</label>
-                            <select defaultValue="INR" aria-label="Base Currency" className={INPUT_CLASS}>
+                            <select value="INR" disabled aria-label="Base Currency" className={`${INPUT_CLASS} disabled:opacity-100`}>
                                 <option value="INR">INR (&#8377;)</option>
-                                <option value="USD">USD ($)</option>
-                                <option value="EUR">EUR (&euro;)</option>
-                                <option value="GBP">GBP (&pound;)</option>
-                                <option value="AED">AED (د.إ)</option>
-                                <option value="SGD">SGD (S$)</option>
-                                <option value="THB">THB (&#3647;)</option>
                             </select>
+                            <p className="text-xs text-text-muted">
+                                Multi-currency pricing is handled per trip and invoice.
+                            </p>
                         </div>
                         <div className="space-y-2">
                             <label className={LABEL_CLASS}>Timezone</label>
@@ -162,9 +242,27 @@ export function OrganizationTab({ draftTimezone, loading, onSave }: Organization
             </div>
 
             <div className="pt-6 border-t border-gray-50 flex justify-end">
-                <GlassButton variant="primary" onClick={onSave} disabled={loading} className="rounded-xl px-8">
-                    {loading ? 'Committing...' : 'Save Configuration'}
-                </GlassButton>
+                <div className="flex items-center gap-4">
+                    {showSuccess && (
+                        <span className="animate-in fade-in slide-in-from-right-4 flex items-center gap-2 font-medium text-green-600 dark:text-green-400">
+                            <Check className="h-5 w-5" />
+                            Saved
+                        </span>
+                    )}
+                    <GlassButton
+                        variant="primary"
+                        onClick={() => { void onSave(); }}
+                        disabled={loading || Boolean(gstinError)}
+                        className="rounded-xl px-8"
+                    >
+                        {loading ? (
+                            <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                        ) : (
+                            <Save className="h-4 w-4" />
+                        )}
+                        {loading ? 'Saving...' : 'Save Configuration'}
+                    </GlassButton>
+                </div>
             </div>
         </div>
     );
