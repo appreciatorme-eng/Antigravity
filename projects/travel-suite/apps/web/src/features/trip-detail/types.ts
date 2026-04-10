@@ -100,6 +100,7 @@ export interface TripItinerary {
   trip_title: string;
   duration_days: number;
   destination?: string | null;
+  template_id?: string | null;
   raw_data: TripItineraryRawData;
 }
 

@@ -141,6 +141,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
                     trip_title,
                     duration_days,
                     destination,
+                    template_id,
                     raw_data
                 )
             `)
@@ -180,6 +181,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
                         summary: itinerary.raw_data?.summary || "",
                         days: itinerary.raw_data?.days || [],
                         flights: itinerary.raw_data?.flights || [],
+                        logistics: itinerary.raw_data?.logistics,
                         budget: itinerary.raw_data?.budget,
                         interests: itinerary.raw_data?.interests || [],
                         tips: itinerary.raw_data?.tips || [],
