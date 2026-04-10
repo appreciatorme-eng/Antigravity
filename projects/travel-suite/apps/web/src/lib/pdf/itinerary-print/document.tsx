@@ -1715,6 +1715,210 @@ const PRINT_CSS = `
     gap: 5mm;
     max-width: 150mm;
   }
+  .luxury-overview-grid {
+    display: grid;
+    grid-template-columns: 1.06fr 0.94fr;
+    gap: 9mm;
+    align-items: start;
+  }
+  .luxury-overview-lead,
+  .luxury-sidebar,
+  .luxury-day-main {
+    display: grid;
+    gap: 8px;
+  }
+  .luxury-overview-image {
+    width: 100%;
+    height: 68mm;
+    object-fit: cover;
+    display: block;
+    border: 1px solid rgba(255,250,240,0.12);
+    opacity: 0.88;
+    background: rgba(255,255,255,0.06);
+  }
+  .luxury-copy {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.62;
+    color: rgba(255,250,240,0.70);
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .luxury-panel {
+    border: 1px solid rgba(255,250,240,0.13);
+    background: rgba(255,250,240,0.055);
+    padding: 11px 12px;
+  }
+  .luxury-panel--tight {
+    padding: 9px 10px;
+  }
+  .luxury-panel__label {
+    margin: 0 0 7px;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(255,250,240,0.48);
+  }
+  .luxury-panel__value {
+    margin: 0;
+    font-family: "Noto Serif", Georgia, "Times New Roman", serif;
+    font-size: 18px;
+    line-height: 1.15;
+    color: #fffaf0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .luxury-panel__copy {
+    margin: 6px 0 0;
+    font-size: 10px;
+    line-height: 1.42;
+    color: rgba(255,250,240,0.62);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .luxury-dossier-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+  .luxury-mini-list {
+    display: grid;
+    gap: 6px;
+  }
+  .luxury-mini-list__item {
+    display: grid;
+    grid-template-columns: 17px 1fr;
+    gap: 8px;
+    align-items: start;
+  }
+  .luxury-mini-list__index {
+    width: 17px;
+    height: 17px;
+    border: 1px solid rgba(255,250,240,0.20);
+    color: rgba(255,250,240,0.62);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    font-weight: 800;
+  }
+  .luxury-mini-list__text {
+    margin: 0;
+    font-size: 10px;
+    line-height: 1.36;
+    color: rgba(255,250,240,0.68);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .luxury-route {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .luxury-route__chip {
+    border: 1px solid rgba(255,250,240,0.16);
+    padding: 5px 7px;
+    font-size: 8.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255,250,240,0.64);
+  }
+  .luxury-day-header {
+    display: grid;
+    grid-template-columns: 1fr 58mm;
+    gap: 9mm;
+    align-items: end;
+    border-bottom: 1px solid rgba(255,250,240,0.12);
+    padding-bottom: 7mm;
+    margin-bottom: 7mm;
+  }
+  .luxury-day-number {
+    width: 13mm;
+    height: 13mm;
+    border: 1px solid rgba(204,178,122,0.60);
+    color: #f8e8c5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    margin-bottom: 9px;
+  }
+  .luxury-day-title {
+    margin: 6px 0 0;
+    font-family: "Noto Serif", Georgia, "Times New Roman", serif;
+    font-size: 29px;
+    line-height: 1.04;
+    letter-spacing: -0.04em;
+    color: #fffaf0;
+  }
+  .luxury-day-image {
+    width: 100%;
+    height: 52mm;
+    object-fit: cover;
+    display: block;
+    border: 1px solid rgba(255,250,240,0.12);
+    opacity: 0.88;
+    background: rgba(255,255,255,0.06);
+  }
+  .luxury-day-layout {
+    display: grid;
+    grid-template-columns: 1.08fr 0.92fr;
+    gap: 8mm;
+    align-items: start;
+  }
+  .luxury-feature {
+    display: grid;
+    grid-template-columns: 0.96fr 1.04fr;
+    gap: 10px;
+    border: 1px solid rgba(255,250,240,0.13);
+    background: rgba(255,250,240,0.055);
+    overflow: hidden;
+  }
+  .luxury-feature__image {
+    width: 100%;
+    height: 56mm;
+    object-fit: cover;
+    display: block;
+    opacity: 0.88;
+    background: rgba(255,255,255,0.06);
+  }
+  .luxury-feature__body {
+    padding: 13px 14px;
+    display: grid;
+    gap: 7px;
+    align-content: start;
+  }
+  .luxury-feature__title {
+    margin: 0;
+    font-family: "Noto Serif", Georgia, "Times New Roman", serif;
+    font-size: 21px;
+    line-height: 1.12;
+    color: #fffaf0;
+  }
+  .luxury-feature__copy {
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.54;
+    color: rgba(255,250,240,0.68);
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .luxury-support-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
   .luxury-logistics-grid,
   .luxury-card-grid {
     display: grid;
@@ -1723,31 +1927,36 @@ const PRINT_CSS = `
   }
   .luxury-card {
     border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 16px;
     overflow: hidden;
     background: rgba(255,255,255,0.06);
   }
   .luxury-card__image {
     width: 100%;
-    height: 34mm;
+    height: 26mm;
     object-fit: cover;
     display: block;
     opacity: 0.86;
   }
   .luxury-card__body {
-    padding: 12px 13px;
+    padding: 10px 11px;
   }
   .luxury-card__title {
     margin: 0 0 6px;
     font-family: "Noto Serif", Georgia, "Times New Roman", serif;
-    font-size: 17px;
+    font-size: 14px;
     line-height: 1.22;
   }
   .luxury-card__copy {
     margin: 0;
-    font-size: 10.5px;
-    line-height: 1.55;
+    font-size: 10px;
+    line-height: 1.42;
     color: rgba(255,250,240,0.66);
+  }
+  .luxury-closing-grid {
+    display: grid;
+    grid-template-columns: 1.06fr 0.94fr;
+    gap: 9mm;
+    align-items: start;
   }
   .visual-cover-mark {
     position: absolute;
@@ -2907,6 +3116,189 @@ const LuxuryCard = ({ activity }: { activity: PreparedPrintActivity }) => (
   </article>
 );
 
+const LuxuryMiniListPanel = ({
+  title,
+  items,
+  maxItems = 3,
+}: {
+  title: string;
+  items: string[];
+  maxItems?: number;
+}) => {
+  const visibleItems = items.filter(Boolean).slice(0, maxItems);
+  if (!visibleItems.length) return null;
+
+  return (
+    <div className="luxury-panel luxury-panel--tight">
+      <p className="luxury-panel__label">{title}</p>
+      <div className="luxury-mini-list">
+        {visibleItems.map((item, index) => (
+          <div key={`${title}-${index}`} className="luxury-mini-list__item">
+            <div className="luxury-mini-list__index">{index + 1}</div>
+            <p className="luxury-mini-list__text">{item}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const LuxuryRoute = ({ locations }: { locations: string[] }) => {
+  const visibleLocations = locations.filter(Boolean).slice(0, 4);
+  if (!visibleLocations.length) return null;
+
+  return (
+    <div className="luxury-route">
+      {visibleLocations.map((location, index) => (
+        <span key={`${location}-${index}`} className="luxury-route__chip">{location}</span>
+      ))}
+    </div>
+  );
+};
+
+const LuxuryStayPanel = ({ accommodation }: { accommodation: PreparedPrintAccommodation | null }) => {
+  if (!accommodation) return null;
+
+  const stayMeta = [
+    accommodation.roomType,
+    accommodation.starRating ? `${accommodation.starRating}-star` : null,
+    accommodation.amenities?.slice(0, 2).join(' • '),
+  ].filter(Boolean).join(' • ');
+
+  return (
+    <div className="luxury-panel luxury-panel--tight">
+      <p className="luxury-panel__label">Stay tonight</p>
+      <p className="luxury-panel__value">{accommodation.hotelName}</p>
+      {stayMeta ? <p className="luxury-panel__copy">{stayMeta}</p> : null}
+    </div>
+  );
+};
+
+const LuxuryFeatureCard = ({
+  activity,
+  fallbackLocation,
+}: {
+  activity: PreparedPrintActivity;
+  fallbackLocation: string;
+}) => (
+  <article className="luxury-feature">
+    {activity.printImage ? (
+      <img className="luxury-feature__image" src={activity.printImage} alt={activity.title} />
+    ) : (
+      <div className="luxury-feature__image" />
+    )}
+    <div className="luxury-feature__body">
+      <div className="activity-card__meta" style={{ color: 'rgba(255,250,240,0.62)' }}>
+        {activity.time ? <span>{activity.time}</span> : null}
+        <span>{activity.location || fallbackLocation}</span>
+        {activity.duration ? <span>{activity.duration}</span> : null}
+      </div>
+      <h3 className="luxury-feature__title">{activity.title}</h3>
+      {activity.description ? <p className="luxury-feature__copy">{activity.description}</p> : null}
+    </div>
+  </article>
+);
+
+const LuxuryDossierCards = ({
+  payload,
+  day,
+}: {
+  payload: PreparedPrintPayload;
+  day?: PreparedPrintPayload['itinerary']['days'][number];
+}) => {
+  const price = formatCurrency(payload.itinerary) || 'Custom quote';
+  const totalActivities = payload.itinerary.days.reduce((sum, item) => sum + item.activities.length, 0);
+  const locations = day ? getDayLocations(day, 4) : getTopLocations(payload, 4);
+  const accommodation = day ? getDayAccommodation(payload, day.day_number) : payload.printExtras.dayAccommodations[0] || null;
+
+  const cards = day
+    ? [
+        ['Route', locations.join(' • ') || payload.itinerary.destination],
+        ['Private pace', `${day.activities.length} curated moments`],
+        ['Stay', accommodation?.hotelName || 'Operator to confirm'],
+        ['Timing', formatDateLabel(day.date) || 'Flexible'],
+      ]
+    : [
+        ['Duration', `${payload.itinerary.duration_days || payload.itinerary.days.length} days`],
+        ['Travel window', getTravelWindowLabel(payload)],
+        ['Estimated value', price],
+        ['Moments', `${totalActivities} planned`],
+      ];
+
+  return (
+    <div className="luxury-dossier-grid">
+      {cards.map(([label, value], index) => (
+        <div key={`luxury-dossier-${label}-${index}`} className="luxury-panel luxury-panel--tight">
+          <p className="luxury-panel__label">{label}</p>
+          <p className="luxury-panel__value" style={{ fontSize: 15 }}>{value}</p>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const LuxuryOverviewPage = ({ payload }: { payload: PreparedPrintPayload }) => {
+  const accent = payload.branding.primaryColor || '#ccb27a';
+  const topLocations = getTopLocations(payload, 5);
+  const featuredActivities = getFeaturedActivities(payload, 3);
+  const selectedAddOns = getSelectedAddOns(payload, 3);
+  const contextItems = (
+    selectedAddOns.length
+      ? selectedAddOns.map((addOn) => [addOn.name, addOn.category].filter(Boolean).join(' • '))
+      : [...(payload.itinerary.interests || []), ...(payload.itinerary.tips || []), ...topLocations]
+  ).slice(0, 3);
+
+  return (
+    <section className="page page--dark luxury-sheet">
+      <div className="page__inner" style={{ ['--accent' as string]: accent }}>
+        <BrandRow branding={payload.branding} dark />
+        <div className="luxury-overview-grid">
+          <div className="luxury-overview-lead">
+            <div>
+              <div className="accent-line" style={{ background: accent }} />
+              <p className="section-kicker" style={{ color: 'rgba(255,250,240,0.54)' }}>Private escape overview</p>
+              <h2 className="print-title" style={{ color: '#fffaf0', fontFamily: '"Noto Serif", Georgia, Times New Roman, serif', marginBottom: 8 }}>
+                Resort rhythm, curated for the client
+              </h2>
+              <p className="luxury-copy">{payload.itinerary.summary}</p>
+            </div>
+            {payload.coverImage ? <img className="luxury-overview-image" src={payload.coverImage} alt={payload.itinerary.trip_title} /> : null}
+            <LuxuryDossierCards payload={payload} />
+          </div>
+          <div className="luxury-sidebar">
+            <div className="luxury-panel">
+              <p className="luxury-panel__label">Operator handoff</p>
+              <p className="luxury-panel__value">{payload.branding.companyName}</p>
+              <p className="luxury-panel__copy">
+                {payload.branding.clientName
+                  ? `Prepared exclusively for ${payload.branding.clientName}, with the resort pacing, standout moments, and concierge notes presented as a send-ready packet.`
+                  : 'Resort pacing, standout moments, and concierge notes are presented as a send-ready client packet.'}
+              </p>
+            </div>
+            <div className="luxury-panel">
+              <p className="luxury-panel__label">Signature moments</p>
+              <div className="luxury-mini-list">
+                {featuredActivities.map((activity, index) => (
+                  <div key={`luxury-featured-${index}`} className="luxury-mini-list__item">
+                    <div className="luxury-mini-list__index">{activity.dayNumber}</div>
+                    <div>
+                      <p className="luxury-mini-list__text" style={{ color: '#fffaf0', fontWeight: 700 }}>{activity.title}</p>
+                      <p className="luxury-mini-list__text">{activity.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <LuxuryMiniListPanel title={selectedAddOns.length ? 'Private upgrades' : 'Client context'} items={contextItems} />
+            <LuxuryStayPanel accommodation={payload.printExtras.dayAccommodations[0] || null} />
+          </div>
+        </div>
+        <PageFooter branding={payload.branding} />
+      </div>
+    </section>
+  );
+};
+
 const VisualStoryCard = ({
   activity,
   fallbackLocation,
@@ -3129,6 +3521,14 @@ const TipsPage = ({
 
 const LuxuryTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
   const accent = payload.branding.primaryColor || '#ccb27a';
+  const price = formatCurrency(payload.itinerary);
+  const topLocations = getTopLocations(payload, 4);
+  const totalActivities = payload.itinerary.days.reduce((sum, day) => sum + day.activities.length, 0);
+  const closingNotes = [
+    ...(payload.itinerary.tips || []),
+    ...(payload.itinerary.inclusions || []),
+    ...(payload.itinerary.exclusions || []),
+  ].slice(0, 5);
 
   return (
     <>
@@ -3146,37 +3546,127 @@ const LuxuryTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
               <div className="cover__meta">
                 <span className="meta-pill" style={{ borderColor: 'rgba(204,178,122,0.52)', color: '#f8e8c5' }}>{payload.itinerary.destination}</span>
                 <span className="meta-pill" style={{ borderColor: 'rgba(204,178,122,0.52)', color: '#f8e8c5' }}>{payload.itinerary.duration_days} Days</span>
+                {price ? <span className="meta-pill" style={{ borderColor: 'rgba(204,178,122,0.52)', color: '#f8e8c5' }}>{price}</span> : null}
+              </div>
+              <div className="cover-dossier">
+                <div className="cover-dossier__card">
+                  <div className="cover-dossier__label">Destination</div>
+                  <div className="cover-dossier__value">{payload.itinerary.destination}</div>
+                </div>
+                <div className="cover-dossier__card">
+                  <div className="cover-dossier__label">Travel window</div>
+                  <div className="cover-dossier__value cover-dossier__value--small">{getTravelWindowLabel(payload)}</div>
+                </div>
+                <div className="cover-dossier__card">
+                  <div className="cover-dossier__label">Planned moments</div>
+                  <div className="cover-dossier__value">{totalActivities}</div>
+                </div>
+                <div className="cover-dossier__card">
+                  <div className="cover-dossier__label">Prepared by</div>
+                  <div className="cover-dossier__value">{payload.branding.companyName}</div>
+                </div>
               </div>
             </div>
             <PageFooter branding={payload.branding} />
           </div>
         </div>
       </section>
-      <SummaryPage payload={payload} dark title="Private escape overview" />
+      <LuxuryOverviewPage payload={payload} />
       {payload.itinerary.days.flatMap((day, dayIndex) =>
-        chunkItems(day.activities, 4).map((chunk, chunkIndex) => (
+        chunkItems(day.activities, 3).map((chunk, chunkIndex) => (
           <section key={`luxury-day-${dayIndex}-${chunkIndex}`} className="page page--dark luxury-sheet">
-            <div className="page__inner">
+            <div className="page__inner" style={{ ['--accent' as string]: accent }}>
               <BrandRow branding={payload.branding} dark />
-              <div className="day-hero" style={{ marginBottom: '8mm' }}>
-                {chunkIndex === 0 && day.dayHeroImage ? <img className="day-hero__image" src={day.dayHeroImage} alt={day.theme} /> : <div className="panel panel--dark" style={{ minHeight: '62mm' }} />}
+              <div className="luxury-day-header">
                 <div>
                   <div className="accent-line" style={{ background: accent }} />
-                  <p className="day-hero__eyebrow">Day {day.day_number}{chunkIndex > 0 ? ' continuation' : ''}</p>
-                  <h2 className="day-hero__title" style={{ color: '#fffaf0', fontFamily: '"Noto Serif", Georgia, Times New Roman, serif' }}>{day.theme}</h2>
-                  <div className="day-hero__date">{formatDateLabel(day.date) || payload.itinerary.destination}</div>
-                  {chunkIndex === 0 && day.summary ? <p className="body-copy print-copy-clamp" style={{ marginTop: 12 }}>{day.summary}</p> : null}
+                  <div className="luxury-day-number">{day.day_number}</div>
+                  <p className="day-hero__eyebrow" style={{ color: 'rgba(255,250,240,0.52)' }}>
+                    Day {day.day_number}{chunkIndex > 0 ? ' continuation' : ''}
+                  </p>
+                  <h2 className="luxury-day-title">{day.theme}</h2>
+                  <div className="day-hero__date" style={{ color: 'rgba(255,250,240,0.56)' }}>{formatDateLabel(day.date) || payload.itinerary.destination}</div>
+                  {chunkIndex === 0 && day.summary ? <p className="luxury-copy" style={{ marginTop: 10 }}>{day.summary}</p> : null}
+                  <div style={{ marginTop: 10 }}>
+                    <LuxuryRoute locations={getDayLocations(day, 4)} />
+                  </div>
                 </div>
+                {chunkIndex === 0 && day.dayHeroImage ? (
+                  <img className="luxury-day-image" src={day.dayHeroImage} alt={day.theme} />
+                ) : (
+                  <LuxuryDossierCards payload={payload} day={day} />
+                )}
               </div>
-              <div className="luxury-card-grid">
-                {chunk.map((activity, activityIndex) => <LuxuryCard key={`luxury-card-${activityIndex}`} activity={activity} />)}
+              <div className="luxury-day-layout">
+                <div className="luxury-day-main">
+                  {chunk[0] ? <LuxuryFeatureCard activity={chunk[0]} fallbackLocation={payload.itinerary.destination} /> : null}
+                  {chunk.slice(1).length ? (
+                    <div className="luxury-support-grid">
+                      {chunk.slice(1).map((activity, activityIndex) => (
+                        <LuxuryCard key={`luxury-card-${activityIndex}`} activity={activity} />
+                      ))}
+                    </div>
+                  ) : null}
+                  <LuxuryDossierCards payload={payload} day={day} />
+                </div>
+                <div className="luxury-sidebar">
+                  <LuxuryStayPanel accommodation={getDayAccommodation(payload, day.day_number)} />
+                  <LuxuryMiniListPanel title="Private route" items={getDayLocations(day, 4)} maxItems={4} />
+                  <LuxuryMiniListPanel
+                    title="Concierge notes"
+                    items={[...(payload.itinerary.tips || []), ...(payload.itinerary.inclusions || [])].slice(chunkIndex * 3, chunkIndex * 3 + 3)}
+                  />
+                </div>
               </div>
               <PageFooter branding={payload.branding} />
             </div>
           </section>
         )),
       )}
-      <TipsPage payload={payload} title="Concierge notes" dark />
+      <section className="page page--dark luxury-sheet">
+        <div className="page__inner" style={{ ['--accent' as string]: accent }}>
+          <BrandRow branding={payload.branding} dark />
+          <div className="luxury-closing-grid">
+            <div className="luxury-overview-lead">
+              <div>
+                <div className="accent-line" style={{ background: accent }} />
+                <p className="section-kicker" style={{ color: 'rgba(255,250,240,0.54)' }}>Concierge handoff</p>
+                <h2 className="print-title" style={{ color: '#fffaf0', fontFamily: '"Noto Serif", Georgia, Times New Roman, serif', marginBottom: 8 }}>
+                  Final resort notes
+                </h2>
+                <p className="luxury-copy">
+                  Final confirmations, inclusions, optional upgrades, and operator contact details are grouped here so the itinerary can be sent as a polished resort packet.
+                </p>
+              </div>
+              <div className="luxury-dossier-grid">
+                <div className="luxury-panel">
+                  <p className="luxury-panel__label">Operator</p>
+                  <p className="luxury-panel__value">{payload.branding.companyName}</p>
+                  {(payload.branding.contactEmail || payload.branding.contactPhone) ? (
+                    <p className="luxury-panel__copy">{[payload.branding.contactEmail, payload.branding.contactPhone].filter(Boolean).join('  •  ')}</p>
+                  ) : null}
+                </div>
+                <div className="luxury-panel">
+                  <p className="luxury-panel__label">Route sequence</p>
+                  <p className="luxury-panel__value">{topLocations[0] || payload.itinerary.destination}</p>
+                  <p className="luxury-panel__copy">{topLocations.slice(1).join(' • ') || getTravelWindowLabel(payload)}</p>
+                </div>
+              </div>
+              <LuxuryMiniListPanel title="Concierge notes" items={closingNotes} maxItems={5} />
+            </div>
+            <div className="luxury-sidebar">
+              <LuxuryStayPanel accommodation={payload.printExtras.dayAccommodations[0] || null} />
+              <LuxuryMiniListPanel
+                title="Private upgrades"
+                items={getSelectedAddOns(payload, 4).map((addOn) => [addOn.name, addOn.category].filter(Boolean).join(' • '))}
+                maxItems={4}
+              />
+              <LuxuryMiniListPanel title="Tailored around" items={payload.itinerary.interests || []} maxItems={4} />
+            </div>
+          </div>
+          <PageFooter branding={payload.branding} />
+        </div>
+      </section>
     </>
   );
 };
