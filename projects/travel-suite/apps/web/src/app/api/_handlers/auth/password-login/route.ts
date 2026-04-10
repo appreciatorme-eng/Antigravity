@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { enforceRateLimit, type RateLimitResult } from "@/lib/security/rate-limit";
 import { logError } from "@/lib/observability/logger";
+import { captureSession } from "@/lib/auth/session-capture";
 
 const LoginSchema = z.object({
   email: z.string().email().max(320),
@@ -85,6 +86,14 @@ export async function POST(request: NextRequest) {
       );
       return withRateLimitHeaders(response, rateLimit);
     }
+
+    // Fire-and-forget: capture session device/location info asynchronously
+    void captureSession(supabase, {
+      userId: data.user.id,
+      supabaseSessionId: null,
+      ip: getRequestIp(request),
+      userAgent: request.headers.get("user-agent"),
+    });
 
     const response = NextResponse.json({
       success: true,

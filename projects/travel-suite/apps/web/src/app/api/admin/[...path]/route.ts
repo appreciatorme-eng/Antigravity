@@ -76,6 +76,7 @@ const routes = createCatchAllHandlers([
   ["reports/operators", () => import("@/app/api/_handlers/admin/reports/operators/route")],
   ["reputation/client-referrals", () => import("@/app/api/_handlers/admin/reputation/client-referrals/route")],
   ["security/diagnostics", () => import("@/app/api/_handlers/admin/security/diagnostics/route")],
+  ["security/sessions", () => import("@/app/api/_handlers/admin/security/sessions/route")],
   ["social/generate", () => import("@/app/api/_handlers/admin/social/generate/route")],
   ["tour-templates/extract", () => import("@/app/api/_handlers/admin/tour-templates/extract/route")],
   ["trips/:id/portal-token", () => import("@/app/api/_handlers/admin/trips/[id]/portal-token/route")],
