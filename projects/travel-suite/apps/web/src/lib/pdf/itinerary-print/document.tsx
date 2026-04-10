@@ -2405,6 +2405,43 @@ const PRINT_CSS = `
     gap: 10px;
     margin-top: 10mm;
   }
+  .package-bottom-strip {
+    position: absolute;
+    left: 16mm;
+    right: 16mm;
+    bottom: 22mm;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .package-bottom-strip--single {
+    grid-template-columns: 1fr;
+  }
+  .package-bottom-card {
+    border: 1px solid rgba(17,24,39,0.10);
+    background: rgba(255,255,255,0.92);
+    border-radius: 14px;
+    padding: 9px 11px;
+  }
+  .package-bottom-card--dark {
+    border-color: rgba(255,250,240,0.14);
+    background: rgba(255,250,240,0.06);
+  }
+  .package-bottom-card .panel__title {
+    margin-bottom: 6px;
+  }
+  .package-bottom-card .list-clean {
+    font-size: 10px;
+    line-height: 1.35;
+    display: grid;
+    gap: 3px;
+  }
+  .package-bottom-card .list-clean li {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
   .list-clean {
     margin: 0;
     padding-left: 16px;
@@ -2934,9 +2971,19 @@ const ActivityCard = ({
   );
 };
 
-const PackagePanels = ({ payload, dark = false }: { payload: PreparedPrintPayload; dark?: boolean }) => {
-  const hasInclusions = Boolean(payload.itinerary.inclusions?.length);
-  const hasExclusions = Boolean(payload.itinerary.exclusions?.length);
+const PackagePanels = ({
+  payload,
+  dark = false,
+  showInclusions = true,
+  showExclusions = true,
+}: {
+  payload: PreparedPrintPayload;
+  dark?: boolean;
+  showInclusions?: boolean;
+  showExclusions?: boolean;
+}) => {
+  const hasInclusions = showInclusions && Boolean(payload.itinerary.inclusions?.length);
+  const hasExclusions = showExclusions && Boolean(payload.itinerary.exclusions?.length);
   const hasTips = Boolean(payload.itinerary.tips?.length);
   if (!hasInclusions && !hasExclusions && !hasTips) return null;
 
@@ -2963,6 +3010,40 @@ const PackagePanels = ({ payload, dark = false }: { payload: PreparedPrintPayloa
           <p className="panel__title">Travel Notes</p>
           <ul className="list-clean">
             {payload.itinerary.tips!.map((item, index) => <li key={`tip-${index}`}>{item}</li>)}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
+const PackageBottomStrip = ({
+  payload,
+  dark = false,
+}: {
+  payload: PreparedPrintPayload;
+  dark?: boolean;
+}) => {
+  const inclusions = (payload.itinerary.inclusions || []).slice(0, 4);
+  const exclusions = (payload.itinerary.exclusions || []).slice(0, 4);
+  if (!inclusions.length && !exclusions.length) return null;
+  const single = !inclusions.length || !exclusions.length;
+
+  return (
+    <div className={`package-bottom-strip ${single ? 'package-bottom-strip--single' : ''}`}>
+      {inclusions.length ? (
+        <div className={`package-bottom-card ${dark ? 'package-bottom-card--dark panel--dark' : ''}`}>
+          <p className="panel__title">Inclusions</p>
+          <ul className="list-clean">
+            {inclusions.map((item, index) => <li key={`bottom-inc-${index}`}>{item}</li>)}
+          </ul>
+        </div>
+      ) : null}
+      {exclusions.length ? (
+        <div className={`package-bottom-card ${dark ? 'package-bottom-card--dark panel--dark' : ''}`}>
+          <p className="panel__title">Exclusions</p>
+          <ul className="list-clean">
+            {exclusions.map((item, index) => <li key={`bottom-exc-${index}`}>{item}</li>)}
           </ul>
         </div>
       ) : null}
@@ -3418,7 +3499,7 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                     Confirm inclusions, exclusions, travel notes, and booking references here before departure.
                   </p>
                 </div>
-                <PackagePanels payload={payload} />
+                <PackagePanels payload={payload} showInclusions={false} showExclusions={false} />
                 <LogisticsPanel payload={payload} />
               </div>
               <div className="trip-brief__sidebar">
@@ -3451,6 +3532,7 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                 ) : null}
               </div>
             </div>
+            <PackageBottomStrip payload={payload} />
             <PageFooter branding={payload.branding} />
           </div>
         </section>
@@ -3918,7 +4000,9 @@ const VisualClosingPage = ({ payload }: { payload: PreparedPrintPayload }) => {
     ...(payload.itinerary.inclusions || []),
   ].slice(0, 6);
 
-  if (!notes.length && !payload.printExtras.selectedAddOns.length) return null;
+  const hasPackage = Boolean(payload.itinerary.inclusions?.length || payload.itinerary.exclusions?.length);
+
+  if (!notes.length && !payload.printExtras.selectedAddOns.length && !hasPackage) return null;
 
   return (
     <section className="page page--white">
@@ -3961,6 +4045,7 @@ const VisualClosingPage = ({ payload }: { payload: PreparedPrintPayload }) => {
             <VisualMiniPanel title="Route sequence" items={getTopLocations(payload, 5)} maxItems={5} />
           </div>
         </div>
+        <PackageBottomStrip payload={payload} />
         <PageFooter branding={payload.branding} />
       </div>
     </section>
@@ -4158,6 +4243,7 @@ const BentoClosingPage = ({ payload }: { payload: PreparedPrintPayload }) => {
             <BentoMiniListPanel title="Route sequence" items={getTopLocations(payload, 5)} maxItems={4} />
           </div>
         </div>
+        <PackageBottomStrip payload={payload} />
         <PageFooter branding={payload.branding} />
       </div>
     </section>
@@ -4288,6 +4374,8 @@ const UrbanKeyInfoPage = ({
   items: string[];
 }) => {
   if (!items.length) return null;
+  const hasPackageSummary = Boolean(payload.itinerary.inclusions?.length || payload.itinerary.exclusions?.length);
+  const visibleItems = items.slice(0, hasPackageSummary ? 6 : 8);
 
   return (
     <section className="page page--white">
@@ -4301,13 +4389,14 @@ const UrbanKeyInfoPage = ({
           <div className="day-hero__date">{payload.itinerary.destination}</div>
         </div>
         <div className="urban-info-grid">
-          {items.slice(0, 8).map((item, index) => (
+          {visibleItems.map((item, index) => (
             <div key={`urban-key-info-${index}`} className="urban-info-card">
               <div className="urban-info-card__index">{String(index + 1).padStart(2, '0')}</div>
               <p className="urban-info-card__copy">{item}</p>
             </div>
           ))}
         </div>
+        <PackageBottomStrip payload={payload} />
         <PageFooter branding={payload.branding} />
       </div>
     </section>
@@ -4461,6 +4550,7 @@ const LuxuryTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
               <LuxuryMiniListPanel title="Tailored around" items={payload.itinerary.interests || []} maxItems={4} />
             </div>
           </div>
+          <PackageBottomStrip payload={payload} dark />
           <PageFooter branding={payload.branding} />
         </div>
       </section>
@@ -4667,6 +4757,7 @@ const UrbanTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
   const keyInfoItems = [
     ...(payload.itinerary.tips || []),
     ...(payload.itinerary.inclusions || []),
+    ...(payload.itinerary.exclusions || []),
   ];
 
   return (
@@ -5020,7 +5111,7 @@ const ProfessionalTemplate = ({ payload }: { payload: PreparedPrintPayload }) =>
                   Use this page as the clean handoff area for inclusions, exclusions, travel notes, upgrades, and final operator details before sending the itinerary to the client.
                 </p>
               </div>
-              <PackagePanels payload={payload} />
+              <PackagePanels payload={payload} showInclusions={false} showExclusions={false} />
             </div>
             <div className="professional-sidebar">
               <div className="operator-card">
@@ -5041,6 +5132,7 @@ const ProfessionalTemplate = ({ payload }: { payload: PreparedPrintPayload }) =>
               <MiniListPanel title="Route sequence" items={topLocations} compact maxItems={4} />
             </div>
           </div>
+          <PackageBottomStrip payload={payload} />
           <PageFooter branding={payload.branding} />
         </div>
       </section>
