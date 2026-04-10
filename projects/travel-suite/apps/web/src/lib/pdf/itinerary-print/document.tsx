@@ -2517,6 +2517,86 @@ const getDayLocations = (
   return [...new Set(values)].slice(0, limit);
 };
 
+const isValidCoordinate = (
+  coordinates?: PreparedPrintActivity['coordinates'] | null,
+): coordinates is NonNullable<PreparedPrintActivity['coordinates']> =>
+  Boolean(coordinates)
+  && Number.isFinite(coordinates?.lat)
+  && Number.isFinite(coordinates?.lng);
+
+const isSameCoordinate = (
+  first: NonNullable<PreparedPrintActivity['coordinates']>,
+  second: NonNullable<PreparedPrintActivity['coordinates']>,
+) =>
+  Math.abs(first.lat - second.lat) < 0.0001
+  && Math.abs(first.lng - second.lng) < 0.0001;
+
+const toRadians = (value: number) => (value * Math.PI) / 180;
+
+const getCoordinateDistanceKm = (
+  start: NonNullable<PreparedPrintActivity['coordinates']>,
+  end: NonNullable<PreparedPrintActivity['coordinates']>,
+) => {
+  const earthRadiusKm = 6371;
+  const latDelta = toRadians(end.lat - start.lat);
+  const lngDelta = toRadians(end.lng - start.lng);
+  const startLat = toRadians(start.lat);
+  const endLat = toRadians(end.lat);
+
+  const haversine =
+    Math.sin(latDelta / 2) ** 2
+    + Math.cos(startLat) * Math.cos(endLat) * Math.sin(lngDelta / 2) ** 2;
+
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+};
+
+const formatDistanceKm = (distanceKm: number) => {
+  if (distanceKm < 1) return `${distanceKm.toFixed(1)} km`;
+  return `${Math.round(distanceKm)} km`;
+};
+
+const getDayTravelSummary = (day: PreparedPrintPayload['itinerary']['days'][number]) => {
+  const coordinates = day.activities
+    .map((activity) => activity.coordinates)
+    .filter(isValidCoordinate)
+    .reduce<NonNullable<PreparedPrintActivity['coordinates']>[]>((points, coordinates) => {
+      const previous = points[points.length - 1];
+      if (!previous || !isSameCoordinate(previous, coordinates)) points.push(coordinates);
+      return points;
+    }, []);
+
+  if (coordinates.length > 1) {
+    const distanceKm = coordinates.slice(1).reduce(
+      (total, point, index) => total + getCoordinateDistanceKm(coordinates[index], point),
+      0,
+    );
+    const segments = coordinates.length - 1;
+
+    return {
+      label: `${formatDistanceKm(distanceKm)} estimated`,
+      copy: `${segments} route leg${segments > 1 ? 's' : ''} between mapped stops. Drive time may vary by traffic.`,
+    };
+  }
+
+  const locations = getDayLocations(day, 4);
+  if (locations.length > 1) {
+    return {
+      label: `${locations.length} route stops`,
+      copy: 'Distance pending until stop coordinates are assigned.',
+    };
+  }
+
+  return {
+    label: 'Flexible routing',
+    copy: 'Daily travel distance to be confirmed by the operator.',
+  };
+};
+
+const getDayTravelSummaryItems = (day: PreparedPrintPayload['itinerary']['days'][number]) => {
+  const summary = getDayTravelSummary(day);
+  return [summary.label, summary.copy];
+};
+
 const getDayAccommodation = (payload: PreparedPrintPayload, dayNumber: number) =>
   payload.printExtras.dayAccommodations.find((accommodation) => accommodation.dayNumber === dayNumber) || null;
 
@@ -2747,10 +2827,7 @@ const DayDossier = ({
 }) => {
   const accommodation = getDayAccommodation(payload, day.day_number);
   const locations = getDayLocations(day, 3);
-  const logisticsLine = [
-    payload.itinerary.logistics?.flights?.length ? `${payload.itinerary.logistics.flights.length} flight${payload.itinerary.logistics.flights.length > 1 ? 's' : ''}` : null,
-    payload.itinerary.logistics?.hotels?.length ? `${payload.itinerary.logistics.hotels.length} stay${payload.itinerary.logistics.hotels.length > 1 ? 's' : ''}` : null,
-  ].filter(Boolean).join(' • ');
+  const travelSummary = getDayTravelSummary(day);
 
   return (
     <div className="day-dossier">
@@ -2765,9 +2842,9 @@ const DayDossier = ({
         <div className="trip-brief__copy">{accommodation?.roomType || 'Accommodation details slot into the dossier when assigned.'}</div>
       </div>
       <div className="day-dossier__card">
-        <div className="trip-brief__label">Operational pulse</div>
-        <div className="day-dossier__value">{day.activities.length} planned moments</div>
-        <div className="trip-brief__copy">{logisticsLine || 'Built to keep the day moving cleanly between stops.'}</div>
+        <div className="trip-brief__label">Daily travel</div>
+        <div className="day-dossier__value">{travelSummary.label}</div>
+        <div className="trip-brief__copy">{travelSummary.copy}</div>
       </div>
     </div>
   );
@@ -3299,6 +3376,7 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                           compact
                           maxItems={2}
                         />
+                        <MiniListPanel title="Daily travel" items={getDayTravelSummaryItems(day)} compact maxItems={2} />
                         {chunkIndex === 0 && selectedAddOns.length ? (
                           <MiniListPanel
                             title="Available upgrades"
@@ -3479,6 +3557,22 @@ const LuxuryStaySnapshot = ({
   );
 };
 
+const LuxuryTravelDistancePanel = ({
+  day,
+}: {
+  day: PreparedPrintPayload['itinerary']['days'][number];
+}) => {
+  const summary = getDayTravelSummary(day);
+
+  return (
+    <div className="luxury-panel luxury-panel--tight">
+      <p className="luxury-panel__label">Daily travel</p>
+      <p className="luxury-panel__value">{summary.label}</p>
+      <p className="luxury-panel__copy">{summary.copy}</p>
+    </div>
+  );
+};
+
 const LuxuryFeatureCard = ({
   activity,
   fallbackLocation,
@@ -3515,13 +3609,14 @@ const LuxuryDossierCards = ({
   const totalActivities = payload.itinerary.days.reduce((sum, item) => sum + item.activities.length, 0);
   const locations = day ? getDayLocations(day, 4) : getTopLocations(payload, 4);
   const accommodation = day ? getDayAccommodation(payload, day.day_number) : payload.printExtras.dayAccommodations[0] || null;
+  const travelSummary = day ? getDayTravelSummary(day) : null;
 
   const cards = day
     ? [
         ['Route', locations.join(' • ') || payload.itinerary.destination],
         ['Private pace', `${day.activities.length} curated moments`],
         ['Stay', accommodation?.hotelName || 'Operator to confirm'],
-        ['Timing', formatDateLabel(day.date) || 'Flexible'],
+        ['Daily travel', travelSummary?.label || 'Flexible routing'],
       ]
     : [
         ['Duration', `${payload.itinerary.duration_days || payload.itinerary.days.length} days`],
@@ -3739,6 +3834,22 @@ const VisualStayPanel = ({
   );
 };
 
+const VisualTravelDistancePanel = ({
+  day,
+}: {
+  day: PreparedPrintPayload['itinerary']['days'][number];
+}) => {
+  const summary = getDayTravelSummary(day);
+
+  return (
+    <div className="visual-panel">
+      <p className="visual-panel__label">Daily travel</p>
+      <p className="visual-panel__value">{summary.label}</p>
+      <p className="visual-panel__copy">{summary.copy}</p>
+    </div>
+  );
+};
+
 const VisualOverviewPage = ({ payload }: { payload: PreparedPrintPayload }) => {
   const accent = payload.branding.primaryColor || '#e11d48';
   const topLocations = getTopLocations(payload, 5);
@@ -3932,6 +4043,22 @@ const BentoStayPanel = ({
       label="Hotel details"
       value={stay.title}
       copy={stay.copy}
+    />
+  );
+};
+
+const BentoTravelDistancePanel = ({
+  day,
+}: {
+  day: PreparedPrintPayload['itinerary']['days'][number];
+}) => {
+  const summary = getDayTravelSummary(day);
+
+  return (
+    <BentoPanelPrint
+      label="Daily travel"
+      value={summary.label}
+      copy={summary.copy}
     />
   );
 };
@@ -4280,6 +4407,7 @@ const LuxuryTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                 <div className="luxury-sidebar">
                   <LuxuryStaySnapshot payload={payload} dayNumber={day.day_number} dayIndex={dayIndex} />
                   <LuxuryMiniListPanel title="Private route" items={getDayLocations(day, 4)} maxItems={4} />
+                  <LuxuryTravelDistancePanel day={day} />
                   <LuxuryMiniListPanel
                     title="Concierge notes"
                     items={[...(payload.itinerary.tips || []), ...(payload.itinerary.inclusions || [])].slice(chunkIndex * 3, chunkIndex * 3 + 3)}
@@ -4419,6 +4547,7 @@ const VisualTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                 </div>
                 <div className="visual-sidebar">
                   <VisualMiniPanel title="Day route" items={getDayLocations(day, 4)} maxItems={4} />
+                  <VisualTravelDistancePanel day={day} />
                   <VisualStayPanel payload={payload} dayNumber={day.day_number} dayIndex={dayIndex} />
                   <VisualMiniPanel
                     title="Travel notes"
@@ -4506,6 +4635,7 @@ const BentoTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                 </div>
                 <div className="bento-sidebar">
                   <BentoMiniListPanel title="Day route" items={getDayLocations(day, 4)} maxItems={4} />
+                  <BentoTravelDistancePanel day={day} />
                   <BentoStayPanel payload={payload} dayNumber={day.day_number} dayIndex={dayIndex} />
                   <BentoMiniListPanel
                     title="Travel notes"
@@ -4603,7 +4733,10 @@ const UrbanTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                     <div style={{ fontSize: 18, lineHeight: 1.1, fontWeight: 900, letterSpacing: '-0.03em', marginTop: 4 }}>{day.theme}</div>
                     <div className="day-hero__date">{chunkIndex > 0 ? 'Continuation' : formatDateLabel(day.date) || payload.itinerary.destination}</div>
                   </div>
-                  <div style={{ fontSize: 11, color: 'rgba(17,24,39,0.62)' }}>{day.activities.length} stops</div>
+                  <div style={{ fontSize: 11, lineHeight: 1.45, color: 'rgba(17,24,39,0.62)', textAlign: 'right' }}>
+                    {day.activities.length} stops<br />
+                    <span style={{ color: accent, fontWeight: 800 }}>{getDayTravelSummary(day).label}</span>
+                  </div>
                 </div>
                 {chunkIndex === 0 && day.summary ? <div className="body-copy print-copy-clamp" style={{ padding: '10px 12px', borderTop: '1px solid rgba(17,24,39,0.10)' }}>{day.summary}</div> : null}
                 {chunk.map((activity, activityIndex) => (
