@@ -2559,7 +2559,7 @@ const getStayDetailsForDay = (
   };
 };
 
-const getStayDetailItems = (payload: PreparedPrintPayload, limit = 4) => {
+const getStayDetailItems = (payload: PreparedPrintPayload, limit = 4, includeFallback = false) => {
   const accommodationItems = payload.printExtras.dayAccommodations.map((accommodation) =>
     [
       accommodation.dayNumber ? `Day ${accommodation.dayNumber}` : null,
@@ -2577,7 +2577,11 @@ const getStayDetailItems = (payload: PreparedPrintPayload, limit = 4) => {
     ].filter(Boolean).join(' • '),
   );
 
-  return [...accommodationItems, ...hotelItems].slice(0, limit);
+  const items = [...accommodationItems, ...hotelItems].slice(0, limit);
+  if (!items.length && includeFallback) {
+    return ['Hotel details to be confirmed by the operator before final dispatch.'];
+  }
+  return items;
 };
 
 const getFlightDetailItems = (payload: PreparedPrintPayload, limit = 3) =>
@@ -3723,13 +3727,14 @@ const VisualStayPanel = ({
   dayIndex: number;
 }) => {
   const stay = getStayDetailsForDay(payload, dayNumber, dayIndex);
-  if (!stay) return null;
 
   return (
     <div className="visual-panel">
       <p className="visual-panel__label">Hotel details</p>
-      <p className="visual-panel__value">{stay.title}</p>
-      {stay.copy ? <p className="visual-panel__copy">{stay.copy}</p> : null}
+      <p className="visual-panel__value">{stay?.title || 'To be confirmed'}</p>
+      <p className="visual-panel__copy">
+        {stay?.copy || 'Accommodation details will appear here once a hotel is assigned.'}
+      </p>
     </div>
   );
 };
@@ -3784,7 +3789,7 @@ const VisualOverviewPage = ({ payload }: { payload: PreparedPrintPayload }) => {
                 ))}
               </div>
             </div>
-            <VisualMiniPanel title="Hotel details" items={getStayDetailItems(payload, 3)} maxItems={3} />
+            <VisualMiniPanel title="Hotel details" items={getStayDetailItems(payload, 3, true)} maxItems={3} />
             <VisualMiniPanel title="Route sequence" items={topLocations} maxItems={3} />
             <VisualMiniPanel title="Client context" items={contextItems} maxItems={2} />
           </div>
@@ -3840,7 +3845,7 @@ const VisualClosingPage = ({ payload }: { payload: PreparedPrintPayload }) => {
               items={payload.printExtras.selectedAddOns.map((addOn) => [addOn.name, addOn.category].filter(Boolean).join(' • '))}
               maxItems={4}
             />
-            <VisualMiniPanel title="Hotel details" items={getStayDetailItems(payload, 4)} maxItems={4} />
+            <VisualMiniPanel title="Hotel details" items={getStayDetailItems(payload, 4, true)} maxItems={4} />
             <VisualMiniPanel title="Flight details" items={getFlightDetailItems(payload, 3)} maxItems={3} />
             <VisualMiniPanel title="Route sequence" items={getTopLocations(payload, 5)} maxItems={5} />
           </div>
