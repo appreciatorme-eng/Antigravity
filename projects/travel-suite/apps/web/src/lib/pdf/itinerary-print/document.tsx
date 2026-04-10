@@ -1256,32 +1256,235 @@ const PRINT_CSS = `
     border-bottom: 1px solid rgba(17,24,39,0.10);
     padding-bottom: 10mm;
   }
+  .professional-letterhead .brand-row {
+    margin-bottom: 0;
+  }
+  .professional-cover-grid {
+    display: grid;
+    grid-template-columns: 1.03fr 0.97fr;
+    gap: 10mm;
+    align-items: stretch;
+  }
+  .professional-cover-copy {
+    display: grid;
+    align-content: start;
+    gap: 6mm;
+  }
+  .professional-cover-title {
+    margin: 0;
+    font-size: 38px;
+    line-height: 1;
+    letter-spacing: -0.055em;
+    font-weight: 800;
+  }
+  .professional-cover-summary {
+    margin: 0;
+    font-size: 13.5px;
+    line-height: 1.58;
+    color: rgba(17,24,39,0.72);
+    display: -webkit-box;
+    -webkit-line-clamp: 6;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .professional-cover-visual {
+    display: grid;
+    grid-template-rows: 82mm auto;
+    gap: 7px;
+    min-width: 0;
+  }
+  .professional-cover-image {
+    width: 100%;
+    height: 82mm;
+    object-fit: cover;
+    display: block;
+    background: #eef0f2;
+    border: 1px solid rgba(17,24,39,0.10);
+  }
+  .professional-cover-image--empty {
+    display: grid;
+    place-items: center;
+    padding: 16px;
+    color: rgba(17,24,39,0.48);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-size: 10px;
+  }
+  .professional-dossier-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+  .professional-dossier-card {
+    border: 1px solid rgba(17,24,39,0.10);
+    background: #f8fafc;
+    padding: 10px 11px;
+  }
+  .professional-dossier-card__label {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(17,24,39,0.48);
+  }
+  .professional-dossier-card__value {
+    margin-top: 6px;
+    font-size: 14px;
+    line-height: 1.22;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .professional-brief-grid {
+    display: grid;
+    grid-template-columns: 1.04fr 0.96fr;
+    gap: 9mm;
+    align-items: start;
+  }
+  .professional-brief-lead {
+    display: grid;
+    gap: 7mm;
+  }
+  .professional-brief-image {
+    width: 100%;
+    height: 58mm;
+    object-fit: cover;
+    display: block;
+    border: 1px solid rgba(17,24,39,0.10);
+    background: rgba(17,24,39,0.06);
+  }
+  .professional-day-shell {
+    display: grid;
+    gap: 7mm;
+  }
   .professional-day-header {
     display: grid;
-    grid-template-columns: 18mm 1fr auto;
-    gap: 12px;
-    align-items: center;
+    grid-template-columns: 1fr 54mm;
+    gap: 9mm;
+    align-items: end;
     border: 1px solid rgba(17,24,39,0.10);
-    border-radius: 14px;
     background: #ffffff;
-    padding: 12px 14px;
+    padding: 13px 14px;
   }
   .professional-day-number {
-    width: 14mm;
-    height: 14mm;
-    border-radius: 999px;
+    width: 13mm;
+    height: 13mm;
     background: var(--accent);
     color: #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 800;
+    margin-bottom: 9px;
+  }
+  .professional-day-title {
+    margin: 0;
+    font-size: 27px;
+    line-height: 1.04;
+    letter-spacing: -0.045em;
+    font-weight: 800;
+  }
+  .professional-day-summary {
+    margin: 10px 0 0;
+    font-size: 11.5px;
+    line-height: 1.62;
+    color: rgba(17,24,39,0.72);
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .professional-day-image {
+    width: 100%;
+    height: 50mm;
+    object-fit: cover;
+    display: block;
+    background: rgba(17,24,39,0.06);
+  }
+  .professional-day-body {
+    display: grid;
+    grid-template-columns: 1.08fr 0.92fr;
+    gap: 8mm;
+    align-items: start;
   }
   .professional-activity-list {
     display: grid;
-    gap: 9px;
+    gap: 8px;
+  }
+  .professional-feature-card {
+    display: grid;
+    grid-template-columns: 0.94fr 1.06fr;
+    gap: 10px;
+    border: 1px solid rgba(17,24,39,0.10);
+    background: #ffffff;
+    overflow: hidden;
+  }
+  .professional-feature-card__image {
+    width: 100%;
+    height: 52mm;
+    min-height: 52mm;
+    object-fit: cover;
+    display: block;
+    background: rgba(17,24,39,0.06);
+  }
+  .professional-feature-card__body {
+    padding: 13px 14px;
+    display: grid;
+    align-content: start;
+    gap: 7px;
+  }
+  .professional-feature-card__title {
+    margin: 0;
+    font-size: 20px;
+    line-height: 1.12;
+    letter-spacing: -0.035em;
+    font-weight: 800;
+  }
+  .professional-feature-card__copy {
+    margin: 0;
+    font-size: 11.5px;
+    line-height: 1.56;
+    color: rgba(17,24,39,0.74);
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .professional-support-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .professional-support-grid .activity-card {
+    border-radius: 0;
+  }
+  .professional-support-grid .activity-card--compact .activity-card__media {
+    height: 24mm;
+    min-height: 24mm;
+  }
+  .professional-support-grid .activity-card--compact .activity-card__desc {
+    -webkit-line-clamp: 3;
+  }
+  .professional-sidebar {
+    display: grid;
+    gap: 8px;
+  }
+  .professional-closing {
+    display: grid;
+    grid-template-columns: 1.06fr 0.94fr;
+    gap: 9mm;
+    align-items: start;
+  }
+  .professional-closing__main {
+    display: grid;
+    gap: 10px;
   }
   .professional-activity-list .activity-card__desc,
+  .professional-feature-card__copy,
   .urban-activity__copy,
   .visual-story-card__copy,
   .luxury-card__copy,
@@ -3164,8 +3367,139 @@ const UrbanTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
   );
 };
 
+const ProfessionalFeatureCard = ({
+  activity,
+  fallbackLocation,
+}: {
+  activity: PreparedPrintActivity;
+  fallbackLocation: string;
+}) => (
+  <article className="professional-feature-card">
+    {activity.printImage ? (
+      <img className="professional-feature-card__image" src={activity.printImage} alt={activity.title} />
+    ) : (
+      <div className="professional-feature-card__image" />
+    )}
+    <div className="professional-feature-card__body">
+      <div className="activity-card__meta">
+        {activity.time ? <span>{activity.time}</span> : null}
+        <span>{activity.location || fallbackLocation}</span>
+        {activity.duration ? <span>{activity.duration}</span> : null}
+      </div>
+      <h3 className="professional-feature-card__title">{activity.title}</h3>
+      {activity.description ? <p className="professional-feature-card__copy">{activity.description}</p> : null}
+    </div>
+  </article>
+);
+
+const ProfessionalLogisticsSnapshot = ({ payload }: { payload: PreparedPrintPayload }) => {
+  const flights = payload.itinerary.logistics?.flights || [];
+  const hotels = payload.itinerary.logistics?.hotels || [];
+  const logisticsItems = [
+    ...flights.slice(0, 2).map((flight) =>
+      [flight.airline, flight.flight_number, `${flight.departure_airport} to ${flight.arrival_airport}`]
+        .filter(Boolean)
+        .join(' • '),
+    ),
+    ...hotels.slice(0, 2).map((hotel) =>
+      [hotel.name, [hotel.check_in, hotel.check_out].filter(Boolean).join(' to ')]
+        .filter(Boolean)
+        .join(' • '),
+    ),
+  ];
+
+  return <MiniListPanel title="Travel logistics" items={logisticsItems} compact maxItems={4} />;
+};
+
+const ProfessionalBriefPage = ({ payload }: { payload: PreparedPrintPayload }) => {
+  const accent = payload.branding.primaryColor || '#124ea2';
+  const topLocations = getTopLocations(payload, 5);
+  const featuredActivities = getFeaturedActivities(payload, 3);
+  const selectedAddOns = getSelectedAddOns(payload, 3);
+  const contextItems = (
+    payload.itinerary.interests?.length
+      ? payload.itinerary.interests
+      : [...(payload.itinerary.tips || []), ...topLocations]
+  ).slice(0, 4);
+
+  return (
+    <section className="page page--white">
+      <div className="page__inner" style={{ ['--accent' as string]: accent }}>
+        <BrandRow branding={payload.branding} />
+        <div className="professional-brief-grid">
+          <div className="professional-brief-lead">
+            <div>
+              <div className="accent-line" style={{ background: accent }} />
+              <p className="section-kicker">Trip dossier</p>
+              <h2 className="print-title" style={{ marginBottom: 8 }}>Client-ready trip structure</h2>
+              <p className="body-copy print-copy-clamp" style={{ margin: 0 }}>{payload.itinerary.summary}</p>
+            </div>
+            {payload.coverImage ? (
+              <img className="professional-brief-image" src={payload.coverImage} alt={payload.itinerary.trip_title} />
+            ) : null}
+            <div className="trip-brief__cards">
+              <div className="trip-brief__card">
+                <div className="trip-brief__label">Travel window</div>
+                <div className="trip-brief__value">{getTravelWindowLabel(payload)}</div>
+                <div className="trip-brief__copy">Date range and duration are kept visible for client review.</div>
+              </div>
+              <div className="trip-brief__card">
+                <div className="trip-brief__label">Route focus</div>
+                <div className="trip-brief__value">{topLocations[0] || payload.itinerary.destination}</div>
+                <div className="trip-brief__copy">{topLocations.slice(1, 4).join(' • ') || 'Destination-led itinerary flow.'}</div>
+              </div>
+            </div>
+          </div>
+          <div className="professional-sidebar">
+            <ProfessionalLogisticsSnapshot payload={payload} />
+            <div className="operator-card">
+              <p className="panel__title">Operator handoff</p>
+              <div className="operator-card__name">{payload.branding.companyName}</div>
+              <p className="operator-card__copy">
+                {payload.branding.clientName
+                  ? `Prepared for ${payload.branding.clientName}. This professional version keeps branding, highlights, schedule, and package context in one clean export.`
+                  : 'This professional version keeps branding, highlights, schedule, and package context in one clean export.'}
+              </p>
+            </div>
+            <div className="panel">
+              <p className="panel__title">Standout stops</p>
+              <div className="summary-highlights">
+                {featuredActivities.map((activity, index) => (
+                  <div key={`professional-featured-${index}`} className="summary-highlight">
+                    <div className="summary-highlight__index">{activity.dayNumber}</div>
+                    <div>
+                      <div className="summary-highlight__meta">Day {activity.dayNumber} • {activity.location || activity.dayTheme}</div>
+                      <h3 className="summary-highlight__title">{activity.title}</h3>
+                      <p className="summary-highlight__desc">{activity.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {selectedAddOns.length ? (
+              <MiniListPanel
+                title="Available upgrades"
+                items={selectedAddOns.map((addOn) => [addOn.name, addOn.category].filter(Boolean).join(' • '))}
+                compact
+                maxItems={3}
+              />
+            ) : (
+              <MiniListPanel title="Client context" items={contextItems} compact maxItems={4} />
+            )}
+          </div>
+        </div>
+        <PageFooter branding={payload.branding} />
+      </div>
+    </section>
+  );
+};
+
 const ProfessionalTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
   const accent = payload.branding.primaryColor || '#124ea2';
+  const price = formatCurrency(payload.itinerary) || 'Custom quote';
+  const totalActivities = payload.itinerary.days.reduce((sum, day) => sum + day.activities.length, 0);
+  const topLocations = getTopLocations(payload, 4);
+  const selectedAddOns = getSelectedAddOns(payload, 4);
 
   return (
     <>
@@ -3175,34 +3509,110 @@ const ProfessionalTemplate = ({ payload }: { payload: PreparedPrintPayload }) =>
             <BrandRow branding={payload.branding} showContact />
           </div>
           <div className="professional-cover">
-            <p className="section-kicker" style={{ color: accent }}>Prepared itinerary</p>
-            <h1 className="cover__title" style={{ marginTop: 0 }}>{payload.itinerary.trip_title}</h1>
-            {payload.branding.clientName ? <div className="body-copy" style={{ color: accent, fontWeight: 700 }}>Client: {payload.branding.clientName}</div> : null}
-            <p className="lead print-copy-clamp">{payload.itinerary.summary}</p>
-            <Metrics payload={payload} />
-          </div>
-          <div style={{ marginTop: '9mm' }}>
-            <LogisticsPanel payload={payload} />
+            <div className="professional-cover-grid">
+              <div className="professional-cover-copy">
+                <div>
+                  <p className="section-kicker" style={{ color: accent }}>Prepared itinerary</p>
+                  <h1 className="professional-cover-title">{payload.itinerary.trip_title}</h1>
+                </div>
+                {payload.branding.clientName ? (
+                  <div className="body-copy" style={{ color: accent, fontWeight: 800 }}>
+                    Prepared for {payload.branding.clientName}
+                  </div>
+                ) : null}
+                <p className="professional-cover-summary">{payload.itinerary.summary}</p>
+                <Metrics payload={payload} />
+                <LocationRibbon locations={topLocations} accent={accent} />
+              </div>
+              <div className="professional-cover-visual">
+                {payload.coverImage ? (
+                  <img className="professional-cover-image" src={payload.coverImage} alt={payload.itinerary.trip_title} />
+                ) : (
+                  <div className="professional-cover-image professional-cover-image--empty">Destination image pending</div>
+                )}
+                <div className="professional-dossier-grid">
+                  <div className="professional-dossier-card">
+                    <div className="professional-dossier-card__label">Destination</div>
+                    <div className="professional-dossier-card__value">{payload.itinerary.destination}</div>
+                  </div>
+                  <div className="professional-dossier-card">
+                    <div className="professional-dossier-card__label">Travel window</div>
+                    <div className="professional-dossier-card__value">{getTravelWindowLabel(payload)}</div>
+                  </div>
+                  <div className="professional-dossier-card">
+                    <div className="professional-dossier-card__label">Planned stops</div>
+                    <div className="professional-dossier-card__value">{totalActivities}</div>
+                  </div>
+                  <div className="professional-dossier-card">
+                    <div className="professional-dossier-card__label">Estimated value</div>
+                    <div className="professional-dossier-card__value">{price}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
           <PageFooter branding={payload.branding} />
         </div>
       </section>
+      <ProfessionalBriefPage payload={payload} />
       {payload.itinerary.days.flatMap((day, dayIndex) =>
         chunkItems(day.activities, 3).map((chunk, chunkIndex) => (
           <section key={`pro-day-${dayIndex}-${chunkIndex}`} className="page page--white">
             <div className="page__inner" style={{ ['--accent' as string]: accent }}>
               <BrandRow branding={payload.branding} />
-              <div className="professional-day-header">
-                <div className="professional-day-number">{day.day_number}</div>
-                <div>
-                  <div className="day-hero__date">{chunkIndex > 0 ? 'Continuation' : formatDateLabel(day.date) || payload.itinerary.destination}</div>
-                  <h2 style={{ fontSize: 24, lineHeight: 1.08, letterSpacing: '-0.03em', margin: '4px 0 0' }}>{day.theme}</h2>
+              <div className="professional-day-shell">
+                <div className="professional-day-header">
+                  <div>
+                    <div className="professional-day-number">{day.day_number}</div>
+                    <div className="day-hero__date">{chunkIndex > 0 ? 'Continuation' : formatDateLabel(day.date) || payload.itinerary.destination}</div>
+                    <h2 className="professional-day-title">{day.theme}</h2>
+                    {chunkIndex === 0 && day.summary ? (
+                      <p className="professional-day-summary">{day.summary}</p>
+                    ) : (
+                      <p className="professional-day-summary">Additional scheduled stops for this day, kept in the same client-ready structure.</p>
+                    )}
+                    <div style={{ marginTop: 10 }}>
+                      <LocationRibbon locations={getDayLocations(day, 4)} accent={accent} />
+                    </div>
+                  </div>
+                  {chunkIndex === 0 && day.dayHeroImage ? (
+                    <img className="professional-day-image" src={day.dayHeroImage} alt={day.theme} />
+                  ) : (
+                    <div className="professional-dossier-grid">
+                      <div className="professional-dossier-card">
+                        <div className="professional-dossier-card__label">Stops</div>
+                        <div className="professional-dossier-card__value">{day.activities.length}</div>
+                      </div>
+                      <div className="professional-dossier-card">
+                        <div className="professional-dossier-card__label">Chapter</div>
+                        <div className="professional-dossier-card__value">Day {day.day_number}</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="metric__label">{day.activities.length} activities</div>
-              </div>
-              {chunkIndex === 0 && day.summary ? <p className="body-copy print-copy-clamp" style={{ margin: '7mm 0' }}>{day.summary}</p> : <div style={{ height: '7mm' }} />}
-              <div className="professional-activity-list">
-                {chunk.map((activity, activityIndex) => <ActivityCard key={`pro-activity-${activityIndex}`} activity={activity} />)}
+                <div className="professional-day-body">
+                  <div className="professional-activity-list">
+                    {chunk[0] ? <ProfessionalFeatureCard activity={chunk[0]} fallbackLocation={payload.itinerary.destination} /> : null}
+                    {chunk.slice(1).length ? (
+                      <div className="professional-support-grid">
+                        {chunk.slice(1).map((activity, activityIndex) => (
+                          <ActivityCard key={`pro-activity-${activityIndex}`} activity={activity} compact />
+                        ))}
+                      </div>
+                    ) : null}
+                    <DayDossier payload={payload} day={day} />
+                  </div>
+                  <div className="professional-sidebar">
+                    <StayPanel accommodation={getDayAccommodation(payload, day.day_number)} compact />
+                    <MiniListPanel title="Day route" items={getDayLocations(day, 4)} compact maxItems={4} />
+                    <MiniListPanel
+                      title="Client notes"
+                      items={[...(payload.itinerary.tips || []), ...(payload.itinerary.inclusions || [])].slice(chunkIndex * 3, chunkIndex * 3 + 3)}
+                      compact
+                      maxItems={3}
+                    />
+                  </div>
+                </div>
               </div>
               <PageFooter branding={payload.branding} />
             </div>
@@ -3210,10 +3620,39 @@ const ProfessionalTemplate = ({ payload }: { payload: PreparedPrintPayload }) =>
         )),
       )}
       <section className="page page--white">
-        <div className="page__inner">
+        <div className="page__inner" style={{ ['--accent' as string]: accent }}>
           <BrandRow branding={payload.branding} />
-          <h2 className="print-title">Final package notes</h2>
-          <PackagePanels payload={payload} />
+          <div className="professional-closing">
+            <div className="professional-closing__main">
+              <div>
+                <div className="accent-line" style={{ background: accent }} />
+                <p className="section-kicker">Final review</p>
+                <h2 className="print-title">Package notes and operator contact</h2>
+                <p className="body-copy print-copy-clamp" style={{ margin: 0 }}>
+                  Use this page as the clean handoff area for inclusions, exclusions, travel notes, upgrades, and final operator details before sending the itinerary to the client.
+                </p>
+              </div>
+              <PackagePanels payload={payload} />
+            </div>
+            <div className="professional-sidebar">
+              <div className="operator-card">
+                <p className="panel__title">Operator contact</p>
+                <div className="operator-card__name">{payload.branding.companyName}</div>
+                <p className="operator-card__copy">
+                  {payload.branding.clientName
+                    ? `Prepared for ${payload.branding.clientName}. Final confirmations and booking references can be added before dispatch.`
+                    : 'Final confirmations and booking references can be added before dispatch.'}
+                </p>
+                {(payload.branding.contactEmail || payload.branding.contactPhone) ? (
+                  <div className="body-copy" style={{ marginTop: 10 }}>
+                    {[payload.branding.contactEmail, payload.branding.contactPhone].filter(Boolean).join('  •  ')}
+                  </div>
+                ) : null}
+              </div>
+              <AddOnPanel addOns={selectedAddOns} payload={payload} />
+              <MiniListPanel title="Route sequence" items={topLocations} compact maxItems={4} />
+            </div>
+          </div>
           <PageFooter branding={payload.branding} />
         </div>
       </section>
