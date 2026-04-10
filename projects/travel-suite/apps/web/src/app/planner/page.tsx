@@ -332,51 +332,42 @@ export default function PlannerPage() {
         }
     }, [currentItineraryId, deletingItineraryId, itineraryPendingDelete, refetchItineraries, toast]);
 
-    const handleDayDateChange = async (dayNumber: number, dateValue: string) => {
-        if (!result || !currentItineraryId) return;
+    const handleDateRangeChange = async (field: "start_date" | "end_date", value: string) => {
+        if (!result) return;
 
-        const updatedDays = result.days.map((d: Day) =>
-            d.day_number === dayNumber ? { ...d, date: dateValue || undefined } : d,
-        );
-        const updatedResult = { ...result, days: updatedDays };
-        setResult(updatedResult);
+        const patch: Partial<ItineraryResult> = { [field]: value || undefined };
 
-        // If Day 1 date was set, offer cascade
-        if (dayNumber === 1 && dateValue && result.days.length > 1) {
-            const confirmed = window.confirm(
-                `Fill dates for all ${result.days.length} days starting from ${dateValue}?`,
-            );
-            if (confirmed) {
-                const base = new Date(dateValue);
-                const cascadedDays = result.days.map((d: Day) => ({
-                    ...d,
-                    date: new Date(base.getTime() + (d.day_number - 1) * 86_400_000)
-                        .toISOString()
-                        .slice(0, 10),
-                }));
-                const cascadedResult = { ...result, days: cascadedDays };
-                setResult(cascadedResult);
-                try {
-                    await authedFetch(`/api/itineraries/${currentItineraryId}`, {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ raw_data: cascadedResult }),
-                    });
-                } catch {
-                    toast({ title: "Save failed", description: "Unable to save dates.", variant: "error" });
-                }
-                return;
+        // Cascade day.date whenever start_date is available
+        const newStart = field === "start_date" ? value : result.start_date;
+        let updatedDays = result.days;
+        if (newStart) {
+            const base = new Date(newStart + "T00:00:00");
+            updatedDays = result.days.map((d: Day) => ({
+                ...d,
+                date: new Date(base.getTime() + (d.day_number - 1) * 86_400_000)
+                    .toISOString()
+                    .slice(0, 10),
+            }));
+            // Auto-compute end_date from start + duration if not yet set
+            if (field === "start_date" && !result.end_date) {
+                const endMs = base.getTime() + (result.duration_days - 1) * 86_400_000;
+                patch.end_date = new Date(endMs).toISOString().slice(0, 10);
             }
         }
 
-        try {
-            await authedFetch(`/api/itineraries/${currentItineraryId}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ raw_data: updatedResult }),
-            });
-        } catch {
-            toast({ title: "Save failed", description: "Unable to save date.", variant: "error" });
+        const updatedResult: ItineraryResult = { ...result, ...patch, days: updatedDays };
+        setResult(updatedResult);
+
+        if (currentItineraryId) {
+            try {
+                await authedFetch(`/api/itineraries/${currentItineraryId}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ raw_data: updatedResult }),
+                });
+            } catch {
+                toast({ title: "Save failed", description: "Unable to save dates.", variant: "error" });
+            }
         }
     };
 
@@ -463,6 +454,33 @@ export default function PlannerPage() {
                                 </div>
                             </div>
 
+                            {/* ── Trip date range picker ── */}
+                            <div className="flex items-center justify-center gap-3 px-4 py-3 print:hidden">
+                                <div className="flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl px-5 py-2.5 shadow-sm text-sm">
+                                    <span className="text-slate-500 dark:text-slate-400 font-semibold whitespace-nowrap text-xs uppercase tracking-wide">Start</span>
+                                    <input
+                                        type="date"
+                                        value={result.start_date ?? ""}
+                                        onChange={(e) => handleDateRangeChange("start_date", e.target.value)}
+                                        className="bg-transparent text-slate-800 dark:text-slate-100 cursor-pointer focus:outline-none text-sm"
+                                    />
+                                    <span className="text-slate-300 dark:text-slate-600 font-light">→</span>
+                                    <span className="text-slate-500 dark:text-slate-400 font-semibold whitespace-nowrap text-xs uppercase tracking-wide">End</span>
+                                    <input
+                                        type="date"
+                                        value={result.end_date ?? ""}
+                                        min={result.start_date ?? undefined}
+                                        onChange={(e) => handleDateRangeChange("end_date", e.target.value)}
+                                        className="bg-transparent text-slate-800 dark:text-slate-100 cursor-pointer focus:outline-none text-sm"
+                                    />
+                                </div>
+                                {result.start_date && (
+                                    <span className="text-xs text-slate-400 dark:text-slate-500 hidden sm:block">
+                                        {result.duration_days} days · dates saved ✓
+                                    </span>
+                                )}
+                            </div>
+
                             <PlannerTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
                             {activeTab === 'itinerary' && (
@@ -539,33 +557,20 @@ export default function PlannerPage() {
                                                                     )}
                                                                     <div className="absolute left-[22px] top-[20px] w-[18px] h-[18px] rounded-full bg-[#124ea2] border-4 border-white dark:border-slate-950 shadow-md z-10 hidden md:block" />
                                                                     <div className="md:ml-16">
-                                                                        <div className="w-full bg-gradient-to-r from-[#124ea2] to-[#1a5fc7] text-white px-6 py-4 rounded-t-xl flex items-center justify-between shadow-md">
-                                                                            <button
-                                                                                onClick={() => toggleDay(day.day_number)}
-                                                                                className="flex-1 flex items-center gap-3 text-left hover:opacity-90 transition-opacity"
-                                                                            >
+                                                                        <button
+                                                                            onClick={() => toggleDay(day.day_number)}
+                                                                            className="w-full bg-gradient-to-r from-[#124ea2] to-[#1a5fc7] text-white px-6 py-4 rounded-t-xl flex items-center justify-between hover:from-[#0f3d82] hover:to-[#124ea2] transition-all shadow-md group"
+                                                                        >
+                                                                            <div className="flex items-center gap-3">
                                                                                 <h3 className="text-lg font-bold uppercase tracking-wide">DAY {day.day_number}</h3>
                                                                                 {day.date && (
-                                                                                    <span className="text-xs font-normal opacity-75">
-                                                                                        {new Date(day.date + "T00:00:00").toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })}
+                                                                                    <span className="text-sm font-normal opacity-75">
+                                                                                        · {new Date(day.date + "T00:00:00").toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })}
                                                                                     </span>
                                                                                 )}
-                                                                            </button>
-                                                                            <div className="flex items-center gap-3">
-                                                                                <input
-                                                                                    type="date"
-                                                                                    value={day.date ?? ""}
-                                                                                    onClick={(e) => e.stopPropagation()}
-                                                                                    onChange={(e) => handleDayDateChange(day.day_number, e.target.value)}
-                                                                                    className="text-xs bg-white/20 border border-white/30 rounded-lg px-2 py-1 text-white cursor-pointer [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-white/40"
-                                                                                    title="Set date for this day"
-                                                                                />
-                                                                                <ChevronDown
-                                                                                    onClick={() => toggleDay(day.day_number)}
-                                                                                    className={`w-5 h-5 transition-transform duration-300 cursor-pointer ${isExpanded ? "rotate-180" : ""}`}
-                                                                                />
                                                                             </div>
-                                                                        </div>
+                                                                            <ChevronDown className={`w-5 h-5 transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`} />
+                                                                        </button>
                                                                         <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-[10000px] opacity-100' : 'max-h-0 opacity-0'}`}>
                                                                             <div className="bg-white dark:bg-slate-950/40 rounded-b-xl shadow-lg border-x border-b border-gray-200 dark:border-white/10 p-6">
                                                                                 <p className="text-[#18974e] font-semibold text-base mb-6 flex items-center gap-2">

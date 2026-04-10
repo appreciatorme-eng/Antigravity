@@ -214,8 +214,13 @@ const ProfessionalView: React.FC<ItineraryTemplateProps> = ({
                                             </div>
 
                                             <div className="text-left">
-                                                <div className="text-sm font-medium text-gray-500 mb-1">
+                                                <div className="text-sm font-medium text-gray-500 mb-1 flex items-center gap-2">
                                                     Day {day.day_number}
+                                                    {day.date && (
+                                                        <span className="font-normal text-gray-400">
+                                                            · {new Date(day.date + "T00:00:00").toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" })}
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 <h2 className="text-2xl font-bold text-gray-900">
                                                     {day.theme}
