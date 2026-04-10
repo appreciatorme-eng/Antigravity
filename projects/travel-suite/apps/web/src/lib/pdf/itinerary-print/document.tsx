@@ -2490,6 +2490,15 @@ const getDayLocations = (
 const getDayAccommodation = (payload: PreparedPrintPayload, dayNumber: number) =>
   payload.printExtras.dayAccommodations.find((accommodation) => accommodation.dayNumber === dayNumber) || null;
 
+const getFallbackHotelForDay = (
+  payload: PreparedPrintPayload,
+  dayIndex: number,
+) => {
+  const hotels = payload.itinerary.logistics?.hotels || [];
+  if (!hotels.length) return null;
+  return hotels[Math.min(dayIndex, hotels.length - 1)] || hotels[0];
+};
+
 const getSelectedAddOns = (payload: PreparedPrintPayload, limit = 4) =>
   payload.printExtras.selectedAddOns.slice(0, limit);
 
@@ -3758,10 +3767,83 @@ const BentoMiniListPanel = ({
   );
 };
 
+const BentoStayPanel = ({
+  payload,
+  dayNumber,
+  dayIndex,
+}: {
+  payload: PreparedPrintPayload;
+  dayNumber: number;
+  dayIndex: number;
+}) => {
+  const accommodation = getDayAccommodation(payload, dayNumber);
+  if (accommodation) {
+    return (
+      <BentoPanelPrint
+        label="Stay tonight"
+        value={accommodation.hotelName}
+        copy={[
+          accommodation.roomType,
+          accommodation.starRating ? `${accommodation.starRating}-star` : null,
+          accommodation.amenities?.slice(0, 2).join(' • '),
+        ].filter(Boolean).join(' • ')}
+      />
+    );
+  }
+
+  const hotel = getFallbackHotelForDay(payload, dayIndex);
+  if (!hotel) return null;
+
+  return (
+    <BentoPanelPrint
+      label="Stay details"
+      value={hotel.name}
+      copy={[
+        hotel.address,
+        [hotel.check_in, hotel.check_out].filter(Boolean).join(' to '),
+        hotel.confirmation ? `Confirmation ${hotel.confirmation}` : null,
+      ].filter(Boolean).join(' • ')}
+    />
+  );
+};
+
+const BentoLogisticsPanel = ({ payload }: { payload: PreparedPrintPayload }) => {
+  const flights = payload.itinerary.logistics?.flights || [];
+  const hotels = payload.itinerary.logistics?.hotels || [];
+  const items = [
+    ...flights.slice(0, 2).map((flight) =>
+      [
+        flight.airline || 'Flight',
+        flight.flight_number,
+        `${flight.departure_airport} ${flight.departure_time || ''}`.trim(),
+        `${flight.arrival_airport} ${flight.arrival_time || ''}`.trim(),
+      ].filter(Boolean).join(' • '),
+    ),
+    ...hotels.slice(0, 3).map((hotel) =>
+      [
+        hotel.name,
+        hotel.address,
+        [hotel.check_in, hotel.check_out].filter(Boolean).join(' to '),
+      ].filter(Boolean).join(' • '),
+    ),
+  ];
+
+  return <BentoMiniListPanel title="Flights and stays" items={items} maxItems={5} />;
+};
+
+const BentoPackageSnapshot = ({ payload }: { payload: PreparedPrintPayload }) => {
+  const items = [
+    ...(payload.itinerary.inclusions || []).slice(0, 3).map((item) => `Included: ${item}`),
+    ...(payload.itinerary.exclusions || []).slice(0, 2).map((item) => `Arrange separately: ${item}`),
+    ...(payload.itinerary.tips || []).slice(0, 2).map((item) => `Note: ${item}`),
+  ];
+
+  return <BentoMiniListPanel title="Package snapshot" items={items} maxItems={6} />;
+};
+
 const BentoOverviewPage = ({ payload }: { payload: PreparedPrintPayload }) => {
   const accent = payload.branding.primaryColor || '#6366f1';
   const mosaicActivities = payload.itinerary.days.flatMap((day) => day.activities).slice(0, 4);
-  const topLocations = getTopLocations(payload, 5);
 
   return (
     <section className="page page--white bento-print-cover">
@@ -3789,12 +3871,8 @@ const BentoOverviewPage = ({ payload }: { payload: PreparedPrintPayload }) => {
           </div>
         </div>
         <div className="bento-overview-grid" style={{ marginTop: '7mm' }}>
-          <BentoMiniListPanel title="Route sequence" items={topLocations} maxItems={5} />
-          <BentoMiniListPanel
-            title="Client context"
-            items={[...(payload.itinerary.interests || []), ...(payload.itinerary.tips || []), ...topLocations]}
-            maxItems={4}
-          />
+          <BentoLogisticsPanel payload={payload} />
+          <BentoPackageSnapshot payload={payload} />
         </div>
         <PageFooter branding={payload.branding} />
       </div>
@@ -3808,8 +3886,10 @@ const BentoClosingPage = ({ payload }: { payload: PreparedPrintPayload }) => {
     ...(payload.itinerary.tips || []),
     ...(payload.itinerary.inclusions || []),
   ].slice(0, 6);
+  const hasLogistics = Boolean(payload.itinerary.logistics?.flights?.length || payload.itinerary.logistics?.hotels?.length);
+  const hasPackage = Boolean(payload.itinerary.inclusions?.length || payload.itinerary.exclusions?.length || payload.itinerary.tips?.length);
 
-  if (!notes.length && !payload.printExtras.selectedAddOns.length) return null;
+  if (!notes.length && !payload.printExtras.selectedAddOns.length && !hasLogistics && !hasPackage) return null;
 
   return (
     <section className="page page--white bento-print-cover">
@@ -3828,12 +3908,13 @@ const BentoClosingPage = ({ payload }: { payload: PreparedPrintPayload }) => {
           </div>
           <div className="bento-sidebar">
             <BentoPanelPrint label="Operator" value={payload.branding.companyName} copy={[payload.branding.contactEmail, payload.branding.contactPhone].filter(Boolean).join('  •  ')} ink />
+            <BentoLogisticsPanel payload={payload} />
             <BentoMiniListPanel
               title="Selected add-ons"
               items={payload.printExtras.selectedAddOns.map((addOn) => [addOn.name, addOn.category].filter(Boolean).join(' • '))}
               maxItems={4}
             />
-            <BentoMiniListPanel title="Route sequence" items={getTopLocations(payload, 5)} maxItems={5} />
+            <BentoMiniListPanel title="Route sequence" items={getTopLocations(payload, 5)} maxItems={4} />
           </div>
         </div>
         <PageFooter branding={payload.branding} />
@@ -4310,7 +4391,7 @@ const BentoTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                 </div>
                 <div className="bento-sidebar">
                   <BentoMiniListPanel title="Day route" items={getDayLocations(day, 4)} maxItems={4} />
-                  <StayPanel accommodation={getDayAccommodation(payload, day.day_number)} compact />
+                  <BentoStayPanel payload={payload} dayNumber={day.day_number} dayIndex={dayIndex} />
                   <BentoMiniListPanel
                     title="Travel notes"
                     items={[...(payload.itinerary.tips || []), ...(payload.itinerary.inclusions || [])].slice(chunkIndex * 3, chunkIndex * 3 + 3)}
