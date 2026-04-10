@@ -2529,6 +2529,67 @@ const getFallbackHotelForDay = (
   return hotels[Math.min(dayIndex, hotels.length - 1)] || hotels[0];
 };
 
+const getStayDetailsForDay = (
+  payload: PreparedPrintPayload,
+  dayNumber: number,
+  dayIndex: number,
+) => {
+  const accommodation = getDayAccommodation(payload, dayNumber);
+  if (accommodation) {
+    return {
+      title: accommodation.hotelName,
+      copy: [
+        accommodation.roomType,
+        accommodation.starRating ? `${accommodation.starRating}-star` : null,
+        accommodation.amenities?.slice(0, 2).join(' • '),
+      ].filter(Boolean).join(' • '),
+    };
+  }
+
+  const hotel = getFallbackHotelForDay(payload, dayIndex);
+  if (!hotel) return null;
+
+  return {
+    title: hotel.name,
+    copy: [
+      hotel.address,
+      [hotel.check_in, hotel.check_out].filter(Boolean).join(' to '),
+      hotel.confirmation ? `Confirmation ${hotel.confirmation}` : null,
+    ].filter(Boolean).join(' • '),
+  };
+};
+
+const getStayDetailItems = (payload: PreparedPrintPayload, limit = 4) => {
+  const accommodationItems = payload.printExtras.dayAccommodations.map((accommodation) =>
+    [
+      accommodation.dayNumber ? `Day ${accommodation.dayNumber}` : null,
+      accommodation.hotelName,
+      accommodation.roomType,
+      accommodation.starRating ? `${accommodation.starRating}-star` : null,
+    ].filter(Boolean).join(' • '),
+  );
+
+  const hotelItems = (payload.itinerary.logistics?.hotels || []).map((hotel) =>
+    [
+      hotel.name,
+      hotel.address,
+      [hotel.check_in, hotel.check_out].filter(Boolean).join(' to '),
+    ].filter(Boolean).join(' • '),
+  );
+
+  return [...accommodationItems, ...hotelItems].slice(0, limit);
+};
+
+const getFlightDetailItems = (payload: PreparedPrintPayload, limit = 3) =>
+  (payload.itinerary.logistics?.flights || []).slice(0, limit).map((flight) =>
+    [
+      flight.airline || 'Flight',
+      flight.flight_number,
+      `${flight.departure_airport} ${flight.departure_time || ''}`.trim(),
+      `${flight.arrival_airport} ${flight.arrival_time || ''}`.trim(),
+    ].filter(Boolean).join(' • '),
+  );
+
 const getSelectedAddOns = (payload: PreparedPrintPayload, limit = 4) =>
   payload.printExtras.selectedAddOns.slice(0, limit);
 
@@ -3369,20 +3430,47 @@ const LuxuryRoute = ({ locations }: { locations: string[] }) => {
   );
 };
 
-const LuxuryStayPanel = ({ accommodation }: { accommodation: PreparedPrintAccommodation | null }) => {
-  if (!accommodation) return null;
+const LuxuryStaySnapshot = ({
+  payload,
+  dayNumber,
+  dayIndex,
+}: {
+  payload: PreparedPrintPayload;
+  dayNumber?: number;
+  dayIndex?: number;
+}) => {
+  const stay = typeof dayNumber === 'number' && typeof dayIndex === 'number'
+    ? getStayDetailsForDay(payload, dayNumber, dayIndex)
+    : (() => {
+        const accommodation = payload.printExtras.dayAccommodations[0];
+        if (accommodation) {
+          return {
+            title: accommodation.hotelName,
+            copy: [
+              accommodation.roomType,
+              accommodation.starRating ? `${accommodation.starRating}-star` : null,
+              accommodation.amenities?.slice(0, 2).join(' • '),
+            ].filter(Boolean).join(' • '),
+          };
+        }
+        const hotel = payload.itinerary.logistics?.hotels?.[0];
+        if (!hotel) return null;
+        return {
+          title: hotel.name,
+          copy: [
+            hotel.address,
+            [hotel.check_in, hotel.check_out].filter(Boolean).join(' to '),
+          ].filter(Boolean).join(' • '),
+        };
+      })();
 
-  const stayMeta = [
-    accommodation.roomType,
-    accommodation.starRating ? `${accommodation.starRating}-star` : null,
-    accommodation.amenities?.slice(0, 2).join(' • '),
-  ].filter(Boolean).join(' • ');
+  if (!stay) return null;
 
   return (
     <div className="luxury-panel luxury-panel--tight">
-      <p className="luxury-panel__label">Stay tonight</p>
-      <p className="luxury-panel__value">{accommodation.hotelName}</p>
-      {stayMeta ? <p className="luxury-panel__copy">{stayMeta}</p> : null}
+      <p className="luxury-panel__label">Hotel details</p>
+      <p className="luxury-panel__value">{stay.title}</p>
+      {stay.copy ? <p className="luxury-panel__copy">{stay.copy}</p> : null}
     </div>
   );
 };
@@ -3502,8 +3590,9 @@ const LuxuryOverviewPage = ({ payload }: { payload: PreparedPrintPayload }) => {
                 ))}
               </div>
             </div>
-            <LuxuryMiniListPanel title={selectedAddOns.length ? 'Private upgrades' : 'Client context'} items={contextItems} />
-            <LuxuryStayPanel accommodation={payload.printExtras.dayAccommodations[0] || null} />
+            <LuxuryMiniListPanel title="Hotel details" items={getStayDetailItems(payload, 4)} maxItems={4} />
+            <LuxuryMiniListPanel title="Flight details" items={getFlightDetailItems(payload, 3)} maxItems={3} />
+            <LuxuryMiniListPanel title={selectedAddOns.length ? 'Private upgrades' : 'Client context'} items={contextItems} maxItems={3} />
           </div>
         </div>
         <PageFooter branding={payload.branding} />
@@ -3624,6 +3713,27 @@ const VisualMiniPanel = ({
   );
 };
 
+const VisualStayPanel = ({
+  payload,
+  dayNumber,
+  dayIndex,
+}: {
+  payload: PreparedPrintPayload;
+  dayNumber: number;
+  dayIndex: number;
+}) => {
+  const stay = getStayDetailsForDay(payload, dayNumber, dayIndex);
+  if (!stay) return null;
+
+  return (
+    <div className="visual-panel">
+      <p className="visual-panel__label">Hotel details</p>
+      <p className="visual-panel__value">{stay.title}</p>
+      {stay.copy ? <p className="visual-panel__copy">{stay.copy}</p> : null}
+    </div>
+  );
+};
+
 const VisualOverviewPage = ({ payload }: { payload: PreparedPrintPayload }) => {
   const accent = payload.branding.primaryColor || '#e11d48';
   const topLocations = getTopLocations(payload, 5);
@@ -3674,7 +3784,8 @@ const VisualOverviewPage = ({ payload }: { payload: PreparedPrintPayload }) => {
                 ))}
               </div>
             </div>
-            <VisualMiniPanel title="Route sequence" items={topLocations} maxItems={4} />
+            <VisualMiniPanel title="Hotel details" items={getStayDetailItems(payload, 3)} maxItems={3} />
+            <VisualMiniPanel title="Route sequence" items={topLocations} maxItems={3} />
             <VisualMiniPanel title="Client context" items={contextItems} maxItems={2} />
           </div>
         </div>
@@ -3729,6 +3840,8 @@ const VisualClosingPage = ({ payload }: { payload: PreparedPrintPayload }) => {
               items={payload.printExtras.selectedAddOns.map((addOn) => [addOn.name, addOn.category].filter(Boolean).join(' • '))}
               maxItems={4}
             />
+            <VisualMiniPanel title="Hotel details" items={getStayDetailItems(payload, 4)} maxItems={4} />
+            <VisualMiniPanel title="Flight details" items={getFlightDetailItems(payload, 3)} maxItems={3} />
             <VisualMiniPanel title="Route sequence" items={getTopLocations(payload, 5)} maxItems={5} />
           </div>
         </div>
@@ -3806,59 +3919,25 @@ const BentoStayPanel = ({
   dayNumber: number;
   dayIndex: number;
 }) => {
-  const accommodation = getDayAccommodation(payload, dayNumber);
-  if (accommodation) {
-    return (
-      <BentoPanelPrint
-        label="Stay tonight"
-        value={accommodation.hotelName}
-        copy={[
-          accommodation.roomType,
-          accommodation.starRating ? `${accommodation.starRating}-star` : null,
-          accommodation.amenities?.slice(0, 2).join(' • '),
-        ].filter(Boolean).join(' • ')}
-      />
-    );
-  }
-
-  const hotel = getFallbackHotelForDay(payload, dayIndex);
-  if (!hotel) return null;
+  const stay = getStayDetailsForDay(payload, dayNumber, dayIndex);
+  if (!stay) return null;
 
   return (
     <BentoPanelPrint
-      label="Stay details"
-      value={hotel.name}
-      copy={[
-        hotel.address,
-        [hotel.check_in, hotel.check_out].filter(Boolean).join(' to '),
-        hotel.confirmation ? `Confirmation ${hotel.confirmation}` : null,
-      ].filter(Boolean).join(' • ')}
+      label="Hotel details"
+      value={stay.title}
+      copy={stay.copy}
     />
   );
 };
 
 const BentoLogisticsPanel = ({ payload }: { payload: PreparedPrintPayload }) => {
-  const flights = payload.itinerary.logistics?.flights || [];
-  const hotels = payload.itinerary.logistics?.hotels || [];
   const items = [
-    ...flights.slice(0, 2).map((flight) =>
-      [
-        flight.airline || 'Flight',
-        flight.flight_number,
-        `${flight.departure_airport} ${flight.departure_time || ''}`.trim(),
-        `${flight.arrival_airport} ${flight.arrival_time || ''}`.trim(),
-      ].filter(Boolean).join(' • '),
-    ),
-    ...hotels.slice(0, 3).map((hotel) =>
-      [
-        hotel.name,
-        hotel.address,
-        [hotel.check_in, hotel.check_out].filter(Boolean).join(' to '),
-      ].filter(Boolean).join(' • '),
-    ),
+    ...getFlightDetailItems(payload, 2),
+    ...getStayDetailItems(payload, 3),
   ];
 
-  return <BentoMiniListPanel title="Flights and stays" items={items} maxItems={5} />;
+  return <BentoMiniListPanel title="Flights and hotels" items={items} maxItems={5} />;
 };
 
 const BentoPackageSnapshot = ({ payload }: { payload: PreparedPrintPayload }) => {
@@ -4194,7 +4273,7 @@ const LuxuryTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                   <LuxuryDossierCards payload={payload} day={day} />
                 </div>
                 <div className="luxury-sidebar">
-                  <LuxuryStayPanel accommodation={getDayAccommodation(payload, day.day_number)} />
+                  <LuxuryStaySnapshot payload={payload} dayNumber={day.day_number} dayIndex={dayIndex} />
                   <LuxuryMiniListPanel title="Private route" items={getDayLocations(day, 4)} maxItems={4} />
                   <LuxuryMiniListPanel
                     title="Concierge notes"
@@ -4239,7 +4318,8 @@ const LuxuryTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
               <LuxuryMiniListPanel title="Concierge notes" items={closingNotes} maxItems={5} />
             </div>
             <div className="luxury-sidebar">
-              <LuxuryStayPanel accommodation={payload.printExtras.dayAccommodations[0] || null} />
+              <LuxuryStaySnapshot payload={payload} />
+              <LuxuryMiniListPanel title="Flight details" items={getFlightDetailItems(payload, 3)} maxItems={3} />
               <LuxuryMiniListPanel
                 title="Private upgrades"
                 items={getSelectedAddOns(payload, 4).map((addOn) => [addOn.name, addOn.category].filter(Boolean).join(' • '))}
@@ -4334,7 +4414,7 @@ const VisualTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                 </div>
                 <div className="visual-sidebar">
                   <VisualMiniPanel title="Day route" items={getDayLocations(day, 4)} maxItems={4} />
-                  <StayPanel accommodation={getDayAccommodation(payload, day.day_number)} compact />
+                  <VisualStayPanel payload={payload} dayNumber={day.day_number} dayIndex={dayIndex} />
                   <VisualMiniPanel
                     title="Travel notes"
                     items={[...(payload.itinerary.tips || []), ...(payload.itinerary.inclusions || [])].slice(chunkIndex * 3, chunkIndex * 3 + 3)}
