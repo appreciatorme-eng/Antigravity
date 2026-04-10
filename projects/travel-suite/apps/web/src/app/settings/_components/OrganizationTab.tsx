@@ -23,6 +23,8 @@ export interface OrganizationTabProps {
     readonly organization: Organization;
     readonly setOrganization: React.Dispatch<React.SetStateAction<Organization | null>>;
     readonly draftTimezone: string;
+    readonly timezoneOptions: readonly string[];
+    readonly onDraftTimezoneChange: (tz: string) => void;
     readonly loading: boolean;
     readonly showSuccess: boolean;
     readonly onSave: () => Promise<void> | void;
@@ -114,6 +116,8 @@ export function OrganizationTab({
     organization,
     setOrganization,
     draftTimezone,
+    timezoneOptions,
+    onDraftTimezoneChange,
     loading,
     showSuccess,
     onSave,
@@ -354,14 +358,16 @@ export function OrganizationTab({
                             <label className={LABEL_CLASS}>Timezone</label>
                             <select
                                 value={draftTimezone}
-                                disabled
+                                onChange={(e) => onDraftTimezoneChange(e.target.value)}
                                 aria-label="Timezone"
-                                className={`${INPUT_CLASS} disabled:opacity-100`}
+                                className={INPUT_CLASS}
                             >
-                                <option value={draftTimezone}>{getTimezoneDisplayName(draftTimezone)}</option>
+                                {timezoneOptions.map((tz) => (
+                                    <option key={tz} value={tz}>{getTimezoneDisplayName(tz)}</option>
+                                ))}
                             </select>
                             <p className="text-xs text-text-muted">
-                                Operational timestamps follow the profile timezone below.
+                                Saved with Save Configuration below.
                             </p>
                         </div>
                     </div>

@@ -451,6 +451,9 @@ export default function SettingsPage() {
                     branch_offices: normalizeBranchOffices(savedRecord.branch_offices),
                 };
             });
+            if (draftTimezone !== timezone) {
+                await saveTimezone(draftTimezone);
+            }
             setShowSuccess(true);
             setTimeout(() => setShowSuccess(false), 3000);
             toast({ title: 'Settings saved', description: 'Organization settings were updated.', variant: 'success' });
@@ -657,6 +660,8 @@ export default function SettingsPage() {
                                     organization={organization}
                                     setOrganization={setOrganization}
                                     draftTimezone={draftTimezone}
+                                    timezoneOptions={timezoneOptions}
+                                    onDraftTimezoneChange={setDraftTimezone}
                                     loading={saving}
                                     showSuccess={showSuccess}
                                     onSave={handleSaveOrg}
