@@ -39,26 +39,19 @@ import { ReviewsTab } from './_components/ReviewsTab';
 import { SocialTab } from './_components/SocialTab';
 import { WorkflowRulesSection } from './_components/WorkflowRulesSection';
 import {
-    isMissingColumnError,
     mergeBillingAddressFields,
     normalizeBillingAddress,
-    ORGANIZATION_SETTINGS_SELECT,
     type Organization,
     type OrganizationSettingsRow,
     type WorkflowRule,
 } from './shared';
 
-const LEGACY_ORGANIZATION_SETTINGS_SELECT = [
-    "billing_address",
-    "billing_state",
-    "gstin",
-    "id",
-    "logo_url",
-    "name",
-    "primary_color",
-    "slug",
-    "subscription_tier",
-].join(", ");
+type OrganizationApiPayload = {
+    data?: {
+        organization?: OrganizationSettingsRow | null;
+    } | null;
+    error?: string | null;
+};
 
 type SettingsTab =
     | 'organization' | 'profile' | 'branding' | 'messaging' | 'payments'
@@ -244,24 +237,13 @@ export default function SettingsPage() {
     // Organization settings (for Branding tab & org details)
     const fetchSettings = useCallback(async () => {
         try {
-            let { data, error } = await supabase.from('organizations').select(ORGANIZATION_SETTINGS_SELECT).single();
-            if (
-                error &&
-                (
-                    isMissingColumnError(error, 'itinerary_template') ||
-                    isMissingColumnError(error, 'legal_name') ||
-                    isMissingColumnError(error, 'billing_address_line1') ||
-                    isMissingColumnError(error, 'billing_address_line2') ||
-                    isMissingColumnError(error, 'billing_city') ||
-                    isMissingColumnError(error, 'billing_pincode')
-                )
-            ) {
-                const fallbackResult = await supabase.from('organizations').select(LEGACY_ORGANIZATION_SETTINGS_SELECT).single();
-                data = fallbackResult.data;
-                error = fallbackResult.error;
+            const organizationResponse = await authedFetch('/api/admin/organization', { cache: 'no-store' });
+            const organizationPayload = (await organizationResponse.json()) as OrganizationApiPayload;
+            if (!organizationResponse.ok) {
+                throw new Error(organizationPayload.error || 'Failed to load organization settings');
             }
-            if (error) throw error;
-            const organizationRow = data as unknown as OrganizationSettingsRow | null;
+
+            const organizationRow = organizationPayload.data?.organization ?? null;
             if (!organizationRow) throw new Error('Organization not found');
 
             const orgRecord = organizationRow as unknown as Record<string, unknown>;
@@ -392,7 +374,7 @@ export default function SettingsPage() {
         try {
             const address = normalizeBillingAddress(organization.billing_address);
             const billingState = address.state || organization.billing_state || null;
-            const basePayload = {
+            const updatePayload = {
                 name: organization.name.trim() || 'Organization',
                 legal_name: organization.legal_name?.trim() || organization.name.trim() || null,
                 logo_url: organization.logo_url,
@@ -404,51 +386,35 @@ export default function SettingsPage() {
                 billing_address_line2: address.line2 || null,
                 billing_city: address.city || null,
                 billing_pincode: address.postal_code || null,
-            };
-            const updatePayload = {
-                ...basePayload,
                 itinerary_template: organization.itinerary_template || 'safari_story',
             };
-            let { error } = await supabase.from('organizations').update(updatePayload).eq('id', organization.id);
-            if (error && isMissingColumnError(error, 'itinerary_template')) {
-                const fallbackResult = await supabase
-                    .from('organizations')
-                    .update(basePayload)
-                    .eq('id', organization.id);
-                error = fallbackResult.error;
+
+            const response = await authedFetch('/api/admin/organization', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatePayload),
+            });
+            const payload = (await response.json()) as OrganizationApiPayload;
+            if (!response.ok) {
+                throw new Error(payload.error || 'Failed to save organization settings');
             }
-            if (
-                error &&
-                (
-                    isMissingColumnError(error, 'billing_address_line1') ||
-                    isMissingColumnError(error, 'billing_address_line2') ||
-                    isMissingColumnError(error, 'billing_city') ||
-                    isMissingColumnError(error, 'billing_pincode') ||
-                    isMissingColumnError(error, 'legal_name')
-                )
-            ) {
-                const fallbackResult = await supabase
-                    .from('organizations')
-                    .update({
-                        name: basePayload.name,
-                        logo_url: basePayload.logo_url,
-                        primary_color: basePayload.primary_color,
-                        gstin: basePayload.gstin,
-                        billing_state: basePayload.billing_state,
-                        billing_address: basePayload.billing_address,
-                    })
-                    .eq('id', organization.id);
-                error = fallbackResult.error;
-            }
-            if (error) throw error;
-            setOrganization((prev) => prev ? {
-                ...prev,
-                name: basePayload.name,
-                legal_name: basePayload.legal_name,
-                gstin: basePayload.gstin,
-                billing_state: basePayload.billing_state,
-                billing_address: basePayload.billing_address,
-            } : prev);
+
+            const savedOrganization = payload.data?.organization;
+            setOrganization((prev) => {
+                if (!prev || !savedOrganization) return prev;
+                const savedRecord = savedOrganization as unknown as Record<string, unknown>;
+                return {
+                    ...prev,
+                    ...savedOrganization,
+                    itinerary_template: normalizeItineraryTemplateId(
+                        typeof savedRecord.itinerary_template === 'string' ? savedRecord.itinerary_template : prev.itinerary_template
+                    ),
+                    legal_name: typeof savedRecord.legal_name === 'string' ? savedRecord.legal_name : null,
+                    gstin: typeof savedRecord.gstin === 'string' ? savedRecord.gstin : null,
+                    billing_state: typeof savedRecord.billing_state === 'string' ? savedRecord.billing_state : null,
+                    billing_address: mergeBillingAddressFields(savedRecord.billing_address, savedOrganization),
+                };
+            });
             setShowSuccess(true);
             setTimeout(() => setShowSuccess(false), 3000);
             toast({ title: 'Settings saved', description: 'Organization settings were updated.', variant: 'success' });

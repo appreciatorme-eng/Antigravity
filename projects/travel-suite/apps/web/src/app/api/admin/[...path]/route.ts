@@ -60,6 +60,7 @@ const routes = createCatchAllHandlers([
   ["notifications/delivery/retry", () => import("@/app/api/_handlers/admin/notifications/delivery/retry/route")],
   ["notifications/delivery", () => import("@/app/api/_handlers/admin/notifications/delivery/route")],
   ["operations/command-center", () => import("@/app/api/_handlers/admin/operations/command-center/route")],
+  ["organization", () => import("@/app/api/_handlers/admin/organization/route")],
   ["pdf-imports/upload", () => import("@/app/api/_handlers/admin/pdf-imports/upload/route")],
   ["pdf-imports/:id", () => import("@/app/api/_handlers/admin/pdf-imports/[id]/route")],
   ["pdf-imports", () => import("@/app/api/_handlers/admin/pdf-imports/route")],
