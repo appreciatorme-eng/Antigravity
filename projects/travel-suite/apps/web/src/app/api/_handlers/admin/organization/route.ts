@@ -45,7 +45,7 @@ const BillingAddressSchema = z.object({
 });
 
 const OrganizationUpdateSchema = z.object({
-  name: z.string().trim().min(1).max(240),
+  name: z.string().trim().min(1).max(240).optional(),
   legal_name: z.string().trim().max(240).optional().nullable(),
   logo_url: z.string().trim().url().max(2048).optional().nullable().or(z.literal("")),
   primary_color: z.string().trim().max(32).optional().nullable(),
@@ -114,6 +114,35 @@ function normalizeAddress(input: z.infer<typeof BillingAddressSchema> | null | u
   };
 }
 
+function stringValue(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function mergeAddressFromOrganization(
+  organization: Record<string, unknown>,
+  input: z.infer<typeof BillingAddressSchema> | null | undefined,
+) {
+  const currentRaw = organization.billing_address;
+  const currentAddress = currentRaw && typeof currentRaw === "object" && !Array.isArray(currentRaw)
+    ? currentRaw as Record<string, unknown>
+    : {};
+
+  if (input !== undefined) {
+    return normalizeAddress(input);
+  }
+
+  return {
+    line1: stringValue(currentAddress.line1) || stringValue(organization.billing_address_line1) || "",
+    line2: stringValue(currentAddress.line2) || stringValue(organization.billing_address_line2) || "",
+    city: stringValue(currentAddress.city) || stringValue(organization.billing_city) || "",
+    state: stringValue(currentAddress.state) || stringValue(organization.billing_state) || "",
+    postal_code: stringValue(currentAddress.postal_code) || stringValue(organization.billing_pincode) || "",
+    country: stringValue(currentAddress.country) || "",
+    phone: stringValue(currentAddress.phone) || "",
+    email: stringValue(currentAddress.email) || "",
+  };
+}
+
 export async function GET(request: Request): Promise<Response> {
   try {
     const auth = await requireAdmin(request, { requireOrganization: true });
@@ -144,14 +173,28 @@ export async function PATCH(request: Request): Promise<Response> {
     const parsed = OrganizationUpdateSchema.safeParse(body);
     if (!parsed.success) return apiError("Invalid organization details", 400);
 
-    const address = normalizeAddress(parsed.data.billing_address);
-    const billingState = address.state || parsed.data.billing_state?.trim() || null;
+    const { data: currentOrganization, error: currentError } = await fetchOrganization(auth.adminClient, auth.organizationId);
+    if (currentError) {
+      logError("[admin/organization:PATCH] Failed to load current organization", currentError);
+      return apiError("Failed to load organization details", 500);
+    }
+    if (!currentOrganization) return apiError("Organization not found", 404);
+
+    const currentRecord = currentOrganization as unknown as Record<string, unknown>;
+    const address = mergeAddressFromOrganization(currentRecord, parsed.data.billing_address);
+    const currentName = stringValue(currentRecord.name) || "Organization";
+    const currentLegalName = stringValue(currentRecord.legal_name);
+    const billingState = address.state || parsed.data.billing_state?.trim() || stringValue(currentRecord.billing_state);
     const basePayload = {
-      name: parsed.data.name,
-      legal_name: parsed.data.legal_name?.trim() || parsed.data.name,
-      logo_url: parsed.data.logo_url || null,
-      primary_color: parsed.data.primary_color || null,
-      gstin: parsed.data.gstin?.toUpperCase() || null,
+      name: parsed.data.name?.trim() || currentName,
+      legal_name: parsed.data.legal_name !== undefined
+        ? parsed.data.legal_name?.trim() || parsed.data.name?.trim() || currentName
+        : currentLegalName,
+      logo_url: parsed.data.logo_url !== undefined ? parsed.data.logo_url || null : stringValue(currentRecord.logo_url),
+      primary_color: parsed.data.primary_color !== undefined
+        ? parsed.data.primary_color || null
+        : stringValue(currentRecord.primary_color),
+      gstin: parsed.data.gstin !== undefined ? parsed.data.gstin?.toUpperCase() || null : stringValue(currentRecord.gstin),
       billing_state: billingState,
       billing_address: { ...address, state: billingState || "" },
       billing_address_line1: address.line1 || null,
@@ -161,7 +204,7 @@ export async function PATCH(request: Request): Promise<Response> {
     };
     const updatePayload = {
       ...basePayload,
-      itinerary_template: parsed.data.itinerary_template || "safari_story",
+      itinerary_template: parsed.data.itinerary_template || stringValue(currentRecord.itinerary_template) || "safari_story",
     };
 
     let { error } = await auth.adminClient

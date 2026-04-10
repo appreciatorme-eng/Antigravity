@@ -119,12 +119,28 @@ export function OrganizationTab({
                                 : 'border-gray-200 focus:ring-primary/20 focus:border-primary'
                         }`}
                     />
-                    {gstinError && (
-                        <p className="text-xs text-red-600">{gstinError}</p>
-                    )}
-                    {!gstinError && gstin && (
-                        <p className="text-xs text-green-600">Valid GSTIN format</p>
-                    )}
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            {gstinError && (
+                                <p className="text-xs text-red-600">{gstinError}</p>
+                            )}
+                            {!gstinError && gstin && (
+                                <p className="text-xs text-green-600">Valid GSTIN format</p>
+                            )}
+                            {!gstin && (
+                                <p className="text-xs text-text-muted">Optional unless GST invoicing is enabled.</p>
+                            )}
+                        </div>
+                        <GlassButton
+                            variant="outline"
+                            size="sm"
+                            onClick={() => { void onSave(); }}
+                            disabled={loading || Boolean(gstinError)}
+                            className="self-start rounded-lg px-4 text-xs sm:self-auto"
+                        >
+                            {loading ? 'Saving...' : 'Save GSTIN'}
+                        </GlassButton>
+                    </div>
                     <p className="text-xs text-text-muted">
                         GST Identification Number for tax compliance and e-invoicing
                     </p>

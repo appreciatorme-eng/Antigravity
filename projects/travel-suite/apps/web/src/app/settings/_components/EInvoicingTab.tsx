@@ -6,6 +6,19 @@ import { GlassButton } from '@/components/glass/GlassButton';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/toast';
 import { authedFetch } from '@/lib/api/authed-fetch';
+import { validateGSTIN } from '@/lib/tax/gst-calculator';
+
+type EInvoiceSettingsResponse = {
+    configured?: boolean;
+    settings?: {
+        gstin?: string;
+        irp_username?: string;
+        threshold_amount?: number;
+        auto_generate_enabled?: boolean;
+        sandbox_mode?: boolean;
+    } | null;
+    error?: string | null;
+};
 
 export function EInvoicingTab() {
     const { toast } = useToast();
@@ -18,6 +31,7 @@ export function EInvoicingTab() {
     const [autoGenerateEnabled, setAutoGenerateEnabled] = useState(true);
     const [sandboxMode, setSandboxMode] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [isSavingGstin, setIsSavingGstin] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [isConfigured, setIsConfigured] = useState(false);
 
@@ -30,21 +44,16 @@ export function EInvoicingTab() {
                     setIsLoading(false);
                     return;
                 }
-                const data = (await res.json()) as {
-                    gstin?: string;
-                    irpUsername?: string;
-                    thresholdAmount?: number;
-                    autoGenerateEnabled?: boolean;
-                    sandboxMode?: boolean;
-                };
+                const data = (await res.json()) as EInvoiceSettingsResponse;
+                const settings = data.settings;
 
-                if (data.gstin) {
-                    setGstin(data.gstin);
-                    setIrpUsername(data.irpUsername ?? '');
-                    setThresholdAmount(String(data.thresholdAmount ?? 500000));
-                    setAutoGenerateEnabled(data.autoGenerateEnabled ?? true);
-                    setSandboxMode(data.sandboxMode ?? true);
-                    setIsConfigured(true);
+                if (settings?.gstin) {
+                    setGstin(settings.gstin);
+                    setIrpUsername(settings.irp_username ?? '');
+                    setThresholdAmount(String(settings.threshold_amount ?? 500000));
+                    setAutoGenerateEnabled(settings.auto_generate_enabled ?? true);
+                    setSandboxMode(settings.sandbox_mode ?? true);
+                    setIsConfigured(Boolean(data.configured));
                 }
             } catch (error) {
                 console.error('Failed to load e-invoicing settings:', error);
@@ -55,6 +64,59 @@ export function EInvoicingTab() {
 
         void loadSettings();
     }, []);
+
+    const handleSaveGstin = async () => {
+        const nextGstin = gstin.trim().toUpperCase();
+        if (!nextGstin) {
+            toast({
+                title: 'GSTIN required',
+                description: 'Enter a GSTIN before saving it to the organization.',
+                variant: 'error'
+            });
+            return;
+        }
+
+        if (!validateGSTIN(nextGstin)) {
+            toast({
+                title: 'Invalid GSTIN',
+                description: 'Use the 15-character GSTIN format, for example 27AABCU9603R1ZX.',
+                variant: 'error'
+            });
+            return;
+        }
+
+        setIsSavingGstin(true);
+        try {
+            const res = await authedFetch('/api/admin/organization', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ gstin: nextGstin }),
+            });
+            const data = (await res.json()) as { error?: string | null };
+            if (!res.ok) {
+                toast({
+                    title: 'GSTIN save failed',
+                    description: data.error ?? 'Could not save GSTIN to organization details.',
+                    variant: 'error'
+                });
+                return;
+            }
+            setGstin(nextGstin);
+            toast({
+                title: 'GSTIN saved',
+                description: 'Organization GSTIN was updated.',
+                variant: 'success'
+            });
+        } catch {
+            toast({
+                title: 'GSTIN save failed',
+                description: 'Please try again.',
+                variant: 'error'
+            });
+        } finally {
+            setIsSavingGstin(false);
+        }
+    };
 
     const handleSave = async () => {
         if (!gstin.trim()) {
@@ -82,11 +144,11 @@ export function EInvoicingTab() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     gstin: gstin.trim(),
-                    irpUsername: irpUsername.trim(),
-                    irpPassword: irpPassword.trim() || undefined,
-                    thresholdAmount: parseInt(thresholdAmount, 10),
-                    autoGenerateEnabled,
-                    sandboxMode,
+                    irp_username: irpUsername.trim(),
+                    irp_password: irpPassword.trim() || undefined,
+                    threshold_amount: parseInt(thresholdAmount, 10),
+                    auto_generate_enabled: autoGenerateEnabled,
+                    sandbox_mode: sandboxMode,
                 }),
             });
 
@@ -170,19 +232,33 @@ export function EInvoicingTab() {
                             <div className="flex-1">
                                 <h4 className="font-bold text-secondary mb-0.5">GSTIN</h4>
                                 <p className="text-xs text-text-muted">
-                                    Your 15-character GST Identification Number
+                            Your 15-character GST Identification Number
                                 </p>
                             </div>
                         </div>
-                        <input
-                            type="text"
-                            value={gstin}
-                            onChange={(e) => setGstin(e.target.value.toUpperCase())}
-                            placeholder="22AAAAA0000A1Z5"
-                            aria-label="GSTIN"
-                            maxLength={15}
-                            className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm text-secondary dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30 font-mono"
-                        />
+                        <div className="flex flex-col gap-3 sm:flex-row">
+                            <input
+                                type="text"
+                                value={gstin}
+                                onChange={(e) => setGstin(e.target.value.toUpperCase().replace(/\s/g, ''))}
+                                placeholder="22AAAAA0000A1Z5"
+                                aria-label="GSTIN"
+                                maxLength={15}
+                                className="w-full bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm text-secondary dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30 font-mono"
+                            />
+                            <GlassButton
+                                variant="outline"
+                                size="sm"
+                                onClick={() => { void handleSaveGstin(); }}
+                                disabled={isSavingGstin || !gstin.trim()}
+                                className="shrink-0 px-5"
+                            >
+                                {isSavingGstin ? 'Saving...' : 'Save GSTIN'}
+                            </GlassButton>
+                        </div>
+                        <p className="mt-2 text-xs text-text-muted">
+                            This saves GSTIN to organization details. Use the full e-invoicing save below only after IRP credentials are ready.
+                        </p>
                     </div>
                 </div>
             </div>
