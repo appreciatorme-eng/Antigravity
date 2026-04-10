@@ -10,6 +10,7 @@ import {
   Share2,
   Zap,
   Bell,
+  Download,
   Save,
   Link2,
   ExternalLink,
@@ -33,6 +34,8 @@ interface TripDetailHeaderProps {
   duplicating: boolean;
   onNotify: () => void;
   onShare: () => void;
+  onDownloadPdf?: () => void;
+  downloadingPdf?: boolean;
   onOptimizeRoute: () => void;
 }
 
@@ -107,6 +110,8 @@ export function TripDetailHeader({
   duplicating,
   onNotify,
   onShare,
+  onDownloadPdf,
+  downloadingPdf = false,
   onOptimizeRoute,
 }: TripDetailHeaderProps) {
   const title =
@@ -204,6 +209,18 @@ export function TripDetailHeader({
           <Share2 className="w-4 h-4" />
           <span className="hidden md:inline">Share Trip</span>
         </GlassButton>
+
+        {onDownloadPdf ? (
+          <GlassButton
+            variant="outline"
+            className="h-10 md:h-14 px-3 md:px-6 rounded-xl md:rounded-2xl hover:shadow-md border-emerald-500/70 text-emerald-700"
+            onClick={onDownloadPdf}
+            loading={downloadingPdf}
+          >
+            <Download className="w-4 h-4" />
+            <span className="hidden md:inline">Download PDF</span>
+          </GlassButton>
+        ) : null}
 
         {!linkedProposal && onCreateProposal ? (
           <GlassButton

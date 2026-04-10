@@ -24,6 +24,7 @@ import { GlassModal } from "@/components/glass/GlassModal";
 import { useToast } from "@/components/ui/toast";
 import { GuidedTour } from "@/components/tour/GuidedTour";
 import ShareTripModal from "@/components/ShareTripModal";
+import { downloadTripItineraryPdf } from "@/components/pdf/trip-itinerary-pdf";
 
 // ---------------------------------------------------------------------------
 // Trip Detail Page (thin shell)
@@ -50,6 +51,7 @@ export default function TripDetailPage() {
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [editableRawData, setEditableRawData] = useState<TripItineraryRawData | null>(null);
   const [creatingProposal, setCreatingProposal] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   // --- Derived data ---
   const trip = data?.trip ?? null;
@@ -124,6 +126,35 @@ export default function TripDetailPage() {
 
   const handleNotify = () => setNotificationOpen(true);
   const handleShare = () => setIsShareOpen(true);
+
+  const handleDownloadPdf = async () => {
+    if (downloadingPdf || !data?.trip) return;
+
+    setDownloadingPdf(true);
+    try {
+      await downloadTripItineraryPdf({
+        tripId,
+        tripPayload: {
+          ...data,
+          trip: tripWithDraft ?? data.trip,
+        },
+      });
+      toast({
+        title: "PDF download started",
+        description: "The export uses the same itinerary PDF renderer as the planner.",
+        variant: "success",
+      });
+    } catch (error) {
+      toast({
+        title: "PDF generation failed",
+        description: error instanceof Error ? error.message : "Unable to generate the PDF right now.",
+        variant: "error",
+      });
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
   const handleOptimizeRoute = () => {
     toast({
       title: "Coming Soon",
@@ -280,6 +311,8 @@ export default function TripDetailPage() {
         duplicating={cloneMutation.isPending}
         onNotify={handleNotify}
         onShare={handleShare}
+        onDownloadPdf={handleDownloadPdf}
+        downloadingPdf={downloadingPdf}
         onOptimizeRoute={handleOptimizeRoute}
       />
 
