@@ -1294,23 +1294,97 @@ const PRINT_CSS = `
   .urban-masthead {
     border-top: 4px solid var(--accent);
     border-bottom: 1px solid rgba(17,24,39,0.12);
-    padding: 8mm 0 7mm;
+    padding: 7mm 0 6mm;
+  }
+  .urban-masthead .brand-row {
+    margin-bottom: 0;
   }
   .urban-cover-grid {
     display: grid;
-    grid-template-columns: 1.12fr 0.88fr;
-    gap: 12mm;
-    align-items: start;
+    grid-template-columns: 1.04fr 0.96fr;
+    gap: 9mm;
+    align-items: stretch;
+  }
+  .urban-cover-copy {
+    display: grid;
+    align-content: start;
+    gap: 5mm;
+  }
+  .urban-cover-title {
+    margin: 0;
+    font-size: 36px;
+    line-height: 0.98;
+    letter-spacing: -0.055em;
+    font-weight: 900;
+  }
+  .urban-cover-summary {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.58;
+    color: rgba(17,24,39,0.70);
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .urban-cover-hero {
+    position: relative;
+    overflow: hidden;
+    min-height: 128mm;
+    background: #111827;
+  }
+  .urban-cover-hero img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .urban-cover-hero__shade {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(15,23,42,0.08), rgba(15,23,42,0.78));
+  }
+  .urban-cover-hero__caption {
+    position: absolute;
+    left: 9mm;
+    right: 9mm;
+    bottom: 9mm;
+    color: #ffffff;
   }
   .urban-metric-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 7px;
-    margin-top: 8mm;
+  }
+  .urban-logistics-strip {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .urban-logistics-card {
+    border: 1px solid rgba(255,255,255,0.10);
+    background: rgba(255,255,255,0.045);
+    padding: 11px 12px;
+    color: #ffffff;
+  }
+  .urban-logistics-card__meta {
+    margin-top: 5px;
+    font-size: 10px;
+    line-height: 1.45;
+    color: rgba(255,255,255,0.64);
+  }
+  .urban-section-head {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 16px;
+    border-bottom: 1px solid rgba(17,24,39,0.14);
+    padding-bottom: 6mm;
+    margin-bottom: 7mm;
   }
   .urban-day-card {
     border: 1px solid rgba(17,24,39,0.14);
-    border-radius: 10px;
     overflow: hidden;
     background: #ffffff;
   }
@@ -1319,13 +1393,12 @@ const PRINT_CSS = `
     grid-template-columns: 12mm 1fr auto;
     gap: 10px;
     align-items: center;
-    padding: 10px 12px;
-    background: color-mix(in srgb, var(--accent) 10%, #ffffff);
+    padding: 11px 12px;
+    background: #f8fafc;
   }
   .urban-day-card__number {
-    width: 10mm;
-    height: 10mm;
-    border-radius: 8px;
+    width: 11mm;
+    height: 11mm;
     background: var(--accent);
     color: #ffffff;
     display: flex;
@@ -1336,17 +1409,61 @@ const PRINT_CSS = `
   }
   .urban-activity {
     display: grid;
-    grid-template-columns: 8mm 1fr auto;
+    grid-template-columns: 12mm 1fr 30mm;
     gap: 10px;
-    padding: 9px 12px;
+    padding: 8px 12px;
     border-top: 1px solid rgba(17,24,39,0.10);
+    align-items: start;
   }
   .urban-activity__thumb {
-    width: 7mm;
-    height: 7mm;
-    border-radius: 6px;
+    width: 11mm;
+    height: 11mm;
     object-fit: cover;
     background: rgba(17,24,39,0.08);
+  }
+  .urban-activity__title {
+    margin: 0;
+    font-size: 12.5px;
+    line-height: 1.25;
+    font-weight: 800;
+  }
+  .urban-activity__copy {
+    margin: 3px 0 0;
+    font-size: 10px;
+    line-height: 1.42;
+    color: rgba(17,24,39,0.68);
+  }
+  .urban-activity__meta {
+    font-size: 9.5px;
+    line-height: 1.45;
+    color: rgba(17,24,39,0.56);
+    text-align: right;
+  }
+  .urban-info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .urban-info-card {
+    border: 1px solid rgba(17,24,39,0.10);
+    background: #f8fafc;
+    padding: 11px 12px;
+  }
+  .urban-info-card__index {
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+  }
+  .urban-info-card__copy {
+    margin: 7px 0 0;
+    font-size: 11px;
+    line-height: 1.48;
+    color: rgba(17,24,39,0.70);
+    display: -webkit-box;
+    -webkit-line-clamp: 4;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
   .luxury-sheet {
     background: #050505;
@@ -2593,19 +2710,149 @@ const UrbanActivityRow = ({
 }: {
   activity: PreparedPrintActivity;
   fallbackLocation: string;
-}) => (
-  <div className="urban-activity">
-    {activity.printImage ? <img className="urban-activity__thumb" src={activity.printImage} alt={activity.title} /> : <div className="urban-activity__thumb" />}
-    <div>
-      <div style={{ fontWeight: 700, fontSize: 12.5 }}>{activity.title}</div>
-      <div className="urban-activity__copy body-copy" style={{ marginTop: 3 }}>{activity.description}</div>
+}) => {
+  const meta = [
+    activity.time || 'Flexible',
+    activity.location || fallbackLocation,
+    activity.duration,
+    activity.cost,
+  ].filter(Boolean);
+
+  return (
+    <div className="urban-activity">
+      {activity.printImage ? <img className="urban-activity__thumb" src={activity.printImage} alt={activity.title} /> : <div className="urban-activity__thumb" />}
+      <div>
+        <h3 className="urban-activity__title">{activity.title}</h3>
+        {activity.description ? <p className="urban-activity__copy">{activity.description}</p> : null}
+      </div>
+      <div className="urban-activity__meta">
+        {meta.slice(0, 4).map((item, index) => (
+          <React.Fragment key={`${activity.title}-meta-${index}`}>
+            {item}
+            {index < meta.slice(0, 4).length - 1 ? <br /> : null}
+          </React.Fragment>
+        ))}
+      </div>
     </div>
-    <div style={{ fontSize: 10, color: 'rgba(17,24,39,0.58)', textAlign: 'right', maxWidth: '30mm' }}>
-      {activity.time || 'Flexible'}<br />
-      {activity.location || fallbackLocation}
-    </div>
-  </div>
-);
+  );
+};
+
+const UrbanOverviewPage = ({ payload }: { payload: PreparedPrintPayload }) => {
+  const accent = payload.branding.primaryColor || '#124ea2';
+  const flights = payload.itinerary.logistics?.flights || [];
+  const hotels = payload.itinerary.logistics?.hotels || [];
+  const notes = [
+    ...(payload.itinerary.tips || []),
+    ...(payload.itinerary.inclusions || []),
+  ].slice(0, 4);
+
+  if (!flights.length && !hotels.length && !notes.length) return null;
+
+  return (
+    <section className="page page--dark">
+      <div className="page__inner" style={{ ['--accent' as string]: accent }}>
+        <BrandRow branding={payload.branding} dark />
+        <div className="urban-section-head" style={{ borderColor: 'rgba(255,255,255,0.16)' }}>
+          <div>
+            <p className="section-kicker" style={{ color: 'rgba(255,255,255,0.60)' }}>City brief support</p>
+            <h2 className="print-title" style={{ color: '#ffffff', margin: '4px 0 0' }}>Logistics and handoff notes</h2>
+          </div>
+          <div className="day-hero__date" style={{ color: 'rgba(255,255,255,0.58)' }}>
+            {payload.itinerary.destination}
+          </div>
+        </div>
+        <div className="urban-logistics-strip">
+          <div>
+            <p className="panel__title" style={{ color: '#ffffff' }}>Air travel</p>
+            <div className="stack--tight">
+              {flights.length ? flights.slice(0, 3).map((flight) => (
+                <div key={flight.id} className="urban-logistics-card">
+                  <div style={{ fontWeight: 800 }}>{flight.airline || 'Flight'} <span style={{ color: 'rgba(255,255,255,0.50)' }}>{flight.flight_number}</span></div>
+                  <div className="urban-logistics-card__meta">
+                    {flight.departure_airport} {flight.departure_time ? `• ${flight.departure_time}` : ''}<br />
+                    {flight.arrival_airport} {flight.arrival_time ? `• ${flight.arrival_time}` : ''}
+                  </div>
+                </div>
+              )) : (
+                <div className="urban-logistics-card">
+                  <div style={{ fontWeight: 800 }}>Flight details pending</div>
+                  <div className="urban-logistics-card__meta">Add flight records when ready for final client dispatch.</div>
+                </div>
+              )}
+            </div>
+          </div>
+          <div>
+            <p className="panel__title" style={{ color: '#ffffff' }}>Stays</p>
+            <div className="stack--tight">
+              {hotels.length ? hotels.slice(0, 3).map((hotel) => (
+                <div key={hotel.id} className="urban-logistics-card">
+                  <div style={{ fontWeight: 800 }}>{hotel.name}</div>
+                  <div className="urban-logistics-card__meta">
+                    {hotel.address}<br />
+                    {[hotel.check_in, hotel.check_out].filter(Boolean).join(' to ')}
+                  </div>
+                </div>
+              )) : (
+                <div className="urban-logistics-card">
+                  <div style={{ fontWeight: 800 }}>Stay details pending</div>
+                  <div className="urban-logistics-card__meta">Accommodation cards appear here when assigned.</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        {notes.length ? (
+          <div style={{ marginTop: '8mm' }}>
+            <p className="panel__title" style={{ color: '#ffffff' }}>Client notes</p>
+            <div className="urban-info-grid">
+              {notes.map((item, index) => (
+                <div key={`urban-overview-note-${index}`} className="urban-logistics-card">
+                  <div style={{ color: accent, fontWeight: 900 }}>{String(index + 1).padStart(2, '0')}</div>
+                  <div className="urban-logistics-card__meta" style={{ color: 'rgba(255,255,255,0.72)' }}>{item}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+        <PageFooter branding={payload.branding} />
+      </div>
+    </section>
+  );
+};
+
+const UrbanKeyInfoPage = ({
+  payload,
+  items,
+}: {
+  payload: PreparedPrintPayload;
+  items: string[];
+}) => {
+  if (!items.length) return null;
+
+  return (
+    <section className="page page--white">
+      <div className="page__inner" style={{ ['--accent' as string]: payload.branding.primaryColor || '#124ea2' }}>
+        <BrandRow branding={payload.branding} />
+        <div className="urban-section-head">
+          <div>
+            <p className="section-kicker" style={{ color: 'var(--accent)' }}>Client handoff</p>
+            <h2 className="print-title" style={{ margin: '4px 0 0' }}>Key information</h2>
+          </div>
+          <div className="day-hero__date">{payload.itinerary.destination}</div>
+        </div>
+        <div className="urban-info-grid">
+          {items.slice(0, 8).map((item, index) => (
+            <div key={`urban-key-info-${index}`} className="urban-info-card">
+              <div className="urban-info-card__index">{String(index + 1).padStart(2, '0')}</div>
+              <p className="urban-info-card__copy">{item}</p>
+            </div>
+          ))}
+        </div>
+        <PageFooter branding={payload.branding} />
+      </div>
+    </section>
+  );
+};
 
 const TipsPage = ({
   payload,
@@ -2824,6 +3071,17 @@ const BentoTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
 const UrbanTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
   const accent = payload.branding.primaryColor || '#124ea2';
   const totalActivities = payload.itinerary.days.reduce((sum, day) => sum + day.activities.length, 0);
+  const flightsCount = payload.itinerary.logistics?.flights?.length || 0;
+  const staysCount = payload.itinerary.logistics?.hotels?.length || 0;
+  const price = formatCurrency(payload.itinerary) || 'Custom quote';
+  const dateWindow = [
+    formatShortDate(payload.itinerary.start_date),
+    formatShortDate(payload.itinerary.end_date),
+  ].filter(Boolean).join(' - ') || 'Dates to confirm';
+  const keyInfoItems = [
+    ...(payload.itinerary.tips || []),
+    ...(payload.itinerary.inclusions || []),
+  ];
 
   return (
     <>
@@ -2833,29 +3091,49 @@ const UrbanTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
             <BrandRow branding={payload.branding} showContact />
           </div>
           <div className="urban-cover-grid" style={{ marginTop: '9mm' }}>
-            <div>
-              <p className="section-kicker" style={{ color: accent }}>Travel itinerary</p>
-              <h1 className="cover__title" style={{ marginTop: 0 }}>{payload.itinerary.trip_title}</h1>
-              {payload.branding.clientName ? <div className="body-copy" style={{ color: accent, fontWeight: 700 }}>Prepared for {payload.branding.clientName}</div> : null}
-              <p className="lead print-copy-clamp">{payload.itinerary.summary}</p>
+            <div className="urban-cover-copy">
+              <div>
+                <p className="section-kicker" style={{ color: accent }}>Urban brief</p>
+                <h1 className="urban-cover-title">{payload.itinerary.trip_title}</h1>
+              </div>
+              {payload.branding.clientName ? (
+                <div className="body-copy" style={{ color: accent, fontWeight: 800 }}>
+                  Prepared for {payload.branding.clientName}
+                </div>
+              ) : null}
+              <p className="urban-cover-summary">{payload.itinerary.summary}</p>
               <div className="urban-metric-grid">
-                <div className="metric"><div className="metric__label">Duration</div><div className="metric__value">{payload.itinerary.duration_days} days</div></div>
-                <div className="metric"><div className="metric__label">Activities</div><div className="metric__value">{totalActivities}</div></div>
+                <div className="metric"><div className="metric__label">Duration</div><div className="metric__value">{payload.itinerary.duration_days || payload.itinerary.days.length} days</div></div>
+                <div className="metric"><div className="metric__label">Route stops</div><div className="metric__value">{totalActivities}</div></div>
                 <div className="metric"><div className="metric__label">Destination</div><div className="metric__value">{payload.itinerary.destination}</div></div>
+                <div className="metric"><div className="metric__label">Dates</div><div className="metric__value">{dateWindow}</div></div>
               </div>
             </div>
-            <div className="panel">
-              <p className="panel__title">Executive Summary</p>
-              <div className="stack--tight">
-                <div className="body-copy"><strong>Destination</strong><br />{payload.itinerary.destination}</div>
-                <div className="body-copy"><strong>Trip Dates</strong><br />{formatShortDate(payload.itinerary.start_date) || 'Flexible'}{payload.itinerary.end_date ? ` - ${formatShortDate(payload.itinerary.end_date)}` : ''}</div>
-                <div className="body-copy"><strong>Logistics</strong><br />{payload.itinerary.logistics?.flights?.length || 0} flights • {payload.itinerary.logistics?.hotels?.length || 0} stays</div>
+            <div className="urban-cover-hero">
+              {payload.coverImage ? <img src={payload.coverImage} alt={payload.itinerary.trip_title} /> : null}
+              <div className="urban-cover-hero__shade" />
+              <div className="urban-cover-hero__caption">
+                <p className="section-kicker" style={{ color: 'rgba(255,255,255,0.72)' }}>Destination lead</p>
+                <h2 style={{ margin: '4px 0 0', fontSize: 28, lineHeight: 1.02, letterSpacing: '-0.04em' }}>
+                  {payload.itinerary.destination}
+                </h2>
+                <div className="urban-logistics-strip" style={{ marginTop: '7mm' }}>
+                  <div className="urban-logistics-card">
+                    <div style={{ fontWeight: 800 }}>Logistics</div>
+                    <div className="urban-logistics-card__meta">{flightsCount} flights • {staysCount} stays</div>
+                  </div>
+                  <div className="urban-logistics-card">
+                    <div style={{ fontWeight: 800 }}>Estimated value</div>
+                    <div className="urban-logistics-card__meta">{price}</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
           <PageFooter branding={payload.branding} />
         </div>
       </section>
+      <UrbanOverviewPage payload={payload} />
       {payload.itinerary.days.flatMap((day, dayIndex) =>
         chunkItems(day.activities, 5).map((chunk, chunkIndex) => (
           <section key={`urban-day-${dayIndex}-${chunkIndex}`} className="page page--white">
@@ -2865,7 +3143,8 @@ const UrbanTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                 <div className="urban-day-card__head">
                   <div className="urban-day-card__number">{day.day_number}</div>
                   <div>
-                    <div style={{ fontSize: 16, fontWeight: 800 }}>{day.theme}</div>
+                    <p className="section-kicker" style={{ color: accent, margin: 0 }}>{chunkIndex > 0 ? 'Day continuation' : `Day ${day.day_number}`}</p>
+                    <div style={{ fontSize: 18, lineHeight: 1.1, fontWeight: 900, letterSpacing: '-0.03em', marginTop: 4 }}>{day.theme}</div>
                     <div className="day-hero__date">{chunkIndex > 0 ? 'Continuation' : formatDateLabel(day.date) || payload.itinerary.destination}</div>
                   </div>
                   <div style={{ fontSize: 11, color: 'rgba(17,24,39,0.62)' }}>{day.activities.length} stops</div>
@@ -2880,7 +3159,7 @@ const UrbanTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
           </section>
         )),
       )}
-      <TipsPage payload={payload} title="Key information" />
+      <UrbanKeyInfoPage payload={payload} items={keyInfoItems} />
     </>
   );
 };

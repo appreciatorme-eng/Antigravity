@@ -26,7 +26,7 @@ export const TEMPLATE_REGISTRY: TemplateDefinition[] = [
     {
         id: 'urban_brief',
         name: 'Urban Brief',
-        description: 'Corporate aesthetic with extremely compact timeline rows.',
+        description: 'Editorial city brief with a sharp masthead, visual lead, and compact route sequence.',
         isPremium: false,
         component: asTemplateComponent(UrbanBriefView)
     },

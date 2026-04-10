@@ -1,376 +1,316 @@
 import React from 'react';
 import Image from 'next/image';
-import { ChevronRight, MapPin, Clock, DollarSign, Calendar, Plane, Mail, Phone } from 'lucide-react';
-import { ItineraryTemplateProps } from './types';
-import { Badge } from '@/components/ui/badge';
+import { Clock, DollarSign, Mail, MapPin, Phone, Plane } from 'lucide-react';
+import type { Activity, Day } from '@/types/itinerary';
+import type { ItineraryTemplateProps } from './types';
 
-export const UrbanBriefView: React.FC<ItineraryTemplateProps> = ({ itinerary, organizationBranding, client }) => {
-  const brandColor = organizationBranding?.primaryColor || '#124ea2';
-  const orgName = organizationBranding?.name;
+const safeBrandName = (value?: string | null) => {
+  const trimmed = value?.trim();
+  if (!trimmed || trimmed.toLowerCase() === 'tripbuilt') return 'Your Travel Company';
+  return trimmed;
+};
+
+const getActivityImage = (activity?: Activity | null) => activity?.image || activity?.imageUrl || null;
+
+const getHeroImage = (days: Day[] = []) => {
+  for (const day of days) {
+    const activityWithImage = day.activities?.find((activity) => getActivityImage(activity));
+    const image = getActivityImage(activityWithImage);
+    if (image) return image;
+  }
+  return null;
+};
+
+const formatDisplayDate = (value?: string) => {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+};
+
+const getPrimaryLocation = (day: Day, fallback: string) =>
+  day.activities?.find((activity) => activity.location)?.location || fallback;
+
+export const UrbanBriefView: React.FC<ItineraryTemplateProps> = ({
+  itinerary,
+  organizationBranding,
+  organizationName,
+  client,
+}) => {
+  const brandColor = organizationBranding?.primaryColor || itinerary.branding?.primaryColor || '#124ea2';
+  const orgName = safeBrandName(
+    organizationBranding?.name || itinerary.branding?.organizationName || organizationName,
+  );
+  const logoUrl = organizationBranding?.logoUrl || itinerary.branding?.logoUrl || null;
   const orgLocation = [organizationBranding?.city, organizationBranding?.state].filter(Boolean).join(', ');
+  const contactItems = [
+    organizationBranding?.email ? { icon: Mail, label: organizationBranding.email } : null,
+    organizationBranding?.phone ? { icon: Phone, label: organizationBranding.phone } : null,
+  ].filter((item): item is { icon: typeof Mail; label: string } => Boolean(item));
 
   const totalDays = itinerary.days?.length || 0;
   const totalActivities = itinerary.days?.reduce((sum, day) => sum + (day.activities?.length || 0), 0) || 0;
+  const flightsCount = itinerary.logistics?.flights?.length || 0;
+  const staysCount = itinerary.logistics?.hotels?.length || 0;
+  const heroImage = getHeroImage(itinerary.days);
+  const dateWindow = [
+    formatDisplayDate(itinerary.start_date),
+    formatDisplayDate(itinerary.end_date),
+  ].filter(Boolean).join(' - ') || 'Dates to confirm';
 
   return (
-    <div className="max-w-4xl mx-auto bg-white" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
-      {/* Newspaper-Style Masthead — Organization Branding */}
-      {organizationBranding && (
-        <div className="border-b border-gray-200 px-8 pt-6 pb-5" style={{ borderTop: `4px solid ${brandColor}` }}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              {organizationBranding.logoUrl && (
-                <Image
-                  src={organizationBranding.logoUrl}
-                  alt={orgName || 'Organization'}
-                  width={160}
-                  height={48}
-                  className="h-10 md:h-12 w-auto object-contain"
-                  unoptimized
-                />
-              )}
-              {orgName && (
-                <div className="border-l border-gray-300 pl-4">
-                  <div className="text-xl font-bold tracking-tight" style={{ color: brandColor }}>
-                    {orgName}
-                  </div>
-                  {orgLocation && (
-                    <div className="text-[11px] text-gray-500 font-medium tracking-wide uppercase">
-                      {orgLocation}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-            <div className="hidden md:flex flex-col items-end gap-1 text-[11px] text-gray-500">
-              {organizationBranding.email && (
-                <span className="flex items-center gap-1.5">
-                  <Mail className="w-3 h-3" />
-                  {organizationBranding.email}
-                </span>
-              )}
-              {organizationBranding.phone && (
-                <span className="flex items-center gap-1.5">
-                  <Phone className="w-3 h-3" />
-                  {organizationBranding.phone}
-                </span>
-              )}
-            </div>
-          </div>
-          {client && (
-            <div className="mt-3 pt-3 border-t border-gray-100 text-xs font-semibold uppercase tracking-wider" style={{ color: brandColor }}>
-              Prepared for {client.name}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Corporate Header with Brand Border */}
-      <div className={`${organizationBranding ? '' : 'border-t-4'} pt-8 pb-6 px-8`} style={organizationBranding ? {} : { borderTopColor: brandColor }}>
-        <div className="flex items-start justify-between mb-6">
-          <div className="flex-1">
-            <div className="text-xs font-semibold tracking-wider mb-2" style={{ color: brandColor }}>
-              TRAVEL ITINERARY
-            </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              {itinerary.trip_title || itinerary.title}
-            </h1>
-            <div className="flex items-center gap-4 text-sm text-gray-600">
-              <div className="flex items-center gap-1.5">
-                <MapPin className="w-4 h-4" style={{ color: brandColor }} />
-                <span>{itinerary.destination}</span>
+    <article className="mx-auto max-w-6xl overflow-hidden bg-[#f7f5f0] text-slate-950">
+      <header className="border-b border-slate-200 bg-white">
+        <div className="h-1.5 w-full" style={{ backgroundColor: brandColor }} />
+        <div className="flex flex-col gap-5 px-5 py-5 md:flex-row md:items-center md:justify-between md:px-8">
+          <div className="flex min-w-0 items-center gap-4">
+            {logoUrl ? (
+              <Image
+                src={logoUrl}
+                alt={orgName}
+                width={150}
+                height={48}
+                className="h-10 w-auto max-w-[150px] object-contain"
+                unoptimized
+              />
+            ) : null}
+            <div className={logoUrl ? 'border-l border-slate-200 pl-4' : ''}>
+              <div className="text-xl font-semibold tracking-tight" style={{ color: brandColor }}>
+                {orgName}
               </div>
-              <div className="flex items-center gap-1.5">
-                <Calendar className="w-4 h-4" style={{ color: brandColor }} />
-                <span>{totalDays} {totalDays === 1 ? 'Day' : 'Days'}</span>
-              </div>
+              {orgLocation ? (
+                <div className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+                  {orgLocation}
+                </div>
+              ) : null}
             </div>
           </div>
-          <div className="text-right">
-            <div className="text-2xl font-bold" style={{ color: brandColor }}>
-              BRIEF
-            </div>
-            {client && (
-              <div className="mt-2 space-y-0.5">
-                <div className="text-xs font-semibold text-gray-800 uppercase tracking-tight">
-                  For: {client.name}
-                </div>
-                {(client.email || client.phone) && (
-                  <div className="text-[10px] text-gray-500 font-medium">
-                    {client.email} {client.email && client.phone && "•"} {client.phone}
-                  </div>
-                )}
-              </div>
-            )}
-            <div className="text-xs text-gray-500 mt-1">
-              Executive Summary
-            </div>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs font-medium text-slate-500 md:justify-end">
+            {contactItems.map(({ icon: Icon, label }) => (
+              <span key={label} className="inline-flex items-center gap-1.5">
+                <Icon className="h-3.5 w-3.5" style={{ color: brandColor }} />
+                {label}
+              </span>
+            ))}
           </div>
         </div>
-
-        {/* Executive Summary */}
-        {itinerary.description && (
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <div className="text-xs font-semibold tracking-wider mb-3 text-gray-700">
-              OVERVIEW
-            </div>
-            <p className="text-sm text-gray-600 leading-relaxed">
-              {itinerary.summary || itinerary.description}
-            </p>
+        {client ? (
+          <div className="border-t border-slate-100 px-5 py-3 text-xs font-semibold uppercase tracking-[0.18em] md:px-8" style={{ color: brandColor }}>
+            Prepared for {client.name}
           </div>
-        )}
+        ) : null}
+      </header>
 
-        {/* Key Metrics */}
-        <div className="mt-6 grid grid-cols-3 gap-4">
-          <div className="bg-gray-50 rounded p-3 border border-gray-200">
-            <div className="text-xs text-gray-500 mb-1">Duration</div>
-            <div className="text-lg font-semibold text-gray-900">{totalDays} Days</div>
+      <section className="grid gap-0 bg-white lg:grid-cols-[1.05fr_0.95fr]">
+        <div className="px-5 py-8 md:px-8 md:py-10">
+          <div className="mb-5 flex flex-wrap items-center gap-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+            <span style={{ color: brandColor }}>Urban brief</span>
+            <span className="h-px w-8 bg-slate-300" />
+            <span>{dateWindow}</span>
           </div>
-          <div className="bg-gray-50 rounded p-3 border border-gray-200">
-            <div className="text-xs text-gray-500 mb-1">Activities</div>
-            <div className="text-lg font-semibold text-gray-900">{totalActivities} Total</div>
-          </div>
-          <div className="bg-gray-50 rounded p-3 border border-gray-200">
-            <div className="text-xs text-gray-500 mb-1">Destination</div>
-            <div className="text-lg font-semibold text-gray-900 truncate">{itinerary.destination}</div>
-          </div>
-        </div>
-
-        {/* Corporate Logistics Module */}
-        {itinerary.logistics && (
-          <div className="mt-8">
-            <div className="text-xs font-semibold tracking-wider mb-4 text-gray-700">
-              LOGISTICS & ACCOMMODATION
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Flights */}
-              {itinerary.logistics.flights && itinerary.logistics.flights.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 mb-3 text-sm font-medium text-gray-800 border-b border-gray-200 pb-2">
-                    <Plane className="w-4 h-4" style={{ color: brandColor }} /> Air Travel Status
-                  </div>
-                  <div className="space-y-3">
-                    {itinerary.logistics.flights.map(flight => (
-                      <div key={flight.id} className="bg-gray-50 p-3 rounded border border-gray-200 text-sm">
-                        <div className="flex justify-between items-start mb-2">
-                          <div className="font-semibold text-gray-900">{flight.airline}</div>
-                          <div className="bg-gray-200 text-gray-700 px-2 py-0.5 rounded text-[10px] font-bold tracking-wider">{flight.flight_number}</div>
-                        </div>
-                        <div className="flex items-center justify-between text-gray-600">
-                          <div>
-                            <div className="font-medium text-gray-900">{flight.departure_airport}</div>
-                            <div className="text-xs mt-0.5">{flight.departure_time}</div>
-                          </div>
-                          <div className="text-gray-400 px-2">→</div>
-                          <div className="text-right">
-                            <div className="font-medium text-gray-900">{flight.arrival_airport}</div>
-                            <div className="text-xs mt-0.5">{flight.arrival_time}</div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Hotels */}
-              {itinerary.logistics.hotels && itinerary.logistics.hotels.length > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 mb-3 text-sm font-medium text-gray-800 border-b border-gray-200 pb-2">
-                    <MapPin className="w-4 h-4" style={{ color: brandColor }} /> Primary Residence
-                  </div>
-                  <div className="space-y-3">
-                    {itinerary.logistics.hotels.map(hotel => (
-                      <div key={hotel.id} className="bg-gray-50 p-3 rounded border border-gray-200 text-sm">
-                        <div className="font-semibold text-gray-900 mb-1">{hotel.name}</div>
-                        <div className="text-xs text-gray-500 mb-3">{hotel.address}</div>
-                        <div className="flex justify-between border-t border-gray-200 pt-2 text-xs">
-                          <div><span className="text-gray-500 mr-1">IN:</span> <span className="font-medium text-gray-900">{hotel.check_in}</span></div>
-                          <div><span className="text-gray-500 mr-1">OUT:</span> <span className="font-medium text-gray-900">{hotel.check_out}</span></div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Day Cards */}
-      <div className="px-8 py-6">
-        <div className="text-xs font-semibold tracking-wider mb-4 text-gray-700">
-          DAILY SCHEDULE
-        </div>
-
-        <div className="space-y-4">
-          {itinerary.days?.map((day, dayIndex) => (
-            <div
-              key={dayIndex}
-              className="border border-gray-300 rounded-lg overflow-hidden"
-            >
-              {/* Day Header */}
-              <div
-                className="px-4 py-3 flex items-center justify-between"
-                style={{ backgroundColor: `${brandColor}10` }}
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-10 h-10 rounded flex items-center justify-center text-white font-bold text-sm"
-                    style={{ backgroundColor: brandColor }}
-                  >
-                    {day.day_number || day.day}
-                  </div>
-                  <div>
-                    <div className="font-semibold text-gray-900">{day.theme || day.title || `Day ${day.day_number}`}</div>
-                    {day.date && (
-                      <div className="text-xs text-gray-600 mt-0.5">{day.date}</div>
-                    )}
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-gray-400" />
-              </div>
-
-              {/* Activities */}
-              {day.activities && day.activities.length > 0 && (
-                <div className="divide-y divide-gray-200">
-                  {day.activities.map((activity, actIndex) => (
-                    <div key={actIndex} className="px-4 py-3 hover:bg-gray-50 transition-colors">
-                      <div className="flex gap-3">
-                        {/* Activity Thumbnail */}
-                        {activity.image ? (
-                          /* eslint-disable-next-line @next/next/no-img-element */
-                          <img
-                            src={activity.image}
-                            alt={activity.name}
-                            className="w-6 h-6 rounded object-cover flex-shrink-0"
-                            onError={(e) => {
-                              e.currentTarget.src = "/unsplash-img/photo-1469854523086-cc02fe5d8800?w=800&auto=format&fit=crop&q=60&ixlib=rb-4.0.3";
-                              e.currentTarget.onerror = null;
-                            }}
-                          />
-                        ) : (
-                          <div
-                            className="w-6 h-6 rounded flex-shrink-0 flex items-center justify-center"
-                            style={{ backgroundColor: `${brandColor}20` }}
-                          >
-                            <MapPin className="w-3 h-3" style={{ color: brandColor }} />
-                          </div>
-                        )}
-
-                        {/* Activity Details */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between gap-2 mb-1">
-                            <h4 className="font-medium text-gray-900 text-sm">
-                              {activity.title || activity.name}
-                            </h4>
-                            {activity.time && (
-                              <div className="flex items-center gap-1 text-xs text-gray-600 flex-shrink-0">
-                                <Clock className="w-3 h-3" />
-                                <span>{activity.time}</span>
-                              </div>
-                            )}
-                          </div>
-
-                          {activity.description && (
-                            <p className="text-xs text-gray-600 mb-2 line-clamp-2">
-                              {activity.description}
-                            </p>
-                          )}
-
-                          {/* Inline Metadata */}
-                          <div className="flex items-center gap-3 text-xs">
-                            {activity.location && (
-                              <div className="flex items-center gap-1 text-gray-600">
-                                <MapPin className="w-3 h-3" />
-                                <span className="truncate max-w-[200px]">{activity.location}</span>
-                              </div>
-                            )}
-                            {activity.duration && (
-                              <div className="flex items-center gap-1 text-gray-600">
-                                <Clock className="w-3 h-3" />
-                                <span>{activity.duration}</span>
-                              </div>
-                            )}
-                            {activity.cost && (
-                              <div className="flex items-center gap-1 text-gray-600">
-                                <DollarSign className="w-3 h-3" />
-                                <span>{activity.cost}</span>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Tags */}
-                          {activity.tags && activity.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 mt-2">
-                              {activity.tags.map((tag, tagIndex) => (
-                                <Badge
-                                  key={tagIndex}
-                                  variant="secondary"
-                                  className="text-xs px-2 py-0.5 h-5"
-                                  style={{
-                                    backgroundColor: `${brandColor}15`,
-                                    color: brandColor,
-                                    border: 'none'
-                                  }}
-                                >
-                                  {tag}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Tips Section */}
-      {itinerary.tips && itinerary.tips.length > 0 && (
-        <div className="px-8 py-6 bg-gray-50">
-          <div className="text-xs font-semibold tracking-wider mb-4 text-gray-700">
-            KEY INFORMATION
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {itinerary.tips.map((tip, index) => (
-              <div key={index} className="flex gap-3 bg-white rounded p-3 border border-gray-200">
-                <div
-                  className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                  style={{ backgroundColor: brandColor }}
-                >
-                  {index + 1}
-                </div>
-                <p className="text-sm text-gray-700 leading-relaxed">{tip}</p>
+          <h1 className="max-w-3xl text-4xl font-black tracking-[-0.055em] text-slate-950 md:text-6xl">
+            {itinerary.trip_title || itinerary.title}
+          </h1>
+          <p className="mt-5 max-w-2xl text-base leading-7 text-slate-600 md:text-lg">
+            {itinerary.summary || itinerary.description}
+          </p>
+          <div className="mt-7 grid grid-cols-2 gap-3 md:grid-cols-4">
+            {[
+              ['Duration', `${totalDays} days`],
+              ['Activities', `${totalActivities} stops`],
+              ['Destination', itinerary.destination],
+              ['Logistics', `${flightsCount} flights / ${staysCount} stays`],
+            ].map(([label, value]) => (
+              <div key={label} className="border border-slate-200 bg-slate-50 px-4 py-3">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">{label}</div>
+                <div className="mt-2 truncate text-base font-bold text-slate-950">{value}</div>
               </div>
             ))}
           </div>
         </div>
-      )}
-
-      {/* Footer */}
-      <div
-        className="px-8 py-6 border-b-4 border-t border-gray-200"
-        style={{ borderBottomColor: brandColor }}
-      >
-        <div className="flex items-center justify-between text-xs text-gray-600">
-          <div>
-            <span className="font-semibold">Travel Brief</span> • Generated {new Date().toLocaleDateString()}
-          </div>
-          <div className="flex items-center gap-2">
-            <span style={{ color: brandColor }} className="font-semibold">
+        <div className="relative min-h-[340px] bg-slate-900">
+          {heroImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={heroImage} alt={itinerary.destination} className="absolute inset-0 h-full w-full object-cover" />
+          ) : (
+            <div className="absolute inset-0 bg-[linear-gradient(135deg,#111827_0%,#334155_100%)]" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/15 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 p-6 text-white md:p-8">
+            <div className="mb-3 inline-flex items-center gap-2 border border-white/20 bg-black/25 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em]">
+              <MapPin className="h-3.5 w-3.5" />
               {itinerary.destination}
-            </span>
-            <span>•</span>
-            <span>{totalDays} Days</span>
+            </div>
+            <div className="max-w-md text-sm leading-6 text-white/80">
+              A client-ready city dossier with route, timing, logistics, and daily notes in one compact handoff.
+            </div>
           </div>
         </div>
-      </div>
-    </div>
+      </section>
+
+      {(flightsCount > 0 || staysCount > 0) ? (
+        <section className="grid gap-4 border-y border-slate-200 bg-slate-950 px-5 py-5 text-white md:grid-cols-2 md:px-8">
+          {flightsCount > 0 ? (
+            <div>
+              <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
+                <Plane className="h-4 w-4" style={{ color: brandColor }} />
+                Air travel
+              </div>
+              <div className="grid gap-2">
+                {itinerary.logistics?.flights?.slice(0, 2).map((flight) => (
+                  <div key={flight.id} className="border border-white/10 bg-white/[0.04] p-3 text-sm">
+                    <div className="flex justify-between gap-4">
+                      <strong>{flight.airline}</strong>
+                      <span className="text-white/50">{flight.flight_number}</span>
+                    </div>
+                    <div className="mt-2 flex justify-between gap-4 text-white/70">
+                      <span>{flight.departure_airport} {flight.departure_time}</span>
+                      <span>{flight.arrival_airport} {flight.arrival_time}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {staysCount > 0 ? (
+            <div>
+              <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
+                <MapPin className="h-4 w-4" style={{ color: brandColor }} />
+                Stays
+              </div>
+              <div className="grid gap-2">
+                {itinerary.logistics?.hotels?.slice(0, 2).map((hotel) => (
+                  <div key={hotel.id} className="border border-white/10 bg-white/[0.04] p-3 text-sm">
+                    <strong>{hotel.name}</strong>
+                    <div className="mt-1 text-white/60">{hotel.address}</div>
+                    <div className="mt-2 text-xs uppercase tracking-[0.14em] text-white/45">
+                      {hotel.check_in} - {hotel.check_out}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      <section className="px-5 py-8 md:px-8 md:py-10">
+        <div className="mb-5 flex items-end justify-between gap-4 border-b border-slate-300 pb-4">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: brandColor }}>
+              Daily schedule
+            </div>
+            <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">Route sequence</h2>
+          </div>
+          <div className="hidden text-right text-xs font-medium text-slate-500 md:block">
+            {totalDays} day chapters / {totalActivities} planned stops
+          </div>
+        </div>
+
+        <div className="grid gap-5">
+          {itinerary.days?.map((day) => (
+            <section key={day.day_number} className="overflow-hidden border border-slate-200 bg-white">
+              <div className="grid gap-4 border-b border-slate-200 bg-slate-50 px-4 py-4 md:grid-cols-[auto_1fr_auto] md:items-center md:px-5">
+                <div className="flex h-12 w-12 items-center justify-center text-lg font-black text-white" style={{ backgroundColor: brandColor }}>
+                  {day.day_number || day.day}
+                </div>
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    {formatDisplayDate(day.date) || getPrimaryLocation(day, itinerary.destination)}
+                  </div>
+                  <h3 className="mt-1 text-xl font-black tracking-[-0.035em] text-slate-950">
+                    {day.theme || day.title || `Day ${day.day_number}`}
+                  </h3>
+                  {day.summary ? <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">{day.summary}</p> : null}
+                </div>
+                <div className="text-sm font-semibold text-slate-500">{day.activities?.length || 0} stops</div>
+              </div>
+
+              <div className="divide-y divide-slate-100">
+                {day.activities?.map((activity, activityIndex) => {
+                  const image = getActivityImage(activity);
+                  return (
+                    <div key={`${day.day_number}-${activityIndex}`} className="grid gap-3 px-4 py-4 md:grid-cols-[56px_1fr_auto] md:px-5">
+                      {image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={image} alt={activity.title || activity.name || 'Activity'} className="h-14 w-14 object-cover" />
+                      ) : (
+                        <div className="flex h-14 w-14 items-center justify-center bg-slate-100">
+                          <MapPin className="h-5 w-5" style={{ color: brandColor }} />
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-medium text-slate-500">
+                          {activity.time ? (
+                            <span className="inline-flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {activity.time}
+                            </span>
+                          ) : null}
+                          {activity.location ? (
+                            <span className="inline-flex items-center gap-1">
+                              <MapPin className="h-3 w-3" />
+                              {activity.location}
+                            </span>
+                          ) : null}
+                        </div>
+                        <h4 className="mt-1 text-base font-bold text-slate-950">{activity.title || activity.name}</h4>
+                        {activity.description ? (
+                          <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-600">{activity.description}</p>
+                        ) : null}
+                      </div>
+                      <div className="flex flex-wrap gap-2 text-xs font-medium text-slate-500 md:max-w-[170px] md:justify-end">
+                        {activity.duration ? <span className="border border-slate-200 px-2 py-1">{activity.duration}</span> : null}
+                        {activity.cost ? (
+                          <span className="inline-flex items-center gap-1 border border-slate-200 px-2 py-1">
+                            <DollarSign className="h-3 w-3" />
+                            {activity.cost}
+                          </span>
+                        ) : null}
+                        {activity.transport ? <span className="border border-slate-200 px-2 py-1">{activity.transport}</span> : null}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+        </div>
+      </section>
+
+      {itinerary.tips?.length || itinerary.inclusions?.length ? (
+        <section className="border-t border-slate-200 bg-white px-5 py-8 md:px-8">
+          <div className="grid gap-6 md:grid-cols-[0.8fr_1.2fr]">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: brandColor }}>
+                Client handoff
+              </div>
+              <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">Key information</h2>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[...(itinerary.tips || []), ...(itinerary.inclusions || [])].slice(0, 6).map((item, index) => (
+                <div key={`${item}-${index}`} className="border border-slate-200 bg-slate-50 p-4">
+                  <div className="mb-3 text-xs font-black" style={{ color: brandColor }}>
+                    {String(index + 1).padStart(2, '0')}
+                  </div>
+                  <p className="text-sm leading-6 text-slate-600">{item}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      <footer className="border-t border-slate-200 bg-slate-50 px-5 py-5 text-xs text-slate-500 md:px-8">
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <span>{orgName} / {itinerary.destination}</span>
+          <span>Powered by TripBuilt</span>
+        </div>
+      </footer>
+    </article>
   );
 };
