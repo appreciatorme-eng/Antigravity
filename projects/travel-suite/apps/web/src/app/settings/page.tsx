@@ -41,6 +41,7 @@ import { WorkflowRulesSection } from './_components/WorkflowRulesSection';
 import {
     mergeBillingAddressFields,
     normalizeBillingAddress,
+    normalizeBranchOffices,
     type Organization,
     type OrganizationSettingsRow,
     type WorkflowRule,
@@ -273,6 +274,7 @@ export default function SettingsPage() {
                 gstin: typeof orgRecord.gstin === 'string' ? orgRecord.gstin : null,
                 billing_state: typeof orgRecord.billing_state === 'string' ? orgRecord.billing_state : null,
                 billing_address: mergeBillingAddressFields(orgRecord.billing_address, organizationRow),
+                branch_offices: normalizeBranchOffices(orgRecord.branch_offices),
             });
 
             const profileResponse = await authedFetch('/api/admin/profile', { cache: 'no-store' });
@@ -419,6 +421,7 @@ export default function SettingsPage() {
                 billing_city: address.city || null,
                 billing_pincode: address.postal_code || null,
                 itinerary_template: organization.itinerary_template || 'safari_story',
+                branch_offices: organization.branch_offices,
             };
 
             const response = await authedFetch('/api/admin/organization', {
@@ -445,6 +448,7 @@ export default function SettingsPage() {
                     gstin: typeof savedRecord.gstin === 'string' ? savedRecord.gstin : null,
                     billing_state: typeof savedRecord.billing_state === 'string' ? savedRecord.billing_state : null,
                     billing_address: mergeBillingAddressFields(savedRecord.billing_address, savedOrganization),
+                    branch_offices: normalizeBranchOffices(savedRecord.branch_offices),
                 };
             });
             setShowSuccess(true);

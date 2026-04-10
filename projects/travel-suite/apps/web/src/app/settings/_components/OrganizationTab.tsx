@@ -1,10 +1,10 @@
 'use client';
 
-import { Check, Save } from 'lucide-react';
+import { Check, Save, X } from 'lucide-react';
 import { GlassButton } from '@/components/glass/GlassButton';
 import { getTimezoneDisplayName } from '@/lib/date/tz';
 import { validateGSTIN } from '@/lib/tax/gst-calculator';
-import type { Organization } from '../shared';
+import { EMPTY_BRANCH_OFFICE, type BranchOffice, type Organization } from '../shared';
 
 const INPUT_CLASS = "w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none text-secondary dark:text-white";
 const LABEL_CLASS = "text-xs font-bold uppercase tracking-widest text-text-secondary dark:text-slate-300";
@@ -26,6 +26,88 @@ export interface OrganizationTabProps {
     readonly loading: boolean;
     readonly showSuccess: boolean;
     readonly onSave: () => Promise<void> | void;
+}
+
+function BranchOfficeCard({
+    branch,
+    index,
+    onUpdate,
+    onRemove,
+}: {
+    readonly branch: BranchOffice;
+    readonly index: number;
+    readonly onUpdate: (patch: Partial<BranchOffice>) => void;
+    readonly onRemove: () => void;
+}) {
+    return (
+        <div className="border border-gray-200 dark:border-slate-700 rounded-xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-text-secondary uppercase tracking-widest">Branch {index + 1}</span>
+                <button
+                    type="button"
+                    onClick={onRemove}
+                    className="text-gray-400 hover:text-red-500 transition-colors p-1 rounded"
+                    aria-label="Remove branch"
+                >
+                    <X className="h-4 w-4" />
+                </button>
+            </div>
+            <input
+                type="text"
+                value={branch.name}
+                onChange={(e) => onUpdate({ name: e.target.value })}
+                placeholder="Branch name (e.g. Mumbai Office)"
+                aria-label={`Branch ${index + 1} name`}
+                className={INPUT_CLASS}
+            />
+            <input
+                type="text"
+                value={branch.line1}
+                onChange={(e) => onUpdate({ line1: e.target.value })}
+                placeholder="Building name, street, area"
+                aria-label={`Branch ${index + 1} street address`}
+                className={INPUT_CLASS}
+            />
+            <input
+                type="text"
+                value={branch.line2}
+                onChange={(e) => onUpdate({ line2: e.target.value })}
+                placeholder="Landmark, locality (optional)"
+                aria-label={`Branch ${index + 1} address line 2`}
+                className={INPUT_CLASS}
+            />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <input
+                    type="text"
+                    value={branch.city}
+                    onChange={(e) => onUpdate({ city: e.target.value })}
+                    placeholder="City"
+                    aria-label={`Branch ${index + 1} city`}
+                    className={INPUT_CLASS}
+                />
+                <select
+                    value={branch.state}
+                    onChange={(e) => onUpdate({ state: e.target.value })}
+                    aria-label={`Branch ${index + 1} state`}
+                    className={INPUT_CLASS}
+                >
+                    <option value="">Select state</option>
+                    {INDIAN_STATES.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                    ))}
+                </select>
+                <input
+                    type="text"
+                    value={branch.postal_code}
+                    onChange={(e) => onUpdate({ postal_code: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+                    placeholder="Pincode"
+                    aria-label={`Branch ${index + 1} pincode`}
+                    maxLength={6}
+                    className={INPUT_CLASS}
+                />
+            </div>
+        </div>
+    );
 }
 
 export function OrganizationTab({
@@ -218,13 +300,42 @@ export function OrganizationTab({
                 <div className="border-t border-gray-100 pt-6">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-sm font-bold text-secondary">Branch Offices</h3>
-                        <GlassButton variant="outline" size="sm" className="text-xs">
+                        <GlassButton
+                            variant="outline"
+                            size="sm"
+                            className="text-xs"
+                            onClick={() => updateOrganization({
+                                branch_offices: [...(organization.branch_offices ?? []), { ...EMPTY_BRANCH_OFFICE }],
+                            })}
+                        >
                             + Add Branch
                         </GlassButton>
                     </div>
-                    <p className="text-xs text-text-muted">
-                        Add branch office addresses for multi-location operations. Branch addresses appear on invoices and proposals.
-                    </p>
+                    {(organization.branch_offices ?? []).length === 0 ? (
+                        <p className="text-xs text-text-muted">
+                            Add branch office addresses for multi-location operations. Branch addresses appear on invoices and proposals.
+                        </p>
+                    ) : (
+                        <div className="space-y-4">
+                            {(organization.branch_offices ?? []).map((branch, index) => (
+                                <BranchOfficeCard
+                                    key={index}
+                                    branch={branch}
+                                    index={index}
+                                    onUpdate={(patch) => {
+                                        const updated = (organization.branch_offices ?? []).map((b, i) =>
+                                            i === index ? { ...b, ...patch } : b
+                                        );
+                                        updateOrganization({ branch_offices: updated });
+                                    }}
+                                    onRemove={() => {
+                                        const updated = (organization.branch_offices ?? []).filter((_, i) => i !== index);
+                                        updateOrganization({ branch_offices: updated });
+                                    }}
+                                />
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {/* Currency & Timezone */}

@@ -10,6 +10,7 @@ const ORGANIZATION_SELECT = [
   "billing_city",
   "billing_pincode",
   "billing_state",
+  "branch_offices",
   "gstin",
   "id",
   "itinerary_template",
@@ -44,6 +45,15 @@ const BillingAddressSchema = z.object({
   email: z.string().trim().email().max(255).optional().nullable().or(z.literal("")),
 });
 
+const BranchOfficeSchema = z.object({
+  name: z.string().trim().max(240),
+  line1: z.string().trim().max(240),
+  line2: z.string().trim().max(240),
+  city: z.string().trim().max(120),
+  state: z.string().trim().max(120),
+  postal_code: z.string().trim().max(40),
+});
+
 const OrganizationUpdateSchema = z.object({
   name: z.string().trim().min(1).max(240).optional(),
   legal_name: z.string().trim().max(240).optional().nullable(),
@@ -53,6 +63,7 @@ const OrganizationUpdateSchema = z.object({
   gstin: z.string().trim().max(32).optional().nullable(),
   billing_state: z.string().trim().max(120).optional().nullable(),
   billing_address: BillingAddressSchema.optional().nullable(),
+  branch_offices: z.array(BranchOfficeSchema).optional(),
 });
 
 type AdminClient = Extract<Awaited<ReturnType<typeof requireAdmin>>, { ok: true }>["adminClient"];
@@ -185,6 +196,7 @@ export async function PATCH(request: Request): Promise<Response> {
     const currentName = stringValue(currentRecord.name) || "Organization";
     const currentLegalName = stringValue(currentRecord.legal_name);
     const billingState = address.state || parsed.data.billing_state?.trim() || stringValue(currentRecord.billing_state);
+    const currentBranchOffices = Array.isArray(currentRecord.branch_offices) ? currentRecord.branch_offices : [];
     const basePayload = {
       name: parsed.data.name?.trim() || currentName,
       legal_name: parsed.data.legal_name !== undefined
@@ -201,6 +213,7 @@ export async function PATCH(request: Request): Promise<Response> {
       billing_address_line2: address.line2 || null,
       billing_city: address.city || null,
       billing_pincode: address.postal_code || null,
+      branch_offices: parsed.data.branch_offices ?? currentBranchOffices,
     };
     const updatePayload = {
       ...basePayload,
