@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiSuccess, apiError } from "@/lib/api/response";
-import { unstable_cache } from "next/cache";
 import type { Database } from "@/lib/database.types";
 import { buildRevenueSeries } from "@/lib/admin/dashboard-metrics";
 import { resolveAdminDateRange } from "@/lib/admin/date-range";
@@ -40,120 +39,6 @@ const CLOSED_PROPOSAL_STATUSES = new Set([
 ]);
 const BOOKING_TRIP_STATUSES = new Set(["planned", "confirmed", "in_progress", "active", "completed"]);
 
-const getCachedRevenueSnapshot = unstable_cache(
-  async (
-    organizationId: string,
-    fromISO: string,
-    toExclusiveISO: string,
-    fromDateISO: string,
-    toDateISO: string,
-    label: string,
-    granularity: "day" | "month",
-  ) => {
-    const db = createAdminClient();
-
-    const [paidLinksResult, proposalsResult, tripsResult, activeOperatorsResult, invoicePaymentsResult] = await Promise.all([
-      db
-        .from("payment_links")
-        .select("amount_paise, paid_at")
-        .eq("organization_id", organizationId)
-        .eq("status", "paid")
-        .gte("paid_at", fromISO)
-        .lt("paid_at", toExclusiveISO),
-      db
-        .from("proposals")
-        .select("created_at, status")
-        .eq("organization_id", organizationId)
-        .gte("created_at", fromISO)
-        .lt("created_at", toExclusiveISO),
-      db
-        .from("trips")
-        .select("created_at, status")
-        .eq("organization_id", organizationId)
-        .gte("created_at", fromISO)
-        .lt("created_at", toExclusiveISO),
-      db
-        .from("profiles")
-        .select("id", { count: "exact", head: true })
-        .eq("organization_id", organizationId)
-        .neq("role", "client"),
-      db
-        .from("invoice_payments")
-        .select("amount, payment_date")
-        .eq("organization_id", organizationId)
-        .eq("status", "completed")
-        .gte("payment_date", fromDateISO.slice(0, 10))
-        .lte("payment_date", toDateISO.slice(0, 10)),
-    ]);
-
-    // payment_links table may not be migrated yet; treat all query errors as empty data
-    // (non-blocking: revenue metrics degrade gracefully without payment link data)
-    if (proposalsResult.error) throw proposalsResult.error;
-    if (tripsResult.error) throw tripsResult.error;
-    if (activeOperatorsResult.error) throw activeOperatorsResult.error;
-
-    const range = {
-      preset: "custom",
-      from: fromDateISO.slice(0, 10),
-      to: toDateISO.slice(0, 10),
-      fromDate: new Date(fromDateISO),
-      toDate: new Date(toDateISO),
-      fromISO,
-      toISO: toDateISO,
-      toExclusiveISO,
-      dayCount: Math.max(
-        1,
-        Math.round((new Date(toDateISO).getTime() - new Date(fromDateISO).getTime()) / (1000 * 60 * 60 * 24)) + 1,
-      ),
-      label,
-      granularity,
-    } as const;
-
-    const paymentLinkRows = (paidLinksResult.data || []) as PaymentLinkRevenueRow[];
-    const proposalRows = (proposalsResult.data || []) as ProposalRevenueRow[];
-    const tripRows = (tripsResult.data || []) as TripRevenueRow[];
-    const invoicePaymentRows = (invoicePaymentsResult.data || []) as InvoicePaymentRevenueRow[];
-
-    const normalizedInvoicePayments: PaymentLinkRevenueRow[] = invoicePaymentRows.map((row) => ({
-      amount_paise: Math.round(Number(row.amount || 0) * 100),
-      paid_at: row.payment_date,
-    }));
-    const allPaymentRows: PaymentLinkRevenueRow[] = [...paymentLinkRows, ...normalizedInvoicePayments];
-
-    const series = buildRevenueSeries(range, allPaymentRows, proposalRows, tripRows);
-
-    const invoicePaymentTotal = invoicePaymentRows.reduce((sum, row) => sum + Number(row.amount || 0), 0);
-    const recoveredRevenue = Number(
-      paymentLinkRows.reduce((sum, row) => sum + Number(row.amount_paise || 0), 0) / 100,
-    ) + invoicePaymentTotal;
-    const totalBookings = tripRows.filter((row) =>
-      BOOKING_TRIP_STATUSES.has((row.status || "").toLowerCase()),
-    ).length;
-    const pendingProposals = proposalRows.filter((row) => {
-      const status = (row.status || "draft").toLowerCase();
-      return !CLOSED_PROPOSAL_STATUSES.has(status);
-    }).length;
-
-    return {
-      series,
-      totals: {
-        recoveredRevenue,
-        paidLinks: paymentLinkRows.length,
-        activeOperators: activeOperatorsResult.count ?? 0,
-        totalBookings,
-        pendingProposals,
-      },
-      range: {
-        from: fromDateISO.slice(0, 10),
-        to: toDateISO.slice(0, 10),
-        label,
-      },
-    };
-  },
-  ["admin-revenue"],
-  { revalidate: 60, tags: ["revenue"] },
-);
-
 export async function GET(req: NextRequest) {
   try {
     const admin = await requireAdmin(req);
@@ -168,17 +53,108 @@ export async function GET(req: NextRequest) {
     }
 
     const range = resolveAdminDateRange(req.nextUrl.searchParams, "90d");
-    const response = await getCachedRevenueSnapshot(
-      organizationId,
-      range.fromISO,
-      range.toExclusiveISO,
-      range.fromDate.toISOString(),
-      range.toDate.toISOString(),
-      range.label,
-      range.granularity,
-    );
+    const db = createAdminClient();
 
-    return apiSuccess(response);
+    const [paidLinksResult, proposalsResult, tripsResult, activeOperatorsResult, invoicePaymentsResult] =
+      await Promise.all([
+        db
+          .from("payment_links")
+          .select("amount_paise, paid_at")
+          .eq("organization_id", organizationId)
+          .eq("status", "paid")
+          .gte("paid_at", range.fromISO)
+          .lt("paid_at", range.toExclusiveISO),
+        db
+          .from("proposals")
+          .select("created_at, status")
+          .eq("organization_id", organizationId)
+          .gte("created_at", range.fromISO)
+          .lt("created_at", range.toExclusiveISO),
+        db
+          .from("trips")
+          .select("created_at, status")
+          .eq("organization_id", organizationId)
+          .gte("created_at", range.fromISO)
+          .lt("created_at", range.toExclusiveISO),
+        db
+          .from("profiles")
+          .select("id", { count: "exact", head: true })
+          .eq("organization_id", organizationId)
+          .neq("role", "client"),
+        db
+          .from("invoice_payments")
+          .select("amount, payment_date")
+          .eq("organization_id", organizationId)
+          .eq("status", "completed")
+          .gte("payment_date", range.fromDate.toISOString().slice(0, 10))
+          .lte("payment_date", range.toDate.toISOString().slice(0, 10)),
+      ]);
+
+    if (proposalsResult.error) throw proposalsResult.error;
+    if (tripsResult.error) throw tripsResult.error;
+    if (activeOperatorsResult.error) throw activeOperatorsResult.error;
+
+    const resolvedRange = {
+      preset: "custom",
+      from: range.fromDate.toISOString().slice(0, 10),
+      to: range.toDate.toISOString().slice(0, 10),
+      fromDate: range.fromDate,
+      toDate: range.toDate,
+      fromISO: range.fromISO,
+      toISO: range.toDate.toISOString(),
+      toExclusiveISO: range.toExclusiveISO,
+      dayCount: Math.max(
+        1,
+        Math.round(
+          (range.toDate.getTime() - range.fromDate.getTime()) / (1000 * 60 * 60 * 24),
+        ) + 1,
+      ),
+      label: range.label,
+      granularity: range.granularity,
+    } as const;
+
+    const paymentLinkRows = (paidLinksResult.data || []) as PaymentLinkRevenueRow[];
+    const proposalRows = (proposalsResult.data || []) as ProposalRevenueRow[];
+    const tripRows = (tripsResult.data || []) as TripRevenueRow[];
+    const invoicePaymentRows = (invoicePaymentsResult.data || []) as InvoicePaymentRevenueRow[];
+
+    // Normalize invoice payments → same shape as payment_links for the chart builder
+    const normalizedInvoicePayments: PaymentLinkRevenueRow[] = invoicePaymentRows.map((row) => ({
+      amount_paise: Math.round(Number(row.amount || 0) * 100),
+      paid_at: row.payment_date,
+    }));
+    const allPaymentRows: PaymentLinkRevenueRow[] = [...paymentLinkRows, ...normalizedInvoicePayments];
+
+    const series = buildRevenueSeries(resolvedRange, allPaymentRows, proposalRows, tripRows);
+
+    const invoicePaymentTotal = invoicePaymentRows.reduce((sum, row) => sum + Number(row.amount || 0), 0);
+    const recoveredRevenue =
+      Number(paymentLinkRows.reduce((sum, row) => sum + Number(row.amount_paise || 0), 0) / 100) +
+      invoicePaymentTotal;
+
+    const totalBookings = tripRows.filter((row) =>
+      BOOKING_TRIP_STATUSES.has((row.status || "").toLowerCase()),
+    ).length;
+    const pendingProposals = proposalRows.filter((row) => {
+      const status = (row.status || "draft").toLowerCase();
+      return !CLOSED_PROPOSAL_STATUSES.has(status);
+    }).length;
+
+    return apiSuccess({
+      series,
+      totals: {
+        recoveredRevenue,
+        paidLinks: paymentLinkRows.length,
+        activeOperators: activeOperatorsResult.count ?? 0,
+        totalBookings,
+        pendingProposals,
+      },
+      range: {
+        from: range.fromDate.toISOString().slice(0, 10),
+        to: range.toDate.toISOString().slice(0, 10),
+        label: range.label,
+      },
+    });
   } catch (error) {
     logError("[/api/admin/revenue:GET] Unhandled error", error);
     return NextResponse.json(
