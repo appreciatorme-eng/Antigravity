@@ -144,7 +144,13 @@ export function NotificationBell({ className }: NotificationBellProps) {
                 <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
                   <Bell className="w-8 h-8 text-slate-300 dark:text-slate-600 mb-2" />
                   <p className="text-sm text-slate-500 dark:text-slate-400">No notifications yet</p>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Enable Demo Mode to preview alerts</p>
+                  <Link
+                    href="/admin/notifications"
+                    onClick={() => setIsOpen(false)}
+                    className="text-xs font-semibold text-primary hover:text-primary/80 mt-2 transition-colors"
+                  >
+                    View Notification History →
+                  </Link>
                 </div>
               ) : (
                 notifications.map((notif) => {
@@ -202,11 +208,11 @@ export function NotificationBell({ className }: NotificationBellProps) {
 
             <div className="p-3 border-t border-slate-100 dark:border-slate-800">
               <Link
-                href="/inbox"
+                href="/admin/notifications"
                 onClick={() => setIsOpen(false)}
                 className="block text-center text-xs font-bold text-primary hover:text-primary/80 py-1.5 transition-colors"
               >
-                View All in Inbox →
+                Open Notification History →
               </Link>
             </div>
           </motion.div>
