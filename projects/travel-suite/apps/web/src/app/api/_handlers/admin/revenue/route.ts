@@ -15,14 +15,14 @@ type PaymentLinkRevenueRow = Pick<
 
 type ProposalRevenueRow = Pick<
   Database["public"]["Tables"]["proposals"]["Row"],
-  "created_at" | "status"
+  "created_at" | "updated_at" | "status" | "total_price" | "client_selected_price"
 > & {
   trips: { status: string | null } | { status: string | null }[] | null;
 };
 
 type TripRevenueRow = Pick<
   Database["public"]["Tables"]["trips"]["Row"],
-  "id" | "created_at" | "status" | "start_date" | "end_date"
+  "id" | "created_at" | "updated_at" | "status" | "start_date" | "end_date"
 >;
 
 type JoinedProfile = { full_name: string | null } | { full_name: string | null }[] | null;
@@ -80,18 +80,20 @@ export async function GET(req: NextRequest) {
           .lt("paid_at", range.toExclusiveISO),
         db
           .from("proposals")
-          .select("created_at, status, trips:trip_id(status)")
+          .select("created_at, updated_at, status, total_price, client_selected_price, trips:trip_id(status)")
           .eq("organization_id", organizationId)
           .is("deleted_at", null)
-          .gte("created_at", range.fromISO)
-          .lt("created_at", range.toExclusiveISO),
+          .or(
+            `and(created_at.gte.${range.fromISO},created_at.lt.${range.toExclusiveISO}),and(updated_at.gte.${range.fromISO},updated_at.lt.${range.toExclusiveISO})`,
+          ),
         db
           .from("trips")
-          .select("id, created_at, status, start_date, end_date, client_profile:profiles!trips_client_id_fkey(full_name), itineraries:itinerary_id(trip_title, destination)")
+          .select("id, created_at, updated_at, status, start_date, end_date, client_profile:profiles!trips_client_id_fkey(full_name), itineraries:itinerary_id(trip_title, destination)")
           .eq("organization_id", organizationId)
           .is("deleted_at", null)
-          .gte("created_at", range.fromISO)
-          .lt("created_at", range.toExclusiveISO),
+          .or(
+            `and(created_at.gte.${range.fromISO},created_at.lt.${range.toExclusiveISO}),and(updated_at.gte.${range.fromISO},updated_at.lt.${range.toExclusiveISO})`,
+          ),
         db
           .from("profiles")
           .select("id", { count: "exact", head: true })
@@ -137,6 +139,7 @@ export async function GET(req: NextRequest) {
       return {
         id: row.id,
         created_at: row.created_at,
+        updated_at: row.updated_at,
         status: row.status,
         start_date: row.start_date,
         end_date: row.end_date,
@@ -156,10 +159,7 @@ export async function GET(req: NextRequest) {
 
     const series = buildRevenueSeries(resolvedRange, allPaymentRows, proposalRows, tripRows);
 
-    const invoicePaymentTotal = invoicePaymentRows.reduce((sum, row) => sum + Number(row.amount || 0), 0);
-    const recoveredRevenue =
-      Number(paymentLinkRows.reduce((sum, row) => sum + Number(row.amount_paise || 0), 0) / 100) +
-      invoicePaymentTotal;
+    const recoveredRevenue = series.reduce((sum, point) => sum + point.revenue, 0);
 
     const totalBookings = tripRows.filter((row) =>
       BOOKING_TRIP_STATUSES.has((row.status || "").toLowerCase()),

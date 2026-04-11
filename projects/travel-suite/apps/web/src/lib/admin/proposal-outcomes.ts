@@ -21,6 +21,10 @@ function normalize(value: string | null | undefined): string {
   return (value || "").trim().toLowerCase();
 }
 
+export function isWonTripStatus(status: string | null | undefined): boolean {
+  return WON_TRIP_STATUSES.has(normalize(status));
+}
+
 function normalizeJoinedTripStatus(trips: JoinedTripStatus): string {
   if (Array.isArray(trips)) {
     return normalize(trips[0]?.status);

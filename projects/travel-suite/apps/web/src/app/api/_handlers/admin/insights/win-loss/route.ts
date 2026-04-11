@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
-import { isLostProposal, isWonProposal } from "@/lib/admin/proposal-outcomes";
+import { isLostProposal, isWonProposal, isWonTripStatus } from "@/lib/admin/proposal-outcomes";
 import { daysSince, medianPrice, toNumber } from "@/lib/admin/insights";
 import { logError } from "@/lib/observability/logger";
 
@@ -26,20 +26,32 @@ export async function GET(req: NextRequest) {
     }
 
     const since = new Date(Date.now() - parsed.data.daysBack * 24 * 60 * 60 * 1000).toISOString();
-    const { data, error } = await admin.adminClient
-      .from("proposals")
-      .select("id,status,total_price,created_at,viewed_at,expires_at,trips:trip_id(status)")
-      .eq("organization_id", admin.organizationId)
-      .is("deleted_at", null)
-      .gte("created_at", since)
-      .limit(1000);
+    const [proposalResult, tripResult] = await Promise.all([
+      admin.adminClient
+        .from("proposals")
+        .select("id,status,total_price,client_selected_price,created_at,updated_at,viewed_at,expires_at,trips:trip_id(status)")
+        .eq("organization_id", admin.organizationId)
+        .is("deleted_at", null)
+        .or(`created_at.gte.${since},updated_at.gte.${since}`)
+        .limit(1000),
+      admin.adminClient
+        .from("trips")
+        .select("id,status,created_at,updated_at")
+        .eq("organization_id", admin.organizationId)
+        .is("deleted_at", null)
+        .or(`created_at.gte.${since},updated_at.gte.${since}`)
+        .limit(1000),
+    ]);
 
-    if (error) {
+    if (proposalResult.error || tripResult.error) {
       return apiError("Failed to build win-loss insights", 500);
     }
 
-    const proposals = data || [];
-    const median = medianPrice(proposals.map((proposal) => toNumber(proposal.total_price, 0)));
+    const proposals = proposalResult.data || [];
+    const trips = tripResult.data || [];
+    const median = medianPrice(
+      proposals.map((proposal) => toNumber(proposal.client_selected_price ?? proposal.total_price, 0)),
+    );
 
     let wins = 0;
     let losses = 0;
@@ -48,7 +60,7 @@ export async function GET(req: NextRequest) {
     let highPriceLossProxy = 0;
 
     for (const proposal of proposals) {
-      const price = toNumber(proposal.total_price, 0);
+      const price = toNumber(proposal.client_selected_price ?? proposal.total_price, 0);
 
       if (isWonProposal(proposal)) {
         wins += 1;
@@ -69,9 +81,14 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const total = Math.max(proposals.length, 1);
-    const winRate = (wins / total) * 100;
-    const lossRate = (losses / total) * 100;
+    const fallbackTripWins = trips.filter((trip) => isWonTripStatus(trip.status)).length;
+    const fallbackTripTotal = trips.length;
+    const totalBase = proposals.length > 0 ? proposals.length : fallbackTripTotal;
+    const winsBase = proposals.length > 0 ? wins : fallbackTripWins;
+    const lossesBase = proposals.length > 0 ? losses : 0;
+    const total = Math.max(totalBase, 1);
+    const winRate = (winsBase / total) * 100;
+    const lossRate = (lossesBase / total) * 100;
 
     const patterns = [
       {
@@ -103,9 +120,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       window_days: parsed.data.daysBack,
       totals: {
-        proposals: proposals.length,
-        wins,
-        losses,
+        proposals: totalBase,
+        wins: winsBase,
+        losses: lossesBase,
         win_rate: Number(winRate.toFixed(1)),
         loss_rate: Number(lossRate.toFixed(1)),
       },

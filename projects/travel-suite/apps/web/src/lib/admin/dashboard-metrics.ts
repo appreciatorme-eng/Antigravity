@@ -5,13 +5,17 @@ import { isWonProposal } from "@/lib/admin/proposal-outcomes";
 
 type ProposalLike = {
   created_at: string | null;
+  updated_at?: string | null;
   status: string | null;
+  total_price?: number | null;
+  client_selected_price?: number | null;
   trips?: { status?: string | null } | { status?: string | null }[] | null;
 };
 
 type TripLike = {
   id?: string;
   created_at: string | null;
+  updated_at?: string | null;
   status: string | null;
   start_date?: string | null;
   end_date?: string | null;
@@ -28,6 +32,7 @@ type PaidLinkLike = {
 type BucketPoint = RevenueChartPoint & {
   proposalCount: number;
   approvalCount: number;
+  fallbackRevenue: number;
 };
 
 function mapTripToPoint(trip: TripLike): RevenueChartTripPoint {
@@ -74,6 +79,14 @@ function getBucketLabel(key: string, granularity: ResolvedAdminDateRange["granul
   });
 }
 
+function getActivityDate(createdAt: string | null, updatedAt?: string | null) {
+  return updatedAt || createdAt;
+}
+
+function getProposalValue(proposal: ProposalLike) {
+  return Number(proposal.client_selected_price ?? proposal.total_price ?? 0);
+}
+
 function getBucketKeys(range: ResolvedAdminDateRange) {
   const keys: string[] = [];
 
@@ -115,6 +128,7 @@ export function buildRevenueSeries(
         trips: [],
         proposalCount: 0,
         approvalCount: 0,
+        fallbackRevenue: 0,
       },
     ]),
   );
@@ -127,7 +141,7 @@ export function buildRevenueSeries(
 
   for (const trip of trips) {
     if (!BOOKING_STATUSES.has((trip.status || "").toLowerCase())) continue;
-    const key = getBucketKey(trip.created_at, range.granularity);
+    const key = getBucketKey(getActivityDate(trip.created_at, trip.updated_at), range.granularity);
     if (!key || !buckets.has(key)) continue;
     const bucket = buckets.get(key)!;
     bucket.bookings += 1;
@@ -137,19 +151,20 @@ export function buildRevenueSeries(
   }
 
   for (const proposal of proposals) {
-    const key = getBucketKey(proposal.created_at, range.granularity);
+    const key = getBucketKey(getActivityDate(proposal.created_at, proposal.updated_at), range.granularity);
     if (!key || !buckets.has(key)) continue;
     const bucket = buckets.get(key)!;
     bucket.proposalCount += 1;
     if (isWonProposal(proposal)) {
       bucket.approvalCount += 1;
+      bucket.fallbackRevenue += getProposalValue(proposal);
     }
   }
 
   return Array.from(buckets.values()).map((bucket) => ({
     monthKey: bucket.monthKey,
     label: bucket.label,
-    revenue: Number(bucket.revenue.toFixed(2)),
+    revenue: Number((bucket.revenue > 0 ? bucket.revenue : bucket.fallbackRevenue).toFixed(2)),
     bookings: bucket.bookings,
     conversionRate:
       bucket.proposalCount > 0

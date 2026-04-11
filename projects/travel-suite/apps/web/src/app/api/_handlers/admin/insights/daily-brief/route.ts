@@ -3,7 +3,7 @@ import { apiError } from "@/lib/api/response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { buildRevenueRiskActionQueue } from "@/lib/admin/action-queue";
-import { isWonProposal } from "@/lib/admin/proposal-outcomes";
+import { isWonProposal, isWonTripStatus } from "@/lib/admin/proposal-outcomes";
 import { logError } from "@/lib/observability/logger";
 
 const QuerySchema = z.object({
@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
     const todayISO = new Date().toISOString().slice(0, 10);
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-    const [proposalRes, invoiceRes, tripRes, monthlyProposalRes, monthlyInvoiceRes] = await Promise.all([
+    const [proposalRes, invoiceRes, tripRes, monthlyProposalRes, monthlyTripRes, monthlyInvoiceRes] = await Promise.all([
       admin.adminClient
         .from("proposals")
         .select("id,title,status,expires_at")
@@ -55,10 +55,16 @@ export async function GET(req: NextRequest) {
         .limit(120),
       admin.adminClient
         .from("proposals")
-        .select("id,status,created_at,trips:trip_id(status)")
+        .select("id,status,created_at,updated_at,trips:trip_id(status)")
         .eq("organization_id", admin.organizationId)
         .is("deleted_at", null)
-        .gte("created_at", thirtyDaysAgo),
+        .or(`created_at.gte.${thirtyDaysAgo},updated_at.gte.${thirtyDaysAgo}`),
+      admin.adminClient
+        .from("trips")
+        .select("id,status,created_at,updated_at")
+        .eq("organization_id", admin.organizationId)
+        .is("deleted_at", null)
+        .or(`created_at.gte.${thirtyDaysAgo},updated_at.gte.${thirtyDaysAgo}`),
       admin.adminClient
         .from("invoices")
         .select("total_amount,status,created_at")
@@ -67,7 +73,7 @@ export async function GET(req: NextRequest) {
         .gte("created_at", thirtyDaysAgo),
     ]);
 
-    if (proposalRes.error || invoiceRes.error || tripRes.error || monthlyProposalRes.error || monthlyInvoiceRes.error) {
+    if (proposalRes.error || invoiceRes.error || tripRes.error || monthlyProposalRes.error || monthlyTripRes.error || monthlyInvoiceRes.error) {
       return apiError("Failed to build daily brief", 500);
     }
 
@@ -78,10 +84,14 @@ export async function GET(req: NextRequest) {
     }).slice(0, parsed.data.limit);
 
     const monthlyProposals = monthlyProposalRes.data || [];
+    const monthlyTrips = monthlyTripRes.data || [];
     const monthlyInvoices = monthlyInvoiceRes.data || [];
 
     const conversionCount = monthlyProposals.filter((proposal) => isWonProposal(proposal)).length;
-    const conversionRate = monthlyProposals.length > 0 ? (conversionCount / monthlyProposals.length) * 100 : 0;
+    const fallbackTripWins = monthlyTrips.filter((trip) => isWonTripStatus(trip.status)).length;
+    const activityBase = monthlyProposals.length > 0 ? monthlyProposals.length : monthlyTrips.length;
+    const activityWins = monthlyProposals.length > 0 ? conversionCount : fallbackTripWins;
+    const conversionRate = activityBase > 0 ? (activityWins / activityBase) * 100 : 0;
 
     const paidRevenue = monthlyInvoices
       .filter((invoice) => (invoice.status || "").toLowerCase() === "paid")
@@ -91,7 +101,7 @@ export async function GET(req: NextRequest) {
       generated_at: new Date().toISOString(),
       top_actions: queue,
       metrics_snapshot: {
-        proposal_count_30d: monthlyProposals.length,
+        proposal_count_30d: activityBase,
         conversion_rate_30d: Number(conversionRate.toFixed(1)),
         paid_revenue_30d_usd: Number(paidRevenue.toFixed(2)),
       },
