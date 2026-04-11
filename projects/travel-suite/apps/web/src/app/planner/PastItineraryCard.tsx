@@ -62,7 +62,7 @@ const STAGE_LABELS: Record<string, string> = {
     shared: "Shared",
     viewed: "Viewed",
     approved: "Approved",
-    converted: "Won",
+    converted: "Paid",
 };
 
 const STAGE_PILL_STYLES: Record<string, string> = {

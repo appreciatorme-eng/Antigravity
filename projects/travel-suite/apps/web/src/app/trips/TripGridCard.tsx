@@ -54,7 +54,7 @@ const COMMERCIAL_LABELS = {
     shared: "Shared",
     viewed: "Viewed",
     approved: "Approved",
-    won: "Won",
+    won: "Paid",
 } as const;
 
 const COMMERCIAL_STEPS = ["draft", "shared", "viewed", "approved", "won"] as const;

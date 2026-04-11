@@ -75,7 +75,7 @@ function buildStages(data: DashboardV2State): FunnelStage[] {
     },
     {
       key: 'approved',
-      label: 'Won',
+      label: 'Paid',
       ...stages.approved,
       color: 'text-emerald-500',
       barColor: 'bg-emerald-500',

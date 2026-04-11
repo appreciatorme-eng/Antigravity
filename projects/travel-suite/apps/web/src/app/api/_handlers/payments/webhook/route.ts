@@ -356,6 +356,21 @@ async function handlePaymentCaptured(
       { context: 'admin' }
     );
 
+    // Auto-mark linked trip as paid when invoice is fully paid via Razorpay
+    const { data: paidInvoice } = await supabase
+      .from('invoices')
+      .select('trip_id, status')
+      .eq('id', invoiceId)
+      .maybeSingle();
+
+    if (paidInvoice?.status === 'paid' && paidInvoice.trip_id) {
+      void supabase
+        .from('trips')
+        .update({ status: 'confirmed' })
+        .eq('id', paidInvoice.trip_id)
+        .in('status', ['draft']);
+    }
+
     const { data: invoiceRow } = await supabase
       .from('invoices')
       .select('invoice_number, client_id, organization_id')

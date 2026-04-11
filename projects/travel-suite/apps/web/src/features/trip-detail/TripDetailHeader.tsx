@@ -37,6 +37,8 @@ interface TripDetailHeaderProps {
   onDownloadPdf?: () => void;
   downloadingPdf?: boolean;
   onOptimizeRoute: () => void;
+  onMarkAsPaid?: () => void;
+  markingAsPaid?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -76,7 +78,9 @@ function computeDurationLabel(trip: Trip): string {
 function renderStatusBadge(status: string) {
   switch (status) {
     case "confirmed":
-      return <GlassBadge variant="success">Confirmed</GlassBadge>;
+    case "in_progress":
+    case "completed":
+      return <GlassBadge variant="success">Paid ✓</GlassBadge>;
     case "pending":
       return <GlassBadge variant="warning">Awaiting Activation</GlassBadge>;
     default:
@@ -113,6 +117,8 @@ export function TripDetailHeader({
   onDownloadPdf,
   downloadingPdf = false,
   onOptimizeRoute,
+  onMarkAsPaid,
+  markingAsPaid = false,
 }: TripDetailHeaderProps) {
   const title =
     trip.itineraries?.trip_title || trip.destination || "Untitled Trip";
@@ -252,6 +258,18 @@ export function TripDetailHeader({
           <Bell className="w-4 h-4" />
           <span className="hidden md:inline">Notify Client</span>
         </GlassButton>
+
+        {(!trip.status || trip.status === "draft") && onMarkAsPaid && (
+          <GlassButton
+            variant="outline"
+            className="h-10 md:h-14 px-3 md:px-6 rounded-xl md:rounded-2xl hover:shadow-md border-emerald-500 text-emerald-700 hover:bg-emerald-500 hover:text-white"
+            onClick={onMarkAsPaid}
+            loading={markingAsPaid}
+          >
+            <span className="text-base">✓</span>
+            <span className="hidden md:inline">Mark as Paid</span>
+          </GlassButton>
+        )}
 
         <GlassButton
           variant="primary"

@@ -15,7 +15,7 @@ import type { TripDetailTab, Day, TripItineraryRawData, TripPricing } from "@/fe
 
 import { useTripDetail, useSaveTripItinerary } from "@/lib/queries/trip-detail";
 import { authedFetch } from "@/lib/api/authed-fetch";
-import { useCloneTrip } from "@/lib/queries/trips";
+import { useCloneTrip, useUpdateTripStatus } from "@/lib/queries/trips";
 
 import { GroupManager } from "@/components/trips/GroupManager";
 import { GlassButton } from "@/components/glass/GlassButton";
@@ -40,6 +40,8 @@ export default function TripDetailPage() {
   const { data, isLoading, refetch } = useTripDetail(tripId);
   const saveMutation = useSaveTripItinerary();
   const cloneMutation = useCloneTrip();
+  const updateStatusMutation = useUpdateTripStatus();
+  const [markingAsPaid, setMarkingAsPaid] = useState(false);
 
   // --- Local UI state ---
   const [activeTab, setActiveTab] = useState<TripDetailTab>("overview");
@@ -210,6 +212,20 @@ export default function TripDetailPage() {
     });
   };
 
+  const handleMarkAsPaid = async () => {
+    if (!trip || markingAsPaid) return;
+    setMarkingAsPaid(true);
+    try {
+      await updateStatusMutation.mutateAsync({ id: tripId, status: "confirmed" });
+      await refetch();
+      toast({ title: "Trip marked as paid", description: "Status updated to Paid.", variant: "success" });
+    } catch {
+      toast({ title: "Failed to update status", variant: "error" });
+    } finally {
+      setMarkingAsPaid(false);
+    }
+  };
+
   const handleCreateLinkedProposal = async () => {
     if (creatingProposal) return;
 
@@ -363,6 +379,8 @@ export default function TripDetailPage() {
         onDownloadPdf={handleDownloadPdf}
         downloadingPdf={downloadingPdf}
         onOptimizeRoute={handleOptimizeRoute}
+        onMarkAsPaid={handleMarkAsPaid}
+        markingAsPaid={markingAsPaid}
       />
 
       <TripDetailTabBar activeTab={activeTab} onTabChange={setActiveTab} />

@@ -128,6 +128,16 @@ export async function POST(
       return jsonError("Failed to finalize invoice payment", 500);
     }
 
+    // Auto-mark trip as paid when invoice is fully paid
+    if (nextStatus === "paid" && invoice.trip_id) {
+      void adminClient
+        .from("trips")
+        .update({ status: "confirmed" })
+        .eq("id", invoice.trip_id)
+        .eq("organization_id", auth.organizationId!)
+        .in("status", ["draft"]);
+    }
+
     const { data: paymentsData, error: paymentsError } = await adminClient
       .from("invoice_payments")
       .select(INVOICE_PAYMENT_SELECT)
