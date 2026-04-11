@@ -22,8 +22,20 @@ type ProposalRevenueRow = Pick<
 
 type TripRevenueRow = Pick<
   Database["public"]["Tables"]["trips"]["Row"],
-  "created_at" | "status"
+  "id" | "created_at" | "status" | "start_date" | "end_date"
 >;
+
+type JoinedProfile = { full_name: string | null } | { full_name: string | null }[] | null;
+type JoinedItinerary = { trip_title: string | null; destination: string | null } | { trip_title: string | null; destination: string | null }[] | null;
+type TripRevenueJoinedRow = TripRevenueRow & {
+  client_profile: JoinedProfile;
+  itineraries: JoinedItinerary;
+};
+
+function pickJoined<T>(value: T | T[] | null | undefined): T | null {
+  if (Array.isArray(value)) return value[0] || null;
+  return value ?? null;
+}
 
 type InvoicePaymentRevenueRow = {
   amount: number;
@@ -75,7 +87,7 @@ export async function GET(req: NextRequest) {
           .lt("created_at", range.toExclusiveISO),
         db
           .from("trips")
-          .select("created_at, status")
+          .select("id, created_at, status, start_date, end_date, client_profile:profiles!trips_client_id_fkey(full_name), itineraries:itinerary_id(trip_title, destination)")
           .eq("organization_id", organizationId)
           .is("deleted_at", null)
           .gte("created_at", range.fromISO)
@@ -119,7 +131,20 @@ export async function GET(req: NextRequest) {
 
     const paymentLinkRows = (paidLinksResult.data || []) as PaymentLinkRevenueRow[];
     const proposalRows = (proposalsResult.data || []) as ProposalRevenueRow[];
-    const tripRows = (tripsResult.data || []) as TripRevenueRow[];
+    const tripRows = ((tripsResult.data || []) as TripRevenueJoinedRow[]).map((row) => {
+      const profile = pickJoined(row.client_profile);
+      const itinerary = pickJoined(row.itineraries);
+      return {
+        id: row.id,
+        created_at: row.created_at,
+        status: row.status,
+        start_date: row.start_date,
+        end_date: row.end_date,
+        client_name: profile?.full_name || null,
+        trip_title: itinerary?.trip_title || null,
+        destination: itinerary?.destination || null,
+      };
+    });
     const invoicePaymentRows = (invoicePaymentsResult.data || []) as InvoicePaymentRevenueRow[];
 
     // Normalize invoice payments → same shape as payment_links for the chart builder

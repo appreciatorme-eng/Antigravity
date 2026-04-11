@@ -14,12 +14,24 @@ import {
 
 export type RevenueMetricMode = "revenue" | "bookings";
 
+export interface RevenueChartTripPoint {
+  id: string;
+  title: string;
+  destination: string;
+  clientName: string;
+  status: string;
+  startDate: string | null;
+  endDate: string | null;
+  createdAt: string | null;
+}
+
 export interface RevenueChartPoint {
   monthKey: string;
   label: string;
   revenue: number;
   bookings: number;
   conversionRate?: number;
+  trips?: RevenueChartTripPoint[];
 }
 
 interface RevenueChartProps {
@@ -35,6 +47,14 @@ interface ChartClickState {
   }>;
 }
 
+interface RevenueDotProps {
+  cx?: number;
+  cy?: number;
+  fill?: string;
+  payload?: RevenueChartPoint;
+  onSelect?: (point: RevenueChartPoint) => void;
+}
+
 function formatAxisValue(value: number, mode: RevenueMetricMode): string {
   if (mode === "bookings") {
     return `${value}`;
@@ -46,6 +66,28 @@ function formatAxisValue(value: number, mode: RevenueMetricMode): string {
 function formatTooltipValue(value: number, mode: RevenueMetricMode): string {
   if (mode === "bookings") return `${Math.round(value)} bookings`;
   return `₹${value.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+}
+
+function RevenueDot({ cx, cy, fill, payload, onSelect }: RevenueDotProps) {
+  if (typeof cx !== "number" || typeof cy !== "number") return null;
+
+  const handleSelect = () => {
+    if (!payload || !onSelect) return;
+    onSelect(payload);
+  };
+
+  return (
+    <circle
+      cx={cx}
+      cy={cy}
+      r={3}
+      fill={fill}
+      stroke="transparent"
+      strokeWidth={6}
+      className={onSelect ? "cursor-pointer" : undefined}
+      onClick={handleSelect}
+    />
+  );
 }
 
 export default function RevenueChart({ data, metric, loading = false, onPointSelect }: RevenueChartProps) {
@@ -67,6 +109,14 @@ export default function RevenueChart({ data, metric, loading = false, onPointSel
       if (!point) return;
       onPointSelect(point);
     },
+    [onPointSelect],
+  );
+
+  const renderDot = useCallback(
+    (fill: string) =>
+      function DotRenderer(props: RevenueDotProps) {
+        return <RevenueDot {...props} fill={fill} onSelect={onPointSelect} />;
+      },
     [onPointSelect],
   );
 
@@ -146,8 +196,8 @@ export default function RevenueChart({ data, metric, loading = false, onPointSel
             strokeOpacity={metric === "revenue" ? 1 : 0.55}
             fillOpacity={1}
             fill="url(#dashboardRevenueGradient)"
-            dot={{ r: 2, strokeWidth: 0, fill: "var(--color-primary)" }}
-            activeDot={{ r: 5, strokeWidth: 1, stroke: "#ffffff", cursor: "pointer" }}
+            dot={renderDot("var(--color-primary)")}
+            activeDot={renderDot("var(--color-primary)")}
           />
 
           <Area
@@ -158,8 +208,8 @@ export default function RevenueChart({ data, metric, loading = false, onPointSel
             strokeOpacity={metric === "bookings" ? 1 : 0.55}
             fillOpacity={1}
             fill="url(#dashboardBookingGradient)"
-            dot={{ r: 2, strokeWidth: 0, fill: "#3b82f6" }}
-            activeDot={{ r: 5, strokeWidth: 1, stroke: "#ffffff", cursor: "pointer" }}
+            dot={renderDot("#3b82f6")}
+            activeDot={renderDot("#3b82f6")}
           />
         </AreaChart>
       </ResponsiveContainer>

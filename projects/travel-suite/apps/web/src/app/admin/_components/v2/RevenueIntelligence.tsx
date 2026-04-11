@@ -1,12 +1,20 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { IndianRupee, Lightbulb, Plane, TrendingUp } from 'lucide-react';
-import RevenueChart, { type RevenueMetricMode } from '@/components/analytics/RevenueChart';
+import Link from 'next/link';
+import { ArrowUpRight, CalendarDays, IndianRupee, Lightbulb, MapPin, Plane, TrendingUp, User } from 'lucide-react';
+import RevenueChart, { type RevenueChartPoint, type RevenueMetricMode } from '@/components/analytics/RevenueChart';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { GlassSkeleton } from '@/components/glass/GlassSkeleton';
 import { DateRangePicker } from '@/features/admin/dashboard/DateRangePicker';
 import { ErrorSection } from '@/components/ui/ErrorSection';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import type { DashboardV2State } from './types';
 
@@ -20,8 +28,28 @@ function formatCompactINR(value: number): string {
   return `₹${value.toLocaleString('en-IN')}`;
 }
 
+function formatShortDate(value: string | null | undefined): string {
+  if (!value) return 'Date TBD';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return 'Date TBD';
+  return parsed.toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+function formatTripWindow(startDate: string | null | undefined, endDate: string | null | undefined): string {
+  if (!startDate && !endDate) return 'Travel dates pending';
+  if (startDate && endDate && startDate !== endDate) {
+    return `${formatShortDate(startDate)} to ${formatShortDate(endDate)}`;
+  }
+  return formatShortDate(startDate || endDate);
+}
+
 export function RevenueIntelligence({ data }: RevenueIntelligenceProps) {
   const [metric, setMetric] = useState<RevenueMetricMode>('revenue');
+  const [selectedPoint, setSelectedPoint] = useState<RevenueChartPoint | null>(null);
   const isLoading = data.phase === 'loading';
   const series = useMemo(
     () => data.critical?.revenueSeries ?? [],
@@ -122,7 +150,12 @@ export function RevenueIntelligence({ data }: RevenueIntelligenceProps) {
         <DateRangePicker value={data.dateRange} onChange={data.setDateRange} />
 
         <div className="aspect-[21/9] w-full">
-          <RevenueChart data={series} metric={metric} loading={isLoading} />
+          <RevenueChart
+            data={series}
+            metric={metric}
+            loading={isLoading}
+            onPointSelect={setSelectedPoint}
+          />
         </div>
 
         {/* AI Insights below chart */}
@@ -148,6 +181,69 @@ export function RevenueIntelligence({ data }: RevenueIntelligenceProps) {
           </div>
         )}
       </GlassCard>
+
+      <Dialog open={Boolean(selectedPoint)} onOpenChange={(open) => !open && setSelectedPoint(null)}>
+        <DialogContent className="max-w-3xl p-0">
+          <div className="border-b border-border px-6 py-5">
+            <DialogHeader className="gap-1 text-left">
+              <DialogTitle className="text-base font-semibold text-secondary dark:text-white">
+                Trips for {selectedPoint?.label}
+              </DialogTitle>
+              <DialogDescription className="text-sm text-text-muted">
+                {selectedPoint
+                  ? `${selectedPoint.bookings} booked trip${selectedPoint.bookings === 1 ? '' : 's'} in this period`
+                  : 'Trip drill-through'}
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+
+          <div className="max-h-[65vh] overflow-y-auto px-6 py-5">
+            {selectedPoint?.trips?.length ? (
+              <div className="space-y-3">
+                {selectedPoint.trips.map((trip) => (
+                  <Link
+                    key={trip.id}
+                    href={`/trips/${trip.id}`}
+                    className="block rounded-lg border border-border bg-background px-4 py-4 transition-colors hover:bg-muted/30"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <p className="truncate text-sm font-semibold text-secondary dark:text-white">
+                            {trip.title}
+                          </p>
+                          <span className="rounded-md border border-border px-2 py-0.5 text-[11px] font-medium capitalize text-text-muted">
+                            {trip.status.replace(/_/g, ' ')}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-text-muted">
+                          <span className="inline-flex items-center gap-1.5">
+                            <MapPin className="h-3.5 w-3.5" />
+                            {trip.destination}
+                          </span>
+                          <span className="inline-flex items-center gap-1.5">
+                            <User className="h-3.5 w-3.5" />
+                            {trip.clientName}
+                          </span>
+                          <span className="inline-flex items-center gap-1.5">
+                            <CalendarDays className="h-3.5 w-3.5" />
+                            {formatTripWindow(trip.startDate, trip.endDate)}
+                          </span>
+                        </div>
+                      </div>
+                      <ArrowUpRight className="mt-0.5 h-4 w-4 shrink-0 text-text-muted" />
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-lg border border-dashed border-border px-4 py-10 text-sm text-text-muted">
+                No booked trips were created in this period.
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </ErrorSection>
   );
 }

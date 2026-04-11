@@ -1,4 +1,4 @@
-import type { RevenueChartPoint } from "@/components/analytics/RevenueChart";
+import type { RevenueChartPoint, RevenueChartTripPoint } from "@/components/analytics/RevenueChart";
 import type { ResolvedAdminDateRange } from "@/lib/admin/date-range";
 import { monthKeyFromDate } from "@/lib/analytics/adapters";
 import { isWonProposal } from "@/lib/admin/proposal-outcomes";
@@ -10,8 +10,14 @@ type ProposalLike = {
 };
 
 type TripLike = {
+  id?: string;
   created_at: string | null;
   status: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  client_name?: string | null;
+  trip_title?: string | null;
+  destination?: string | null;
 };
 
 type PaidLinkLike = {
@@ -23,6 +29,19 @@ type BucketPoint = RevenueChartPoint & {
   proposalCount: number;
   approvalCount: number;
 };
+
+function mapTripToPoint(trip: TripLike): RevenueChartTripPoint {
+  return {
+    id: trip.id || "",
+    title: trip.trip_title || "Untitled trip",
+    destination: trip.destination || "Destination pending",
+    clientName: trip.client_name || "Client pending",
+    status: trip.status || "draft",
+    startDate: trip.start_date ?? null,
+    endDate: trip.end_date ?? null,
+    createdAt: trip.created_at,
+  };
+}
 
 const BOOKING_STATUSES = new Set(["planned", "confirmed", "in_progress", "active", "completed"]);
 
@@ -93,6 +112,7 @@ export function buildRevenueSeries(
         revenue: 0,
         bookings: 0,
         conversionRate: 0,
+        trips: [],
         proposalCount: 0,
         approvalCount: 0,
       },
@@ -109,7 +129,11 @@ export function buildRevenueSeries(
     if (!BOOKING_STATUSES.has((trip.status || "").toLowerCase())) continue;
     const key = getBucketKey(trip.created_at, range.granularity);
     if (!key || !buckets.has(key)) continue;
-    buckets.get(key)!.bookings += 1;
+    const bucket = buckets.get(key)!;
+    bucket.bookings += 1;
+    if (trip.id) {
+      bucket.trips = [...(bucket.trips || []), mapTripToPoint(trip)];
+    }
   }
 
   for (const proposal of proposals) {
