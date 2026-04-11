@@ -1,10 +1,12 @@
 import type { RevenueChartPoint } from "@/components/analytics/RevenueChart";
 import type { ResolvedAdminDateRange } from "@/lib/admin/date-range";
 import { monthKeyFromDate } from "@/lib/analytics/adapters";
+import { isWonProposal } from "@/lib/admin/proposal-outcomes";
 
 type ProposalLike = {
   created_at: string | null;
   status: string | null;
+  trips?: { status?: string | null } | { status?: string | null }[] | null;
 };
 
 type TripLike = {
@@ -22,7 +24,6 @@ type BucketPoint = RevenueChartPoint & {
   approvalCount: number;
 };
 
-const APPROVED_STATUSES = new Set(["approved", "accepted", "confirmed", "converted"]);
 const BOOKING_STATUSES = new Set(["planned", "confirmed", "in_progress", "active", "completed"]);
 
 function getBucketKey(value: string | null, granularity: ResolvedAdminDateRange["granularity"]) {
@@ -116,7 +117,7 @@ export function buildRevenueSeries(
     if (!key || !buckets.has(key)) continue;
     const bucket = buckets.get(key)!;
     bucket.proposalCount += 1;
-    if (APPROVED_STATUSES.has((proposal.status || "").toLowerCase())) {
+    if (isWonProposal(proposal)) {
       bucket.approvalCount += 1;
     }
   }

@@ -3,6 +3,7 @@ import { apiError } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { resolveScopedOrgWithDemo } from "@/lib/auth/demo-org-resolver";
 import { getLastMonthKeys, monthKeyFromDate, monthLabel } from "@/lib/analytics/adapters";
+import { isWonProposal } from "@/lib/admin/proposal-outcomes";
 import type { Database } from "@/lib/database.types";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logError } from "@/lib/observability/logger";
@@ -11,12 +12,14 @@ type TripRow = Database['public']['Tables']['trips']['Row'];
 type InvoiceRow = Database['public']['Tables']['invoices']['Row'];
 type ProposalRow = Database['public']['Tables']['proposals']['Row'];
 type NotificationLogRow = Database['public']['Tables']['notification_logs']['Row'];
+type ProposalSeriesRow = Pick<ProposalRow, 'created_at' | 'status'> & {
+  trips: { status: string | null } | { status: string | null }[] | null;
+};
 
 type RecentTripWithItinerary = Pick<TripRow, 'id' | 'status' | 'created_at'> & {
   itineraries: { trip_title: string | null; destination: string | null } | { trip_title: string | null; destination: string | null }[] | null;
 };
 
-const APPROVED_PROPOSAL_STATUSES = new Set(["approved", "accepted", "confirmed"]);
 const ACTIVE_TRIP_STATUSES = new Set(["active", "in_progress", "planned", "confirmed"]);
 const BOOKING_TRIP_STATUSES = new Set(["planned", "confirmed", "in_progress", "active", "completed"]);
 
@@ -52,34 +55,40 @@ export async function GET(req: NextRequest) {
       db
         .from("clients")
         .select("id", { count: "exact", head: true })
-        .eq("organization_id", orgId),
+        .eq("organization_id", orgId)
+        .is("deleted_at", null),
       db
         .from("trips")
         .select("id, status", { count: "exact" })
-        .eq("organization_id", orgId),
+        .eq("organization_id", orgId)
+        .is("deleted_at", null),
       db
         .from("notification_queue")
         .select("id", { count: "exact", head: true })
         .eq("status", "pending"),
       db
         .from("proposals")
-        .select("created_at, status")
+        .select("created_at, status, trips:trip_id(status)")
         .eq("organization_id", orgId)
+        .is("deleted_at", null)
         .gte("created_at", yearAgoISO),
       db
         .from("invoices")
         .select("created_at, total_amount, status")
         .eq("organization_id", orgId)
+        .is("deleted_at", null)
         .gte("created_at", yearAgoISO),
       db
         .from("trips")
         .select("created_at, status")
         .eq("organization_id", orgId)
+        .is("deleted_at", null)
         .gte("created_at", yearAgoISO),
       db
         .from("trips")
         .select("id, status, created_at, itineraries(trip_title, destination)")
         .eq("organization_id", orgId)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false })
         .limit(5),
       db
@@ -128,13 +137,13 @@ export async function GET(req: NextRequest) {
       if (pt) pt.bookings += 1;
     }
 
-    for (const proposal of (proposalsResult.data || []) as Pick<ProposalRow, 'created_at' | 'status'>[]) {
+    for (const proposal of (proposalsResult.data || []) as ProposalSeriesRow[]) {
       const mk = monthKeyFromDate(proposal.created_at);
       if (!mk) continue;
       const pt = monthMap.get(mk);
       if (!pt) continue;
       pt.proposals += 1;
-      if (APPROVED_PROPOSAL_STATUSES.has((proposal.status || "").toLowerCase())) {
+      if (isWonProposal(proposal)) {
         pt.conversions += 1;
       }
     }

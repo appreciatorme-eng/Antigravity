@@ -16,7 +16,9 @@ type PaymentLinkRevenueRow = Pick<
 type ProposalRevenueRow = Pick<
   Database["public"]["Tables"]["proposals"]["Row"],
   "created_at" | "status"
->;
+> & {
+  trips: { status: string | null } | { status: string | null }[] | null;
+};
 
 type TripRevenueRow = Pick<
   Database["public"]["Tables"]["trips"]["Row"],
@@ -66,14 +68,16 @@ export async function GET(req: NextRequest) {
           .lt("paid_at", range.toExclusiveISO),
         db
           .from("proposals")
-          .select("created_at, status")
+          .select("created_at, status, trips:trip_id(status)")
           .eq("organization_id", organizationId)
+          .is("deleted_at", null)
           .gte("created_at", range.fromISO)
           .lt("created_at", range.toExclusiveISO),
         db
           .from("trips")
           .select("created_at, status")
           .eq("organization_id", organizationId)
+          .is("deleted_at", null)
           .gte("created_at", range.fromISO)
           .lt("created_at", range.toExclusiveISO),
         db

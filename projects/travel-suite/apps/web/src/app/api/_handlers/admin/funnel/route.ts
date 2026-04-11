@@ -44,12 +44,14 @@ export async function GET(request: NextRequest) {
         .from("proposals")
         .select("id", { count: "exact", head: true })
         .eq("organization_id", organizationId)
+        .is("deleted_at", null)
         .gte("created_at", range.fromISO)
         .lt("created_at", range.toExclusiveISO),
       db
         .from("proposals")
         .select("id", { count: "exact", head: true })
         .eq("organization_id", organizationId)
+        .is("deleted_at", null)
         .in("status", APPROVED_STATUSES)
         .gte("updated_at", range.fromISO)
         .lt("updated_at", range.toExclusiveISO),

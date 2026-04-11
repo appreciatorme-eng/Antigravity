@@ -3,6 +3,7 @@ import { apiError } from "@/lib/api/response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
 import { buildRevenueRiskActionQueue } from "@/lib/admin/action-queue";
+import { isWonProposal } from "@/lib/admin/proposal-outcomes";
 import { logError } from "@/lib/observability/logger";
 
 const QuerySchema = z.object({
@@ -33,6 +34,7 @@ export async function GET(req: NextRequest) {
         .from("proposals")
         .select("id,title,status,expires_at")
         .eq("organization_id", admin.organizationId)
+        .is("deleted_at", null)
         .in("status", ["draft", "sent", "viewed"])
         .not("expires_at", "is", null)
         .lte("expires_at", inThreeDays)
@@ -41,6 +43,7 @@ export async function GET(req: NextRequest) {
         .from("invoices")
         .select("id,invoice_number,status,due_date,balance_amount")
         .eq("organization_id", admin.organizationId)
+        .is("deleted_at", null)
         .in("status", ["issued", "partially_paid", "overdue"])
         .lt("due_date", todayISO)
         .limit(60),
@@ -48,16 +51,19 @@ export async function GET(req: NextRequest) {
         .from("trips")
         .select("id,status,updated_at,start_date")
         .eq("organization_id", admin.organizationId)
+        .is("deleted_at", null)
         .limit(120),
       admin.adminClient
         .from("proposals")
-        .select("id,status,created_at")
+        .select("id,status,created_at,trips:trip_id(status)")
         .eq("organization_id", admin.organizationId)
+        .is("deleted_at", null)
         .gte("created_at", thirtyDaysAgo),
       admin.adminClient
         .from("invoices")
         .select("total_amount,status,created_at")
         .eq("organization_id", admin.organizationId)
+        .is("deleted_at", null)
         .gte("created_at", thirtyDaysAgo),
     ]);
 
@@ -74,9 +80,7 @@ export async function GET(req: NextRequest) {
     const monthlyProposals = monthlyProposalRes.data || [];
     const monthlyInvoices = monthlyInvoiceRes.data || [];
 
-    const conversionCount = monthlyProposals.filter((proposal) =>
-      ["approved", "accepted", "confirmed", "converted"].includes((proposal.status || "").toLowerCase())
-    ).length;
+    const conversionCount = monthlyProposals.filter((proposal) => isWonProposal(proposal)).length;
     const conversionRate = monthlyProposals.length > 0 ? (conversionCount / monthlyProposals.length) * 100 : 0;
 
     const paidRevenue = monthlyInvoices

@@ -83,6 +83,7 @@ export async function GET(req: NextRequest) {
       .from("proposals")
       .select(PROPOSAL_LIST_SELECT)
       .eq("organization_id", effectiveOrganizationId)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false });
 
     if (status !== "all") {

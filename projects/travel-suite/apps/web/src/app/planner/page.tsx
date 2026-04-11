@@ -389,12 +389,12 @@ export default function PlannerPage() {
         if (!currentTripId || markingAsPaid) return;
         setMarkingAsPaid(true);
         try {
-            const { error } = await supabase
-                .from("trips")
-                .update({ status: "confirmed" })
-                .eq("id", currentTripId)
-                .in("status", ["draft"]);
-            if (error) throw error;
+            const response = await authedFetch(`/api/trips/${currentTripId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status: "confirmed" }),
+            });
+            if (!response.ok) throw new Error("Failed to update trip status");
             await refetchItineraries();
             toast({ title: "Trip marked as paid", description: "Status updated to Paid ✓", variant: "success" });
         } catch {

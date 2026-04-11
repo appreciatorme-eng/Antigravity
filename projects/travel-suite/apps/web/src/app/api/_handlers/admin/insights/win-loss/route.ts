@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/admin";
-import { daysSince, medianPrice, normalizeStatus, toNumber } from "@/lib/admin/insights";
+import { isLostProposal, isWonProposal } from "@/lib/admin/proposal-outcomes";
+import { daysSince, medianPrice, toNumber } from "@/lib/admin/insights";
 import { logError } from "@/lib/observability/logger";
 
 const QuerySchema = z.object({
@@ -27,8 +28,9 @@ export async function GET(req: NextRequest) {
     const since = new Date(Date.now() - parsed.data.daysBack * 24 * 60 * 60 * 1000).toISOString();
     const { data, error } = await admin.adminClient
       .from("proposals")
-      .select("id,status,total_price,created_at,viewed_at,expires_at")
+      .select("id,status,total_price,created_at,viewed_at,expires_at,trips:trip_id(status)")
       .eq("organization_id", admin.organizationId)
+      .is("deleted_at", null)
       .gte("created_at", since)
       .limit(1000);
 
@@ -46,14 +48,13 @@ export async function GET(req: NextRequest) {
     let highPriceLossProxy = 0;
 
     for (const proposal of proposals) {
-      const status = normalizeStatus(proposal.status);
       const price = toNumber(proposal.total_price, 0);
 
-      if (["approved", "accepted", "converted", "confirmed"].includes(status)) {
+      if (isWonProposal(proposal)) {
         wins += 1;
         continue;
       }
-      if (["rejected", "expired", "cancelled"].includes(status)) {
+      if (isLostProposal(proposal)) {
         losses += 1;
         if (median > 0 && price > median * 1.25) {
           highPriceLossProxy += 1;
