@@ -51,7 +51,7 @@ const CLOSED_PROPOSAL_STATUSES = new Set([
   "expired",
   "cancelled",
 ]);
-const BOOKING_TRIP_STATUSES = new Set(["planned", "confirmed", "in_progress", "active", "completed"]);
+const BOOKING_TRIP_STATUSES = new Set(["planned", "confirmed", "in_progress", "active", "completed", "paid"]);
 
 export async function GET(req: NextRequest) {
   try {

@@ -20,8 +20,8 @@ type RecentTripWithItinerary = Pick<TripRow, 'id' | 'status' | 'created_at'> & {
   itineraries: { trip_title: string | null; destination: string | null } | { trip_title: string | null; destination: string | null }[] | null;
 };
 
-const ACTIVE_TRIP_STATUSES = new Set(["active", "in_progress", "planned", "confirmed"]);
-const BOOKING_TRIP_STATUSES = new Set(["planned", "confirmed", "in_progress", "active", "completed"]);
+const ACTIVE_TRIP_STATUSES = new Set(["active", "in_progress", "planned", "confirmed", "paid"]);
+const BOOKING_TRIP_STATUSES = new Set(["planned", "confirmed", "in_progress", "active", "completed", "paid"]);
 
 export async function GET(req: NextRequest) {
   try {

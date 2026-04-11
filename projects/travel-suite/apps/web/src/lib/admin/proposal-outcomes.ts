@@ -1,6 +1,6 @@
 const WON_PROPOSAL_STATUSES = new Set(["approved", "accepted", "confirmed", "converted"]);
 const LOST_PROPOSAL_STATUSES = new Set(["rejected", "expired", "cancelled"]);
-const WON_TRIP_STATUSES = new Set(["confirmed", "in_progress", "active", "completed"]);
+const WON_TRIP_STATUSES = new Set(["confirmed", "in_progress", "active", "completed", "paid"]);
 
 type JoinedTripStatus =
   | {

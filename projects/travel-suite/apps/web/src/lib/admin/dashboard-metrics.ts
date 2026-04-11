@@ -43,7 +43,7 @@ function mapTripToPoint(trip: TripLike): RevenueChartTripPoint {
   };
 }
 
-const BOOKING_STATUSES = new Set(["planned", "confirmed", "in_progress", "active", "completed"]);
+const BOOKING_STATUSES = new Set(["planned", "confirmed", "in_progress", "active", "completed", "paid"]);
 
 function getBucketKey(value: string | null, granularity: ResolvedAdminDateRange["granularity"]) {
   if (!value) return null;

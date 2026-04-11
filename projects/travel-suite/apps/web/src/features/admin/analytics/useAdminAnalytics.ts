@@ -52,7 +52,7 @@ const DEFAULT_FILTERS: AnalyticsFilterState = {
 };
 
 const APPROVED_STATUSES = new Set(["approved", "accepted", "confirmed", "converted"]);
-const ACTIVE_TRIP_STATUSES = new Set(["planned", "confirmed", "in_progress", "active"]);
+const ACTIVE_TRIP_STATUSES = new Set(["planned", "confirmed", "in_progress", "active", "paid"]);
 const PEAK_MONTHS = new Set([10, 11, 12, 1, 2]);
 
 function extractDestination(value: TripRow["itineraries"]): string | null {
