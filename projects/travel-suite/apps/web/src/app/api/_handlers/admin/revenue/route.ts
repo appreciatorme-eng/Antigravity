@@ -24,6 +24,11 @@ type TripRevenueRow = Pick<
   "created_at" | "status"
 >;
 
+type InvoicePaymentRevenueRow = {
+  amount: number;
+  payment_date: string;
+};
+
 const CLOSED_PROPOSAL_STATUSES = new Set([
   "approved",
   "accepted",
@@ -47,7 +52,7 @@ const getCachedRevenueSnapshot = unstable_cache(
   ) => {
     const db = createAdminClient();
 
-    const [paidLinksResult, proposalsResult, tripsResult, activeOperatorsResult] = await Promise.all([
+    const [paidLinksResult, proposalsResult, tripsResult, activeOperatorsResult, invoicePaymentsResult] = await Promise.all([
       db
         .from("payment_links")
         .select("amount_paise, paid_at")
@@ -72,6 +77,13 @@ const getCachedRevenueSnapshot = unstable_cache(
         .select("id", { count: "exact", head: true })
         .eq("organization_id", organizationId)
         .neq("role", "client"),
+      db
+        .from("invoice_payments")
+        .select("amount, payment_date")
+        .eq("organization_id", organizationId)
+        .eq("status", "completed")
+        .gte("payment_date", fromDateISO.slice(0, 10))
+        .lte("payment_date", toDateISO.slice(0, 10)),
     ]);
 
     // payment_links table may not be migrated yet; treat all query errors as empty data
@@ -100,11 +112,20 @@ const getCachedRevenueSnapshot = unstable_cache(
     const paymentLinkRows = (paidLinksResult.data || []) as PaymentLinkRevenueRow[];
     const proposalRows = (proposalsResult.data || []) as ProposalRevenueRow[];
     const tripRows = (tripsResult.data || []) as TripRevenueRow[];
-    const series = buildRevenueSeries(range, paymentLinkRows, proposalRows, tripRows);
+    const invoicePaymentRows = (invoicePaymentsResult.data || []) as InvoicePaymentRevenueRow[];
 
+    const normalizedInvoicePayments: PaymentLinkRevenueRow[] = invoicePaymentRows.map((row) => ({
+      amount_paise: Math.round(Number(row.amount || 0) * 100),
+      paid_at: row.payment_date,
+    }));
+    const allPaymentRows: PaymentLinkRevenueRow[] = [...paymentLinkRows, ...normalizedInvoicePayments];
+
+    const series = buildRevenueSeries(range, allPaymentRows, proposalRows, tripRows);
+
+    const invoicePaymentTotal = invoicePaymentRows.reduce((sum, row) => sum + Number(row.amount || 0), 0);
     const recoveredRevenue = Number(
       paymentLinkRows.reduce((sum, row) => sum + Number(row.amount_paise || 0), 0) / 100,
-    );
+    ) + invoicePaymentTotal;
     const totalBookings = tripRows.filter((row) =>
       BOOKING_TRIP_STATUSES.has((row.status || "").toLowerCase()),
     ).length;
@@ -130,7 +151,7 @@ const getCachedRevenueSnapshot = unstable_cache(
     };
   },
   ["admin-revenue"],
-  { revalidate: 600, tags: ["revenue"] },
+  { revalidate: 60, tags: ["revenue"] },
 );
 
 export async function GET(req: NextRequest) {

@@ -138,6 +138,16 @@ export async function POST(
         .in("status", ["draft"]);
     }
 
+    // Also cascade to linked proposal → win-loss win rate will update
+    if (nextStatus === "paid" && invoice.trip_id && auth.organizationId) {
+      void adminClient
+        .from("proposals")
+        .update({ status: "converted" })
+        .eq("trip_id", invoice.trip_id)
+        .eq("organization_id", auth.organizationId!)
+        .in("status", ["draft", "sent", "viewed", "pending", "accepted", "approved", "read"]);
+    }
+
     const { data: paymentsData, error: paymentsError } = await adminClient
       .from("invoice_payments")
       .select(INVOICE_PAYMENT_SELECT)

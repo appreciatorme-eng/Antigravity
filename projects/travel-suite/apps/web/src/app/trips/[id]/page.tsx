@@ -15,7 +15,7 @@ import type { TripDetailTab, Day, TripItineraryRawData, TripPricing } from "@/fe
 
 import { useTripDetail, useSaveTripItinerary } from "@/lib/queries/trip-detail";
 import { authedFetch } from "@/lib/api/authed-fetch";
-import { useCloneTrip, useUpdateTripStatus } from "@/lib/queries/trips";
+import { useCloneTrip } from "@/lib/queries/trips";
 
 import { GroupManager } from "@/components/trips/GroupManager";
 import { GlassButton } from "@/components/glass/GlassButton";
@@ -40,7 +40,6 @@ export default function TripDetailPage() {
   const { data, isLoading, refetch } = useTripDetail(tripId);
   const saveMutation = useSaveTripItinerary();
   const cloneMutation = useCloneTrip();
-  const updateStatusMutation = useUpdateTripStatus();
   const [markingAsPaid, setMarkingAsPaid] = useState(false);
 
   // --- Local UI state ---
@@ -216,7 +215,12 @@ export default function TripDetailPage() {
     if (!trip || markingAsPaid) return;
     setMarkingAsPaid(true);
     try {
-      await updateStatusMutation.mutateAsync({ id: tripId, status: "confirmed" });
+      const resp = await authedFetch(`/api/trips/${tripId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "confirmed" }),
+      });
+      if (!resp.ok) throw new Error("Failed to update status");
       await refetch();
       toast({ title: "Trip marked as paid", description: "Status updated to Paid.", variant: "success" });
     } catch {

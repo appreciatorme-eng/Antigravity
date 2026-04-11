@@ -431,6 +431,31 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id?: s
             return NextResponse.json({ success: true });
         }
 
+        // ── Status-only update: patch trips.status and cascade to linked proposal ──
+        if (body.status !== undefined) {
+            const newStatus = typeof body.status === "string" ? body.status.trim() : null;
+            if (!newStatus) return apiError("Invalid status value", 400);
+
+            let tripQuery = supabaseAdmin.from("trips").update({ status: newStatus }).eq("id", tripId);
+            if (auth.role !== "super_admin" && auth.organizationId) {
+                tripQuery = tripQuery.eq("organization_id", auth.organizationId);
+            }
+            const { error: statusError } = await tripQuery;
+            if (statusError) return apiError("Failed to update trip status", 400);
+
+            // Cascade: when confirming/paying a trip, mark linked proposal as converted
+            if (newStatus === "confirmed" && auth.organizationId) {
+                void supabaseAdmin
+                    .from("proposals")
+                    .update({ status: "converted" })
+                    .eq("trip_id", tripId)
+                    .eq("organization_id", auth.organizationId)
+                    .in("status", ["draft", "sent", "viewed", "pending", "accepted", "approved", "read"]);
+            }
+
+            return NextResponse.json({ success: true });
+        }
+
         const itineraryId = typeof body.itineraryId === "string" ? body.itineraryId : "";
         const rawData = body.rawData;
         const days = Array.isArray(body.days) ? body.days : undefined;
