@@ -66,6 +66,8 @@ interface PastItineraryItem extends ItineraryLike {
     wishlist_items?: string[];
     approved_by?: string | null;
     approved_at?: string | null;
+    trip_id?: string | null;
+    trip_status?: string | null;
 }
 
 const ItineraryMap = dynamic(() => import("@/components/map/ItineraryMap"), {
@@ -289,6 +291,18 @@ export default function PlannerPage() {
         return pastItineraries.find((item: PastItineraryItem) => item.id === currentItineraryId)?.client?.full_name ?? null;
     }, [currentItineraryId, pastItineraries]);
 
+    const currentTripId = useMemo(() =>
+        pastItineraries?.find((item: PastItineraryItem) => item.id === currentItineraryId)?.trip_id ?? null,
+        [currentItineraryId, pastItineraries],
+    );
+
+    const currentTripStatus = useMemo(() =>
+        pastItineraries?.find((item: PastItineraryItem) => item.id === currentItineraryId)?.trip_status ?? null,
+        [currentItineraryId, pastItineraries],
+    );
+
+    const [markingAsPaid, setMarkingAsPaid] = useState(false);
+
     const requestDeleteItinerary = useCallback((itineraryId: string) => {
         const itinerary = filteredItineraries.find((item: PastItineraryItem) => item.id === itineraryId) ?? null;
         if (!itinerary || deletingItineraryId) return;
@@ -368,6 +382,25 @@ export default function PlannerPage() {
             } catch {
                 toast({ title: "Save failed", description: "Unable to save dates.", variant: "error" });
             }
+        }
+    };
+
+    const handleMarkAsPaid = async () => {
+        if (!currentTripId || markingAsPaid) return;
+        setMarkingAsPaid(true);
+        try {
+            const { error } = await supabase
+                .from("trips")
+                .update({ status: "confirmed" })
+                .eq("id", currentTripId)
+                .in("status", ["draft"]);
+            if (error) throw error;
+            await refetchItineraries();
+            toast({ title: "Trip marked as paid", description: "Status updated to Paid ✓", variant: "success" });
+        } catch {
+            toast({ title: "Failed to update status", description: "Please try again.", variant: "error" });
+        } finally {
+            setMarkingAsPaid(false);
         }
     };
 
@@ -451,6 +484,23 @@ export default function PlannerPage() {
                                         template={selectedTemplate}
                                         fileName={`${result.trip_title.replace(/\s+/g, '_')}_Itinerary.pdf`}
                                     />
+                                    {currentTripId && currentTripStatus !== "confirmed" && currentTripStatus !== "in_progress" && currentTripStatus !== "completed" && (
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={handleMarkAsPaid}
+                                            disabled={markingAsPaid}
+                                            className="border-emerald-500 text-emerald-700 hover:bg-emerald-500 hover:text-white h-9 md:h-10 px-2 md:px-4 text-xs md:text-sm font-semibold rounded-xl transition-all"
+                                        >
+                                            {markingAsPaid ? "..." : "✓"}
+                                            <span className="hidden md:inline ml-1">{markingAsPaid ? "Saving…" : "Mark as Paid"}</span>
+                                        </Button>
+                                    )}
+                                    {currentTripId && (currentTripStatus === "confirmed" || currentTripStatus === "in_progress" || currentTripStatus === "completed") && (
+                                        <span className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 text-xs font-semibold">
+                                            ✓ Paid
+                                        </span>
+                                    )}
                                 </div>
                             </div>
 
