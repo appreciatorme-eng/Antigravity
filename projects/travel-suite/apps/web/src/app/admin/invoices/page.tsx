@@ -34,6 +34,7 @@ export default function AdminInvoicesPage() {
   const [emailingPdf, setEmailingPdf] = useState(false);
   const [sendingPaymentLink, setSendingPaymentLink] = useState(false);
   const [paymentLinkUrl, setPaymentLinkUrl] = useState<string | null>(null);
+  const [deletingInvoiceId, setDeletingInvoiceId] = useState<string | null>(null);
 
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
@@ -526,6 +527,26 @@ export default function AdminInvoicesPage() {
     setTimeout(() => popup.print(), 250);
   }, [previewTemplate, selectedInvoice]);
 
+  const handleDeleteInvoice = useCallback(async (id: string) => {
+    setDeletingInvoiceId(id);
+    try {
+      const response = await authedFetch(`/api/invoices/${id}`, { method: "DELETE" });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload?.error || "Failed to delete invoice");
+      toast({ title: "Invoice deleted", variant: "success" });
+      if (selectedInvoiceId === id) setSelectedInvoiceId(null);
+      await loadInvoices();
+    } catch (error) {
+      toast({
+        title: "Delete failed",
+        description: error instanceof Error ? error.message : "Cannot delete this invoice",
+        variant: "error",
+      });
+    } finally {
+      setDeletingInvoiceId(null);
+    }
+  }, [loadInvoices, selectedInvoiceId, toast]);
+
   const refreshAll = async () => {
     setRefreshing(true);
     try {
@@ -744,6 +765,8 @@ export default function AdminInvoicesPage() {
             onSendPaymentLink={() => void handleSendPaymentLink()}
             sendingPaymentLink={sendingPaymentLink}
             paymentLinkUrl={paymentLinkUrl}
+            onDeleteInvoice={(id) => void handleDeleteInvoice(id)}
+            deletingInvoiceId={deletingInvoiceId}
           />
         </GlassCard>
       </div>

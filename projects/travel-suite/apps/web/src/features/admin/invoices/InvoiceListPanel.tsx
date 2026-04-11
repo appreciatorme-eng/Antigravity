@@ -17,6 +17,7 @@ import {
   PenLine,
   Printer,
   RefreshCw,
+  Trash2,
   Wallet,
 } from "lucide-react";
 import type { InvoiceRecord } from "./types";
@@ -51,6 +52,8 @@ interface InvoiceListPanelProps {
   onSendPaymentLink: () => void;
   sendingPaymentLink: boolean;
   paymentLinkUrl: string | null;
+  onDeleteInvoice?: (id: string) => void;
+  deletingInvoiceId?: string | null;
 }
 
 export default function InvoiceListPanel({
@@ -82,6 +85,8 @@ export default function InvoiceListPanel({
   onSendPaymentLink,
   sendingPaymentLink,
   paymentLinkUrl,
+  onDeleteInvoice,
+  deletingInvoiceId,
 }: InvoiceListPanelProps) {
   const [copied, setCopied] = useState(false);
 
@@ -150,62 +155,85 @@ export default function InvoiceListPanel({
           </div>
         ) : (
           <div className="max-h-[400px] space-y-2 overflow-y-auto pr-1">
-            {invoices.map((invoice) => (
-              <button
-                key={invoice.id}
-                type="button"
-                onClick={() => onSelectInvoice(invoice.id)}
-                className={cn(
-                  "w-full rounded-xl border p-2.5 text-left transition",
-                  selectedInvoiceId === invoice.id && previewMode === "saved"
-                    ? "border-slate-900 bg-slate-900 text-white"
-                    : "border-slate-200 bg-white hover:border-slate-300"
-                )}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold">
-                      {invoice.invoice_number}
-                    </p>
-                    <p
-                      className={cn(
-                        "mt-0.5 truncate text-[11px]",
-                        selectedInvoiceId === invoice.id && previewMode === "saved"
-                          ? "text-slate-300"
-                          : "text-slate-500"
+            {invoices.map((invoice) => {
+              const isSelected = selectedInvoiceId === invoice.id && previewMode === "saved";
+              const isDeleting = deletingInvoiceId === invoice.id;
+              return (
+                <div
+                  key={invoice.id}
+                  className={cn(
+                    "group relative w-full rounded-xl border p-2.5 text-left transition cursor-pointer",
+                    isSelected
+                      ? "border-slate-900 bg-slate-900 text-white"
+                      : "border-slate-200 bg-white hover:border-slate-300"
+                  )}
+                  onClick={() => onSelectInvoice(invoice.id)}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">
+                        {invoice.invoice_number}
+                      </p>
+                      <p
+                        className={cn(
+                          "mt-0.5 truncate text-[11px]",
+                          isSelected ? "text-slate-300" : "text-slate-500"
+                        )}
+                      >
+                        {invoice.client_snapshot?.full_name ||
+                          invoice.client_snapshot?.email ||
+                          "Walk-in"}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span
+                        className={cn(
+                          "rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase",
+                          isSelected
+                            ? "border-white/25 bg-white/10 text-white"
+                            : statusTone(invoice.status)
+                        )}
+                      >
+                        {invoice.status.replace("_", " ")}
+                      </span>
+                      {onDeleteInvoice && (
+                        <button
+                          type="button"
+                          disabled={isDeleting}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm(`Delete ${invoice.invoice_number}? This cannot be undone.`)) {
+                              onDeleteInvoice(invoice.id);
+                            }
+                          }}
+                          className={cn(
+                            "opacity-0 group-hover:opacity-100 transition-opacity rounded-md p-1",
+                            isDeleting ? "opacity-100 cursor-wait" : "",
+                            isSelected
+                              ? "hover:bg-white/10 text-rose-300"
+                              : "hover:bg-rose-50 text-rose-400"
+                          )}
+                          title="Delete invoice"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       )}
-                    >
-                      {invoice.client_snapshot?.full_name ||
-                        invoice.client_snapshot?.email ||
-                        "Walk-in"}
-                    </p>
+                    </div>
                   </div>
-                  <span
+                  <div
                     className={cn(
-                      "shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase",
-                      selectedInvoiceId === invoice.id && previewMode === "saved"
-                        ? "border-white/25 bg-white/10 text-white"
-                        : statusTone(invoice.status)
+                      "mt-1.5 flex items-center justify-between text-[11px]",
+                      isSelected ? "text-slate-300" : "text-slate-500"
                     )}
                   >
-                    {invoice.status.replace("_", " ")}
-                  </span>
+                    <span>{formatDate(invoice.issued_at || invoice.created_at)}</span>
+                    <span className="font-semibold">
+                      {formatMoney(invoice.total_amount, invoice.currency)}
+                    </span>
+                  </div>
                 </div>
-                <div
-                  className={cn(
-                    "mt-1.5 flex items-center justify-between text-[11px]",
-                    selectedInvoiceId === invoice.id && previewMode === "saved"
-                      ? "text-slate-300"
-                      : "text-slate-500"
-                  )}
-                >
-                  <span>{formatDate(invoice.issued_at || invoice.created_at)}</span>
-                  <span className="font-semibold">
-                    {formatMoney(invoice.total_amount, invoice.currency)}
-                  </span>
-                </div>
-              </button>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
