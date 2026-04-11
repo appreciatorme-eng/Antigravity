@@ -155,6 +155,53 @@ export default function TripDetailPage() {
     }
   };
 
+  const handleTripDateChange = async (field: "start_date" | "end_date", value: string) => {
+    if (!trip) return;
+
+    try {
+      // 1. Update trips.start_date / end_date
+      await authedFetch(`/api/trips/${tripId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [field]: value || null }),
+      });
+
+      // 2. When start_date changes, cascade day.date into itinerary raw_data
+      if (field === "start_date" && value && trip.itineraries?.id) {
+        const itinerary = trip.itineraries;
+        const base = new Date(value + "T00:00:00");
+        const cascadedDays = (itinerary.raw_data?.days ?? []).map((d) => ({
+          ...d,
+          date: new Date(base.getTime() + (d.day_number - 1) * 86_400_000)
+            .toISOString()
+            .slice(0, 10),
+        }));
+        const updatedRawData = { ...(itinerary.raw_data ?? {}), days: cascadedDays, start_date: value };
+
+        // Also auto-compute end_date if not set
+        if (!trip.end_date) {
+          const duration = (itinerary.duration_days ?? cascadedDays.length) || 1;
+          const endDate = new Date(base.getTime() + (duration - 1) * 86_400_000).toISOString().slice(0, 10);
+          await authedFetch(`/api/trips/${tripId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ end_date: endDate }),
+          });
+        }
+
+        await authedFetch(`/api/itineraries/${itinerary.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ raw_data: updatedRawData }),
+        });
+      }
+
+      await refetch();
+    } catch {
+      toast({ title: "Failed to save dates", description: "Please try again.", variant: "error" });
+    }
+  };
+
   const handleOptimizeRoute = () => {
     toast({
       title: "Coming Soon",
@@ -247,6 +294,7 @@ export default function TripDetailPage() {
             invoiceSummary={invoiceSummary}
             loading={isLoading}
             onTabChange={setActiveTab}
+            onDateChange={handleTripDateChange}
           />
         );
       case "itinerary":

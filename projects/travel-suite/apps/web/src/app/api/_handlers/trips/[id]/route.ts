@@ -410,6 +410,27 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id?: s
         }
 
         const body = await req.json().catch(() => ({}));
+
+        // ── Date-only update: just patch trips.start_date / end_date ──
+        if (body.start_date !== undefined || body.end_date !== undefined) {
+            const tripUpdate: { start_date?: string | null; end_date?: string | null } = {};
+            if (body.start_date !== undefined) {
+                tripUpdate.start_date = typeof body.start_date === "string" && body.start_date ? body.start_date : null;
+            }
+            if (body.end_date !== undefined) {
+                tripUpdate.end_date = typeof body.end_date === "string" && body.end_date ? body.end_date : null;
+            }
+
+            let dateQuery = supabaseAdmin.from("trips").update(tripUpdate).eq("id", tripId);
+            if (auth.role !== "super_admin" && auth.organizationId) {
+                dateQuery = dateQuery.eq("organization_id", auth.organizationId);
+            }
+
+            const { error: dateError } = await dateQuery;
+            if (dateError) return apiError("Failed to update trip dates", 400);
+            return NextResponse.json({ success: true });
+        }
+
         const itineraryId = typeof body.itineraryId === "string" ? body.itineraryId : "";
         const rawData = body.rawData;
         const days = Array.isArray(body.days) ? body.days : undefined;

@@ -28,6 +28,7 @@ interface OverviewTabProps {
   invoiceSummary: TripInvoiceSummaryData | null;
   loading: boolean;
   onTabChange: (tab: TripDetailTab) => void;
+  onDateChange?: (field: "start_date" | "end_date", value: string) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -92,7 +93,7 @@ const DATE_CHIP =
 // Trip Summary Card
 // ---------------------------------------------------------------------------
 
-function TripSummaryCard({ trip }: { trip: Trip }) {
+function TripSummaryCard({ trip, onDateChange }: { trip: Trip; onDateChange?: (field: "start_date" | "end_date", value: string) => void }) {
   const title = trip.itineraries?.trip_title || trip.destination || "Untitled Trip";
   const themes = extractThemes(trip);
 
@@ -107,13 +108,34 @@ function TripSummaryCard({ trip }: { trip: Trip }) {
       </div>
       <div className="flex flex-wrap items-center gap-3 mb-5">
         <span className={DATE_CHIP}>
-          <Calendar className="w-4 h-4 text-text-muted" />
-          {formatDate(trip.start_date)}
+          <Calendar className="w-4 h-4 text-text-muted shrink-0" />
+          {onDateChange ? (
+            <input
+              type="date"
+              value={trip.start_date ?? ""}
+              onChange={(e) => onDateChange("start_date", e.target.value)}
+              className="bg-transparent text-secondary dark:text-slate-300 cursor-pointer focus:outline-none text-sm min-w-0"
+              placeholder="Start date"
+            />
+          ) : (
+            formatDate(trip.start_date)
+          )}
         </span>
         <ArrowRight className="w-4 h-4 text-text-muted shrink-0" />
         <span className={DATE_CHIP}>
-          <Calendar className="w-4 h-4 text-text-muted" />
-          {formatDate(trip.end_date)}
+          <Calendar className="w-4 h-4 text-text-muted shrink-0" />
+          {onDateChange ? (
+            <input
+              type="date"
+              value={trip.end_date ?? ""}
+              min={trip.start_date ?? undefined}
+              onChange={(e) => onDateChange("end_date", e.target.value)}
+              className="bg-transparent text-secondary dark:text-slate-300 cursor-pointer focus:outline-none text-sm min-w-0"
+              placeholder="End date"
+            />
+          ) : (
+            formatDate(trip.end_date)
+          )}
         </span>
         <span className={DATE_CHIP}>
           <Clock className="w-4 h-4 text-text-muted" />
@@ -142,44 +164,68 @@ function TripSummaryCard({ trip }: { trip: Trip }) {
 // Key Dates Timeline
 // ---------------------------------------------------------------------------
 
-interface TimelineEntry { label: string; value: string; active: boolean }
-
-function buildTimelineEntries(trip: Trip): readonly TimelineEntry[] {
-  return [
-    { label: "Trip Created", value: "N/A", active: false },
-    { label: "Start Date", value: formatDateLong(trip.start_date), active: Boolean(trip.start_date) },
-    { label: "End Date", value: formatDateLong(trip.end_date), active: Boolean(trip.end_date) },
-  ];
-}
-
-function KeyDatesTimeline({ trip }: { trip: Trip }) {
-  const entries = buildTimelineEntries(trip);
-
+function KeyDatesTimeline({ trip, onDateChange }: { trip: Trip; onDateChange?: (field: "start_date" | "end_date", value: string) => void }) {
   return (
     <GlassCard padding="xl">
       <SectionHeader icon={Calendar} label="Key Dates" />
       <div className="relative space-y-6 pl-6">
         <div className="absolute left-[7px] top-1 bottom-1 w-px bg-gray-200 dark:bg-slate-700" />
-        {entries.map((entry, idx) => (
-          <div key={idx} className="relative flex items-start gap-4">
-            <div
-              className={cn(
-                "absolute -left-6 top-1 w-3.5 h-3.5 rounded-full border-2",
-                entry.active
-                  ? "bg-primary border-primary/30"
-                  : "bg-gray-200 border-gray-300 dark:bg-slate-600 dark:border-slate-500"
-              )}
-            />
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">
-                {entry.label}
-              </p>
-              <p className="text-sm font-bold text-secondary dark:text-white mt-0.5">
-                {entry.value}
-              </p>
-            </div>
+
+        {/* Trip Created — read-only */}
+        <div className="relative flex items-start gap-4">
+          <div className="absolute -left-6 top-1 w-3.5 h-3.5 rounded-full border-2 bg-gray-200 border-gray-300 dark:bg-slate-600 dark:border-slate-500" />
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Trip Created</p>
+            <p className="text-sm font-bold text-secondary dark:text-white mt-0.5">N/A</p>
           </div>
-        ))}
+        </div>
+
+        {/* Start Date — editable */}
+        <div className="relative flex items-start gap-4">
+          <div className={cn(
+            "absolute -left-6 top-1 w-3.5 h-3.5 rounded-full border-2",
+            trip.start_date ? "bg-primary border-primary/30" : "bg-gray-200 border-gray-300 dark:bg-slate-600 dark:border-slate-500"
+          )} />
+          <div className="flex-1">
+            <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">Start Date</p>
+            {onDateChange ? (
+              <input
+                type="date"
+                value={trip.start_date ?? ""}
+                onChange={(e) => onDateChange("start_date", e.target.value)}
+                className="mt-0.5 text-sm font-bold text-secondary dark:text-white bg-transparent cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30 rounded px-1 -ml-1"
+              />
+            ) : (
+              <p className="text-sm font-bold text-secondary dark:text-white mt-0.5">
+                {formatDateLong(trip.start_date)}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* End Date — editable */}
+        <div className="relative flex items-start gap-4">
+          <div className={cn(
+            "absolute -left-6 top-1 w-3.5 h-3.5 rounded-full border-2",
+            trip.end_date ? "bg-primary border-primary/30" : "bg-gray-200 border-gray-300 dark:bg-slate-600 dark:border-slate-500"
+          )} />
+          <div className="flex-1">
+            <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">End Date</p>
+            {onDateChange ? (
+              <input
+                type="date"
+                value={trip.end_date ?? ""}
+                min={trip.start_date ?? undefined}
+                onChange={(e) => onDateChange("end_date", e.target.value)}
+                className="mt-0.5 text-sm font-bold text-secondary dark:text-white bg-transparent cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30 rounded px-1 -ml-1"
+              />
+            ) : (
+              <p className="text-sm font-bold text-secondary dark:text-white mt-0.5">
+                {formatDateLong(trip.end_date)}
+              </p>
+            )}
+          </div>
+        </div>
       </div>
     </GlassCard>
   );
@@ -479,16 +525,16 @@ function TripWeatherCard({ trip }: { trip: Trip }) {
 // Main Component
 // ---------------------------------------------------------------------------
 
-export function OverviewTab({ trip, invoiceSummary, loading, onTabChange }: OverviewTabProps) {
+export function OverviewTab({ trip, invoiceSummary, loading, onTabChange, onDateChange }: OverviewTabProps) {
   const flights = extractFlights(trip);
 
   return (
     <div className="grid grid-cols-12 gap-6">
       {/* Left column */}
       <div className="col-span-12 xl:col-span-8 space-y-6">
-        <TripSummaryCard trip={trip} />
+        <TripSummaryCard trip={trip} onDateChange={onDateChange} />
         <TripFinancialSummary invoiceSummary={invoiceSummary} loading={loading} />
-        <KeyDatesTimeline trip={trip} />
+        <KeyDatesTimeline trip={trip} onDateChange={onDateChange} />
         <QuickActions onTabChange={onTabChange} />
       </div>
 
