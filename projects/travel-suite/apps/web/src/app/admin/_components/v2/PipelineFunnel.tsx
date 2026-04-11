@@ -26,24 +26,24 @@ interface FunnelStage {
   barColor: string;
 }
 
-function buildStages(data: DashboardV2State): FunnelStage[] {
+function getFallbackStages(data: DashboardV2State) {
   const proposals = data.insights?.proposalRisk?.proposals ?? [];
 
   const stages: Record<string, { count: number; value: number }> = {
     draft: { count: 0, value: 0 },
     sent: { count: 0, value: 0 },
     viewed: { count: 0, value: 0 },
-    approved: { count: 0, value: 0 },
-    rejected: { count: 0, value: 0 },
+    paid: { count: 0, value: 0 },
+    lost: { count: 0, value: 0 },
   };
 
   for (const p of proposals) {
     const status = p.status.toLowerCase();
     const key =
       status === 'accepted' || status === 'confirmed' || status === 'converted'
-        ? 'approved'
-        : status === 'expired' || status === 'cancelled'
-          ? 'rejected'
+        ? 'paid'
+        : status === 'expired' || status === 'cancelled' || status === 'rejected'
+          ? 'lost'
           : status in stages
             ? status
             : 'draft';
@@ -51,39 +51,46 @@ function buildStages(data: DashboardV2State): FunnelStage[] {
     stages[key].value += p.value;
   }
 
+  return stages;
+}
+
+function buildStages(data: DashboardV2State): FunnelStage[] {
+  const summaryStages =
+    data.insights?.proposalRisk?.summary?.stage_counts ?? getFallbackStages(data);
+
   return [
     {
       key: 'draft',
       label: 'Draft',
-      ...stages.draft,
+      ...summaryStages.draft,
       color: 'text-slate-500',
       barColor: 'bg-slate-400',
     },
     {
       key: 'sent',
       label: 'Sent',
-      ...stages.sent,
+      ...summaryStages.sent,
       color: 'text-blue-500',
       barColor: 'bg-blue-500',
     },
     {
       key: 'viewed',
       label: 'Viewed',
-      ...stages.viewed,
+      ...summaryStages.viewed,
       color: 'text-amber-500',
       barColor: 'bg-amber-500',
     },
     {
-      key: 'approved',
+      key: 'paid',
       label: 'Paid',
-      ...stages.approved,
+      ...summaryStages.paid,
       color: 'text-emerald-500',
       barColor: 'bg-emerald-500',
     },
     {
-      key: 'rejected',
+      key: 'lost',
       label: 'Lost',
-      ...stages.rejected,
+      ...summaryStages.lost,
       color: 'text-rose-500',
       barColor: 'bg-rose-500',
     },

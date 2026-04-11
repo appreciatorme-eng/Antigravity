@@ -53,6 +53,13 @@ export interface ProposalRiskResponse {
     medium_risk: number;
     low_risk: number;
     org_median_proposal_value: number;
+    stage_counts?: {
+      draft: { count: number; value: number };
+      sent: { count: number; value: number };
+      viewed: { count: number; value: number };
+      paid: { count: number; value: number };
+      lost: { count: number; value: number };
+    };
   };
   proposals: ProposalRiskRow[];
 }

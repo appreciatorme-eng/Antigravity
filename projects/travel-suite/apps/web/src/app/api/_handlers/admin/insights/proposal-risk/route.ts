@@ -8,6 +8,7 @@ import {
   safeTitle,
   toNumber,
 } from "@/lib/admin/insights";
+import { isLostProposal, isWonProposal } from "@/lib/admin/proposal-outcomes";
 import { logError } from "@/lib/observability/logger";
 
 const QuerySchema = z.object({
@@ -39,17 +40,32 @@ export async function GET(req: NextRequest) {
     const { data: proposals, error } = await admin.adminClient
       .from("proposals")
       .select(
-        "id,title,status,expires_at,created_at,updated_at,total_price,client_selected_price,viewed_at,client_id"
+        "id,title,status,expires_at,created_at,updated_at,total_price,client_selected_price,viewed_at,client_id,trips:trip_id(status)"
       )
       .eq("organization_id", admin.organizationId)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false })
-      .limit(limit);
+      .limit(1000);
 
     if (error) {
       return apiError("Failed to compute proposal risk", 500);
     }
 
-    const rows = proposals || [];
+    type ProposalInsightRow = {
+      id: string;
+      title: string | null;
+      status: string | null;
+      expires_at: string | null;
+      created_at: string | null;
+      updated_at: string | null;
+      total_price: number | null;
+      client_selected_price: number | null;
+      viewed_at: string | null;
+      client_id: string | null;
+      trips: { status: string | null } | { status: string | null }[] | null;
+    };
+
+    const rows = (proposals || []) as ProposalInsightRow[];
     const clientIds = Array.from(
       new Set(rows.map((row) => row.client_id).filter((value): value is string => Boolean(value)))
     );
@@ -70,10 +86,16 @@ export async function GET(req: NextRequest) {
 
     const orgMedian = medianPrice(rows.map((row) => row.client_selected_price ?? row.total_price));
 
-    const riskRows = rows
+    const allRiskRows = rows
       .map((row) => {
+        const effectiveStatus = isWonProposal(row)
+          ? "converted"
+          : isLostProposal(row)
+            ? "rejected"
+            : row.status || "draft";
+
         const risk = computeProposalRisk({
-          status: row.status,
+          status: effectiveStatus,
           createdAt: row.created_at,
           updatedAt: row.updated_at,
           expiresAt: row.expires_at,
@@ -86,7 +108,7 @@ export async function GET(req: NextRequest) {
         return {
           proposal_id: row.id,
           title: safeTitle(row.title, "Untitled Proposal"),
-          status: row.status || "draft",
+          status: effectiveStatus,
           expires_at: row.expires_at,
           viewed_at: row.viewed_at,
           value: toNumber(row.client_selected_price ?? row.total_price, 0),
@@ -103,17 +125,43 @@ export async function GET(req: NextRequest) {
       })
       .sort((a, b) => b.risk_score - a.risk_score);
 
-    const high = riskRows.filter((row) => row.risk_level === "high").length;
-    const medium = riskRows.filter((row) => row.risk_level === "medium").length;
-    const low = riskRows.length - high - medium;
+    const stageCounts = allRiskRows.reduce(
+      (acc, row) => {
+        const status = (row.status || "draft").toLowerCase();
+        const key =
+          status === "accepted" || status === "confirmed" || status === "converted"
+            ? "paid"
+            : status === "expired" || status === "cancelled" || status === "rejected"
+              ? "lost"
+              : status === "sent" || status === "viewed" || status === "draft"
+                ? status
+                : "draft";
+        acc[key].count += 1;
+        acc[key].value += row.value;
+        return acc;
+      },
+      {
+        draft: { count: 0, value: 0 },
+        sent: { count: 0, value: 0 },
+        viewed: { count: 0, value: 0 },
+        paid: { count: 0, value: 0 },
+        lost: { count: 0, value: 0 },
+      },
+    );
+
+    const high = allRiskRows.filter((row) => row.risk_level === "high").length;
+    const medium = allRiskRows.filter((row) => row.risk_level === "medium").length;
+    const low = allRiskRows.length - high - medium;
+    const riskRows = allRiskRows.slice(0, limit);
 
     return NextResponse.json({
       summary: {
-        analyzed: riskRows.length,
+        analyzed: allRiskRows.length,
         high_risk: high,
         medium_risk: medium,
         low_risk: low,
         org_median_proposal_value: Number(orgMedian.toFixed(2)),
+        stage_counts: stageCounts,
       },
       proposals: riskRows,
     });
@@ -125,4 +173,3 @@ export async function GET(req: NextRequest) {
     );
   }
 }
-
