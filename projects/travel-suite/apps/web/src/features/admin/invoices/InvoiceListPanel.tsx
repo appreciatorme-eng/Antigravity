@@ -4,6 +4,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassInput } from "@/components/glass/GlassInput";
+import ConfirmDangerModal from "@/components/god-mode/ConfirmDangerModal";
 import {
   ArrowDownRight,
   Check,
@@ -89,6 +90,9 @@ export default function InvoiceListPanel({
   deletingInvoiceId,
 }: InvoiceListPanelProps) {
   const [copied, setCopied] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+  const pendingDeleteInvoice = invoices.find((inv) => inv.id === pendingDeleteId) ?? null;
 
   const handleCopy = async () => {
     if (!paymentLinkUrl) return;
@@ -202,9 +206,7 @@ export default function InvoiceListPanel({
                           disabled={isDeleting}
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (window.confirm(`Delete ${invoice.invoice_number}? This cannot be undone.`)) {
-                              onDeleteInvoice(invoice.id);
-                            }
+                            setPendingDeleteId(invoice.id);
                           }}
                           className={cn(
                             "opacity-0 group-hover:opacity-100 transition-opacity rounded-md p-1",
@@ -407,6 +409,26 @@ export default function InvoiceListPanel({
           </form>
         </>
       ) : null}
+
+      <ConfirmDangerModal
+        open={pendingDeleteId !== null}
+        title="Delete invoice?"
+        message={
+          pendingDeleteInvoice
+            ? `${pendingDeleteInvoice.invoice_number} will be permanently removed. This cannot be undone.`
+            : "This invoice will be permanently removed. This cannot be undone."
+        }
+        confirmLabel="Delete"
+        cancelLabel="Keep it"
+        loading={deletingInvoiceId === pendingDeleteId}
+        onCancel={() => setPendingDeleteId(null)}
+        onConfirm={() => {
+          if (pendingDeleteId && onDeleteInvoice) {
+            onDeleteInvoice(pendingDeleteId);
+            setPendingDeleteId(null);
+          }
+        }}
+      />
     </div>
   );
 }
