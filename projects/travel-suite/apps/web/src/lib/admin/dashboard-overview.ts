@@ -16,6 +16,7 @@ import {
   normalizeStatus,
   safeTitle,
 } from "@/lib/admin/insights";
+import { isLostProposal, isWonProposal } from "@/lib/admin/proposal-outcomes";
 import {
   addUtcDays,
   buildRangeBucketKeys,
@@ -27,7 +28,6 @@ import {
   getBusinessEventIso,
   getFallbackTripWinRate,
   getInvoicePaidEventIso,
-  getProposalLifecycle,
   getProposalValue,
   getResolvedWinRate,
   hasWonTripStatus,
@@ -38,7 +38,6 @@ import {
   isInRange,
   isOverdueInvoice,
   isPaidInvoice,
-  isOpenProposal,
   safeDate,
   startOfUtcDay,
 } from "@/lib/admin/operator-state";
@@ -58,7 +57,6 @@ type ProposalRow = {
   client_selected_price: number | null;
   client_id: string | null;
   trip_id: string | null;
-  trips?: { status?: string | null } | { status?: string | null }[] | null;
 };
 
 type TripRow = {
@@ -350,6 +348,29 @@ function buildClientMap(profiles: ProfileRow[]): Map<string, ClientMeta> {
   );
 }
 
+function buildTripStatusMap(trips: TripRow[]): Map<string, string | null> {
+  return new Map(trips.map((trip) => [trip.id, trip.status]));
+}
+
+function getProposalLifecycleFromTripMap(
+  proposal: ProposalRow,
+  tripStatusMap: Map<string, string | null>,
+): "open" | "won" | "lost" {
+  if (isWonProposal(proposal)) return "won";
+  if (isLostProposal(proposal)) return "lost";
+  const linkedTripStatus = proposal.trip_id
+    ? tripStatusMap.get(proposal.trip_id) || null
+    : null;
+  return hasWonTripStatus(linkedTripStatus) ? "won" : "open";
+}
+
+function isOpenProposalFromTripMap(
+  proposal: ProposalRow,
+  tripStatusMap: Map<string, string | null>,
+): boolean {
+  return getProposalLifecycleFromTripMap(proposal, tripStatusMap) === "open";
+}
+
 function decorateTrips(
   trips: TripRow[],
   itineraries: ItineraryRow[],
@@ -407,6 +428,7 @@ function buildSeries(
   paymentLinks: PaymentLinkRow[],
   invoicePayments: InvoicePaymentRow[],
   clientMap: Map<string, ClientMeta>,
+  tripStatusMap: Map<string, string | null>,
 ): RevenueChartPoint[] {
   const buckets = new Map<string, RevenueChartPoint>(
     buildRangeBucketKeys(range).map((key) => [
@@ -428,7 +450,7 @@ function buildSeries(
   );
 
   for (const proposal of proposals) {
-    if (getProposalLifecycle(proposal) !== "won") continue;
+    if (getProposalLifecycleFromTripMap(proposal, tripStatusMap) !== "won") continue;
     const eventIso = getBusinessEventIso(proposal.created_at, proposal.updated_at);
     if (!isInRange(eventIso, range)) continue;
 
@@ -598,7 +620,10 @@ function buildSeries(
   }));
 }
 
-function buildPipelineSummary(proposals: ProposalRow[]) {
+function buildPipelineSummary(
+  proposals: ProposalRow[],
+  tripStatusMap: Map<string, string | null>,
+) {
   const stageMap: Record<DashboardPipelineStage["key"], { count: number; value: number }> = {
     draft: { count: 0, value: 0 },
     sent: { count: 0, value: 0 },
@@ -611,7 +636,9 @@ function buildPipelineSummary(proposals: ProposalRow[]) {
   let medium = 0;
   let low = 0;
 
-  const openProposals = proposals.filter((proposal) => isOpenProposal(proposal));
+  const openProposals = proposals.filter((proposal) =>
+    isOpenProposalFromTripMap(proposal, tripStatusMap),
+  );
   const orgMedian =
     openProposals.length > 0
       ? openProposals.reduce((sum, proposal) => sum + getProposalValue(proposal), 0) /
@@ -619,7 +646,7 @@ function buildPipelineSummary(proposals: ProposalRow[]) {
       : 0;
 
   for (const proposal of proposals) {
-    const lifecycle = getProposalLifecycle(proposal);
+    const lifecycle = getProposalLifecycleFromTripMap(proposal, tripStatusMap);
     const status = normalizeStatus(proposal.status, "draft");
     const key: DashboardPipelineStage["key"] =
       lifecycle === "won"
@@ -669,6 +696,7 @@ function buildActionQueue(params: {
   invoices: InvoiceRow[];
   followUps: FollowUpRow[];
   now: Date;
+  tripStatusMap: Map<string, string | null>;
 }): {
   summary: DashboardOverview["actionQueue"]["summary"];
   items: DashboardQueueItem[];
@@ -682,7 +710,7 @@ function buildActionQueue(params: {
     isDueSoonInvoice(invoice, params.now, 7),
   );
   const expiringQuotes = params.proposals.filter((proposal) => {
-    if (!isOpenProposal(proposal)) return false;
+    if (!isOpenProposalFromTripMap(proposal, params.tripStatusMap)) return false;
     const expiresAt = safeDate(proposal.expires_at);
     if (!expiresAt) return false;
     return expiresAt.getTime() <= addUtcDays(startOfUtcDay(params.now), 7).getTime();
@@ -870,6 +898,7 @@ function buildCalendarPreview(params: {
   followUps: FollowUpRow[];
   now: Date;
   health: DashboardHealth;
+  tripStatusMap: Map<string, string | null>;
 }): DashboardCalendarPreview {
   const start = startOfUtcDay(params.now);
   const days = Array.from({ length: 7 }, (_, index) => {
@@ -919,7 +948,11 @@ function buildCalendarPreview(params: {
   }
 
   for (const proposal of params.proposals) {
-    if (!isOpenProposal(proposal) || !proposal.expires_at) continue;
+    if (
+      !isOpenProposalFromTripMap(proposal, params.tripStatusMap) ||
+      !proposal.expires_at
+    )
+      continue;
     const expiresAt = safeDate(proposal.expires_at);
     if (!expiresAt) continue;
     const day = dayMap.get(formatCalendarDay(expiresAt));
@@ -1097,7 +1130,7 @@ export async function buildDashboardOverview(params: {
     params.adminClient
       .from("proposals")
       .select(
-        "id,title,status,created_at,updated_at,viewed_at,expires_at,total_price,client_selected_price,client_id,trip_id,trips:trip_id(status)",
+        "id,title,status,created_at,updated_at,viewed_at,expires_at,total_price,client_selected_price,client_id,trip_id",
       )
       .eq("organization_id", params.organizationId)
       .is("deleted_at", null)
@@ -1202,6 +1235,7 @@ export async function buildDashboardOverview(params: {
   });
 
   const clientMap = buildClientMap(profilesResult.rows);
+  const tripStatusMap = buildTripStatusMap(tripsResult.rows);
   const decoratedTrips = decorateTrips(
     tripsResult.rows,
     itinerariesResult.rows,
@@ -1216,15 +1250,17 @@ export async function buildDashboardOverview(params: {
     paymentLinksResult.rows,
     invoicePaymentsResult.rows,
     clientMap,
+    tripStatusMap,
   );
 
-  const pipeline = buildPipelineSummary(proposalsResult.rows);
+  const pipeline = buildPipelineSummary(proposalsResult.rows, tripStatusMap);
   const actionQueue = buildActionQueue({
     proposals: proposalsResult.rows,
     trips: decoratedTrips,
     invoices: invoicesResult.rows,
     followUps: followUpsResult.rows,
     now,
+    tripStatusMap,
   });
 
   const totalBookedValue = series.reduce(
@@ -1241,10 +1277,10 @@ export async function buildDashboardOverview(params: {
   );
 
   const openPipelineValue = proposalsResult.rows
-    .filter((proposal) => isOpenProposal(proposal))
+    .filter((proposal) => isOpenProposalFromTripMap(proposal, tripStatusMap))
     .reduce((sum, proposal) => sum + getProposalValue(proposal), 0);
   const openProposalCount = proposalsResult.rows.filter((proposal) =>
-    isOpenProposal(proposal),
+    isOpenProposalFromTripMap(proposal, tripStatusMap),
   ).length;
 
   const overdueInvoices = invoicesResult.rows.filter((invoice) =>
@@ -1270,10 +1306,10 @@ export async function buildDashboardOverview(params: {
     return isInRange(eventIso, params.range);
   });
   const proposalWins = proposalsInWindow.filter((proposal) =>
-    getProposalLifecycle(proposal) === "won",
+    getProposalLifecycleFromTripMap(proposal, tripStatusMap) === "won",
   ).length;
   const proposalLosses = proposalsInWindow.filter((proposal) =>
-    getProposalLifecycle(proposal) === "lost",
+    getProposalLifecycleFromTripMap(proposal, tripStatusMap) === "lost",
   ).length;
 
   const tripsInWindow = decoratedTrips.filter((trip) => {
@@ -1443,6 +1479,7 @@ export async function buildDashboardOverview(params: {
       followUps: followUpsResult.rows,
       now,
       health,
+      tripStatusMap,
     }),
     lastComputedAt: new Date().toISOString(),
   };
