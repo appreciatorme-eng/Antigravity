@@ -10,6 +10,7 @@
 
 'use client';
 
+import { AlertTriangle } from 'lucide-react';
 import { SetupChecklist } from '@/components/dashboard/SetupChecklist';
 import { AIInsightsCarousel } from './_components/v2/AIInsightsCarousel';
 import { CalendarPreview } from './_components/v2/CalendarPreview';
@@ -39,6 +40,19 @@ export default function AdminDashboard() {
       <div data-tour="morning-briefing">
         <MorningBriefing data={data} />
       </div>
+
+      {data.overview?.health.overall !== 'ok' && (
+        <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-100">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div>
+            <p className="font-semibold">Dashboard is showing partial business data.</p>
+            <p className="mt-1 text-xs font-medium">
+              {data.overview?.health.messages[0] ||
+                'One or more data sources did not load, so some cards may be partial.'}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Zone 1: KPI Ticker Strip */}
       <div data-tour="kpi-strip">

@@ -65,9 +65,7 @@ interface CustomerPulseProps {
 
 export function CustomerPulse({ data }: CustomerPulseProps) {
   const isLoading = data.phase === 'loading';
-  const brief = data.insights?.dailyBrief;
-  const winLoss = data.insights?.winLoss;
-  const cc = data.critical?.commandCenter;
+  const pulse = data.overview?.customerPulse;
 
   if (isLoading) {
     return (
@@ -82,10 +80,10 @@ export function CustomerPulse({ data }: CustomerPulseProps) {
     );
   }
 
-  const proposalCount = brief?.metrics_snapshot.proposal_count_30d ?? 0;
-  const conversionRate = brief?.metrics_snapshot.conversion_rate_30d;
-  const totalWins = winLoss?.totals.wins ?? 0;
-  const followUpsDue = cc?.summary.follow_ups_due ?? 0;
+  const proposalCount = pulse?.proposalCount;
+  const winRate = pulse?.winRate;
+  const totalWins = pulse?.wins;
+  const followUpsDue = pulse?.followUpsDue;
 
   return (
     <GlassCard padding="xl" className="h-full">
@@ -101,11 +99,11 @@ export function CustomerPulse({ data }: CustomerPulseProps) {
           icon={Star}
           iconColor="text-amber-500"
           iconBg="bg-amber-100/50"
-          label="Conversion Rate"
+          label="Win Rate"
           value={
-            conversionRate !== undefined && conversionRate !== null
-              ? `${conversionRate.toFixed(1)}%`
-              : '---'
+            winRate !== undefined && winRate !== null
+              ? `${winRate.toFixed(1)}%`
+              : '—'
           }
           href="/admin/insights"
         />
@@ -113,16 +111,16 @@ export function CustomerPulse({ data }: CustomerPulseProps) {
           icon={Users}
           iconColor="text-blue-500"
           iconBg="bg-blue-100/50"
-          label="Proposals (30d)"
-          value={String(proposalCount)}
+          label="Proposals In Window"
+          value={proposalCount !== null && proposalCount !== undefined ? String(proposalCount) : '—'}
           href="/proposals"
         />
         <MetricRow
           icon={Star}
           iconColor="text-emerald-500"
           iconBg="bg-emerald-100/50"
-          label="Wins (120d)"
-          value={String(totalWins)}
+          label="Wins In Window"
+          value={totalWins !== null && totalWins !== undefined ? String(totalWins) : '—'}
           href="/admin/insights"
         />
         <MetricRow
@@ -130,7 +128,7 @@ export function CustomerPulse({ data }: CustomerPulseProps) {
           iconColor="text-violet-500"
           iconBg="bg-violet-100/50"
           label="Follow-ups Due"
-          value={String(followUpsDue)}
+          value={followUpsDue !== null && followUpsDue !== undefined ? String(followUpsDue) : '—'}
           href="/admin/notifications"
         />
       </div>

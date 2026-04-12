@@ -11,63 +11,6 @@ function getGreeting(): string {
   return 'Good evening';
 }
 
-function formatCompactCurrency(value: number): string {
-  if (value >= 100_000) return `₹${(value / 100_000).toFixed(1)}L`;
-  if (value >= 1_000) return `₹${(value / 1_000).toFixed(0)}K`;
-  return `₹${value.toLocaleString('en-IN')}`;
-}
-
-function buildBriefingSentence(data: DashboardV2State): string {
-  const parts: string[] = [];
-  const cc = data.critical?.commandCenter;
-  const stats = data.critical?.stats;
-
-  if (cc) {
-    const depCount = cc.departures.length;
-    if (depCount > 0) {
-      parts.push(
-        `${depCount} departure${depCount > 1 ? 's' : ''} today`,
-      );
-    }
-
-    const overdueInvoices = cc.pending_payments.filter((p) => p.is_overdue);
-    if (overdueInvoices.length > 0) {
-      const total = overdueInvoices.reduce((s, p) => s + p.balance_amount, 0);
-      parts.push(
-        `${overdueInvoices.length} overdue invoice${overdueInvoices.length > 1 ? 's' : ''} (${formatCompactCurrency(total)})`,
-      );
-    }
-
-    const urgentQuotes = cc.expiring_quotes.filter(
-      (q) => typeof q.hours_to_expiry === 'number' && q.hours_to_expiry <= 72,
-    );
-    if (urgentQuotes.length > 0) {
-      parts.push(
-        `${urgentQuotes.length} quote${urgentQuotes.length > 1 ? 's' : ''} expiring soon`,
-      );
-    }
-
-    const overdueFu = cc.follow_ups.filter((f) => f.overdue);
-    if (overdueFu.length > 0) {
-      parts.push(
-        `${overdueFu.length} overdue follow-up${overdueFu.length > 1 ? 's' : ''}`,
-      );
-    }
-  }
-
-  if (stats && stats.pendingProposals > 0) {
-    parts.push(
-      `${stats.pendingProposals} pending proposal${stats.pendingProposals > 1 ? 's' : ''}`,
-    );
-  }
-
-  if (parts.length === 0) {
-    return 'All clear — no urgent items right now. Great job staying on top of things.';
-  }
-
-  return `You have ${parts.join(', ')}.`;
-}
-
 interface MorningBriefingProps {
   data: DashboardV2State;
 }
@@ -99,7 +42,8 @@ export function MorningBriefing({ data }: MorningBriefingProps) {
         <div className="flex items-center gap-2 text-text-muted">
           <Sparkles className="h-4 w-4 text-primary" />
           <p className="max-w-2xl text-sm font-medium">
-            {buildBriefingSentence(data)}
+            {data.overview?.briefing.sentence ||
+              'All clear — no urgent operator actions right now.'}
           </p>
         </div>
       </div>

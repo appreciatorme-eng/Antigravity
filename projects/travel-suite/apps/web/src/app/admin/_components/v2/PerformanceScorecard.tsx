@@ -14,16 +14,6 @@ import { GlassSkeleton } from '@/components/glass/GlassSkeleton';
 import { cn } from '@/lib/utils';
 import type { DashboardV2State } from './types';
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function formatCompactINR(value: number): string {
-  if (value >= 100_000) return `₹${(value / 100_000).toFixed(1)}L`;
-  if (value >= 1_000) return `₹${(value / 1_000).toFixed(0)}K`;
-  return `₹${value.toLocaleString('en-IN')}`;
-}
-
 interface ScorecardMetric {
   label: string;
   current: string;
@@ -32,56 +22,12 @@ interface ScorecardMetric {
 }
 
 function buildMetrics(data: DashboardV2State): ScorecardMetric[] {
-  const stats = data.critical?.stats;
-  const winLoss = data.insights?.winLoss;
-  const brief = data.insights?.dailyBrief;
-
-  return [
-    {
-      label: 'Revenue',
-      current: formatCompactINR(stats?.recoveredRevenue ?? 0),
-      delta: null, // We don't have prev month in current APIs
-      unit: '',
-    },
-    {
-      label: 'Active Proposals',
-      current: String(stats?.pendingProposals ?? 0),
-      delta: null,
-      unit: '',
-    },
-    {
-      label: 'Win Rate',
-      current:
-        winLoss?.totals.win_rate !== undefined
-          ? `${winLoss.totals.win_rate.toFixed(1)}%`
-          : '---',
-      delta: null,
-      unit: '',
-    },
-    {
-      label: 'Conversion (30d)',
-      current:
-        brief?.metrics_snapshot.conversion_rate_30d !== undefined
-          ? `${brief.metrics_snapshot.conversion_rate_30d.toFixed(1)}%`
-          : '---',
-      delta: null,
-      unit: '',
-    },
-    {
-      label: 'Paid Revenue (30d)',
-      current: formatCompactINR(
-        brief?.metrics_snapshot.paid_revenue_30d_usd ?? 0,
-      ),
-      delta: null,
-      unit: '',
-    },
-    {
-      label: 'Overdue Invoices',
-      current: String(stats?.overduePayments ?? 0),
-      delta: null,
-      unit: '',
-    },
-  ];
+  return (data.overview?.scorecard ?? []).map((metric) => ({
+    label: metric.label,
+    current: metric.current,
+    delta: metric.delta,
+    unit: '',
+  }));
 }
 
 // ---------------------------------------------------------------------------
@@ -117,7 +63,7 @@ interface PerformanceScorecardProps {
 }
 
 export function PerformanceScorecard({ data }: PerformanceScorecardProps) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const isLoading = data.phase === 'loading';
 
   if (isLoading) {

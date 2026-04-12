@@ -15,14 +15,15 @@ import {
 import { GlassCard } from '@/components/glass/GlassCard';
 import { GlassBadge } from '@/components/glass/GlassBadge';
 import { GlassSkeleton } from '@/components/glass/GlassSkeleton';
+import type { DashboardQueueItem } from '@/lib/admin/dashboard-overview-types';
 import { cn } from '@/lib/utils';
-import type { AttentionItem, DashboardV2State } from './types';
+import type { DashboardV2State } from './types';
 
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
 
-type ItemType = AttentionItem['type'];
+type ItemType = DashboardQueueItem['type'];
 
 const TYPE_CONFIG: Record<
   ItemType,
@@ -68,7 +69,7 @@ function ActionGroup({
   items,
 }: {
   type: ItemType;
-  items: AttentionItem[];
+  items: DashboardQueueItem[];
 }) {
   const [expanded, setExpanded] = useState(true);
   const config = TYPE_CONFIG[type];
@@ -157,7 +158,7 @@ interface SmartActionQueueProps {
 
 export function SmartActionQueue({ data }: SmartActionQueueProps) {
   const isLoading = data.phase === 'loading';
-  const items = data.critical?.attentionItems ?? [];
+  const items = data.overview?.actionQueue.items ?? [];
 
   if (isLoading) {
     return (
@@ -194,7 +195,7 @@ export function SmartActionQueue({ data }: SmartActionQueueProps) {
   }
 
   // Group items by type
-  const grouped = new Map<ItemType, AttentionItem[]>();
+  const grouped = new Map<ItemType, DashboardQueueItem[]>();
   for (const item of items) {
     const existing = grouped.get(item.type) ?? [];
     grouped.set(item.type, [...existing, item]);
@@ -204,7 +205,7 @@ export function SmartActionQueue({ data }: SmartActionQueueProps) {
     ([a], [b]) => TYPE_CONFIG[a].order - TYPE_CONFIG[b].order,
   );
 
-  const totalCount = data.critical?.attentionTotalCount ?? items.length;
+  const totalCount = data.overview?.actionQueue.total ?? items.length;
 
   return (
     <GlassCard padding="xl">

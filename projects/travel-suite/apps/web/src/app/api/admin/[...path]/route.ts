@@ -18,6 +18,7 @@ const routes = createCatchAllHandlers([
   ["clear-cache", () => import("@/app/api/_handlers/admin/clear-cache/route")],
   ["clients", () => import("@/app/api/_handlers/admin/clients/route")],
   ["contacts/:id/promote", () => import("@/app/api/_handlers/admin/contacts/[id]/promote/route")],
+  ["dashboard/overview", () => import("@/app/api/_handlers/admin/dashboard/overview/route")],
   ["dashboard/stats", () => import("@/app/api/_handlers/admin/dashboard/stats/route")],
   ["contacts", () => import("@/app/api/_handlers/admin/contacts/route")],
   ["cost/alerts/ack", () => import("@/app/api/_handlers/admin/cost/alerts/ack/route")],

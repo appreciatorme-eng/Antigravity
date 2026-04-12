@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { GlassSkeleton } from '@/components/glass/GlassSkeleton';
+import { formatCompactINR } from '@/lib/admin/operator-state';
 import { cn } from '@/lib/utils';
 import type { DashboardV2State } from './types';
 
@@ -27,67 +28,61 @@ interface KPICard {
   href: string;
 }
 
-function formatCompactINR(value: number): string {
-  if (value >= 100_000) return `₹${(value / 100_000).toFixed(1)}L`;
-  if (value >= 1_000) return `₹${(value / 1_000).toFixed(0)}K`;
-  return `₹${value.toLocaleString('en-IN')}`;
-}
-
 function buildCards(data: DashboardV2State): KPICard[] {
-  const stats = data.critical?.stats;
-  const cc = data.critical?.commandCenter;
-  const winLoss = data.insights?.winLoss;
-  const brief = data.insights?.dailyBrief;
-  const risk = data.insights?.proposalRisk;
+  const kpis = data.overview?.kpis;
+  const pipelineHref =
+    '/analytics/drill-through?type=pipeline&status_group=open&limit=50';
 
-  const revenue = stats?.recoveredRevenue ?? 0;
-  const pipelineValue =
-    risk?.proposals
-      .filter((p) =>
-        ['draft', 'sent', 'viewed'].includes(p.status.toLowerCase()),
-      )
-      .reduce((sum, p) => sum + p.value, 0) ?? 0;
-
-  const overdueTotal =
-    cc?.pending_payments
-      .filter((p) => p.is_overdue)
-      .reduce((s, p) => s + p.balance_amount, 0) ?? 0;
-
-  const departureCount = cc?.departures.length ?? stats?.activeTrips ?? 0;
-  const winRate = winLoss?.totals.win_rate;
-  const conversionRate = brief?.metrics_snapshot.conversion_rate_30d;
-  const pipelineHref = '/analytics/drill-through?type=pipeline&status_group=open&limit=50';
+  const displayCurrency = (value: number | null | undefined) =>
+    value === null || value === undefined ? '—' : formatCompactINR(value);
+  const displayCount = (value: number | null | undefined) =>
+    value === null || value === undefined ? '—' : String(value);
+  const displayRate = (value: number | null | undefined) =>
+    value === null || value === undefined ? '—' : `${value.toFixed(1)}%`;
 
   return [
     {
-      label: 'Monthly Revenue',
-      value: formatCompactINR(revenue),
-      delta: stats?.paidLinks ? `${stats.paidLinks} paid` : undefined,
-      deltaUp: true,
+      label: 'Booked Value',
+      value: displayCurrency(kpis?.bookedValue),
+      delta: kpis?.wins ? `${kpis.wins} won` : undefined,
+      deltaUp: (kpis?.wins ?? 0) > 0,
       icon: TrendingUp,
       color: 'text-emerald-600',
       iconBg: 'bg-emerald-100/50',
       href: '/admin/revenue',
     },
     {
-      label: 'Pipeline Value',
-      value: pipelineValue > 0 ? formatCompactINR(pipelineValue) : '---',
-      delta:
-        risk?.summary.high_risk
-          ? `${risk.summary.high_risk} at risk`
-          : undefined,
-      deltaUp: false,
+      label: 'Collected Cash',
+      value: displayCurrency(kpis?.cashCollected),
+      delta: data.overview?.revenue.totals.tripCount
+        ? `${data.overview.revenue.totals.tripCount} trips`
+        : undefined,
+      deltaUp: (kpis?.cashCollected ?? 0) > 0,
       icon: Briefcase,
       color: 'text-blue-600',
       iconBg: 'bg-blue-100/50',
+      href: '/admin/revenue',
+    },
+    {
+      label: 'Open Pipeline',
+      value: displayCurrency(kpis?.openPipelineValue),
+      delta: kpis?.openProposalCount
+        ? `${kpis.openProposalCount} open`
+        : undefined,
+      icon: Briefcase,
+      color: 'text-sky-600',
+      iconBg: 'bg-sky-100/50',
       href: pipelineHref,
     },
     {
       label: 'Overdue',
-      value: overdueTotal > 0 ? formatCompactINR(overdueTotal) : '₹0',
+      value:
+        kpis?.overdueAmount === null || kpis?.overdueAmount === undefined
+          ? '—'
+          : formatCompactINR(kpis.overdueAmount),
       delta:
-        stats?.overduePayments
-          ? `${stats.overduePayments} invoice${stats.overduePayments > 1 ? 's' : ''}`
+        kpis?.overdueInvoices
+          ? `${kpis.overdueInvoices} invoice${kpis.overdueInvoices > 1 ? 's' : ''}`
           : undefined,
       deltaUp: false,
       icon: AlertCircle,
@@ -97,7 +92,7 @@ function buildCards(data: DashboardV2State): KPICard[] {
     },
     {
       label: 'Departures',
-      value: String(departureCount),
+      value: displayCount(kpis?.departureCount),
       icon: MapPin,
       color: 'text-violet-600',
       iconBg: 'bg-violet-100/50',
@@ -105,35 +100,29 @@ function buildCards(data: DashboardV2State): KPICard[] {
     },
     {
       label: 'Win Rate',
-      value:
-        winRate !== undefined && winRate !== null
-          ? `${winRate.toFixed(0)}%`
-          : '---',
-      delta:
-        winLoss?.totals.proposals
-          ? `${winLoss.totals.proposals} proposals`
+      value: displayRate(kpis?.winRate),
+      delta: data.overview?.customerPulse.proposalCount
+        ? `${data.overview.customerPulse.proposalCount} proposals`
+        : undefined,
+      deltaUp:
+        kpis?.winRate !== undefined && kpis?.winRate !== null
+          ? kpis.winRate >= 40
           : undefined,
-      deltaUp: winRate !== undefined ? winRate >= 40 : undefined,
       icon: Target,
       color: 'text-amber-600',
       iconBg: 'bg-amber-100/50',
       href: '/admin/insights',
     },
     {
-      label: 'Conversion',
-      value:
-        conversionRate !== undefined && conversionRate !== null
-          ? `${conversionRate.toFixed(0)}%`
-          : '---',
-      delta: brief?.metrics_snapshot.proposal_count_30d
-        ? `${brief.metrics_snapshot.proposal_count_30d} sent`
+      label: 'Follow-ups',
+      value: displayCount(kpis?.followUpsDue),
+      delta: kpis?.followUpsDue
+        ? 'Needs review'
         : undefined,
-      deltaUp:
-        conversionRate !== undefined ? conversionRate >= 30 : undefined,
-      icon: TrendingUp,
+      icon: Target,
       color: 'text-primary',
       iconBg: 'bg-primary/10',
-      href: '/admin/insights',
+      href: '/admin/notifications',
     },
   ];
 }

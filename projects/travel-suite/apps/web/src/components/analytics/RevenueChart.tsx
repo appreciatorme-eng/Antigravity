@@ -12,7 +12,12 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-export type RevenueMetricMode = "revenue" | "bookings";
+export type RevenueMetricMode =
+  | "revenue"
+  | "bookings"
+  | "booked"
+  | "cash"
+  | "trips";
 
 export interface RevenueChartTripPoint {
   id: string;
@@ -25,12 +30,29 @@ export interface RevenueChartTripPoint {
   createdAt: string | null;
 }
 
+export interface RevenueChartItemPoint {
+  id: string;
+  kind: "trip" | "proposal" | "invoice";
+  title: string;
+  subtitle: string;
+  href: string;
+  status: string;
+  amountLabel: string;
+  dateLabel: string;
+}
+
 export interface RevenueChartPoint {
   monthKey: string;
   label: string;
   revenue: number;
   bookings: number;
   conversionRate?: number;
+  bookedValue?: number;
+  cashCollected?: number;
+  tripCount?: number;
+  bookedItems?: RevenueChartItemPoint[];
+  cashItems?: RevenueChartItemPoint[];
+  tripItems?: RevenueChartItemPoint[];
   trips?: RevenueChartTripPoint[];
 }
 
@@ -56,7 +78,7 @@ interface RevenueDotProps {
 }
 
 function formatAxisValue(value: number, mode: RevenueMetricMode): string {
-  if (mode === "bookings") {
+  if (mode === "bookings" || mode === "trips") {
     return `${value}`;
   }
   if (value >= 100000) return `₹${Math.round(value / 1000)}k`;
@@ -64,8 +86,32 @@ function formatAxisValue(value: number, mode: RevenueMetricMode): string {
 }
 
 function formatTooltipValue(value: number, mode: RevenueMetricMode): string {
-  if (mode === "bookings") return `${Math.round(value)} bookings`;
+  if (mode === "bookings" || mode === "trips") {
+    return `${Math.round(value)} trips`;
+  }
   return `₹${value.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+}
+
+function resolveMetricValue(point: RevenueChartPoint, mode: RevenueMetricMode) {
+  if (mode === "booked") return Number(point.bookedValue ?? point.revenue ?? 0);
+  if (mode === "cash") return Number(point.cashCollected ?? point.revenue ?? 0);
+  if (mode === "trips") return Number(point.tripCount ?? point.bookings ?? 0);
+  if (mode === "bookings") return Number(point.bookings ?? 0);
+  return Number(point.revenue ?? 0);
+}
+
+function metricLabel(mode: RevenueMetricMode) {
+  if (mode === "booked") return "Booked Value";
+  if (mode === "cash") return "Collected Cash";
+  if (mode === "trips" || mode === "bookings") return "Trips";
+  return "Revenue";
+}
+
+function metricColor(mode: RevenueMetricMode) {
+  if (mode === "booked") return "#16a34a";
+  if (mode === "cash") return "var(--color-primary)";
+  if (mode === "trips" || mode === "bookings") return "#3b82f6";
+  return "var(--color-primary)";
 }
 
 function RevenueDot({ cx, cy, fill, payload, onSelect }: RevenueDotProps) {
@@ -95,10 +141,9 @@ export default function RevenueChart({ data, metric, loading = false, onPointSel
     () =>
       data.map((point) => ({
         ...point,
-        revenueLabel: formatTooltipValue(point.revenue, "revenue"),
-        bookingsLabel: `${point.bookings} bookings`,
+        chartValue: resolveMetricValue(point, metric),
       })),
-    [data],
+    [data, metric],
   );
 
   const handleChartClick = useCallback(
@@ -142,13 +187,9 @@ export default function RevenueChart({ data, metric, loading = false, onPointSel
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }} onClick={handleChartClick}>
           <defs>
-            <linearGradient id="dashboardRevenueGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={metric === "revenue" ? 0.32 : 0.12} />
-              <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0} />
-            </linearGradient>
-            <linearGradient id="dashboardBookingGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#3b82f6" stopOpacity={metric === "bookings" ? 0.24 : 0.1} />
-              <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+            <linearGradient id="dashboardMetricGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={metricColor(metric)} stopOpacity={0.28} />
+              <stop offset="95%" stopColor={metricColor(metric)} stopOpacity={0} />
             </linearGradient>
           </defs>
 
@@ -179,37 +220,22 @@ export default function RevenueChart({ data, metric, loading = false, onPointSel
               borderRadius: "12px",
               boxShadow: "0 10px 24px rgba(15, 23, 42, 0.08)",
             }}
-            formatter={(value, name) => {
+            formatter={(value) => {
               const numeric = Number(value || 0);
-              if (name === "revenue") {
-                return [formatTooltipValue(numeric, "revenue"), "Revenue"];
-              }
-              return [formatTooltipValue(numeric, "bookings"), "Bookings"];
+              return [formatTooltipValue(numeric, metric), metricLabel(metric)];
             }}
           />
 
           <Area
             type="monotone"
-            dataKey="revenue"
-            stroke="var(--color-primary)"
-            strokeWidth={metric === "revenue" ? 3 : 2}
-            strokeOpacity={metric === "revenue" ? 1 : 0.55}
+            dataKey="chartValue"
+            stroke={metricColor(metric)}
+            strokeWidth={3}
+            strokeOpacity={1}
             fillOpacity={1}
-            fill="url(#dashboardRevenueGradient)"
-            dot={renderDot("var(--color-primary)")}
-            activeDot={renderDot("var(--color-primary)")}
-          />
-
-          <Area
-            type="monotone"
-            dataKey="bookings"
-            stroke="#3b82f6"
-            strokeWidth={metric === "bookings" ? 3 : 2}
-            strokeOpacity={metric === "bookings" ? 1 : 0.55}
-            fillOpacity={1}
-            fill="url(#dashboardBookingGradient)"
-            dot={renderDot("#3b82f6")}
-            activeDot={renderDot("#3b82f6")}
+            fill="url(#dashboardMetricGradient)"
+            dot={renderDot(metricColor(metric))}
+            activeDot={renderDot(metricColor(metric))}
           />
         </AreaChart>
       </ResponsiveContainer>
