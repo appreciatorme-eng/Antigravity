@@ -65,7 +65,11 @@ export interface TripPricing {
   notes?: string;
 }
 
-export type TripFinancialPaymentStatus = "unpaid" | "partially_paid" | "paid";
+export type TripFinancialPaymentStatus =
+  | "unpaid"
+  | "approved"
+  | "partially_paid"
+  | "paid";
 export type TripFinancialPaymentSource = "manual_cash" | "linked_invoice";
 
 export interface TripFinancialSummaryConfig {

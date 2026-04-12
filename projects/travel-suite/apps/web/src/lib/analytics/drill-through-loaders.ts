@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { TimeWindow } from "./adapters";
+import { resolveWonCommercialStage } from "@/lib/admin/dashboard-business-state";
 import { filterCanonicalPipelineProposals } from "@/lib/proposals/pipeline-integrity";
 import { isLostProposal, isWonProposal, isWonTripStatus } from "@/lib/admin/proposal-outcomes";
 
@@ -32,12 +33,23 @@ export interface DrillResult {
 interface ItineraryLite {
   destination: string | null;
   trip_title: string | null;
+  raw_data?: {
+    pricing?: {
+      total_cost?: number | null;
+      per_person_cost?: number | null;
+      pax_count?: number | null;
+    } | null;
+    financial_summary?: {
+      payment_status?: string | null;
+    } | null;
+  } | null;
 }
 
 interface InvoiceDrillRow {
   id: string;
   created_at: string | null;
   total_amount: number;
+  balance_amount?: number | null;
   status: string;
   invoice_number: string;
   trip_id?: string | null;
@@ -73,6 +85,14 @@ interface ProposalDrillRow {
     | null;
 }
 
+interface PaymentLinkDrillRow {
+  id: string;
+  status: string | null;
+  amount_paise: number | null;
+  paid_at: string | null;
+  proposal_id: string | null;
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -96,6 +116,19 @@ function formatINR(amount: number): string {
 
 function getProposalValue(proposal: ProposalDrillRow): number {
   return Number(proposal.client_selected_price ?? proposal.total_price ?? 0);
+}
+
+function getTripQuotedTotal(trip: TripDrillRow): number {
+  const itinerary = getItinerary(trip.itineraries);
+  const pricing = itinerary?.raw_data?.pricing;
+  const totalCost = Number(pricing?.total_cost || 0);
+  if (totalCost > 0) return totalCost;
+  const perPersonCost = Number(pricing?.per_person_cost || 0);
+  const paxCount = Number(pricing?.pax_count || 0);
+  if (perPersonCost > 0 && paxCount > 0) {
+    return perPersonCost * paxCount;
+  }
+  return 0;
 }
 
 function isMissingDeletedAtError(message: string | null | undefined): boolean {
@@ -405,7 +438,9 @@ export async function loadPipelineDrill(
   limit = 50,
 ): Promise<DrillResult> {
   const isOpenPipeline = statusGroup === "open";
-  const isPaidPipeline = statusGroup === "paid";
+  const isApprovedPipeline = statusGroup === "approved";
+  const isPartiallyPaidPipeline = statusGroup === "partially_paid";
+  const isFullyPaidPipeline = statusGroup === "fully_paid";
   const isLostPipeline = statusGroup === "lost";
   const isAllPipeline = statusGroup === "all";
   const openStatuses = ["draft", "sent", "viewed"];
@@ -430,7 +465,13 @@ export async function loadPipelineDrill(
       return status ? query.eq("status", status) : query.in("status", openStatuses);
     }
 
-    if (isPaidPipeline || isLostPipeline || isAllPipeline) {
+    if (
+      isApprovedPipeline ||
+      isPartiallyPaidPipeline ||
+      isFullyPaidPipeline ||
+      isLostPipeline ||
+      isAllPipeline
+    ) {
       if (status) {
         return query.eq("status", status);
       }
@@ -464,10 +505,15 @@ export async function loadPipelineDrill(
   const lostProposalRows = canonicalProposals.filter((proposal) => isLostProposal(proposal));
 
   let tripRows: TripDrillRow[] = [];
-  if (isPaidPipeline || isAllPipeline) {
+  if (
+    isApprovedPipeline ||
+    isPartiallyPaidPipeline ||
+    isFullyPaidPipeline ||
+    isAllPipeline
+  ) {
     const { data: trips, error: tripsError } = await supabase
       .from("trips")
-      .select("id, status, start_date, end_date, created_at, itineraries(destination, trip_title)")
+      .select("id, status, start_date, end_date, created_at, itineraries(destination, trip_title, raw_data)")
       .eq("organization_id", orgId)
       .order("created_at", { ascending: false })
       .limit(Math.max(1, Math.min(limit, 100)));
@@ -477,6 +523,112 @@ export async function loadPipelineDrill(
       isWonTripStatus(trip.status),
     );
   }
+
+  let invoiceRows: InvoiceDrillRow[] = [];
+  if (
+    isApprovedPipeline ||
+    isPartiallyPaidPipeline ||
+    isFullyPaidPipeline ||
+    isAllPipeline
+  ) {
+    const { data: invoices, error: invoicesError } = await supabase
+      .from("invoices")
+      .select("id, invoice_number, total_amount, balance_amount, status, trip_id, created_at")
+      .eq("organization_id", orgId)
+      .order("created_at", { ascending: false })
+      .limit(Math.max(1, Math.min(limit * 4, 500)));
+
+    if (invoicesError) throw invoicesError;
+    invoiceRows = ((invoices || []) as Array<InvoiceDrillRow & { balance_amount?: number | null }>)
+      .map((invoice) => ({
+        ...invoice,
+        total_amount: Number(invoice.total_amount || 0),
+        balance_amount: Number(invoice.balance_amount || 0),
+      })) as unknown as InvoiceDrillRow[];
+  }
+
+  let paymentLinkRows: PaymentLinkDrillRow[] = [];
+  if (
+    isApprovedPipeline ||
+    isPartiallyPaidPipeline ||
+    isFullyPaidPipeline ||
+    isAllPipeline
+  ) {
+    const { data: paymentLinks, error: paymentLinksError } = await supabase
+      .from("payment_links")
+      .select("id, status, amount_paise, paid_at, proposal_id")
+      .eq("organization_id", orgId)
+      .order("paid_at", { ascending: false })
+      .limit(Math.max(1, Math.min(limit * 4, 500)));
+
+    if (paymentLinksError) throw paymentLinksError;
+    paymentLinkRows = (paymentLinks || []) as PaymentLinkDrillRow[];
+  }
+
+  const proposalById = new Map(canonicalProposals.map((proposal) => [proposal.id, proposal]));
+  const tripById = new Map(tripRows.map((trip) => [trip.id, trip]));
+  const invoiceSummaryByTrip = new Map<
+    string,
+    { totalAmount: number; paidAmount: number; balanceAmount: number }
+  >();
+  for (const invoice of invoiceRows as Array<InvoiceDrillRow & { balance_amount?: number | null }>) {
+    if (!invoice.trip_id) continue;
+    const normalizedStatus = (invoice.status || "").toLowerCase();
+    if (normalizedStatus === "draft" || normalizedStatus === "cancelled") {
+      continue;
+    }
+    const current = invoiceSummaryByTrip.get(invoice.trip_id) || {
+      totalAmount: 0,
+      paidAmount: 0,
+      balanceAmount: 0,
+    };
+    current.totalAmount += Number(invoice.total_amount || 0);
+    current.balanceAmount += Number(invoice.balance_amount || 0);
+    current.paidAmount +=
+      Number(invoice.total_amount || 0) - Number(invoice.balance_amount || 0);
+    invoiceSummaryByTrip.set(invoice.trip_id, current);
+  }
+
+  const paidLinkAmountByTrip = new Map<string, number>();
+  for (const link of paymentLinkRows) {
+    if ((link.status || "").toLowerCase() !== "paid" || !link.proposal_id) continue;
+    const proposal = proposalById.get(link.proposal_id);
+    if (!proposal?.trip_id) continue;
+    paidLinkAmountByTrip.set(
+      proposal.trip_id,
+      (paidLinkAmountByTrip.get(proposal.trip_id) || 0) +
+        Number(link.amount_paise || 0) / 100,
+    );
+  }
+
+  const getWonStageForProposal = (proposal: ProposalDrillRow) => {
+    const linkedTrip = proposal.trip_id ? tripById.get(proposal.trip_id) || null : null;
+    return resolveWonCommercialStage({
+      tripFinancialPaymentStatus:
+        getItinerary(linkedTrip?.itineraries || null)?.raw_data?.financial_summary?.payment_status ||
+        null,
+      invoiceSummary: proposal.trip_id
+        ? invoiceSummaryByTrip.get(proposal.trip_id) || null
+        : null,
+      paidLinkAmount: proposal.trip_id ? paidLinkAmountByTrip.get(proposal.trip_id) || 0 : 0,
+      targetAmount: Math.max(
+        getProposalValue(proposal),
+        linkedTrip ? getTripQuotedTotal(linkedTrip) : 0,
+      ),
+    });
+  };
+
+  const getWonStageForTrip = (trip: TripDrillRow) =>
+    resolveWonCommercialStage({
+      tripFinancialPaymentStatus:
+        getItinerary(trip.itineraries)?.raw_data?.financial_summary?.payment_status || null,
+      invoiceSummary: invoiceSummaryByTrip.get(trip.id) || null,
+      paidLinkAmount: paidLinkAmountByTrip.get(trip.id) || 0,
+      targetAmount: Math.max(
+        getTripQuotedTotal(trip),
+        invoiceSummaryByTrip.get(trip.id)?.totalAmount || 0,
+      ),
+    });
 
   const proposalOwnedTripIds = new Set(
     wonProposalRows
@@ -502,8 +654,8 @@ export async function loadPipelineDrill(
     const itinerary = getItinerary(trip.itineraries);
     return {
       id: trip.id,
-      title: itinerary?.trip_title || itinerary?.destination || "Paid trip",
-      subtitle: itinerary?.destination || "Trip marked paid",
+      title: itinerary?.trip_title || itinerary?.destination || "Won trip",
+      subtitle: itinerary?.destination || "Commercially won trip",
       amountLabel: (trip.status || "paid").replace(/_/g, " "),
       status: trip.status || "paid",
       dateLabel: formatDate(trip.created_at),
@@ -513,8 +665,12 @@ export async function loadPipelineDrill(
 
   const selectedProposalRows = isOpenPipeline
     ? openProposalRows
-    : isPaidPipeline
-      ? wonProposalRows
+    : isApprovedPipeline
+      ? wonProposalRows.filter((proposal) => getWonStageForProposal(proposal) === "approved")
+      : isPartiallyPaidPipeline
+        ? wonProposalRows.filter((proposal) => getWonStageForProposal(proposal) === "partially_paid")
+        : isFullyPaidPipeline
+          ? wonProposalRows.filter((proposal) => getWonStageForProposal(proposal) === "fully_paid")
       : isLostPipeline
         ? lostProposalRows
         : isAllPipeline
@@ -523,7 +679,19 @@ export async function loadPipelineDrill(
 
   const rows: DrillRow[] = [
     ...selectedProposalRows.map(proposalToDrillRow),
-    ...((isPaidPipeline || isAllPipeline) ? standaloneWonTripRows.map(tripToDrillRow) : []),
+    ...((isApprovedPipeline || isPartiallyPaidPipeline || isFullyPaidPipeline || isAllPipeline)
+      ? standaloneWonTripRows
+          .filter((trip) => {
+            if (isAllPipeline) return true;
+            const stage = getWonStageForTrip(trip);
+            return (
+              (isApprovedPipeline && stage === "approved") ||
+              (isPartiallyPaidPipeline && stage === "partially_paid") ||
+              (isFullyPaidPipeline && stage === "fully_paid")
+            );
+          })
+          .map(tripToDrillRow)
+      : []),
   ];
 
   const proposalValueTotal = selectedProposalRows.reduce(
@@ -535,8 +703,12 @@ export async function loadPipelineDrill(
     ? status
       ? status.replace(/_/g, " ")
       : "open pipeline"
-    : isPaidPipeline
-      ? "paid pipeline"
+    : isApprovedPipeline
+      ? "approved pipeline"
+      : isPartiallyPaidPipeline
+        ? "partially paid pipeline"
+        : isFullyPaidPipeline
+          ? "fully paid pipeline"
       : isLostPipeline
         ? "lost pipeline"
         : isAllPipeline
@@ -554,7 +726,12 @@ export async function loadPipelineDrill(
           ? `${rows.length} proposal${rows.length === 1 ? "" : "s"} contributing to pipeline value`
           : `${formatINR(proposalValueTotal)} proposal-owned value`,
       windowLabel:
-        isOpenPipeline || isPaidPipeline || isLostPipeline || isAllPipeline
+        isOpenPipeline ||
+        isApprovedPipeline ||
+        isPartiallyPaidPipeline ||
+        isFullyPaidPipeline ||
+        isLostPipeline ||
+        isAllPipeline
           ? `Latest ${rows.length}`
           : win.label,
     },

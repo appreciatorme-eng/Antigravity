@@ -64,7 +64,14 @@ export interface DashboardCustomerPulse {
 }
 
 export interface DashboardPipelineStage {
-  key: "draft" | "sent" | "viewed" | "paid" | "lost";
+  key:
+    | "draft"
+    | "sent"
+    | "viewed"
+    | "approved"
+    | "partially_paid"
+    | "fully_paid"
+    | "lost";
   label: string;
   count: number | null;
   value: number | null;

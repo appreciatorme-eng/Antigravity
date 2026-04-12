@@ -5,7 +5,10 @@ import Link from 'next/link';
 import { ChevronRight, Filter } from 'lucide-react';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { AdminPipelineFunnelBone } from '@/components/ui/skeletons/AdminDashboardBones';
-import type { DashboardPipelineSummary } from '@/lib/admin/dashboard-overview-types';
+import type {
+  DashboardPipelineStage,
+  DashboardPipelineSummary,
+} from '@/lib/admin/dashboard-overview-types';
 import { formatCompactINR } from '@/lib/admin/operator-state';
 import { useDemoFetch } from '@/lib/demo/use-demo-fetch';
 import { filterCanonicalPipelineProposals } from '@/lib/proposals/pipeline-integrity';
@@ -15,7 +18,7 @@ import type { DashboardV2State } from './types';
 
 // ---------------------------------------------------------------------------
 interface FunnelStage {
-  key: string;
+  key: DashboardPipelineStage['key'];
   label: string;
   count: number;
   value: number;
@@ -60,18 +63,40 @@ function getStageKey(proposal: ProposalListRow): FunnelStage['key'] {
   const tripStatus = normalizeStatus(proposal.trips?.status);
 
   if (['accepted', 'approved', 'confirmed', 'converted'].includes(proposalStatus)) {
-    return 'paid';
+    return 'approved';
   }
   if (['expired', 'cancelled', 'rejected'].includes(proposalStatus)) {
     return 'lost';
   }
   if (['confirmed', 'paid', 'completed', 'active', 'in_progress'].includes(tripStatus)) {
-    return 'paid';
+    return 'approved';
   }
   if (proposalStatus === 'sent' || proposalStatus === 'viewed' || proposalStatus === 'draft') {
     return proposalStatus as FunnelStage['key'];
   }
   return 'draft';
+}
+
+function getStageTone(stageKey: DashboardPipelineStage['key']) {
+  if (stageKey === 'draft') {
+    return { color: 'text-slate-500', barColor: 'bg-slate-400' };
+  }
+  if (stageKey === 'sent') {
+    return { color: 'text-blue-500', barColor: 'bg-blue-500' };
+  }
+  if (stageKey === 'viewed') {
+    return { color: 'text-amber-500', barColor: 'bg-amber-500' };
+  }
+  if (stageKey === 'approved') {
+    return { color: 'text-violet-500', barColor: 'bg-violet-500' };
+  }
+  if (stageKey === 'partially_paid') {
+    return { color: 'text-cyan-500', barColor: 'bg-cyan-500' };
+  }
+  if (stageKey === 'fully_paid') {
+    return { color: 'text-emerald-500', barColor: 'bg-emerald-500' };
+  }
+  return { color: 'text-rose-500', barColor: 'bg-rose-500' };
 }
 
 function buildStagesFromOverview(data: DashboardV2State): FunnelDataState {
@@ -80,26 +105,7 @@ function buildStagesFromOverview(data: DashboardV2State): FunnelDataState {
     label: stage.label,
     count: stage.count ?? 0,
     value: stage.value ?? 0,
-    color:
-      stage.key === 'draft'
-        ? 'text-slate-500'
-        : stage.key === 'sent'
-          ? 'text-blue-500'
-          : stage.key === 'viewed'
-            ? 'text-amber-500'
-            : stage.key === 'paid'
-              ? 'text-emerald-500'
-              : 'text-rose-500',
-    barColor:
-      stage.key === 'draft'
-        ? 'bg-slate-400'
-        : stage.key === 'sent'
-          ? 'bg-blue-500'
-          : stage.key === 'viewed'
-            ? 'bg-amber-500'
-            : stage.key === 'paid'
-              ? 'bg-emerald-500'
-              : 'bg-rose-500',
+    ...getStageTone(stage.key),
   }));
 
   return {
@@ -115,7 +121,9 @@ function buildStagesFromProposals(proposals: ProposalListRow[]): FunnelDataState
     draft: { count: 0, value: 0 },
     sent: { count: 0, value: 0 },
     viewed: { count: 0, value: 0 },
-    paid: { count: 0, value: 0 },
+    approved: { count: 0, value: 0 },
+    partially_paid: { count: 0, value: 0 },
+    fully_paid: { count: 0, value: 0 },
     lost: { count: 0, value: 0 },
   };
 
@@ -125,36 +133,19 @@ function buildStagesFromProposals(proposals: ProposalListRow[]): FunnelDataState
     stageMap[key].value += getProposalValue(proposal);
   }
 
-  const stages = [
+  const stages = ([
     { key: 'draft', label: 'Draft' },
     { key: 'sent', label: 'Sent' },
     { key: 'viewed', label: 'Viewed' },
-    { key: 'paid', label: 'Paid' },
+    { key: 'approved', label: 'Approved' },
+    { key: 'partially_paid', label: 'Partially Paid' },
+    { key: 'fully_paid', label: 'Fully Paid' },
     { key: 'lost', label: 'Lost' },
-  ].map((stage) => ({
+  ] as const).map((stage) => ({
     ...stage,
     count: stageMap[stage.key].count,
     value: stageMap[stage.key].value,
-    color:
-      stage.key === 'draft'
-        ? 'text-slate-500'
-        : stage.key === 'sent'
-          ? 'text-blue-500'
-          : stage.key === 'viewed'
-            ? 'text-amber-500'
-            : stage.key === 'paid'
-              ? 'text-emerald-500'
-              : 'text-rose-500',
-    barColor:
-      stage.key === 'draft'
-        ? 'bg-slate-400'
-        : stage.key === 'sent'
-          ? 'bg-blue-500'
-          : stage.key === 'viewed'
-            ? 'bg-amber-500'
-            : stage.key === 'paid'
-              ? 'bg-emerald-500'
-              : 'bg-rose-500',
+    ...getStageTone(stage.key),
   }));
 
   return {
@@ -177,8 +168,14 @@ function buildStages(data: DashboardV2State, localFunnel: FunnelDataState | null
 }
 
 function getPipelineStageHref(stageKey: FunnelStage["key"]) {
-  if (stageKey === "paid") {
-    return "/analytics/drill-through?type=pipeline&status_group=paid&limit=50";
+  if (stageKey === "approved") {
+    return "/analytics/drill-through?type=pipeline&status_group=approved&limit=50";
+  }
+  if (stageKey === "partially_paid") {
+    return "/analytics/drill-through?type=pipeline&status_group=partially_paid&limit=50";
+  }
+  if (stageKey === "fully_paid") {
+    return "/analytics/drill-through?type=pipeline&status_group=fully_paid&limit=50";
   }
   if (stageKey === "lost") {
     return "/analytics/drill-through?type=pipeline&status_group=lost&limit=50";
@@ -309,7 +306,7 @@ export function PipelineFunnel({ data }: PipelineFunnelProps) {
             >
               <span
                 className={cn(
-                  'w-16 shrink-0 text-right text-[10px] font-black uppercase tracking-widest',
+                'w-24 shrink-0 text-right text-[10px] font-black uppercase tracking-widest',
                   stage.color,
                 )}
               >
@@ -331,7 +328,7 @@ export function PipelineFunnel({ data }: PipelineFunnelProps) {
                   </div>
                 </div>
               </div>
-              <span className="w-16 shrink-0 text-right text-[11px] font-bold tabular-nums text-text-muted">
+              <span className="w-20 shrink-0 text-right text-[11px] font-bold tabular-nums text-text-muted">
                 {stage.value > 0 ? formatCompactINR(stage.value) : '---'}
               </span>
               <ChevronRight className="h-3.5 w-3.5 shrink-0 text-primary opacity-0 transition-opacity group-hover:opacity-100" />

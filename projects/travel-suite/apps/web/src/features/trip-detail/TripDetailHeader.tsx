@@ -79,9 +79,9 @@ function renderStatusBadge(status: string) {
   const normalized = (status || "").toLowerCase();
   switch (normalized) {
     case "paid":
-      return <GlassBadge variant="success">Paid ✓</GlassBadge>;
+      return <GlassBadge variant="success">Fully Paid ✓</GlassBadge>;
     case "confirmed":
-      return <GlassBadge variant="info">Partially Paid</GlassBadge>;
+      return <GlassBadge variant="primary">Approved</GlassBadge>;
     case "in_progress":
     case "active":
       return <GlassBadge variant="primary">In Progress</GlassBadge>;
@@ -103,8 +103,11 @@ function renderFinancialStatusBadge(
   financialStatus?: string | null,
 ) {
   const normalizedFinancial = (financialStatus || "").toLowerCase();
+  if (normalizedFinancial === "approved") {
+    return <GlassBadge variant="primary">Approved</GlassBadge>;
+  }
   if (normalizedFinancial === "paid") {
-    return <GlassBadge variant="success">Paid ✓</GlassBadge>;
+    return <GlassBadge variant="success">Fully Paid ✓</GlassBadge>;
   }
   if (normalizedFinancial === "partially_paid") {
     return <GlassBadge variant="info">Partially Paid</GlassBadge>;

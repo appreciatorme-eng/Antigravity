@@ -509,7 +509,12 @@ export async function buildDashboardOverview(params: {
     invoicePayments: sources.invoicePayments.rows,
   });
 
-  const pipeline = buildDashboardPipelineSummary({ proposals, trips });
+  const pipeline = buildDashboardPipelineSummary({
+    proposals,
+    trips,
+    invoices,
+    paymentLinks: sources.paymentLinks.rows,
+  });
   const actionQueue = buildActionQueue({
     proposals,
     trips,

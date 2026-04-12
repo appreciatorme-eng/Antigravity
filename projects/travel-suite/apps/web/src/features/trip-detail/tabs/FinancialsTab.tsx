@@ -337,6 +337,9 @@ function derivePaymentStatusFromInvoiceStatus(status: string | null | undefined)
   const normalized = (status || "").toLowerCase();
   if (normalized === "paid") return "paid";
   if (normalized === "partially_paid") return "partially_paid";
+  if (["issued", "overdue", "pending", "sent", "confirmed"].includes(normalized)) {
+    return "approved";
+  }
   return "unpaid";
 }
 
@@ -344,14 +347,22 @@ function derivePaymentStatusFromSummary(summary: TripInvoiceSummaryData | null):
   if (!summary) return "unpaid";
   if (summary.total_amount > 0 && summary.balance_amount <= 0) return "paid";
   if (summary.paid_amount > 0) return "partially_paid";
+  if (summary.total_amount > 0) return "approved";
   return "unpaid";
 }
 
 function derivePaymentStatusFromTripStatus(status: string | null | undefined): TripFinancialPaymentStatus {
   const normalized = (status || "").toLowerCase();
   if (normalized === "paid") return "paid";
-  if (normalized === "confirmed") return "partially_paid";
+  if (normalized === "confirmed") return "approved";
   return "unpaid";
+}
+
+function formatFinancialStatusLabel(status: TripFinancialPaymentStatus): string {
+  if (status === "approved") return "Approved";
+  if (status === "partially_paid") return "Partially Paid";
+  if (status === "paid") return "Fully Paid";
+  return "Unpaid";
 }
 
 function resolveFinancialState(
@@ -415,7 +426,7 @@ function resolveFinancialState(
   const totalAmount = coercePositiveNumber(quotedTotal);
   let paidAmount = manualPaidAmount;
 
-  if (paymentStatus === "unpaid") {
+  if (paymentStatus === "unpaid" || paymentStatus === "approved") {
     paidAmount = 0;
   } else if (paymentStatus === "paid" && totalAmount > 0 && paidAmount <= 0) {
     paidAmount = totalAmount;
@@ -445,6 +456,7 @@ function mapFinancialStatusToTripStatus(
   if (["active", "in_progress", "completed", "cancelled"].includes(normalized)) {
     return null;
   }
+  if (paymentStatus === "approved") return "confirmed";
   if (paymentStatus === "paid") return "confirmed";
   if (paymentStatus === "partially_paid") return "confirmed";
   return "pending";
@@ -474,7 +486,7 @@ function FinancialSummaryEditorCard({
     invoices,
   );
   const isInvoiceLinked = resolved.paymentSource === "linked_invoice";
-  const effectiveStatusLabel = resolved.paymentStatus.replace("_", " ");
+  const effectiveStatusLabel = formatFinancialStatusLabel(resolved.paymentStatus);
   const kpis: readonly RevenueKpi[] = [
     {
       label: "Quoted Total",
@@ -554,7 +566,18 @@ function FinancialSummaryEditorCard({
               Payment Tracking
             </p>
             <div className="mt-1 flex flex-wrap items-center gap-2">
-              <GlassBadge variant={resolved.paymentStatus === "paid" ? "success" : resolved.paymentStatus === "partially_paid" ? "info" : "warning"} size="sm">
+              <GlassBadge
+                variant={
+                  resolved.paymentStatus === "paid"
+                    ? "success"
+                    : resolved.paymentStatus === "partially_paid"
+                      ? "info"
+                      : resolved.paymentStatus === "approved"
+                        ? "primary"
+                        : "warning"
+                }
+                size="sm"
+              >
                 {effectiveStatusLabel}
               </GlassBadge>
               <GlassBadge variant="secondary" size="sm">
@@ -615,8 +638,9 @@ function FinancialSummaryEditorCard({
               className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 bg-slate-50 shadow-inner disabled:opacity-60 disabled:cursor-not-allowed dark:bg-slate-900/60 dark:border-slate-700 text-secondary dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/40"
             >
               <option value="unpaid">Unpaid</option>
+              <option value="approved">Approved</option>
               <option value="partially_paid">Partially Paid</option>
-              <option value="paid">Paid</option>
+              <option value="paid">Fully Paid</option>
             </select>
           </label>
 
@@ -795,7 +819,7 @@ function FinancialSummaryEditorCard({
         <p className="text-xs text-text-muted">
           {isInvoiceLinked
             ? "Linked invoice mode mirrors the selected invoice status and amounts. Switch to Manual Cash if you want to override it here."
-            : "Manual Cash mode lets you save unpaid, partially paid, or paid status directly on this trip even before an invoice exists."}
+            : "Manual Cash mode lets you save unpaid, approved, partially paid, or fully paid status directly on this trip even before an invoice exists."}
         </p>
       </div>
     </GlassCard>

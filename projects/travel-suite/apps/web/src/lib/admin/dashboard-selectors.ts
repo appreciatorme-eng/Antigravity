@@ -94,6 +94,21 @@ export type ItinerarySelectorRow = {
   id: string;
   trip_title: string | null;
   destination: string | null;
+  raw_data:
+    | {
+        pricing?: {
+          total_cost?: number | null;
+          per_person_cost?: number | null;
+          pax_count?: number | null;
+        } | null;
+        financial_summary?: {
+          payment_status?: string | null;
+          payment_source?: string | null;
+          manual_paid_amount?: number | null;
+          linked_invoice_id?: string | null;
+        } | null;
+      }
+    | null;
 };
 
 export type FollowUpSelectorRow = {
@@ -496,7 +511,7 @@ export async function fetchDashboardItineraryRows(
     "Itinerary",
     client
       .from("itineraries")
-      .select("id,trip_title,destination")
+      .select("id,trip_title,destination,raw_data")
       .in("id", itineraryIds)
       .limit(Math.max(itineraryIds.length, 1)),
   );
