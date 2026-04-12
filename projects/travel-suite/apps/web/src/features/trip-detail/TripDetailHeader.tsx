@@ -98,6 +98,23 @@ function renderStatusBadge(status: string) {
   }
 }
 
+function renderFinancialStatusBadge(
+  tripStatus: string,
+  financialStatus?: string | null,
+) {
+  const normalizedFinancial = (financialStatus || "").toLowerCase();
+  if (normalizedFinancial === "paid") {
+    return <GlassBadge variant="success">Paid ✓</GlassBadge>;
+  }
+  if (normalizedFinancial === "partially_paid") {
+    return <GlassBadge variant="info">Partially Paid</GlassBadge>;
+  }
+  if (normalizedFinancial === "unpaid") {
+    return <GlassBadge variant="warning">Unpaid</GlassBadge>;
+  }
+  return renderStatusBadge(tripStatus);
+}
+
 function formatProposalStatus(status: string | null | undefined) {
   if (!status) return "Draft";
   return status
@@ -131,6 +148,8 @@ export function TripDetailHeader({
   const clientName = trip.profiles?.full_name ?? "Unassigned";
   const startDateLabel = formatHeaderDate(trip.start_date);
   const durationLabel = computeDurationLabel(trip);
+  const financialStatus =
+    trip.itineraries?.raw_data?.financial_summary?.payment_status ?? null;
 
   return (
     <header className="space-y-4 md:space-y-6">
@@ -150,7 +169,7 @@ export function TripDetailHeader({
             <h1 className="text-2xl md:text-5xl font-serif text-secondary dark:text-white tracking-tight">
               {title}
             </h1>
-            {renderStatusBadge(trip.status)}
+            {renderFinancialStatusBadge(trip.status, financialStatus)}
           </div>
 
           {/* Metadata chips */}

@@ -218,7 +218,7 @@ export default function TripDetailPage() {
       const resp = await authedFetch(`/api/trips/${tripId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "paid" }),
+        body: JSON.stringify({ status: "confirmed" }),
       });
       if (!resp.ok) throw new Error("Failed to update status");
       await refetch();

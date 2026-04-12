@@ -205,6 +205,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
                         inclusions: itinerary.raw_data?.inclusions || [],
                         exclusions: itinerary.raw_data?.exclusions || [],
                         pricing: itinerary.raw_data?.pricing,
+                        financial_summary: itinerary.raw_data?.financial_summary,
                     },
                 }
                 : null,

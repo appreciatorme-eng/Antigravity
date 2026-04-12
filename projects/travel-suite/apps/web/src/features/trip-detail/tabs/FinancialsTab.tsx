@@ -445,7 +445,7 @@ function mapFinancialStatusToTripStatus(
   if (["active", "in_progress", "completed", "cancelled"].includes(normalized)) {
     return null;
   }
-  if (paymentStatus === "paid") return "paid";
+  if (paymentStatus === "paid") return "confirmed";
   if (paymentStatus === "partially_paid") return "confirmed";
   return "pending";
 }
