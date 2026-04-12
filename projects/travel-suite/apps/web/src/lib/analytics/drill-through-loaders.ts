@@ -414,50 +414,35 @@ export async function loadPipelineDrill(
   const proposalSelect =
     "id, title, status, total_price, client_selected_price, created_at, viewed_at, trip_id, trips:trip_id(id)";
 
-  const applyFilters = <
-    T extends {
-      eq: (column: string, value: unknown) => T;
-      order: (column: string, options: { ascending: boolean }) => T;
-      limit: (value: number) => T;
-      in: (column: string, values: string[]) => T;
-      gte: (column: string, value: string) => T;
-      lt: (column: string, value: string) => T;
-      is?: (column: string, value: null) => T;
-    },
-  >(
-    query: T,
-    includeSoftDeleteFilter: boolean,
-  ): T => {
-    let next = query.eq("organization_id", orgId);
-    if (includeSoftDeleteFilter && typeof next.is === "function") {
-      next = next.is("deleted_at", null);
+  const buildQuery = (includeSoftDeleteFilter: boolean) => {
+    let query = supabase
+      .from("proposals")
+      .select(proposalSelect)
+      .eq("organization_id", orgId);
+
+    if (includeSoftDeleteFilter) {
+      query = query.is("deleted_at", null);
     }
-    next = next.order("created_at", { ascending: false }).limit(Math.max(1, Math.min(limit, 100)));
+
+    query = query
+      .order("created_at", { ascending: false })
+      .limit(Math.max(1, Math.min(limit, 100)));
 
     if (isOpenPipeline) {
-      next = next.in("status", openStatuses);
-    } else {
-      next = next.gte("created_at", win.startISO).lt("created_at", win.endISO);
-      if (status) {
-        next = next.eq("status", status);
-      }
+      return query.in("status", openStatuses);
     }
 
-    return next;
+    let datedQuery = query.gte("created_at", win.startISO).lt("created_at", win.endISO);
+    if (status) {
+      datedQuery = datedQuery.eq("status", status);
+    }
+    return datedQuery;
   };
 
-  const strictQuery = applyFilters(
-    supabase.from("proposals").select(proposalSelect),
-    true,
-  );
-  let { data, error } = await strictQuery;
+  let { data, error } = await buildQuery(true);
 
   if (error && isMissingDeletedAtError(error.message)) {
-    const fallbackQuery = applyFilters(
-      supabase.from("proposals").select(proposalSelect),
-      false,
-    );
-    const fallback = await fallbackQuery;
+    const fallback = await buildQuery(false);
     data = fallback.data;
     error = fallback.error;
   }
