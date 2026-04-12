@@ -423,6 +423,7 @@ export type Database = {
       clients: {
         Row: {
           created_at: string | null
+          deleted_at: string | null
           id: string
           organization_id: string
           updated_at: string | null
@@ -430,6 +431,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          deleted_at?: string | null
           id: string
           organization_id: string
           updated_at?: string | null
@@ -437,6 +439,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          deleted_at?: string | null
           id?: string
           organization_id?: string
           updated_at?: string | null
@@ -885,6 +888,7 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           currency: string
+          deleted_at: string | null
           due_date: string | null
           gstin: string | null
           id: string
@@ -916,6 +920,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           currency?: string
+          deleted_at?: string | null
           due_date?: string | null
           gstin?: string | null
           id?: string
@@ -947,6 +952,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           currency?: string
+          deleted_at?: string | null
           due_date?: string | null
           gstin?: string | null
           id?: string
@@ -2556,6 +2562,7 @@ export type Database = {
           client_selected_price: number | null
           created_at: string | null
           created_by: string | null
+          deleted_at: string | null
           expires_at: string | null
           id: string
           organization_id: string
@@ -2578,6 +2585,7 @@ export type Database = {
           client_selected_price?: number | null
           created_at?: string | null
           created_by?: string | null
+          deleted_at?: string | null
           expires_at?: string | null
           id?: string
           organization_id: string
@@ -2600,6 +2608,7 @@ export type Database = {
           client_selected_price?: number | null
           created_at?: string | null
           created_by?: string | null
+          deleted_at?: string | null
           expires_at?: string | null
           id?: string
           organization_id?: string
@@ -3565,6 +3574,7 @@ export type Database = {
         Row: {
           client_id: string | null
           created_at: string | null
+          deleted_at: string | null
           driver_id: string | null
           end_date: string | null
           id: string
@@ -3578,6 +3588,7 @@ export type Database = {
         Insert: {
           client_id?: string | null
           created_at?: string | null
+          deleted_at?: string | null
           driver_id?: string | null
           end_date?: string | null
           id?: string
@@ -3591,6 +3602,7 @@ export type Database = {
         Update: {
           client_id?: string | null
           created_at?: string | null
+          deleted_at?: string | null
           driver_id?: string | null
           end_date?: string | null
           id?: string

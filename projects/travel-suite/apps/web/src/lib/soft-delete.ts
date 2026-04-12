@@ -7,10 +7,8 @@ export type { SoftDeletableTable };
 /**
  * Soft-delete and restore utilities.
  *
- * The `deleted_at` column is added by the migration in
- * `src/lib/migrations/soft-delete-migration.sql`. Until the generated DB types
- * are regenerated after the migration is applied, we use the admin client with
- * `.rpc`-free raw updates to avoid TS errors on the column name.
+ * The `deleted_at` column is added by the canonical Supabase migration in
+ * `supabase/migrations/20260411221500_add_soft_delete_columns.sql`.
  */
 
 export async function softDelete(

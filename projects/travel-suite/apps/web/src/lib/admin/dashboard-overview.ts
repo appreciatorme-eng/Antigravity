@@ -172,13 +172,6 @@ function sourceMessage(label: string): string {
   return `${label} data is temporarily unavailable, so parts of the dashboard may be partial.`;
 }
 
-type QueryResponse<T> = {
-  data: T[] | null;
-  error: { message?: string | null } | null;
-};
-
-type QueryAttempt<T> = () => PromiseLike<QueryResponse<T>> | QueryResponse<T>;
-
 function resolveSettledRows<T>(
   result: PromiseSettledResult<{ data: T[] | null; error: { message?: string | null } | null }>,
   label: string,
@@ -206,30 +199,32 @@ function resolveSettledRows<T>(
   };
 }
 
-async function resolveQueryWithFallbacks<T>(
+async function runStrictSourceQuery<T>(
   label: string,
-  attempts: QueryAttempt<T>[],
+  query: PromiseLike<{ data: T[] | null; error: { message?: string | null } | null }>,
 ): Promise<QuerySourceResult<T>> {
-  for (const attempt of attempts) {
-    try {
-      const result = await attempt();
-      if (!result.error) {
-        return {
-          rows: (result.data || []) as T[],
-          health: "ok",
-          message: null,
-        };
-      }
-    } catch {
-      // Try the next compatibility shape.
+  try {
+    const result = await query;
+    if (result.error) {
+      return {
+        rows: [],
+        health: "failed",
+        message: sourceMessage(label),
+      };
     }
-  }
 
-  return {
-    rows: [],
-    health: "failed",
-    message: sourceMessage(label),
-  };
+    return {
+      rows: (result.data || []) as T[],
+      health: "ok",
+      message: null,
+    };
+  } catch {
+    return {
+      rows: [],
+      health: "failed",
+      message: sourceMessage(label),
+    };
+  }
 }
 
 function normalizeJoinedTripStatus(
@@ -398,6 +393,13 @@ function buildClientMap(profiles: ProfileRow[]): Map<string, ClientMeta> {
   );
 }
 
+function getPositiveMax(values: Array<number | null | undefined>): number {
+  return values.reduce<number>((max, value) => {
+    const numeric = Number(value || 0);
+    return numeric > max ? numeric : max;
+  }, 0);
+}
+
 function buildTripStatusMap(trips: TripRow[]): Map<string, string | null> {
   return new Map(trips.map((trip) => [trip.id, trip.status]));
 }
@@ -499,6 +501,38 @@ function buildSeries(
     ]),
   );
 
+  const wonProposalByTrip = new Map<string, ProposalRow>();
+  for (const proposal of proposals) {
+    if (!proposal.trip_id) continue;
+    if (getProposalLifecycleFromTripMap(proposal, tripStatusMap) !== "won") continue;
+    if (!wonProposalByTrip.has(proposal.trip_id)) {
+      wonProposalByTrip.set(proposal.trip_id, proposal);
+    }
+  }
+
+  const invoiceValueByTrip = new Map<string, number>();
+  for (const invoice of invoices) {
+    if (!invoice.trip_id) continue;
+    const existing = invoiceValueByTrip.get(invoice.trip_id) || 0;
+    invoiceValueByTrip.set(
+      invoice.trip_id,
+      Math.max(existing, Number(invoice.total_amount || 0)),
+    );
+  }
+
+  const paymentLinkValueByTrip = new Map<string, number>();
+  for (const link of paymentLinks) {
+    if (!link.trip_id) continue;
+    if (normalizeStatus(link.status, "") !== "paid") continue;
+    const existing = paymentLinkValueByTrip.get(link.trip_id) || 0;
+    paymentLinkValueByTrip.set(
+      link.trip_id,
+      Math.max(existing, Number(link.amount_paise || 0) / 100),
+    );
+  }
+
+  const proposalBookedOwnersInRange = new Set<string>();
+
   for (const proposal of proposals) {
     if (getProposalLifecycleFromTripMap(proposal, tripStatusMap) !== "won") continue;
     const eventIso = getBusinessEventIso(proposal.created_at, proposal.updated_at);
@@ -512,21 +546,26 @@ function buildSeries(
       ? clientMap.get(proposal.client_id) || null
       : null;
     const bucket = buckets.get(key)!;
-    bucket.bookedValue = (bucket.bookedValue || 0) + amount;
-    bucket.bookedItems = [
-      ...(bucket.bookedItems || []),
-      createSeriesItem({
-        id: proposal.id,
-        kind: "proposal",
-        title: safeTitle(proposal.title, "Won proposal"),
-        subtitle:
-          client?.fullName || client?.email || "Client handoff completed",
-        href: `/proposals/${proposal.id}`,
-        status: normalizeStatus(proposal.status, "converted"),
-        amountLabel: formatCompactINR(amount),
-        dateLabel: formatDateLabel(eventIso),
-      }),
-    ];
+    if (amount > 0) {
+      bucket.bookedValue = (bucket.bookedValue || 0) + amount;
+      bucket.bookedItems = [
+        ...(bucket.bookedItems || []),
+        createSeriesItem({
+          id: proposal.id,
+          kind: "proposal",
+          title: safeTitle(proposal.title, "Won proposal"),
+          subtitle:
+            client?.fullName || client?.email || "Client handoff completed",
+          href: `/proposals/${proposal.id}`,
+          status: normalizeStatus(proposal.status, "converted"),
+          amountLabel: formatCompactINR(amount),
+          dateLabel: formatDateLabel(eventIso),
+        }),
+      ];
+      if (proposal.trip_id) {
+        proposalBookedOwnersInRange.add(proposal.trip_id);
+      }
+    }
   }
 
   const paymentInvoiceIds = new Set(
@@ -658,6 +697,37 @@ function buildSeries(
         createdAt: trip.created_at,
       },
     ];
+
+    if (!proposalBookedOwnersInRange.has(trip.id)) {
+      const linkedProposal = wonProposalByTrip.get(trip.id) || null;
+      const linkedProposalAmount = linkedProposal
+        ? getProposalValue(linkedProposal)
+        : 0;
+      const bookedFallbackAmount =
+        linkedProposalAmount > 0
+          ? linkedProposalAmount
+          : getPositiveMax([
+              invoiceValueByTrip.get(trip.id),
+              paymentLinkValueByTrip.get(trip.id),
+            ]);
+
+      if (bookedFallbackAmount > 0) {
+        bucket.bookedValue = (bucket.bookedValue || 0) + bookedFallbackAmount;
+        bucket.bookedItems = [
+          ...(bucket.bookedItems || []),
+          createSeriesItem({
+            id: trip.id,
+            kind: "trip",
+            title: getTripTitle(trip),
+            subtitle: getTripSubtitle(trip),
+            href: `/trips/${trip.id}`,
+            status: normalizeStatus(trip.status, "planned"),
+            amountLabel: formatCompactINR(bookedFallbackAmount),
+            dateLabel: formatDateLabel(eventIso),
+          }),
+        ];
+      }
+    }
   }
 
   return Array.from(buckets.values()).map((bucket) => ({
@@ -1178,90 +1248,54 @@ function fetchProposalRows(
   client: AdminQueryClient,
   organizationId: string,
 ) {
-  return resolveQueryWithFallbacks<ProposalRow>("Proposal", [
-    () =>
-      client
-        .from("proposals")
-        .select(
-          "id,title,status,created_at,updated_at,viewed_at,expires_at,total_price,client_selected_price,client_id,trip_id,trips:trip_id(status)",
-        )
-        .eq("organization_id", organizationId)
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false })
-        .limit(5000),
-    () =>
-      client
-        .from("proposals")
-        .select(
-          "id,title,status,created_at,updated_at,viewed_at,expires_at,total_price,client_selected_price,client_id,trip_id,trips:trip_id(status)",
-        )
-        .eq("organization_id", organizationId)
-        .order("created_at", { ascending: false })
-        .limit(5000),
-    () =>
-      client
-        .from("proposals")
-        .select(
-          "id,title,status,created_at,updated_at,viewed_at,expires_at,total_price,client_selected_price,client_id",
-        )
-        .eq("organization_id", organizationId)
-        .order("created_at", { ascending: false })
-        .limit(5000),
-  ]);
+  return runStrictSourceQuery<ProposalRow>(
+    "Proposal",
+    client
+      .from("proposals")
+      .select(
+        "id,title,status,created_at,updated_at,viewed_at,expires_at,total_price,client_selected_price,client_id,trip_id,trips:trip_id(status,start_date,end_date)",
+      )
+      .eq("organization_id", organizationId)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(5000),
+  );
 }
 
 function fetchTripRows(
   client: AdminQueryClient,
   organizationId: string,
 ) {
-  return resolveQueryWithFallbacks<TripRow>("Trip", [
-    () =>
-      client
-        .from("trips")
-        .select(
-          "id,itinerary_id,client_id,status,created_at,updated_at,start_date,end_date",
-        )
-        .eq("organization_id", organizationId)
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false })
-        .limit(5000),
-    () =>
-      client
-        .from("trips")
-        .select(
-          "id,itinerary_id,client_id,status,created_at,updated_at,start_date,end_date",
-        )
-        .eq("organization_id", organizationId)
-        .order("created_at", { ascending: false })
-        .limit(5000),
-  ]);
+  return runStrictSourceQuery<TripRow>(
+    "Trip",
+    client
+      .from("trips")
+      .select(
+        "id,itinerary_id,client_id,status,created_at,updated_at,start_date,end_date",
+      )
+      .eq("organization_id", organizationId)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(5000),
+  );
 }
 
 function fetchInvoiceRows(
   client: AdminQueryClient,
   organizationId: string,
 ) {
-  return resolveQueryWithFallbacks<InvoiceRow>("Invoice", [
-    () =>
-      client
-        .from("invoices")
-        .select(
-          "id,invoice_number,status,due_date,balance_amount,total_amount,created_at,updated_at,paid_at,client_id,trip_id",
-        )
-        .eq("organization_id", organizationId)
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false })
-        .limit(5000),
-    () =>
-      client
-        .from("invoices")
-        .select(
-          "id,invoice_number,status,due_date,balance_amount,total_amount,created_at,updated_at,paid_at,client_id,trip_id",
-        )
-        .eq("organization_id", organizationId)
-        .order("created_at", { ascending: false })
-        .limit(5000),
-  ]);
+  return runStrictSourceQuery<InvoiceRow>(
+    "Invoice",
+    client
+      .from("invoices")
+      .select(
+        "id,invoice_number,status,due_date,balance_amount,total_amount,created_at,updated_at,paid_at,client_id,trip_id",
+      )
+      .eq("organization_id", organizationId)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(5000),
+  );
 }
 
 export async function buildDashboardOverview(params: {
