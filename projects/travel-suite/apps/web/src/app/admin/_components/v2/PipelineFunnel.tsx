@@ -165,6 +165,10 @@ function buildStagesFromProposals(proposals: ProposalListRow[]): FunnelDataState
 }
 
 function buildStages(data: DashboardV2State, localFunnel: FunnelDataState | null): FunnelDataState {
+  if (data.overview?.pipeline && data.overview?.health.sources.proposals !== 'failed') {
+    return buildStagesFromOverview(data);
+  }
+
   if (localFunnel && !localFunnel.proposalUnavailable) {
     return localFunnel;
   }
