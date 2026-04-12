@@ -176,6 +176,16 @@ function buildStages(data: DashboardV2State, localFunnel: FunnelDataState | null
   return buildStagesFromOverview(data);
 }
 
+function getPipelineStageHref(stageKey: FunnelStage["key"]) {
+  if (stageKey === "paid") {
+    return "/analytics/drill-through?type=pipeline&status_group=paid&limit=50";
+  }
+  if (stageKey === "lost") {
+    return "/analytics/drill-through?type=pipeline&status_group=lost&limit=50";
+  }
+  return `/analytics/drill-through?type=pipeline&status_group=open&status=${encodeURIComponent(stageKey)}&limit=50`;
+}
+
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
@@ -254,7 +264,7 @@ export function PipelineFunnel({ data }: PipelineFunnelProps) {
           </h2>
         </div>
         <Link
-          href="/analytics/drill-through?type=pipeline&status_group=open&limit=50"
+          href="/analytics/drill-through?type=pipeline&status_group=all&limit=50"
           className="flex items-center gap-1 text-xs font-bold text-primary hover:underline"
         >
           Details <ChevronRight className="h-3 w-3" />
@@ -292,7 +302,11 @@ export function PipelineFunnel({ data }: PipelineFunnelProps) {
         {stages.map((stage) => {
           const widthPct = Math.max((stage.count / maxCount) * 100, 4);
           return (
-            <div key={stage.key} className="flex items-center gap-3">
+            <Link
+              key={stage.key}
+              href={getPipelineStageHref(stage.key)}
+              className="group flex items-center gap-3 rounded-lg transition-colors hover:bg-gray-50/50 dark:hover:bg-white/[0.03]"
+            >
               <span
                 className={cn(
                   'w-16 shrink-0 text-right text-[10px] font-black uppercase tracking-widest',
@@ -320,7 +334,8 @@ export function PipelineFunnel({ data }: PipelineFunnelProps) {
               <span className="w-16 shrink-0 text-right text-[11px] font-bold tabular-nums text-text-muted">
                 {stage.value > 0 ? formatCompactINR(stage.value) : '---'}
               </span>
-            </div>
+              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-primary opacity-0 transition-opacity group-hover:opacity-100" />
+            </Link>
           );
         })}
       </div>

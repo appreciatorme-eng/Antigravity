@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { TimeWindow } from "./adapters";
 import { filterCanonicalPipelineProposals } from "@/lib/proposals/pipeline-integrity";
+import { isLostProposal, isWonProposal, isWonTripStatus } from "@/lib/admin/proposal-outcomes";
 
 // ---------------------------------------------------------------------------
 // Shared types for drill-through data
@@ -63,9 +64,11 @@ interface ProposalDrillRow {
   trips?:
     | {
         id?: string | null;
+        status?: string | null;
       }
     | {
         id?: string | null;
+        status?: string | null;
       }[]
     | null;
 }
@@ -402,9 +405,12 @@ export async function loadPipelineDrill(
   limit = 50,
 ): Promise<DrillResult> {
   const isOpenPipeline = statusGroup === "open";
+  const isPaidPipeline = statusGroup === "paid";
+  const isLostPipeline = statusGroup === "lost";
+  const isAllPipeline = statusGroup === "all";
   const openStatuses = ["draft", "sent", "viewed"];
   const proposalSelect =
-    "id, title, status, total_price, client_selected_price, created_at, viewed_at, trip_id, trips:trip_id(id)";
+    "id, title, status, total_price, client_selected_price, created_at, viewed_at, trip_id, trips:trip_id(id,status)";
 
   const buildQuery = (includeSoftDeleteFilter: boolean) => {
     let query = supabase
@@ -421,7 +427,14 @@ export async function loadPipelineDrill(
       .limit(Math.max(1, Math.min(limit, 100)));
 
     if (isOpenPipeline) {
-      return query.in("status", openStatuses);
+      return status ? query.eq("status", status) : query.in("status", openStatuses);
+    }
+
+    if (isPaidPipeline || isLostPipeline || isAllPipeline) {
+      if (status) {
+        return query.eq("status", status);
+      }
+      return query;
     }
 
     let datedQuery = query.gte("created_at", win.startISO).lt("created_at", win.endISO);
@@ -442,38 +455,110 @@ export async function loadPipelineDrill(
   if (error) throw error;
 
   const rawProposalRows = (data || []) as ProposalDrillRow[];
-  const proposalRows = isOpenPipeline
-    ? filterCanonicalPipelineProposals(rawProposalRows).filter((proposal) =>
-        openStatuses.includes((proposal.status || "").toLowerCase()),
-      )
-    : filterCanonicalPipelineProposals(rawProposalRows);
-  const totalValue = proposalRows.reduce((sum, p) => sum + getProposalValue(p), 0);
-  const statusLabel =
-    isOpenPipeline
-      ? "open pipeline"
-      : status
-        ? status.replace(/_/g, " ")
-        : "all";
+  const canonicalProposals = filterCanonicalPipelineProposals(rawProposalRows);
+
+  const openProposalRows = canonicalProposals.filter((proposal) =>
+    openStatuses.includes((proposal.status || "").toLowerCase()),
+  );
+  const wonProposalRows = canonicalProposals.filter((proposal) => isWonProposal(proposal));
+  const lostProposalRows = canonicalProposals.filter((proposal) => isLostProposal(proposal));
+
+  let tripRows: TripDrillRow[] = [];
+  if (isPaidPipeline || isAllPipeline) {
+    const { data: trips, error: tripsError } = await supabase
+      .from("trips")
+      .select("id, status, start_date, end_date, created_at, itineraries(destination, trip_title)")
+      .eq("organization_id", orgId)
+      .order("created_at", { ascending: false })
+      .limit(Math.max(1, Math.min(limit, 100)));
+
+    if (tripsError) throw tripsError;
+    tripRows = ((trips || []) as TripDrillRow[]).filter((trip) =>
+      isWonTripStatus(trip.status),
+    );
+  }
+
+  const proposalOwnedTripIds = new Set(
+    wonProposalRows
+      .map((proposal) => proposal.trip_id)
+      .filter((tripId): tripId is string => Boolean(tripId)),
+  );
+
+  const standaloneWonTripRows = tripRows.filter(
+    (trip) => !proposalOwnedTripIds.has(trip.id),
+  );
+
+  const proposalToDrillRow = (proposal: ProposalDrillRow): DrillRow => ({
+    id: proposal.id,
+    title: proposal.title,
+    subtitle: proposal.viewed_at ? "Viewed by client" : "Awaiting client view",
+    amountLabel: formatINR(getProposalValue(proposal)),
+    status: proposal.status || "draft",
+    dateLabel: formatDate(proposal.created_at),
+    href: `/proposals/${proposal.id}`,
+  });
+
+  const tripToDrillRow = (trip: TripDrillRow): DrillRow => {
+    const itinerary = getItinerary(trip.itineraries);
+    return {
+      id: trip.id,
+      title: itinerary?.trip_title || itinerary?.destination || "Paid trip",
+      subtitle: itinerary?.destination || "Trip marked paid",
+      amountLabel: (trip.status || "paid").replace(/_/g, " "),
+      status: trip.status || "paid",
+      dateLabel: formatDate(trip.created_at),
+      href: `/trips/${trip.id}`,
+    };
+  };
+
+  const selectedProposalRows = isOpenPipeline
+    ? openProposalRows
+    : isPaidPipeline
+      ? wonProposalRows
+      : isLostPipeline
+        ? lostProposalRows
+        : isAllPipeline
+          ? canonicalProposals
+          : canonicalProposals;
+
+  const rows: DrillRow[] = [
+    ...selectedProposalRows.map(proposalToDrillRow),
+    ...((isPaidPipeline || isAllPipeline) ? standaloneWonTripRows.map(tripToDrillRow) : []),
+  ];
+
+  const proposalValueTotal = selectedProposalRows.reduce(
+    (sum, proposal) => sum + getProposalValue(proposal),
+    0,
+  );
+
+  const statusLabel = isOpenPipeline
+    ? status
+      ? status.replace(/_/g, " ")
+      : "open pipeline"
+    : isPaidPipeline
+      ? "paid pipeline"
+      : isLostPipeline
+        ? "lost pipeline"
+        : isAllPipeline
+          ? "pipeline"
+          : status
+            ? status.replace(/_/g, " ")
+            : "all";
 
   return {
     summary: {
       label: `${statusLabel.charAt(0).toUpperCase() + statusLabel.slice(1)} proposals`,
-      primaryValue: statusGroup === "open" ? formatINR(totalValue) : `${proposalRows.length}`,
+      primaryValue: isOpenPipeline ? formatINR(proposalValueTotal) : `${rows.length}`,
       secondaryValue:
         isOpenPipeline
-          ? `${proposalRows.length} proposal${proposalRows.length === 1 ? "" : "s"} contributing to pipeline value`
-          : `${formatINR(totalValue)} total value`,
-      windowLabel: isOpenPipeline ? `Latest ${proposalRows.length}` : win.label,
+          ? `${rows.length} proposal${rows.length === 1 ? "" : "s"} contributing to pipeline value`
+          : `${formatINR(proposalValueTotal)} proposal-owned value`,
+      windowLabel:
+        isOpenPipeline || isPaidPipeline || isLostPipeline || isAllPipeline
+          ? `Latest ${rows.length}`
+          : win.label,
     },
-    rows: proposalRows.map((p) => ({
-      id: p.id,
-      title: p.title,
-      subtitle: p.viewed_at ? "Viewed by client" : "Awaiting client view",
-      amountLabel: formatINR(getProposalValue(p)),
-      status: p.status || "draft",
-      dateLabel: formatDate(p.created_at),
-      href: `/proposals/${p.id}`,
-    })),
+    rows,
   };
 }
 
