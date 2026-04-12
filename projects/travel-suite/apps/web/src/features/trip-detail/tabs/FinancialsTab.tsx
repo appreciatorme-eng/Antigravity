@@ -10,6 +10,7 @@ import {
   Calendar,
   PieChart,
   RefreshCw,
+  FileText,
 } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
