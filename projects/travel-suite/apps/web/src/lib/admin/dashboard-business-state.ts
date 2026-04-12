@@ -258,9 +258,12 @@ export function isOpenDashboardProposal(
   return proposal.lifecycle === "open";
 }
 
-export function buildDashboardPipelineSummary(
-  proposals: ProposalBusinessRow[],
-) {
+export function buildDashboardPipelineSummary(params: {
+  proposals: ProposalBusinessRow[];
+  trips?: TripBusinessRow[];
+}) {
+  const proposals = params.proposals;
+  const trips = params.trips ?? [];
   const canonicalProposals = filterCanonicalPipelineProposals(proposals);
   const stageMap: Record<DashboardPipelineStage["key"], { count: number; value: number }> = {
     draft: { count: 0, value: 0 },
@@ -296,6 +299,23 @@ export function buildDashboardPipelineSummary(
 
     stageMap[key].count += 1;
     stageMap[key].value += proposal.value;
+  }
+
+  const proposalOwnedWonTripIds = new Set(
+    canonicalProposals
+      .filter(
+        (proposal) =>
+          proposal.lifecycle === "won" &&
+          Boolean(proposal.trip_id) &&
+          proposal.hasLiveLinkedTrip,
+      )
+      .map((proposal) => proposal.trip_id as string),
+  );
+
+  for (const trip of trips) {
+    if (!trip.isWon) continue;
+    if (proposalOwnedWonTripIds.has(trip.id)) continue;
+    stageMap.paid.count += 1;
   }
 
   for (const proposal of openProposals) {
