@@ -565,7 +565,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id?: 
 
         let tripLookup = supabaseAdmin
             .from("trips")
-            .select("id, organization_id, itinerary_id")
+            .select("id, organization_id, itinerary_id, client_id, itineraries:itinerary_id(trip_title)")
             .eq("id", tripId);
 
         if (auth.role !== "super_admin") {

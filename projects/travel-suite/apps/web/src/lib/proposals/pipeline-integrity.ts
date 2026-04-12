@@ -46,9 +46,10 @@ function getProposalTimestamp(row: PipelineProposalLike): number {
 
 function buildDuplicateKey(row: PipelineProposalLike): string | null {
   const title = (row.title || "").trim().toLowerCase();
-  const clientId = row.client_id || "";
-  if (!title || !clientId) return null;
-  return `${clientId}::${title}::${getProposalValue(row)}`;
+  if (!title) return null;
+  const clientId = (row.client_id || "").trim().toLowerCase();
+  const clientSegment = clientId || "__unknown_client__";
+  return `${clientSegment}::${title}::${getProposalValue(row)}`;
 }
 
 export function isOpenPipelineProposalStatus(status: string | null | undefined): boolean {
