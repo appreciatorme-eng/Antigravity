@@ -58,6 +58,15 @@ interface ProposalDrillRow {
   client_selected_price: number | null;
   created_at: string | null;
   viewed_at: string | null;
+  trip_id?: string | null;
+  trips?:
+    | {
+        id?: string | null;
+      }
+    | {
+        id?: string | null;
+      }[]
+    | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -83,6 +92,15 @@ function formatINR(amount: number): string {
 
 function getProposalValue(proposal: ProposalDrillRow): number {
   return Number(proposal.client_selected_price ?? proposal.total_price ?? 0);
+}
+
+function hasLiveLinkedTrip(proposal: ProposalDrillRow): boolean {
+  if (!proposal.trip_id) return true;
+  if (!proposal.trips) return false;
+  if (Array.isArray(proposal.trips)) {
+    return Boolean(proposal.trips[0]?.id);
+  }
+  return Boolean(proposal.trips.id);
 }
 
 // ---------------------------------------------------------------------------
@@ -391,8 +409,11 @@ export async function loadPipelineDrill(
 
   let query = supabase
     .from("proposals")
-    .select("id, title, status, total_price, client_selected_price, created_at, viewed_at")
+    .select(
+      "id, title, status, total_price, client_selected_price, created_at, viewed_at, trip_id, trips:trip_id(id)",
+    )
     .eq("organization_id", orgId)
+    .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(Math.max(1, Math.min(limit, 100)));
 
@@ -411,10 +432,12 @@ export async function loadPipelineDrill(
   const rawProposalRows = (data || []) as ProposalDrillRow[];
   const proposalRows =
     isOpenPipeline
-      ? rawProposalRows.filter((proposal) =>
-          openStatuses.includes((proposal.status || "").toLowerCase()),
+      ? rawProposalRows.filter(
+          (proposal) =>
+            openStatuses.includes((proposal.status || "").toLowerCase()) &&
+            hasLiveLinkedTrip(proposal),
         )
-      : rawProposalRows;
+      : rawProposalRows.filter((proposal) => hasLiveLinkedTrip(proposal));
   const totalValue = proposalRows.reduce((sum, p) => sum + getProposalValue(p), 0);
   const statusLabel =
     isOpenPipeline
