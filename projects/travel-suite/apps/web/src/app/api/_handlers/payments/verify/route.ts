@@ -4,6 +4,7 @@ import { apiError, apiSuccess } from "@/lib/api/response";
 import { sendPaymentReceipt } from "@/lib/email/notifications";
 import { DEFAULT_PAYMENT_RECEIPT_GST_LABEL } from "@/lib/payments/payment-receipt-config";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { syncWonCommercialState } from "@/lib/admin/commercial-state-sync";
 import {
   getPaymentLinkByToken,
   recordPaymentLinkEvent,
@@ -80,15 +81,18 @@ export async function POST(request: NextRequest) {
     }
 
     if (updatedLink.proposalId) {
-      const { error: proposalUpdateError } = await admin
+      const { data: proposal } = await admin
         .from("proposals")
-        .update({ status: "converted" })
-        .eq("id", updatedLink.proposalId);
+        .select("organization_id")
+        .eq("id", updatedLink.proposalId)
+        .maybeSingle();
 
-      if (proposalUpdateError) {
-        logError("[payments/verify] Failed to update proposal status", {
+      if (proposal?.organization_id) {
+        await syncWonCommercialState({
+          adminClient: admin,
+          organizationId: proposal.organization_id,
           proposalId: updatedLink.proposalId,
-          error: proposalUpdateError.message,
+          confirmDraftTrip: true,
         });
       }
     }

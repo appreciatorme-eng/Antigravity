@@ -22,6 +22,7 @@ import { captureServerAnalyticsEvent } from '@/lib/analytics/server';
 import { buildInvoiceDownloadUrl } from '@/lib/invoices/public-link';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getRequestContext, getRequestId, logError, logEvent } from '@/lib/observability/logger';
+import { syncWonCommercialState } from '@/lib/admin/commercial-state-sync';
 import {
   getIntegrationDisabledMessage,
   isPaymentsIntegrationEnabled,
@@ -356,19 +357,19 @@ async function handlePaymentCaptured(
       { context: 'admin' }
     );
 
-    // Auto-mark linked trip as paid when invoice is fully paid via Razorpay
     const { data: paidInvoice } = await supabase
       .from('invoices')
-      .select('trip_id, status')
+      .select('trip_id, status, organization_id')
       .eq('id', invoiceId)
       .maybeSingle();
 
-    if (paidInvoice?.status === 'paid' && paidInvoice.trip_id) {
-      void supabase
-        .from('trips')
-        .update({ status: 'confirmed' })
-        .eq('id', paidInvoice.trip_id)
-        .in('status', ['draft']);
+    if (paidInvoice?.status === 'paid' && paidInvoice.trip_id && paidInvoice.organization_id) {
+      void syncWonCommercialState({
+        adminClient: supabase,
+        organizationId: paidInvoice.organization_id,
+        tripId: paidInvoice.trip_id,
+        confirmDraftTrip: true,
+      });
     }
 
     const { data: invoiceRow } = await supabase
@@ -610,12 +611,28 @@ async function handleInvoicePaid(payload: RazorpayWebhookPayload, requestContext
     })
     .eq('razorpay_invoice_id', invoice.id);
 
+  const { data: syncedInvoice } = await supabase
+    .from('invoices')
+    .select('trip_id, organization_id')
+    .eq('razorpay_invoice_id', invoice.id)
+    .maybeSingle();
+
   if (error) {
     logError('Failed to update invoice to paid', error, requestContext);
     logWebhookHandlerEvent('warn', 'Failed to update invoice to paid', requestContext, {
       payment_event_type: 'invoice.paid',
       payment_invoice_id: invoice.id,
       db_error: "database_write_failed",
+    });
+    return;
+  }
+
+  if (syncedInvoice?.trip_id && syncedInvoice.organization_id) {
+    void syncWonCommercialState({
+      adminClient: supabase,
+      organizationId: syncedInvoice.organization_id,
+      tripId: syncedInvoice.trip_id,
+      confirmDraftTrip: true,
     });
   }
 }

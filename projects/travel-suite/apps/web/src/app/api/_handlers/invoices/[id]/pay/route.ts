@@ -6,6 +6,7 @@ import {
   INVOICE_SELECT,
   RecordInvoicePaymentSchema,
 } from "@/lib/invoices/module";
+import { syncWonCommercialState } from "@/lib/admin/commercial-state-sync";
 import { logError } from "@/lib/observability/logger";
 
 type InvoiceRow = Database["public"]["Tables"]["invoices"]["Row"];
@@ -128,24 +129,13 @@ export async function POST(
       return jsonError("Failed to finalize invoice payment", 500);
     }
 
-    // Auto-mark trip as paid when invoice is fully paid
     if (nextStatus === "paid" && invoice.trip_id) {
-      void adminClient
-        .from("trips")
-        .update({ status: "confirmed" })
-        .eq("id", invoice.trip_id)
-        .eq("organization_id", auth.organizationId!)
-        .in("status", ["draft"]);
-    }
-
-    // Also cascade to linked proposal → win-loss win rate will update
-    if (nextStatus === "paid" && invoice.trip_id && auth.organizationId) {
-      void adminClient
-        .from("proposals")
-        .update({ status: "converted" })
-        .eq("trip_id", invoice.trip_id)
-        .eq("organization_id", auth.organizationId!)
-        .in("status", ["draft", "sent", "viewed", "pending", "accepted", "approved", "read"]);
+      void syncWonCommercialState({
+        adminClient,
+        organizationId: auth.organizationId!,
+        tripId: invoice.trip_id,
+        confirmDraftTrip: true,
+      });
     }
 
     const { data: paymentsData, error: paymentsError } = await adminClient

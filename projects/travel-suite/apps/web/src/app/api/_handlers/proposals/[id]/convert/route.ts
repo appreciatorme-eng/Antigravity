@@ -6,6 +6,7 @@ import { getNextInvoiceNumber } from "@/lib/invoices/module";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import type { Database } from "@/lib/database.types";
 import { ITINERARY_SELECT, TRIP_SELECT } from "@/lib/travel/selects";
+import { syncWonCommercialState } from "@/lib/admin/commercial-state-sync";
 import { logError } from "@/lib/observability/logger";
 
 // Define strict types for the database entities we're working with
@@ -210,11 +211,13 @@ export async function POST(
             throw new Error(insertTripError?.message || "Failed to create trip");
         }
 
-        // 6. Update Proposal Status
-        await supabaseAdmin
-            .from("proposals")
-            .update({ status: "converted", trip_id: insertedTrip.id })
-            .eq("id", proposalId);
+        await syncWonCommercialState({
+            adminClient: supabaseAdmin,
+            organizationId,
+            proposalId,
+            tripId: insertedTrip.id,
+            confirmDraftTrip: false,
+        });
 
         // 7. Auto-create draft invoice linked to the new trip
         let invoiceId: string | null = null;

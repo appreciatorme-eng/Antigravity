@@ -5,6 +5,7 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import { EXTERNAL_DRIVER_SELECT } from "@/lib/travel/selects";
 import type { Database } from "@/lib/database.types";
+import { syncWonCommercialState } from "@/lib/admin/commercial-state-sync";
 import { syncTripToLinkedProposal } from "@/lib/proposals/trip-linking";
 
 const supabaseAdmin = createAdminClient();
@@ -443,14 +444,13 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id?: s
             const { error: statusError } = await tripQuery;
             if (statusError) return apiError("Failed to update trip status", 400);
 
-            // Cascade: when confirming/paying a trip, mark linked proposal as converted
-            if (newStatus === "confirmed" && auth.organizationId) {
-                void supabaseAdmin
-                    .from("proposals")
-                    .update({ status: "converted" })
-                    .eq("trip_id", tripId)
-                    .eq("organization_id", auth.organizationId)
-                    .in("status", ["draft", "sent", "viewed", "pending", "accepted", "approved", "read"]);
+            if ((newStatus === "confirmed" || newStatus === "paid") && auth.organizationId) {
+                void syncWonCommercialState({
+                    adminClient: supabaseAdmin,
+                    organizationId: auth.organizationId,
+                    tripId,
+                    confirmDraftTrip: false,
+                });
             }
 
             return NextResponse.json({ success: true });

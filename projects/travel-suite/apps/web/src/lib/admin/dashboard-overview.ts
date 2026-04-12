@@ -7,854 +7,48 @@ import type {
   DashboardHealthSourceKey,
   DashboardKpis,
   DashboardOverview,
-  DashboardPipelineStage,
   DashboardQueueItem,
   DashboardScorecardMetric,
-  DashboardSourceHealth,
 } from "@/lib/admin/dashboard-overview-types";
 import {
-  computeProposalRisk,
-  normalizeStatus,
-  safeTitle,
-} from "@/lib/admin/insights";
-import { isLostProposal, isWonProposal } from "@/lib/admin/proposal-outcomes";
+  buildDashboardClientMap,
+  buildDashboardPipelineSummary,
+  buildDashboardRevenueSeries,
+  buildDashboardTripStatusMap,
+  decorateDashboardTrips,
+  isOpenDashboardProposal,
+  resolveDashboardProposalRows,
+  type ProposalBusinessRow,
+  type TripBusinessRow,
+} from "@/lib/admin/dashboard-business-state";
+import {
+  loadDashboardSourceBundle,
+  type AdminQueryClient,
+  type FollowUpSelectorRow,
+  type InvoiceSelectorRow,
+} from "@/lib/admin/dashboard-selectors";
+import { safeTitle } from "@/lib/admin/insights";
 import {
   addUtcDays,
-  buildRangeBucketKeys,
   formatCalendarDay,
   formatCompactINR,
   formatDateLabel,
-  getBucketKey,
-  getBucketLabel,
-  getBusinessEventIso,
   getFallbackTripWinRate,
-  getInvoicePaidEventIso,
-  getProposalValue,
   getResolvedWinRate,
-  hasWonTripStatus,
   isActiveTripStatus,
-  isBookedTripStatus,
   isCollectibleInvoice,
   isDueSoonInvoice,
-  isInRange,
   isOverdueInvoice,
-  isPaidInvoice,
   safeDate,
   startOfUtcDay,
 } from "@/lib/admin/operator-state";
-import type { RevenueChartItemPoint, RevenueChartPoint } from "@/components/analytics/RevenueChart";
-
-type AdminQueryClient = Pick<SupabaseClient, "from">;
-
-type ProposalRow = {
-  id: string;
-  title: string | null;
-  status: string | null;
-  created_at: string | null;
-  updated_at: string | null;
-  viewed_at: string | null;
-  expires_at: string | null;
-  total_price: number | null;
-  client_selected_price: number | null;
-  client_id: string | null;
-  trip_id?: string | null;
-  trips?: { status: string | null } | { status: string | null }[] | null;
-};
-
-type TripRow = {
-  id: string;
-  itinerary_id: string | null;
-  client_id: string | null;
-  status: string | null;
-  created_at: string | null;
-  updated_at: string | null;
-  start_date: string | null;
-  end_date: string | null;
-};
-
-type InvoiceRow = {
-  id: string;
-  invoice_number: string | null;
-  status: string | null;
-  due_date: string | null;
-  balance_amount: number | null;
-  total_amount: number | null;
-  created_at: string | null;
-  updated_at: string | null;
-  paid_at: string | null;
-  client_id: string | null;
-  trip_id: string | null;
-};
-
-type PaymentLinkRow = {
-  id: string;
-  status: string | null;
-  amount_paise: number | null;
-  paid_at: string | null;
-  created_at: string | null;
-  proposal_id: string | null;
-  booking_id: string | null;
-};
-
-type InvoicePaymentRow = {
-  id: string;
-  status: string | null;
-  amount: number | null;
-  payment_date: string | null;
-  created_at: string | null;
-  invoice_id: string | null;
-};
-
-type FollowUpRow = {
-  id: string;
-  notification_type: string | null;
-  status: string | null;
-  scheduled_for: string;
-  trip_id: string | null;
-  recipient_phone: string | null;
-  recipient_email: string | null;
-};
-
-type ProfileRow = {
-  id: string;
-  full_name: string | null;
-  email: string | null;
-  role: string | null;
-};
-
-type ItineraryRow = {
-  id: string;
-  trip_title: string | null;
-  destination: string | null;
-};
-
-type QuerySourceResult<T> = {
-  rows: T[];
-  health: DashboardSourceHealth;
-  message: string | null;
-};
-
-type FollowUpResult = {
-  rows: FollowUpRow[];
-  health: DashboardSourceHealth;
-  message: string | null;
-};
-
-type ClientMeta = {
-  fullName: string | null;
-  email: string | null;
-};
-
-type TripDecorated = TripRow & {
-  clientName: string | null;
-  destination: string | null;
-  tripTitle: string | null;
-};
-
-const FOLLOW_UP_ACTIVE_STATUSES = new Set(["pending", "queued", "retry", "failed"]);
-const PROPOSAL_STAGE_LABELS: Record<DashboardPipelineStage["key"], string> = {
-  draft: "Draft",
-  sent: "Sent",
-  viewed: "Viewed",
-  paid: "Paid",
-  lost: "Lost",
-};
-
-function chunkValues<T>(values: T[], size: number): T[][] {
-  if (values.length === 0) return [];
-  const chunks: T[][] = [];
-  for (let index = 0; index < values.length; index += size) {
-    chunks.push(values.slice(index, index + size));
-  }
-  return chunks;
-}
-
-function sourceMessage(label: string): string {
-  return `${label} data is temporarily unavailable, so parts of the dashboard may be partial.`;
-}
-
-function resolveSettledRows<T>(
-  result: PromiseSettledResult<{ data: T[] | null; error: { message?: string | null } | null }>,
-  label: string,
-): QuerySourceResult<T> {
-  if (result.status === "rejected") {
-    return {
-      rows: [],
-      health: "failed",
-      message: sourceMessage(label),
-    };
-  }
-
-  if (result.value.error) {
-    return {
-      rows: [],
-      health: "failed",
-      message: sourceMessage(label),
-    };
-  }
-
-  return {
-    rows: (result.value.data || []) as T[],
-    health: "ok",
-    message: null,
-  };
-}
-
-function isMissingDeletedAtError(message: string | null | undefined): boolean {
-  const normalized = (message || "").toLowerCase();
-  return normalized.includes("deleted_at") && normalized.includes("column");
-}
-
-async function runSoftDeleteAwareQuery<T>(params: {
-  label: string;
-  strictQuery: PromiseLike<{ data: T[] | null; error: { message?: string | null } | null }>;
-  fallbackQuery: PromiseLike<{ data: T[] | null; error: { message?: string | null } | null }>;
-}): Promise<QuerySourceResult<T>> {
-  try {
-    const strict = await params.strictQuery;
-    if (!strict.error) {
-      return {
-        rows: (strict.data || []) as T[],
-        health: "ok",
-        message: null,
-      };
-    }
-
-    if (!isMissingDeletedAtError(strict.error.message)) {
-      return {
-        rows: [],
-        health: "failed",
-        message: sourceMessage(params.label),
-      };
-    }
-
-    const fallback = await params.fallbackQuery;
-    if (fallback.error) {
-      return {
-        rows: [],
-        health: "failed",
-        message: sourceMessage(params.label),
-      };
-    }
-
-    return {
-      rows: (fallback.data || []) as T[],
-      health: "ok",
-      message: null,
-    };
-  } catch {
-    return {
-      rows: [],
-      health: "failed",
-      message: sourceMessage(params.label),
-    };
-  }
-}
-
-function normalizeJoinedTripStatus(
-  trips: ProposalRow["trips"],
-): string | null {
-  if (Array.isArray(trips)) {
-    return trips[0]?.status || null;
-  }
-  return trips?.status || null;
-}
-
-async function queryFollowUpsByColumn(params: {
-  client: AdminQueryClient;
-  column: "user_id" | "trip_id";
-  ids: string[];
-  windowStartIso: string;
-  windowEndIso: string;
-}): Promise<{ data: FollowUpRow[]; error: Error | null }> {
-  const rows: FollowUpRow[] = [];
-
-  for (const chunk of chunkValues(params.ids, 200)) {
-    const { data, error } = await params.client
-      .from("notification_queue")
-      .select("id,notification_type,status,scheduled_for,trip_id,recipient_phone,recipient_email")
-      .in(params.column, chunk)
-      .gte("scheduled_for", params.windowStartIso)
-      .lte("scheduled_for", params.windowEndIso)
-      .limit(500);
-
-    if (error) {
-      return {
-        data: [],
-        error: new Error(error.message || "Failed to fetch follow-ups"),
-      };
-    }
-
-    rows.push(
-      ...(((data || []) as FollowUpRow[]).filter((row) =>
-        FOLLOW_UP_ACTIVE_STATUSES.has(normalizeStatus(row.status, "")),
-      )),
-    );
-  }
-
-  const deduped = new Map<string, FollowUpRow>();
-  for (const row of rows) {
-    deduped.set(row.id, row);
-  }
-
-  return {
-    data: Array.from(deduped.values()).sort(
-      (left, right) =>
-        new Date(left.scheduled_for).getTime() -
-        new Date(right.scheduled_for).getTime(),
-    ),
-    error: null,
-  };
-}
-
-async function fetchFollowUps(params: {
-  client: AdminQueryClient;
-  userIds: string[];
-  tripIds: string[];
-  windowStartIso: string;
-  windowEndIso: string;
-}): Promise<FollowUpResult> {
-  const [byUser, byTrip] = await Promise.all([
-    params.userIds.length
-      ? queryFollowUpsByColumn({
-          client: params.client,
-          column: "user_id",
-          ids: params.userIds,
-          windowStartIso: params.windowStartIso,
-          windowEndIso: params.windowEndIso,
-        })
-      : Promise.resolve({ data: [], error: null }),
-    params.tripIds.length
-      ? queryFollowUpsByColumn({
-          client: params.client,
-          column: "trip_id",
-          ids: params.tripIds,
-          windowStartIso: params.windowStartIso,
-          windowEndIso: params.windowEndIso,
-        })
-      : Promise.resolve({ data: [], error: null }),
-  ]);
-
-  if (byUser.error || byTrip.error) {
-    return {
-      rows: [],
-      health: "failed",
-      message: sourceMessage("Follow-up"),
-    };
-  }
-
-  const deduped = new Map<string, FollowUpRow>();
-  for (const row of [...byUser.data, ...byTrip.data]) {
-    deduped.set(row.id, row);
-  }
-
-  return {
-    rows: Array.from(deduped.values()).sort(
-      (left, right) =>
-        new Date(left.scheduled_for).getTime() -
-        new Date(right.scheduled_for).getTime(),
-    ),
-    health: "ok",
-    message: null,
-  };
-}
-
-function buildHealth(input: {
-  proposals: QuerySourceResult<ProposalRow>;
-  trips: QuerySourceResult<TripRow>;
-  invoices: QuerySourceResult<InvoiceRow>;
-  payments: QuerySourceResult<PaymentLinkRow | InvoicePaymentRow>;
-  followUps: FollowUpResult;
-  profiles: QuerySourceResult<ProfileRow>;
-  itineraries: QuerySourceResult<ItineraryRow>;
-}): DashboardHealth {
-  const sources: DashboardHealth["sources"] = {
-    proposals: input.proposals.health,
-    trips: input.trips.health,
-    invoices: input.invoices.health,
-    payments: input.payments.health,
-    followUps: input.followUps.health,
-    profiles: input.profiles.health,
-    itineraries: input.itineraries.health,
-  };
-
-  const issues = (
-    [
-      ["proposals", input.proposals.message],
-      ["trips", input.trips.message],
-      ["invoices", input.invoices.message],
-      ["payments", input.payments.message],
-      ["followUps", input.followUps.message],
-      ["profiles", input.profiles.message],
-      ["itineraries", input.itineraries.message],
-    ] as const
-  )
-    .filter((entry): entry is [DashboardHealthSourceKey, string] => Boolean(entry[1]))
-    .map(([source, message]) => ({ source, message }));
-
-  const messages = issues.map((issue) => issue.message);
-
-  const states = Object.values(sources);
-  const overall =
-    states.every((state) => state === "ok")
-      ? "ok"
-      : states.every((state) => state === "failed")
-        ? "failed"
-        : "partial";
-
-  return { overall, sources, issues, messages };
-}
-
-function buildClientMap(profiles: ProfileRow[]): Map<string, ClientMeta> {
-  return new Map(
-    profiles.map((profile) => [
-      profile.id,
-      {
-        fullName: profile.full_name || null,
-        email: profile.email || null,
-      },
-    ]),
-  );
-}
-
-function getPositiveMax(values: Array<number | null | undefined>): number {
-  return values.reduce<number>((max, value) => {
-    const numeric = Number(value || 0);
-    return numeric > max ? numeric : max;
-  }, 0);
-}
-
-function buildTripStatusMap(trips: TripRow[]): Map<string, string | null> {
-  return new Map(trips.map((trip) => [trip.id, trip.status]));
-}
-
-function getProposalLifecycleFromTripMap(
-  proposal: ProposalRow,
-  tripStatusMap: Map<string, string | null>,
-): "open" | "won" | "lost" {
-  if (isWonProposal(proposal)) return "won";
-  if (isLostProposal(proposal)) return "lost";
-  const linkedTripStatus = proposal.trip_id
-    ? tripStatusMap.get(proposal.trip_id) || null
-    : normalizeJoinedTripStatus(proposal.trips);
-  return hasWonTripStatus(linkedTripStatus) ? "won" : "open";
-}
-
-function isOpenProposalFromTripMap(
-  proposal: ProposalRow,
-  tripStatusMap: Map<string, string | null>,
-): boolean {
-  return getProposalLifecycleFromTripMap(proposal, tripStatusMap) === "open";
-}
-
-function decorateTrips(
-  trips: TripRow[],
-  itineraries: ItineraryRow[],
-  clientMap: Map<string, ClientMeta>,
-): TripDecorated[] {
-  const itineraryMap = new Map(
-    itineraries.map((itinerary) => [itinerary.id, itinerary]),
-  );
-
-  return trips.map((trip) => {
-    const itinerary = trip.itinerary_id
-      ? itineraryMap.get(trip.itinerary_id) || null
-      : null;
-    const client = trip.client_id ? clientMap.get(trip.client_id) || null : null;
-
-    return {
-      ...trip,
-      clientName: client?.fullName || null,
-      destination: itinerary?.destination || null,
-      tripTitle: itinerary?.trip_title || null,
-    };
-  });
-}
-
-function getTripTitle(trip: TripDecorated): string {
-  return safeTitle(
-    trip.tripTitle || trip.destination || "Untitled trip",
-    "Untitled trip",
-  );
-}
-
-function getTripSubtitle(trip: TripDecorated): string {
-  const parts = [trip.destination, trip.clientName].filter(Boolean);
-  return parts.length > 0 ? parts.join(" • ") : "Trip record";
-}
-
-function createSeriesItem(params: {
-  id: string;
-  kind: RevenueChartItemPoint["kind"];
-  title: string;
-  subtitle: string;
-  href: string;
-  status: string;
-  amountLabel: string;
-  dateLabel: string;
-}): RevenueChartItemPoint {
-  return { ...params };
-}
-
-function buildSeries(
-  range: ResolvedAdminDateRange,
-  proposals: ProposalRow[],
-  trips: TripDecorated[],
-  invoices: InvoiceRow[],
-  paymentLinks: PaymentLinkRow[],
-  invoicePayments: InvoicePaymentRow[],
-  clientMap: Map<string, ClientMeta>,
-  tripStatusMap: Map<string, string | null>,
-): RevenueChartPoint[] {
-  const buckets = new Map<string, RevenueChartPoint>(
-    buildRangeBucketKeys(range).map((key) => [
-      key,
-      {
-        monthKey: key,
-        label: getBucketLabel(key, range.granularity),
-        revenue: 0,
-        bookings: 0,
-        bookedValue: 0,
-        cashCollected: 0,
-        tripCount: 0,
-        bookedItems: [],
-        cashItems: [],
-        tripItems: [],
-        trips: [],
-      },
-    ]),
-  );
-
-  const wonProposalByTrip = new Map<string, ProposalRow>();
-  const proposalById = new Map<string, ProposalRow>();
-  for (const proposal of proposals) {
-    proposalById.set(proposal.id, proposal);
-    if (!proposal.trip_id) continue;
-    if (getProposalLifecycleFromTripMap(proposal, tripStatusMap) !== "won") continue;
-    if (!wonProposalByTrip.has(proposal.trip_id)) {
-      wonProposalByTrip.set(proposal.trip_id, proposal);
-    }
-  }
-
-  const invoiceValueByTrip = new Map<string, number>();
-  for (const invoice of invoices) {
-    if (!invoice.trip_id) continue;
-    const existing = invoiceValueByTrip.get(invoice.trip_id) || 0;
-    invoiceValueByTrip.set(
-      invoice.trip_id,
-      Math.max(existing, Number(invoice.total_amount || 0)),
-    );
-  }
-
-  const paymentLinkValueByTrip = new Map<string, number>();
-  for (const link of paymentLinks) {
-    if (normalizeStatus(link.status, "") !== "paid") continue;
-    const linkedProposal = link.proposal_id
-      ? proposalById.get(link.proposal_id) || null
-      : null;
-    const resolvedTripId =
-      linkedProposal?.trip_id ||
-      (link.booking_id && tripStatusMap.has(link.booking_id) ? link.booking_id : null);
-    if (!resolvedTripId) continue;
-    const existing = paymentLinkValueByTrip.get(resolvedTripId) || 0;
-    paymentLinkValueByTrip.set(
-      resolvedTripId,
-      Math.max(existing, Number(link.amount_paise || 0) / 100),
-    );
-  }
-
-  const proposalBookedOwnersInRange = new Set<string>();
-
-  for (const proposal of proposals) {
-    if (getProposalLifecycleFromTripMap(proposal, tripStatusMap) !== "won") continue;
-    const eventIso = getBusinessEventIso(proposal.created_at, proposal.updated_at);
-    if (!isInRange(eventIso, range)) continue;
-
-    const key = getBucketKey(eventIso, range.granularity);
-    if (!key || !buckets.has(key)) continue;
-
-    const amount = getProposalValue(proposal);
-    const client = proposal.client_id
-      ? clientMap.get(proposal.client_id) || null
-      : null;
-    const bucket = buckets.get(key)!;
-    if (amount > 0) {
-      bucket.bookedValue = (bucket.bookedValue || 0) + amount;
-      bucket.bookedItems = [
-        ...(bucket.bookedItems || []),
-        createSeriesItem({
-          id: proposal.id,
-          kind: "proposal",
-          title: safeTitle(proposal.title, "Won proposal"),
-          subtitle:
-            client?.fullName || client?.email || "Client handoff completed",
-          href: `/proposals/${proposal.id}`,
-          status: normalizeStatus(proposal.status, "converted"),
-          amountLabel: formatCompactINR(amount),
-          dateLabel: formatDateLabel(eventIso),
-        }),
-      ];
-      if (proposal.trip_id) {
-        proposalBookedOwnersInRange.add(proposal.trip_id);
-      }
-    }
-  }
-
-  const paymentInvoiceIds = new Set(
-    invoicePayments
-      .filter(
-        (payment) =>
-          normalizeStatus(payment.status, "completed") === "completed" &&
-          Boolean(payment.invoice_id),
-      )
-      .map((payment) => payment.invoice_id as string),
-  );
-
-  for (const link of paymentLinks) {
-    if (normalizeStatus(link.status, "") !== "paid") continue;
-    if (!isInRange(link.paid_at, range)) continue;
-
-    const key = getBucketKey(link.paid_at, range.granularity);
-    if (!key || !buckets.has(key)) continue;
-
-    const amount = Number(link.amount_paise || 0) / 100;
-    const linkedProposal = link.proposal_id
-      ? proposalById.get(link.proposal_id) || null
-      : null;
-    const resolvedTripId =
-      linkedProposal?.trip_id ||
-      (link.booking_id && tripStatusMap.has(link.booking_id) ? link.booking_id : null);
-    const bucket = buckets.get(key)!;
-    bucket.cashCollected = (bucket.cashCollected || 0) + amount;
-    bucket.cashItems = [
-      ...(bucket.cashItems || []),
-      createSeriesItem({
-        id: link.id,
-        kind: "invoice",
-        title: "Paid payment link",
-        subtitle: resolvedTripId ? `Trip ${resolvedTripId.slice(0, 8)}` : "Client payment captured",
-        href: resolvedTripId ? `/trips/${resolvedTripId}` : "/admin/revenue",
-        status: "paid",
-        amountLabel: formatCompactINR(amount),
-        dateLabel: formatDateLabel(link.paid_at || link.created_at),
-      }),
-    ];
-  }
-
-  for (const payment of invoicePayments) {
-    if (normalizeStatus(payment.status, "completed") !== "completed") continue;
-    if (!isInRange(payment.payment_date, range)) continue;
-
-    const key = getBucketKey(payment.payment_date, range.granularity);
-    if (!key || !buckets.has(key)) continue;
-
-    const amount = Number(payment.amount || 0);
-    const bucket = buckets.get(key)!;
-    bucket.cashCollected = (bucket.cashCollected || 0) + amount;
-    bucket.cashItems = [
-      ...(bucket.cashItems || []),
-      createSeriesItem({
-        id: payment.id,
-        kind: "invoice",
-        title: "Invoice payment received",
-        subtitle: payment.invoice_id
-          ? `Invoice ${payment.invoice_id.slice(0, 8)}`
-          : "Recorded payment",
-        href: "/admin/revenue",
-        status: normalizeStatus(payment.status, "completed"),
-        amountLabel: formatCompactINR(amount),
-        dateLabel: formatDateLabel(payment.payment_date || payment.created_at),
-      }),
-    ];
-  }
-
-  for (const invoice of invoices) {
-    if (!isPaidInvoice(invoice)) continue;
-    if (paymentInvoiceIds.has(invoice.id)) continue;
-    const eventIso = getInvoicePaidEventIso(invoice);
-    if (!isInRange(eventIso, range)) continue;
-
-    const key = getBucketKey(eventIso, range.granularity);
-    if (!key || !buckets.has(key)) continue;
-
-    const client = invoice.client_id
-      ? clientMap.get(invoice.client_id) || null
-      : null;
-    const amount = Number(invoice.total_amount || 0);
-    const bucket = buckets.get(key)!;
-    bucket.cashCollected = (bucket.cashCollected || 0) + amount;
-    bucket.cashItems = [
-      ...(bucket.cashItems || []),
-      createSeriesItem({
-        id: invoice.id,
-        kind: "invoice",
-        title: `Invoice ${invoice.invoice_number || invoice.id.slice(0, 8)}`,
-        subtitle: client?.fullName || client?.email || "Paid invoice",
-        href: "/admin/invoices",
-        status: normalizeStatus(invoice.status, "paid"),
-        amountLabel: formatCompactINR(amount),
-        dateLabel: formatDateLabel(eventIso),
-      }),
-    ];
-  }
-
-  for (const trip of trips) {
-    if (!isBookedTripStatus(trip.status)) continue;
-    const eventIso = getBusinessEventIso(trip.created_at, trip.updated_at);
-    if (!isInRange(eventIso, range)) continue;
-
-    const key = getBucketKey(eventIso, range.granularity);
-    if (!key || !buckets.has(key)) continue;
-
-    const bucket = buckets.get(key)!;
-    bucket.tripCount = (bucket.tripCount || 0) + 1;
-    bucket.bookings = (bucket.bookings || 0) + 1;
-    bucket.tripItems = [
-      ...(bucket.tripItems || []),
-      createSeriesItem({
-        id: trip.id,
-        kind: "trip",
-        title: getTripTitle(trip),
-        subtitle: getTripSubtitle(trip),
-        href: `/trips/${trip.id}`,
-        status: normalizeStatus(trip.status, "planned"),
-        amountLabel: formatDateLabel(trip.start_date),
-        dateLabel: formatDateLabel(eventIso),
-      }),
-    ];
-    bucket.trips = [
-      ...(bucket.trips || []),
-      {
-        id: trip.id,
-        title: getTripTitle(trip),
-        destination: trip.destination || "Destination pending",
-        clientName: trip.clientName || "Client pending",
-        status: normalizeStatus(trip.status, "planned"),
-        startDate: trip.start_date,
-        endDate: trip.end_date,
-        createdAt: trip.created_at,
-      },
-    ];
-
-    if (!proposalBookedOwnersInRange.has(trip.id)) {
-      const linkedProposal = wonProposalByTrip.get(trip.id) || null;
-      const linkedProposalAmount = linkedProposal
-        ? getProposalValue(linkedProposal)
-        : 0;
-      const bookedFallbackAmount =
-        linkedProposalAmount > 0
-          ? linkedProposalAmount
-          : getPositiveMax([
-              invoiceValueByTrip.get(trip.id),
-              paymentLinkValueByTrip.get(trip.id),
-            ]);
-
-      if (bookedFallbackAmount > 0) {
-        bucket.bookedValue = (bucket.bookedValue || 0) + bookedFallbackAmount;
-        bucket.bookedItems = [
-          ...(bucket.bookedItems || []),
-          createSeriesItem({
-            id: trip.id,
-            kind: "trip",
-            title: getTripTitle(trip),
-            subtitle: getTripSubtitle(trip),
-            href: `/trips/${trip.id}`,
-            status: normalizeStatus(trip.status, "planned"),
-            amountLabel: formatCompactINR(bookedFallbackAmount),
-            dateLabel: formatDateLabel(eventIso),
-          }),
-        ];
-      }
-    }
-  }
-
-  return Array.from(buckets.values()).map((bucket) => ({
-    ...bucket,
-    revenue: Number((bucket.cashCollected || 0).toFixed(2)),
-    bookings: bucket.tripCount || 0,
-    bookedValue: Number((bucket.bookedValue || 0).toFixed(2)),
-    cashCollected: Number((bucket.cashCollected || 0).toFixed(2)),
-    tripCount: bucket.tripCount || 0,
-  }));
-}
-
-function buildPipelineSummary(
-  proposals: ProposalRow[],
-  tripStatusMap: Map<string, string | null>,
-) {
-  const stageMap: Record<DashboardPipelineStage["key"], { count: number; value: number }> = {
-    draft: { count: 0, value: 0 },
-    sent: { count: 0, value: 0 },
-    viewed: { count: 0, value: 0 },
-    paid: { count: 0, value: 0 },
-    lost: { count: 0, value: 0 },
-  };
-
-  let high = 0;
-  let medium = 0;
-  let low = 0;
-
-  const openProposals = proposals.filter((proposal) =>
-    isOpenProposalFromTripMap(proposal, tripStatusMap),
-  );
-  const orgMedian =
-    openProposals.length > 0
-      ? openProposals.reduce((sum, proposal) => sum + getProposalValue(proposal), 0) /
-        Math.max(openProposals.length, 1)
-      : 0;
-
-  for (const proposal of proposals) {
-    const lifecycle = getProposalLifecycleFromTripMap(proposal, tripStatusMap);
-    const status = normalizeStatus(proposal.status, "draft");
-    const key: DashboardPipelineStage["key"] =
-      lifecycle === "won"
-        ? "paid"
-        : lifecycle === "lost"
-          ? "lost"
-          : status === "sent" || status === "viewed" || status === "draft"
-            ? (status as DashboardPipelineStage["key"])
-            : "draft";
-
-    stageMap[key].count += 1;
-    stageMap[key].value += getProposalValue(proposal);
-  }
-
-  for (const proposal of openProposals) {
-    const risk = computeProposalRisk({
-      status: proposal.status,
-      createdAt: proposal.created_at,
-      updatedAt: proposal.updated_at,
-      expiresAt: proposal.expires_at,
-      viewedAt: proposal.viewed_at,
-      totalPrice: getProposalValue(proposal),
-      orgMedianPrice: orgMedian,
-    });
-
-    if (risk.level === "high") high += 1;
-    else if (risk.level === "medium") medium += 1;
-    else low += 1;
-  }
-
-  return {
-    stages: (Object.keys(stageMap) as DashboardPipelineStage["key"][]).map(
-      (key) => ({
-        key,
-        label: PROPOSAL_STAGE_LABELS[key],
-        count: stageMap[key].count,
-        value: stageMap[key].value,
-      }),
-    ),
-    risk: { high, medium, low },
-  };
-}
 
 function buildActionQueue(params: {
-  proposals: ProposalRow[];
-  trips: TripDecorated[];
-  invoices: InvoiceRow[];
-  followUps: FollowUpRow[];
+  proposals: ProposalBusinessRow[];
+  trips: TripBusinessRow[];
+  invoices: InvoiceSelectorRow[];
+  followUps: FollowUpSelectorRow[];
   now: Date;
-  tripStatusMap: Map<string, string | null>;
 }): {
   summary: DashboardOverview["actionQueue"]["summary"];
   items: DashboardQueueItem[];
@@ -868,7 +62,7 @@ function buildActionQueue(params: {
     isDueSoonInvoice(invoice, params.now, 7),
   );
   const expiringQuotes = params.proposals.filter((proposal) => {
-    if (!isOpenProposalFromTripMap(proposal, params.tripStatusMap)) return false;
+    if (!isOpenDashboardProposal(proposal)) return false;
     const expiresAt = safeDate(proposal.expires_at);
     if (!expiresAt) return false;
     return expiresAt.getTime() <= addUtcDays(startOfUtcDay(params.now), 7).getTime();
@@ -883,7 +77,7 @@ function buildActionQueue(params: {
       daysOut >= 0 &&
       daysOut <= 2 &&
       !["confirmed", "in_progress", "active", "paid", "completed"].includes(
-        normalizeStatus(trip.status, ""),
+        (trip.status || "").trim().toLowerCase(),
       )
     );
   });
@@ -893,7 +87,7 @@ function buildActionQueue(params: {
     if (!scheduled) return false;
     return (
       scheduled.getTime() <= addUtcDays(startOfUtcDay(params.now), 1).getTime() ||
-      normalizeStatus(followUp.status, "") === "failed"
+      (followUp.status || "").trim().toLowerCase() === "failed"
     );
   });
 
@@ -951,10 +145,11 @@ function buildActionQueue(params: {
             (1000 * 60 * 60 * 24),
         )
       : null;
+
     items.push({
       id: `trip:${trip.id}`,
       type: "departure",
-      title: `${getTripTitle(trip)} needs confirmation`,
+      title: `${safeTitle(trip.tripTitle || trip.destination, "Upcoming trip")} needs confirmation`,
       subtitle: trip.clientName || trip.destination || "Upcoming departure",
       urgency: "critical",
       href: `/trips/${trip.id}`,
@@ -974,14 +169,14 @@ function buildActionQueue(params: {
       ),
       subtitle: followUp.recipient_email || followUp.recipient_phone || "Pending outreach",
       urgency:
-        normalizeStatus(followUp.status, "") === "failed" ||
+        (followUp.status || "").trim().toLowerCase() === "failed" ||
         (scheduledAt ? scheduledAt.getTime() < params.now.getTime() : false)
           ? "critical"
           : "warning",
       href: "/admin/notifications",
       actionLabel: "Review follow-up",
       meta:
-        normalizeStatus(followUp.status, "") === "failed"
+        (followUp.status || "").trim().toLowerCase() === "failed"
           ? "Failed"
           : `Scheduled ${formatDateLabel(followUp.scheduled_for)}`,
     });
@@ -1026,25 +221,21 @@ function buildBriefingSentence(params: {
       `${params.queue.summary.overdueInvoices} overdue invoice${params.queue.summary.overdueInvoices === 1 ? "" : "s"} (${formatCompactINR(params.overdueAmount)})`,
     );
   }
-
   if ((params.queue.summary.dueSoonInvoices || 0) > 0) {
     parts.push(
       `${params.queue.summary.dueSoonInvoices} invoice${params.queue.summary.dueSoonInvoices === 1 ? "" : "s"} due soon`,
     );
   }
-
   if ((params.queue.summary.expiringQuotes || 0) > 0) {
     parts.push(
       `${params.queue.summary.expiringQuotes} quote${params.queue.summary.expiringQuotes === 1 ? "" : "s"} nearing expiry`,
     );
   }
-
   if ((params.queue.summary.atRiskDepartures || 0) > 0) {
     parts.push(
       `${params.queue.summary.atRiskDepartures} departure${params.queue.summary.atRiskDepartures === 1 ? "" : "s"} need confirmation`,
     );
   }
-
   if ((params.queue.summary.followUpsDue || 0) > 0) {
     parts.push(
       `${params.queue.summary.followUpsDue} follow-up${params.queue.summary.followUpsDue === 1 ? "" : "s"} due`,
@@ -1059,13 +250,12 @@ function buildBriefingSentence(params: {
 }
 
 function buildCalendarPreview(params: {
-  proposals: ProposalRow[];
-  trips: TripDecorated[];
-  invoices: InvoiceRow[];
-  followUps: FollowUpRow[];
+  proposals: ProposalBusinessRow[];
+  trips: TripBusinessRow[];
+  invoices: InvoiceSelectorRow[];
+  followUps: FollowUpSelectorRow[];
   now: Date;
   health: DashboardHealth;
-  tripStatusMap: Map<string, string | null>;
 }): DashboardCalendarPreview {
   const start = startOfUtcDay(params.now);
   const days = Array.from({ length: 7 }, (_, index) => {
@@ -1097,10 +287,9 @@ function buildCalendarPreview(params: {
   for (const trip of params.trips) {
     const startDate = safeDate(trip.start_date);
     if (!startDate) continue;
-    const key = formatCalendarDay(startDate);
-    const day = dayMap.get(key);
+    const day = dayMap.get(formatCalendarDay(startDate));
     if (!day) continue;
-    if (!["cancelled"].includes(normalizeStatus(trip.status, ""))) {
+    if ((trip.status || "").trim().toLowerCase() !== "cancelled") {
       day.departures += 1;
     }
   }
@@ -1110,29 +299,22 @@ function buildCalendarPreview(params: {
     const dueDate = safeDate(invoice.due_date);
     if (!dueDate) continue;
     const day = dayMap.get(formatCalendarDay(dueDate));
-    if (!day) continue;
-    day.payments += 1;
+    if (day) day.payments += 1;
   }
 
   for (const proposal of params.proposals) {
-    if (
-      !isOpenProposalFromTripMap(proposal, params.tripStatusMap) ||
-      !proposal.expires_at
-    )
-      continue;
+    if (!isOpenDashboardProposal(proposal) || !proposal.expires_at) continue;
     const expiresAt = safeDate(proposal.expires_at);
     if (!expiresAt) continue;
     const day = dayMap.get(formatCalendarDay(expiresAt));
-    if (!day) continue;
-    day.quotes += 1;
+    if (day) day.quotes += 1;
   }
 
   for (const followUp of params.followUps) {
     const scheduled = safeDate(followUp.scheduled_for);
     if (!scheduled) continue;
     const day = dayMap.get(formatCalendarDay(scheduled));
-    if (!day) continue;
-    day.followUps += 1;
+    if (day) day.followUps += 1;
   }
 
   const sourceErrors = (
@@ -1157,9 +339,7 @@ function buildAiInsights(params: {
   revenue: DashboardOverview["revenue"];
   dataFootprint: number;
 }): DashboardAiInsightCard[] {
-  if (params.dataFootprint <= 0) {
-    return [];
-  }
+  if (params.dataFootprint <= 0) return [];
 
   const cards: DashboardAiInsightCard[] = [];
 
@@ -1230,7 +410,6 @@ function buildAiInsights(params: {
 }
 
 function buildScorecard(params: {
-  revenue: DashboardOverview["revenue"];
   kpis: DashboardKpis;
 }): DashboardScorecardMetric[] {
   return [
@@ -1282,80 +461,8 @@ function buildScorecard(params: {
   ];
 }
 
-function fetchProposalRows(
-  client: AdminQueryClient,
-  organizationId: string,
-) {
-  const baseSelect =
-    "id,title,status,created_at,updated_at,viewed_at,expires_at,total_price,client_selected_price,client_id,trip_id,trips:trip_id(status,start_date,end_date)";
-  return runSoftDeleteAwareQuery<ProposalRow>({
-    label: "Proposal",
-    strictQuery: client
-      .from("proposals")
-      .select(baseSelect)
-      .eq("organization_id", organizationId)
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false })
-      .limit(5000),
-    fallbackQuery: client
-      .from("proposals")
-      .select(baseSelect)
-      .eq("organization_id", organizationId)
-      .order("created_at", { ascending: false })
-      .limit(5000),
-  });
-}
-
-function fetchTripRows(
-  client: AdminQueryClient,
-  organizationId: string,
-) {
-  const baseSelect =
-    "id,itinerary_id,client_id,status,created_at,updated_at,start_date,end_date";
-  return runSoftDeleteAwareQuery<TripRow>({
-    label: "Trip",
-    strictQuery: client
-      .from("trips")
-      .select(baseSelect)
-      .eq("organization_id", organizationId)
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false })
-      .limit(5000),
-    fallbackQuery: client
-      .from("trips")
-      .select(baseSelect)
-      .eq("organization_id", organizationId)
-      .order("created_at", { ascending: false })
-      .limit(5000),
-  });
-}
-
-function fetchInvoiceRows(
-  client: AdminQueryClient,
-  organizationId: string,
-) {
-  const baseSelect =
-    "id,invoice_number,status,due_date,balance_amount,total_amount,created_at,updated_at,paid_at,client_id,trip_id";
-  return runSoftDeleteAwareQuery<InvoiceRow>({
-    label: "Invoice",
-    strictQuery: client
-      .from("invoices")
-      .select(baseSelect)
-      .eq("organization_id", organizationId)
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false })
-      .limit(5000),
-    fallbackQuery: client
-      .from("invoices")
-      .select(baseSelect)
-      .eq("organization_id", organizationId)
-      .order("created_at", { ascending: false })
-      .limit(5000),
-  });
-}
-
 export async function buildDashboardOverview(params: {
-  adminClient: AdminQueryClient;
+  adminClient: Pick<SupabaseClient, "from">;
   organizationId: string;
   range: ResolvedAdminDateRange;
 }): Promise<DashboardOverview> {
@@ -1363,128 +470,42 @@ export async function buildDashboardOverview(params: {
   const followUpWindowStart = addUtcDays(startOfUtcDay(now), -7).toISOString();
   const followUpWindowEnd = addUtcDays(startOfUtcDay(now), 8).toISOString();
 
-  const [
-    proposalsResult,
-    tripsResult,
-    invoicesResult,
-    paymentLinksSettled,
-    invoicePaymentsSettled,
-    profilesSettled,
-  ] = await Promise.all([
-    fetchProposalRows(params.adminClient, params.organizationId),
-    fetchTripRows(params.adminClient, params.organizationId),
-    fetchInvoiceRows(params.adminClient, params.organizationId),
-    params.adminClient
-      .from("payment_links")
-      .select("id,status,amount_paise,paid_at,created_at,proposal_id,booking_id")
-      .eq("organization_id", params.organizationId)
-      .order("created_at", { ascending: false })
-      .limit(5000),
-    params.adminClient
-      .from("invoice_payments")
-      .select("id,status,amount,payment_date,created_at,invoice_id")
-      .eq("organization_id", params.organizationId)
-      .order("created_at", { ascending: false })
-      .limit(5000),
-    params.adminClient
-      .from("profiles")
-      .select("id,full_name,email,role")
-      .eq("organization_id", params.organizationId)
-      .limit(5000),
-  ]);
-
-  const paymentLinksResult = {
-    rows: (paymentLinksSettled.data || []) as PaymentLinkRow[],
-    health: paymentLinksSettled.error ? "failed" : "ok",
-    message: paymentLinksSettled.error ? sourceMessage("Payment") : null,
-  } satisfies QuerySourceResult<PaymentLinkRow>;
-  const invoicePaymentsResult = {
-    rows: (invoicePaymentsSettled.data || []) as InvoicePaymentRow[],
-    health: invoicePaymentsSettled.error ? "failed" : "ok",
-    message: invoicePaymentsSettled.error ? sourceMessage("Payment") : null,
-  } satisfies QuerySourceResult<InvoicePaymentRow>;
-  const profilesResult = {
-    rows: (profilesSettled.data || []) as ProfileRow[],
-    health: profilesSettled.error ? "failed" : "ok",
-    message: profilesSettled.error ? sourceMessage("Profile") : null,
-  } satisfies QuerySourceResult<ProfileRow>;
-
-  const itineraryIds = Array.from(
-    new Set(
-      tripsResult.rows
-        .map((trip) => trip.itinerary_id)
-        .filter((value): value is string => Boolean(value)),
-    ),
-  );
-
-  const itinerariesSettled = await Promise.allSettled([
-    itineraryIds.length
-      ? params.adminClient
-          .from("itineraries")
-          .select("id,trip_title,destination")
-          .in("id", itineraryIds)
-          .limit(Math.max(itineraryIds.length, 1))
-      : Promise.resolve({ data: [], error: null }),
-  ]);
-
-  const itinerariesResult = resolveSettledRows<ItineraryRow>(
-    itinerariesSettled[0],
-    "Itinerary",
-  );
-
-  const followUpsResult = await fetchFollowUps({
-    client: params.adminClient,
-    userIds: profilesResult.rows.map((profile) => profile.id),
-    tripIds: tripsResult.rows.map((trip) => trip.id),
-    windowStartIso: followUpWindowStart,
-    windowEndIso: followUpWindowEnd,
+  const sources = await loadDashboardSourceBundle({
+    client: params.adminClient as AdminQueryClient,
+    organizationId: params.organizationId,
+    followUpWindowStartIso: followUpWindowStart,
+    followUpWindowEndIso: followUpWindowEnd,
   });
 
-  const health = buildHealth({
-    proposals: proposalsResult,
-    trips: tripsResult,
-    invoices: invoicesResult,
-    payments: {
-      rows: [...paymentLinksResult.rows, ...invoicePaymentsResult.rows],
-      health:
-        paymentLinksResult.health === "failed" || invoicePaymentsResult.health === "failed"
-          ? "failed"
-          : "ok",
-      message:
-        paymentLinksResult.message || invoicePaymentsResult.message || null,
-    },
-    followUps: followUpsResult,
-    profiles: profilesResult,
-    itineraries: itinerariesResult,
+  const clientMap = buildDashboardClientMap(sources.profiles.rows);
+  const tripStatusMap = buildDashboardTripStatusMap(sources.trips.rows);
+  const trips = decorateDashboardTrips({
+    trips: sources.trips.rows,
+    itineraries: sources.itineraries.rows,
+    clientMap,
   });
-
-  const clientMap = buildClientMap(profilesResult.rows);
-  const tripStatusMap = buildTripStatusMap(tripsResult.rows);
-  const decoratedTrips = decorateTrips(
-    tripsResult.rows,
-    itinerariesResult.rows,
-    clientMap,
-  );
-
-  const series = buildSeries(
-    params.range,
-    proposalsResult.rows,
-    decoratedTrips,
-    invoicesResult.rows,
-    paymentLinksResult.rows,
-    invoicePaymentsResult.rows,
-    clientMap,
+  const proposals = resolveDashboardProposalRows({
+    proposals: sources.proposals.rows,
     tripStatusMap,
-  );
+    clientMap,
+  });
 
-  const pipeline = buildPipelineSummary(proposalsResult.rows, tripStatusMap);
+  const series = buildDashboardRevenueSeries({
+    range: params.range,
+    proposals,
+    trips,
+    invoices: sources.invoices.rows,
+    paymentLinks: sources.paymentLinks.rows,
+    invoicePayments: sources.invoicePayments.rows,
+  });
+
+  const pipeline = buildDashboardPipelineSummary(proposals);
   const actionQueue = buildActionQueue({
-    proposals: proposalsResult.rows,
-    trips: decoratedTrips,
-    invoices: invoicesResult.rows,
-    followUps: followUpsResult.rows,
+    proposals,
+    trips,
+    invoices: sources.invoices.rows,
+    followUps: sources.followUps.rows,
     now,
-    tripStatusMap,
   });
 
   const totalBookedValue = series.reduce(
@@ -1500,14 +521,13 @@ export async function buildDashboardOverview(params: {
     0,
   );
 
-  const openPipelineValue = proposalsResult.rows
-    .filter((proposal) => isOpenProposalFromTripMap(proposal, tripStatusMap))
-    .reduce((sum, proposal) => sum + getProposalValue(proposal), 0);
-  const openProposalCount = proposalsResult.rows.filter((proposal) =>
-    isOpenProposalFromTripMap(proposal, tripStatusMap),
-  ).length;
+  const openProposals = proposals.filter((proposal) => isOpenDashboardProposal(proposal));
+  const openPipelineValue = openProposals.reduce(
+    (sum, proposal) => sum + proposal.value,
+    0,
+  );
 
-  const overdueInvoices = invoicesResult.rows.filter((invoice) =>
+  const overdueInvoices = sources.invoices.rows.filter((invoice) =>
     isOverdueInvoice(invoice, now),
   );
   const overdueAmount = overdueInvoices.reduce(
@@ -1515,7 +535,7 @@ export async function buildDashboardOverview(params: {
     0,
   );
 
-  const upcomingDepartures = decoratedTrips.filter((trip) => {
+  const upcomingDepartures = trips.filter((trip) => {
     if (!isActiveTripStatus(trip.status)) return false;
     const startDate = safeDate(trip.start_date);
     if (!startDate) return false;
@@ -1525,24 +545,20 @@ export async function buildDashboardOverview(params: {
     return daysOut >= 0 && daysOut <= 7;
   }).length;
 
-  const proposalsInWindow = proposalsResult.rows.filter((proposal) => {
-    const eventIso = getBusinessEventIso(proposal.created_at, proposal.updated_at);
-    return isInRange(eventIso, params.range);
-  });
-  const proposalWins = proposalsInWindow.filter((proposal) =>
-    getProposalLifecycleFromTripMap(proposal, tripStatusMap) === "won",
-  ).length;
-  const proposalLosses = proposalsInWindow.filter((proposal) =>
-    getProposalLifecycleFromTripMap(proposal, tripStatusMap) === "lost",
-  ).length;
+  const proposalsInWindow = proposals.filter((proposal) =>
+    safeDate(proposal.eventIso) &&
+    safeDate(proposal.eventIso)!.getTime() >= params.range.fromDate.getTime() &&
+    safeDate(proposal.eventIso)!.getTime() < new Date(params.range.toExclusiveISO).getTime(),
+  );
+  const proposalWins = proposalsInWindow.filter((proposal) => proposal.lifecycle === "won").length;
+  const proposalLosses = proposalsInWindow.filter((proposal) => proposal.lifecycle === "lost").length;
 
-  const tripsInWindow = decoratedTrips.filter((trip) => {
-    const eventIso = getBusinessEventIso(trip.created_at, trip.updated_at);
-    return isInRange(eventIso, params.range);
-  });
-  const wonTripsInWindow = tripsInWindow.filter((trip) =>
-    hasWonTripStatus(trip.status),
-  ).length;
+  const tripsInWindow = trips.filter((trip) =>
+    safeDate(trip.eventIso) &&
+    safeDate(trip.eventIso)!.getTime() >= params.range.fromDate.getTime() &&
+    safeDate(trip.eventIso)!.getTime() < new Date(params.range.toExclusiveISO).getTime(),
+  );
+  const wonTripsInWindow = tripsInWindow.filter((trip) => trip.isWon).length;
 
   const winRate =
     getResolvedWinRate(proposalWins, proposalLosses) ??
@@ -1550,36 +566,36 @@ export async function buildDashboardOverview(params: {
 
   const kpis: DashboardKpis = {
     bookedValue:
-      health.sources.proposals === "failed" && health.sources.trips === "failed"
+      sources.health.sources.proposals === "failed" && sources.health.sources.trips === "failed"
         ? null
         : Number(totalBookedValue.toFixed(2)),
     cashCollected:
-      health.sources.payments === "failed" && health.sources.invoices === "failed"
+      sources.health.sources.payments === "failed" && sources.health.sources.invoices === "failed"
         ? null
         : Number(totalCashCollected.toFixed(2)),
     openPipelineValue:
-      health.sources.proposals === "failed"
+      sources.health.sources.proposals === "failed"
         ? null
         : Number(openPipelineValue.toFixed(2)),
     overdueAmount:
-      health.sources.invoices === "failed"
+      sources.health.sources.invoices === "failed"
         ? null
         : Number(overdueAmount.toFixed(2)),
     overdueInvoices:
-      health.sources.invoices === "failed" ? null : overdueInvoices.length,
+      sources.health.sources.invoices === "failed" ? null : overdueInvoices.length,
     departureCount:
-      health.sources.trips === "failed" ? null : upcomingDepartures,
+      sources.health.sources.trips === "failed" ? null : upcomingDepartures,
     winRate,
     openProposalCount:
-      health.sources.proposals === "failed" ? null : openProposalCount,
+      sources.health.sources.proposals === "failed" ? null : openProposals.length,
     wins:
-      health.sources.proposals === "failed" && health.sources.trips === "failed"
+      sources.health.sources.proposals === "failed" && sources.health.sources.trips === "failed"
         ? null
         : proposalWins > 0
           ? proposalWins
           : wonTripsInWindow,
     followUpsDue:
-      health.sources.followUps === "failed"
+      sources.health.sources.followUps === "failed"
         ? null
         : actionQueue.summary.followUpsDue,
   };
@@ -1589,120 +605,97 @@ export async function buildDashboardOverview(params: {
     revenueNarrative.push(
       `Booked value in this window is ${formatCompactINR(totalBookedValue)} across ${totalTripCount} trip${totalTripCount === 1 ? "" : "s"}.`,
     );
+  } else if (totalTripCount > 0) {
+    revenueNarrative.push(
+      "Trip activity exists in this window, but booked value is only counted once a proposal, invoice, or paid payment link owns that business.",
+    );
   }
+
   if (totalCashCollected > 0) {
     revenueNarrative.push(
       `Collected cash is ${formatCompactINR(totalCashCollected)} from paid invoices and payment links.`,
     );
   }
+
   if (openPipelineValue > 0) {
     revenueNarrative.push(
       `Open pipeline still holds ${formatCompactINR(openPipelineValue)} of proposal value awaiting conversion.`,
     );
   }
+
   if (revenueNarrative.length === 0) {
     revenueNarrative.push(
       "No booked or collected activity landed in the selected window yet.",
     );
   }
 
-  const overview: DashboardOverview = {
-    generatedAt: new Date().toISOString(),
-    health,
-    actionQueue: {
-      total: actionQueue.items.length,
-      summary: actionQueue.summary,
-      items: actionQueue.items,
+  const actionQueueView = {
+    total: actionQueue.items.length,
+    summary: actionQueue.summary,
+    items: actionQueue.items,
+  };
+
+  const revenue = {
+    defaultMetric: "booked" as const,
+    totals: {
+      bookedValue: Number(totalBookedValue.toFixed(2)),
+      cashCollected: Number(totalCashCollected.toFixed(2)),
+      tripCount: totalTripCount,
+      openPipelineValue: Number(openPipelineValue.toFixed(2)),
     },
+    series,
+    narrative: revenueNarrative,
+  };
+
+  return {
+    generatedAt: new Date().toISOString(),
+    health: sources.health,
     briefing: {
       sentence: buildBriefingSentence({
-        queue: {
-          total: actionQueue.items.length,
-          summary: actionQueue.summary,
-          items: actionQueue.items,
-        },
+        queue: actionQueueView,
         overdueAmount,
-        health,
+        health: sources.health,
       }),
     },
     kpis,
-    revenue: {
-      defaultMetric: "booked",
-      totals: {
-        bookedValue: Number(totalBookedValue.toFixed(2)),
-        cashCollected: Number(totalCashCollected.toFixed(2)),
-        tripCount: totalTripCount,
-        openPipelineValue: Number(openPipelineValue.toFixed(2)),
-      },
-      series,
-      narrative: revenueNarrative,
-    },
+    actionQueue: actionQueueView,
+    revenue,
     customerPulse: {
       proposalCount:
-        health.sources.proposals === "failed" ? null : proposalsInWindow.length,
+        sources.health.sources.proposals === "failed" ? null : proposalsInWindow.length,
       winRate,
       wins:
-        health.sources.proposals === "failed" && health.sources.trips === "failed"
+        sources.health.sources.proposals === "failed" && sources.health.sources.trips === "failed"
           ? null
           : proposalWins > 0
             ? proposalWins
             : wonTripsInWindow,
       followUpsDue:
-        health.sources.followUps === "failed"
+        sources.health.sources.followUps === "failed"
           ? null
           : actionQueue.summary.followUpsDue,
     },
     pipeline,
-    scorecard: buildScorecard({
-      revenue: {
-        defaultMetric: "booked",
-        totals: {
-          bookedValue: Number(totalBookedValue.toFixed(2)),
-          cashCollected: Number(totalCashCollected.toFixed(2)),
-          tripCount: totalTripCount,
-          openPipelineValue: Number(openPipelineValue.toFixed(2)),
-        },
-        series,
-        narrative: revenueNarrative,
-      },
-      kpis,
-    }),
+    scorecard: buildScorecard({ kpis }),
     aiInsights: buildAiInsights({
       kpis,
       pipeline,
-      actionQueue: {
-        total: actionQueue.items.length,
-        summary: actionQueue.summary,
-        items: actionQueue.items,
-      },
-      revenue: {
-        defaultMetric: "booked",
-        totals: {
-          bookedValue: Number(totalBookedValue.toFixed(2)),
-          cashCollected: Number(totalCashCollected.toFixed(2)),
-          tripCount: totalTripCount,
-          openPipelineValue: Number(openPipelineValue.toFixed(2)),
-        },
-        series,
-        narrative: revenueNarrative,
-      },
+      actionQueue: actionQueueView,
+      revenue,
       dataFootprint:
-        proposalsResult.rows.length +
-        decoratedTrips.length +
-        invoicesResult.rows.length +
-        followUpsResult.rows.length,
+        proposals.length +
+        trips.length +
+        sources.invoices.rows.length +
+        sources.followUps.rows.length,
     }),
     calendarPreview: buildCalendarPreview({
-      proposals: proposalsResult.rows,
-      trips: decoratedTrips,
-      invoices: invoicesResult.rows,
-      followUps: followUpsResult.rows,
+      proposals,
+      trips,
+      invoices: sources.invoices.rows,
+      followUps: sources.followUps.rows,
       now,
-      health,
-      tripStatusMap,
+      health: sources.health,
     }),
     lastComputedAt: new Date().toISOString(),
   };
-
-  return overview;
 }
