@@ -94,6 +94,11 @@ function getProposalValue(proposal: ProposalDrillRow): number {
   return Number(proposal.client_selected_price ?? proposal.total_price ?? 0);
 }
 
+function isMissingDeletedAtError(message: string | null | undefined): boolean {
+  const normalized = (message || "").toLowerCase();
+  return normalized.includes("deleted_at") && normalized.includes("column");
+}
+
 function hasLiveLinkedTrip(proposal: ProposalDrillRow): boolean {
   if (!proposal.trip_id) return true;
   if (!proposal.trips) return false;
@@ -406,27 +411,57 @@ export async function loadPipelineDrill(
 ): Promise<DrillResult> {
   const isOpenPipeline = statusGroup === "open";
   const openStatuses = ["draft", "sent", "viewed"];
+  const proposalSelect =
+    "id, title, status, total_price, client_selected_price, created_at, viewed_at, trip_id, trips:trip_id(id)";
 
-  let query = supabase
-    .from("proposals")
-    .select(
-      "id, title, status, total_price, client_selected_price, created_at, viewed_at, trip_id, trips:trip_id(id)",
-    )
-    .eq("organization_id", orgId)
-    .is("deleted_at", null)
-    .order("created_at", { ascending: false })
-    .limit(Math.max(1, Math.min(limit, 100)));
-
-  if (isOpenPipeline) {
-    query = query.in("status", openStatuses);
-  } else {
-    query = query.gte("created_at", win.startISO).lt("created_at", win.endISO);
-    if (status) {
-      query = query.eq("status", status);
+  const applyFilters = <
+    T extends {
+      eq: (column: string, value: unknown) => T;
+      order: (column: string, options: { ascending: boolean }) => T;
+      limit: (value: number) => T;
+      in: (column: string, values: string[]) => T;
+      gte: (column: string, value: string) => T;
+      lt: (column: string, value: string) => T;
+      is?: (column: string, value: null) => T;
+    },
+  >(
+    query: T,
+    includeSoftDeleteFilter: boolean,
+  ): T => {
+    let next = query.eq("organization_id", orgId);
+    if (includeSoftDeleteFilter && typeof next.is === "function") {
+      next = next.is("deleted_at", null);
     }
+    next = next.order("created_at", { ascending: false }).limit(Math.max(1, Math.min(limit, 100)));
+
+    if (isOpenPipeline) {
+      next = next.in("status", openStatuses);
+    } else {
+      next = next.gte("created_at", win.startISO).lt("created_at", win.endISO);
+      if (status) {
+        next = next.eq("status", status);
+      }
+    }
+
+    return next;
+  };
+
+  const strictQuery = applyFilters(
+    supabase.from("proposals").select(proposalSelect),
+    true,
+  );
+  let { data, error } = await strictQuery;
+
+  if (error && isMissingDeletedAtError(error.message)) {
+    const fallbackQuery = applyFilters(
+      supabase.from("proposals").select(proposalSelect),
+      false,
+    );
+    const fallback = await fallbackQuery;
+    data = fallback.data;
+    error = fallback.error;
   }
 
-  const { data, error } = await query;
   if (error) throw error;
 
   const rawProposalRows = (data || []) as ProposalDrillRow[];
