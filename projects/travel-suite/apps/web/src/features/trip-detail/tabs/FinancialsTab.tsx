@@ -310,6 +310,7 @@ interface FinancialSummaryEditorCardProps {
   onFinancialSummaryChange?: (summary: TripFinancialSummaryConfig) => void;
   onConvertToINR?: () => void;
   onSaveFinancials: () => void;
+  onCreateInvoice: () => void;
 }
 
 function coercePositiveNumber(value: number | null | undefined): number {
@@ -462,6 +463,7 @@ function FinancialSummaryEditorCard({
   onFinancialSummaryChange,
   onConvertToINR,
   onSaveFinancials,
+  onCreateInvoice,
 }: FinancialSummaryEditorCardProps) {
   const resolvedPricing = packagePricing ?? {};
   const resolved = resolveFinancialState(
@@ -625,6 +627,7 @@ function FinancialSummaryEditorCard({
               </span>
               <select
                 value={resolved.linkedInvoiceId ?? ""}
+                disabled={invoices.length === 0}
                 onChange={(e) =>
                   onFinancialSummaryChange?.({
                     ...financialSummary,
@@ -632,15 +635,28 @@ function FinancialSummaryEditorCard({
                     linked_invoice_id: e.target.value || null,
                   })
                 }
-                className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 bg-slate-50 shadow-inner dark:bg-slate-900/60 dark:border-slate-700 text-secondary dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/40"
+                className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 bg-slate-50 shadow-inner disabled:opacity-60 disabled:cursor-not-allowed dark:bg-slate-900/60 dark:border-slate-700 text-secondary dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/40"
               >
-                <option value="">Select invoice</option>
+                <option value="">{invoices.length === 0 ? "No trip invoices available" : "Select invoice"}</option>
                 {invoices.map((invoice) => (
                   <option key={invoice.id} value={invoice.id}>
                     {invoice.invoice_number} · {formatINR(invoice.total_amount)} · {invoice.status.replace("_", " ")}
                   </option>
                 ))}
               </select>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs text-text-muted">
+                  {invoices.length > 0
+                    ? "This list is the same trip invoice list shown in the Invoices section below."
+                    : "Create a trip invoice below first, then select it here to make the financial summary follow invoice status and payments."}
+                </p>
+                {invoices.length === 0 ? (
+                  <GlassButton variant="outline" size="sm" onClick={onCreateInvoice}>
+                    <FileText className="w-4 h-4" />
+                    Create Invoice
+                  </GlassButton>
+                ) : null}
+              </div>
             </label>
           ) : (
             <label className="space-y-1">
@@ -1844,6 +1860,7 @@ export function FinancialsTab({
             convertingCurrency={convertingCurrency}
             savingFinancials={savingFinancials || saveItinerary.isPending}
             onSaveFinancials={handleSaveFinancials}
+            onCreateInvoice={handleOpenCreate}
           />
 
           <RevenueBreakdownCard
