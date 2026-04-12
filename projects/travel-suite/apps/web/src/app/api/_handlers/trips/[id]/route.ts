@@ -10,6 +10,44 @@ import { syncTripToLinkedProposal } from "@/lib/proposals/trip-linking";
 
 const supabaseAdmin = createAdminClient();
 
+async function trySoftDeleteLinkedCommercialRows(params: {
+    tripIds: string[];
+    organizationId: string;
+}) {
+    if (params.tripIds.length === 0) return;
+    const deletedAt = new Date().toISOString();
+
+    try {
+        await (supabaseAdmin.from("proposals") as unknown as {
+            update: (values: Record<string, unknown>) => {
+                in: (column: string, values: string[]) => {
+                    eq: (column: string, value: string) => Promise<{ error: { message?: string } | null }>;
+                };
+            };
+        })
+            .update({ deleted_at: deletedAt })
+            .in("trip_id", params.tripIds)
+            .eq("organization_id", params.organizationId);
+    } catch {
+        // Compatibility path: older DBs may not have deleted_at yet.
+    }
+
+    try {
+        await (supabaseAdmin.from("invoices") as unknown as {
+            update: (values: Record<string, unknown>) => {
+                in: (column: string, values: string[]) => {
+                    eq: (column: string, value: string) => Promise<{ error: { message?: string } | null }>;
+                };
+            };
+        })
+            .update({ deleted_at: deletedAt })
+            .in("trip_id", params.tripIds)
+            .eq("organization_id", params.organizationId);
+    } catch {
+        // Compatibility path: older DBs may not have deleted_at yet.
+    }
+}
+
 interface AssignmentRow {
     id: string;
     day_number: number;
@@ -562,6 +600,13 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id?: 
         const { data: trip, error: tripError } = await tripLookup.maybeSingle();
         if (tripError || !trip) {
             return apiError("Trip not found", 404);
+        }
+
+        if (trip.organization_id) {
+            await trySoftDeleteLinkedCommercialRows({
+                tripIds: [tripId],
+                organizationId: trip.organization_id,
+            });
         }
 
         const cleanupTargets = [

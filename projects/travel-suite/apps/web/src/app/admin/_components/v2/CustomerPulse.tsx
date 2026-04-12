@@ -137,7 +137,7 @@ export function CustomerPulse({ data }: CustomerPulseProps) {
           icon={Users}
           iconColor="text-blue-500"
           iconBg="bg-blue-100/50"
-          label="Proposals In Window"
+          label="Open Proposals"
           value={proposalCount !== null && proposalCount !== undefined ? String(proposalCount) : '—'}
           href="/proposals"
         />

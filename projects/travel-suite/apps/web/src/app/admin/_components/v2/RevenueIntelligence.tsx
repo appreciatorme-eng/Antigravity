@@ -51,11 +51,12 @@ function metricTitle(metric: RevenueMetricMode) {
 }
 
 export function RevenueIntelligence({ data }: RevenueIntelligenceProps) {
-  const [metric, setMetric] = useState<RevenueMetricMode>('booked');
+  const [userMetric, setUserMetric] = useState<RevenueMetricMode | null>(null);
   const [selectedPoint, setSelectedPoint] = useState<RevenueChartPoint | null>(null);
   const isLoading = data.phase === 'loading';
   const revenue = data.overview?.revenue;
   const series = useMemo(() => revenue?.series ?? [], [revenue?.series]);
+  const metric = userMetric ?? revenue?.defaultMetric ?? 'booked';
   const selectedItems = useMemo(
     () => getMetricItems(selectedPoint, metric),
     [metric, selectedPoint],
@@ -91,7 +92,7 @@ export function RevenueIntelligence({ data }: RevenueIntelligenceProps) {
           <div className="flex items-center rounded-full border border-gray-200 bg-gray-50/80 p-0.5 dark:border-white/10 dark:bg-white/5">
             <button
               type="button"
-              onClick={() => setMetric('booked')}
+              onClick={() => setUserMetric('booked')}
               className={cn(
                 'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-widest transition-all',
                 metric === 'booked'
@@ -104,7 +105,7 @@ export function RevenueIntelligence({ data }: RevenueIntelligenceProps) {
             </button>
             <button
               type="button"
-              onClick={() => setMetric('cash')}
+              onClick={() => setUserMetric('cash')}
               className={cn(
                 'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-widest transition-all',
                 metric === 'cash'
@@ -117,7 +118,7 @@ export function RevenueIntelligence({ data }: RevenueIntelligenceProps) {
             </button>
             <button
               type="button"
-              onClick={() => setMetric('trips')}
+              onClick={() => setUserMetric('trips')}
               className={cn(
                 'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-widest transition-all',
                 metric === 'trips'

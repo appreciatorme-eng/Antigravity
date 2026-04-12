@@ -66,6 +66,7 @@ export async function GET(req: NextRequest) {
       proposals: proposalSource.rows,
       tripStatusMap,
       clientMap,
+      enforceLinkedTripPresence: true,
     });
 
     const orgMedian = medianPrice(rows.map((row) => row.value));

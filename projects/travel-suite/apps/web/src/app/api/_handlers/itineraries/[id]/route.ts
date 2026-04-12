@@ -8,6 +8,44 @@ import type { Json } from "@/lib/supabase/database.types";
 const ITINERARY_DETAIL_SELECT = "id, user_id, client_id, trip_title, destination, duration_days, budget, interests, summary, template_id, raw_data, created_at, updated_at";
 const supabaseAdmin = createAdminClient();
 
+async function trySoftDeleteLinkedCommercialRows(params: {
+    tripIds: string[];
+    organizationId: string;
+}) {
+    if (params.tripIds.length === 0) return;
+    const deletedAt = new Date().toISOString();
+
+    try {
+        await (supabaseAdmin.from("proposals") as unknown as {
+            update: (values: Record<string, unknown>) => {
+                in: (column: string, values: string[]) => {
+                    eq: (column: string, value: string) => Promise<{ error: { message?: string } | null }>;
+                };
+            };
+        })
+            .update({ deleted_at: deletedAt })
+            .in("trip_id", params.tripIds)
+            .eq("organization_id", params.organizationId);
+    } catch {
+        // Compatibility path: older DBs may not have deleted_at yet.
+    }
+
+    try {
+        await (supabaseAdmin.from("invoices") as unknown as {
+            update: (values: Record<string, unknown>) => {
+                in: (column: string, values: string[]) => {
+                    eq: (column: string, value: string) => Promise<{ error: { message?: string } | null }>;
+                };
+            };
+        })
+            .update({ deleted_at: deletedAt })
+            .in("trip_id", params.tripIds)
+            .eq("organization_id", params.organizationId);
+    } catch {
+        // Compatibility path: older DBs may not have deleted_at yet.
+    }
+}
+
 export async function GET(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
@@ -150,7 +188,7 @@ export async function DELETE(
 
         const { data: linkedTrips, error: linkedTripsError } = await supabaseAdmin
             .from("trips")
-            .select("id")
+            .select("id, organization_id")
             .eq("itinerary_id", id);
 
         if (linkedTripsError) {
@@ -159,8 +197,17 @@ export async function DELETE(
         }
 
         const tripIds = (linkedTrips ?? []).map((trip) => trip.id).filter(Boolean);
+        const linkedTripOrganizationId =
+            (linkedTrips ?? []).find((trip) => Boolean(trip.organization_id))?.organization_id || null;
 
         if (tripIds.length > 0) {
+            if (linkedTripOrganizationId) {
+                await trySoftDeleteLinkedCommercialRows({
+                    tripIds,
+                    organizationId: linkedTripOrganizationId,
+                });
+            }
+
             const cleanupTargets = [
                 "trip_driver_assignments",
                 "trip_accommodations",

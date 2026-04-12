@@ -57,6 +57,7 @@ export type ProposalBusinessRow = ProposalSelectorRow & {
   lifecycle: "open" | "won" | "lost";
   value: number;
   eventIso: string | null;
+  hasLiveLinkedTrip: boolean;
 };
 
 export type BookedEventRow = {
@@ -196,12 +197,17 @@ export function resolveDashboardProposalRows(params: {
   proposals: ProposalSelectorRow[];
   tripStatusMap: Map<string, string | null>;
   clientMap: Map<string, ClientMeta>;
+  enforceLinkedTripPresence?: boolean;
 }): ProposalBusinessRow[] {
-  return params.proposals.map((proposal) => {
+  return params.proposals
+    .map((proposal) => {
     const linkedTripStatus = proposal.trip_id
       ? params.tripStatusMap.get(proposal.trip_id) || null
       : normalizeJoinedTripStatus(proposal.trips);
-    const lifecycle =
+    const hasLiveLinkedTrip = proposal.trip_id
+      ? params.tripStatusMap.has(proposal.trip_id)
+      : true;
+    const lifecycle: ProposalBusinessRow["lifecycle"] =
       isWonProposal(proposal) || hasWonTripStatus(linkedTripStatus)
         ? "won"
         : isLostProposal(proposal)
@@ -219,8 +225,30 @@ export function resolveDashboardProposalRows(params: {
       lifecycle,
       value: getProposalValue(proposal),
       eventIso: getBusinessEventIso(proposal.created_at, proposal.updated_at),
+      hasLiveLinkedTrip,
     };
-  });
+  })
+    .filter((proposal) =>
+      params.enforceLinkedTripPresence === false
+        ? true
+        : proposal.trip_id
+          ? proposal.hasLiveLinkedTrip
+          : true,
+    );
+}
+
+export function filterDashboardInvoicesByTrip(params: {
+  invoices: InvoiceSelectorRow[];
+  tripStatusMap: Map<string, string | null>;
+  enforceLinkedTripPresence?: boolean;
+}): InvoiceSelectorRow[] {
+  if (params.enforceLinkedTripPresence === false) {
+    return params.invoices;
+  }
+
+  return params.invoices.filter((invoice) =>
+    invoice.trip_id ? params.tripStatusMap.has(invoice.trip_id) : true,
+  );
 }
 
 export function isOpenDashboardProposal(
@@ -552,4 +580,15 @@ export function buildDashboardRevenueSeries(params: {
     cashCollected: Number((bucket.cashCollected || 0).toFixed(2)),
     tripCount: Number(bucket.tripCount || 0),
   }));
+}
+
+export function resolveDashboardDefaultRevenueMetric(params: {
+  bookedValue: number;
+  cashCollected: number;
+  tripCount: number;
+}): "booked" | "cash" | "trips" {
+  if (params.bookedValue > 0) return "booked";
+  if (params.cashCollected > 0) return "cash";
+  if (params.tripCount > 0) return "trips";
+  return "booked";
 }

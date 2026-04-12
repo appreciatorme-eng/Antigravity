@@ -12,7 +12,9 @@ import type {
 } from "@/lib/admin/dashboard-overview-types";
 import {
   buildDashboardClientMap,
+  filterDashboardInvoicesByTrip,
   buildDashboardPipelineSummary,
+  resolveDashboardDefaultRevenueMetric,
   buildDashboardRevenueSeries,
   buildDashboardTripStatusMap,
   decorateDashboardTrips,
@@ -488,13 +490,19 @@ export async function buildDashboardOverview(params: {
     proposals: sources.proposals.rows,
     tripStatusMap,
     clientMap,
+    enforceLinkedTripPresence: sources.trips.health !== "failed",
+  });
+  const invoices = filterDashboardInvoicesByTrip({
+    invoices: sources.invoices.rows,
+    tripStatusMap,
+    enforceLinkedTripPresence: sources.trips.health !== "failed",
   });
 
   const series = buildDashboardRevenueSeries({
     range: params.range,
     proposals,
     trips,
-    invoices: sources.invoices.rows,
+    invoices,
     paymentLinks: sources.paymentLinks.rows,
     invoicePayments: sources.invoicePayments.rows,
   });
@@ -503,7 +511,7 @@ export async function buildDashboardOverview(params: {
   const actionQueue = buildActionQueue({
     proposals,
     trips,
-    invoices: sources.invoices.rows,
+    invoices,
     followUps: sources.followUps.rows,
     now,
   });
@@ -527,7 +535,7 @@ export async function buildDashboardOverview(params: {
     0,
   );
 
-  const overdueInvoices = sources.invoices.rows.filter((invoice) =>
+  const overdueInvoices = invoices.filter((invoice) =>
     isOverdueInvoice(invoice, now),
   );
   const overdueAmount = overdueInvoices.reduce(
@@ -636,7 +644,11 @@ export async function buildDashboardOverview(params: {
   };
 
   const revenue = {
-    defaultMetric: "booked" as const,
+    defaultMetric: resolveDashboardDefaultRevenueMetric({
+      bookedValue: Number(totalBookedValue.toFixed(2)),
+      cashCollected: Number(totalCashCollected.toFixed(2)),
+      tripCount: totalTripCount,
+    }),
     totals: {
       bookedValue: Number(totalBookedValue.toFixed(2)),
       cashCollected: Number(totalCashCollected.toFixed(2)),
@@ -662,7 +674,7 @@ export async function buildDashboardOverview(params: {
     revenue,
     customerPulse: {
       proposalCount:
-        sources.health.sources.proposals === "failed" ? null : proposalsInWindow.length,
+        sources.health.sources.proposals === "failed" ? null : openProposals.length,
       winRate,
       wins:
         sources.health.sources.proposals === "failed" && sources.health.sources.trips === "failed"
@@ -685,13 +697,13 @@ export async function buildDashboardOverview(params: {
       dataFootprint:
         proposals.length +
         trips.length +
-        sources.invoices.rows.length +
+        invoices.length +
         sources.followUps.rows.length,
     }),
     calendarPreview: buildCalendarPreview({
       proposals,
       trips,
-      invoices: sources.invoices.rows,
+      invoices,
       followUps: sources.followUps.rows,
       now,
       health: sources.health,

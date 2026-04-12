@@ -81,6 +81,7 @@ export async function GET(req: NextRequest) {
       proposals: sources.proposals.rows,
       tripStatusMap,
       clientMap,
+      enforceLinkedTripPresence: sources.trips.health !== "failed",
     });
 
     const series = buildDashboardRevenueSeries({

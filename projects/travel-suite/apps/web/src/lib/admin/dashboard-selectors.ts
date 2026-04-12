@@ -131,6 +131,11 @@ export function sourceMessage(label: string): string {
   return `${label} data is temporarily unavailable, so parts of the dashboard may be partial.`;
 }
 
+function isMissingDeletedAtError(message: string | null | undefined): boolean {
+  const normalized = (message || "").toLowerCase();
+  return normalized.includes("deleted_at") && normalized.includes("column");
+}
+
 async function runSourceQuery<T>(
   label: string,
   query: PromiseLike<{ data: T[] | null; error: { message?: string | null } | null }>,
@@ -155,6 +160,52 @@ async function runSourceQuery<T>(
       rows: [],
       health: "failed",
       message: sourceMessage(label),
+    };
+  }
+}
+
+async function runSoftDeleteAwareSourceQuery<T>(params: {
+  label: string;
+  strictQuery: PromiseLike<{ data: T[] | null; error: { message?: string | null } | null }>;
+  fallbackQuery: PromiseLike<{ data: T[] | null; error: { message?: string | null } | null }>;
+}): Promise<DashboardSourceResult<T>> {
+  try {
+    const strict = await params.strictQuery;
+    if (!strict.error) {
+      return {
+        rows: (strict.data || []) as T[],
+        health: "ok",
+        message: null,
+      };
+    }
+
+    if (!isMissingDeletedAtError(strict.error.message)) {
+      return {
+        rows: [],
+        health: "failed",
+        message: sourceMessage(params.label),
+      };
+    }
+
+    const fallback = await params.fallbackQuery;
+    if (fallback.error) {
+      return {
+        rows: [],
+        health: "failed",
+        message: sourceMessage(params.label),
+      };
+    }
+
+    return {
+      rows: (fallback.data || []) as T[],
+      health: "ok",
+      message: null,
+    };
+  } catch {
+    return {
+      rows: [],
+      health: "failed",
+      message: sourceMessage(params.label),
     };
   }
 }
@@ -314,52 +365,72 @@ export async function fetchDashboardProposalRows(
   client: AdminQueryClient,
   organizationId: string,
 ): Promise<DashboardSourceResult<ProposalSelectorRow>> {
-  return runSourceQuery<ProposalSelectorRow>(
-    "Proposal",
-    client
+  const select =
+    "id,title,status,created_at,updated_at,viewed_at,expires_at,total_price,client_selected_price,client_id,trip_id,trips:trip_id(id,status,start_date,end_date)";
+  return runSoftDeleteAwareSourceQuery<ProposalSelectorRow>({
+    label: "Proposal",
+    strictQuery: client
       .from("proposals")
-      .select(
-        "id,title,status,created_at,updated_at,viewed_at,expires_at,total_price,client_selected_price,client_id,trip_id,trips:trip_id(id,status,start_date,end_date)",
-      )
+      .select(select)
       .eq("organization_id", organizationId)
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(5000),
-  );
+    fallbackQuery: client
+      .from("proposals")
+      .select(select)
+      .eq("organization_id", organizationId)
+      .order("created_at", { ascending: false })
+      .limit(5000),
+  });
 }
 
 export async function fetchDashboardTripRows(
   client: AdminQueryClient,
   organizationId: string,
 ): Promise<DashboardSourceResult<TripSelectorRow>> {
-  return runSourceQuery<TripSelectorRow>(
-    "Trip",
-    client
+  const select =
+    "id,itinerary_id,client_id,status,created_at,updated_at,start_date,end_date,destination,name";
+  return runSoftDeleteAwareSourceQuery<TripSelectorRow>({
+    label: "Trip",
+    strictQuery: client
       .from("trips")
-      .select("id,itinerary_id,client_id,status,created_at,updated_at,start_date,end_date,destination,name")
+      .select(select)
       .eq("organization_id", organizationId)
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(5000),
-  );
+    fallbackQuery: client
+      .from("trips")
+      .select(select)
+      .eq("organization_id", organizationId)
+      .order("created_at", { ascending: false })
+      .limit(5000),
+  });
 }
 
 export async function fetchDashboardInvoiceRows(
   client: AdminQueryClient,
   organizationId: string,
 ): Promise<DashboardSourceResult<InvoiceSelectorRow>> {
-  return runSourceQuery<InvoiceSelectorRow>(
-    "Invoice",
-    client
+  const select =
+    "id,invoice_number,status,due_date,balance_amount,total_amount,created_at,updated_at,paid_at,client_id,trip_id";
+  return runSoftDeleteAwareSourceQuery<InvoiceSelectorRow>({
+    label: "Invoice",
+    strictQuery: client
       .from("invoices")
-      .select(
-        "id,invoice_number,status,due_date,balance_amount,total_amount,created_at,updated_at,paid_at,client_id,trip_id",
-      )
+      .select(select)
       .eq("organization_id", organizationId)
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(5000),
-  );
+    fallbackQuery: client
+      .from("invoices")
+      .select(select)
+      .eq("organization_id", organizationId)
+      .order("created_at", { ascending: false })
+      .limit(5000),
+  });
 }
 
 export async function fetchDashboardPaymentLinkRows(
