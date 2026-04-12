@@ -16,7 +16,7 @@ import RevenueChart, {
   type RevenueMetricMode,
 } from '@/components/analytics/RevenueChart';
 import { GlassCard } from '@/components/glass/GlassCard';
-import { GlassSkeleton } from '@/components/glass/GlassSkeleton';
+import { AdminRevenueIntelligenceBone } from '@/components/ui/skeletons/AdminDashboardBones';
 import { DateRangePicker } from '@/features/admin/dashboard/DateRangePicker';
 import { ErrorSection } from '@/components/ui/ErrorSection';
 import {
@@ -63,12 +63,7 @@ export function RevenueIntelligence({ data }: RevenueIntelligenceProps) {
   );
 
   if (isLoading) {
-    return (
-      <GlassCard padding="xl">
-        <GlassSkeleton className="mb-4 h-6 w-48" />
-        <GlassSkeleton className="h-64 w-full rounded-xl" />
-      </GlassCard>
-    );
+    return <AdminRevenueIntelligenceBone />;
   }
 
   const totals = revenue?.totals;

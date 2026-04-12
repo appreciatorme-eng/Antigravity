@@ -12,7 +12,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { GlassCard } from '@/components/glass/GlassCard';
-import { GlassSkeleton } from '@/components/glass/GlassSkeleton';
+import { AdminKpiStripBone } from '@/components/ui/skeletons/AdminDashboardBones';
 import { formatCompactINR } from '@/lib/admin/operator-state';
 import { cn } from '@/lib/utils';
 import type { DashboardV2State } from './types';
@@ -135,16 +135,7 @@ export function KPITickerStrip({ data }: KPITickerStripProps) {
   const isLoading = data.phase === 'loading';
 
   if (isLoading) {
-    return (
-      <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-white/10">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <GlassSkeleton
-            key={i}
-            className="h-32 w-48 shrink-0 rounded-2xl"
-          />
-        ))}
-      </div>
-    );
+    return <AdminKpiStripBone />;
   }
 
   const cards = buildCards(data);

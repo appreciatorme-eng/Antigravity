@@ -10,7 +10,7 @@ import {
   Minus,
 } from 'lucide-react';
 import { GlassCard } from '@/components/glass/GlassCard';
-import { GlassSkeleton } from '@/components/glass/GlassSkeleton';
+import { AdminPerformanceScorecardBone } from '@/components/ui/skeletons/AdminDashboardBones';
 import type { DashboardHealthSourceKey } from '@/lib/admin/dashboard-overview-types';
 import { cn } from '@/lib/utils';
 import type { DashboardV2State } from './types';
@@ -68,11 +68,7 @@ export function PerformanceScorecard({ data }: PerformanceScorecardProps) {
   const isLoading = data.phase === 'loading';
 
   if (isLoading) {
-    return (
-      <GlassCard padding="lg">
-        <GlassSkeleton className="h-6 w-52" />
-      </GlassCard>
-    );
+    return <AdminPerformanceScorecardBone />;
   }
 
   const metrics = buildMetrics(data);

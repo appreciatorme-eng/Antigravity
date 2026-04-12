@@ -1,7 +1,7 @@
 'use client';
 
 import { Calendar, Sparkles } from 'lucide-react';
-import { GlassSkeleton } from '@/components/glass/GlassSkeleton';
+import { AdminMorningBriefingBone } from '@/components/ui/skeletons/AdminDashboardBones';
 import type { DashboardV2State } from './types';
 
 function getGreeting(): string {
@@ -25,12 +25,7 @@ export function MorningBriefing({ data }: MorningBriefingProps) {
   });
 
   if (isLoading) {
-    return (
-      <div className="space-y-3">
-        <GlassSkeleton className="h-12 w-72" />
-        <GlassSkeleton className="h-5 w-96" />
-      </div>
-    );
+    return <AdminMorningBriefingBone />;
   }
 
   return (

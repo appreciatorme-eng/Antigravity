@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { CalendarDays, ChevronRight } from 'lucide-react';
 import { GlassCard } from '@/components/glass/GlassCard';
-import { GlassSkeleton } from '@/components/glass/GlassSkeleton';
+import { AdminCalendarPreviewBone } from '@/components/ui/skeletons/AdminDashboardBones';
 import { cn } from '@/lib/utils';
 import type { DashboardV2State } from './types';
 
@@ -66,16 +66,7 @@ export function CalendarPreview({ data }: CalendarPreviewProps) {
   const isLoading = data.phase === 'loading';
 
   if (isLoading) {
-    return (
-      <GlassCard padding="xl" className="h-full">
-        <GlassSkeleton className="mb-4 h-5 w-40" />
-        <div className="grid grid-cols-7 gap-2">
-          {Array.from({ length: 7 }).map((_, i) => (
-            <GlassSkeleton key={i} className="h-16 rounded-lg" />
-          ))}
-        </div>
-      </GlassCard>
-    );
+    return <AdminCalendarPreviewBone />;
   }
 
   const days = preview?.days ?? [];

@@ -9,7 +9,7 @@ import {
   Users,
 } from 'lucide-react';
 import { GlassCard } from '@/components/glass/GlassCard';
-import { GlassSkeleton } from '@/components/glass/GlassSkeleton';
+import { AdminCustomerPulseBone } from '@/components/ui/skeletons/AdminDashboardBones';
 import type { DashboardHealthSourceKey } from '@/lib/admin/dashboard-overview-types';
 import { cn } from '@/lib/utils';
 import type { DashboardV2State } from './types';
@@ -73,16 +73,7 @@ export function CustomerPulse({ data }: CustomerPulseProps) {
   );
 
   if (isLoading) {
-    return (
-      <GlassCard padding="xl" className="h-full">
-        <GlassSkeleton className="mb-4 h-5 w-36" />
-        <div className="space-y-3">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <GlassSkeleton key={i} className="h-14 rounded-xl" />
-          ))}
-        </div>
-      </GlassCard>
-    );
+    return <AdminCustomerPulseBone />;
   }
 
   const proposalCount = pulse?.proposalCount;

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ChevronRight, Filter } from 'lucide-react';
 import { GlassCard } from '@/components/glass/GlassCard';
-import { GlassSkeleton } from '@/components/glass/GlassSkeleton';
+import { AdminPipelineFunnelBone } from '@/components/ui/skeletons/AdminDashboardBones';
 import type { DashboardPipelineSummary } from '@/lib/admin/dashboard-overview-types';
 import { formatCompactINR } from '@/lib/admin/operator-state';
 import { useDemoFetch } from '@/lib/demo/use-demo-fetch';
@@ -233,16 +233,7 @@ export function PipelineFunnel({ data }: PipelineFunnelProps) {
   }, [demoFetch, supabase]);
 
   if (data.phase === 'loading') {
-    return (
-      <GlassCard padding="xl">
-        <GlassSkeleton className="mb-4 h-5 w-44" />
-        <div className="space-y-4">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <GlassSkeleton key={i} className="h-10 rounded-lg" />
-          ))}
-        </div>
-      </GlassCard>
-    );
+    return <AdminPipelineFunnelBone />;
   }
 
   const funnel = data.overview?.pipeline;

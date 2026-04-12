@@ -13,7 +13,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { GlassCard } from '@/components/glass/GlassCard';
-import { GlassSkeleton } from '@/components/glass/GlassSkeleton';
+import { AdminAiInsightsBone } from '@/components/ui/skeletons/AdminDashboardBones';
 import type { DashboardAiInsightCard } from '@/lib/admin/dashboard-overview-types';
 import { cn } from '@/lib/utils';
 import type { DashboardV2State } from './types';
@@ -77,16 +77,7 @@ export function AIInsightsCarousel({ data }: AIInsightsCarouselProps) {
   const insightsLoading = data.phase === 'loading';
 
   if (insightsLoading) {
-    return (
-      <GlassCard padding="xl">
-        <GlassSkeleton className="mb-4 h-5 w-40" />
-        <div className="flex gap-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <GlassSkeleton key={i} className="h-40 w-56 shrink-0 rounded-xl" />
-          ))}
-        </div>
-      </GlassCard>
-    );
+    return <AdminAiInsightsBone />;
   }
 
   const cards = buildCards(data);

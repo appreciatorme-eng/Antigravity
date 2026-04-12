@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { GlassBadge } from '@/components/glass/GlassBadge';
-import { GlassSkeleton } from '@/components/glass/GlassSkeleton';
+import { AdminSmartActionQueueBone } from '@/components/ui/skeletons/AdminDashboardBones';
 import type {
   DashboardHealthSourceKey,
   DashboardQueueItem,
@@ -168,19 +168,7 @@ export function SmartActionQueue({ data }: SmartActionQueueProps) {
   );
 
   if (isLoading) {
-    return (
-      <GlassCard padding="xl">
-        <div className="mb-6 flex items-center gap-3">
-          <GlassSkeleton className="h-5 w-5 rounded" />
-          <GlassSkeleton className="h-6 w-48" />
-        </div>
-        <div className="space-y-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <GlassSkeleton key={i} className="h-14 w-full rounded-xl" />
-          ))}
-        </div>
-      </GlassCard>
-    );
+    return <AdminSmartActionQueueBone />;
   }
 
   if (items.length === 0 && queueUnavailable) {
