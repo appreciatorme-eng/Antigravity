@@ -76,17 +76,23 @@ function computeDurationLabel(trip: Trip): string {
 }
 
 function renderStatusBadge(status: string) {
-  switch (status) {
-    case "confirmed":
-    case "in_progress":
-    case "completed":
+  const normalized = (status || "").toLowerCase();
+  switch (normalized) {
+    case "paid":
       return <GlassBadge variant="success">Paid ✓</GlassBadge>;
+    case "confirmed":
+      return <GlassBadge variant="info">Partially Paid</GlassBadge>;
+    case "in_progress":
+    case "active":
+      return <GlassBadge variant="primary">In Progress</GlassBadge>;
+    case "completed":
+      return <GlassBadge variant="success">Completed</GlassBadge>;
     case "pending":
-      return <GlassBadge variant="warning">Awaiting Activation</GlassBadge>;
+      return <GlassBadge variant="warning">Unpaid</GlassBadge>;
     default:
       return (
         <GlassBadge variant="secondary">
-          {status.toUpperCase() || "DRAFT"}
+          {normalized.toUpperCase() || "DRAFT"}
         </GlassBadge>
       );
   }

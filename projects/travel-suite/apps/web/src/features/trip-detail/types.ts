@@ -65,6 +65,17 @@ export interface TripPricing {
   notes?: string;
 }
 
+export type TripFinancialPaymentStatus = "unpaid" | "partially_paid" | "paid";
+export type TripFinancialPaymentSource = "manual_cash" | "linked_invoice";
+
+export interface TripFinancialSummaryConfig {
+  payment_status?: TripFinancialPaymentStatus;
+  payment_source?: TripFinancialPaymentSource;
+  manual_paid_amount?: number;
+  linked_invoice_id?: string | null;
+  notes?: string;
+}
+
 export interface TripItineraryRawData {
   trip_title?: string;
   destination?: string;
@@ -78,6 +89,7 @@ export interface TripItineraryRawData {
   inclusions?: string[];
   exclusions?: string[];
   pricing?: TripPricing;
+  financial_summary?: TripFinancialSummaryConfig;
   image_search_version?: number;
 }
 

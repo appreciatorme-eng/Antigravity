@@ -218,7 +218,7 @@ export default function TripDetailPage() {
       const resp = await authedFetch(`/api/trips/${tripId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "confirmed" }),
+        body: JSON.stringify({ status: "paid" }),
       });
       if (!resp.ok) throw new Error("Failed to update status");
       await refetch();
@@ -348,6 +348,13 @@ export default function TripDetailPage() {
             onPricingChange={(pricing: TripPricing) =>
               setEditableRawData((current) =>
                 current ? { ...current, pricing: { ...pricing } } : current,
+              )
+            }
+            onFinancialSummaryChange={(financialSummary) =>
+              setEditableRawData((current) =>
+                current
+                  ? { ...current, financial_summary: { ...financialSummary } }
+                  : current,
               )
             }
           />

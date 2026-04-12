@@ -9,12 +9,12 @@ import {
   CreditCard,
   Calendar,
   PieChart,
+  RefreshCw,
 } from "lucide-react";
 import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassModal } from "@/components/glass/GlassModal";
 import { GlassBadge } from "@/components/glass/GlassBadge";
-import { TripFinancialSummary } from "@/features/trip-detail/components/TripFinancialSummary";
 import { TripInvoiceSection } from "@/features/trip-detail/components/TripInvoiceSection";
 import { TripAddOnsEditor } from "@/features/trip-detail/components/TripAddOnsEditor";
 import { formatINR, formatDate } from "@/features/trip-detail/utils";
@@ -26,14 +26,20 @@ import {
   useAvailableAddOnsCatalog,
   useCreateTripInvoice,
   useCreateTripAddOn,
+  tripDetailKeys,
+  useSaveTripItinerary,
   useUpdateTripInvoice,
   useUpdateTripAddOn,
 } from "@/lib/queries/trip-detail";
 import { authedFetch } from "@/lib/api/authed-fetch";
 import { INDIAN_STATES } from "@/lib/tax/gst-calculator";
+import { useQueryClient } from "@tanstack/react-query";
 import type {
   Trip,
   TripAddOn,
+  TripFinancialPaymentSource,
+  TripFinancialPaymentStatus,
+  TripFinancialSummaryConfig,
   TripInvoice,
   TripInvoiceSummaryData,
   TripPayment,
@@ -48,6 +54,7 @@ interface FinancialsTabProps {
   trip: Trip;
   invoiceSummary: TripInvoiceSummaryData | null;
   onPricingChange?: (pricing: TripPricing) => void;
+  onFinancialSummaryChange?: (summary: TripFinancialSummaryConfig) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -274,6 +281,508 @@ interface PackagePricing {
   currency?: string;
   pax_count?: number;
   notes?: string;
+}
+
+interface ResolvedFinancialState {
+  paymentStatus: TripFinancialPaymentStatus;
+  paymentSource: TripFinancialPaymentSource;
+  manualPaidAmount: number;
+  linkedInvoiceId: string | null;
+  linkedInvoice: TripInvoice | null;
+  quotedTotal: number | null;
+  totalAmount: number;
+  paidAmount: number;
+  balanceAmount: number;
+  notes: string;
+}
+
+interface FinancialSummaryEditorCardProps {
+  trip: Trip;
+  packagePricing: PackagePricing | null;
+  financialSummary: TripFinancialSummaryConfig | null;
+  invoiceSummary: TripInvoiceSummaryData | null;
+  invoices: readonly TripInvoice[];
+  loading: boolean;
+  convertingCurrency: boolean;
+  savingFinancials: boolean;
+  onPackagePricingChange?: (pricing: TripPricing) => void;
+  onFinancialSummaryChange?: (summary: TripFinancialSummaryConfig) => void;
+  onConvertToINR?: () => void;
+  onSaveFinancials: () => void;
+}
+
+function coercePositiveNumber(value: number | null | undefined): number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : 0;
+}
+
+function deriveQuotedTotal(pricing: PackagePricing | null): number | null {
+  if (!pricing) return null;
+  if (typeof pricing.total_cost === "number" && pricing.total_cost > 0) {
+    return pricing.total_cost;
+  }
+  if (
+    typeof pricing.per_person_cost === "number" &&
+    pricing.per_person_cost > 0 &&
+    typeof pricing.pax_count === "number" &&
+    pricing.pax_count > 0
+  ) {
+    return pricing.per_person_cost * pricing.pax_count;
+  }
+  return null;
+}
+
+function derivePaymentStatusFromInvoiceStatus(status: string | null | undefined): TripFinancialPaymentStatus {
+  const normalized = (status || "").toLowerCase();
+  if (normalized === "paid") return "paid";
+  if (normalized === "partially_paid") return "partially_paid";
+  return "unpaid";
+}
+
+function derivePaymentStatusFromSummary(summary: TripInvoiceSummaryData | null): TripFinancialPaymentStatus {
+  if (!summary) return "unpaid";
+  if (summary.total_amount > 0 && summary.balance_amount <= 0) return "paid";
+  if (summary.paid_amount > 0) return "partially_paid";
+  return "unpaid";
+}
+
+function derivePaymentStatusFromTripStatus(status: string | null | undefined): TripFinancialPaymentStatus {
+  const normalized = (status || "").toLowerCase();
+  if (normalized === "paid") return "paid";
+  if (normalized === "confirmed") return "partially_paid";
+  return "unpaid";
+}
+
+function resolveFinancialState(
+  trip: Trip,
+  packagePricing: PackagePricing | null,
+  financialSummary: TripFinancialSummaryConfig | null,
+  invoiceSummary: TripInvoiceSummaryData | null,
+  invoices: readonly TripInvoice[],
+): ResolvedFinancialState {
+  const paymentSource = financialSummary?.payment_source ?? (invoices.length > 0 ? "linked_invoice" : "manual_cash");
+  const fallbackLinkedInvoiceId =
+    financialSummary?.linked_invoice_id ??
+    (invoices.length === 1 ? invoices[0]?.id ?? null : null);
+  const linkedInvoice =
+    invoices.find((invoice) => invoice.id === fallbackLinkedInvoiceId) ??
+    (invoices.length === 1 ? invoices[0] : null);
+  const linkedInvoiceId = linkedInvoice?.id ?? null;
+  const quotedTotal = deriveQuotedTotal(packagePricing);
+
+  if (paymentSource === "linked_invoice") {
+    if (linkedInvoice) {
+      return {
+        paymentStatus: derivePaymentStatusFromInvoiceStatus(linkedInvoice.status),
+        paymentSource,
+        manualPaidAmount: coercePositiveNumber(financialSummary?.manual_paid_amount),
+        linkedInvoiceId,
+        linkedInvoice,
+        quotedTotal,
+        totalAmount: coercePositiveNumber(linkedInvoice.total_amount),
+        paidAmount: coercePositiveNumber(linkedInvoice.paid_amount),
+        balanceAmount: coercePositiveNumber(linkedInvoice.balance_amount),
+        notes: financialSummary?.notes?.trim() ?? "",
+      };
+    }
+
+    return {
+      paymentStatus: derivePaymentStatusFromSummary(invoiceSummary),
+      paymentSource,
+      manualPaidAmount: coercePositiveNumber(financialSummary?.manual_paid_amount),
+      linkedInvoiceId: null,
+      linkedInvoice: null,
+      quotedTotal,
+      totalAmount: coercePositiveNumber(invoiceSummary?.total_amount) || coercePositiveNumber(quotedTotal),
+      paidAmount: coercePositiveNumber(invoiceSummary?.paid_amount),
+      balanceAmount:
+        coercePositiveNumber(invoiceSummary?.balance_amount) ||
+        Math.max(
+          0,
+          (coercePositiveNumber(invoiceSummary?.total_amount) || coercePositiveNumber(quotedTotal)) -
+            coercePositiveNumber(invoiceSummary?.paid_amount),
+        ),
+      notes: financialSummary?.notes?.trim() ?? "",
+    };
+  }
+
+  const manualPaidAmount = coercePositiveNumber(financialSummary?.manual_paid_amount);
+  const paymentStatus =
+    financialSummary?.payment_status ??
+    derivePaymentStatusFromTripStatus(trip.status) ??
+    "unpaid";
+  const totalAmount = coercePositiveNumber(quotedTotal);
+  let paidAmount = manualPaidAmount;
+
+  if (paymentStatus === "unpaid") {
+    paidAmount = 0;
+  } else if (paymentStatus === "paid" && totalAmount > 0 && paidAmount <= 0) {
+    paidAmount = totalAmount;
+  }
+
+  const balanceAmount = totalAmount > 0 ? Math.max(0, totalAmount - paidAmount) : 0;
+
+  return {
+    paymentStatus,
+    paymentSource,
+    manualPaidAmount: paidAmount,
+    linkedInvoiceId: null,
+    linkedInvoice: null,
+    quotedTotal,
+    totalAmount,
+    paidAmount,
+    balanceAmount,
+    notes: financialSummary?.notes?.trim() ?? "",
+  };
+}
+
+function mapFinancialStatusToTripStatus(
+  currentStatus: string | null | undefined,
+  paymentStatus: TripFinancialPaymentStatus,
+): string | null {
+  const normalized = (currentStatus || "").toLowerCase();
+  if (["active", "in_progress", "completed", "cancelled"].includes(normalized)) {
+    return null;
+  }
+  if (paymentStatus === "paid") return "paid";
+  if (paymentStatus === "partially_paid") return "confirmed";
+  return "pending";
+}
+
+function FinancialSummaryEditorCard({
+  trip,
+  packagePricing,
+  financialSummary,
+  invoiceSummary,
+  invoices,
+  loading,
+  convertingCurrency,
+  savingFinancials,
+  onPackagePricingChange,
+  onFinancialSummaryChange,
+  onConvertToINR,
+  onSaveFinancials,
+}: FinancialSummaryEditorCardProps) {
+  const resolvedPricing = packagePricing ?? {};
+  const resolved = resolveFinancialState(
+    trip,
+    packagePricing,
+    financialSummary,
+    invoiceSummary,
+    invoices,
+  );
+  const isInvoiceLinked = resolved.paymentSource === "linked_invoice";
+  const effectiveStatusLabel = resolved.paymentStatus.replace("_", " ");
+  const kpis: readonly RevenueKpi[] = [
+    {
+      label: "Quoted Total",
+      value:
+        resolved.quotedTotal && resolved.quotedTotal > 0
+          ? formatPackageCurrency(resolved.quotedTotal, resolvedPricing.currency)
+          : "Not set",
+      icon: IndianRupee,
+      color: "text-emerald-600",
+      iconBg: "bg-emerald-50",
+    },
+    {
+      label: "Amount Paid",
+      value: formatPackageCurrency(resolved.paidAmount, resolvedPricing.currency),
+      icon: CheckCircle,
+      color: "text-sky-600",
+      iconBg: "bg-sky-50",
+    },
+    {
+      label: "Balance Due",
+      value: formatPackageCurrency(resolved.balanceAmount, resolvedPricing.currency),
+      icon: AlertCircle,
+      color: resolved.balanceAmount > 0 ? "text-rose-600" : "text-emerald-600",
+      iconBg: resolved.balanceAmount > 0 ? "bg-rose-50" : "bg-emerald-50",
+    },
+    {
+      label: "Invoices",
+      value: String(invoices.length),
+      icon: FileText,
+      color: "text-violet-600",
+      iconBg: "bg-violet-50",
+    },
+  ];
+
+  if (loading) {
+    return (
+      <GlassCard padding="xl">
+        <div className="flex items-center justify-center py-8">
+          <span className="text-sm text-gray-400 animate-pulse">Loading financials...</span>
+        </div>
+      </GlassCard>
+    );
+  }
+
+  return (
+    <GlassCard padding="xl">
+      <div className="flex items-center gap-2 mb-5">
+        <IndianRupee className="w-4 h-4 text-primary" />
+        <span className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+          Financial Summary
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        {kpis.map((kpi) => {
+          const Icon = kpi.icon;
+          return (
+            <div key={kpi.label} className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className={`w-8 h-8 rounded-lg ${kpi.iconBg} flex items-center justify-center`}>
+                  <Icon className={`w-4 h-4 ${kpi.color}`} />
+                </div>
+              </div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+                {kpi.label}
+              </p>
+              <p className={`text-2xl font-black tabular-nums ${kpi.color}`}>{kpi.value}</p>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="mt-6 space-y-4 border-t border-white/30 pt-4 dark:border-slate-700/30">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-text-muted">
+              Payment Tracking
+            </p>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <GlassBadge variant={resolved.paymentStatus === "paid" ? "success" : resolved.paymentStatus === "partially_paid" ? "info" : "warning"} size="sm">
+                {effectiveStatusLabel}
+              </GlassBadge>
+              <GlassBadge variant="secondary" size="sm">
+                {resolved.paymentSource === "linked_invoice" ? "Linked Invoice" : "Manual Cash"}
+              </GlassBadge>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {resolvedPricing.currency && resolvedPricing.currency.toUpperCase() !== "INR" ? (
+              <GlassButton variant="outline" size="sm" loading={convertingCurrency} onClick={onConvertToINR}>
+                <RefreshCw className="w-4 h-4" />
+                Convert To INR
+              </GlassButton>
+            ) : null}
+            <GlassButton variant="primary" size="sm" loading={savingFinancials} onClick={onSaveFinancials}>
+              Save Financials
+            </GlassButton>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <label className="space-y-1">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
+              Payment Source
+            </span>
+            <select
+              value={resolved.paymentSource}
+              onChange={(e) =>
+                onFinancialSummaryChange?.({
+                  ...financialSummary,
+                  payment_source: e.target.value as TripFinancialPaymentSource,
+                  linked_invoice_id:
+                    e.target.value === "linked_invoice"
+                      ? financialSummary?.linked_invoice_id ?? (invoices.length === 1 ? invoices[0]?.id ?? null : null)
+                      : null,
+                })
+              }
+              className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 bg-slate-50 shadow-inner dark:bg-slate-900/60 dark:border-slate-700 text-secondary dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/40"
+            >
+              <option value="manual_cash">Manual Cash</option>
+              <option value="linked_invoice">Linked Invoice</option>
+            </select>
+          </label>
+
+          <label className="space-y-1">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
+              Payment Status
+            </span>
+            <select
+              value={resolved.paymentStatus}
+              disabled={isInvoiceLinked}
+              onChange={(e) =>
+                onFinancialSummaryChange?.({
+                  ...financialSummary,
+                  payment_status: e.target.value as TripFinancialPaymentStatus,
+                })
+              }
+              className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 bg-slate-50 shadow-inner disabled:opacity-60 disabled:cursor-not-allowed dark:bg-slate-900/60 dark:border-slate-700 text-secondary dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/40"
+            >
+              <option value="unpaid">Unpaid</option>
+              <option value="partially_paid">Partially Paid</option>
+              <option value="paid">Paid</option>
+            </select>
+          </label>
+
+          {isInvoiceLinked ? (
+            <label className="space-y-1 md:col-span-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
+                Linked Invoice
+              </span>
+              <select
+                value={resolved.linkedInvoiceId ?? ""}
+                onChange={(e) =>
+                  onFinancialSummaryChange?.({
+                    ...financialSummary,
+                    payment_source: "linked_invoice",
+                    linked_invoice_id: e.target.value || null,
+                  })
+                }
+                className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 bg-slate-50 shadow-inner dark:bg-slate-900/60 dark:border-slate-700 text-secondary dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/40"
+              >
+                <option value="">Select invoice</option>
+                {invoices.map((invoice) => (
+                  <option key={invoice.id} value={invoice.id}>
+                    {invoice.invoice_number} · {formatINR(invoice.total_amount)} · {invoice.status.replace("_", " ")}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <label className="space-y-1">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
+                Customer Paid In Cash
+              </span>
+              <input
+                type="number"
+                min={0}
+                placeholder="Paid amount"
+                value={financialSummary?.manual_paid_amount ?? resolved.manualPaidAmount ?? ""}
+                onChange={(e) =>
+                  onFinancialSummaryChange?.({
+                    ...financialSummary,
+                    payment_source: "manual_cash",
+                    manual_paid_amount: e.target.value === "" ? 0 : Number(e.target.value),
+                  })
+                }
+                className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 bg-slate-50 shadow-inner dark:bg-slate-900/60 dark:border-slate-700 text-secondary dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+            </label>
+          )}
+
+          <label className="space-y-1">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
+              Travelers
+            </span>
+            <input
+              type="number"
+              min={1}
+              placeholder="Travelers"
+              value={resolvedPricing.pax_count ?? ""}
+              onChange={(e) =>
+                onPackagePricingChange?.({
+                  ...resolvedPricing,
+                  pax_count: e.target.value === "" ? undefined : Number(e.target.value),
+                })
+              }
+              className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 bg-slate-50 shadow-inner dark:bg-slate-900/60 dark:border-slate-700 text-secondary dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+          </label>
+
+          <label className="space-y-1">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
+              Quoted Total
+            </span>
+            <input
+              type="number"
+              min={0}
+              placeholder="Quoted total"
+              value={resolvedPricing.total_cost ?? ""}
+              onChange={(e) =>
+                onPackagePricingChange?.({
+                  ...resolvedPricing,
+                  total_cost: e.target.value === "" ? undefined : Number(e.target.value),
+                })
+              }
+              className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 bg-slate-50 shadow-inner dark:bg-slate-900/60 dark:border-slate-700 text-secondary dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+          </label>
+
+          <label className="space-y-1">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
+              Per Person
+            </span>
+            <input
+              type="number"
+              min={0}
+              placeholder="Per person"
+              value={resolvedPricing.per_person_cost ?? ""}
+              onChange={(e) =>
+                onPackagePricingChange?.({
+                  ...resolvedPricing,
+                  per_person_cost: e.target.value === "" ? undefined : Number(e.target.value),
+                })
+              }
+              className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 bg-slate-50 shadow-inner dark:bg-slate-900/60 dark:border-slate-700 text-secondary dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+          </label>
+
+          <label className="space-y-1">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
+              Currency
+            </span>
+            <input
+              type="text"
+              placeholder="Currency"
+              value={resolvedPricing.currency ?? "INR"}
+              onChange={(e) =>
+                onPackagePricingChange?.({
+                  ...resolvedPricing,
+                  currency: e.target.value.toUpperCase(),
+                })
+              }
+              className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 bg-slate-50 shadow-inner dark:bg-slate-900/60 dark:border-slate-700 text-secondary dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+          </label>
+        </div>
+
+        <label className="space-y-1 block">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
+            Pricing Notes
+          </span>
+          <textarea
+            rows={3}
+            placeholder="Pricing notes"
+            value={resolvedPricing.notes ?? ""}
+            onChange={(e) =>
+              onPackagePricingChange?.({
+                ...resolvedPricing,
+                notes: e.target.value,
+              })
+            }
+            className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 bg-slate-50 shadow-inner dark:bg-slate-900/60 dark:border-slate-700 text-secondary dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/40"
+          />
+        </label>
+
+        <label className="space-y-1 block">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-text-muted">
+            Payment Notes
+          </span>
+          <textarea
+            rows={3}
+            placeholder={isInvoiceLinked ? "Invoice payment context" : "Cash received or payment remarks"}
+            value={financialSummary?.notes ?? resolved.notes}
+            onChange={(e) =>
+              onFinancialSummaryChange?.({
+                ...financialSummary,
+                notes: e.target.value,
+              })
+            }
+            className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 bg-slate-50 shadow-inner dark:bg-slate-900/60 dark:border-slate-700 text-secondary dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/40"
+          />
+        </label>
+
+        <p className="text-xs text-text-muted">
+          {isInvoiceLinked
+            ? "Linked invoice mode mirrors the selected invoice status and amounts. Switch to Manual Cash if you want to override it here."
+            : "Manual Cash mode lets you save unpaid, partially paid, or paid status directly on this trip even before an invoice exists."}
+        </p>
+      </div>
+    </GlassCard>
+  );
 }
 
 function formatPackageCurrency(amount: number, currency?: string): string {
@@ -512,6 +1021,7 @@ function InvoiceEditorModal({
   const [sacCode, setSacCode] = useState("998314");
   const [currency, setCurrency] = useState("INR");
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!isOpen) {
       wasOpenRef.current = false;
@@ -544,6 +1054,7 @@ function InvoiceEditorModal({
       wasOpenRef.current = true;
     }
   }, [existingInvoice, initialLines, initialNotes, isOpen, mode]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const invoiceTotals = useMemo(
     () => calculateInvoiceDraftTotals(lines, gstEnabled),
@@ -938,16 +1449,20 @@ export function FinancialsTab({
   trip,
   invoiceSummary,
   onPricingChange,
+  onFinancialSummaryChange,
 }: FinancialsTabProps) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingInvoiceId, setEditingInvoiceId] = useState<string | null>(null);
   const [convertingCurrency, setConvertingCurrency] = useState(false);
+  const [savingFinancials, setSavingFinancials] = useState(false);
   const autoConvertedPricingRef = useRef<string | null>(null);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const invoicesQuery = useTripInvoices(trip.id);
   const addOnsQuery = useTripAddOns(trip.id);
   const catalogQuery = useAvailableAddOnsCatalog();
+  const saveItinerary = useSaveTripItinerary();
   const updateAddOn = useUpdateTripAddOn();
   const createAddOn = useCreateTripAddOn();
 
@@ -955,8 +1470,14 @@ export function FinancialsTab({
     () => invoicesQuery.data?.invoices ?? [],
     [invoicesQuery.data?.invoices]
   );
-  const addOns = addOnsQuery.data?.addOns ?? [];
-  const availableAddOns = catalogQuery.data?.addOns ?? [];
+  const addOns = useMemo(
+    () => addOnsQuery.data?.addOns ?? [],
+    [addOnsQuery.data?.addOns],
+  );
+  const availableAddOns = useMemo(
+    () => catalogQuery.data?.addOns ?? [],
+    [catalogQuery.data?.addOns],
+  );
 
   const recentPayments = useMemo(
     () => collectRecentPayments(invoices),
@@ -964,6 +1485,7 @@ export function FinancialsTab({
   );
 
   const packagePricing = trip.itineraries?.raw_data?.pricing ?? null;
+  const financialSummary = trip.itineraries?.raw_data?.financial_summary ?? null;
   const itineraryId = trip.itineraries?.id ?? null;
   const prefilledInvoiceLines = useMemo(
     () => buildInvoiceDraftLines(trip, packagePricing, addOns),
@@ -982,6 +1504,18 @@ export function FinancialsTab({
       });
     },
     [onPricingChange],
+  );
+
+  const handleFinancialSummaryChange = useCallback(
+    (summary: TripFinancialSummaryConfig) => {
+      onFinancialSummaryChange?.({
+        ...summary,
+        payment_source: summary.payment_source ?? "manual_cash",
+        payment_status: summary.payment_status ?? "unpaid",
+        linked_invoice_id: summary.linked_invoice_id ?? null,
+      });
+    },
+    [onFinancialSummaryChange],
   );
 
   const handleConvertPricingToINR = useCallback(async () => {
@@ -1167,18 +1701,148 @@ export function FinancialsTab({
     [createAddOn, toast, trip.id],
   );
 
+  const handleSaveFinancials = useCallback(async () => {
+    if (!trip.itineraries?.id) {
+      toast({
+        title: "No itinerary linked",
+        description: "Financial summary can only be saved on a trip with an itinerary.",
+        variant: "error",
+      });
+      return;
+    }
+
+    const resolved = resolveFinancialState(
+      trip,
+      packagePricing,
+      financialSummary,
+      invoiceSummary,
+      invoices,
+    );
+
+    if (resolved.paymentSource === "linked_invoice" && !resolved.linkedInvoiceId) {
+      toast({
+        title: "Select an invoice",
+        description: "Choose which invoice should drive this payment summary.",
+        variant: "warning",
+      });
+      return;
+    }
+
+    if (resolved.paymentSource === "manual_cash") {
+      if (resolved.paymentStatus === "partially_paid") {
+        if (resolved.paidAmount <= 0) {
+          toast({
+            title: "Enter the paid amount",
+            description: "Partially paid trips need a non-zero cash amount.",
+            variant: "warning",
+          });
+          return;
+        }
+        if (resolved.totalAmount > 0 && resolved.paidAmount >= resolved.totalAmount) {
+          toast({
+            title: "Use Paid instead",
+            description: "Partial payment must be lower than the quoted total.",
+            variant: "warning",
+          });
+          return;
+        }
+      }
+
+      if (resolved.paymentStatus === "paid" && resolved.totalAmount > 0 && resolved.paidAmount < resolved.totalAmount) {
+        toast({
+          title: "Paid amount is too low",
+          description: "Paid status requires the full quoted amount in manual cash mode.",
+          variant: "warning",
+        });
+        return;
+      }
+    }
+
+    const nextRawData = {
+      ...(trip.itineraries.raw_data ?? {}),
+      pricing: packagePricing ? { ...packagePricing } : undefined,
+      financial_summary: {
+        payment_source: resolved.paymentSource,
+        payment_status: resolved.paymentStatus,
+        manual_paid_amount:
+          resolved.paymentSource === "manual_cash" ? resolved.paidAmount : undefined,
+        linked_invoice_id:
+          resolved.paymentSource === "linked_invoice" ? resolved.linkedInvoiceId : null,
+        notes: financialSummary?.notes?.trim() || undefined,
+      },
+    };
+
+    const desiredTripStatus = mapFinancialStatusToTripStatus(trip.status, resolved.paymentStatus);
+
+    setSavingFinancials(true);
+    try {
+      await saveItinerary.mutateAsync({
+        tripId: trip.id,
+        itineraryId: trip.itineraries.id,
+        days: trip.itineraries.raw_data?.days ?? [],
+        rawData: nextRawData,
+      });
+
+      if (desiredTripStatus && desiredTripStatus !== trip.status) {
+        const response = await authedFetch(`/api/trips/${trip.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: desiredTripStatus }),
+        });
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.error || "Failed to update trip payment status");
+        }
+      }
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: tripDetailKeys.detail(trip.id) }),
+        queryClient.invalidateQueries({ queryKey: tripDetailKeys.invoices(trip.id) }),
+      ]);
+
+      toast({
+        title: "Financial summary saved",
+        description: "Pricing and payment tracking were updated for this trip.",
+        variant: "success",
+      });
+    } catch (error) {
+      toast({
+        title: "Could not save financial summary",
+        description: error instanceof Error ? error.message : "Try again.",
+        variant: "error",
+      });
+    } finally {
+      setSavingFinancials(false);
+    }
+  }, [
+    financialSummary,
+    invoiceSummary,
+    invoices,
+    packagePricing,
+    queryClient,
+    saveItinerary,
+    toast,
+    trip,
+  ]);
+
   return (
     <>
       <div className="grid grid-cols-12 gap-6">
         {/* Left column */}
         <div className="col-span-12 xl:col-span-8 space-y-6">
-          <TripFinancialSummary
-            invoiceSummary={invoiceSummary}
+          <FinancialSummaryEditorCard
+            trip={trip}
             packagePricing={packagePricing}
+            financialSummary={financialSummary}
+            invoiceSummary={invoiceSummary}
+            invoices={invoices}
             loading={invoicesQuery.isLoading}
-            onPackagePricingChange={handlePricingChange}
+            onPackagePricingChange={onPricingChange ? handlePricingChange : undefined}
+            onFinancialSummaryChange={handleFinancialSummaryChange}
             onConvertToINR={handleConvertPricingToINR}
             convertingCurrency={convertingCurrency}
+            savingFinancials={savingFinancials || saveItinerary.isPending}
+            onSaveFinancials={handleSaveFinancials}
           />
 
           <RevenueBreakdownCard
