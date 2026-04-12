@@ -1,10 +1,13 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ChevronRight, Filter } from 'lucide-react';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { GlassSkeleton } from '@/components/glass/GlassSkeleton';
 import { formatCompactINR } from '@/lib/admin/operator-state';
+import { useDemoFetch } from '@/lib/demo/use-demo-fetch';
+import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import type { DashboardV2State } from './types';
 
@@ -18,9 +21,54 @@ interface FunnelStage {
   barColor: string;
 }
 
-function buildStages(data: DashboardV2State): FunnelStage[] {
-  const stages = data.overview?.pipeline.stages ?? [];
-  return stages.map((stage) => ({
+type ProposalListRow = {
+  id: string;
+  status: string | null;
+  title: string | null;
+  total_price: number | null;
+  client_selected_price: number | null;
+  trips:
+    | {
+        status: string | null;
+      }
+    | null;
+};
+
+type FunnelDataState = {
+  stages: FunnelStage[];
+  risk: { high: number; medium: number; low: number } | null;
+  proposalUnavailable: boolean;
+};
+
+function normalizeStatus(input: string | null | undefined): string {
+  return (input || '').trim().toLowerCase();
+}
+
+function getProposalValue(proposal: ProposalListRow): number {
+  return Number(proposal.client_selected_price ?? proposal.total_price ?? 0);
+}
+
+function getStageKey(proposal: ProposalListRow): FunnelStage['key'] {
+  const proposalStatus = normalizeStatus(proposal.status);
+  const tripStatus = normalizeStatus(proposal.trips?.status);
+
+  if (['accepted', 'approved', 'confirmed', 'converted'].includes(proposalStatus)) {
+    return 'paid';
+  }
+  if (['expired', 'cancelled', 'rejected'].includes(proposalStatus)) {
+    return 'lost';
+  }
+  if (['confirmed', 'paid', 'completed', 'active', 'in_progress'].includes(tripStatus)) {
+    return 'paid';
+  }
+  if (proposalStatus === 'sent' || proposalStatus === 'viewed' || proposalStatus === 'draft') {
+    return proposalStatus as FunnelStage['key'];
+  }
+  return 'draft';
+}
+
+function buildStagesFromOverview(data: DashboardV2State): FunnelDataState {
+  const stages = (data.overview?.pipeline.stages ?? []).map((stage) => ({
     key: stage.key,
     label: stage.label,
     count: stage.count ?? 0,
@@ -46,6 +94,74 @@ function buildStages(data: DashboardV2State): FunnelStage[] {
               ? 'bg-emerald-500'
               : 'bg-rose-500',
   }));
+
+  return {
+    stages,
+    risk: data.overview?.pipeline.risk ?? null,
+    proposalUnavailable: data.overview?.health.sources.proposals === 'failed',
+  };
+}
+
+function buildStagesFromProposals(proposals: ProposalListRow[]): FunnelDataState {
+  const stageMap: Record<FunnelStage['key'], { count: number; value: number }> = {
+    draft: { count: 0, value: 0 },
+    sent: { count: 0, value: 0 },
+    viewed: { count: 0, value: 0 },
+    paid: { count: 0, value: 0 },
+    lost: { count: 0, value: 0 },
+  };
+
+  for (const proposal of proposals) {
+    const key = getStageKey(proposal);
+    stageMap[key].count += 1;
+    stageMap[key].value += getProposalValue(proposal);
+  }
+
+  const stages = [
+    { key: 'draft', label: 'Draft' },
+    { key: 'sent', label: 'Sent' },
+    { key: 'viewed', label: 'Viewed' },
+    { key: 'paid', label: 'Paid' },
+    { key: 'lost', label: 'Lost' },
+  ].map((stage) => ({
+    ...stage,
+    count: stageMap[stage.key].count,
+    value: stageMap[stage.key].value,
+    color:
+      stage.key === 'draft'
+        ? 'text-slate-500'
+        : stage.key === 'sent'
+          ? 'text-blue-500'
+          : stage.key === 'viewed'
+            ? 'text-amber-500'
+            : stage.key === 'paid'
+              ? 'text-emerald-500'
+              : 'text-rose-500',
+    barColor:
+      stage.key === 'draft'
+        ? 'bg-slate-400'
+        : stage.key === 'sent'
+          ? 'bg-blue-500'
+          : stage.key === 'viewed'
+            ? 'bg-amber-500'
+            : stage.key === 'paid'
+              ? 'bg-emerald-500'
+              : 'bg-rose-500',
+  }));
+
+  return {
+    stages,
+    risk: null,
+    proposalUnavailable: false,
+  };
+}
+
+function buildStages(data: DashboardV2State, localFunnel: FunnelDataState | null): FunnelDataState {
+  if (localFunnel && !localFunnel.proposalUnavailable) {
+    return localFunnel;
+  }
+
+  return buildStagesFromOverview(data);
 }
 
 // ---------------------------------------------------------------------------
@@ -57,8 +173,52 @@ interface PipelineFunnelProps {
 }
 
 export function PipelineFunnel({ data }: PipelineFunnelProps) {
-  const funnel = data.overview?.pipeline;
-  const proposalUnavailable = data.overview?.health.sources.proposals === 'failed';
+  const supabase = useMemo(() => createClient(), []);
+  const demoFetch = useDemoFetch();
+  const [localFunnel, setLocalFunnel] = useState<FunnelDataState | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchFunnel() {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        const headers: Record<string, string> = {};
+        if (session?.access_token) {
+          headers.Authorization = `Bearer ${session.access_token}`;
+        }
+
+        const response = await demoFetch('/api/admin/proposals', {
+          headers,
+          cache: 'no-store',
+        });
+
+        if (!response.ok) {
+          throw new Error(`Proposal list failed: ${response.status}`);
+        }
+
+        const payload = (await response.json()) as { proposals?: ProposalListRow[] };
+        if (cancelled) return;
+        setLocalFunnel(buildStagesFromProposals(payload.proposals ?? []));
+      } catch {
+        if (cancelled) return;
+        setLocalFunnel({
+          stages: [],
+          risk: null,
+          proposalUnavailable: true,
+        });
+      }
+    }
+
+    void fetchFunnel();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [demoFetch, supabase]);
 
   if (data.phase === 'loading') {
     return (
@@ -73,10 +233,13 @@ export function PipelineFunnel({ data }: PipelineFunnelProps) {
     );
   }
 
-  const stages = buildStages(data);
+  const funnel = data.overview?.pipeline;
+  const resolvedFunnel = buildStages(data, localFunnel);
+  const stages = resolvedFunnel.stages;
   const maxCount = Math.max(...stages.map((s) => s.count), 1);
-  const summary = funnel?.risk;
+  const summary = resolvedFunnel.risk ?? funnel?.risk;
   const hasValues = stages.some((stage) => stage.count > 0 || stage.value > 0);
+  const proposalUnavailable = resolvedFunnel.proposalUnavailable;
 
   return (
     <GlassCard padding="xl">
