@@ -15,7 +15,10 @@ import {
 import { GlassCard } from '@/components/glass/GlassCard';
 import { GlassBadge } from '@/components/glass/GlassBadge';
 import { GlassSkeleton } from '@/components/glass/GlassSkeleton';
-import type { DashboardQueueItem } from '@/lib/admin/dashboard-overview-types';
+import type {
+  DashboardHealthSourceKey,
+  DashboardQueueItem,
+} from '@/lib/admin/dashboard-overview-types';
 import { cn } from '@/lib/utils';
 import type { DashboardV2State } from './types';
 
@@ -159,6 +162,10 @@ interface SmartActionQueueProps {
 export function SmartActionQueue({ data }: SmartActionQueueProps) {
   const isLoading = data.phase === 'loading';
   const items = data.overview?.actionQueue.items ?? [];
+  const queueSources: DashboardHealthSourceKey[] = ['proposals', 'trips', 'invoices', 'followUps'];
+  const queueUnavailable = queueSources.some(
+    (source) => data.overview?.health.sources[source] === 'failed',
+  );
 
   if (isLoading) {
     return (
@@ -171,6 +178,24 @@ export function SmartActionQueue({ data }: SmartActionQueueProps) {
           {Array.from({ length: 4 }).map((_, i) => (
             <GlassSkeleton key={i} className="h-14 w-full rounded-xl" />
           ))}
+        </div>
+      </GlassCard>
+    );
+  }
+
+  if (items.length === 0 && queueUnavailable) {
+    return (
+      <GlassCard padding="xl">
+        <div className="flex flex-col items-center gap-3 py-8 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100/60">
+            <AlertTriangle className="h-7 w-7 text-amber-600" />
+          </div>
+          <h2 className="text-xl font-serif tracking-tight text-secondary dark:text-white">
+            Action queue temporarily unavailable
+          </h2>
+          <p className="max-w-md text-sm font-medium text-text-muted">
+            Some proposal, trip, invoice, or follow-up data did not load, so this queue cannot be trusted yet.
+          </p>
         </div>
       </GlassCard>
     );

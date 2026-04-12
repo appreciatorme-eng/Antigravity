@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { GlassSkeleton } from '@/components/glass/GlassSkeleton';
+import type { DashboardHealthSourceKey } from '@/lib/admin/dashboard-overview-types';
 import { cn } from '@/lib/utils';
 import type { DashboardV2State } from './types';
 
@@ -66,6 +67,10 @@ interface CustomerPulseProps {
 export function CustomerPulse({ data }: CustomerPulseProps) {
   const isLoading = data.phase === 'loading';
   const pulse = data.overview?.customerPulse;
+  const pulseSources: DashboardHealthSourceKey[] = ['proposals', 'trips', 'followUps'];
+  const pulseUnavailable = pulseSources.some(
+    (source) => data.overview?.health.sources[source] === 'failed',
+  );
 
   if (isLoading) {
     return (
@@ -84,6 +89,27 @@ export function CustomerPulse({ data }: CustomerPulseProps) {
   const winRate = pulse?.winRate;
   const totalWins = pulse?.wins;
   const followUpsDue = pulse?.followUpsDue;
+
+  if (
+    pulseUnavailable &&
+    proposalCount === null &&
+    winRate === null &&
+    totalWins === null
+  ) {
+    return (
+      <GlassCard padding="xl" className="h-full">
+        <div className="mb-4 flex items-center gap-2">
+          <Heart className="h-4 w-4 text-rose-500" />
+          <h2 className="text-sm font-black uppercase tracking-widest text-text-muted">
+            Customer Pulse
+          </h2>
+        </div>
+        <div className="rounded-xl border border-dashed border-amber-200 bg-amber-50/60 px-4 py-5 text-sm font-medium text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-100">
+          Proposal and win-rate data is temporarily unavailable, so customer pulse metrics are paused.
+        </div>
+      </GlassCard>
+    );
+  }
 
   return (
     <GlassCard padding="xl" className="h-full">

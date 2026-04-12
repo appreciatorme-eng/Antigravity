@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { GlassSkeleton } from '@/components/glass/GlassSkeleton';
+import type { DashboardHealthSourceKey } from '@/lib/admin/dashboard-overview-types';
 import { cn } from '@/lib/utils';
 import type { DashboardV2State } from './types';
 
@@ -75,6 +76,11 @@ export function PerformanceScorecard({ data }: PerformanceScorecardProps) {
   }
 
   const metrics = buildMetrics(data);
+  const scorecardSources: DashboardHealthSourceKey[] = ['proposals', 'trips', 'invoices', 'followUps'];
+  const scorecardUnavailable = scorecardSources.some(
+    (source) => data.overview?.health.sources[source] === 'failed',
+  );
+  const hasValues = metrics.some((metric) => metric.current !== '—');
 
   return (
     <GlassCard padding="lg">
@@ -96,27 +102,33 @@ export function PerformanceScorecard({ data }: PerformanceScorecardProps) {
       </button>
 
       {expanded && (
-        <div className="mt-5 grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
-          {metrics.map((metric) => (
-            <div
-              key={metric.label}
-              className={cn(
-                'rounded-xl border border-gray-100 bg-white/50 px-4 py-3',
-                'dark:border-white/5 dark:bg-white/[0.02]',
-              )}
-            >
-              <p className="text-[9px] font-black uppercase tracking-[0.15em] text-text-muted">
-                {metric.label}
-              </p>
-              <div className="mt-1 flex items-center justify-between">
-                <span className="text-xl font-black tabular-nums text-secondary dark:text-white">
-                  {metric.current}
-                </span>
-                <DeltaIndicator delta={metric.delta} />
+        scorecardUnavailable && !hasValues ? (
+          <div className="mt-5 rounded-xl border border-dashed border-amber-200 bg-amber-50/60 px-4 py-5 text-sm font-medium text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-100">
+            Scorecard metrics are temporarily unavailable because core dashboard sources did not load.
+          </div>
+        ) : (
+          <div className="mt-5 grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
+            {metrics.map((metric) => (
+              <div
+                key={metric.label}
+                className={cn(
+                  'rounded-xl border border-gray-100 bg-white/50 px-4 py-3',
+                  'dark:border-white/5 dark:bg-white/[0.02]',
+                )}
+              >
+                <p className="text-[9px] font-black uppercase tracking-[0.15em] text-text-muted">
+                  {metric.label}
+                </p>
+                <div className="mt-1 flex items-center justify-between">
+                  <span className="text-xl font-black tabular-nums text-secondary dark:text-white">
+                    {metric.current}
+                  </span>
+                  <DeltaIndicator delta={metric.delta} />
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )
       )}
     </GlassCard>
   );

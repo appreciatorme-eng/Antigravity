@@ -58,6 +58,7 @@ interface PipelineFunnelProps {
 
 export function PipelineFunnel({ data }: PipelineFunnelProps) {
   const funnel = data.overview?.pipeline;
+  const proposalUnavailable = data.overview?.health.sources.proposals === 'failed';
 
   if (data.phase === 'loading') {
     return (
@@ -75,6 +76,7 @@ export function PipelineFunnel({ data }: PipelineFunnelProps) {
   const stages = buildStages(data);
   const maxCount = Math.max(...stages.map((s) => s.count), 1);
   const summary = funnel?.risk;
+  const hasValues = stages.some((stage) => stage.count > 0 || stage.value > 0);
 
   return (
     <GlassCard padding="xl">
@@ -93,6 +95,12 @@ export function PipelineFunnel({ data }: PipelineFunnelProps) {
         </Link>
       </div>
 
+      {proposalUnavailable && !hasValues ? (
+        <div className="rounded-xl border border-dashed border-amber-200 bg-amber-50/60 px-4 py-5 text-sm font-medium text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-100">
+          Proposal pipeline data is temporarily unavailable, so the funnel cannot be computed right now.
+        </div>
+      ) : (
+        <>
       {/* Risk summary */}
       {summary && (
         <div className="mb-4 flex gap-3">
@@ -150,6 +158,8 @@ export function PipelineFunnel({ data }: PipelineFunnelProps) {
           );
         })}
       </div>
+        </>
+      )}
     </GlassCard>
   );
 }

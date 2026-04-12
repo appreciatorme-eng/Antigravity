@@ -46,10 +46,14 @@ export default function AdminDashboard() {
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
             <p className="font-semibold">Dashboard is showing partial business data.</p>
-            <p className="mt-1 text-xs font-medium">
-              {data.overview?.health.messages[0] ||
-                'One or more data sources did not load, so some cards may be partial.'}
-            </p>
+            <div className="mt-1 space-y-1 text-xs font-medium">
+              {(data.overview?.health.issues?.length
+                ? data.overview.health.issues
+                : [{ source: 'unknown', message: 'One or more data sources did not load, so some cards may be partial.' }]
+              ).map((issue) => (
+                <p key={`${issue.source}-${issue.message}`}>{issue.message}</p>
+              ))}
+            </div>
           </div>
         </div>
       )}

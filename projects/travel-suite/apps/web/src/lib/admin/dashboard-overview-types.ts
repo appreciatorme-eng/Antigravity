@@ -11,11 +11,17 @@ export type DashboardHealthSourceKey =
   | "profiles"
   | "itineraries";
 
+export interface DashboardHealthIssue {
+  source: DashboardHealthSourceKey;
+  message: string;
+}
+
 export type DashboardQueueItemType = "departure" | "payment" | "quote" | "followup";
 
 export interface DashboardHealth {
   overall: DashboardSourceHealth;
   sources: Record<DashboardHealthSourceKey, DashboardSourceHealth>;
+  issues: DashboardHealthIssue[];
   messages: string[];
 }
 

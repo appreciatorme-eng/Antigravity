@@ -10,6 +10,7 @@ import type {
   DashboardPipelineStage,
   DashboardQueueItem,
   DashboardScorecardMetric,
+  DashboardSourceHealth,
 } from "@/lib/admin/dashboard-overview-types";
 import {
   computeProposalRisk,
@@ -56,7 +57,8 @@ type ProposalRow = {
   total_price: number | null;
   client_selected_price: number | null;
   client_id: string | null;
-  trip_id: string | null;
+  trip_id?: string | null;
+  trips?: { status: string | null } | { status: string | null }[] | null;
 };
 
 type TripRow = {
@@ -127,13 +129,13 @@ type ItineraryRow = {
 
 type QuerySourceResult<T> = {
   rows: T[];
-  health: "ok" | "failed";
+  health: DashboardSourceHealth;
   message: string | null;
 };
 
 type FollowUpResult = {
   rows: FollowUpRow[];
-  health: "ok" | "failed";
+  health: DashboardSourceHealth;
   message: string | null;
 };
 
@@ -170,6 +172,13 @@ function sourceMessage(label: string): string {
   return `${label} data is temporarily unavailable, so parts of the dashboard may be partial.`;
 }
 
+type QueryResponse<T> = {
+  data: T[] | null;
+  error: { message?: string | null } | null;
+};
+
+type QueryAttempt<T> = () => PromiseLike<QueryResponse<T>> | QueryResponse<T>;
+
 function resolveSettledRows<T>(
   result: PromiseSettledResult<{ data: T[] | null; error: { message?: string | null } | null }>,
   label: string,
@@ -195,6 +204,41 @@ function resolveSettledRows<T>(
     health: "ok",
     message: null,
   };
+}
+
+async function resolveQueryWithFallbacks<T>(
+  label: string,
+  attempts: QueryAttempt<T>[],
+): Promise<QuerySourceResult<T>> {
+  for (const attempt of attempts) {
+    try {
+      const result = await attempt();
+      if (!result.error) {
+        return {
+          rows: (result.data || []) as T[],
+          health: "ok",
+          message: null,
+        };
+      }
+    } catch {
+      // Try the next compatibility shape.
+    }
+  }
+
+  return {
+    rows: [],
+    health: "failed",
+    message: sourceMessage(label),
+  };
+}
+
+function normalizeJoinedTripStatus(
+  trips: ProposalRow["trips"],
+): string | null {
+  if (Array.isArray(trips)) {
+    return trips[0]?.status || null;
+  }
+  return trips?.status || null;
 }
 
 async function queryFollowUpsByColumn(params: {
@@ -315,15 +359,21 @@ function buildHealth(input: {
     itineraries: input.itineraries.health,
   };
 
-  const messages = [
-    input.proposals.message,
-    input.trips.message,
-    input.invoices.message,
-    input.payments.message,
-    input.followUps.message,
-    input.profiles.message,
-    input.itineraries.message,
-  ].filter((message): message is string => Boolean(message));
+  const issues = (
+    [
+      ["proposals", input.proposals.message],
+      ["trips", input.trips.message],
+      ["invoices", input.invoices.message],
+      ["payments", input.payments.message],
+      ["followUps", input.followUps.message],
+      ["profiles", input.profiles.message],
+      ["itineraries", input.itineraries.message],
+    ] as const
+  )
+    .filter((entry): entry is [DashboardHealthSourceKey, string] => Boolean(entry[1]))
+    .map(([source, message]) => ({ source, message }));
+
+  const messages = issues.map((issue) => issue.message);
 
   const states = Object.values(sources);
   const overall =
@@ -333,7 +383,7 @@ function buildHealth(input: {
         ? "failed"
         : "partial";
 
-  return { overall, sources, messages };
+  return { overall, sources, issues, messages };
 }
 
 function buildClientMap(profiles: ProfileRow[]): Map<string, ClientMeta> {
@@ -360,7 +410,7 @@ function getProposalLifecycleFromTripMap(
   if (isLostProposal(proposal)) return "lost";
   const linkedTripStatus = proposal.trip_id
     ? tripStatusMap.get(proposal.trip_id) || null
-    : null;
+    : normalizeJoinedTripStatus(proposal.trips);
   return hasWonTripStatus(linkedTripStatus) ? "won" : "open";
 }
 
@@ -851,7 +901,16 @@ function buildActionQueue(params: {
 function buildBriefingSentence(params: {
   queue: DashboardOverview["actionQueue"];
   overdueAmount: number;
+  health: DashboardHealth;
 }): string {
+  const failedCoreSources = (
+    ["proposals", "trips", "invoices", "followUps"] as DashboardHealthSourceKey[]
+  ).filter((source) => params.health.sources[source] === "failed");
+
+  if (failedCoreSources.length > 0) {
+    return `Dashboard data is partially unavailable. Review ${failedCoreSources.join(", ")} before relying on today’s summary.`;
+  }
+
   const parts: string[] = [];
 
   if ((params.queue.summary.overdueInvoices || 0) > 0) {
@@ -1065,7 +1124,6 @@ function buildAiInsights(params: {
 function buildScorecard(params: {
   revenue: DashboardOverview["revenue"];
   kpis: DashboardKpis;
-  actionQueue: DashboardOverview["actionQueue"];
 }): DashboardScorecardMetric[] {
   return [
     {
@@ -1098,16 +1156,112 @@ function buildScorecard(params: {
     {
       key: "overdue",
       label: "Overdue Invoices",
-      current: String(params.kpis.overdueInvoices ?? 0),
+      current:
+        params.kpis.overdueInvoices !== null
+          ? String(params.kpis.overdueInvoices)
+          : "—",
       delta: null,
     },
     {
       key: "followups",
       label: "Follow-ups Due",
-      current: String(params.actionQueue.summary.followUpsDue ?? 0),
+      current:
+        params.kpis.followUpsDue !== null
+          ? String(params.kpis.followUpsDue)
+          : "—",
       delta: null,
     },
   ];
+}
+
+function fetchProposalRows(
+  client: AdminQueryClient,
+  organizationId: string,
+) {
+  return resolveQueryWithFallbacks<ProposalRow>("Proposal", [
+    () =>
+      client
+        .from("proposals")
+        .select(
+          "id,title,status,created_at,updated_at,viewed_at,expires_at,total_price,client_selected_price,client_id,trip_id,trips:trip_id(status)",
+        )
+        .eq("organization_id", organizationId)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false })
+        .limit(5000),
+    () =>
+      client
+        .from("proposals")
+        .select(
+          "id,title,status,created_at,updated_at,viewed_at,expires_at,total_price,client_selected_price,client_id,trip_id,trips:trip_id(status)",
+        )
+        .eq("organization_id", organizationId)
+        .order("created_at", { ascending: false })
+        .limit(5000),
+    () =>
+      client
+        .from("proposals")
+        .select(
+          "id,title,status,created_at,updated_at,viewed_at,expires_at,total_price,client_selected_price,client_id",
+        )
+        .eq("organization_id", organizationId)
+        .order("created_at", { ascending: false })
+        .limit(5000),
+  ]);
+}
+
+function fetchTripRows(
+  client: AdminQueryClient,
+  organizationId: string,
+) {
+  return resolveQueryWithFallbacks<TripRow>("Trip", [
+    () =>
+      client
+        .from("trips")
+        .select(
+          "id,itinerary_id,client_id,status,created_at,updated_at,start_date,end_date",
+        )
+        .eq("organization_id", organizationId)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false })
+        .limit(5000),
+    () =>
+      client
+        .from("trips")
+        .select(
+          "id,itinerary_id,client_id,status,created_at,updated_at,start_date,end_date",
+        )
+        .eq("organization_id", organizationId)
+        .order("created_at", { ascending: false })
+        .limit(5000),
+  ]);
+}
+
+function fetchInvoiceRows(
+  client: AdminQueryClient,
+  organizationId: string,
+) {
+  return resolveQueryWithFallbacks<InvoiceRow>("Invoice", [
+    () =>
+      client
+        .from("invoices")
+        .select(
+          "id,invoice_number,status,due_date,balance_amount,total_amount,created_at,updated_at,paid_at,client_id,trip_id",
+        )
+        .eq("organization_id", organizationId)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false })
+        .limit(5000),
+    () =>
+      client
+        .from("invoices")
+        .select(
+          "id,invoice_number,status,due_date,balance_amount,total_amount,created_at,updated_at,paid_at,client_id,trip_id",
+        )
+        .eq("organization_id", organizationId)
+        .order("created_at", { ascending: false })
+        .limit(5000),
+  ]);
 }
 
 export async function buildDashboardOverview(params: {
@@ -1120,36 +1274,16 @@ export async function buildDashboardOverview(params: {
   const followUpWindowEnd = addUtcDays(startOfUtcDay(now), 8).toISOString();
 
   const [
-    proposalsSettled,
-    tripsSettled,
-    invoicesSettled,
+    proposalsResult,
+    tripsResult,
+    invoicesResult,
     paymentLinksSettled,
     invoicePaymentsSettled,
     profilesSettled,
-  ] = await Promise.allSettled([
-    params.adminClient
-      .from("proposals")
-      .select(
-        "id,title,status,created_at,updated_at,viewed_at,expires_at,total_price,client_selected_price,client_id,trip_id",
-      )
-      .eq("organization_id", params.organizationId)
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false })
-      .limit(5000),
-    params.adminClient
-      .from("trips")
-      .select("id,itinerary_id,client_id,status,created_at,updated_at,start_date,end_date")
-      .eq("organization_id", params.organizationId)
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false })
-      .limit(5000),
-    params.adminClient
-      .from("invoices")
-      .select("id,invoice_number,status,due_date,balance_amount,total_amount,created_at,updated_at,paid_at,client_id,trip_id")
-      .eq("organization_id", params.organizationId)
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false })
-      .limit(5000),
+  ] = await Promise.all([
+    fetchProposalRows(params.adminClient, params.organizationId),
+    fetchTripRows(params.adminClient, params.organizationId),
+    fetchInvoiceRows(params.adminClient, params.organizationId),
     params.adminClient
       .from("payment_links")
       .select("id,status,amount_paise,paid_at,created_at,trip_id")
@@ -1169,21 +1303,21 @@ export async function buildDashboardOverview(params: {
       .limit(5000),
   ]);
 
-  const proposalsResult = resolveSettledRows<ProposalRow>(
-    proposalsSettled,
-    "Proposal",
-  );
-  const tripsResult = resolveSettledRows<TripRow>(tripsSettled, "Trip");
-  const invoicesResult = resolveSettledRows<InvoiceRow>(invoicesSettled, "Invoice");
-  const paymentLinksResult = resolveSettledRows<PaymentLinkRow>(
-    paymentLinksSettled,
-    "Payment",
-  );
-  const invoicePaymentsResult = resolveSettledRows<InvoicePaymentRow>(
-    invoicePaymentsSettled,
-    "Payment",
-  );
-  const profilesResult = resolveSettledRows<ProfileRow>(profilesSettled, "Profile");
+  const paymentLinksResult = {
+    rows: (paymentLinksSettled.data || []) as PaymentLinkRow[],
+    health: paymentLinksSettled.error ? "failed" : "ok",
+    message: paymentLinksSettled.error ? sourceMessage("Payment") : null,
+  } satisfies QuerySourceResult<PaymentLinkRow>;
+  const invoicePaymentsResult = {
+    rows: (invoicePaymentsSettled.data || []) as InvoicePaymentRow[],
+    health: invoicePaymentsSettled.error ? "failed" : "ok",
+    message: invoicePaymentsSettled.error ? sourceMessage("Payment") : null,
+  } satisfies QuerySourceResult<InvoicePaymentRow>;
+  const profilesResult = {
+    rows: (profilesSettled.data || []) as ProfileRow[],
+    health: profilesSettled.error ? "failed" : "ok",
+    message: profilesSettled.error ? sourceMessage("Profile") : null,
+  } satisfies QuerySourceResult<ProfileRow>;
 
   const itineraryIds = Array.from(
     new Set(
@@ -1398,6 +1532,7 @@ export async function buildDashboardOverview(params: {
           items: actionQueue.items,
         },
         overdueAmount,
+        health,
       }),
     },
     kpis,
@@ -1441,11 +1576,6 @@ export async function buildDashboardOverview(params: {
         narrative: revenueNarrative,
       },
       kpis,
-      actionQueue: {
-        total: actionQueue.items.length,
-        summary: actionQueue.summary,
-        items: actionQueue.items,
-      },
     }),
     aiInsights: buildAiInsights({
       kpis,
