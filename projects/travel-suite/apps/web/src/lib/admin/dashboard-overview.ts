@@ -23,6 +23,7 @@ import {
   type ProposalBusinessRow,
   type TripBusinessRow,
 } from "@/lib/admin/dashboard-business-state";
+import { filterCanonicalPipelineProposals } from "@/lib/proposals/pipeline-integrity";
 import {
   loadDashboardSourceBundle,
   type AdminQueryClient,
@@ -56,6 +57,7 @@ function buildActionQueue(params: {
   items: DashboardQueueItem[];
 } {
   const items: DashboardQueueItem[] = [];
+  const canonicalPipelineProposals = filterCanonicalPipelineProposals(params.proposals);
 
   const overdueInvoices = params.invoices.filter((invoice) =>
     isOverdueInvoice(invoice, params.now),
@@ -63,7 +65,7 @@ function buildActionQueue(params: {
   const dueSoonInvoices = params.invoices.filter((invoice) =>
     isDueSoonInvoice(invoice, params.now, 7),
   );
-  const expiringQuotes = params.proposals.filter((proposal) => {
+  const expiringQuotes = canonicalPipelineProposals.filter((proposal) => {
     if (!isOpenDashboardProposal(proposal)) return false;
     const expiresAt = safeDate(proposal.expires_at);
     if (!expiresAt) return false;
@@ -529,7 +531,9 @@ export async function buildDashboardOverview(params: {
     0,
   );
 
-  const openProposals = proposals.filter((proposal) => isOpenDashboardProposal(proposal));
+  const openProposals = filterCanonicalPipelineProposals(proposals).filter((proposal) =>
+    isOpenDashboardProposal(proposal),
+  );
   const openPipelineValue = openProposals.reduce(
     (sum, proposal) => sum + proposal.value,
     0,

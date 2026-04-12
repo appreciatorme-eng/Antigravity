@@ -14,6 +14,7 @@ import {
   normalizeStatus,
   safeTitle,
 } from "@/lib/admin/insights";
+import { filterCanonicalPipelineProposals } from "@/lib/proposals/pipeline-integrity";
 import { isLostProposal, isWonProposal } from "@/lib/admin/proposal-outcomes";
 import {
   buildRangeBucketKeys,
@@ -260,6 +261,7 @@ export function isOpenDashboardProposal(
 export function buildDashboardPipelineSummary(
   proposals: ProposalBusinessRow[],
 ) {
+  const canonicalProposals = filterCanonicalPipelineProposals(proposals);
   const stageMap: Record<DashboardPipelineStage["key"], { count: number; value: number }> = {
     draft: { count: 0, value: 0 },
     sent: { count: 0, value: 0 },
@@ -272,7 +274,7 @@ export function buildDashboardPipelineSummary(
   let medium = 0;
   let low = 0;
 
-  const openProposals = proposals.filter((proposal) =>
+  const openProposals = canonicalProposals.filter((proposal) =>
     isOpenDashboardProposal(proposal),
   );
   const orgMedian =
@@ -281,7 +283,7 @@ export function buildDashboardPipelineSummary(
         Math.max(openProposals.length, 1)
       : 0;
 
-  for (const proposal of proposals) {
+  for (const proposal of canonicalProposals) {
     const status = normalizeStatus(proposal.status, "draft");
     const key: DashboardPipelineStage["key"] =
       proposal.lifecycle === "won"

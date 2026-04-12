@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { TimeWindow } from "./adapters";
+import { filterCanonicalPipelineProposals } from "@/lib/proposals/pipeline-integrity";
 
 // ---------------------------------------------------------------------------
 // Shared types for drill-through data
@@ -97,15 +98,6 @@ function getProposalValue(proposal: ProposalDrillRow): number {
 function isMissingDeletedAtError(message: string | null | undefined): boolean {
   const normalized = (message || "").toLowerCase();
   return normalized.includes("deleted_at") && normalized.includes("column");
-}
-
-function hasLiveLinkedTrip(proposal: ProposalDrillRow): boolean {
-  if (!proposal.trip_id) return true;
-  if (!proposal.trips) return false;
-  if (Array.isArray(proposal.trips)) {
-    return Boolean(proposal.trips[0]?.id);
-  }
-  return Boolean(proposal.trips.id);
 }
 
 // ---------------------------------------------------------------------------
@@ -450,14 +442,11 @@ export async function loadPipelineDrill(
   if (error) throw error;
 
   const rawProposalRows = (data || []) as ProposalDrillRow[];
-  const proposalRows =
-    isOpenPipeline
-      ? rawProposalRows.filter(
-          (proposal) =>
-            openStatuses.includes((proposal.status || "").toLowerCase()) &&
-            hasLiveLinkedTrip(proposal),
-        )
-      : rawProposalRows.filter((proposal) => hasLiveLinkedTrip(proposal));
+  const proposalRows = isOpenPipeline
+    ? filterCanonicalPipelineProposals(rawProposalRows).filter((proposal) =>
+        openStatuses.includes((proposal.status || "").toLowerCase()),
+      )
+    : filterCanonicalPipelineProposals(rawProposalRows);
   const totalValue = proposalRows.reduce((sum, p) => sum + getProposalValue(p), 0);
   const statusLabel =
     isOpenPipeline

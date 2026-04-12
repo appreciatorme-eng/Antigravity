@@ -5,48 +5,11 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 import { safeErrorMessage } from "@/lib/security/safe-error";
 import { EXTERNAL_DRIVER_SELECT } from "@/lib/travel/selects";
 import type { Database } from "@/lib/database.types";
+import { softDeleteCommercialRowsForDeletedTripContext } from "@/lib/admin/proposal-cleanup";
 import { syncWonCommercialState } from "@/lib/admin/commercial-state-sync";
 import { syncTripToLinkedProposal } from "@/lib/proposals/trip-linking";
 
 const supabaseAdmin = createAdminClient();
-
-async function trySoftDeleteLinkedCommercialRows(params: {
-    tripIds: string[];
-    organizationId: string;
-}) {
-    if (params.tripIds.length === 0) return;
-    const deletedAt = new Date().toISOString();
-
-    try {
-        await (supabaseAdmin.from("proposals") as unknown as {
-            update: (values: Record<string, unknown>) => {
-                in: (column: string, values: string[]) => {
-                    eq: (column: string, value: string) => Promise<{ error: { message?: string } | null }>;
-                };
-            };
-        })
-            .update({ deleted_at: deletedAt })
-            .in("trip_id", params.tripIds)
-            .eq("organization_id", params.organizationId);
-    } catch {
-        // Compatibility path: older DBs may not have deleted_at yet.
-    }
-
-    try {
-        await (supabaseAdmin.from("invoices") as unknown as {
-            update: (values: Record<string, unknown>) => {
-                in: (column: string, values: string[]) => {
-                    eq: (column: string, value: string) => Promise<{ error: { message?: string } | null }>;
-                };
-            };
-        })
-            .update({ deleted_at: deletedAt })
-            .in("trip_id", params.tripIds)
-            .eq("organization_id", params.organizationId);
-    } catch {
-        // Compatibility path: older DBs may not have deleted_at yet.
-    }
-}
 
 interface AssignmentRow {
     id: string;
@@ -89,6 +52,21 @@ interface LinkedProposalRow {
     share_token: string | null;
     total_price: number | null;
     client_selected_price: number | null;
+}
+
+interface TripDeleteLookupRow {
+    id: string;
+    organization_id: string | null;
+    itinerary_id: string | null;
+    client_id: string | null;
+    itineraries:
+        | {
+            trip_title: string | null;
+        }
+        | {
+            trip_title: string | null;
+        }[]
+        | null;
 }
 
 function parseRole(role: string | null | undefined): "admin" | "super_admin" | null {
@@ -504,7 +482,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id?: s
 
         let tripLookup = supabaseAdmin
             .from("trips")
-            .select("id, organization_id, itinerary_id")
+            .select("id, organization_id, itinerary_id, client_id, itineraries:itinerary_id(trip_title)")
             .eq("id", tripId);
 
         if (auth.role !== "super_admin") {
@@ -597,15 +575,20 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id?: 
             tripLookup = tripLookup.eq("organization_id", auth.organizationId);
         }
 
-        const { data: trip, error: tripError } = await tripLookup.maybeSingle();
+        const { data: tripData, error: tripError } = await tripLookup.maybeSingle();
+        const trip = (tripData as TripDeleteLookupRow | null) ?? null;
         if (tripError || !trip) {
             return apiError("Trip not found", 404);
         }
 
         if (trip.organization_id) {
-            await trySoftDeleteLinkedCommercialRows({
+            const itinerary = Array.isArray(trip.itineraries) ? trip.itineraries[0] : trip.itineraries;
+            await softDeleteCommercialRowsForDeletedTripContext({
+                client: supabaseAdmin,
                 tripIds: [tripId],
                 organizationId: trip.organization_id,
+                clientId: trip.client_id ?? null,
+                titleHints: itinerary?.trip_title ? [itinerary.trip_title] : [],
             });
         }
 

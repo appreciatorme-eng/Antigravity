@@ -3,48 +3,11 @@ import { apiError } from "@/lib/api/response";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logError } from "@/lib/observability/logger";
+import { softDeleteCommercialRowsForDeletedTripContext } from "@/lib/admin/proposal-cleanup";
 import type { Json } from "@/lib/supabase/database.types";
 
 const ITINERARY_DETAIL_SELECT = "id, user_id, client_id, trip_title, destination, duration_days, budget, interests, summary, template_id, raw_data, created_at, updated_at";
 const supabaseAdmin = createAdminClient();
-
-async function trySoftDeleteLinkedCommercialRows(params: {
-    tripIds: string[];
-    organizationId: string;
-}) {
-    if (params.tripIds.length === 0) return;
-    const deletedAt = new Date().toISOString();
-
-    try {
-        await (supabaseAdmin.from("proposals") as unknown as {
-            update: (values: Record<string, unknown>) => {
-                in: (column: string, values: string[]) => {
-                    eq: (column: string, value: string) => Promise<{ error: { message?: string } | null }>;
-                };
-            };
-        })
-            .update({ deleted_at: deletedAt })
-            .in("trip_id", params.tripIds)
-            .eq("organization_id", params.organizationId);
-    } catch {
-        // Compatibility path: older DBs may not have deleted_at yet.
-    }
-
-    try {
-        await (supabaseAdmin.from("invoices") as unknown as {
-            update: (values: Record<string, unknown>) => {
-                in: (column: string, values: string[]) => {
-                    eq: (column: string, value: string) => Promise<{ error: { message?: string } | null }>;
-                };
-            };
-        })
-            .update({ deleted_at: deletedAt })
-            .in("trip_id", params.tripIds)
-            .eq("organization_id", params.organizationId);
-    } catch {
-        // Compatibility path: older DBs may not have deleted_at yet.
-    }
-}
 
 export async function GET(
     request: Request,
@@ -172,7 +135,7 @@ export async function DELETE(
 
         const { data: itinerary, error: itineraryError } = await supabaseAdmin
             .from("itineraries")
-            .select("id, user_id")
+            .select("id, user_id, client_id, trip_title")
             .eq("id", id)
             .eq("user_id", user.id)
             .maybeSingle();
@@ -200,13 +163,27 @@ export async function DELETE(
         const linkedTripOrganizationId =
             (linkedTrips ?? []).find((trip) => Boolean(trip.organization_id))?.organization_id || null;
 
+        let organizationId = linkedTripOrganizationId;
+        if (!organizationId) {
+            const { data: profile } = await supabaseAdmin
+                .from("profiles")
+                .select("organization_id")
+                .eq("id", user.id)
+                .maybeSingle();
+            organizationId = profile?.organization_id || null;
+        }
+
+        if (organizationId) {
+            await softDeleteCommercialRowsForDeletedTripContext({
+                client: supabaseAdmin,
+                tripIds,
+                organizationId,
+                clientId: itinerary.client_id ?? null,
+                titleHints: itinerary.trip_title ? [itinerary.trip_title] : [],
+            });
+        }
+
         if (tripIds.length > 0) {
-            if (linkedTripOrganizationId) {
-                await trySoftDeleteLinkedCommercialRows({
-                    tripIds,
-                    organizationId: linkedTripOrganizationId,
-                });
-            }
 
             const cleanupTargets = [
                 "trip_driver_assignments",

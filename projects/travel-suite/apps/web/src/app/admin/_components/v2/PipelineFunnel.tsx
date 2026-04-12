@@ -8,6 +8,7 @@ import { GlassSkeleton } from '@/components/glass/GlassSkeleton';
 import type { DashboardPipelineSummary } from '@/lib/admin/dashboard-overview-types';
 import { formatCompactINR } from '@/lib/admin/operator-state';
 import { useDemoFetch } from '@/lib/demo/use-demo-fetch';
+import { filterCanonicalPipelineProposals } from '@/lib/proposals/pipeline-integrity';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import type { DashboardV2State } from './types';
@@ -26,10 +27,15 @@ type ProposalListRow = {
   id: string;
   status: string | null;
   title: string | null;
+  client_id?: string | null;
   total_price: number | null;
   client_selected_price: number | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  trip_id?: string | null;
   trips:
     | {
+        id?: string | null;
         status: string | null;
       }
     | null;
@@ -104,6 +110,7 @@ function buildStagesFromOverview(data: DashboardV2State): FunnelDataState {
 }
 
 function buildStagesFromProposals(proposals: ProposalListRow[]): FunnelDataState {
+  const canonicalProposals = filterCanonicalPipelineProposals(proposals);
   const stageMap: Record<FunnelStage['key'], { count: number; value: number }> = {
     draft: { count: 0, value: 0 },
     sent: { count: 0, value: 0 },
@@ -112,7 +119,7 @@ function buildStagesFromProposals(proposals: ProposalListRow[]): FunnelDataState
     lost: { count: 0, value: 0 },
   };
 
-  for (const proposal of proposals) {
+  for (const proposal of canonicalProposals) {
     const key = getStageKey(proposal);
     stageMap[key].count += 1;
     stageMap[key].value += getProposalValue(proposal);

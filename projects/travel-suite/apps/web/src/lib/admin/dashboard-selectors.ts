@@ -4,6 +4,7 @@ import type {
   DashboardHealthSourceKey,
   DashboardSourceHealth,
 } from "@/lib/admin/dashboard-overview-types";
+import { repairPipelineProposalIntegrity } from "@/lib/admin/proposal-cleanup";
 import { normalizeStatus } from "@/lib/admin/insights";
 
 export type AdminQueryClient = Pick<SupabaseClient, "from">;
@@ -365,6 +366,8 @@ export async function fetchDashboardProposalRows(
   client: AdminQueryClient,
   organizationId: string,
 ): Promise<DashboardSourceResult<ProposalSelectorRow>> {
+  await repairPipelineProposalIntegrity({ client, organizationId });
+
   const select =
     "id,title,status,created_at,updated_at,viewed_at,expires_at,total_price,client_selected_price,client_id,trip_id,trips:trip_id(id,status,start_date,end_date)";
   return runSoftDeleteAwareSourceQuery<ProposalSelectorRow>({
