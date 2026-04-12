@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ChevronRight, Filter } from 'lucide-react';
 import { GlassCard } from '@/components/glass/GlassCard';
 import { GlassSkeleton } from '@/components/glass/GlassSkeleton';
+import type { DashboardPipelineSummary } from '@/lib/admin/dashboard-overview-types';
 import { formatCompactINR } from '@/lib/admin/operator-state';
 import { useDemoFetch } from '@/lib/demo/use-demo-fetch';
 import { createClient } from '@/lib/supabase/client';
@@ -36,7 +37,7 @@ type ProposalListRow = {
 
 type FunnelDataState = {
   stages: FunnelStage[];
-  risk: { high: number; medium: number; low: number } | null;
+  risk: DashboardPipelineSummary['risk'] | null;
   proposalUnavailable: boolean;
 };
 
