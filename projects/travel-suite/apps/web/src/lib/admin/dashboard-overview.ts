@@ -92,7 +92,8 @@ type PaymentLinkRow = {
   amount_paise: number | null;
   paid_at: string | null;
   created_at: string | null;
-  trip_id: string | null;
+  proposal_id: string | null;
+  booking_id: string | null;
 };
 
 type InvoicePaymentRow = {
@@ -199,22 +200,45 @@ function resolveSettledRows<T>(
   };
 }
 
-async function runStrictSourceQuery<T>(
-  label: string,
-  query: PromiseLike<{ data: T[] | null; error: { message?: string | null } | null }>,
-): Promise<QuerySourceResult<T>> {
+function isMissingDeletedAtError(message: string | null | undefined): boolean {
+  const normalized = (message || "").toLowerCase();
+  return normalized.includes("deleted_at") && normalized.includes("column");
+}
+
+async function runSoftDeleteAwareQuery<T>(params: {
+  label: string;
+  strictQuery: PromiseLike<{ data: T[] | null; error: { message?: string | null } | null }>;
+  fallbackQuery: PromiseLike<{ data: T[] | null; error: { message?: string | null } | null }>;
+}): Promise<QuerySourceResult<T>> {
   try {
-    const result = await query;
-    if (result.error) {
+    const strict = await params.strictQuery;
+    if (!strict.error) {
+      return {
+        rows: (strict.data || []) as T[],
+        health: "ok",
+        message: null,
+      };
+    }
+
+    if (!isMissingDeletedAtError(strict.error.message)) {
       return {
         rows: [],
         health: "failed",
-        message: sourceMessage(label),
+        message: sourceMessage(params.label),
+      };
+    }
+
+    const fallback = await params.fallbackQuery;
+    if (fallback.error) {
+      return {
+        rows: [],
+        health: "failed",
+        message: sourceMessage(params.label),
       };
     }
 
     return {
-      rows: (result.data || []) as T[],
+      rows: (fallback.data || []) as T[],
       health: "ok",
       message: null,
     };
@@ -222,7 +246,7 @@ async function runStrictSourceQuery<T>(
     return {
       rows: [],
       health: "failed",
-      message: sourceMessage(label),
+      message: sourceMessage(params.label),
     };
   }
 }
@@ -502,7 +526,9 @@ function buildSeries(
   );
 
   const wonProposalByTrip = new Map<string, ProposalRow>();
+  const proposalById = new Map<string, ProposalRow>();
   for (const proposal of proposals) {
+    proposalById.set(proposal.id, proposal);
     if (!proposal.trip_id) continue;
     if (getProposalLifecycleFromTripMap(proposal, tripStatusMap) !== "won") continue;
     if (!wonProposalByTrip.has(proposal.trip_id)) {
@@ -522,11 +548,17 @@ function buildSeries(
 
   const paymentLinkValueByTrip = new Map<string, number>();
   for (const link of paymentLinks) {
-    if (!link.trip_id) continue;
     if (normalizeStatus(link.status, "") !== "paid") continue;
-    const existing = paymentLinkValueByTrip.get(link.trip_id) || 0;
+    const linkedProposal = link.proposal_id
+      ? proposalById.get(link.proposal_id) || null
+      : null;
+    const resolvedTripId =
+      linkedProposal?.trip_id ||
+      (link.booking_id && tripStatusMap.has(link.booking_id) ? link.booking_id : null);
+    if (!resolvedTripId) continue;
+    const existing = paymentLinkValueByTrip.get(resolvedTripId) || 0;
     paymentLinkValueByTrip.set(
-      link.trip_id,
+      resolvedTripId,
       Math.max(existing, Number(link.amount_paise || 0) / 100),
     );
   }
@@ -586,6 +618,12 @@ function buildSeries(
     if (!key || !buckets.has(key)) continue;
 
     const amount = Number(link.amount_paise || 0) / 100;
+    const linkedProposal = link.proposal_id
+      ? proposalById.get(link.proposal_id) || null
+      : null;
+    const resolvedTripId =
+      linkedProposal?.trip_id ||
+      (link.booking_id && tripStatusMap.has(link.booking_id) ? link.booking_id : null);
     const bucket = buckets.get(key)!;
     bucket.cashCollected = (bucket.cashCollected || 0) + amount;
     bucket.cashItems = [
@@ -594,8 +632,8 @@ function buildSeries(
         id: link.id,
         kind: "invoice",
         title: "Paid payment link",
-        subtitle: link.trip_id ? `Trip ${link.trip_id.slice(0, 8)}` : "Client payment captured",
-        href: link.trip_id ? `/trips/${link.trip_id}` : "/admin/revenue",
+        subtitle: resolvedTripId ? `Trip ${resolvedTripId.slice(0, 8)}` : "Client payment captured",
+        href: resolvedTripId ? `/trips/${resolvedTripId}` : "/admin/revenue",
         status: "paid",
         amountLabel: formatCompactINR(amount),
         dateLabel: formatDateLabel(link.paid_at || link.created_at),
@@ -1248,54 +1286,72 @@ function fetchProposalRows(
   client: AdminQueryClient,
   organizationId: string,
 ) {
-  return runStrictSourceQuery<ProposalRow>(
-    "Proposal",
-    client
+  const baseSelect =
+    "id,title,status,created_at,updated_at,viewed_at,expires_at,total_price,client_selected_price,client_id,trip_id,trips:trip_id(status,start_date,end_date)";
+  return runSoftDeleteAwareQuery<ProposalRow>({
+    label: "Proposal",
+    strictQuery: client
       .from("proposals")
-      .select(
-        "id,title,status,created_at,updated_at,viewed_at,expires_at,total_price,client_selected_price,client_id,trip_id,trips:trip_id(status,start_date,end_date)",
-      )
+      .select(baseSelect)
       .eq("organization_id", organizationId)
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(5000),
-  );
+    fallbackQuery: client
+      .from("proposals")
+      .select(baseSelect)
+      .eq("organization_id", organizationId)
+      .order("created_at", { ascending: false })
+      .limit(5000),
+  });
 }
 
 function fetchTripRows(
   client: AdminQueryClient,
   organizationId: string,
 ) {
-  return runStrictSourceQuery<TripRow>(
-    "Trip",
-    client
+  const baseSelect =
+    "id,itinerary_id,client_id,status,created_at,updated_at,start_date,end_date";
+  return runSoftDeleteAwareQuery<TripRow>({
+    label: "Trip",
+    strictQuery: client
       .from("trips")
-      .select(
-        "id,itinerary_id,client_id,status,created_at,updated_at,start_date,end_date",
-      )
+      .select(baseSelect)
       .eq("organization_id", organizationId)
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(5000),
-  );
+    fallbackQuery: client
+      .from("trips")
+      .select(baseSelect)
+      .eq("organization_id", organizationId)
+      .order("created_at", { ascending: false })
+      .limit(5000),
+  });
 }
 
 function fetchInvoiceRows(
   client: AdminQueryClient,
   organizationId: string,
 ) {
-  return runStrictSourceQuery<InvoiceRow>(
-    "Invoice",
-    client
+  const baseSelect =
+    "id,invoice_number,status,due_date,balance_amount,total_amount,created_at,updated_at,paid_at,client_id,trip_id";
+  return runSoftDeleteAwareQuery<InvoiceRow>({
+    label: "Invoice",
+    strictQuery: client
       .from("invoices")
-      .select(
-        "id,invoice_number,status,due_date,balance_amount,total_amount,created_at,updated_at,paid_at,client_id,trip_id",
-      )
+      .select(baseSelect)
       .eq("organization_id", organizationId)
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(5000),
-  );
+    fallbackQuery: client
+      .from("invoices")
+      .select(baseSelect)
+      .eq("organization_id", organizationId)
+      .order("created_at", { ascending: false })
+      .limit(5000),
+  });
 }
 
 export async function buildDashboardOverview(params: {
@@ -1320,7 +1376,7 @@ export async function buildDashboardOverview(params: {
     fetchInvoiceRows(params.adminClient, params.organizationId),
     params.adminClient
       .from("payment_links")
-      .select("id,status,amount_paise,paid_at,created_at,trip_id")
+      .select("id,status,amount_paise,paid_at,created_at,proposal_id,booking_id")
       .eq("organization_id", params.organizationId)
       .order("created_at", { ascending: false })
       .limit(5000),
