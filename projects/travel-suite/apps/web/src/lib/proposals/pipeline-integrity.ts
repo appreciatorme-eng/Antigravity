@@ -61,6 +61,12 @@ export function hasLiveLinkedTrip(row: PipelineProposalLike): boolean {
   return Boolean(getTripRelationId(row.trips));
 }
 
+function isCanonicalUnlinkedPipelineRow(row: PipelineProposalLike): boolean {
+  if (row.trip_id) return true;
+  const status = normalizeStatus(row.status);
+  return status === "sent" || status === "viewed";
+}
+
 export function filterCanonicalPipelineProposals<T extends PipelineProposalLike>(
   rows: T[],
 ): T[] {
@@ -68,6 +74,9 @@ export function filterCanonicalPipelineProposals<T extends PipelineProposalLike>
 
   for (const row of rows) {
     if (!hasLiveLinkedTrip(row)) continue;
+    if (isOpenPipelineProposalStatus(row.status) && !isCanonicalUnlinkedPipelineRow(row)) {
+      continue;
+    }
 
     if (!row.trip_id && isOpenPipelineProposalStatus(row.status)) {
       const duplicateKey = buildDuplicateKey(row);
