@@ -17,7 +17,13 @@ import {
 } from "lucide-react";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { GlassBadge } from "@/components/glass/GlassBadge";
-import type { LinkedProposal, Trip } from "@/features/trip-detail/types";
+import { GlassSelect } from "@/components/glass/GlassInput";
+import type {
+  LinkedProposal,
+  Trip,
+  TripFinancialPaymentSource,
+  TripFinancialPaymentStatus,
+} from "@/features/trip-detail/types";
 
 // ---------------------------------------------------------------------------
 // Props
@@ -37,6 +43,10 @@ interface TripDetailHeaderProps {
   onDownloadPdf?: () => void;
   downloadingPdf?: boolean;
   onOptimizeRoute: () => void;
+  onQuickFinancialStatusChange?: (status: TripFinancialPaymentStatus) => void;
+  currentFinancialStatus?: TripFinancialPaymentStatus | null;
+  currentFinancialSource?: TripFinancialPaymentSource | null;
+  savingFinancialStatus?: boolean;
   onMarkAsPaid?: () => void;
   markingAsPaid?: boolean;
 }
@@ -143,6 +153,10 @@ export function TripDetailHeader({
   onDownloadPdf,
   downloadingPdf = false,
   onOptimizeRoute,
+  onQuickFinancialStatusChange,
+  currentFinancialStatus,
+  currentFinancialSource,
+  savingFinancialStatus = false,
   onMarkAsPaid,
   markingAsPaid = false,
 }: TripDetailHeaderProps) {
@@ -224,6 +238,36 @@ export function TripDetailHeader({
 
       {/* Action buttons — icon-only on mobile, full labels on desktop */}
       <div className="flex flex-wrap items-center gap-2 md:gap-3">
+        {onQuickFinancialStatusChange ? (
+          <div className="w-full sm:w-[200px]">
+            <GlassSelect
+              aria-label="Quick payment status"
+              fullWidth={false}
+              value={currentFinancialStatus ?? "unpaid"}
+              disabled={
+                savingFinancialStatus || currentFinancialSource === "linked_invoice"
+              }
+              onChange={(event) =>
+                onQuickFinancialStatusChange(
+                  event.target.value as TripFinancialPaymentStatus,
+                )
+              }
+              options={[
+                { value: "unpaid", label: "Unpaid" },
+                { value: "approved", label: "Approved" },
+                { value: "partially_paid", label: "Partially Paid" },
+                { value: "paid", label: "Fully Paid" },
+              ]}
+              className="h-10 md:h-14 rounded-xl md:rounded-2xl text-sm md:text-base disabled:cursor-not-allowed disabled:opacity-60"
+              title={
+                currentFinancialSource === "linked_invoice"
+                  ? "Linked invoice status is controlled from Financials."
+                  : "Quick payment status"
+              }
+            />
+          </div>
+        ) : null}
+
         <GlassButton
           variant="outline"
           className="h-10 md:h-14 px-3 md:px-6 rounded-xl md:rounded-2xl hover:shadow-md"

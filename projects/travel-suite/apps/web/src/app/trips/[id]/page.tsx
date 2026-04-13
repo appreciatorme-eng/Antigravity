@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Plane } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { TripDetailHeader } from "@/features/trip-detail/TripDetailHeader";
 import { TripDetailTabBar } from "@/features/trip-detail/TripDetailTabBar";
@@ -11,11 +12,17 @@ import { ItineraryTab } from "@/features/trip-detail/tabs/ItineraryTab";
 import { FinancialsTab } from "@/features/trip-detail/tabs/FinancialsTab";
 import { ClientCommsTab } from "@/features/trip-detail/tabs/ClientCommsTab";
 import { buildDaySchedule } from "@/features/trip-detail/utils";
-import type { TripDetailTab, Day, TripItineraryRawData, TripPricing } from "@/features/trip-detail/types";
+import type {
+  TripDetailTab,
+  Day,
+  TripItineraryRawData,
+  TripPricing,
+  TripFinancialPaymentStatus,
+} from "@/features/trip-detail/types";
 
 import { useTripDetail, useSaveTripItinerary } from "@/lib/queries/trip-detail";
 import { authedFetch } from "@/lib/api/authed-fetch";
-import { useCloneTrip } from "@/lib/queries/trips";
+import { tripsKeys, useCloneTrip } from "@/lib/queries/trips";
 
 import { GroupManager } from "@/components/trips/GroupManager";
 import { GlassButton } from "@/components/glass/GlassButton";
@@ -35,12 +42,14 @@ export default function TripDetailPage() {
   const router = useRouter();
   const tripId = params.id as string;
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // --- Data fetching ---
   const { data, isLoading, refetch } = useTripDetail(tripId);
   const saveMutation = useSaveTripItinerary();
   const cloneMutation = useCloneTrip();
   const [markingAsPaid, setMarkingAsPaid] = useState(false);
+  const [savingQuickFinancialStatus, setSavingQuickFinancialStatus] = useState(false);
 
   // --- Local UI state ---
   const [activeTab, setActiveTab] = useState<TripDetailTab>("overview");
@@ -86,6 +95,35 @@ export default function TripDetailPage() {
       (editableRawData?.days ?? trip?.itineraries?.raw_data?.days ?? []).map(buildDaySchedule),
     [editableRawData?.days, trip?.itineraries?.raw_data?.days],
   );
+
+  const quickFinancialStatus =
+    editableRawData?.financial_summary?.payment_status ??
+    trip?.itineraries?.raw_data?.financial_summary?.payment_status ??
+    "unpaid";
+  const quickFinancialSource =
+    editableRawData?.financial_summary?.payment_source ??
+    trip?.itineraries?.raw_data?.financial_summary?.payment_source ??
+    "manual_cash";
+
+  const deriveQuotedTotal = (rawData: TripItineraryRawData | null): number => {
+    if (!rawData?.pricing) return 0;
+    if (
+      typeof rawData.pricing.total_cost === "number" &&
+      Number.isFinite(rawData.pricing.total_cost) &&
+      rawData.pricing.total_cost > 0
+    ) {
+      return rawData.pricing.total_cost;
+    }
+    if (
+      typeof rawData.pricing.per_person_cost === "number" &&
+      rawData.pricing.per_person_cost > 0 &&
+      typeof rawData.pricing.pax_count === "number" &&
+      rawData.pricing.pax_count > 0
+    ) {
+      return rawData.pricing.per_person_cost * rawData.pricing.pax_count;
+    }
+    return 0;
+  };
 
   // --- Handlers ---
   const handleSave = () => {
@@ -209,6 +247,79 @@ export default function TripDetailPage() {
       description: "AI Route Optimization will be available in a future update.",
       variant: "info",
     });
+  };
+
+  const handleQuickFinancialStatusChange = async (
+    nextStatus: TripFinancialPaymentStatus,
+  ) => {
+    if (!trip?.itineraries?.id || !editableRawData || savingQuickFinancialStatus) return;
+
+    const currentSummary = editableRawData.financial_summary ?? {};
+    const paymentSource = currentSummary.payment_source ?? "manual_cash";
+    if (paymentSource === "linked_invoice") {
+      toast({
+        title: "Linked invoice controls payment",
+        description: "Use the Financials tab to manage invoice-linked payment state.",
+        variant: "info",
+      });
+      return;
+    }
+
+    const quotedTotal = deriveQuotedTotal(editableRawData);
+    let manualPaidAmount =
+      typeof currentSummary.manual_paid_amount === "number" &&
+      Number.isFinite(currentSummary.manual_paid_amount)
+        ? currentSummary.manual_paid_amount
+        : 0;
+
+    if (nextStatus === "unpaid" || nextStatus === "approved") {
+      manualPaidAmount = 0;
+    } else if (nextStatus === "paid" && quotedTotal > 0) {
+      manualPaidAmount = quotedTotal;
+    }
+
+    const nextRawData: TripItineraryRawData = {
+      ...editableRawData,
+      financial_summary: {
+        ...currentSummary,
+        payment_source: paymentSource,
+        payment_status: nextStatus,
+        manual_paid_amount: manualPaidAmount,
+        linked_invoice_id: currentSummary.linked_invoice_id ?? null,
+      },
+    };
+
+    setEditableRawData(nextRawData);
+    setSavingQuickFinancialStatus(true);
+    try {
+      await saveMutation.mutateAsync({
+        tripId,
+        itineraryId: trip.itineraries.id,
+        days: nextRawData.days ?? [],
+        rawData: nextRawData,
+      });
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: tripsKeys.all }),
+        queryClient.invalidateQueries({ queryKey: ["itineraries"] }),
+      ]);
+
+      toast({
+        title: "Payment status updated",
+        description: "Financial summary status was saved.",
+        variant: "success",
+      });
+    } catch (error) {
+      setEditableRawData(editableRawData);
+      toast({
+        title: "Could not update payment status",
+        description:
+          error instanceof Error ? error.message : "Try again from the Financials tab.",
+        variant: "error",
+      });
+    } finally {
+      setSavingQuickFinancialStatus(false);
+    }
   };
 
   const handleMarkAsPaid = async () => {
@@ -390,6 +501,10 @@ export default function TripDetailPage() {
         onDownloadPdf={handleDownloadPdf}
         downloadingPdf={downloadingPdf}
         onOptimizeRoute={handleOptimizeRoute}
+        onQuickFinancialStatusChange={handleQuickFinancialStatusChange}
+        currentFinancialStatus={quickFinancialStatus}
+        currentFinancialSource={quickFinancialSource}
+        savingFinancialStatus={savingQuickFinancialStatus}
         onMarkAsPaid={handleMarkAsPaid}
         markingAsPaid={markingAsPaid}
       />
