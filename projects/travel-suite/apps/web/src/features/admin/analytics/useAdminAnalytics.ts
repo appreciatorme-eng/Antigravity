@@ -693,14 +693,14 @@ export function useAdminAnalytics() {
 
         let proposalsRes: QueryResult<ProposalRow> = (await supabase
           .from("proposals")
-          .select("id,title,trip_id,status,total_price,client_selected_price,created_at,updated_at,viewed_at,created_by,client_id,trips:trip_id(id)")
+          .select("id,title,trip_id,status,total_price,client_selected_price,created_at,updated_at,viewed_at,expires_at,created_by,client_id,trips:trip_id(id,status)")
           .eq("organization_id", orgId)
           .is("deleted_at", null)) as unknown as QueryResult<ProposalRow>;
 
         if (proposalsRes.error && isColumnMissingError(proposalsRes.error.message)) {
           proposalsRes = (await supabase
             .from("proposals")
-            .select("id,title,trip_id,status,total_price,client_selected_price,created_at,updated_at,viewed_at,created_by,client_id,trips:trip_id(id)")
+            .select("id,title,trip_id,status,total_price,client_selected_price,created_at,updated_at,viewed_at,expires_at,created_by,client_id,trips:trip_id(id,status)")
             .eq("organization_id", orgId)) as unknown as QueryResult<ProposalRow>;
         }
 

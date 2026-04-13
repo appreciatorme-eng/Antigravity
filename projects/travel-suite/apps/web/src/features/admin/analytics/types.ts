@@ -9,6 +9,7 @@ export interface ProposalRow {
   created_at: string | null;
   updated_at?: string | null;
   viewed_at: string | null;
+  expires_at: string | null;
   created_by?: string | null;
   client_id?: string | null;
   client_selected_price?: number | null;
@@ -16,9 +17,11 @@ export interface ProposalRow {
   trips?:
     | {
         id?: string | null;
+        status?: string | null;
       }
     | {
         id?: string | null;
+        status?: string | null;
       }[]
     | null;
 }
