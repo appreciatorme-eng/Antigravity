@@ -18,8 +18,10 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { resolveWindow } from "@/lib/analytics/adapters";
+import { resolveAdminDateRange } from "@/lib/admin/date-range";
 import type { DrillRow, DrillSummary } from "@/lib/analytics/drill-through-loaders";
 import {
+  loadBookedValueDrill,
   loadRevenueDrill,
   loadBookingsDrill,
   loadConversionDrill,
@@ -34,6 +36,7 @@ import { GlassCard } from "@/components/glass/GlassCard";
 import { GlassButton } from "@/components/glass/GlassButton";
 
 type DrillType =
+  | "booked"
   | "revenue"
   | "bookings"
   | "conversion"
@@ -47,6 +50,7 @@ type DrillType =
 type TimeRange = "1y" | "6m" | "3m" | "1m";
 
 const TYPE_CONFIG: Record<DrillType, { title: string; icon: typeof DollarSign; color: string }> = {
+  booked: { title: "Booked Value Details", icon: TrendingUp, color: "text-emerald-500" },
   revenue: { title: "Revenue Breakdown", icon: DollarSign, color: "text-emerald-500" },
   bookings: { title: "Booking Volume Details", icon: Calendar, color: "text-blue-500" },
   clients: { title: "Client Acquisition Details", icon: Users, color: "text-indigo-500" },
@@ -60,7 +64,7 @@ const TYPE_CONFIG: Record<DrillType, { title: string; icon: typeof DollarSign; c
 
 const VALID_TYPES: ReadonlySet<string> = new Set([
   "revenue", "bookings", "conversion", "clients",
-  "destinations", "destination-revenue", "season", "pipeline", "operations",
+  "destinations", "destination-revenue", "season", "pipeline", "operations", "booked",
 ]);
 
 function asDrillType(value: string | null): DrillType {
@@ -86,6 +90,7 @@ function DrillThroughContent() {
   const limit = searchParams.get("limit");
   const season = searchParams.get("season");
   const subtype = searchParams.get("subtype");
+  const searchParamsString = searchParams.toString();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -118,8 +123,13 @@ function DrillThroughContent() {
 
         const orgId = profile.organization_id;
         const win = resolveWindow(month, range as "1y" | "6m" | "3m" | "1m");
+        const adminRange = resolveAdminDateRange(
+          new URLSearchParams(searchParamsString),
+          "30d",
+        );
 
         const loaderMap: Record<DrillType, () => ReturnType<typeof loadRevenueDrill>> = {
+          booked: () => loadBookedValueDrill(supabase, orgId, adminRange),
           revenue: () => loadRevenueDrill(supabase, orgId, win),
           bookings: () => loadBookingsDrill(supabase, orgId, win),
           conversion: () => loadConversionDrill(supabase, orgId, win),
@@ -152,7 +162,19 @@ function DrillThroughContent() {
     };
 
     void loadData();
-  }, [destination, limit, month, range, season, status, statusGroup, subtype, supabase, type]);
+  }, [
+    destination,
+    limit,
+    month,
+    range,
+    season,
+    searchParamsString,
+    status,
+    statusGroup,
+    subtype,
+    supabase,
+    type,
+  ]);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">

@@ -32,6 +32,12 @@ function buildCards(data: DashboardV2State): KPICard[] {
   const kpis = data.overview?.kpis;
   const pipelineHref =
     '/analytics/drill-through?type=pipeline&status_group=open&limit=50';
+  const bookedParams = new URLSearchParams({
+    type: 'booked',
+    preset: data.dateRange.preset,
+    from: data.dateRange.from,
+    to: data.dateRange.to,
+  });
 
   const displayCurrency = (value: number | null | undefined) =>
     value === null || value === undefined ? '—' : formatCompactINR(value);
@@ -49,7 +55,7 @@ function buildCards(data: DashboardV2State): KPICard[] {
       icon: TrendingUp,
       color: 'text-emerald-600',
       iconBg: 'bg-emerald-100/50',
-      href: '/admin/revenue',
+      href: `/analytics/drill-through?${bookedParams.toString()}`,
     },
     {
       label: 'Collected Cash',

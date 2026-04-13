@@ -1,6 +1,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { TimeWindow } from "./adapters";
-import { resolveWonCommercialStage } from "@/lib/admin/dashboard-business-state";
+import type { ResolvedAdminDateRange } from "@/lib/admin/date-range";
+import {
+  buildDashboardClientMap,
+  buildDashboardRevenueSeries,
+  buildDashboardTripStatusMap,
+  decorateDashboardTrips,
+  resolveWonCommercialStage,
+  resolveDashboardProposalRows,
+  filterDashboardInvoicesByTrip,
+} from "@/lib/admin/dashboard-business-state";
+import { loadDashboardSourceBundle, type AdminQueryClient } from "@/lib/admin/dashboard-selectors";
 import { filterCanonicalPipelineProposals } from "@/lib/proposals/pipeline-integrity";
 import { isLostProposal, isWonProposal, isWonTripStatus } from "@/lib/admin/proposal-outcomes";
 
@@ -141,6 +151,10 @@ function formatINR(amount: number): string {
   return `₹${amount.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 }
 
+function formatRangeDateLabel(range: ResolvedAdminDateRange): string {
+  return range.label;
+}
+
 function getProposalValue(proposal: ProposalDrillRow): number {
   return Number(proposal.client_selected_price ?? proposal.total_price ?? 0);
 }
@@ -203,6 +217,107 @@ export async function loadRevenueDrill(
       dateLabel: formatDate(inv.created_at),
       href: "/admin/billing",
     })),
+  };
+}
+
+export async function loadBookedValueDrill(
+  supabase: SupabaseClient,
+  orgId: string,
+  range: ResolvedAdminDateRange,
+): Promise<DrillResult> {
+  const sources = await loadDashboardSourceBundle({
+    client: supabase as unknown as AdminQueryClient,
+    organizationId: orgId,
+    followUpWindowStartIso: range.fromISO,
+    followUpWindowEndIso: range.toExclusiveISO,
+  });
+
+  const clientMap = buildDashboardClientMap(sources.profiles.rows);
+  const tripStatusMap = buildDashboardTripStatusMap(sources.trips.rows);
+  const trips = decorateDashboardTrips({
+    trips: sources.trips.rows,
+    itineraries: sources.itineraries.rows,
+    clientMap,
+  });
+  const proposals = resolveDashboardProposalRows({
+    proposals: sources.proposals.rows,
+    tripStatusMap,
+    clientMap,
+    enforceLinkedTripPresence: sources.trips.health !== "failed",
+  });
+  const invoices = filterDashboardInvoicesByTrip({
+    invoices: sources.invoices.rows,
+    tripStatusMap,
+    enforceLinkedTripPresence: sources.trips.health !== "failed",
+  });
+
+  const series = buildDashboardRevenueSeries({
+    range,
+    proposals,
+    trips,
+    invoices,
+    paymentLinks: sources.paymentLinks.rows,
+    invoicePayments: sources.invoicePayments.rows,
+    commercialPayments: sources.commercialPayments.rows,
+  });
+
+  const proposalById = new Map(proposals.map((proposal) => [proposal.id, proposal]));
+  const tripById = new Map(trips.map((trip) => [trip.id, trip]));
+  const seen = new Set<string>();
+  const rows: DrillRow[] = [];
+
+  for (const point of [...series].reverse()) {
+    for (const item of point.bookedItems || []) {
+      const ownerKey = `${item.kind}:${item.id}`;
+      if (seen.has(ownerKey)) continue;
+      seen.add(ownerKey);
+
+      if (item.kind === "proposal") {
+        const proposal = proposalById.get(item.id) || null;
+        const linkedTrip = proposal?.trip_id
+          ? tripById.get(proposal.trip_id) || null
+          : null;
+
+        rows.push({
+          id: item.id,
+          title: linkedTrip?.tripTitle || item.title,
+          subtitle:
+            linkedTrip?.destination ||
+            linkedTrip?.clientName ||
+            item.subtitle,
+          amountLabel: item.amountLabel,
+          status: linkedTrip?.status || item.status,
+          dateLabel: item.dateLabel,
+          href: linkedTrip ? `/trips/${linkedTrip.id}` : item.href,
+        });
+        continue;
+      }
+
+      rows.push({
+        id: item.id,
+        title: item.title,
+        subtitle: item.subtitle,
+        amountLabel: item.amountLabel,
+        status: item.status,
+        dateLabel: item.dateLabel,
+        href: item.href,
+      });
+    }
+  }
+
+  const totalBookedValue = series.reduce(
+    (sum, point) => sum + Number(point.bookedValue || 0),
+    0,
+  );
+
+  return {
+    summary: {
+      label: "Booked value contributors",
+      primaryValue: formatINR(totalBookedValue),
+      secondaryValue: `${rows.length} trip${rows.length === 1 ? "" : "s"} contributing to booked value`,
+      windowLabel: formatRangeDateLabel(range),
+    },
+    rows,
   };
 }
 
