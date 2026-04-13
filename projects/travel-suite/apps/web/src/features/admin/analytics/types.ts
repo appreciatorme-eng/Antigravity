@@ -2,7 +2,7 @@ import type { RevenueChartPoint } from "@/components/analytics/RevenueChart";
 import type { DashboardRange, DriverCallout } from "@/lib/analytics/adapters";
 
 export interface ProposalRow {
-  id?: string | null;
+  id: string;
   trip_id?: string | null;
   status: string | null;
   total_price: number | null;
@@ -123,7 +123,7 @@ export interface AnalyticsSnapshot {
     peak: SeasonSnapshot;
     offSeason: SeasonSnapshot;
   };
-  proposalStatusBreakdown: Array<{ status: string; count: number }>;
+  proposalStatusBreakdown: Array<{ status: string; label: string; count: number }>;
   drivers: DriverCallout[];
   topClients: TopClientEntry[];
 }

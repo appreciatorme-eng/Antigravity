@@ -46,6 +46,8 @@ const DESTINATION_COLORS = [
 
 const PIPELINE_COLORS: Record<string, string> = {
   approved: "bg-emerald-500",
+  partially_paid: "bg-cyan-500",
+  fully_paid: "bg-teal-600",
   accepted: "bg-emerald-500",
   confirmed: "bg-emerald-500",
   converted: "bg-emerald-500",
@@ -94,6 +96,30 @@ export function AdminAnalyticsView() {
     });
     return params;
   }, [filters.range]);
+
+  const getPipelineHref = (status: string) => {
+    const params = new URLSearchParams(drillBaseParams.toString());
+    params.set("type", "pipeline");
+    if (status === "approved") {
+      params.set("status_group", "approved");
+      return `/analytics/drill-through?${params.toString()}`;
+    }
+    if (status === "partially_paid") {
+      params.set("status_group", "partially_paid");
+      return `/analytics/drill-through?${params.toString()}`;
+    }
+    if (status === "fully_paid") {
+      params.set("status_group", "fully_paid");
+      return `/analytics/drill-through?${params.toString()}`;
+    }
+    if (status === "lost") {
+      params.set("status_group", "lost");
+      return `/analytics/drill-through?${params.toString()}`;
+    }
+    params.set("status_group", "open");
+    params.set("status", status);
+    return `/analytics/drill-through?${params.toString()}`;
+  };
 
   const kpis = [
     {
@@ -571,7 +597,7 @@ export function AdminAnalyticsView() {
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-xl font-serif text-secondary">Proposal Pipeline</h2>
             <Link
-              href={`/analytics/drill-through?${drillBaseParams.toString()}&type=pipeline`}
+              href={`/analytics/drill-through?${drillBaseParams.toString()}&type=pipeline&status_group=all`}
               className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-primary"
             >
               Drill <ChevronRight className="h-3 w-3" />
@@ -584,11 +610,11 @@ export function AdminAnalyticsView() {
               snapshot.proposalStatusBreakdown.map((item) => (
                 <Link
                   key={item.status}
-                  href={`/analytics/drill-through?${drillBaseParams.toString()}&type=pipeline&status=${encodeURIComponent(item.status)}`}
+                  href={getPipelineHref(item.status)}
                   className="block space-y-1 hover:bg-gray-50/50 rounded-lg p-1.5 -mx-1.5 transition-colors group"
                 >
                   <div className="flex items-center justify-between text-xs font-semibold text-text-secondary">
-                    <span className="capitalize">{item.status.replaceAll("_", " ")}</span>
+                    <span>{item.label}</span>
                     <div className="flex items-center gap-1.5">
                       <span className="text-secondary">{item.count}</span>
                       <ChevronRight className="h-3 w-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />

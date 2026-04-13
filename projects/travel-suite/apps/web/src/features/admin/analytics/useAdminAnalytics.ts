@@ -5,6 +5,14 @@ import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/toast";
 import { filterCanonicalPipelineProposals } from "@/lib/proposals/pipeline-integrity";
 import {
+  buildDashboardPipelineSummary,
+  PROPOSAL_STAGE_LABELS,
+  type ProposalBusinessRow,
+  type TripBusinessRow,
+} from "@/lib/admin/dashboard-business-state";
+import { hasWonTripStatus } from "@/lib/admin/operator-state";
+import { isLostProposal, isWonProposal } from "@/lib/admin/proposal-outcomes";
+import {
   buildMoMDriverCallouts,
   getLastMonthKeys,
   monthKeyFromDate,
@@ -88,6 +96,10 @@ function extractManualCashPayment(trip: TripRow): {
     amount,
     eventIso: summary?.payment_date || itinerary?.updated_at || trip.updated_at || trip.created_at,
   };
+}
+
+function getProposalValue(proposal: ProposalRow): number {
+  return toNumber(proposal.client_selected_price ?? proposal.total_price, 0);
 }
 
 function extractMonthNumber(value: string | null | undefined): number | null {
@@ -200,6 +212,15 @@ function buildSnapshot(raw: AnalyticsRawState, filters: AnalyticsFilterState): A
       matchOwner(null, resolvedClientId)
     );
   });
+  const profileMetaById = new Map(
+    raw.profiles.map((profile) => [
+      profile.id,
+      {
+        fullName: profile.full_name || null,
+        email: null,
+      },
+    ])
+  );
   const useCanonicalCash = filteredCommercialPayments.length > 0;
   const fallbackManualCashEvents = filteredTrips
     .map((trip) => {
@@ -235,13 +256,103 @@ function buildSnapshot(raw: AnalyticsRawState, filters: AnalyticsFilterState): A
     monthMap.get(key)!.bookings += 1;
   }
 
+  const tripStatusMap = new Map(
+    filteredTrips
+      .filter((trip): trip is TripRow & { id: string } => Boolean(trip.id))
+      .map((trip) => [trip.id, trip.status || null])
+  );
+
+  const pipelineTripRows: TripBusinessRow[] = filteredTrips
+    .filter((trip): trip is TripRow & { id: string } => Boolean(trip.id))
+    .map((trip) => {
+      const itinerary = extractPrimaryItinerary(trip.itineraries);
+      const financialSummary = itinerary?.raw_data?.financial_summary;
+      return {
+        id: trip.id,
+        itinerary_id: null,
+        client_id: trip.client_id || null,
+        status: trip.status,
+        created_at: trip.created_at,
+        updated_at: trip.updated_at || null,
+        start_date: null,
+        end_date: null,
+        destination: extractDestination(trip.itineraries),
+        name: null,
+        clientName: trip.client_id ? profileMetaById.get(trip.client_id)?.fullName || null : null,
+        tripTitle: null,
+        financialPaymentStatus: financialSummary?.payment_status || null,
+        financialPaymentSource: financialSummary?.payment_source || null,
+        manualPaidAmount: toNumber(financialSummary?.manual_paid_amount, 0),
+        financialEventIso:
+          financialSummary?.payment_date || itinerary?.updated_at || trip.updated_at || trip.created_at,
+        quotedTotal: 0,
+        eventIso: trip.updated_at || trip.created_at,
+        isBooked: ACTIVE_TRIP_STATUSES.has((trip.status || "").toLowerCase()),
+        isActive: ACTIVE_TRIP_STATUSES.has((trip.status || "").toLowerCase()),
+        isWon: hasWonTripStatus(trip.status),
+      };
+    });
+
+  const pipelineProposalRows: ProposalBusinessRow[] = filteredProposals.map((proposal) => {
+    const linkedTripStatus = proposal.trip_id ? tripStatusMap.get(proposal.trip_id) || null : null;
+    const hasLiveLinkedTrip = proposal.trip_id ? tripStatusMap.has(proposal.trip_id) : true;
+    const lifecycle: ProposalBusinessRow["lifecycle"] =
+      isWonProposal(proposal) || hasWonTripStatus(linkedTripStatus)
+        ? "won"
+        : isLostProposal(proposal)
+          ? "lost"
+          : "open";
+    return {
+      ...proposal,
+      clientName: proposal.client_id ? profileMetaById.get(proposal.client_id)?.fullName || null : null,
+      clientEmail: null,
+      linkedTripStatus,
+      lifecycle,
+      value: getProposalValue(proposal),
+      eventIso: proposal.updated_at || proposal.created_at,
+      hasLiveLinkedTrip,
+    };
+  });
+
+  const pipelineSummary = buildDashboardPipelineSummary({
+    proposals: pipelineProposalRows,
+    trips: pipelineTripRows,
+    invoices: filteredInvoices.map((invoice, index) => ({
+      id: `${invoice.trip_id || invoice.client_id || "invoice"}-${index}`,
+      invoice_number: null,
+      status: invoice.status,
+      due_date: null,
+      balance_amount: invoice.status?.toLowerCase() === "paid" ? 0 : invoice.total_amount,
+      total_amount: invoice.total_amount,
+      created_at: invoice.created_at,
+      updated_at: invoice.created_at,
+      paid_at: invoice.status?.toLowerCase() === "paid" ? invoice.created_at : null,
+      client_id: invoice.client_id || null,
+      trip_id: invoice.trip_id || null,
+    })),
+    commercialPayments: filteredCommercialPayments.map((payment, index) => ({
+      id: `${payment.trip_id || payment.proposal_id || payment.invoice_id || "payment"}-${index}`,
+      trip_id: payment.trip_id || null,
+      proposal_id: payment.proposal_id || null,
+      invoice_id: payment.invoice_id || null,
+      amount: payment.amount,
+      currency: "INR",
+      payment_date: payment.payment_date,
+      created_at: payment.created_at,
+      status: payment.status || null,
+      source: payment.source || null,
+      method: null,
+      reference: null,
+      notes: null,
+      deleted_at: null,
+    })),
+  });
+
   let approvedCount = 0;
   let viewedCount = 0;
-  const proposalStatusMap = new Map<string, number>();
 
   for (const proposal of filteredProposals) {
     const normalizedStatus = (proposal.status || "draft").toLowerCase();
-    proposalStatusMap.set(normalizedStatus, (proposalStatusMap.get(normalizedStatus) || 0) + 1);
     if (APPROVED_STATUSES.has(normalizedStatus)) approvedCount += 1;
     if (proposal.viewed_at) viewedCount += 1;
 
@@ -420,9 +531,13 @@ function buildSnapshot(raw: AnalyticsRawState, filters: AnalyticsFilterState): A
       ? seasonalBreakdown.offSeason.revenue / seasonalBreakdown.offSeason.bookings
       : 0;
 
-  const proposalStatusBreakdown = Array.from(proposalStatusMap.entries())
-    .map(([status, count]) => ({ status, count }))
-    .sort((a, b) => b.count - a.count);
+  const proposalStatusBreakdown = pipelineSummary.stages
+    .filter((stage) => (stage.count || 0) > 0)
+    .map((stage) => ({
+      status: stage.key,
+      label: PROPOSAL_STAGE_LABELS[stage.key],
+      count: stage.count || 0,
+    }));
 
   const drivers = buildMoMDriverCallouts(
     series.map((point) => ({
