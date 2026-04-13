@@ -93,6 +93,18 @@ interface PaymentLinkDrillRow {
   proposal_id: string | null;
 }
 
+interface ClientDrillRow {
+  id: string;
+  created_at: string | null;
+  profiles:
+    | {
+        full_name: string | null;
+        email: string | null;
+        lifecycle_stage?: string | null;
+      }
+    | null;
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -779,15 +791,25 @@ export async function loadOperationsDrill(
   }
 
   // Default: clients
-  const { data, error } = await supabase
+  let clientQuery = await supabase
     .from("clients")
-    .select("id, name, email, created_at, status")
+    .select("id, created_at, profiles!clients_id_fkey(full_name, email, lifecycle_stage)")
     .eq("organization_id", orgId)
+    .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(100);
 
-  if (error) throw error;
-  const clientRows = (data || []) as Array<{ id: string; name: string; email: string; created_at: string; status: string }>;
+  if (clientQuery.error && isMissingDeletedAtError(clientQuery.error.message)) {
+    clientQuery = await supabase
+      .from("clients")
+      .select("id, created_at, profiles!clients_id_fkey(full_name, email, lifecycle_stage)")
+      .eq("organization_id", orgId)
+      .order("created_at", { ascending: false })
+      .limit(100);
+  }
+
+  if (clientQuery.error) throw clientQuery.error;
+  const clientRows = ((clientQuery.data || []) as ClientDrillRow[]).filter((row) => row.profiles !== null);
 
   return {
     summary: {
@@ -798,10 +820,10 @@ export async function loadOperationsDrill(
     },
     rows: clientRows.map((c) => ({
       id: c.id,
-      title: c.name || c.email || "Client",
-      subtitle: c.email || "",
-      amountLabel: (c.status || "active").replace(/_/g, " "),
-      status: c.status || "active",
+      title: c.profiles?.full_name || c.profiles?.email || "Client",
+      subtitle: c.profiles?.email || "",
+      amountLabel: (c.profiles?.lifecycle_stage || "active").replace(/_/g, " "),
+      status: c.profiles?.lifecycle_stage || "active",
       dateLabel: formatDate(c.created_at),
       href: `/clients/${c.id}`,
     })),
