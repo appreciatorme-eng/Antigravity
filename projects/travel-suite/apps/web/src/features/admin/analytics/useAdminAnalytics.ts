@@ -101,6 +101,15 @@ function isColumnMissingError(message: string | null | undefined): boolean {
   return message.toLowerCase().includes("column") && message.toLowerCase().includes("does not exist");
 }
 
+function isMissingRelationError(message: string | null | undefined): boolean {
+  if (!message) return false;
+  const normalized = message.toLowerCase();
+  return (
+    (normalized.includes("relation") || normalized.includes("table")) &&
+    normalized.includes("commercial_payments")
+  );
+}
+
 function buildSnapshot(raw: AnalyticsRawState, filters: AnalyticsFilterState): AnalyticsSnapshot {
   const profileNameMap = new Map<string, string>();
   const sourceByClient = new Map<string, string>();
@@ -609,7 +618,11 @@ export function useAdminAnalytics() {
           .eq("organization_id", orgId)
           .is("deleted_at", null)) as unknown as QueryResult<CommercialPaymentRow>;
 
-        if (commercialPaymentsRes.error && isColumnMissingError(commercialPaymentsRes.error.message)) {
+        if (
+          commercialPaymentsRes.error &&
+          (isColumnMissingError(commercialPaymentsRes.error.message) ||
+            isMissingRelationError(commercialPaymentsRes.error.message))
+        ) {
           commercialPaymentsRes = {
             data: [],
             error: null,

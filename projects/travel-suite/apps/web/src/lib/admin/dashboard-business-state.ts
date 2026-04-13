@@ -287,6 +287,49 @@ function getTripManualCashAmount(trip: TripBusinessRow): number {
   return Number(trip.manualPaidAmount || 0);
 }
 
+function getCollectedCommercialAmount(params: {
+  trip?: TripBusinessRow | null;
+  invoiceSummary?: InvoiceTripSummary | null;
+  paidLinkAmount?: number | null;
+  commercialPaidAmount?: number | null;
+}): number {
+  const commercialPaidAmount = Number(params.commercialPaidAmount || 0);
+  if (commercialPaidAmount > 0) return commercialPaidAmount;
+
+  const invoicePaidAmount = Number(params.invoiceSummary?.paidAmount || 0);
+  if (invoicePaidAmount > 0) return invoicePaidAmount;
+
+  const paidLinkAmount = Number(params.paidLinkAmount || 0);
+  if (paidLinkAmount > 0) return paidLinkAmount;
+
+  if (params.trip) {
+    const manualCashAmount = getTripManualCashAmount(params.trip);
+    if (manualCashAmount > 0) return manualCashAmount;
+  }
+
+  return 0;
+}
+
+function resolveStageDisplayValue(params: {
+  stageKey: DashboardPipelineStage["key"];
+  proposalValue?: number | null;
+  targetAmount?: number | null;
+  collectedAmount?: number | null;
+}): number {
+  const collectedAmount = Number(params.collectedAmount || 0);
+  const targetAmount = getPositiveMax([params.targetAmount, params.proposalValue]);
+
+  if (params.stageKey === "partially_paid") {
+    return collectedAmount > 0 ? collectedAmount : targetAmount;
+  }
+
+  if (params.stageKey === "fully_paid") {
+    return targetAmount > 0 ? targetAmount : collectedAmount;
+  }
+
+  return Number(params.proposalValue || 0);
+}
+
 function getTripTitle(trip: TripBusinessRow): string {
   return safeTitle(
     trip.tripTitle || trip.destination || "Untitled trip",
@@ -506,19 +549,22 @@ export function buildDashboardPipelineSummary(params: {
   for (const proposal of canonicalProposals) {
     const status = normalizeStatus(proposal.status, "draft");
     const linkedTrip = proposal.trip_id ? tripById.get(proposal.trip_id) || null : null;
+    const invoiceSummary = proposal.trip_id
+      ? invoiceSummaryByTrip.get(proposal.trip_id) || null
+      : null;
+    const paidLinkAmount = proposal.trip_id
+      ? paidLinkAmountByTrip.get(proposal.trip_id) || 0
+      : 0;
+    const commercialPaidAmount = proposal.trip_id
+      ? (commercialPaymentSummaryByTrip.get(proposal.trip_id)?.totalPaid ||
+        (linkedTrip ? getTripManualCashAmount(linkedTrip) : 0))
+      : 0;
     const key: DashboardPipelineStage["key"] = proposal.lifecycle === "won"
       ? resolveWonCommercialStage({
           tripFinancialPaymentStatus: linkedTrip?.financialPaymentStatus,
-          commercialPaidAmount: proposal.trip_id
-            ? (commercialPaymentSummaryByTrip.get(proposal.trip_id)?.totalPaid ||
-              (linkedTrip ? getTripManualCashAmount(linkedTrip) : 0))
-            : 0,
-          invoiceSummary: proposal.trip_id
-            ? invoiceSummaryByTrip.get(proposal.trip_id) || null
-            : null,
-          paidLinkAmount: proposal.trip_id
-            ? paidLinkAmountByTrip.get(proposal.trip_id) || 0
-            : 0,
+          commercialPaidAmount,
+          invoiceSummary,
+          paidLinkAmount,
           targetAmount: getPositiveMax([proposal.value, linkedTrip?.quotedTotal]),
         })
       : proposal.lifecycle === "lost"
@@ -528,7 +574,17 @@ export function buildDashboardPipelineSummary(params: {
           : "draft";
 
     stageMap[key].count += 1;
-    stageMap[key].value += proposal.value;
+    stageMap[key].value += resolveStageDisplayValue({
+      stageKey: key,
+      proposalValue: proposal.value,
+      targetAmount: getPositiveMax([proposal.value, linkedTrip?.quotedTotal]),
+      collectedAmount: getCollectedCommercialAmount({
+        trip: linkedTrip,
+        invoiceSummary,
+        paidLinkAmount,
+        commercialPaidAmount,
+      }),
+    });
   }
 
   const proposalOwnedWonTripIds = new Set(
@@ -545,28 +601,39 @@ export function buildDashboardPipelineSummary(params: {
   for (const trip of trips) {
     if (!trip.isWon) continue;
     if (proposalOwnedWonTripIds.has(trip.id)) continue;
+    const invoiceSummary = invoiceSummaryByTrip.get(trip.id) || null;
+    const paidLinkAmount = paidLinkAmountByTrip.get(trip.id) || 0;
+    const commercialPaidAmount =
+      commercialPaymentSummaryByTrip.get(trip.id)?.totalPaid ||
+      getTripManualCashAmount(trip);
     const key = resolveWonCommercialStage({
       tripFinancialPaymentStatus: trip.financialPaymentStatus,
-      commercialPaidAmount:
-        commercialPaymentSummaryByTrip.get(trip.id)?.totalPaid ||
-        getTripManualCashAmount(trip),
-      invoiceSummary: invoiceSummaryByTrip.get(trip.id) || null,
-      paidLinkAmount: paidLinkAmountByTrip.get(trip.id) || 0,
+      commercialPaidAmount,
+      invoiceSummary,
+      paidLinkAmount,
       targetAmount: getPositiveMax([
         trip.quotedTotal,
-        invoiceSummaryByTrip.get(trip.id)?.totalAmount,
-        commercialPaymentSummaryByTrip.get(trip.id)?.totalPaid,
+        invoiceSummary?.totalAmount,
+        commercialPaidAmount,
         getTripManualCashAmount(trip),
       ]),
     });
     stageMap[key].count += 1;
-    stageMap[key].value += getPositiveMax([
-      trip.quotedTotal,
-      invoiceSummaryByTrip.get(trip.id)?.totalAmount,
-      paidLinkAmountByTrip.get(trip.id),
-      commercialPaymentSummaryByTrip.get(trip.id)?.totalPaid,
-      getTripManualCashAmount(trip),
-    ]);
+    stageMap[key].value += resolveStageDisplayValue({
+      stageKey: key,
+      proposalValue: trip.quotedTotal,
+      targetAmount: getPositiveMax([
+        trip.quotedTotal,
+        invoiceSummary?.totalAmount,
+        commercialPaidAmount,
+      ]),
+      collectedAmount: getCollectedCommercialAmount({
+        trip,
+        invoiceSummary,
+        paidLinkAmount,
+        commercialPaidAmount,
+      }),
+    });
   }
 
   for (const proposal of openProposals) {
