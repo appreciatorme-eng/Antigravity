@@ -56,6 +56,20 @@ interface TripEnrichment {
     days_until_departure: number | null;
 }
 
+interface TripFinancialSummarySnapshot {
+    payment_source?: string | null;
+    payment_status?: string | null;
+    manual_paid_amount?: number | null;
+}
+
+function normalizeFinancialInvoiceStatus(status: string | null | undefined): "paid" | "partial" | "unpaid" | "none" {
+    const normalized = (status || "").trim().toLowerCase();
+    if (normalized === "paid") return "paid";
+    if (normalized === "partially_paid") return "partial";
+    if (normalized === "approved" || normalized === "unpaid") return "unpaid";
+    return "none";
+}
+
 function computeDaysUntilDeparture(startDate: string | null): number | null {
     if (!startDate) return null;
     const now = new Date();
@@ -278,6 +292,7 @@ async function enrichTrips(
         itineraries: { duration_days: number | null } | null;
         has_itinerary: boolean;
         quoted_total: number | null;
+        financial_summary: TripFinancialSummarySnapshot | null;
     }>
 ): Promise<Map<string, TripEnrichment>> {
     const enrichmentMap = new Map<string, TripEnrichment>();
@@ -333,20 +348,28 @@ async function enrichTrips(
         const invoiceTotal = invoices.reduce((sum, inv) => sum + (inv.total_amount || 0), 0);
         const legacyPaidAmount = invoices.reduce((sum, inv) => sum + (inv.paid_amount || 0), 0);
         const canonicalPaidAmount = commercialSummary?.totalPaid || 0;
-        const paidAmount =
-            canonicalPaidAmount > 0 ? canonicalPaidAmount : legacyPaidAmount;
+        const financialSummary = trip.financial_summary;
+        const manualCashMode = (financialSummary?.payment_source || "").trim().toLowerCase() === "manual_cash";
+        const manualPaidAmount = Number(financialSummary?.manual_paid_amount || 0);
+
+        const paidAmount = manualCashMode
+            ? manualPaidAmount
+            : (canonicalPaidAmount > 0 ? canonicalPaidAmount : legacyPaidAmount);
         const totalAmount = invoiceTotal > 0
             ? invoiceTotal
             : Math.max(Number(trip.quoted_total || 0), paidAmount);
-        const balanceAmount = invoiceTotal > 0 ? Math.max(invoiceTotal - paidAmount, 0) : 0;
-        const paymentStatus =
-            totalAmount <= 0
-                ? "none"
-                : balanceAmount <= 0
-                    ? "paid"
-                    : paidAmount > 0
-                        ? "partial"
-                        : "unpaid";
+        const balanceAmount = Math.max(totalAmount - paidAmount, 0);
+        const paymentStatus = manualCashMode
+            ? normalizeFinancialInvoiceStatus(financialSummary?.payment_status)
+            : (
+                totalAmount <= 0
+                    ? "none"
+                    : balanceAmount <= 0
+                        ? "paid"
+                        : paidAmount > 0
+                            ? "partial"
+                            : "unpaid"
+            );
 
         enrichmentMap.set(trip.id, {
             invoice: {
@@ -472,6 +495,9 @@ export async function GET(req: NextRequest) {
                     quoted_total: Number(
                         (itinerary?.raw_data as { pricing?: { total_cost?: number | null } } | null)?.pricing?.total_cost || 0,
                     ) || null,
+                    financial_summary:
+                        ((itinerary?.raw_data as { financial_summary?: TripFinancialSummarySnapshot | null } | null)
+                            ?.financial_summary) ?? null,
                 };
             });
 
@@ -595,6 +621,9 @@ export async function GET(req: NextRequest) {
                 quoted_total: Number(
                     (itinerary?.raw_data as { pricing?: { total_cost?: number | null } } | null)?.pricing?.total_cost || 0,
                 ) || null,
+                financial_summary:
+                    ((itinerary?.raw_data as { financial_summary?: TripFinancialSummarySnapshot | null } | null)
+                        ?.financial_summary) ?? null,
             };
         });
 
