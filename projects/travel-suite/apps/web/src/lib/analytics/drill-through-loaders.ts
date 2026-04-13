@@ -100,10 +100,18 @@ interface ClientDrillRow {
     | {
         full_name: string | null;
         email: string | null;
-        lifecycle_stage?: string | null;
+        lifecycle_stage: string | null;
       }
     | null;
 }
+
+type ClientDrillRowWithProfile = ClientDrillRow & {
+  profiles: {
+    full_name: string | null;
+    email: string | null;
+    lifecycle_stage: string | null;
+  };
+};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -809,7 +817,9 @@ export async function loadOperationsDrill(
   }
 
   if (clientQuery.error) throw clientQuery.error;
-  const clientRows = ((clientQuery.data || []) as ClientDrillRow[]).filter((row) => row.profiles !== null);
+  const clientRows = ((clientQuery.data || []) as ClientDrillRow[]).filter(
+    (row): row is ClientDrillRowWithProfile => row.profiles !== null,
+  );
 
   return {
     summary: {
