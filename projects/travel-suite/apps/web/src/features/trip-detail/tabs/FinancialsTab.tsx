@@ -32,6 +32,7 @@ import {
   useUpdateTripInvoice,
   useUpdateTripAddOn,
 } from "@/lib/queries/trip-detail";
+import { tripsKeys } from "@/lib/queries/trips";
 import { authedFetch } from "@/lib/api/authed-fetch";
 import { INDIAN_STATES } from "@/lib/tax/gst-calculator";
 import { useQueryClient } from "@tanstack/react-query";
@@ -1839,6 +1840,7 @@ export function FinancialsTab({
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: tripDetailKeys.detail(trip.id) }),
         queryClient.invalidateQueries({ queryKey: tripDetailKeys.invoices(trip.id) }),
+        queryClient.invalidateQueries({ queryKey: tripsKeys.all }),
       ]);
 
       toast({
