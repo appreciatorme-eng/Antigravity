@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { authedFetch } from "@/lib/api/authed-fetch";
 import { useToast } from "@/components/ui/toast";
@@ -100,6 +100,25 @@ export default function PlannerPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [itineraryPendingDelete, setItineraryPendingDelete] = useState<PastItineraryItem | null>(null);
     const [deletingItineraryId, setDeletingItineraryId] = useState<string | null>(null);
+
+    const computeEndDateFromStart = useCallback((value: string, durationDays: number) => {
+        if (!value) return "";
+        const base = new Date(`${value}T00:00:00`);
+        if (Number.isNaN(base.getTime())) return "";
+        return new Date(base.getTime() + Math.max(durationDays - 1, 0) * 86_400_000)
+            .toISOString()
+            .slice(0, 10);
+    }, []);
+
+    useEffect(() => {
+        if (result) return;
+        if (!startDate) {
+            setEndDate("");
+            return;
+        }
+        const nextEndDate = computeEndDateFromStart(startDate, days);
+        setEndDate((current) => (current === nextEndDate ? current : nextEndDate));
+    }, [computeEndDateFromStart, days, result, startDate]);
 
     const handleOpenItinerary = useCallback(async (itineraryId: string) => {
         setOpeningItineraryId(itineraryId);
@@ -262,16 +281,10 @@ export default function PlannerPage() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Failed to generate");
             const normalizedStartDate = startDate || undefined;
-            const normalizedEndDate = endDate || (
-                normalizedStartDate
-                    ? new Date(
-                        new Date(`${normalizedStartDate}T00:00:00`).getTime() +
-                            (days - 1) * 86_400_000,
-                    )
-                        .toISOString()
-                        .slice(0, 10)
-                    : undefined
-            );
+            const normalizedEndDate =
+                endDate || (normalizedStartDate
+                    ? computeEndDateFromStart(normalizedStartDate, days) || undefined
+                    : undefined);
             const generatedResult: ItineraryResult = {
                 ...data,
                 start_date: normalizedStartDate,
