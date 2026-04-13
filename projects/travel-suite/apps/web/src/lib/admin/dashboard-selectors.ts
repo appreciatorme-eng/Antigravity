@@ -111,6 +111,7 @@ export type ItinerarySelectorRow = {
   id: string;
   trip_title: string | null;
   destination: string | null;
+  updated_at: string | null;
   raw_data:
     | {
         pricing?: {
@@ -123,6 +124,7 @@ export type ItinerarySelectorRow = {
           payment_source?: string | null;
           manual_paid_amount?: number | null;
           linked_invoice_id?: string | null;
+          payment_date?: string | null;
         } | null;
       }
     | null;
@@ -168,6 +170,14 @@ export function sourceMessage(label: string): string {
 function isMissingDeletedAtError(message: string | null | undefined): boolean {
   const normalized = (message || "").toLowerCase();
   return normalized.includes("deleted_at") && normalized.includes("column");
+}
+
+function isMissingRelationError(message: string | null | undefined): boolean {
+  const normalized = (message || "").toLowerCase();
+  return (
+    (normalized.includes("does not exist") || normalized.includes("could not find")) &&
+    (normalized.includes("commercial_payments") || normalized.includes("relation"))
+  );
 }
 
 async function runSourceQuery<T>(
@@ -508,22 +518,74 @@ export async function fetchDashboardCommercialPaymentRows(
   client: AdminQueryClient,
   organizationId: string,
 ): Promise<DashboardSourceResult<CommercialPaymentSelectorRow>> {
-  return runSoftDeleteAwareSourceQuery<CommercialPaymentSelectorRow>({
-    label: "Payment",
-    strictQuery: client
+  try {
+    const strict = await client
       .from("commercial_payments")
       .select("id,trip_id,proposal_id,invoice_id,amount,currency,payment_date,created_at,status,source,method,reference,notes,deleted_at")
       .eq("organization_id", organizationId)
       .is("deleted_at", null)
       .order("payment_date", { ascending: false })
-      .limit(5000),
-    fallbackQuery: client
+      .limit(5000);
+
+    if (!strict.error) {
+      return {
+        rows: (strict.data || []) as CommercialPaymentSelectorRow[],
+        health: "ok",
+        message: null,
+      };
+    }
+
+    if (isMissingRelationError(strict.error.message)) {
+      return {
+        rows: [],
+        health: "ok",
+        message: null,
+      };
+    }
+
+    if (!isMissingDeletedAtError(strict.error.message)) {
+      return {
+        rows: [],
+        health: "failed",
+        message: sourceMessage("Payment"),
+      };
+    }
+
+    const fallback = await client
       .from("commercial_payments")
       .select("id,trip_id,proposal_id,invoice_id,amount,currency,payment_date,created_at,status,source,method,reference,notes,deleted_at")
       .eq("organization_id", organizationId)
       .order("payment_date", { ascending: false })
-      .limit(5000),
-  });
+      .limit(5000);
+
+    if (!fallback.error) {
+      return {
+        rows: (fallback.data || []) as CommercialPaymentSelectorRow[],
+        health: "ok",
+        message: null,
+      };
+    }
+
+    if (isMissingRelationError(fallback.error.message)) {
+      return {
+        rows: [],
+        health: "ok",
+        message: null,
+      };
+    }
+
+    return {
+      rows: [],
+      health: "failed",
+      message: sourceMessage("Payment"),
+    };
+  } catch {
+    return {
+      rows: [],
+      health: "failed",
+      message: sourceMessage("Payment"),
+    };
+  }
 }
 
 export async function fetchDashboardProfileRows(
@@ -556,7 +618,7 @@ export async function fetchDashboardItineraryRows(
     "Itinerary",
     client
       .from("itineraries")
-      .select("id,trip_title,destination,raw_data")
+      .select("id,trip_title,destination,updated_at,raw_data")
       .in("id", itineraryIds)
       .limit(Math.max(itineraryIds.length, 1)),
   );

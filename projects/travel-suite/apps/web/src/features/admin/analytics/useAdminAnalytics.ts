@@ -64,6 +64,31 @@ function extractDestination(value: TripRow["itineraries"]): string | null {
   return value.destination ?? null;
 }
 
+function extractPrimaryItinerary(value: TripRow["itineraries"]) {
+  if (!value) return null;
+  return Array.isArray(value) ? value[0] ?? null : value;
+}
+
+function extractManualCashPayment(trip: TripRow): {
+  amount: number;
+  eventIso: string | null;
+} | null {
+  const itinerary = extractPrimaryItinerary(trip.itineraries);
+  const summary = itinerary?.raw_data?.financial_summary;
+  const source = (summary?.payment_source || "").toLowerCase();
+  const status = (summary?.payment_status || "").toLowerCase();
+  const amount = toNumber(summary?.manual_paid_amount, 0);
+  if (source !== "manual_cash") return null;
+  if (status !== "paid" && status !== "partially_paid" && status !== "partial") {
+    return null;
+  }
+  if (amount <= 0) return null;
+  return {
+    amount,
+    eventIso: summary?.payment_date || itinerary?.updated_at || trip.updated_at || trip.created_at,
+  };
+}
+
 function extractMonthNumber(value: string | null | undefined): number | null {
   if (!value) return null;
   const date = new Date(value);
@@ -166,6 +191,17 @@ function buildSnapshot(raw: AnalyticsRawState, filters: AnalyticsFilterState): A
     );
   });
   const useCanonicalCash = filteredCommercialPayments.length > 0;
+  const fallbackManualCashEvents = filteredTrips
+    .map((trip) => {
+      const manualCash = extractManualCashPayment(trip);
+      if (!manualCash) return null;
+      return {
+        trip,
+        amount: manualCash.amount,
+        eventIso: manualCash.eventIso,
+      };
+    })
+    .filter((entry): entry is { trip: TripRow; amount: number; eventIso: string | null } => Boolean(entry));
 
   const monthCount = RANGE_TO_MONTHS[filters.range as DashboardRange];
   const monthKeys = getLastMonthKeys(monthCount);
@@ -220,6 +256,11 @@ function buildSnapshot(raw: AnalyticsRawState, filters: AnalyticsFilterState): A
       const key = monthKeyFromDate(invoice.created_at);
       if (!key || !monthMap.has(key)) continue;
       monthMap.get(key)!.revenue += toNumber(invoice.total_amount, 0);
+    }
+    for (const payment of fallbackManualCashEvents) {
+      const key = monthKeyFromDate(payment.eventIso);
+      if (!key || !monthMap.has(key)) continue;
+      monthMap.get(key)!.revenue += payment.amount;
     }
   }
 
@@ -305,6 +346,23 @@ function buildSnapshot(raw: AnalyticsRawState, filters: AnalyticsFilterState): A
         destinationMap.set(destination, { trips: 0, revenue: amount });
       }
     }
+    for (const payment of fallbackManualCashEvents) {
+      const monthNumber = extractMonthNumber(payment.eventIso);
+      const seasonKey = monthNumber && PEAK_MONTHS.has(monthNumber) ? "peak" : "offSeason";
+      seasonalBreakdown[seasonKey].revenue += payment.amount;
+
+      const destination =
+        extractDestination(payment.trip.itineraries) ||
+        (payment.trip.client_id ? destinationByClient.get(payment.trip.client_id) : null) ||
+        null;
+      if (!destination) continue;
+      const existing = destinationMap.get(destination);
+      if (existing) {
+        existing.revenue += payment.amount;
+      } else {
+        destinationMap.set(destination, { trips: 0, revenue: payment.amount });
+      }
+    }
   }
 
   for (const trip of filteredTrips) {
@@ -323,6 +381,9 @@ function buildSnapshot(raw: AnalyticsRawState, filters: AnalyticsFilterState): A
       (payment.proposal_id ? proposalClientById.get(payment.proposal_id) : null) ||
       null;
     if (resolvedClientId) touchedClients.add(resolvedClientId);
+  }
+  for (const payment of fallbackManualCashEvents) {
+    if (payment.trip.client_id) touchedClients.add(payment.trip.client_id);
   }
 
   const activeClients =
@@ -399,6 +460,19 @@ function buildSnapshot(raw: AnalyticsRawState, filters: AnalyticsFilterState): A
         clientRevenueMap.set(clientId, { revenue: amount, invoiceCount: 1 });
       }
     }
+    for (const payment of fallbackManualCashEvents) {
+      const clientId = payment.trip.client_id;
+      if (!clientId) continue;
+      const existing = clientRevenueMap.get(clientId);
+      if (existing) {
+        clientRevenueMap.set(clientId, {
+          revenue: existing.revenue + payment.amount,
+          invoiceCount: existing.invoiceCount + 1,
+        });
+      } else {
+        clientRevenueMap.set(clientId, { revenue: payment.amount, invoiceCount: 1 });
+      }
+    }
   }
 
   const clientTripMap = new Map<string, number>();
@@ -429,8 +503,10 @@ function buildSnapshot(raw: AnalyticsRawState, filters: AnalyticsFilterState): A
     ? filteredTrips.length > 0
       ? (paidCashEvents / filteredTrips.length) * 100
       : 0
-    : totalAllInvoices > 0
-      ? (totalPaidInvoices / totalAllInvoices) * 100
+    : (totalAllInvoices + fallbackManualCashEvents.length) > 0
+      ? ((totalPaidInvoices + fallbackManualCashEvents.length) /
+        (totalAllInvoices + fallbackManualCashEvents.length)) *
+        100
       : 0;
   const avgBookingValue = filteredTrips.length > 0 ? monthlyRevenueTotal / filteredTrips.length : 0;
   const totalPax = filteredTrips.length * 2; // estimate: avg 2 pax/trip; real data would come from trip.pax_count
@@ -505,13 +581,13 @@ export function useAdminAnalytics() {
         let tripsRes: QueryResult<TripRow> = (await supabase
           .from("trips")
           // owner_id was removed from the trips table; client_id is used as fallback by matchOwner
-          .select("id,status,created_at,client_id,itineraries(destination)")
+          .select("id,status,created_at,updated_at,client_id,itineraries(destination,updated_at,raw_data)")
           .eq("organization_id", orgId)) as unknown as QueryResult<TripRow>;
 
         if (tripsRes.error && isColumnMissingError(tripsRes.error.message)) {
           tripsRes = (await supabase
             .from("trips")
-            .select("id,status,created_at,itineraries(destination)")
+            .select("id,status,created_at,updated_at,itineraries(destination,updated_at,raw_data)")
             .eq("organization_id", orgId)) as unknown as QueryResult<TripRow>;
         }
 

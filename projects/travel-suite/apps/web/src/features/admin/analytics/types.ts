@@ -35,9 +35,35 @@ export interface TripRow {
   id?: string;
   status: string | null;
   created_at: string | null;
+  updated_at?: string | null;
   owner_id?: string | null;
   client_id?: string | null;
-  itineraries: { destination: string | null } | { destination: string | null }[] | null;
+  itineraries:
+    | {
+        destination: string | null;
+        updated_at?: string | null;
+        raw_data?: {
+          financial_summary?: {
+            payment_status?: string | null;
+            payment_source?: string | null;
+            manual_paid_amount?: number | null;
+            payment_date?: string | null;
+          } | null;
+        } | null;
+      }
+    | {
+        destination: string | null;
+        updated_at?: string | null;
+        raw_data?: {
+          financial_summary?: {
+            payment_status?: string | null;
+            payment_source?: string | null;
+            manual_paid_amount?: number | null;
+            payment_date?: string | null;
+          } | null;
+        } | null;
+      }[]
+    | null;
 }
 
 export interface ProfileRow {

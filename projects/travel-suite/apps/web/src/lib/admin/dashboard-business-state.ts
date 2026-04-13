@@ -47,6 +47,9 @@ export type TripBusinessRow = TripSelectorRow & {
   destination: string | null;
   tripTitle: string | null;
   financialPaymentStatus: string | null;
+  financialPaymentSource: string | null;
+  manualPaidAmount: number;
+  financialEventIso: string | null;
   quotedTotal: number;
   eventIso: string | null;
   isBooked: boolean;
@@ -276,6 +279,14 @@ function getPositiveMax(values: Array<number | null | undefined>): number {
   }, 0);
 }
 
+function getTripManualCashAmount(trip: TripBusinessRow): number {
+  const source = normalizeStatus(trip.financialPaymentSource, "");
+  const status = normalizeFinancialPaymentStatus(trip.financialPaymentStatus);
+  if (source !== "manual_cash") return 0;
+  if (status !== "paid" && status !== "partially_paid") return 0;
+  return Number(trip.manualPaidAmount || 0);
+}
+
 function getTripTitle(trip: TripBusinessRow): string {
   return safeTitle(
     trip.tripTitle || trip.destination || "Untitled trip",
@@ -365,6 +376,16 @@ export function decorateDashboardTrips(params: {
       tripTitle: itinerary?.trip_title || trip.name || null,
       financialPaymentStatus:
         itinerary?.raw_data?.financial_summary?.payment_status || null,
+      financialPaymentSource:
+        itinerary?.raw_data?.financial_summary?.payment_source || null,
+      manualPaidAmount: Number(
+        itinerary?.raw_data?.financial_summary?.manual_paid_amount || 0,
+      ),
+      financialEventIso:
+        itinerary?.raw_data?.financial_summary?.payment_date ||
+        itinerary?.updated_at ||
+        trip.updated_at ||
+        trip.created_at,
       quotedTotal: deriveQuotedTotal(itinerary),
       eventIso: getBusinessEventIso(trip.created_at, trip.updated_at),
       isBooked: isBookedTripStatus(trip.status),
@@ -489,7 +510,8 @@ export function buildDashboardPipelineSummary(params: {
       ? resolveWonCommercialStage({
           tripFinancialPaymentStatus: linkedTrip?.financialPaymentStatus,
           commercialPaidAmount: proposal.trip_id
-            ? commercialPaymentSummaryByTrip.get(proposal.trip_id)?.totalPaid || 0
+            ? (commercialPaymentSummaryByTrip.get(proposal.trip_id)?.totalPaid ||
+              (linkedTrip ? getTripManualCashAmount(linkedTrip) : 0))
             : 0,
           invoiceSummary: proposal.trip_id
             ? invoiceSummaryByTrip.get(proposal.trip_id) || null
@@ -526,13 +548,15 @@ export function buildDashboardPipelineSummary(params: {
     const key = resolveWonCommercialStage({
       tripFinancialPaymentStatus: trip.financialPaymentStatus,
       commercialPaidAmount:
-        commercialPaymentSummaryByTrip.get(trip.id)?.totalPaid || 0,
+        commercialPaymentSummaryByTrip.get(trip.id)?.totalPaid ||
+        getTripManualCashAmount(trip),
       invoiceSummary: invoiceSummaryByTrip.get(trip.id) || null,
       paidLinkAmount: paidLinkAmountByTrip.get(trip.id) || 0,
       targetAmount: getPositiveMax([
         trip.quotedTotal,
         invoiceSummaryByTrip.get(trip.id)?.totalAmount,
         commercialPaymentSummaryByTrip.get(trip.id)?.totalPaid,
+        getTripManualCashAmount(trip),
       ]),
     });
     stageMap[key].count += 1;
@@ -541,6 +565,7 @@ export function buildDashboardPipelineSummary(params: {
       invoiceSummaryByTrip.get(trip.id)?.totalAmount,
       paidLinkAmountByTrip.get(trip.id),
       commercialPaymentSummaryByTrip.get(trip.id)?.totalPaid,
+      getTripManualCashAmount(trip),
     ]);
   }
 
@@ -638,6 +663,7 @@ export function buildDashboardRevenueSeries(params: {
   const useCanonicalCash = params.commercialPayments.some(
     (payment) => !payment.deleted_at,
   );
+  const manualCashFallbackTripIds = new Set<string>();
 
   const bookedOwnerKeys = new Set<string>();
 
@@ -802,6 +828,32 @@ export function buildDashboardRevenueSeries(params: {
         }),
       ];
     }
+
+    for (const trip of params.trips) {
+      const amount = getTripManualCashAmount(trip);
+      const eventIso = trip.financialEventIso || trip.eventIso;
+      if (amount <= 0 || !eventIso) continue;
+      const key = getBucketKey(eventIso, params.range.granularity);
+      if (!key || !buckets.has(key)) continue;
+      if (manualCashFallbackTripIds.has(trip.id)) continue;
+
+      manualCashFallbackTripIds.add(trip.id);
+      const bucket = buckets.get(key)!;
+      bucket.cashCollected = Number(bucket.cashCollected || 0) + amount;
+      bucket.cashItems = [
+        ...(bucket.cashItems || []),
+        createSeriesItem({
+          id: trip.id,
+          kind: "trip",
+          title: "Manual cash received",
+          subtitle: getTripSubtitle(trip),
+          href: `/trips/${trip.id}`,
+          status: normalizeStatus(trip.financialPaymentStatus, "paid"),
+          amountLabel: formatCompactINR(amount),
+          dateLabel: formatDateLabel(eventIso),
+        }),
+      ];
+    }
   }
 
   for (const trip of sortByEventDesc(params.trips)) {
@@ -848,6 +900,7 @@ export function buildDashboardRevenueSeries(params: {
       invoiceValueByTrip.get(trip.id),
       paymentLinkValueByTrip.get(trip.id),
       commercialPaymentSummaryByTrip.get(trip.id)?.totalPaid,
+      getTripManualCashAmount(trip),
     ]);
 
     if (bookedFallbackAmount <= 0) continue;
