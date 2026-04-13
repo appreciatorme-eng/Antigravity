@@ -279,6 +279,23 @@ function getPositiveMax(values: Array<number | null | undefined>): number {
   }, 0);
 }
 
+export function resolveCommercialTargetAmount(params: {
+  trip?: TripBusinessRow | null;
+  invoiceSummary?: InvoiceTripSummary | null;
+  proposalValue?: number | null;
+}): number {
+  const tripQuotedTotal = Number(params.trip?.quotedTotal || 0);
+  if (tripQuotedTotal > 0) return tripQuotedTotal;
+
+  const invoiceTotal = Number(params.invoiceSummary?.totalAmount || 0);
+  if (invoiceTotal > 0) return invoiceTotal;
+
+  const proposalValue = Number(params.proposalValue || 0);
+  if (proposalValue > 0) return proposalValue;
+
+  return 0;
+}
+
 function getTripManualCashAmount(trip: TripBusinessRow): number {
   const source = normalizeStatus(trip.financialPaymentSource, "");
   const status = normalizeFinancialPaymentStatus(trip.financialPaymentStatus);
@@ -559,13 +576,18 @@ export function buildDashboardPipelineSummary(params: {
       ? (commercialPaymentSummaryByTrip.get(proposal.trip_id)?.totalPaid ||
         (linkedTrip ? getTripManualCashAmount(linkedTrip) : 0))
       : 0;
+    const targetAmount = resolveCommercialTargetAmount({
+      trip: linkedTrip,
+      invoiceSummary,
+      proposalValue: proposal.value,
+    });
     const key: DashboardPipelineStage["key"] = proposal.lifecycle === "won"
       ? resolveWonCommercialStage({
           tripFinancialPaymentStatus: linkedTrip?.financialPaymentStatus,
           commercialPaidAmount,
           invoiceSummary,
           paidLinkAmount,
-          targetAmount: getPositiveMax([proposal.value, linkedTrip?.quotedTotal]),
+          targetAmount,
         })
       : proposal.lifecycle === "lost"
         ? "lost"
@@ -577,7 +599,7 @@ export function buildDashboardPipelineSummary(params: {
     stageMap[key].value += resolveStageDisplayValue({
       stageKey: key,
       proposalValue: proposal.value,
-      targetAmount: getPositiveMax([proposal.value, linkedTrip?.quotedTotal]),
+      targetAmount,
       collectedAmount: getCollectedCommercialAmount({
         trip: linkedTrip,
         invoiceSummary,
@@ -606,27 +628,22 @@ export function buildDashboardPipelineSummary(params: {
     const commercialPaidAmount =
       commercialPaymentSummaryByTrip.get(trip.id)?.totalPaid ||
       getTripManualCashAmount(trip);
+    const targetAmount = resolveCommercialTargetAmount({
+      trip,
+      invoiceSummary,
+    });
     const key = resolveWonCommercialStage({
       tripFinancialPaymentStatus: trip.financialPaymentStatus,
       commercialPaidAmount,
       invoiceSummary,
       paidLinkAmount,
-      targetAmount: getPositiveMax([
-        trip.quotedTotal,
-        invoiceSummary?.totalAmount,
-        commercialPaidAmount,
-        getTripManualCashAmount(trip),
-      ]),
+      targetAmount,
     });
     stageMap[key].count += 1;
     stageMap[key].value += resolveStageDisplayValue({
       stageKey: key,
       proposalValue: trip.quotedTotal,
-      targetAmount: getPositiveMax([
-        trip.quotedTotal,
-        invoiceSummary?.totalAmount,
-        commercialPaidAmount,
-      ]),
+      targetAmount,
       collectedAmount: getCollectedCommercialAmount({
         trip,
         invoiceSummary,
@@ -1049,7 +1066,11 @@ export function buildDashboardOutstandingSnapshot(params: {
       ? (commercialPaymentSummaryByTrip.get(proposal.trip_id)?.totalPaid ||
         (linkedTrip ? getTripManualCashAmount(linkedTrip) : 0))
       : 0;
-    const targetAmount = getPositiveMax([proposal.value, linkedTrip?.quotedTotal]);
+    const targetAmount = resolveCommercialTargetAmount({
+      trip: linkedTrip,
+      invoiceSummary,
+      proposalValue: proposal.value,
+    });
     const collectedAmount = getCollectedCommercialAmount({
       trip: linkedTrip,
       invoiceSummary,
@@ -1123,11 +1144,10 @@ export function buildDashboardOutstandingSnapshot(params: {
     const paidLinkAmount = paidLinkAmountByTrip.get(trip.id) || 0;
     const commercialPaidAmount =
       commercialPaymentSummaryByTrip.get(trip.id)?.totalPaid || getTripManualCashAmount(trip);
-    const targetAmount = getPositiveMax([
-      trip.quotedTotal,
-      invoiceSummary?.totalAmount,
-      commercialPaidAmount,
-    ]);
+    const targetAmount = resolveCommercialTargetAmount({
+      trip,
+      invoiceSummary,
+    });
     const collectedAmount = getCollectedCommercialAmount({
       trip,
       invoiceSummary,

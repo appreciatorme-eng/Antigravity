@@ -11,6 +11,7 @@ import type {
   DashboardScorecardMetric,
 } from "@/lib/admin/dashboard-overview-types";
 import {
+  buildDashboardOutstandingSnapshot,
   buildDashboardClientMap,
   filterDashboardInvoicesByTrip,
   buildDashboardPipelineSummary,
@@ -530,6 +531,13 @@ export async function buildDashboardOverview(params: {
     followUps: sources.followUps.rows,
     now,
   });
+  const outstandingSnapshot = buildDashboardOutstandingSnapshot({
+    proposals,
+    trips,
+    invoices,
+    paymentLinks: sources.paymentLinks.rows,
+    commercialPayments: sources.commercialPayments.rows,
+  });
 
   const totalBookedValue = series.reduce(
     (sum, point) => sum + Number(point.bookedValue || 0),
@@ -539,7 +547,7 @@ export async function buildDashboardOverview(params: {
     (sum, point) => sum + Number(point.cashCollected || 0),
     0,
   );
-  const totalOutstandingBalance = Math.max(totalBookedValue - totalCashCollected, 0);
+  const totalOutstandingBalance = outstandingSnapshot.totalOutstanding;
   const totalTripCount = series.reduce(
     (sum, point) => sum + Number(point.tripCount || 0),
     0,
