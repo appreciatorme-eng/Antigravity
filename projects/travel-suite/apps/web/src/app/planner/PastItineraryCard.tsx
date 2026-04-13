@@ -33,6 +33,7 @@ interface PastItineraryCardProps {
         proposal_status?: string | null;
         proposal_share_token?: string | null;
         proposal_title?: string | null;
+        financial_payment_status?: string | null;
         share_payment_summary?: SharePaymentSummary | null;
         client_comments?: ClientComment[];
         client_preferences?: import("@/types/feedback").ClientPreferences | null;
@@ -55,14 +56,15 @@ interface PastItineraryCardProps {
     onDeleteRequest?: (id: string) => void;
 }
 
-const PIPELINE_STAGES = ["draft", "shared", "viewed", "approved", "converted"] as const;
+const PIPELINE_STAGES = ["draft", "shared", "viewed", "approved", "partially_paid", "fully_paid"] as const;
 
 const STAGE_LABELS: Record<string, string> = {
     draft: "Draft",
     shared: "Shared",
     viewed: "Viewed",
     approved: "Approved",
-    converted: "Paid",
+    partially_paid: "Partially Paid",
+    fully_paid: "Fully Paid",
 };
 
 const STAGE_PILL_STYLES: Record<string, string> = {
@@ -71,7 +73,8 @@ const STAGE_PILL_STYLES: Record<string, string> = {
     viewed: "text-purple-300",
     feedback: "text-amber-300",
     approved: "text-emerald-300",
-    converted: "text-emerald-300",
+    partially_paid: "text-amber-300",
+    fully_paid: "text-emerald-300",
 };
 
 const INR_FORMAT = new Intl.NumberFormat("en-IN", {

@@ -66,6 +66,7 @@ interface PastItineraryItem extends ItineraryLike {
     wishlist_items?: string[];
     approved_by?: string | null;
     approved_at?: string | null;
+    financial_payment_status?: string | null;
     trip_id?: string | null;
     trip_status?: string | null;
 }

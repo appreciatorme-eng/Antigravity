@@ -3,7 +3,7 @@
 import type { ClientComment, ClientPreferences } from "@/types/feedback";
 
 export type ItineraryStage =
-    | "all" | "draft" | "shared" | "viewed" | "feedback" | "approved" | "converted"
+    | "all" | "draft" | "shared" | "viewed" | "feedback" | "approved" | "partially_paid" | "fully_paid"
     | "active_leads" | "won" | "needs_attention";
 
 /** Minimal itinerary shape used by planner views and client activity detection */
@@ -16,6 +16,7 @@ export interface ItineraryLike {
     proposal_status?: string | null;
     proposal_share_token?: string | null;
     proposal_title?: string | null;
+    financial_payment_status?: string | null;
     client_comments?: ClientComment[];
     client_preferences?: ClientPreferences | null;
     wishlist_items?: string[];
@@ -28,10 +29,18 @@ export function deriveStage(itinerary: {
     viewed_at?: string | null;
     trip_id?: string | null;
     trip_status?: string | null;
+    financial_payment_status?: string | null;
 }): string {
-    // Only mark as "converted" (Won) when the trip has progressed beyond draft
+    const paymentStatus = (itinerary.financial_payment_status || "").trim().toLowerCase();
+    if (paymentStatus === "paid") {
+        return "fully_paid";
+    }
+    if (paymentStatus === "partially_paid") {
+        return "partially_paid";
+    }
+    // Only mark as commercially approved when the trip exists and has progressed beyond draft
     if (itinerary.trip_id && itinerary.trip_status && itinerary.trip_status !== "draft") {
-        return "converted";
+        return "approved";
     }
     if (itinerary.share_status === "approved") return "approved";
     if (itinerary.share_status === "commented") return "feedback";

@@ -258,12 +258,15 @@ export async function GET(request: NextRequest) {
       const share = shareMap[id];
       const tripId = tripMap[id]?.id ?? null;
       const linkedProposal = tripId ? proposalMap[tripId] : null;
-      const paymentConfig = normalizeSharePaymentConfig(share?.payment_config ?? null);
-      const latestPaymentLink = tripId ? paymentLinkMap[tripId] : null;
-
-
       // Strip raw_data from response (too large for list view)
       const { raw_data: _rawData, ...itinWithoutRaw } = itin;
+      const financialSummary = (_rawData ?? null) as {
+        financial_summary?: {
+          payment_status?: string | null;
+        } | null;
+      } | null;
+      const paymentConfig = normalizeSharePaymentConfig(share?.payment_config ?? null);
+      const latestPaymentLink = tripId ? paymentLinkMap[tripId] : null;
       void _rawData;
 
       return {
@@ -274,6 +277,7 @@ export async function GET(request: NextRequest) {
         share_status: share?.status ?? null,
         trip_id: tripId,
         trip_status: tripMap[id]?.status ?? null,
+        financial_payment_status: financialSummary?.financial_summary?.payment_status ?? null,
         proposal_id: linkedProposal?.id ?? null,
         proposal_status: linkedProposal?.status ?? null,
         proposal_share_token: linkedProposal?.share_token ?? null,

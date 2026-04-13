@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 /** Compound stages that map to multiple individual stages */
 const COMPOUND_STAGES: Record<string, string[]> = {
     active_leads: ["shared", "viewed", "feedback"],
-    won: ["approved", "converted"],
+    won: ["approved", "partially_paid", "fully_paid"],
 };
 
 /** Labels for compound stages shown in the filter banner */
@@ -89,8 +89,18 @@ export const STAGE_CONFIG: Record<string, StageConfig> = {
         darkBg: "dark:bg-emerald-900/20",
         gradient: "from-emerald-500 to-green-500",
     },
-    converted: {
-        label: "Trip Created",
+    partially_paid: {
+        label: "Partially Paid",
+        icon: Briefcase,
+        color: "text-amber-600",
+        bg: "bg-amber-50",
+        borderColor: "border-amber-200",
+        darkColor: "dark:text-amber-400",
+        darkBg: "dark:bg-amber-900/20",
+        gradient: "from-amber-500 to-orange-500",
+    },
+    fully_paid: {
+        label: "Fully Paid",
         icon: Briefcase,
         color: "text-primary",
         bg: "bg-primary/10",
@@ -108,7 +118,8 @@ const FILTER_TABS: { value: ItineraryStage; label: string; icon?: LucideIcon }[]
     { value: "viewed", label: "Viewed", icon: Eye },
     { value: "feedback", label: "Feedback", icon: MessageCircle },
     { value: "approved", label: "Approved", icon: CheckCircle },
-    { value: "converted", label: "Trips", icon: Briefcase },
+    { value: "partially_paid", label: "Partially Paid", icon: Briefcase },
+    { value: "fully_paid", label: "Fully Paid", icon: Briefcase },
 ];
 
 /** Check if an itinerary matches a filter (supports compound stages + needs_attention) */
@@ -156,7 +167,7 @@ export function ItineraryFilterBar({
     filteredCount,
 }: ItineraryFilterBarProps) {
     const stageCounts = useMemo(() => {
-        const counts: Record<string, number> = { all: 0, draft: 0, shared: 0, viewed: 0, feedback: 0, approved: 0, converted: 0 };
+        const counts: Record<string, number> = { all: 0, draft: 0, shared: 0, viewed: 0, feedback: 0, approved: 0, partially_paid: 0, fully_paid: 0 };
         for (const itin of itineraries) {
             const stage = deriveStage(itin);
             counts[stage] = (counts[stage] || 0) + 1;
@@ -172,9 +183,10 @@ export function ItineraryFilterBar({
     const summaryStats: StatDrill[] = useMemo(() => {
         const total = itineraries.length;
         const approved = stageCounts.approved;
-        const converted = stageCounts.converted;
+        const partiallyPaid = stageCounts.partially_paid;
+        const fullyPaid = stageCounts.fully_paid;
         const activeLeads = stageCounts.shared + stageCounts.viewed + stageCounts.feedback;
-        const conversionRate = total > 0 ? Math.round(((approved + converted) / total) * 100) : 0;
+        const conversionRate = total > 0 ? Math.round(((approved + partiallyPaid + fullyPaid) / total) * 100) : 0;
 
         return [
             { label: "Total Plans", value: total, icon: FolderOpen, color: "text-emerald-500", iconGradient: "from-emerald-500 to-teal-500", filterTarget: "all" },
