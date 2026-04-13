@@ -20,6 +20,7 @@ import { useUpdateTripStatus } from "@/lib/queries/trips";
 import type { EnrichedTrip } from "./types";
 import { STATUS_OPTIONS } from "./types";
 import {
+    commercialStageLabel,
     getStatusStyles,
     formatDate,
     computeReadiness,
@@ -77,7 +78,9 @@ export function TripListRow({ trip, onDelete, deleting = false }: TripListRowPro
 
                     <div className="flex flex-wrap items-center gap-y-1 gap-x-3 md:gap-x-5">
                         <div className="flex items-center gap-1.5 text-text-muted">
-                            <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-primary">{commercialStage}</span>
+                            <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-primary">
+                                {commercialStageLabel(commercialStage)}
+                            </span>
                         </div>
                         <div className="flex items-center gap-1.5 md:gap-2 text-text-muted">
                             <div className="w-4 h-4 md:w-5 md:h-5 rounded-full bg-slate-100 dark:bg-slate-800 border-2 border-white dark:border-slate-700 flex items-center justify-center overflow-hidden">

@@ -203,10 +203,37 @@ export function paymentBadgeLabel(status: string): string {
     }
 }
 
-export type TripCommercialStage = "draft" | "shared" | "viewed" | "approved" | "won";
+export type TripCommercialStage =
+    | "draft"
+    | "shared"
+    | "viewed"
+    | "approved"
+    | "partially_paid"
+    | "fully_paid";
+
+export function commercialStageLabel(stage: TripCommercialStage): string {
+    switch (stage) {
+        case "draft":
+            return "Draft";
+        case "shared":
+            return "Shared";
+        case "viewed":
+            return "Viewed";
+        case "approved":
+            return "Approved";
+        case "partially_paid":
+            return "Partially Paid";
+        case "fully_paid":
+            return "Fully Paid";
+        default:
+            return "Draft";
+    }
+}
 
 export function deriveCommercialStage(trip: EnrichedTrip): TripCommercialStage {
-    if (trip.status && trip.status !== "draft") return "won";
+    if (trip.invoice?.payment_status === "paid") return "fully_paid";
+    if (trip.invoice?.payment_status === "partial") return "partially_paid";
+    if (trip.status && trip.status !== "draft") return "approved";
     if (trip.share_status === "approved") return "approved";
     if (trip.share_status === "viewed" || (trip.viewed_at && trip.share_code)) return "viewed";
     if (trip.share_code) return "shared";

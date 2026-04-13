@@ -30,6 +30,7 @@ import { downloadTripItineraryPdf } from "@/components/pdf/trip-itinerary-pdf";
 import type { EnrichedTrip, ReadinessLevel } from "./types";
 import {
     computeReadiness,
+    commercialStageLabel,
     departureUrgencyBg,
     departureUrgencyColor,
     deriveCommercialStage,
@@ -54,17 +55,19 @@ const COMMERCIAL_LABELS = {
     shared: "Shared",
     viewed: "Viewed",
     approved: "Approved",
-    won: "Paid",
+    partially_paid: "Partially Paid",
+    fully_paid: "Fully Paid",
 } as const;
 
-const COMMERCIAL_STEPS = ["draft", "shared", "viewed", "approved", "won"] as const;
+const COMMERCIAL_STEPS = ["draft", "shared", "viewed", "approved", "partially_paid", "fully_paid"] as const;
 
 const COMMERCIAL_COLORS = {
     draft: "text-slate-300",
     shared: "text-sky-300",
     viewed: "text-violet-300",
     approved: "text-emerald-300",
-    won: "text-emerald-300",
+    partially_paid: "text-amber-300",
+    fully_paid: "text-emerald-300",
 } as const;
 
 function readinessTone(level: ReadinessLevel) {
@@ -309,7 +312,7 @@ export function TripGridCard({ trip, onDelete, deleting = false }: TripGridCardP
                     <div className="min-w-0 space-y-2">
                         <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/40">
                             <span>Tracker</span>
-                            <span className={COMMERCIAL_COLORS[commercialStage]}>{COMMERCIAL_LABELS[commercialStage]}</span>
+                            <span className={COMMERCIAL_COLORS[commercialStage]}>{commercialStageLabel(commercialStage)}</span>
                         </div>
                         <PipelineRail stage={commercialStage} />
                         {clientActivity ? (
