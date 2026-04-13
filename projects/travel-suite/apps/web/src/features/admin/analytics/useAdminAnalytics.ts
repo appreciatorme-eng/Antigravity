@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useToast } from "@/components/ui/toast";
+import { filterCanonicalPipelineProposals } from "@/lib/proposals/pipeline-integrity";
 import {
   buildMoMDriverCallouts,
   getLastMonthKeys,
@@ -176,7 +177,7 @@ function buildSnapshot(raw: AnalyticsRawState, filters: AnalyticsFilterState): A
     matchOwner(trip.owner_id, trip.client_id)
   );
 
-  const filteredProposals = raw.proposals.filter((proposal) =>
+  const filteredProposals = filterCanonicalPipelineProposals(raw.proposals).filter((proposal) =>
     matchDestination(null, proposal.client_id) &&
     matchSource(proposal.client_id) &&
     matchOwner(proposal.created_by, proposal.client_id)
@@ -577,13 +578,14 @@ export function useAdminAnalytics() {
 
         let proposalsRes: QueryResult<ProposalRow> = (await supabase
           .from("proposals")
-          .select("id,trip_id,status,total_price,created_at,viewed_at,created_by,client_id")
-          .eq("organization_id", orgId)) as unknown as QueryResult<ProposalRow>;
+          .select("id,title,trip_id,status,total_price,client_selected_price,created_at,updated_at,viewed_at,created_by,client_id,trips:trip_id(id)")
+          .eq("organization_id", orgId)
+          .is("deleted_at", null)) as unknown as QueryResult<ProposalRow>;
 
         if (proposalsRes.error && isColumnMissingError(proposalsRes.error.message)) {
           proposalsRes = (await supabase
             .from("proposals")
-            .select("id,trip_id,status,total_price,created_at,viewed_at")
+            .select("id,title,trip_id,status,total_price,client_selected_price,created_at,updated_at,viewed_at,created_by,client_id,trips:trip_id(id)")
             .eq("organization_id", orgId)) as unknown as QueryResult<ProposalRow>;
         }
 

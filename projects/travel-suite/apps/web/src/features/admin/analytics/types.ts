@@ -7,9 +7,20 @@ export interface ProposalRow {
   status: string | null;
   total_price: number | null;
   created_at: string | null;
+  updated_at?: string | null;
   viewed_at: string | null;
   created_by?: string | null;
   client_id?: string | null;
+  client_selected_price?: number | null;
+  title?: string | null;
+  trips?:
+    | {
+        id?: string | null;
+      }
+    | {
+        id?: string | null;
+      }[]
+    | null;
 }
 
 export interface InvoiceRow {
