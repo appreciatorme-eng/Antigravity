@@ -14,13 +14,13 @@ export interface ProposalRow {
   created_by: string | null;
   client_id: string | null;
   client_selected_price: number | null;
-  trips?:
+  trips:
     | {
-        id: string | null;
+        id?: string | null;
         status: string | null;
       }
     | {
-        id: string | null;
+        id?: string | null;
         status: string | null;
       }[]
     | null;
