@@ -367,9 +367,9 @@ function buildAiInsights(params: {
       id: "ai-booked-vs-cash",
       category: "cash",
       source: "Revenue",
-      title: "Booked value is ahead of collections",
+      title: "Won value is ahead of collections",
       value: formatCompactINR(cashGap),
-      description: "Use invoices and reminders to convert booked business into collected cash.",
+      description: "Use invoices and reminders to convert won business into collected cash.",
       href: "/admin/revenue",
     });
   }
@@ -418,15 +418,21 @@ function buildScorecard(params: {
 }): DashboardScorecardMetric[] {
   return [
     {
-      key: "booked",
-      label: "Booked Value",
-      current: params.kpis.bookedValue !== null ? formatCompactINR(params.kpis.bookedValue) : "—",
+      key: "revenue",
+      label: "Revenue",
+      current:
+        params.kpis.cashCollected !== null
+          ? formatCompactINR(params.kpis.cashCollected)
+          : "—",
       delta: null,
     },
     {
-      key: "cash",
-      label: "Collected Cash",
-      current: params.kpis.cashCollected !== null ? formatCompactINR(params.kpis.cashCollected) : "—",
+      key: "outstanding",
+      label: "Outstanding Balance",
+      current:
+        params.kpis.outstandingBalance !== null
+          ? formatCompactINR(params.kpis.outstandingBalance)
+          : "—",
       delta: null,
     },
     {
@@ -533,6 +539,7 @@ export async function buildDashboardOverview(params: {
     (sum, point) => sum + Number(point.cashCollected || 0),
     0,
   );
+  const totalOutstandingBalance = Math.max(totalBookedValue - totalCashCollected, 0);
   const totalTripCount = series.reduce(
     (sum, point) => sum + Number(point.tripCount || 0),
     0,
@@ -592,6 +599,11 @@ export async function buildDashboardOverview(params: {
       sources.health.sources.payments === "failed" && sources.health.sources.invoices === "failed"
         ? null
         : Number(totalCashCollected.toFixed(2)),
+    outstandingBalance:
+      (sources.health.sources.proposals === "failed" && sources.health.sources.trips === "failed") ||
+      (sources.health.sources.payments === "failed" && sources.health.sources.invoices === "failed")
+        ? null
+        : Number(totalOutstandingBalance.toFixed(2)),
     openPipelineValue:
       sources.health.sources.proposals === "failed"
         ? null
@@ -622,11 +634,11 @@ export async function buildDashboardOverview(params: {
   const revenueNarrative: string[] = [];
   if (totalBookedValue > 0) {
     revenueNarrative.push(
-      `Booked value in this window is ${formatCompactINR(totalBookedValue)} across ${totalTripCount} trip${totalTripCount === 1 ? "" : "s"}.`,
+      `Won value in this window is ${formatCompactINR(totalBookedValue)} across ${totalTripCount} trip${totalTripCount === 1 ? "" : "s"}.`,
     );
   } else if (totalTripCount > 0) {
     revenueNarrative.push(
-      "Trip activity exists in this window, but booked value is only counted once a proposal, invoice, or paid payment link owns that business.",
+      "Trip activity exists in this window, but won value is only counted once a proposal, invoice, or paid payment link owns that business.",
     );
   }
 

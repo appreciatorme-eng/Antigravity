@@ -45,7 +45,7 @@ function getMetricItems(
 }
 
 function metricTitle(metric: RevenueMetricMode) {
-  if (metric === 'booked') return 'Booked value';
+  if (metric === 'booked') return 'Won value';
   if (metric === 'cash' || metric === 'revenue') return 'Collected cash';
   return 'Trips';
 }
@@ -96,7 +96,7 @@ export function RevenueIntelligence({ data }: RevenueIntelligenceProps) {
               )}
             >
               <Briefcase className="h-3 w-3" />
-              Booked
+              Won
             </button>
             <button
               type="button"
@@ -131,7 +131,7 @@ export function RevenueIntelligence({ data }: RevenueIntelligenceProps) {
           {[
             {
               key: 'booked',
-              label: 'Booked Value',
+              label: 'Won Value',
               value:
                 totals?.bookedValue !== null && totals?.bookedValue !== undefined
                   ? formatCompactINR(totals.bookedValue)

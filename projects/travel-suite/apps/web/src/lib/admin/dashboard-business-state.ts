@@ -1004,8 +1004,8 @@ export function resolveDashboardDefaultRevenueMetric(params: {
   cashCollected: number;
   tripCount: number;
 }): "booked" | "cash" | "trips" {
-  if (params.bookedValue > 0) return "booked";
   if (params.cashCollected > 0) return "cash";
+  if (params.bookedValue > 0) return "booked";
   if (params.tripCount > 0) return "trips";
   return "booked";
 }

@@ -101,7 +101,7 @@ function resolveMetricValue(point: RevenueChartPoint, mode: RevenueMetricMode) {
 }
 
 function metricLabel(mode: RevenueMetricMode) {
-  if (mode === "booked") return "Booked Value";
+  if (mode === "booked") return "Won Value";
   if (mode === "cash") return "Collected Cash";
   if (mode === "trips" || mode === "bookings") return "Trips";
   return "Revenue";

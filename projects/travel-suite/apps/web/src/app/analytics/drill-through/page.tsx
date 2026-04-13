@@ -50,7 +50,7 @@ type DrillType =
 type TimeRange = "1y" | "6m" | "3m" | "1m";
 
 const TYPE_CONFIG: Record<DrillType, { title: string; icon: typeof DollarSign; color: string }> = {
-  booked: { title: "Booked Value Details", icon: TrendingUp, color: "text-emerald-500" },
+  booked: { title: "Revenue Details", icon: TrendingUp, color: "text-emerald-500" },
   revenue: { title: "Revenue Breakdown", icon: DollarSign, color: "text-emerald-500" },
   bookings: { title: "Booking Volume Details", icon: Calendar, color: "text-blue-500" },
   clients: { title: "Client Acquisition Details", icon: Users, color: "text-indigo-500" },

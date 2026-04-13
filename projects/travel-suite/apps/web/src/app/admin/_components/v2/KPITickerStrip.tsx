@@ -48,22 +48,22 @@ function buildCards(data: DashboardV2State): KPICard[] {
 
   return [
     {
-      label: 'Booked Value',
-      value: displayCurrency(kpis?.bookedValue),
-      delta: kpis?.wins ? `${kpis.wins} won` : undefined,
-      deltaUp: (kpis?.wins ?? 0) > 0,
+      label: 'Revenue',
+      value: displayCurrency(kpis?.cashCollected),
+      delta: data.overview?.revenue.totals.tripCount
+        ? `${data.overview.revenue.totals.tripCount} trips`
+        : undefined,
+      deltaUp: (kpis?.cashCollected ?? 0) > 0,
       icon: TrendingUp,
       color: 'text-emerald-600',
       iconBg: 'bg-emerald-100/50',
       href: `/analytics/drill-through?${bookedParams.toString()}`,
     },
     {
-      label: 'Collected Cash',
-      value: displayCurrency(kpis?.cashCollected),
-      delta: data.overview?.revenue.totals.tripCount
-        ? `${data.overview.revenue.totals.tripCount} trips`
-        : undefined,
-      deltaUp: (kpis?.cashCollected ?? 0) > 0,
+      label: 'Outstanding Balance',
+      value: displayCurrency(kpis?.outstandingBalance),
+      delta: (kpis?.outstandingBalance ?? 0) > 0 ? 'Needs collection' : undefined,
+      deltaUp: false,
       icon: Briefcase,
       color: 'text-blue-600',
       iconBg: 'bg-blue-100/50',

@@ -123,6 +123,7 @@ export interface DashboardCalendarPreview {
 export interface DashboardKpis {
   bookedValue: number | null;
   cashCollected: number | null;
+  outstandingBalance: number | null;
   openPipelineValue: number | null;
   overdueAmount: number | null;
   overdueInvoices: number | null;

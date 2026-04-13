@@ -261,37 +261,14 @@ export async function loadBookedValueDrill(
     commercialPayments: sources.commercialPayments.rows,
   });
 
-  const proposalById = new Map(proposals.map((proposal) => [proposal.id, proposal]));
-  const tripById = new Map(trips.map((trip) => [trip.id, trip]));
   const seen = new Set<string>();
   const rows: DrillRow[] = [];
 
   for (const point of [...series].reverse()) {
-    for (const item of point.bookedItems || []) {
+    for (const item of point.cashItems || []) {
       const ownerKey = `${item.kind}:${item.id}`;
       if (seen.has(ownerKey)) continue;
       seen.add(ownerKey);
-
-      if (item.kind === "proposal") {
-        const proposal = proposalById.get(item.id) || null;
-        const linkedTrip = proposal?.trip_id
-          ? tripById.get(proposal.trip_id) || null
-          : null;
-
-        rows.push({
-          id: item.id,
-          title: linkedTrip?.tripTitle || item.title,
-          subtitle:
-            linkedTrip?.destination ||
-            linkedTrip?.clientName ||
-            item.subtitle,
-          amountLabel: item.amountLabel,
-          status: linkedTrip?.status || item.status,
-          dateLabel: item.dateLabel,
-          href: linkedTrip ? `/trips/${linkedTrip.id}` : item.href,
-        });
-        continue;
-      }
 
       rows.push({
         id: item.id,
@@ -305,16 +282,16 @@ export async function loadBookedValueDrill(
     }
   }
 
-  const totalBookedValue = series.reduce(
-    (sum, point) => sum + Number(point.bookedValue || 0),
+  const totalCollectedCash = series.reduce(
+    (sum, point) => sum + Number(point.cashCollected || 0),
     0,
   );
 
   return {
     summary: {
-      label: "Booked value contributors",
-      primaryValue: formatINR(totalBookedValue),
-      secondaryValue: `${rows.length} trip${rows.length === 1 ? "" : "s"} contributing to booked value`,
+      label: "Collected cash contributors",
+      primaryValue: formatINR(totalCollectedCash),
+      secondaryValue: `${rows.length} payment${rows.length === 1 ? "" : "s"} contributing to revenue`,
       windowLabel: formatRangeDateLabel(range),
     },
     rows,
