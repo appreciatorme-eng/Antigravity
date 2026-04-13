@@ -35,6 +35,10 @@ const PLACEHOLDER_DESTINATIONS = [
 interface PlannerHeroProps {
     prompt: string;
     onPromptChange: (value: string) => void;
+    startDate: string;
+    onStartDateChange: (value: string) => void;
+    endDate: string;
+    onEndDateChange: (value: string) => void;
     days: number;
     onDaysChange: (value: number) => void;
     budget: string;
@@ -47,6 +51,8 @@ interface PlannerHeroProps {
 
 export function PlannerHero({
     prompt, onPromptChange,
+    startDate, onStartDateChange,
+    endDate, onEndDateChange,
     days, onDaysChange,
     budget, onBudgetChange,
     interests, onToggleInterest,
@@ -189,6 +195,41 @@ export function PlannerHero({
                                     );
                                 })}
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="mx-6 h-px bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-700 to-transparent" />
+
+                    {/* Optional dates */}
+                    <div className="p-6 pb-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-3">
+                            <label className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500 flex items-center gap-2">
+                                <Calendar className="w-3.5 h-3.5 text-emerald-500" />
+                                Start Date
+                                <span className="text-[9px] font-black tracking-widest text-slate-300 dark:text-slate-600 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full ml-1">OPTIONAL</span>
+                            </label>
+                            <input
+                                type="date"
+                                value={startDate}
+                                onChange={(e) => onStartDateChange(e.target.value)}
+                                className="w-full h-12 px-4 rounded-xl bg-slate-50 dark:bg-slate-800/80 border-2 border-slate-100 dark:border-slate-700 text-secondary dark:text-white focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10 dark:focus:ring-emerald-500/20 transition-all duration-300 font-medium"
+                            />
+                        </div>
+
+                        <div className="space-y-3">
+                            <label className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500 flex items-center gap-2">
+                                <Calendar className="w-3.5 h-3.5 text-emerald-500" />
+                                End Date
+                                <span className="text-[9px] font-black tracking-widest text-slate-300 dark:text-slate-600 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full ml-1">OPTIONAL</span>
+                            </label>
+                            <input
+                                type="date"
+                                value={endDate}
+                                min={startDate || undefined}
+                                onChange={(e) => onEndDateChange(e.target.value)}
+                                className="w-full h-12 px-4 rounded-xl bg-slate-50 dark:bg-slate-800/80 border-2 border-slate-100 dark:border-slate-700 text-secondary dark:text-white focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10 dark:focus:ring-emerald-500/20 transition-all duration-300 font-medium"
+                            />
                         </div>
                     </div>
 

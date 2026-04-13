@@ -82,6 +82,8 @@ export default function PlannerPage() {
     const analytics = useAnalytics();
     const { data: pastItineraries, isLoading: isLoadingItineraries, refetch: refetchItineraries } = useItineraries();
     const [prompt, setPrompt] = useState("");
+    const [startDate, setStartDate] = useState("");
+    const [endDate, setEndDate] = useState("");
     const [days, setDays] = useState(5);
     const [budget, setBudget] = useState("Moderate");
     const [interests, setInterests] = useState<string[]>([]);
@@ -124,6 +126,8 @@ export default function PlannerPage() {
             setImages({}); // Reset images so shimmer shows while fetching
             fetchImagesForItinerary(itineraryData, itineraryId); // Fetch fresh images from multiple sources
             setPrompt(data.destination || itineraryData.destination || "");
+            setStartDate(itineraryData.start_date || "");
+            setEndDate(itineraryData.end_date || "");
             setDays(data.duration_days || itineraryData.duration_days || 5);
             if (data.budget) setBudget(data.budget);
             if (data.interests) setInterests(data.interests);
@@ -257,9 +261,36 @@ export default function PlannerPage() {
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Failed to generate");
-            setResult(data);
+            const normalizedStartDate = startDate || undefined;
+            const normalizedEndDate = endDate || (
+                normalizedStartDate
+                    ? new Date(
+                        new Date(`${normalizedStartDate}T00:00:00`).getTime() +
+                            (days - 1) * 86_400_000,
+                    )
+                        .toISOString()
+                        .slice(0, 10)
+                    : undefined
+            );
+            const generatedResult: ItineraryResult = {
+                ...data,
+                start_date: normalizedStartDate,
+                end_date: normalizedEndDate,
+                days: normalizedStartDate
+                    ? data.days.map((day: Day) => ({
+                        ...day,
+                        date: new Date(
+                            new Date(`${normalizedStartDate}T00:00:00`).getTime() +
+                                (day.day_number - 1) * 86_400_000,
+                        )
+                            .toISOString()
+                            .slice(0, 10),
+                    }))
+                    : data.days,
+            };
+            setResult(generatedResult);
             analytics.itineraryGenerated(data.destination || prompt);
-            fetchImagesForItinerary(data);
+            fetchImagesForItinerary(generatedResult);
         } catch (e: unknown) {
             setError(e instanceof Error ? e.message : "Failed to generate itinerary. Try again.");
         } finally {
@@ -420,6 +451,10 @@ export default function PlannerPage() {
                 <PlannerHero
                     prompt={prompt}
                     onPromptChange={setPrompt}
+                    startDate={startDate}
+                    onStartDateChange={setStartDate}
+                    endDate={endDate}
+                    onEndDateChange={setEndDate}
                     days={days}
                     onDaysChange={setDays}
                     budget={budget}
