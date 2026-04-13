@@ -3,25 +3,25 @@ import type { DashboardRange, DriverCallout } from "@/lib/analytics/adapters";
 
 export interface ProposalRow {
   id: string;
-  trip_id?: string | null;
+  title: string | null;
+  trip_id: string | null;
   status: string | null;
   total_price: number | null;
   created_at: string | null;
-  updated_at?: string | null;
+  updated_at: string | null;
   viewed_at: string | null;
   expires_at: string | null;
-  created_by?: string | null;
-  client_id?: string | null;
-  client_selected_price?: number | null;
-  title?: string | null;
+  created_by: string | null;
+  client_id: string | null;
+  client_selected_price: number | null;
   trips?:
     | {
-        id?: string | null;
-        status?: string | null;
+        id: string | null;
+        status: string | null;
       }
     | {
-        id?: string | null;
-        status?: string | null;
+        id: string | null;
+        status: string | null;
       }[]
     | null;
 }
