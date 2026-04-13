@@ -16,6 +16,7 @@ import type {
   AnalyticsFilterOptions,
   AnalyticsFilterState,
   AnalyticsSnapshot,
+  CommercialPaymentRow,
   InvoiceRow,
   ProfileRow,
   ProposalRow,
@@ -27,6 +28,7 @@ interface AnalyticsRawState {
   proposals: ProposalRow[];
   trips: TripRow[];
   invoices: InvoiceRow[];
+  commercialPayments: CommercialPaymentRow[];
   profiles: ProfileRow[];
   clientCount: number;
 }
@@ -40,6 +42,7 @@ const EMPTY_RAW_STATE: AnalyticsRawState = {
   proposals: [],
   trips: [],
   invoices: [],
+  commercialPayments: [],
   profiles: [],
   clientCount: 0,
 };
@@ -78,6 +81,8 @@ function buildSnapshot(raw: AnalyticsRawState, filters: AnalyticsFilterState): A
   const sourceByClient = new Map<string, string>();
   const destinationByClient = new Map<string, string>();
   const tripDestinationById = new Map<string, string>();
+  const tripClientById = new Map<string, string>();
+  const proposalClientById = new Map<string, string>();
 
   for (const profile of raw.profiles) {
     if (profile.id) {
@@ -91,6 +96,13 @@ function buildSnapshot(raw: AnalyticsRawState, filters: AnalyticsFilterState): A
     if (!trip.id) continue;
     const destination = extractDestination(trip.itineraries);
     if (destination) tripDestinationById.set(trip.id, destination);
+    if (trip.client_id) tripClientById.set(trip.id, trip.client_id);
+  }
+
+  for (const proposal of raw.proposals) {
+    if (proposal.id && proposal.client_id) {
+      proposalClientById.set(proposal.id, proposal.client_id);
+    }
   }
 
   const ownerByClient = new Map<string, string>();
@@ -142,6 +154,19 @@ function buildSnapshot(raw: AnalyticsRawState, filters: AnalyticsFilterState): A
     matchOwner(null, invoice.client_id)
   );
 
+  const filteredCommercialPayments = raw.commercialPayments.filter((payment) => {
+    const resolvedClientId =
+      (payment.trip_id ? tripClientById.get(payment.trip_id) : null) ||
+      (payment.proposal_id ? proposalClientById.get(payment.proposal_id) : null) ||
+      null;
+    return (
+      matchDestination(null, resolvedClientId, payment.trip_id) &&
+      matchSource(resolvedClientId) &&
+      matchOwner(null, resolvedClientId)
+    );
+  });
+  const useCanonicalCash = filteredCommercialPayments.length > 0;
+
   const monthCount = RANGE_TO_MONTHS[filters.range as DashboardRange];
   const monthKeys = getLastMonthKeys(monthCount);
   const monthMap = new Map(
@@ -181,11 +206,21 @@ function buildSnapshot(raw: AnalyticsRawState, filters: AnalyticsFilterState): A
     if (APPROVED_STATUSES.has(normalizedStatus)) monthData.approvedCount += 1;
   }
 
-  for (const invoice of filteredInvoices) {
-    if ((invoice.status || "").toLowerCase() !== "paid") continue;
-    const key = monthKeyFromDate(invoice.created_at);
-    if (!key || !monthMap.has(key)) continue;
-    monthMap.get(key)!.revenue += toNumber(invoice.total_amount, 0);
+  if (useCanonicalCash) {
+    for (const payment of filteredCommercialPayments) {
+      const normalizedStatus = (payment.status || "").toLowerCase();
+      if (normalizedStatus !== "completed" && normalizedStatus !== "captured") continue;
+      const key = monthKeyFromDate(payment.payment_date || payment.created_at);
+      if (!key || !monthMap.has(key)) continue;
+      monthMap.get(key)!.revenue += toNumber(payment.amount, 0);
+    }
+  } else {
+    for (const invoice of filteredInvoices) {
+      if ((invoice.status || "").toLowerCase() !== "paid") continue;
+      const key = monthKeyFromDate(invoice.created_at);
+      if (!key || !monthMap.has(key)) continue;
+      monthMap.get(key)!.revenue += toNumber(invoice.total_amount, 0);
+    }
   }
 
   const series = monthKeys.map((key) => {
@@ -221,25 +256,54 @@ function buildSnapshot(raw: AnalyticsRawState, filters: AnalyticsFilterState): A
     offSeason: { months: "Mar — Sep", revenue: 0, bookings: 0, avgTrip: 0 },
   };
 
-  for (const invoice of filteredInvoices) {
-    if ((invoice.status || "").toLowerCase() !== "paid") continue;
+  if (useCanonicalCash) {
+    for (const payment of filteredCommercialPayments) {
+      const normalizedStatus = (payment.status || "").toLowerCase();
+      if (normalizedStatus !== "completed" && normalizedStatus !== "captured") continue;
 
-    const amount = toNumber(invoice.total_amount, 0);
-    const monthNumber = extractMonthNumber(invoice.created_at);
-    const seasonKey = monthNumber && PEAK_MONTHS.has(monthNumber) ? "peak" : "offSeason";
-    seasonalBreakdown[seasonKey].revenue += amount;
+      const amount = toNumber(payment.amount, 0);
+      const monthNumber = extractMonthNumber(payment.payment_date || payment.created_at);
+      const seasonKey = monthNumber && PEAK_MONTHS.has(monthNumber) ? "peak" : "offSeason";
+      seasonalBreakdown[seasonKey].revenue += amount;
 
-    const destination =
-      (invoice.trip_id ? tripDestinationById.get(invoice.trip_id) : null) ||
-      (invoice.client_id ? destinationByClient.get(invoice.client_id) : null) ||
-      null;
+      const resolvedClientId =
+        (payment.trip_id ? tripClientById.get(payment.trip_id) : null) ||
+        (payment.proposal_id ? proposalClientById.get(payment.proposal_id) : null) ||
+        null;
+      const destination =
+        (payment.trip_id ? tripDestinationById.get(payment.trip_id) : null) ||
+        (resolvedClientId ? destinationByClient.get(resolvedClientId) : null) ||
+        null;
 
-    if (!destination) continue;
-    const existing = destinationMap.get(destination);
-    if (existing) {
-      existing.revenue += amount;
-    } else {
-      destinationMap.set(destination, { trips: 0, revenue: amount });
+      if (!destination) continue;
+      const existing = destinationMap.get(destination);
+      if (existing) {
+        existing.revenue += amount;
+      } else {
+        destinationMap.set(destination, { trips: 0, revenue: amount });
+      }
+    }
+  } else {
+    for (const invoice of filteredInvoices) {
+      if ((invoice.status || "").toLowerCase() !== "paid") continue;
+
+      const amount = toNumber(invoice.total_amount, 0);
+      const monthNumber = extractMonthNumber(invoice.created_at);
+      const seasonKey = monthNumber && PEAK_MONTHS.has(monthNumber) ? "peak" : "offSeason";
+      seasonalBreakdown[seasonKey].revenue += amount;
+
+      const destination =
+        (invoice.trip_id ? tripDestinationById.get(invoice.trip_id) : null) ||
+        (invoice.client_id ? destinationByClient.get(invoice.client_id) : null) ||
+        null;
+
+      if (!destination) continue;
+      const existing = destinationMap.get(destination);
+      if (existing) {
+        existing.revenue += amount;
+      } else {
+        destinationMap.set(destination, { trips: 0, revenue: amount });
+      }
     }
   }
 
@@ -253,6 +317,13 @@ function buildSnapshot(raw: AnalyticsRawState, filters: AnalyticsFilterState): A
   for (const trip of filteredTrips) if (trip.client_id) touchedClients.add(trip.client_id);
   for (const proposal of filteredProposals) if (proposal.client_id) touchedClients.add(proposal.client_id);
   for (const invoice of filteredInvoices) if (invoice.client_id) touchedClients.add(invoice.client_id);
+  for (const payment of filteredCommercialPayments) {
+    const resolvedClientId =
+      (payment.trip_id ? tripClientById.get(payment.trip_id) : null) ||
+      (payment.proposal_id ? proposalClientById.get(payment.proposal_id) : null) ||
+      null;
+    if (resolvedClientId) touchedClients.add(resolvedClientId);
+  }
 
   const activeClients =
     touchedClients.size > 0
@@ -292,19 +363,41 @@ function buildSnapshot(raw: AnalyticsRawState, filters: AnalyticsFilterState): A
 
   // Top clients by revenue (dynamic, based on filtered invoices)
   const clientRevenueMap = new Map<string, { revenue: number; invoiceCount: number }>();
-  for (const invoice of filteredInvoices) {
-    if ((invoice.status || "").toLowerCase() !== "paid") continue;
-    const clientId = invoice.client_id;
-    if (!clientId) continue;
-    const amount = toNumber(invoice.total_amount, 0);
-    const existing = clientRevenueMap.get(clientId);
-    if (existing) {
-      clientRevenueMap.set(clientId, {
-        revenue: existing.revenue + amount,
-        invoiceCount: existing.invoiceCount + 1,
-      });
-    } else {
-      clientRevenueMap.set(clientId, { revenue: amount, invoiceCount: 1 });
+  if (useCanonicalCash) {
+    for (const payment of filteredCommercialPayments) {
+      const normalizedStatus = (payment.status || "").toLowerCase();
+      if (normalizedStatus !== "completed" && normalizedStatus !== "captured") continue;
+      const clientId =
+        (payment.trip_id ? tripClientById.get(payment.trip_id) : null) ||
+        (payment.proposal_id ? proposalClientById.get(payment.proposal_id) : null) ||
+        null;
+      if (!clientId) continue;
+      const amount = toNumber(payment.amount, 0);
+      const existing = clientRevenueMap.get(clientId);
+      if (existing) {
+        clientRevenueMap.set(clientId, {
+          revenue: existing.revenue + amount,
+          invoiceCount: existing.invoiceCount + 1,
+        });
+      } else {
+        clientRevenueMap.set(clientId, { revenue: amount, invoiceCount: 1 });
+      }
+    }
+  } else {
+    for (const invoice of filteredInvoices) {
+      if ((invoice.status || "").toLowerCase() !== "paid") continue;
+      const clientId = invoice.client_id;
+      if (!clientId) continue;
+      const amount = toNumber(invoice.total_amount, 0);
+      const existing = clientRevenueMap.get(clientId);
+      if (existing) {
+        clientRevenueMap.set(clientId, {
+          revenue: existing.revenue + amount,
+          invoiceCount: existing.invoiceCount + 1,
+        });
+      } else {
+        clientRevenueMap.set(clientId, { revenue: amount, invoiceCount: 1 });
+      }
     }
   }
 
@@ -328,7 +421,17 @@ function buildSnapshot(raw: AnalyticsRawState, filters: AnalyticsFilterState): A
   // Tour operator metrics
   const totalPaidInvoices = filteredInvoices.filter((inv) => (inv.status || "").toLowerCase() === "paid").length;
   const totalAllInvoices = filteredInvoices.length;
-  const collectionRate = totalAllInvoices > 0 ? (totalPaidInvoices / totalAllInvoices) * 100 : 0;
+  const paidCashEvents = filteredCommercialPayments.filter((payment) => {
+    const normalizedStatus = (payment.status || "").toLowerCase();
+    return normalizedStatus === "completed" || normalizedStatus === "captured";
+  }).length;
+  const collectionRate = useCanonicalCash
+    ? filteredTrips.length > 0
+      ? (paidCashEvents / filteredTrips.length) * 100
+      : 0
+    : totalAllInvoices > 0
+      ? (totalPaidInvoices / totalAllInvoices) * 100
+      : 0;
   const avgBookingValue = filteredTrips.length > 0 ? monthlyRevenueTotal / filteredTrips.length : 0;
   const totalPax = filteredTrips.length * 2; // estimate: avg 2 pax/trip; real data would come from trip.pax_count
   const revenuePerPax = totalPax > 0 ? monthlyRevenueTotal / totalPax : 0;
@@ -389,13 +492,13 @@ export function useAdminAnalytics() {
 
         let proposalsRes: QueryResult<ProposalRow> = (await supabase
           .from("proposals")
-          .select("status,total_price,created_at,viewed_at,created_by,client_id")
+          .select("id,trip_id,status,total_price,created_at,viewed_at,created_by,client_id")
           .eq("organization_id", orgId)) as unknown as QueryResult<ProposalRow>;
 
         if (proposalsRes.error && isColumnMissingError(proposalsRes.error.message)) {
           proposalsRes = (await supabase
             .from("proposals")
-            .select("status,total_price,created_at,viewed_at")
+            .select("id,trip_id,status,total_price,created_at,viewed_at")
             .eq("organization_id", orgId)) as unknown as QueryResult<ProposalRow>;
         }
 
@@ -424,6 +527,19 @@ export function useAdminAnalytics() {
             .eq("organization_id", orgId)) as unknown as QueryResult<InvoiceRow>;
         }
 
+        let commercialPaymentsRes: QueryResult<CommercialPaymentRow> = (await supabase
+          .from("commercial_payments")
+          .select("amount,payment_date,created_at,trip_id,proposal_id,invoice_id,status,source")
+          .eq("organization_id", orgId)
+          .is("deleted_at", null)) as unknown as QueryResult<CommercialPaymentRow>;
+
+        if (commercialPaymentsRes.error && isColumnMissingError(commercialPaymentsRes.error.message)) {
+          commercialPaymentsRes = {
+            data: [],
+            error: null,
+          };
+        }
+
         let profilesRes: QueryResult<ProfileRow> = (await supabase
           .from("profiles")
           .select("id,full_name,role,source_channel,preferred_destination")
@@ -444,6 +560,7 @@ export function useAdminAnalytics() {
         if (proposalsRes.error) throw proposalsRes.error;
         if (tripsRes.error) throw tripsRes.error;
         if (invoicesRes.error) throw invoicesRes.error;
+        if (commercialPaymentsRes.error) throw commercialPaymentsRes.error;
         if (profilesRes.error) throw profilesRes.error;
         if (clientsRes.error) throw clientsRes.error;
 
@@ -451,6 +568,7 @@ export function useAdminAnalytics() {
           proposals: (proposalsRes.data || []) as ProposalRow[],
           trips: (tripsRes.data || []) as TripRow[],
           invoices: (invoicesRes.data || []) as InvoiceRow[],
+          commercialPayments: (commercialPaymentsRes.data || []) as CommercialPaymentRow[],
           profiles: (profilesRes.data || []) as ProfileRow[],
           clientCount: Number(clientsRes.count || 0),
         });
@@ -519,7 +637,12 @@ export function useAdminAnalytics() {
   }, [raw]);
 
   const snapshot = useMemo<AnalyticsSnapshot>(() => {
-    if (!raw.proposals.length && !raw.trips.length && !raw.invoices.length) {
+    if (
+      !raw.proposals.length &&
+      !raw.trips.length &&
+      !raw.invoices.length &&
+      !raw.commercialPayments.length
+    ) {
       return EMPTY_ANALYTICS_SNAPSHOT;
     }
     return buildSnapshot(raw, filters);

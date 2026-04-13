@@ -83,6 +83,23 @@ export type InvoicePaymentSelectorRow = {
   invoice_id: string | null;
 };
 
+export type CommercialPaymentSelectorRow = {
+  id: string;
+  trip_id: string | null;
+  proposal_id: string | null;
+  invoice_id: string | null;
+  amount: number | null;
+  currency: string | null;
+  payment_date: string | null;
+  created_at: string | null;
+  status: string | null;
+  source: string | null;
+  method: string | null;
+  reference: string | null;
+  notes: string | null;
+  deleted_at: string | null;
+};
+
 export type ProfileSelectorRow = {
   id: string;
   full_name: string | null;
@@ -135,6 +152,7 @@ export type DashboardSourceBundle = {
   invoices: DashboardSourceResult<InvoiceSelectorRow>;
   paymentLinks: DashboardSourceResult<PaymentLinkSelectorRow>;
   invoicePayments: DashboardSourceResult<InvoicePaymentSelectorRow>;
+  commercialPayments: DashboardSourceResult<CommercialPaymentSelectorRow>;
   profiles: DashboardSourceResult<ProfileSelectorRow>;
   itineraries: DashboardSourceResult<ItinerarySelectorRow>;
   followUps: FollowUpSourceResult;
@@ -232,7 +250,9 @@ function buildHealth(input: Omit<DashboardSourceBundle, "health">): DashboardHea
     trips: input.trips.health,
     invoices: input.invoices.health,
     payments:
-      input.paymentLinks.health === "failed" || input.invoicePayments.health === "failed"
+      input.paymentLinks.health === "failed" ||
+      input.invoicePayments.health === "failed" ||
+      input.commercialPayments.health === "failed"
         ? "failed"
         : "ok",
     followUps: input.followUps.health,
@@ -247,7 +267,10 @@ function buildHealth(input: Omit<DashboardSourceBundle, "health">): DashboardHea
       ["invoices", input.invoices.message],
       [
         "payments",
-        input.paymentLinks.message || input.invoicePayments.message || null,
+        input.paymentLinks.message ||
+          input.invoicePayments.message ||
+          input.commercialPayments.message ||
+          null,
       ],
       ["followUps", input.followUps.message],
       ["profiles", input.profiles.message],
@@ -481,6 +504,28 @@ export async function fetchDashboardInvoicePaymentRows(
   );
 }
 
+export async function fetchDashboardCommercialPaymentRows(
+  client: AdminQueryClient,
+  organizationId: string,
+): Promise<DashboardSourceResult<CommercialPaymentSelectorRow>> {
+  return runSoftDeleteAwareSourceQuery<CommercialPaymentSelectorRow>({
+    label: "Payment",
+    strictQuery: client
+      .from("commercial_payments")
+      .select("id,trip_id,proposal_id,invoice_id,amount,currency,payment_date,created_at,status,source,method,reference,notes,deleted_at")
+      .eq("organization_id", organizationId)
+      .is("deleted_at", null)
+      .order("payment_date", { ascending: false })
+      .limit(5000),
+    fallbackQuery: client
+      .from("commercial_payments")
+      .select("id,trip_id,proposal_id,invoice_id,amount,currency,payment_date,created_at,status,source,method,reference,notes,deleted_at")
+      .eq("organization_id", organizationId)
+      .order("payment_date", { ascending: false })
+      .limit(5000),
+  });
+}
+
 export async function fetchDashboardProfileRows(
   client: AdminQueryClient,
   organizationId: string,
@@ -529,6 +574,7 @@ export async function loadDashboardSourceBundle(params: {
     invoices,
     paymentLinks,
     invoicePayments,
+    commercialPayments,
     profiles,
   ] = await Promise.all([
     fetchDashboardProposalRows(params.client, params.organizationId),
@@ -536,6 +582,7 @@ export async function loadDashboardSourceBundle(params: {
     fetchDashboardInvoiceRows(params.client, params.organizationId),
     fetchDashboardPaymentLinkRows(params.client, params.organizationId),
     fetchDashboardInvoicePaymentRows(params.client, params.organizationId),
+    fetchDashboardCommercialPaymentRows(params.client, params.organizationId),
     fetchDashboardProfileRows(params.client, params.organizationId),
   ]);
 
@@ -562,6 +609,7 @@ export async function loadDashboardSourceBundle(params: {
     invoices,
     paymentLinks,
     invoicePayments,
+    commercialPayments,
     profiles,
     itineraries,
     followUps,

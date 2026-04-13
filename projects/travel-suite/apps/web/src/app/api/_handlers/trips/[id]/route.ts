@@ -7,6 +7,7 @@ import { EXTERNAL_DRIVER_SELECT } from "@/lib/travel/selects";
 import type { Database } from "@/lib/database.types";
 import { softDeleteCommercialRowsForDeletedTripContext } from "@/lib/admin/proposal-cleanup";
 import { syncWonCommercialState } from "@/lib/admin/commercial-state-sync";
+import { syncTripFinancialSummaryCommercialPayment } from "@/lib/payments/commercial-payments";
 import { syncTripToLinkedProposal } from "@/lib/proposals/trip-linking";
 
 const supabaseAdmin = createAdminClient();
@@ -527,6 +528,42 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id?: s
 
         if (itineraryError) {
             return apiError("Failed to save itinerary", 400);
+        }
+
+        const financialSummary =
+            (nextRawData as {
+                pricing?: { currency?: string | null } | null;
+                financial_summary?: {
+                    payment_source?: string | null;
+                    payment_status?: string | null;
+                    manual_paid_amount?: number | null;
+                    notes?: string | null;
+                } | null;
+            }).financial_summary || null;
+
+        if (financialSummary) {
+            const { data: linkedProposal } = await supabaseAdmin
+                .from("proposals")
+                .select("id")
+                .eq("trip_id", tripId)
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+            await syncTripFinancialSummaryCommercialPayment({
+                adminClient: supabaseAdmin,
+                organizationId: trip.organization_id || auth.organizationId || "",
+                tripId,
+                createdBy: auth.userId,
+                proposalId: linkedProposal?.id ?? null,
+                paymentSource: financialSummary.payment_source,
+                paymentStatus: financialSummary.payment_status,
+                manualPaidAmount: financialSummary.manual_paid_amount,
+                currency:
+                    (nextRawData as { pricing?: { currency?: string | null } | null }).pricing
+                        ?.currency || "INR",
+                notes: financialSummary.notes ?? null,
+            });
         }
 
         const syncResult = await syncTripToLinkedProposal({

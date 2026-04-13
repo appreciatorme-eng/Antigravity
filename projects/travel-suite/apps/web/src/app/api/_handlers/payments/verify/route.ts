@@ -5,6 +5,7 @@ import { sendPaymentReceipt } from "@/lib/email/notifications";
 import { DEFAULT_PAYMENT_RECEIPT_GST_LABEL } from "@/lib/payments/payment-receipt-config";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { syncWonCommercialState } from "@/lib/admin/commercial-state-sync";
+import { syncPaymentLinkToCommercialLedger } from "@/lib/payments/commercial-payments";
 import {
   getPaymentLinkByToken,
   recordPaymentLinkEvent,
@@ -83,11 +84,21 @@ export async function POST(request: NextRequest) {
     if (updatedLink.proposalId) {
       const { data: proposal } = await admin
         .from("proposals")
-        .select("organization_id")
+        .select("organization_id, trip_id")
         .eq("id", updatedLink.proposalId)
         .maybeSingle();
 
       if (proposal?.organization_id) {
+        await syncPaymentLinkToCommercialLedger({
+          adminClient: admin,
+          paymentLinkId: updatedLink.id,
+          organizationId: proposal.organization_id,
+          proposalId: updatedLink.proposalId,
+          amount: Math.round(updatedLink.amount / 100),
+          currency: updatedLink.currency,
+          paidAt: updatedLink.paidAt,
+        });
+
         await syncWonCommercialState({
           adminClient: admin,
           organizationId: proposal.organization_id,

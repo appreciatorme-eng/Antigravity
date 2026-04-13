@@ -880,6 +880,102 @@ export type Database = {
           },
         ]
       }
+      commercial_payments: {
+        Row: {
+          amount: number
+          created_at: string | null
+          created_by: string | null
+          currency: string
+          deleted_at: string | null
+          id: string
+          invoice_id: string | null
+          method: string | null
+          notes: string | null
+          organization_id: string
+          payment_date: string
+          proposal_id: string | null
+          reference: string | null
+          source: string
+          status: string
+          trip_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string
+          deleted_at?: string | null
+          id?: string
+          invoice_id?: string | null
+          method?: string | null
+          notes?: string | null
+          organization_id: string
+          payment_date?: string
+          proposal_id?: string | null
+          reference?: string | null
+          source: string
+          status?: string
+          trip_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string
+          deleted_at?: string | null
+          id?: string
+          invoice_id?: string | null
+          method?: string | null
+          notes?: string | null
+          organization_id?: string
+          payment_date?: string
+          proposal_id?: string | null
+          reference?: string | null
+          source?: string
+          status?: string
+          trip_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commercial_payments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commercial_payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commercial_payments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commercial_payments_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commercial_payments_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           balance_amount: number

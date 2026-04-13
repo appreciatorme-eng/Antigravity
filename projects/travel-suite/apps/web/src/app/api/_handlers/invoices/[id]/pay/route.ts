@@ -7,6 +7,7 @@ import {
   RecordInvoicePaymentSchema,
 } from "@/lib/invoices/module";
 import { syncWonCommercialState } from "@/lib/admin/commercial-state-sync";
+import { syncInvoicePaymentToCommercialLedger } from "@/lib/payments/commercial-payments";
 import { logError } from "@/lib/observability/logger";
 
 type InvoiceRow = Database["public"]["Tables"]["invoices"]["Row"];
@@ -127,6 +128,15 @@ export async function POST(
     if (invoiceUpdateError || !updatedInvoice) {
       logError("Failed to update invoice after payment", invoiceUpdateError);
       return jsonError("Failed to finalize invoice payment", 500);
+    }
+
+    if (payment) {
+      await syncInvoicePaymentToCommercialLedger({
+        adminClient,
+        organizationId: auth.organizationId!,
+        payment,
+        invoice: updatedInvoice,
+      });
     }
 
     if (nextStatus === "paid" && invoice.trip_id) {

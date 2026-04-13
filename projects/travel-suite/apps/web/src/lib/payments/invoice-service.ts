@@ -8,6 +8,7 @@ import { ensureCustomer } from './customer-service';
 import { calculateGST } from '../tax/gst-calculator';
 import { registerEInvoice } from '../india/e-invoice-service';
 import type { Database } from '@/lib/database.types';
+import { syncInvoicePaymentToCommercialLedger } from "@/lib/payments/commercial-payments";
 import type {
   CreateInvoiceOptions,
   RecordPaymentOptions,
@@ -19,11 +20,13 @@ const CREATED_INVOICE_SELECT = 'id';
 const RECORD_PAYMENT_INVOICE_SELECT = [
   'id',
   'organization_id',
+  'trip_id',
   'total_amount',
+  'currency',
 ].join(', ');
 type InvoicePaymentSourceRow = Pick<
   Database['public']['Tables']['invoices']['Row'],
-  'id' | 'organization_id' | 'total_amount'
+  'id' | 'organization_id' | 'trip_id' | 'total_amount' | 'currency'
 >;
 
 /**
@@ -317,6 +320,21 @@ export async function recordPayment(
         message: paymentError.message,
         tags: { context, invoice_id: options.invoiceId, severity: 'high' },
         cause: paymentError,
+      });
+    }
+
+    const { data: insertedPayment } = await supabase
+      .from('invoice_payments')
+      .select('id, amount, currency, method, payment_date, created_at, status, notes, created_by')
+      .eq('reference', options.razorpayPaymentId)
+      .maybeSingle();
+
+    if (insertedPayment) {
+      await syncInvoicePaymentToCommercialLedger({
+        adminClient: supabase,
+        organizationId: invoiceRow.organization_id,
+        payment: insertedPayment,
+        invoice: invoiceRow,
       });
     }
 

@@ -91,6 +91,7 @@ export async function GET(req: NextRequest) {
       invoices: sources.invoices.rows,
       paymentLinks: sources.paymentLinks.rows,
       invoicePayments: sources.invoicePayments.rows,
+      commercialPayments: sources.commercialPayments.rows,
     });
 
     const recoveredRevenue = series.reduce(

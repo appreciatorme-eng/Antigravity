@@ -2,6 +2,8 @@ import type { RevenueChartPoint } from "@/components/analytics/RevenueChart";
 import type { DashboardRange, DriverCallout } from "@/lib/analytics/adapters";
 
 export interface ProposalRow {
+  id?: string | null;
+  trip_id?: string | null;
   status: string | null;
   total_price: number | null;
   created_at: string | null;
@@ -16,6 +18,17 @@ export interface InvoiceRow {
   created_at: string | null;
   client_id?: string | null;
   trip_id?: string | null;
+}
+
+export interface CommercialPaymentRow {
+  amount: number | null;
+  payment_date: string | null;
+  created_at: string | null;
+  trip_id?: string | null;
+  proposal_id?: string | null;
+  invoice_id?: string | null;
+  status?: string | null;
+  source?: string | null;
 }
 
 export interface TripRow {

@@ -9,6 +9,10 @@ import type { SharePaymentSummary } from "@/lib/share/payment-config";
 import { normalizeSharePaymentConfig } from "@/lib/share/payment-config";
 import { withOptionalSharedItineraryPaymentConfig } from "@/lib/share/payment-config-compat";
 import { getHolidayOverlapSummary } from "@/lib/external/holidays";
+import {
+    buildCommercialPaymentSummaryByTrip,
+    type CommercialPaymentRow,
+} from "@/lib/payments/commercial-payments";
 
 const supabaseAdmin = createAdminClient();
 
@@ -50,15 +54,6 @@ interface TripEnrichment {
     accommodation_coverage: { covered_days: number; total_days: number };
     has_itinerary: boolean;
     days_until_departure: number | null;
-}
-
-function derivePaymentStatus(invoices: InvoiceRow[]): string {
-    if (invoices.length === 0) return "none";
-    const totalPaid = invoices.reduce((sum, inv) => sum + (inv.paid_amount || 0), 0);
-    const totalBalance = invoices.reduce((sum, inv) => sum + (inv.balance_amount || 0), 0);
-    if (totalBalance <= 0) return "paid";
-    if (totalPaid > 0) return "partial";
-    return "unpaid";
 }
 
 function computeDaysUntilDeparture(startDate: string | null): number | null {
@@ -277,13 +272,19 @@ async function loadTripPresentationMetadata(
 
 async function enrichTrips(
     tripIds: string[],
-    tripsData: Array<{ id: string; start_date: string | null; itineraries: { duration_days: number | null } | null; has_itinerary: boolean }>
+    tripsData: Array<{
+        id: string;
+        start_date: string | null;
+        itineraries: { duration_days: number | null } | null;
+        has_itinerary: boolean;
+        quoted_total: number | null;
+    }>
 ): Promise<Map<string, TripEnrichment>> {
     const enrichmentMap = new Map<string, TripEnrichment>();
 
     if (tripIds.length === 0) return enrichmentMap;
 
-    const [invoiceResult, driverResult, accommodationResult] = await Promise.all([
+    const [invoiceResult, driverResult, accommodationResult, commercialPaymentsResult] = await Promise.all([
         supabaseAdmin.from("invoices")
             .select("trip_id, total_amount, paid_amount, balance_amount, status")
             .in("trip_id", tripIds),
@@ -293,6 +294,10 @@ async function enrichTrips(
         supabaseAdmin.from("trip_accommodations")
             .select("trip_id, day_number")
             .in("trip_id", tripIds),
+        supabaseAdmin.from("commercial_payments")
+            .select("*")
+            .in("trip_id", tripIds)
+            .is("deleted_at", null),
     ]);
 
     const invoicesByTrip = new Map<string, InvoiceRow[]>();
@@ -315,18 +320,40 @@ async function enrichTrips(
         accommodationDaysByTrip.set(row.trip_id, existing);
     }
 
+    const commercialPaymentSummaryByTrip = buildCommercialPaymentSummaryByTrip(
+        ((commercialPaymentsResult.data || []) as CommercialPaymentRow[]),
+    );
+
     for (const trip of tripsData) {
         const invoices = invoicesByTrip.get(trip.id) || [];
+        const commercialSummary = commercialPaymentSummaryByTrip.get(trip.id) || null;
         const driverDays = driverDaysByTrip.get(trip.id) || new Set();
         const accommodationDays = accommodationDaysByTrip.get(trip.id) || new Set();
         const totalDays = trip.itineraries?.duration_days || 0;
+        const invoiceTotal = invoices.reduce((sum, inv) => sum + (inv.total_amount || 0), 0);
+        const legacyPaidAmount = invoices.reduce((sum, inv) => sum + (inv.paid_amount || 0), 0);
+        const canonicalPaidAmount = commercialSummary?.totalPaid || 0;
+        const paidAmount =
+            canonicalPaidAmount > 0 ? canonicalPaidAmount : legacyPaidAmount;
+        const totalAmount = invoiceTotal > 0
+            ? invoiceTotal
+            : Math.max(Number(trip.quoted_total || 0), paidAmount);
+        const balanceAmount = invoiceTotal > 0 ? Math.max(invoiceTotal - paidAmount, 0) : 0;
+        const paymentStatus =
+            totalAmount <= 0
+                ? "none"
+                : balanceAmount <= 0
+                    ? "paid"
+                    : paidAmount > 0
+                        ? "partial"
+                        : "unpaid";
 
         enrichmentMap.set(trip.id, {
             invoice: {
-                total_amount: invoices.reduce((sum, inv) => sum + (inv.total_amount || 0), 0),
-                paid_amount: invoices.reduce((sum, inv) => sum + (inv.paid_amount || 0), 0),
-                balance_amount: invoices.reduce((sum, inv) => sum + (inv.balance_amount || 0), 0),
-                payment_status: derivePaymentStatus(invoices),
+                total_amount: totalAmount,
+                paid_amount: paidAmount,
+                balance_amount: balanceAmount,
+                payment_status: paymentStatus,
             },
             driver_coverage: { covered_days: driverDays.size, total_days: totalDays },
             accommodation_coverage: { covered_days: accommodationDays.size, total_days: totalDays },
@@ -442,6 +469,9 @@ export async function GET(req: NextRequest) {
                     start_date: t.start_date,
                     itineraries: itinerary ? { duration_days: itinerary.duration_days } : null,
                     has_itinerary: !!itinerary?.id,
+                    quoted_total: Number(
+                        (itinerary?.raw_data as { pricing?: { total_cost?: number | null } } | null)?.pricing?.total_cost || 0,
+                    ) || null,
                 };
             });
 
@@ -562,6 +592,9 @@ export async function GET(req: NextRequest) {
                 start_date: t.start_date,
                 itineraries: itinerary ? { duration_days: itinerary.duration_days } : null,
                 has_itinerary: !!itinerary?.id,
+                quoted_total: Number(
+                    (itinerary?.raw_data as { pricing?: { total_cost?: number | null } } | null)?.pricing?.total_cost || 0,
+                ) || null,
             };
         });
 

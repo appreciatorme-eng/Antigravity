@@ -1,6 +1,7 @@
 import type { ResolvedAdminDateRange } from "@/lib/admin/date-range";
 import type { DashboardPipelineStage } from "@/lib/admin/dashboard-overview-types";
 import type {
+  CommercialPaymentSelectorRow,
   InvoicePaymentSelectorRow,
   InvoiceSelectorRow,
   ItinerarySelectorRow,
@@ -88,6 +89,11 @@ type InvoiceTripSummary = {
   balanceAmount: number;
 };
 
+type CommercialTripSummary = {
+  totalPaid: number;
+  latestPaymentDate: string | null;
+};
+
 export const PROPOSAL_STAGE_LABELS: Record<DashboardPipelineStage["key"], string> = {
   draft: "Draft",
   sent: "Sent",
@@ -151,6 +157,40 @@ function buildInvoiceSummaryByTrip(
   return invoiceSummaryByTrip;
 }
 
+function buildCommercialPaymentSummaryByTrip(
+  payments: CommercialPaymentSelectorRow[],
+): Map<string, CommercialTripSummary> {
+  const byTrip = new Map<string, CommercialTripSummary>();
+
+  for (const payment of payments) {
+    if (!payment.trip_id || payment.deleted_at) continue;
+    const normalizedStatus = normalizeStatus(payment.status, "");
+    if (normalizedStatus !== "completed" && normalizedStatus !== "captured") {
+      continue;
+    }
+
+    const current = byTrip.get(payment.trip_id) || {
+      totalPaid: 0,
+      latestPaymentDate: null,
+    };
+
+    current.totalPaid += Number(payment.amount || 0);
+    const candidateDate = payment.payment_date || payment.created_at;
+    if (
+      candidateDate &&
+      (!current.latestPaymentDate ||
+        new Date(candidateDate).getTime() >
+          new Date(current.latestPaymentDate).getTime())
+    ) {
+      current.latestPaymentDate = candidateDate;
+    }
+
+    byTrip.set(payment.trip_id, current);
+  }
+
+  return byTrip;
+}
+
 function buildPaidLinkAmountByTrip(params: {
   proposals: ProposalBusinessRow[];
   paymentLinks: PaymentLinkSelectorRow[];
@@ -176,6 +216,7 @@ function buildPaidLinkAmountByTrip(params: {
 
 export function resolveWonCommercialStage(params: {
   tripFinancialPaymentStatus?: string | null;
+  commercialPaidAmount?: number | null;
   invoiceSummary?: InvoiceTripSummary | null;
   paidLinkAmount?: number | null;
   targetAmount?: number | null;
@@ -187,6 +228,18 @@ export function resolveWonCommercialStage(params: {
   if (financialStatus === "partially_paid") return "partially_paid";
   if (financialStatus === "approved") return "approved";
   if (financialStatus === "unpaid") return "approved";
+
+  const commercialPaidAmount = Number(params.commercialPaidAmount || 0);
+  if (commercialPaidAmount > 0) {
+    const targetAmount = getPositiveMax([
+      params.targetAmount,
+      params.invoiceSummary?.totalAmount,
+    ]);
+    if (targetAmount > 0 && commercialPaidAmount >= targetAmount) {
+      return "fully_paid";
+    }
+    return "partially_paid";
+  }
 
   const invoiceSummary = params.invoiceSummary;
   if (invoiceSummary && invoiceSummary.totalAmount > 0) {
@@ -390,11 +443,13 @@ export function buildDashboardPipelineSummary(params: {
   trips?: TripBusinessRow[];
   invoices?: InvoiceSelectorRow[];
   paymentLinks?: PaymentLinkSelectorRow[];
+  commercialPayments?: CommercialPaymentSelectorRow[];
 }) {
   const proposals = params.proposals;
   const trips = params.trips ?? [];
   const invoices = params.invoices ?? [];
   const paymentLinks = params.paymentLinks ?? [];
+  const commercialPayments = params.commercialPayments ?? [];
   const canonicalProposals = filterCanonicalPipelineProposals(proposals);
   const stageMap: Record<DashboardPipelineStage["key"], { count: number; value: number }> = {
     draft: { count: 0, value: 0 },
@@ -411,6 +466,8 @@ export function buildDashboardPipelineSummary(params: {
     proposals: canonicalProposals,
     paymentLinks,
   });
+  const commercialPaymentSummaryByTrip =
+    buildCommercialPaymentSummaryByTrip(commercialPayments);
 
   let high = 0;
   let medium = 0;
@@ -431,6 +488,9 @@ export function buildDashboardPipelineSummary(params: {
     const key: DashboardPipelineStage["key"] = proposal.lifecycle === "won"
       ? resolveWonCommercialStage({
           tripFinancialPaymentStatus: linkedTrip?.financialPaymentStatus,
+          commercialPaidAmount: proposal.trip_id
+            ? commercialPaymentSummaryByTrip.get(proposal.trip_id)?.totalPaid || 0
+            : 0,
           invoiceSummary: proposal.trip_id
             ? invoiceSummaryByTrip.get(proposal.trip_id) || null
             : null,
@@ -465,11 +525,14 @@ export function buildDashboardPipelineSummary(params: {
     if (proposalOwnedWonTripIds.has(trip.id)) continue;
     const key = resolveWonCommercialStage({
       tripFinancialPaymentStatus: trip.financialPaymentStatus,
+      commercialPaidAmount:
+        commercialPaymentSummaryByTrip.get(trip.id)?.totalPaid || 0,
       invoiceSummary: invoiceSummaryByTrip.get(trip.id) || null,
       paidLinkAmount: paidLinkAmountByTrip.get(trip.id) || 0,
       targetAmount: getPositiveMax([
         trip.quotedTotal,
         invoiceSummaryByTrip.get(trip.id)?.totalAmount,
+        commercialPaymentSummaryByTrip.get(trip.id)?.totalPaid,
       ]),
     });
     stageMap[key].count += 1;
@@ -477,6 +540,7 @@ export function buildDashboardPipelineSummary(params: {
       trip.quotedTotal,
       invoiceSummaryByTrip.get(trip.id)?.totalAmount,
       paidLinkAmountByTrip.get(trip.id),
+      commercialPaymentSummaryByTrip.get(trip.id)?.totalPaid,
     ]);
   }
 
@@ -516,6 +580,7 @@ export function buildDashboardRevenueSeries(params: {
   invoices: InvoiceSelectorRow[];
   paymentLinks: PaymentLinkSelectorRow[];
   invoicePayments: InvoicePaymentSelectorRow[];
+  commercialPayments: CommercialPaymentSelectorRow[];
 }): RevenueChartPoint[] {
   const buckets = new Map<string, RevenueChartPoint>(
     buildRangeBucketKeys(params.range).map((key) => [
@@ -568,6 +633,12 @@ export function buildDashboardRevenueSeries(params: {
     );
   }
 
+  const commercialPaymentSummaryByTrip =
+    buildCommercialPaymentSummaryByTrip(params.commercialPayments);
+  const useCanonicalCash = params.commercialPayments.some(
+    (payment) => !payment.deleted_at,
+  );
+
   const bookedOwnerKeys = new Set<string>();
 
   for (const proposal of sortByEventDesc(params.proposals)) {
@@ -598,98 +669,139 @@ export function buildDashboardRevenueSeries(params: {
     ];
   }
 
-  const paymentInvoiceIds = new Set(
-    params.invoicePayments
-      .filter(
-        (payment) =>
-          normalizeStatus(payment.status, "completed") === "completed" &&
-          Boolean(payment.invoice_id),
-      )
-      .map((payment) => payment.invoice_id as string),
-  );
+  if (useCanonicalCash) {
+    for (const payment of params.commercialPayments) {
+      const normalizedStatus = normalizeStatus(payment.status, "");
+      if (
+        payment.deleted_at ||
+        (normalizedStatus !== "completed" && normalizedStatus !== "captured")
+      ) {
+        continue;
+      }
+      const eventIso = payment.payment_date || payment.created_at;
+      const key = getBucketKey(eventIso, params.range.granularity);
+      if (!key || !buckets.has(key)) continue;
 
-  for (const link of params.paymentLinks) {
-    if (normalizeStatus(link.status, "") !== "paid" || !link.paid_at) continue;
-    const key = getBucketKey(link.paid_at, params.range.granularity);
-    if (!key || !buckets.has(key)) continue;
-    const amount = Number(link.amount_paise || 0) / 100;
-    const linkedProposal = link.proposal_id
-      ? proposalById.get(link.proposal_id) || null
-      : null;
-    const resolvedTripId = linkedProposal?.trip_id || null;
-    const bucket = buckets.get(key)!;
-    bucket.cashCollected = Number(bucket.cashCollected || 0) + amount;
-    bucket.cashItems = [
-      ...(bucket.cashItems || []),
-      createSeriesItem({
-        id: link.id,
-        kind: "invoice",
-        title: "Paid payment link",
-        subtitle: resolvedTripId
-          ? `Trip ${resolvedTripId.slice(0, 8)}`
-          : "Client payment captured",
-        href: resolvedTripId ? `/trips/${resolvedTripId}` : "/admin/revenue",
-        status: "paid",
-        amountLabel: formatCompactINR(amount),
-        dateLabel: formatDateLabel(link.paid_at || link.created_at),
-      }),
-    ];
-  }
-
-  for (const payment of params.invoicePayments) {
-    if (
-      normalizeStatus(payment.status, "completed") !== "completed" ||
-      !payment.payment_date
-    ) {
-      continue;
+      const amount = Number(payment.amount || 0);
+      const resolvedTripId = payment.trip_id || null;
+      const title =
+        payment.source === "manual_cash"
+          ? "Manual cash received"
+          : payment.source === "payment_link"
+            ? "Paid payment link"
+            : "Invoice payment received";
+      const bucket = buckets.get(key)!;
+      bucket.cashCollected = Number(bucket.cashCollected || 0) + amount;
+      bucket.cashItems = [
+        ...(bucket.cashItems || []),
+        createSeriesItem({
+          id: payment.id,
+          kind: "invoice",
+          title,
+          subtitle: resolvedTripId
+            ? `Trip ${resolvedTripId.slice(0, 8)}`
+            : "Commercial payment recorded",
+          href: resolvedTripId ? `/trips/${resolvedTripId}` : "/admin/revenue",
+          status: normalizedStatus || "completed",
+          amountLabel: formatCompactINR(amount),
+          dateLabel: formatDateLabel(eventIso),
+        }),
+      ];
     }
-    const key = getBucketKey(payment.payment_date, params.range.granularity);
-    if (!key || !buckets.has(key)) continue;
+  } else {
+    const paymentInvoiceIds = new Set(
+      params.invoicePayments
+        .filter(
+          (payment) =>
+            normalizeStatus(payment.status, "completed") === "completed" &&
+            Boolean(payment.invoice_id),
+        )
+        .map((payment) => payment.invoice_id as string),
+    );
 
-    const amount = Number(payment.amount || 0);
-    const bucket = buckets.get(key)!;
-    bucket.cashCollected = Number(bucket.cashCollected || 0) + amount;
-    bucket.cashItems = [
-      ...(bucket.cashItems || []),
-      createSeriesItem({
-        id: payment.id,
-        kind: "invoice",
-        title: "Invoice payment received",
-        subtitle: payment.invoice_id
-          ? `Invoice ${payment.invoice_id.slice(0, 8)}`
-          : "Recorded payment",
-        href: "/admin/revenue",
-        status: normalizeStatus(payment.status, "completed"),
-        amountLabel: formatCompactINR(amount),
-        dateLabel: formatDateLabel(payment.payment_date || payment.created_at),
-      }),
-    ];
-  }
+    for (const link of params.paymentLinks) {
+      if (normalizeStatus(link.status, "") !== "paid" || !link.paid_at) continue;
+      const key = getBucketKey(link.paid_at, params.range.granularity);
+      if (!key || !buckets.has(key)) continue;
+      const amount = Number(link.amount_paise || 0) / 100;
+      const linkedProposal = link.proposal_id
+        ? proposalById.get(link.proposal_id) || null
+        : null;
+      const resolvedTripId = linkedProposal?.trip_id || null;
+      const bucket = buckets.get(key)!;
+      bucket.cashCollected = Number(bucket.cashCollected || 0) + amount;
+      bucket.cashItems = [
+        ...(bucket.cashItems || []),
+        createSeriesItem({
+          id: link.id,
+          kind: "invoice",
+          title: "Paid payment link",
+          subtitle: resolvedTripId
+            ? `Trip ${resolvedTripId.slice(0, 8)}`
+            : "Client payment captured",
+          href: resolvedTripId ? `/trips/${resolvedTripId}` : "/admin/revenue",
+          status: "paid",
+          amountLabel: formatCompactINR(amount),
+          dateLabel: formatDateLabel(link.paid_at || link.created_at),
+        }),
+      ];
+    }
 
-  for (const invoice of params.invoices) {
-    if (!isPaidInvoice(invoice) || paymentInvoiceIds.has(invoice.id)) continue;
-    const eventIso = getInvoicePaidEventIso(invoice);
-    if (!eventIso) continue;
-    const key = getBucketKey(eventIso, params.range.granularity);
-    if (!key || !buckets.has(key)) continue;
-    const amount = Number(invoice.total_amount || 0);
-    const bucket = buckets.get(key)!;
-    bucket.cashCollected = Number(bucket.cashCollected || 0) + amount;
-    bucket.cashItems = [
-      ...(bucket.cashItems || []),
-      createSeriesItem({
-        id: invoice.id,
-        kind: "invoice",
-        title: `Invoice ${invoice.invoice_number || invoice.id.slice(0, 8)}`,
-        subtitle: invoice.trip_id
-          ? `Trip ${invoice.trip_id.slice(0, 8)}`
-          : "Paid invoice",
-        href: "/admin/invoices",
-        status: normalizeStatus(invoice.status, "paid"),
-        amountLabel: formatCompactINR(amount),
-        dateLabel: formatDateLabel(eventIso),
-      }),
-    ];
+    for (const payment of params.invoicePayments) {
+      if (
+        normalizeStatus(payment.status, "completed") !== "completed" ||
+        !payment.payment_date
+      ) {
+        continue;
+      }
+      const key = getBucketKey(payment.payment_date, params.range.granularity);
+      if (!key || !buckets.has(key)) continue;
+
+      const amount = Number(payment.amount || 0);
+      const bucket = buckets.get(key)!;
+      bucket.cashCollected = Number(bucket.cashCollected || 0) + amount;
+      bucket.cashItems = [
+        ...(bucket.cashItems || []),
+        createSeriesItem({
+          id: payment.id,
+          kind: "invoice",
+          title: "Invoice payment received",
+          subtitle: payment.invoice_id
+            ? `Invoice ${payment.invoice_id.slice(0, 8)}`
+            : "Recorded payment",
+          href: "/admin/revenue",
+          status: normalizeStatus(payment.status, "completed"),
+          amountLabel: formatCompactINR(amount),
+          dateLabel: formatDateLabel(payment.payment_date || payment.created_at),
+        }),
+      ];
+    }
+
+    for (const invoice of params.invoices) {
+      if (!isPaidInvoice(invoice) || paymentInvoiceIds.has(invoice.id)) continue;
+      const eventIso = getInvoicePaidEventIso(invoice);
+      if (!eventIso) continue;
+      const key = getBucketKey(eventIso, params.range.granularity);
+      if (!key || !buckets.has(key)) continue;
+      const amount = Number(invoice.total_amount || 0);
+      const bucket = buckets.get(key)!;
+      bucket.cashCollected = Number(bucket.cashCollected || 0) + amount;
+      bucket.cashItems = [
+        ...(bucket.cashItems || []),
+        createSeriesItem({
+          id: invoice.id,
+          kind: "invoice",
+          title: `Invoice ${invoice.invoice_number || invoice.id.slice(0, 8)}`,
+          subtitle: invoice.trip_id
+            ? `Trip ${invoice.trip_id.slice(0, 8)}`
+            : "Paid invoice",
+          href: "/admin/invoices",
+          status: normalizeStatus(invoice.status, "paid"),
+          amountLabel: formatCompactINR(amount),
+          dateLabel: formatDateLabel(eventIso),
+        }),
+      ];
+    }
   }
 
   for (const trip of sortByEventDesc(params.trips)) {
@@ -735,6 +847,7 @@ export function buildDashboardRevenueSeries(params: {
       linkedProposal?.value,
       invoiceValueByTrip.get(trip.id),
       paymentLinkValueByTrip.get(trip.id),
+      commercialPaymentSummaryByTrip.get(trip.id)?.totalPaid,
     ]);
 
     if (bookedFallbackAmount <= 0) continue;
