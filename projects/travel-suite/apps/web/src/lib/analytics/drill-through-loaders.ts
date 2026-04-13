@@ -102,16 +102,13 @@ interface ClientDrillRow {
         email: string | null;
         lifecycle_stage: string | null;
       }
+    | {
+        full_name: string | null;
+        email: string | null;
+        lifecycle_stage: string | null;
+      }[]
     | null;
 }
-
-type ClientDrillRowWithProfile = ClientDrillRow & {
-  profiles: {
-    full_name: string | null;
-    email: string | null;
-    lifecycle_stage: string | null;
-  };
-};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -127,6 +124,16 @@ function formatDate(value: string | null): string {
 function getItinerary(value: TripDrillRow["itineraries"]): ItineraryLite | null {
   if (!value) return null;
   if (Array.isArray(value)) return value[0] || null;
+  return value;
+}
+
+function getClientProfile(
+  value: ClientDrillRow["profiles"],
+): { full_name: string | null; email: string | null; lifecycle_stage: string | null } | null {
+  if (!value) return null;
+  if (Array.isArray(value)) {
+    return value[0] || null;
+  }
   return value;
 }
 
@@ -817,9 +824,12 @@ export async function loadOperationsDrill(
   }
 
   if (clientQuery.error) throw clientQuery.error;
-  const clientRows = ((clientQuery.data || []) as ClientDrillRow[]).filter(
-    (row): row is ClientDrillRowWithProfile => row.profiles !== null,
-  );
+  const clientRows = ((clientQuery.data || []) as ClientDrillRow[])
+    .map((row) => ({
+      ...row,
+      profile: getClientProfile(row.profiles),
+    }))
+    .filter((row) => row.profile !== null);
 
   return {
     summary: {
@@ -830,10 +840,10 @@ export async function loadOperationsDrill(
     },
     rows: clientRows.map((c) => ({
       id: c.id,
-      title: c.profiles?.full_name || c.profiles?.email || "Client",
-      subtitle: c.profiles?.email || "",
-      amountLabel: (c.profiles?.lifecycle_stage || "active").replace(/_/g, " "),
-      status: c.profiles?.lifecycle_stage || "active",
+      title: c.profile?.full_name || c.profile?.email || "Client",
+      subtitle: c.profile?.email || "",
+      amountLabel: (c.profile?.lifecycle_stage || "active").replace(/_/g, " "),
+      status: c.profile?.lifecycle_stage || "active",
       dateLabel: formatDate(c.created_at),
       href: `/clients/${c.id}`,
     })),
