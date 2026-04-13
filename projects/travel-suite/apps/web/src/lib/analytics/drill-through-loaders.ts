@@ -3,6 +3,7 @@ import type { TimeWindow } from "./adapters";
 import type { ResolvedAdminDateRange } from "@/lib/admin/date-range";
 import {
   buildDashboardClientMap,
+  buildDashboardOutstandingSnapshot,
   buildDashboardRevenueSeries,
   buildDashboardTripStatusMap,
   decorateDashboardTrips,
@@ -391,6 +392,64 @@ export async function loadWonValueDrill(
       windowLabel: formatRangeDateLabel(range),
     },
     rows,
+  };
+}
+
+export async function loadOutstandingDrill(
+  supabase: SupabaseClient,
+  orgId: string,
+  range: ResolvedAdminDateRange,
+): Promise<DrillResult> {
+  const sources = await loadDashboardSourceBundle({
+    client: supabase as unknown as AdminQueryClient,
+    organizationId: orgId,
+    followUpWindowStartIso: range.fromISO,
+    followUpWindowEndIso: range.toExclusiveISO,
+  });
+
+  const clientMap = buildDashboardClientMap(sources.profiles.rows);
+  const tripStatusMap = buildDashboardTripStatusMap(sources.trips.rows);
+  const trips = decorateDashboardTrips({
+    trips: sources.trips.rows,
+    itineraries: sources.itineraries.rows,
+    clientMap,
+  });
+  const proposals = resolveDashboardProposalRows({
+    proposals: sources.proposals.rows,
+    tripStatusMap,
+    clientMap,
+    enforceLinkedTripPresence: sources.trips.health !== "failed",
+  });
+  const invoices = filterDashboardInvoicesByTrip({
+    invoices: sources.invoices.rows,
+    tripStatusMap,
+    enforceLinkedTripPresence: sources.trips.health !== "failed",
+  });
+
+  const outstanding = buildDashboardOutstandingSnapshot({
+    proposals,
+    trips,
+    invoices,
+    paymentLinks: sources.paymentLinks.rows,
+    commercialPayments: sources.commercialPayments.rows,
+  });
+
+  return {
+    summary: {
+      label: "Outstanding balance contributors",
+      primaryValue: formatINR(outstanding.totalOutstanding),
+      secondaryValue: `${outstanding.items.length} linked record${outstanding.items.length === 1 ? "" : "s"} contributing to outstanding balance`,
+      windowLabel: formatRangeDateLabel(range),
+    },
+    rows: outstanding.items.map((item) => ({
+      id: item.id,
+      title: item.title,
+      subtitle: item.subtitle,
+      amountLabel: item.amountLabel,
+      status: item.status,
+      dateLabel: item.dateLabel,
+      href: item.href,
+    })),
   };
 }
 

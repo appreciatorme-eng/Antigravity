@@ -999,6 +999,185 @@ export function buildDashboardRevenueSeries(params: {
   }));
 }
 
+export function buildDashboardOutstandingSnapshot(params: {
+  proposals: ProposalBusinessRow[];
+  trips: TripBusinessRow[];
+  invoices: InvoiceSelectorRow[];
+  paymentLinks: PaymentLinkSelectorRow[];
+  commercialPayments: CommercialPaymentSelectorRow[];
+}): {
+  totalOutstanding: number;
+  items: RevenueChartItemPoint[];
+} {
+  const canonicalProposals = filterCanonicalPipelineProposals(params.proposals);
+  const tripById = new Map(params.trips.map((trip) => [trip.id, trip]));
+  const invoiceSummaryByTrip = buildInvoiceSummaryByTrip(params.invoices);
+  const paidLinkAmountByTrip = buildPaidLinkAmountByTrip({
+    proposals: canonicalProposals,
+    paymentLinks: params.paymentLinks,
+  });
+  const commercialPaymentSummaryByTrip =
+    buildCommercialPaymentSummaryByTrip(params.commercialPayments);
+  const invoiceByTrip = new Map<string, InvoiceSelectorRow>();
+
+  for (const invoice of params.invoices) {
+    if (!invoice.trip_id) continue;
+    const existing = invoiceByTrip.get(invoice.trip_id) || null;
+    if (!existing) {
+      invoiceByTrip.set(invoice.trip_id, invoice);
+      continue;
+    }
+    const existingTime = safeDate(existing.due_date || existing.created_at || null)?.getTime() || 0;
+    const candidateTime = safeDate(invoice.due_date || invoice.created_at || null)?.getTime() || 0;
+    if (candidateTime > existingTime) {
+      invoiceByTrip.set(invoice.trip_id, invoice);
+    }
+  }
+
+  const items: RevenueChartItemPoint[] = [];
+  const seenOwners = new Set<string>();
+  let totalOutstanding = 0;
+
+  for (const proposal of canonicalProposals) {
+    if (proposal.lifecycle !== "won") continue;
+    const linkedTrip = proposal.trip_id ? tripById.get(proposal.trip_id) || null : null;
+    const invoiceSummary = proposal.trip_id
+      ? invoiceSummaryByTrip.get(proposal.trip_id) || null
+      : null;
+    const paidLinkAmount = proposal.trip_id ? paidLinkAmountByTrip.get(proposal.trip_id) || 0 : 0;
+    const commercialPaidAmount = proposal.trip_id
+      ? (commercialPaymentSummaryByTrip.get(proposal.trip_id)?.totalPaid ||
+        (linkedTrip ? getTripManualCashAmount(linkedTrip) : 0))
+      : 0;
+    const targetAmount = getPositiveMax([proposal.value, linkedTrip?.quotedTotal]);
+    const collectedAmount = getCollectedCommercialAmount({
+      trip: linkedTrip,
+      invoiceSummary,
+      paidLinkAmount,
+      commercialPaidAmount,
+    });
+    const outstanding = Math.max(targetAmount - collectedAmount, 0);
+    const ownerId = getProposalOwnerKey(proposal);
+
+    if (outstanding <= 0 || seenOwners.has(ownerId)) continue;
+    seenOwners.add(ownerId);
+    totalOutstanding += outstanding;
+
+    const linkedInvoice = proposal.trip_id ? invoiceByTrip.get(proposal.trip_id) || null : null;
+    if (linkedInvoice && Number(linkedInvoice.balance_amount || 0) > 0) {
+      items.push(
+        createSeriesItem({
+          id: linkedInvoice.id,
+          kind: "invoice",
+          title: `Invoice ${linkedInvoice.invoice_number || linkedInvoice.id.slice(0, 8)}`,
+          subtitle:
+            linkedTrip?.tripTitle ||
+            proposal.title ||
+            linkedTrip?.destination ||
+            proposal.clientName ||
+            "Outstanding invoice",
+          href: "/admin/invoices",
+          status: normalizeStatus(linkedInvoice.status, "pending"),
+          amountLabel: formatCompactINR(outstanding),
+          dateLabel: formatDateLabel(linkedInvoice.due_date || linkedInvoice.created_at),
+        }),
+      );
+      continue;
+    }
+
+    items.push(
+      createSeriesItem({
+        id: proposal.id,
+        kind: "proposal",
+        title: linkedTrip?.tripTitle || safeTitle(proposal.title, "Won proposal"),
+        subtitle:
+          linkedTrip?.destination ||
+          linkedTrip?.clientName ||
+          proposal.clientName ||
+          proposal.clientEmail ||
+          "Outstanding balance",
+        href: linkedTrip ? `/trips/${linkedTrip.id}` : `/proposals/${proposal.id}`,
+        status: linkedTrip?.status || normalizeStatus(proposal.status, "converted"),
+        amountLabel: formatCompactINR(outstanding),
+        dateLabel: formatDateLabel(proposal.eventIso),
+      }),
+    );
+  }
+
+  const proposalOwnedWonTripIds = new Set(
+    canonicalProposals
+      .filter(
+        (proposal) =>
+          proposal.lifecycle === "won" &&
+          Boolean(proposal.trip_id) &&
+          proposal.hasLiveLinkedTrip,
+      )
+      .map((proposal) => proposal.trip_id as string),
+  );
+
+  for (const trip of params.trips) {
+    if (!trip.isWon) continue;
+    if (proposalOwnedWonTripIds.has(trip.id)) continue;
+
+    const invoiceSummary = invoiceSummaryByTrip.get(trip.id) || null;
+    const paidLinkAmount = paidLinkAmountByTrip.get(trip.id) || 0;
+    const commercialPaidAmount =
+      commercialPaymentSummaryByTrip.get(trip.id)?.totalPaid || getTripManualCashAmount(trip);
+    const targetAmount = getPositiveMax([
+      trip.quotedTotal,
+      invoiceSummary?.totalAmount,
+      commercialPaidAmount,
+    ]);
+    const collectedAmount = getCollectedCommercialAmount({
+      trip,
+      invoiceSummary,
+      paidLinkAmount,
+      commercialPaidAmount,
+    });
+    const outstanding = Math.max(targetAmount - collectedAmount, 0);
+    const ownerId = getTripOwnerKey(trip.id);
+
+    if (outstanding <= 0 || seenOwners.has(ownerId)) continue;
+    seenOwners.add(ownerId);
+    totalOutstanding += outstanding;
+
+    const linkedInvoice = invoiceByTrip.get(trip.id) || null;
+    if (linkedInvoice && Number(linkedInvoice.balance_amount || 0) > 0) {
+      items.push(
+        createSeriesItem({
+          id: linkedInvoice.id,
+          kind: "invoice",
+          title: `Invoice ${linkedInvoice.invoice_number || linkedInvoice.id.slice(0, 8)}`,
+          subtitle: getTripTitle(trip),
+          href: "/admin/invoices",
+          status: normalizeStatus(linkedInvoice.status, "pending"),
+          amountLabel: formatCompactINR(outstanding),
+          dateLabel: formatDateLabel(linkedInvoice.due_date || linkedInvoice.created_at),
+        }),
+      );
+      continue;
+    }
+
+    items.push(
+      createSeriesItem({
+        id: trip.id,
+        kind: "trip",
+        title: getTripTitle(trip),
+        subtitle: getTripSubtitle(trip),
+        href: `/trips/${trip.id}`,
+        status: normalizeStatus(trip.status, "planned"),
+        amountLabel: formatCompactINR(outstanding),
+        dateLabel: formatDateLabel(trip.eventIso),
+      }),
+    );
+  }
+
+  return {
+    totalOutstanding: Number(totalOutstanding.toFixed(2)),
+    items,
+  };
+}
+
 export function resolveDashboardDefaultRevenueMetric(params: {
   bookedValue: number;
   cashCollected: number;

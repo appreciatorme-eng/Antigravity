@@ -38,6 +38,12 @@ function buildCards(data: DashboardV2State): KPICard[] {
     from: data.dateRange.from,
     to: data.dateRange.to,
   });
+  const outstandingParams = new URLSearchParams({
+    type: 'outstanding',
+    preset: data.dateRange.preset,
+    from: data.dateRange.from,
+    to: data.dateRange.to,
+  });
 
   const displayCurrency = (value: number | null | undefined) =>
     value === null || value === undefined ? '—' : formatCompactINR(value);
@@ -67,7 +73,7 @@ function buildCards(data: DashboardV2State): KPICard[] {
       icon: Briefcase,
       color: 'text-blue-600',
       iconBg: 'bg-blue-100/50',
-      href: '/admin/revenue',
+      href: `/analytics/drill-through?${outstandingParams.toString()}`,
     },
     {
       label: 'Open Pipeline',
