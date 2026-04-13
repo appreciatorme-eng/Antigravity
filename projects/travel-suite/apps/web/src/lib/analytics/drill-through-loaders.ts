@@ -298,6 +298,102 @@ export async function loadBookedValueDrill(
   };
 }
 
+export async function loadWonValueDrill(
+  supabase: SupabaseClient,
+  orgId: string,
+  range: ResolvedAdminDateRange,
+): Promise<DrillResult> {
+  const sources = await loadDashboardSourceBundle({
+    client: supabase as unknown as AdminQueryClient,
+    organizationId: orgId,
+    followUpWindowStartIso: range.fromISO,
+    followUpWindowEndIso: range.toExclusiveISO,
+  });
+
+  const clientMap = buildDashboardClientMap(sources.profiles.rows);
+  const tripStatusMap = buildDashboardTripStatusMap(sources.trips.rows);
+  const trips = decorateDashboardTrips({
+    trips: sources.trips.rows,
+    itineraries: sources.itineraries.rows,
+    clientMap,
+  });
+  const proposals = resolveDashboardProposalRows({
+    proposals: sources.proposals.rows,
+    tripStatusMap,
+    clientMap,
+    enforceLinkedTripPresence: sources.trips.health !== "failed",
+  });
+  const invoices = filterDashboardInvoicesByTrip({
+    invoices: sources.invoices.rows,
+    tripStatusMap,
+    enforceLinkedTripPresence: sources.trips.health !== "failed",
+  });
+
+  const series = buildDashboardRevenueSeries({
+    range,
+    proposals,
+    trips,
+    invoices,
+    paymentLinks: sources.paymentLinks.rows,
+    invoicePayments: sources.invoicePayments.rows,
+    commercialPayments: sources.commercialPayments.rows,
+  });
+
+  const proposalById = new Map(proposals.map((proposal) => [proposal.id, proposal]));
+  const tripById = new Map(trips.map((trip) => [trip.id, trip]));
+  const seen = new Set<string>();
+  const rows: DrillRow[] = [];
+
+  for (const point of [...series].reverse()) {
+    for (const item of point.bookedItems || []) {
+      const ownerKey = `${item.kind}:${item.id}`;
+      if (seen.has(ownerKey)) continue;
+      seen.add(ownerKey);
+
+      if (item.kind === "proposal") {
+        const proposal = proposalById.get(item.id) || null;
+        const linkedTrip = proposal?.trip_id ? tripById.get(proposal.trip_id) || null : null;
+
+        rows.push({
+          id: item.id,
+          title: linkedTrip?.tripTitle || item.title,
+          subtitle: linkedTrip?.destination || linkedTrip?.clientName || item.subtitle,
+          amountLabel: item.amountLabel,
+          status: linkedTrip?.status || item.status,
+          dateLabel: item.dateLabel,
+          href: linkedTrip ? `/trips/${linkedTrip.id}` : item.href,
+        });
+        continue;
+      }
+
+      rows.push({
+        id: item.id,
+        title: item.title,
+        subtitle: item.subtitle,
+        amountLabel: item.amountLabel,
+        status: item.status,
+        dateLabel: item.dateLabel,
+        href: item.href,
+      });
+    }
+  }
+
+  const totalWonValue = series.reduce(
+    (sum, point) => sum + Number(point.bookedValue || 0),
+    0,
+  );
+
+  return {
+    summary: {
+      label: "Won value contributors",
+      primaryValue: formatINR(totalWonValue),
+      secondaryValue: `${rows.length} linked record${rows.length === 1 ? "" : "s"} contributing to won value`,
+      windowLabel: formatRangeDateLabel(range),
+    },
+    rows,
+  };
+}
+
 export async function loadBookingsDrill(
   supabase: SupabaseClient,
   orgId: string,

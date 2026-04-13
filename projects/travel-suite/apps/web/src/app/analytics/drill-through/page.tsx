@@ -22,6 +22,7 @@ import { resolveAdminDateRange } from "@/lib/admin/date-range";
 import type { DrillRow, DrillSummary } from "@/lib/analytics/drill-through-loaders";
 import {
   loadBookedValueDrill,
+  loadWonValueDrill,
   loadRevenueDrill,
   loadBookingsDrill,
   loadConversionDrill,
@@ -37,6 +38,7 @@ import { GlassButton } from "@/components/glass/GlassButton";
 
 type DrillType =
   | "booked"
+  | "won"
   | "revenue"
   | "bookings"
   | "conversion"
@@ -51,6 +53,7 @@ type TimeRange = "1y" | "6m" | "3m" | "1m";
 
 const TYPE_CONFIG: Record<DrillType, { title: string; icon: typeof DollarSign; color: string }> = {
   booked: { title: "Revenue Details", icon: TrendingUp, color: "text-emerald-500" },
+  won: { title: "Won Value Details", icon: TrendingUp, color: "text-emerald-500" },
   revenue: { title: "Revenue Breakdown", icon: DollarSign, color: "text-emerald-500" },
   bookings: { title: "Booking Volume Details", icon: Calendar, color: "text-blue-500" },
   clients: { title: "Client Acquisition Details", icon: Users, color: "text-indigo-500" },
@@ -64,7 +67,7 @@ const TYPE_CONFIG: Record<DrillType, { title: string; icon: typeof DollarSign; c
 
 const VALID_TYPES: ReadonlySet<string> = new Set([
   "revenue", "bookings", "conversion", "clients",
-  "destinations", "destination-revenue", "season", "pipeline", "operations", "booked",
+  "destinations", "destination-revenue", "season", "pipeline", "operations", "booked", "won",
 ]);
 
 function asDrillType(value: string | null): DrillType {
@@ -130,6 +133,7 @@ function DrillThroughContent() {
 
         const loaderMap: Record<DrillType, () => ReturnType<typeof loadRevenueDrill>> = {
           booked: () => loadBookedValueDrill(supabase, orgId, adminRange),
+          won: () => loadWonValueDrill(supabase, orgId, adminRange),
           revenue: () => loadRevenueDrill(supabase, orgId, win),
           bookings: () => loadBookingsDrill(supabase, orgId, win),
           conversion: () => loadConversionDrill(supabase, orgId, win),

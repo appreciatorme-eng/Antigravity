@@ -57,6 +57,12 @@ export function RevenueIntelligence({ data }: RevenueIntelligenceProps) {
   const revenue = data.overview?.revenue;
   const series = useMemo(() => revenue?.series ?? [], [revenue?.series]);
   const metric = userMetric ?? revenue?.defaultMetric ?? 'booked';
+  const wonDrillParams = new URLSearchParams({
+    type: 'won',
+    preset: data.dateRange.preset,
+    from: data.dateRange.from,
+    to: data.dateRange.to,
+  });
   const selectedItems = useMemo(
     () => getMetricItems(selectedPoint, metric),
     [metric, selectedPoint],
@@ -138,6 +144,7 @@ export function RevenueIntelligence({ data }: RevenueIntelligenceProps) {
                   : '—',
               active: metric === 'booked',
               color: 'border-emerald-500/20 bg-emerald-500/5',
+              href: `/analytics/drill-through?${wonDrillParams.toString()}`,
             },
             {
               key: 'cash',
@@ -148,6 +155,7 @@ export function RevenueIntelligence({ data }: RevenueIntelligenceProps) {
                   : '—',
               active: metric === 'cash',
               color: 'border-primary/20 bg-primary/5',
+              href: null,
             },
             {
               key: 'trips',
@@ -158,22 +166,42 @@ export function RevenueIntelligence({ data }: RevenueIntelligenceProps) {
                   : '—',
               active: metric === 'trips',
               color: 'border-blue-500/20 bg-blue-500/5',
+              href: null,
             },
           ].map((item) => (
-            <div
-              key={item.key}
-              className={cn(
-                'flex items-center gap-2 rounded-lg border px-3 py-2 transition-all',
-                item.active
-                  ? item.color
-                  : 'border-gray-100 bg-gray-50/50 dark:border-white/5 dark:bg-white/[0.02]',
-              )}
-            >
-              <span className="text-xs font-medium text-text-muted">{item.label}</span>
-              <span className="text-sm font-bold text-secondary dark:text-white">
-                {item.value}
-              </span>
-            </div>
+            item.href ? (
+              <Link
+                key={item.key}
+                href={item.href}
+                className={cn(
+                  'flex items-center gap-2 rounded-lg border px-3 py-2 transition-all hover:border-primary/30 hover:bg-primary/5',
+                  item.active
+                    ? item.color
+                    : 'border-gray-100 bg-gray-50/50 dark:border-white/5 dark:bg-white/[0.02]',
+                )}
+              >
+                <span className="text-xs font-medium text-text-muted">{item.label}</span>
+                <span className="text-sm font-bold text-secondary dark:text-white">
+                  {item.value}
+                </span>
+                <ArrowUpRight className="ml-1 h-3.5 w-3.5 text-text-muted" />
+              </Link>
+            ) : (
+              <div
+                key={item.key}
+                className={cn(
+                  'flex items-center gap-2 rounded-lg border px-3 py-2 transition-all',
+                  item.active
+                    ? item.color
+                    : 'border-gray-100 bg-gray-50/50 dark:border-white/5 dark:bg-white/[0.02]',
+                )}
+              >
+                <span className="text-xs font-medium text-text-muted">{item.label}</span>
+                <span className="text-sm font-bold text-secondary dark:text-white">
+                  {item.value}
+                </span>
+              </div>
+            )
           ))}
         </div>
 
