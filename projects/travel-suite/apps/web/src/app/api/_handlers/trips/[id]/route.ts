@@ -70,6 +70,18 @@ interface TripDeleteLookupRow {
         | null;
 }
 
+function isMissingCommercialPaymentsRelationError(error: unknown): boolean {
+    const message =
+        error && typeof error === "object" && "message" in error
+            ? String((error as { message?: unknown }).message || "")
+            : "";
+    const normalized = message.toLowerCase();
+    return (
+        (normalized.includes("relation") || normalized.includes("table")) &&
+        normalized.includes("commercial_payments")
+    );
+}
+
 function parseRole(role: string | null | undefined): "admin" | "super_admin" | null {
     const normalized = (role || "").trim().toLowerCase();
     if (normalized === "admin" || normalized === "super_admin") {
@@ -550,20 +562,26 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id?: s
                 .limit(1)
                 .maybeSingle();
 
-            await syncTripFinancialSummaryCommercialPayment({
-                adminClient: supabaseAdmin,
-                organizationId: trip.organization_id || auth.organizationId || "",
-                tripId,
-                createdBy: auth.userId,
-                proposalId: linkedProposal?.id ?? null,
-                paymentSource: financialSummary.payment_source,
-                paymentStatus: financialSummary.payment_status,
-                manualPaidAmount: financialSummary.manual_paid_amount,
-                currency:
-                    (nextRawData as { pricing?: { currency?: string | null } | null }).pricing
-                        ?.currency || "INR",
-                notes: financialSummary.notes ?? null,
-            });
+            try {
+                await syncTripFinancialSummaryCommercialPayment({
+                    adminClient: supabaseAdmin,
+                    organizationId: trip.organization_id || auth.organizationId || "",
+                    tripId,
+                    createdBy: auth.userId,
+                    proposalId: linkedProposal?.id ?? null,
+                    paymentSource: financialSummary.payment_source,
+                    paymentStatus: financialSummary.payment_status,
+                    manualPaidAmount: financialSummary.manual_paid_amount,
+                    currency:
+                        (nextRawData as { pricing?: { currency?: string | null } | null }).pricing
+                            ?.currency || "INR",
+                    notes: financialSummary.notes ?? null,
+                });
+            } catch (error) {
+                if (!isMissingCommercialPaymentsRelationError(error)) {
+                    throw error;
+                }
+            }
         }
 
         const syncResult = await syncTripToLinkedProposal({
