@@ -533,21 +533,37 @@ export function AdminPerformanceScorecardBone({ loading = true }: { loading?: bo
 function CollectionsWorkspaceFallback() {
   return (
     <GlassCard padding="xl">
-      <GlassSkeleton className="h-6 w-56" />
-      <GlassSkeleton className="mt-3 h-12 w-full rounded-2xl" />
+      <div className="flex items-center justify-between gap-3">
+        <GlassSkeleton className="h-6 w-56" />
+        <div className="flex gap-2">
+          <GlassSkeleton className="h-10 w-28 rounded-xl" />
+          <GlassSkeleton className="h-10 w-30 rounded-xl" />
+        </div>
+      </div>
+      <GlassSkeleton className="mt-3 h-4 w-80" />
+      <GlassSkeleton className="mt-4 h-14 w-full rounded-2xl" />
       <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {Array.from({ length: 4 }).map((_, index) => (
-          <GlassSkeleton key={index} className="h-28 rounded-2xl" />
+          <div key={index} className="relative overflow-hidden rounded-2xl border border-gray-100 bg-white/50 px-4 py-4">
+            <div className="absolute inset-y-0 left-0 w-1 bg-slate-200" />
+            <GlassSkeleton className="h-20 rounded-xl" />
+          </div>
         ))}
       </div>
       <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {Array.from({ length: 4 }).map((_, index) => (
-          <GlassSkeleton key={index} className="h-24 rounded-2xl" />
+          <div key={index} className="relative overflow-hidden rounded-2xl border border-gray-100 bg-white/50 px-4 py-4">
+            <div className="absolute inset-x-0 top-0 h-1 bg-slate-200" />
+            <GlassSkeleton className="h-16 rounded-xl" />
+          </div>
         ))}
       </div>
       <div className="mt-6 space-y-3">
         {Array.from({ length: 4 }).map((_, index) => (
-          <GlassSkeleton key={index} className="h-24 rounded-2xl" />
+          <div key={index} className="relative overflow-hidden rounded-2xl border border-gray-100 bg-white/50 px-4 py-4">
+            <div className="absolute inset-y-0 left-0 w-1 bg-slate-200" />
+            <GlassSkeleton className="h-16 rounded-xl" />
+          </div>
         ))}
       </div>
     </GlassCard>
@@ -567,10 +583,14 @@ function CollectionsWorkspaceFixture() {
           <div className="h-10 w-32 rounded-xl bg-emerald-100" />
         </div>
       </div>
-      <div className="mt-6 h-14 rounded-2xl bg-amber-100" />
+      <div className="mt-6 relative overflow-hidden rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3">
+        <div className="absolute inset-y-0 left-0 w-1.5 bg-amber-500" />
+        <div className="h-8 w-full rounded-xl bg-amber-100" />
+      </div>
       <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {Array.from({ length: 4 }).map((_, index) => (
-          <div key={index} className="rounded-2xl border border-gray-100 bg-white/50 px-4 py-4">
+          <div key={index} className="relative overflow-hidden rounded-2xl border border-gray-100 bg-white/50 px-4 py-4">
+            <div className="absolute inset-y-0 left-0 w-1 bg-slate-300" />
             <div className="flex items-center justify-between">
               <div className="h-4 w-4 rounded-full bg-slate-200" />
               <div className="h-3 w-3 rounded-full bg-slate-100" />
@@ -583,7 +603,8 @@ function CollectionsWorkspaceFixture() {
       </div>
       <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {Array.from({ length: 4 }).map((_, index) => (
-          <div key={index} className="rounded-2xl border border-gray-100 bg-white/50 px-4 py-4">
+          <div key={index} className="relative overflow-hidden rounded-2xl border border-gray-100 bg-white/50 px-4 py-4">
+            <div className="absolute inset-x-0 top-0 h-1 bg-slate-300" />
             <div className="h-4 w-28 rounded-full bg-slate-200" />
             <div className="mt-3 h-6 w-16 rounded-full bg-slate-200" />
             <div className="mt-2 h-3 w-20 rounded-full bg-slate-100" />
@@ -592,7 +613,8 @@ function CollectionsWorkspaceFixture() {
       </div>
       <div className="mt-6 space-y-3">
         {Array.from({ length: 4 }).map((_, index) => (
-          <div key={index} className="rounded-2xl border border-gray-100 bg-white/50 px-4 py-4">
+          <div key={index} className="relative overflow-hidden rounded-2xl border border-gray-100 bg-white/50 px-4 py-4">
+            <div className="absolute inset-y-0 left-0 w-1 bg-slate-300" />
             <div className="flex items-center justify-between gap-4">
               <div className="space-y-2">
                 <div className="h-4 w-40 rounded-full bg-slate-200" />
