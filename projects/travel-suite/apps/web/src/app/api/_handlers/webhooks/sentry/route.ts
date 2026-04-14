@@ -1,10 +1,15 @@
 /**
  * Sentry Internal Integration Webhook Handler
  *
- * Receives "issue.created" events from Sentry and:
+ * Receives issue lifecycle events from Sentry and:
  *  1. Verifies a shared secret token passed in the URL query param (?token=...)
- *  2. Upserts a row into `error_events` for permanent storage + resolution tracking
+ *  2. Upserts / updates a row in `error_events` for permanent storage + resolution tracking
  *  3. Posts a rich Block Kit message to Slack via Incoming Webhook
+ *
+ * Supported actions:
+ *  - issue.created  → upsert open row + Slack alert (🔁 Regression alert if was resolved)
+ *  - issue.resolved → set status='resolved' silently (no Slack noise)
+ *  - issue.ignored  → set status='wont_fix' silently
  *
  * Both DB write and Slack POST are fire-and-forget so Sentry receives a
  * <200ms response (Sentry's webhook timeout is 3 seconds).
@@ -76,26 +81,41 @@ const LEVEL_EMOJI: Record<string, string> = {
     debug: "⚪",
 };
 
-async function postToSlack(issue: SentryIssue): Promise<void> {
+async function postToSlack(issue: SentryIssue, isRegression: boolean): Promise<void> {
     const webhookUrl = process.env.SLACK_WEBHOOK_URL;
     if (!webhookUrl) return; // Slack not configured — silently skip
 
-    const emoji = LEVEL_EMOJI[issue.level] ?? "🔴";
+    const emoji = isRegression ? "🔁" : (LEVEL_EMOJI[issue.level] ?? "🔴");
     const count = issue.count ?? 1;
     const userCount = issue.userCount ?? 0;
     const project = issue.project?.name ?? "tripbuilt";
 
+    const headingPrefix = isRegression
+        ? "🔁 Regression"
+        : `${LEVEL_EMOJI[issue.level] ?? "🔴"} New ${issue.level.charAt(0).toUpperCase() + issue.level.slice(1)}`;
+
     const body = {
-        text: `${emoji} New Sentry Issue: ${issue.title}`,
+        text: `${emoji} ${isRegression ? "Regression" : "New Sentry Issue"}: ${issue.title}`,
         blocks: [
             {
                 type: "header",
                 text: {
                     type: "plain_text",
-                    text: `${emoji} New ${issue.level.charAt(0).toUpperCase() + issue.level.slice(1)}: ${issue.title.substring(0, 90)}`,
+                    text: `${headingPrefix}: ${issue.title.substring(0, 90)}`,
                     emoji: true,
                 },
             },
+            ...(isRegression
+                ? [
+                      {
+                          type: "section",
+                          text: {
+                              type: "mrkdwn",
+                              text: ":warning: This issue was previously resolved and has *re-opened*.",
+                          },
+                      },
+                  ]
+                : []),
             {
                 type: "section",
                 fields: [
@@ -131,7 +151,7 @@ async function postToSlack(issue: SentryIssue): Promise<void> {
                                   type: "button",
                                   text: { type: "plain_text", text: "View in Sentry →", emoji: false },
                                   url: issue.permalink,
-                                  style: "primary",
+                                  style: isRegression ? "danger" : "primary",
                               },
                           ],
                       },
@@ -165,11 +185,24 @@ async function postToSlack(issue: SentryIssue): Promise<void> {
 // DB persistence
 // ---------------------------------------------------------------------------
 
-async function persistErrorEvent(issue: SentryIssue, ctx: LogContext): Promise<void> {
-    const supabase = createAdminClient();
-
+/**
+ * Upserts the error event and returns whether this is a regression
+ * (the issue was previously in 'resolved' status and is now re-created).
+ */
+async function persistErrorEvent(issue: SentryIssue, ctx: LogContext): Promise<boolean> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- error_events table not yet in generated types
-    const { error } = await (supabase as any).from("error_events").upsert(
+    const supabase = createAdminClient() as any;
+
+    // Check current status before upserting so we can detect regressions
+    const { data: existing } = await supabase
+        .from("error_events")
+        .select("status")
+        .eq("sentry_issue_id", issue.id)
+        .maybeSingle();
+
+    const wasResolved = existing?.status === "resolved";
+
+    const { error } = await supabase.from("error_events").upsert(
         {
             sentry_issue_id: issue.id,
             sentry_issue_url: issue.permalink ?? null,
@@ -182,10 +215,12 @@ async function persistErrorEvent(issue: SentryIssue, ctx: LogContext): Promise<v
             first_seen_at: issue.firstSeen ?? new Date().toISOString(),
             context: {},
             status: "open",
+            // Clear resolution fields when re-opening
+            resolved_at: null,
+            resolution_notes: wasResolved ? null : undefined,
         },
         {
             onConflict: "sentry_issue_id",
-            // On duplicate: update counts and timestamp but preserve status/resolution
             ignoreDuplicates: false,
         }
     );
@@ -194,10 +229,48 @@ async function persistErrorEvent(issue: SentryIssue, ctx: LogContext): Promise<v
         throw new Error(`Supabase upsert failed: ${error.message}`);
     }
 
-    logEvent("info", "Sentry error event persisted", {
+    logEvent("info", wasResolved ? "Sentry regression: issue re-opened" : "Sentry error event persisted", {
         ...ctx,
         sentry_issue_id: issue.id,
+        is_regression: wasResolved,
     });
+
+    return wasResolved;
+}
+
+async function autoResolveEvent(sentryIssueId: string, ctx: LogContext): Promise<void> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- error_events table not yet in generated types
+    const supabase = createAdminClient() as any;
+
+    const { error } = await supabase
+        .from("error_events")
+        .update({
+            status: "resolved",
+            resolved_at: new Date().toISOString(),
+        })
+        .eq("sentry_issue_id", sentryIssueId);
+
+    if (error) {
+        throw new Error(`Supabase update failed: ${error.message}`);
+    }
+
+    logEvent("info", "Sentry issue auto-resolved", { ...ctx, sentry_issue_id: sentryIssueId });
+}
+
+async function autoIgnoreEvent(sentryIssueId: string, ctx: LogContext): Promise<void> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- error_events table not yet in generated types
+    const supabase = createAdminClient() as any;
+
+    const { error } = await supabase
+        .from("error_events")
+        .update({ status: "wont_fix" })
+        .eq("sentry_issue_id", sentryIssueId);
+
+    if (error) {
+        throw new Error(`Supabase update failed: ${error.message}`);
+    }
+
+    logEvent("info", "Sentry issue auto-ignored", { ...ctx, sentry_issue_id: sentryIssueId });
 }
 
 // ---------------------------------------------------------------------------
@@ -230,25 +303,57 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const { action, data } = payload;
     const issue = data?.issue;
 
-    // Acknowledge immediately — only act on new issues
-    if (action !== "created" || !issue) {
+    // Acknowledge immediately for unknown actions
+    if (!issue) {
         return NextResponse.json({ ok: true });
     }
 
-    logEvent("info", "Sentry issue.created received", {
-        ...ctx,
-        sentry_issue_id: issue.id,
-        sentry_level: issue.level,
-    });
+    // ── resolved: sync status to DB silently ──────────────────────────────
+    if (action === "resolved") {
+        logEvent("info", "Sentry issue.resolved received", {
+            ...ctx,
+            sentry_issue_id: issue.id,
+        });
+        autoResolveEvent(issue.id, ctx).catch((err) =>
+            logError("Failed to auto-resolve Sentry issue in DB", err, ctx)
+        );
+        return NextResponse.json({ ok: true });
+    }
 
-    // Fire-and-forget: DB + Slack (don't hold up the 200 response)
-    persistErrorEvent(issue, ctx).catch((err) =>
-        logError("Failed to persist Sentry error event to DB", err, ctx)
-    );
+    // ── ignored: sync status to DB silently ───────────────────────────────
+    if (action === "ignored") {
+        logEvent("info", "Sentry issue.ignored received", {
+            ...ctx,
+            sentry_issue_id: issue.id,
+        });
+        autoIgnoreEvent(issue.id, ctx).catch((err) =>
+            logError("Failed to auto-ignore Sentry issue in DB", err, ctx)
+        );
+        return NextResponse.json({ ok: true });
+    }
 
-    postToSlack(issue).catch((err) =>
-        logError("Failed to post Sentry event to Slack", err, ctx)
-    );
+    // ── created: upsert + Slack alert (regression-aware) ──────────────────
+    if (action === "created") {
+        logEvent("info", "Sentry issue.created received", {
+            ...ctx,
+            sentry_issue_id: issue.id,
+            sentry_level: issue.level,
+        });
 
+        // Fire-and-forget chain: persist first (to detect regression), then Slack
+        persistErrorEvent(issue, ctx)
+            .then((isRegression) =>
+                postToSlack(issue, isRegression).catch((err) =>
+                    logError("Failed to post Sentry event to Slack", err, ctx)
+                )
+            )
+            .catch((err) =>
+                logError("Failed to persist Sentry error event to DB", err, ctx)
+            );
+
+        return NextResponse.json({ ok: true });
+    }
+
+    // All other actions (assigned, seen, etc.) — acknowledge silently
     return NextResponse.json({ ok: true });
 }

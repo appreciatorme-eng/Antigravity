@@ -23,6 +23,7 @@ const routes = createCatchAllHandlers([
   ["billing/subscription", () => import("@/app/api/_handlers/billing/subscription/route")],
   ["calendar/events", () => import("@/app/api/_handlers/calendar/events/route")],
   ["cron/assistant-alerts", () => import("@/app/api/_handlers/cron/assistant-alerts/route")],
+  ["cron/error-digest", () => import("@/app/api/_handlers/cron/error-digest/route")],
   ["cron/assistant-briefing", () => import("@/app/api/_handlers/cron/assistant-briefing/route")],
   ["cron/assistant-digest", () => import("@/app/api/_handlers/cron/assistant-digest/route")],
   ["cron/automation-processor", () => import("@/app/api/_handlers/cron/automation-processor/route")],
