@@ -58,6 +58,18 @@ export function logError(message: string, error: unknown, context: LogContext = 
         ...context,
         ...toErrorDetails(error),
     });
+
+    // Forward Error objects to Sentry so they appear as Issues in the dashboard.
+    // Dynamic import keeps this tree-shakeable and Edge-runtime safe.
+    if (error instanceof Error) {
+        import("@sentry/nextjs")
+            .then(({ captureException }) => {
+                captureException(error, { extra: { logMessage: message, ...context } });
+            })
+            .catch(() => {
+                // Sentry unavailable — already logged to stdout above, nothing more to do.
+            });
+    }
 }
 
 export function logWarn(message: string, context: LogContext = {}) {

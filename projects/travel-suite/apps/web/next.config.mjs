@@ -1,6 +1,7 @@
 import path from "node:path";
 import bundleAnalyzer from "@next/bundle-analyzer";
 import createNextIntlPlugin from "next-intl/plugin";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const projectRoot = path.resolve(import.meta.dirname);
 const withBundleAnalyzer = bundleAnalyzer({
@@ -148,4 +149,23 @@ formats: ["image/avif", "image/webp"],
   },
 };
 
-export default withBundleAnalyzer(withNextIntl(nextConfig));
+export default withSentryConfig(withBundleAnalyzer(withNextIntl(nextConfig)), {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+
+  // Suppress Sentry CLI output during builds
+  silent: true,
+
+  // Upload wider set of source maps for better stack traces
+  widenClientFileUpload: true,
+
+  // Don't serve source maps to browsers (security)
+  hideSourceMaps: true,
+
+  // Tree-shake Sentry logger statements from the bundle
+  disableLogger: true,
+
+  // Don't create Vercel Cron Monitors (Hobby plan doesn't support them)
+  automaticVercelMonitors: false,
+});
