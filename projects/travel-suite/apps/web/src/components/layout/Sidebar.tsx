@@ -48,11 +48,6 @@ function toNavItem(config: NavItemConfig): NavItem {
 
 const PRIMARY_ITEMS: NavItem[] = getPrimaryItems().map(toNavItem);
 
-const SECONDARY_GROUPS = getSecondaryGrouped().map((group) => ({
-    ...group,
-    items: group.items.map(toNavItem),
-}));
-
 interface BadgeProps {
     count: number;
     color: string;
@@ -183,8 +178,8 @@ export default function Sidebar({ className }: SidebarProps) {
     const { isTourActive, startPageTour, stopTour, hasCurrentPageTour, progress } = useTourToggle();
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isMoreOpen, setIsMoreOpen] = useState(
-            () =>
-            SECONDARY_GROUPS.some((group) =>
+        () =>
+            getSecondaryGrouped().some((group) =>
                 group.items.some(
                     (item) =>
                         pathname === item.href ||
@@ -197,6 +192,12 @@ export default function Sidebar({ className }: SidebarProps) {
         full_name?: string | null;
         role?: string | null;
     } | null>(null);
+    const secondaryGroups = getSecondaryGrouped([], {
+        includeGodMode: profile?.role === "super_admin",
+    }).map((group) => ({
+        ...group,
+        items: group.items.map(toNavItem),
+    }));
 
     useEffect(() => {
         const getUser = async () => {
@@ -338,7 +339,7 @@ export default function Sidebar({ className }: SidebarProps) {
                             >
                                 {!isCollapsed && (
                                     <div className="pl-3 border-l border-white/10 ml-4 space-y-3 py-1">
-                                        {SECONDARY_GROUPS.map((group) => (
+                                        {secondaryGroups.map((group) => (
                                             <div key={group.section} className="space-y-1">
                                                 <p className="px-3 text-[9px] font-bold tracking-widest text-slate-600 uppercase pt-1">
                                                     {group.label}
@@ -357,7 +358,7 @@ export default function Sidebar({ className }: SidebarProps) {
                                 )}
                                 {isCollapsed && (
                                     <div className="space-y-3">
-                                        {SECONDARY_GROUPS.map((group) => (
+                                        {secondaryGroups.map((group) => (
                                             <div key={group.section} className="space-y-1">
                                                 {group.items.map((item) => (
                                                     <NavItemRow
@@ -473,7 +474,11 @@ export default function Sidebar({ className }: SidebarProps) {
                                         {profile?.full_name || user?.email?.split("@")[0] || "User"}
                                     </span>
                                     <span className="text-[10px] text-slate-500 truncate">
-                                        {profile?.role === "admin" ? "Administrator" : "Tour Operator"}
+                                        {profile?.role === "super_admin"
+                                            ? "Super Admin"
+                                            : profile?.role === "admin"
+                                                ? "Administrator"
+                                                : "Tour Operator"}
                                     </span>
                                 </motion.div>
                             )}

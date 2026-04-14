@@ -19,6 +19,7 @@ import {
     ScrollText,
     Shield,
     ChevronLeft,
+    TriangleAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -71,6 +72,7 @@ const NAV_GROUPS: NavGroup[] = [
     {
         title: "SYSTEM",
         items: [
+            { icon: TriangleAlert, label: "Error Events", href: "/god/errors" },
             { icon: Power, label: "Kill Switch", href: "/god/kill-switch", dangerous: true },
             { icon: Activity, label: "Health Monitor", href: "/god/monitoring" },
             { icon: ScrollText, label: "Audit Log", href: "/god/audit-log" },

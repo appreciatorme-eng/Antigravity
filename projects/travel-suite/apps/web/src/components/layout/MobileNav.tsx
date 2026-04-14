@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
+import { createClient } from "@/lib/supabase/client";
 import {
     Compass,
     MoreHorizontal,
@@ -51,15 +52,6 @@ interface SecondaryDrawerItem {
 // so overflow primary items (Proposals) appear in the "More" drawer
 const MOBILE_TAB_HREFS = TAB_ITEMS.map((t) => t.href);
 
-const SECONDARY_GROUPS = getSecondaryGrouped(MOBILE_TAB_HREFS).map((group) => ({
-    ...group,
-    items: group.items.map((config: NavItemConfig): SecondaryDrawerItem => ({
-        icon: resolveIcon(config.icon),
-        label: config.label,
-        href: config.href,
-    })),
-}));
-
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
@@ -88,7 +80,42 @@ export default function MobileNav() {
     const counts = useNavCounts();
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [isFabOpen, setIsFabOpen] = useState(false);
+    const [role, setRole] = useState<string | null>(null);
     const { isTourActive, startPageTour, stopTour, hasCurrentPageTour } = useTourToggle();
+    const secondaryGroups = getSecondaryGrouped(MOBILE_TAB_HREFS, {
+        includeGodMode: role === "super_admin",
+    }).map((group) => ({
+        ...group,
+        items: group.items.map((config: NavItemConfig): SecondaryDrawerItem => ({
+            icon: resolveIcon(config.icon),
+            label: config.label,
+            href: config.href,
+        })),
+    }));
+
+    useEffect(() => {
+        const loadRole = async () => {
+            const supabase = createClient();
+            const {
+                data: { user },
+            } = await supabase.auth.getUser();
+
+            if (!user) {
+                setRole(null);
+                return;
+            }
+
+            const { data: profile } = await supabase
+                .from("profiles")
+                .select("role")
+                .eq("id", user.id)
+                .single();
+
+            setRole(profile?.role ?? null);
+        };
+
+        void loadRole();
+    }, []);
 
     // Close drawers on route change
     useEffect(() => {
@@ -260,7 +287,7 @@ export default function MobileNav() {
                                         </div>
                                     </button>
                                 )}
-                                {SECONDARY_GROUPS.map((group) => (
+                                {secondaryGroups.map((group) => (
                                     <div key={group.section}>
                                         <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 px-1">
                                             {group.label}

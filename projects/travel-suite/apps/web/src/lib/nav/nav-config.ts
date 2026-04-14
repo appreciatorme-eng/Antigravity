@@ -37,6 +37,10 @@ export interface NavItemConfig {
   readonly section: NavSection;
 }
 
+interface SecondaryNavOptions {
+  readonly includeGodMode?: boolean;
+}
+
 // ---------------------------------------------------------------------------
 // Navigation items
 // ---------------------------------------------------------------------------
@@ -240,6 +244,7 @@ export function getPrimaryItems(): readonly NavItemConfig[] {
  */
 export function getSecondaryGrouped(
   mobileTabHrefs: readonly string[] = [],
+  options: SecondaryNavOptions = {},
 ): ReadonlyArray<{
   section: NavSection;
   label: string;
@@ -251,7 +256,7 @@ export function getSecondaryGrouped(
     : [];
 
   const sections: NavSection[] = ["daily", "operations", "growth", "admin", "account"];
-  return sections
+  const groupedSections = sections
     .map((section) => {
       const sectionItems = getNavSection(section);
       // Prepend overflow primary items (e.g. Proposals) to the daily section
@@ -261,4 +266,20 @@ export function getSecondaryGrouped(
       return { section, label: SECTION_LABELS[section], items };
     })
     .filter((group) => group.items.length > 0);
+
+  if (!options.includeGodMode) {
+    return groupedSections;
+  }
+
+  return groupedSections.map((group) =>
+    group.section === "admin"
+      ? {
+          ...group,
+          items: [
+            ...group.items,
+            { icon: "Shield", label: "God Mode", href: "/god", section: "admin" },
+          ],
+        }
+      : group
+  );
 }

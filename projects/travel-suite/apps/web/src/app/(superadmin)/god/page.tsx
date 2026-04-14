@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
     Users, Building2, Map, DollarSign, Zap, LifeBuoy,
-    Power, Megaphone, Activity, RefreshCw,
+    Power, Megaphone, Activity, RefreshCw, TriangleAlert,
 } from "lucide-react";
 import KpiGrid from "@/components/god-mode/KpiGrid";
 import TrendChart from "@/components/god-mode/TrendChart";
@@ -136,6 +136,7 @@ export default function GodCommandCenter() {
     ];
 
     const quickActions = [
+        { label: "Error Events", icon: TriangleAlert, href: "/god/errors" },
         { label: "Kill Switch", icon: Power, href: "/god/kill-switch", danger: true },
         { label: "Send Announcement", icon: Megaphone, href: "/god/announcements" },
         { label: "View Support", icon: LifeBuoy, href: "/god/support" },
