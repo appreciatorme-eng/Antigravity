@@ -12,10 +12,6 @@
     {
       "path": "/api/cron/automation-processor",
       "schedule": "0 2 * * *"
-    },
-    {
-      "path": "/api/cron/error-digest",
-      "schedule": "0 3 * * 1"
     }
   ]
 }
