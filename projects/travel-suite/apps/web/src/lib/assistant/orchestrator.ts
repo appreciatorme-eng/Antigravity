@@ -230,6 +230,7 @@ async function callOpenAI(
   }
 
   const response = await fetch(OPENAI_CHAT_URL, {
+    // eslint-disable-next-line no-restricted-syntax -- server-side call, not a client mutation
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,

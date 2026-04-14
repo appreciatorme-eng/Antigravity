@@ -11,6 +11,7 @@ export async function captureOperationalMetric(
 
     try {
         await fetch(`${host.replace(/\/$/, "")}/capture/`, {
+            // eslint-disable-next-line no-restricted-syntax -- server-side call, not a client mutation
             method: "POST",
             headers: {
                 "content-type": "application/json",

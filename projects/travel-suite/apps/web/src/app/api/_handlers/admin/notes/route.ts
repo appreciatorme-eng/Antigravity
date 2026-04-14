@@ -29,6 +29,7 @@ export async function GET(request: Request): Promise<Response> {
 
         const db = createAdminClient();
         const { data } = await db
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- conversation_notes not yet in generated types
             .from("conversation_notes" as any)
             .select("note, updated_at")
             .eq("organization_id", orgId)
@@ -70,6 +71,7 @@ export async function POST(request: Request): Promise<Response> {
 
         const db = createAdminClient();
         const { error } = await db
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- conversation_notes not yet in generated types
             .from("conversation_notes" as any)
             .upsert(
                 {

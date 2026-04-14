@@ -30,7 +30,6 @@ export default function DemoModeBanner() {
       // Hide banner while WelcomeModal is showing (it already communicates
       // that sample data is loaded). Once the user dismisses the modal it
       // sets tripbuilt:onboarded → "true", and the banner becomes visible.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setOnboarded(localStorage.getItem("tripbuilt:onboarded") === "true");
     } catch {
       // localStorage unavailable

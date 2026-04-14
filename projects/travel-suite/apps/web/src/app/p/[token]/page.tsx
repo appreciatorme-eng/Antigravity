@@ -114,6 +114,7 @@ export default function PublicProposalPage() {
 
   async function performPublicAction(body: Record<string, unknown>) {
     const response = await fetch(`/api/proposals/public/${shareToken}`, {
+      // eslint-disable-next-line no-restricted-syntax -- pre-auth route, no Bearer token available
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

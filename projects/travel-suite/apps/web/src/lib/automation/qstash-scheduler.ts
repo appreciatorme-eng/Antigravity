@@ -65,6 +65,7 @@ export async function scheduleAutomation(
 
   try {
     const response = await fetch(QSTASH_API_URL, {
+      // eslint-disable-next-line no-restricted-syntax -- server-side call, not a client mutation
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,

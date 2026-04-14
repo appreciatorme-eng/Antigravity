@@ -324,7 +324,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
       })),
     );
     setLoadingClients(false);
-  }, [supabase]);
+  }, []);
 
   const handleCreateClient = async () => {
     if (!newClientName.trim() || !newClientEmail.trim()) {
@@ -398,7 +398,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
     } finally {
       setLoadingSaved(false);
     }
-  }, [supabase]);
+  }, []);
 
   const loadTripLimit = useCallback(async () => {
     try {

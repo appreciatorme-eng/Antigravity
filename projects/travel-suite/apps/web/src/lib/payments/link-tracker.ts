@@ -27,6 +27,7 @@ export async function createPaymentLink(
   data: CreatePaymentLinkInput,
 ): Promise<PaymentLinkData> {
   const response = await fetch("/api/payments/links", {
+    // eslint-disable-next-line no-restricted-syntax -- server-side call, not a client mutation
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -59,6 +60,7 @@ export async function recordEvent(
   event: PaymentEvent,
 ): Promise<PaymentLinkData | null> {
   const response = await fetch(`/api/payments/track/${token}`, {
+    // eslint-disable-next-line no-restricted-syntax -- server-side call, not a client mutation
     method: "POST",
     headers: {
       "Content-Type": "application/json",

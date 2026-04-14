@@ -86,6 +86,7 @@ function AuthPageInner() {
                 setMessage("Check your email for a confirmation link.");
             } else {
                 const response = await fetch("/api/auth/password-login", {
+                    // eslint-disable-next-line no-restricted-syntax -- pre-auth route, no Bearer token available
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ email, password }),

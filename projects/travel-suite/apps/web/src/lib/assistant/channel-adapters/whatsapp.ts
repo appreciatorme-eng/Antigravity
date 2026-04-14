@@ -24,7 +24,6 @@ import {
 } from "../session";
 import { findAction } from "../actions/registry";
 import { logAuditEvent } from "../audit";
-import { sendWhatsAppText } from "@/lib/whatsapp.server";
 import { guardedSendText } from "@/lib/whatsapp-evolution.server";
 import { env } from "@/lib/config/env";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -70,11 +69,11 @@ async function sendReply(senderPhone: string, text: string): Promise<void> {
     // Evolution API path — look up session name from DB
     const admin = createAdminClient();
     const { data: conn } = await admin
-      .from("whatsapp_connections" as any)
+      .from("whatsapp_connections")
       .select("session_name")
       .limit(1)
       .single();
-    const sessionName = (conn as any)?.session_name;
+    const sessionName = conn?.session_name;
     if (!sessionName) {
       logError("[whatsapp-adapter] No WhatsApp connection found for Evolution send", null);
       return;

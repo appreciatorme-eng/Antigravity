@@ -97,6 +97,7 @@ async function callMetaWhatsAppApi(payload: Record<string, unknown>): Promise<Wh
     for (let attempt = 1; attempt <= WHATSAPP_MAX_ATTEMPTS; attempt += 1) {
         try {
             const response = await fetch(`https://graph.facebook.com/v20.0/${phoneNumberId}/messages`, {
+                // eslint-disable-next-line no-restricted-syntax -- server-side call, not a client mutation
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${token}`,

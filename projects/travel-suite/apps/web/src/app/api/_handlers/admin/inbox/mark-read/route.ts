@@ -26,6 +26,7 @@ export async function GET(request: Request): Promise<Response> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return apiError("Not authenticated", 401);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inbox_read_state not yet in generated types
     const { data, error } = await (supabase as any)
       .from("inbox_read_state")
       .select("conversation_id, last_read_at")
@@ -75,6 +76,7 @@ export async function POST(request: Request): Promise<Response> {
 
     const now = new Date().toISOString();
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- inbox_read_state not yet in generated types
     const { error } = await (supabase as any)
       .from("inbox_read_state")
       .upsert(

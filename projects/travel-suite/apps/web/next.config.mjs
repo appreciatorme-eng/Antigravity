@@ -73,23 +73,6 @@ const cspHeader = [
   "form-action 'self' https://api.razorpay.com https://checkout.razorpay.com",
 ].join("; ");
 
-// Payment pages need a relaxed CSP — Razorpay checkout.js dynamically
-// loads sub-resources from various *.razorpay.com subdomains that are
-// impossible to enumerate statically.
-const paymentCspHeader = [
-  "default-src 'self'",
-  "base-uri 'self'",
-  "object-src 'none'",
-  "frame-ancestors 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.razorpay.com https://checkout.razorpay.com",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "img-src 'self' data: blob: https:",
-  "font-src 'self' data: https://fonts.gstatic.com",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.razorpay.com https://checkout.razorpay.com https://api.razorpay.com https://lumberjack.razorpay.com",
-  "frame-src 'self' https://*.razorpay.com https://api.razorpay.com https://checkout.razorpay.com",
-  "worker-src 'self' blob:",
-  "form-action 'self' https://*.razorpay.com https://api.razorpay.com https://checkout.razorpay.com",
-].join("; ");
 
 /** @type {import("next").NextConfig} */
 const nextConfig = {

@@ -33,6 +33,7 @@ function redirectWithSuccess(req: Request, platform?: string) {
 
 async function exchangeFacebookToken(params: Record<string, string>): Promise<Response> {
     return fetch('https://graph.facebook.com/v20.0/oauth/access_token', {
+        // eslint-disable-next-line no-restricted-syntax -- server-side call, not a client mutation
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',

@@ -110,7 +110,7 @@ export async function POST(request: Request) {
                     await adminClient.from("whatsapp_connections").update({
                         status: "connected",
                         phone_number: connectedPhone,
-                    } as any).eq("organization_id", orgId);
+                    }).eq("organization_id", orgId);
 
                     // Auto-save phone to admin profile if not set
                     if (connectedPhone) {

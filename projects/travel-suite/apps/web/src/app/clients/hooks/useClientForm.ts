@@ -37,7 +37,7 @@ interface UseClientFormOptions {
 export function useClientForm({ onSaved }: UseClientFormOptions): UseClientFormReturn {
     const supabase = createClient();
     const { toast } = useToast();
-    const { isDemoMode, toggleDemoMode } = useDemoMode();
+    const { isDemoMode } = useDemoMode();
 
     const [modalOpen, setModalOpen] = useState(false);
     const [editingClientId, setEditingClientId] = useState<string | null>(null);

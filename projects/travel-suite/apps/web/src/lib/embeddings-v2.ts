@@ -50,6 +50,7 @@ async function requestEmbedding(
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${EMBEDDING_MODEL_V2}:embedContent`,
       {
+        // eslint-disable-next-line no-restricted-syntax -- server-side call, not a client mutation
         method: "POST",
         headers: {
           "Content-Type": "application/json",

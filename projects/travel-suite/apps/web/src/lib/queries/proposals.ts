@@ -7,28 +7,6 @@ import { createClient } from '@/lib/supabase/client';
 import { useDemoMode } from '@/lib/demo/demo-mode-context';
 import { DEMO_PROPOSALS } from '@/lib/demo/data';
 
-const PROPOSAL_LIST_SELECT = [
-    'approved_at',
-    'approved_by',
-    'client_id',
-    'client_selected_price',
-    'created_at',
-    'expires_at',
-    'id',
-    'organization_id',
-    'share_token',
-    'status',
-    'trip_id',
-    'template_id',
-    'title',
-    'total_price',
-    'trips:trip_id(id, status, start_date, end_date)',
-    'updated_at',
-    'version',
-    'viewed_at',
-    'clients(full_name, email)',
-    'tour_templates(name)',
-].join(', ');
 const PROPOSAL_DETAIL_SELECT = [
     'approved_at',
     'approved_by',

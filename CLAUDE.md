@@ -252,12 +252,26 @@ The codebase supports **two WhatsApp implementations**:
 | Timing-safe compare | `src/lib/security/safe-equal.ts` |
 | Structured logger | `src/lib/observability/logger.ts` |
 | Supabase admin | `src/lib/supabase/admin.ts` |
-| Generated DB types | `src/lib/supabase/database.types.ts` |
+| Generated DB types | `supabase/database.types.generated.ts` (re-exported via `src/lib/database.types.ts`) |
 | API responses | `src/lib/api/response.ts` (`apiSuccess`, `apiError`) |
 | API response helpers | `src/lib/api-response.ts` (typed envelope) |
 | QA log | `.claude/qa-log.md` |
 | Audit tracker | `AUDIT_REMEDIATION_TRACKER.md` |
-| Deep review tracker | `DEEP_REVIEW_TRACKER.md` |
+| Deep review tracker | `docs/archive/DEEP_REVIEW_TRACKER.md` |
+
+## Schema Patterns (Apr 2026)
+
+- **Soft-delete**: New tables use `deleted_at TIMESTAMPTZ` column. Filter with `.is("deleted_at", null)` for active records.
+- **Commercial payments ledger**: `commercial_payments` table tracks operator-side payment receipts (separate from Razorpay `payments`). Source: `supabase/migrations/20260412183000_commercial_payments_ledger.sql`
+- **Automation rules**: `automation_rules` table stores trigger-action pairs for trip workflow automation. Source: `supabase/migrations/20260326000000_automation_rules.sql`
+
+## Types Architecture
+
+Two types files exist — do not confuse them:
+- `supabase/database.types.generated.ts` — authoritative generated types; used by both `createClient()` and `createAdminClient()` via `src/lib/database.types.ts`
+- `src/lib/supabase/database.types.ts` — extended/augmented types; has newer tables not yet in the generated file
+
+When `inbox_read_state`, `conversation_notes`, or `user_sessions` show TS errors, it's because they're in the extended file but not the generated one. Use `as any` with an `// eslint-disable-next-line` comment explaining why.
 
 ---
 

@@ -51,7 +51,6 @@ export function useTransactions(filters: TransactionFilters, refreshKey = 0) {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters, fetchTransactions, refreshKey]);
 
   const reload = useCallback(() => {

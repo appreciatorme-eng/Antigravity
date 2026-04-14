@@ -156,6 +156,7 @@ export default function NPSSurveyPage() {
 
     try {
       const res = await fetch("/api/reputation/nps/submit", {
+        // eslint-disable-next-line no-restricted-syntax -- pre-auth route, no Bearer token available
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

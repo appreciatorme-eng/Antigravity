@@ -350,6 +350,7 @@ out center tags 80;
                 `.trim();
 
             const response = await fetch("https://overpass-api.de/api/interpreter", {
+                // eslint-disable-next-line no-restricted-syntax -- external API, no auth token needed
                 method: "POST",
                 headers: { "Content-Type": "text/plain;charset=UTF-8" },
                 body: overpassQuery,

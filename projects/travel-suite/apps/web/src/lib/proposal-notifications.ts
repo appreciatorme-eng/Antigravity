@@ -25,6 +25,7 @@ async function sendProposalChannels(
       : `/api/proposals/${proposalId}/send`;
 
   const response = await fetch(endpoint, {
+    // eslint-disable-next-line no-restricted-syntax -- server-side call, not a client mutation
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ channels }),

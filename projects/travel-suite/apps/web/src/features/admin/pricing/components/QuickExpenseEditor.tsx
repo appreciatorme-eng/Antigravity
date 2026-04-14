@@ -199,7 +199,7 @@ export function QuickExpenseEditor({
     } finally {
       setSaving(false);
     }
-  }, [selectedTrip, category, vendorName, cost, price, commissionPct, commissionAmount, paxCount, notes, costAmount, priceAmount, receiptId, expenseDate, onSaved]);
+  }, [selectedTrip, category, vendorName, cost, price, commissionPct, commissionAmount, paxCount, notes, costAmount, priceAmount, receiptId, expenseDate, onSaved, tripSearch]);
 
   return (
     <GlassModal

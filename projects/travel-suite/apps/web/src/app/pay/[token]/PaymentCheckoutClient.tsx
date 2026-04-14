@@ -99,6 +99,7 @@ export function PaymentCheckoutClient({ initialLink }: PaymentCheckoutClientProp
         handler: async (response: Record<string, unknown>) => {
           try {
             const verifyResponse = await fetch("/api/payments/verify", {
+              // eslint-disable-next-line no-restricted-syntax -- pre-auth route, no Bearer token available
               method: "POST",
               headers: {
                 "Content-Type": "application/json",

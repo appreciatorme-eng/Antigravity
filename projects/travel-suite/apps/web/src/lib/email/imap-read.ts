@@ -120,55 +120,6 @@ function daysAgo(n: number): Date {
 }
 
 // ---------------------------------------------------------------------------
-// Parse a single IMAP message into an EmailMessage
-// ---------------------------------------------------------------------------
-
-function buildAttachmentMeta(
-  messageUid: number,
-  parsed: Awaited<ReturnType<typeof simpleParser>>,
-): readonly EmailAttachmentMeta[] {
-  if (!parsed.attachments?.length) return [];
-  return parsed.attachments.map((att, idx) => ({
-    attachmentId: `${messageUid}_${idx}`,
-    filename: att.filename ?? `attachment_${idx}`,
-    mimeType: att.contentType ?? "application/octet-stream",
-    size: att.size ?? 0,
-  }));
-}
-
-function toEmailMessage(
-  uid: number,
-  threadId: string,
-  parsed: Awaited<ReturnType<typeof simpleParser>>,
-): EmailMessage {
-  const fromAddr = parsed.from?.value?.[0];
-  const toAddr = parsed.to
-    ? Array.isArray(parsed.to)
-      ? parsed.to.map((a) => a.text).join(", ")
-      : parsed.to.text
-    : "";
-
-  const bodyText = parsed.text ?? "";
-  const snippet = bodyText.slice(0, 200).replace(/\s+/g, " ").trim();
-
-  return {
-    id: String(uid),
-    threadId,
-    from: fromAddr?.name ?? fromAddr?.address ?? "",
-    fromEmail: fromAddr?.address ?? "",
-    to: toAddr,
-    subject: parsed.subject ?? "(no subject)",
-    snippet,
-    bodyHtml: parsed.html || "",
-    bodyText,
-    date: (parsed.date ?? new Date()).toISOString(),
-    messageIdHeader: parsed.messageId ?? null,
-    labelIds: [],
-    attachments: buildAttachmentMeta(uid, parsed),
-  };
-}
-
-// ---------------------------------------------------------------------------
 // Group messages into pseudo-threads by normalized subject
 // ---------------------------------------------------------------------------
 
@@ -249,10 +200,6 @@ export async function fetchImapThreads(
 
     const messages: EmailMessage[] = [];
 
-    // imapflow fetch() expects a SequenceRange string like "uid1,uid2,uid3"
-    // OR {uid: true} option makes it treat the range as UIDs not sequence numbers
-    const uidRange = pageUids.join(",");
-
     // Fetch envelope only (minimal — no source, no bodyStructure, no headers)
     // simpleParser and headers both fail on Vercel serverless
     let fetchError: string | null = null;
@@ -260,8 +207,8 @@ export async function fetchImapThreads(
     // Use fetchOne() which returns a single message object directly.
     for (const uid of pageUids) {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         // fetchOne(seq, query, options) — uid:true MUST be in options (3rd arg), not query
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const msg = await (client as any).fetchOne(String(uid), { envelope: true, source: true }, { uid: true });
         if (!msg) continue;
 

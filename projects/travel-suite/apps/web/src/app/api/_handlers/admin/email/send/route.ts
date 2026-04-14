@@ -89,7 +89,7 @@ export async function POST(request: Request): Promise<Response> {
         const [{ data: org }, { data: senderProfile }] = await Promise.all([
             admin
                 .from("organizations")
-                .select("name, logo_url, legal_name, billing_city, billing_state" as any)
+                .select("name, logo_url, legal_name, billing_city, billing_state")
                 .eq("id", orgId)
                 .single(),
             admin

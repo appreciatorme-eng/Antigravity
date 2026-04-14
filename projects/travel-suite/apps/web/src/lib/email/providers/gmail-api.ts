@@ -132,6 +132,7 @@ export class GmailApiProvider implements EmailProvider {
       const res = await fetch(
         `https://gmail.googleapis.com/gmail/v1/users/me/threads/${threadId}/modify`,
         {
+          // eslint-disable-next-line no-restricted-syntax -- server-side call, not a client mutation
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,

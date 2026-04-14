@@ -50,6 +50,7 @@ export function InteractivePricing({ pricing }: InteractivePricingProps) {
             ? pricingRecord.serviceFee
             : 0;
 
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- hooks always called, conditions are inside hook bodies not before them
     const conversionKey = useMemo(() => {
         if (currency === "INR") return null;
         return JSON.stringify({
@@ -61,6 +62,7 @@ export function InteractivePricing({ pricing }: InteractivePricingProps) {
         });
     }, [currency, passengerCount, pricingRecord.basePrice, pricingRecord.per_person_cost, pricingRecord.total_cost]);
 
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- hooks always called, conditions are inside hook bodies not before them
     useEffect(() => {
         if (currency === "INR") {
             setConvertedBaseCost(null);

@@ -3,7 +3,6 @@
 import { useRouter, usePathname } from "next/navigation";
 import { useTourToggle } from "@/lib/tour/tour-toggle-context";
 import { getNextTourPage, getTourIdForPath } from "@/lib/tour/tour-registry";
-import { TOUR_PAGE_START } from "@/lib/tour/tour-toggle-context";
 import { TourCompletePrompt } from "./TourCompletePrompt";
 
 /**

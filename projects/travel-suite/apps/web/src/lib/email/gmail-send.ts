@@ -139,6 +139,7 @@ export async function sendViaGmail(
         }
 
         const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+            // eslint-disable-next-line no-restricted-syntax -- server-side call, not a client mutation
             method: "POST",
             headers: {
                 Authorization: `Bearer ${accessToken}`,

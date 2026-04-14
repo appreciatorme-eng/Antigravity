@@ -820,6 +820,7 @@ export type Database = {
       clients: {
         Row: {
           created_at: string | null
+          deleted_at: string | null
           id: string
           organization_id: string
           updated_at: string | null
@@ -827,6 +828,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          deleted_at?: string | null
           id: string
           organization_id: string
           updated_at?: string | null
@@ -834,6 +836,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          deleted_at?: string | null
           id?: string
           organization_id?: string
           updated_at?: string | null
@@ -1614,6 +1617,102 @@ export type Database = {
         }
         Relationships: []
       }
+      commercial_payments: {
+        Row: {
+          amount: number
+          created_at: string | null
+          created_by: string | null
+          currency: string
+          deleted_at: string | null
+          id: string
+          invoice_id: string | null
+          method: string | null
+          notes: string | null
+          organization_id: string
+          payment_date: string
+          proposal_id: string | null
+          reference: string | null
+          source: string
+          status: string
+          trip_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string
+          deleted_at?: string | null
+          id?: string
+          invoice_id?: string | null
+          method?: string | null
+          notes?: string | null
+          organization_id: string
+          payment_date?: string
+          proposal_id?: string | null
+          reference?: string | null
+          source: string
+          status?: string
+          trip_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string
+          deleted_at?: string | null
+          id?: string
+          invoice_id?: string | null
+          method?: string | null
+          notes?: string | null
+          organization_id?: string
+          payment_date?: string
+          proposal_id?: string | null
+          reference?: string | null
+          source?: string
+          status?: string
+          trip_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commercial_payments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commercial_payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commercial_payments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commercial_payments_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commercial_payments_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoice_payments: {
         Row: {
           amount: number
@@ -1689,6 +1788,7 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           currency: string
+          deleted_at: string | null
           due_date: string | null
           e_invoice_acknowledged_at: string | null
           e_invoice_cancelled_at: string | null
@@ -1728,6 +1828,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           currency?: string
+          deleted_at?: string | null
           due_date?: string | null
           e_invoice_acknowledged_at?: string | null
           e_invoice_cancelled_at?: string | null
@@ -1767,6 +1868,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           currency?: string
+          deleted_at?: string | null
           due_date?: string | null
           e_invoice_acknowledged_at?: string | null
           e_invoice_cancelled_at?: string | null
@@ -3039,7 +3141,6 @@ export type Database = {
           billing_city: string | null
           billing_pincode: string | null
           billing_state: string | null
-          branch_offices: Json
           created_at: string | null
           gstin: string | null
           id: string
@@ -3062,7 +3163,6 @@ export type Database = {
           billing_city?: string | null
           billing_pincode?: string | null
           billing_state?: string | null
-          branch_offices?: Json
           created_at?: string | null
           gstin?: string | null
           id?: string
@@ -3085,7 +3185,6 @@ export type Database = {
           billing_city?: string | null
           billing_pincode?: string | null
           billing_state?: string | null
-          branch_offices?: Json
           created_at?: string | null
           gstin?: string | null
           id?: string
@@ -4302,6 +4401,7 @@ export type Database = {
           client_selected_price: number | null
           created_at: string | null
           created_by: string | null
+          deleted_at: string | null
           expires_at: string | null
           id: string
           organization_id: string
@@ -4324,6 +4424,7 @@ export type Database = {
           client_selected_price?: number | null
           created_at?: string | null
           created_by?: string | null
+          deleted_at?: string | null
           expires_at?: string | null
           id?: string
           organization_id: string
@@ -4346,6 +4447,7 @@ export type Database = {
           client_selected_price?: number | null
           created_at?: string | null
           created_by?: string | null
+          deleted_at?: string | null
           expires_at?: string | null
           id?: string
           organization_id?: string
@@ -5235,6 +5337,7 @@ export type Database = {
           id: string
           itinerary_id: string | null
           offline_pack_ready: boolean | null
+          payment_config: Json | null
           recipient_phone: string | null
           self_service_status: string | null
           share_code: string
@@ -5253,6 +5356,7 @@ export type Database = {
           id?: string
           itinerary_id?: string | null
           offline_pack_ready?: boolean | null
+          payment_config?: Json | null
           recipient_phone?: string | null
           self_service_status?: string | null
           share_code: string
@@ -5271,6 +5375,7 @@ export type Database = {
           id?: string
           itinerary_id?: string | null
           offline_pack_ready?: boolean | null
+          payment_config?: Json | null
           recipient_phone?: string | null
           self_service_status?: string | null
           share_code?: string
@@ -6551,6 +6656,7 @@ export type Database = {
           client_id: string | null
           created_at: string | null
           created_by: string | null
+          deleted_at: string | null
           destination: string | null
           driver_id: string | null
           end_date: string | null
@@ -6570,6 +6676,7 @@ export type Database = {
           client_id?: string | null
           created_at?: string | null
           created_by?: string | null
+          deleted_at?: string | null
           destination?: string | null
           driver_id?: string | null
           end_date?: string | null
@@ -6589,6 +6696,7 @@ export type Database = {
           client_id?: string | null
           created_at?: string | null
           created_by?: string | null
+          deleted_at?: string | null
           destination?: string | null
           driver_id?: string | null
           end_date?: string | null
@@ -6641,48 +6749,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      user_sessions: {
-        Row: {
-          browser: string | null
-          city: string | null
-          country: string | null
-          created_at: string
-          device_name: string | null
-          id: string
-          ip_address: string | null
-          last_seen_at: string
-          os: string | null
-          supabase_session_id: string | null
-          user_id: string
-        }
-        Insert: {
-          browser?: string | null
-          city?: string | null
-          country?: string | null
-          created_at?: string
-          device_name?: string | null
-          id?: string
-          ip_address?: string | null
-          last_seen_at?: string
-          os?: string | null
-          supabase_session_id?: string | null
-          user_id: string
-        }
-        Update: {
-          browser?: string | null
-          city?: string | null
-          country?: string | null
-          created_at?: string
-          device_name?: string | null
-          id?: string
-          ip_address?: string | null
-          last_seen_at?: string
-          os?: string | null
-          supabase_session_id?: string | null
-          user_id?: string
-        }
-        Relationships: []
       }
       whatsapp_chatbot_sessions: {
         Row: {
@@ -7639,4 +7705,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

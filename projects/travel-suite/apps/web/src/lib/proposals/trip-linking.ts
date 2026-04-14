@@ -2,11 +2,6 @@ import type { Database } from "@/lib/database.types";
 
 type AdminClient = ReturnType<typeof import("@/lib/supabase/admin").createAdminClient>;
 
-type ItineraryRow = Pick<
-  Database["public"]["Tables"]["itineraries"]["Row"],
-  "id" | "trip_title" | "destination" | "duration_days" | "raw_data"
->;
-
 type ProposalDayRow = Database["public"]["Tables"]["proposal_days"]["Row"];
 type ProposalActivityRow = Database["public"]["Tables"]["proposal_activities"]["Row"];
 

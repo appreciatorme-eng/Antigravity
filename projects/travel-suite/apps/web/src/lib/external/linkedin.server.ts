@@ -37,6 +37,7 @@ export async function exchangeLinkedInCode(
     });
 
     const res = await fetch(LINKEDIN_TOKEN_URL, {
+        // eslint-disable-next-line no-restricted-syntax -- server-side call, not a client mutation
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: body.toString(),

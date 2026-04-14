@@ -38,7 +38,6 @@ export function ConversationListPanel({
   selectedId,
   isLoadingConvs,
   conversationsError,
-  isDemoMode,
   isDisconnected,
   businessOnly,
   gmailConnected = false,

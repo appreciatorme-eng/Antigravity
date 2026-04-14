@@ -23,7 +23,6 @@ export function useInvoiceDraft(organizationBillingState: string | null) {
 
   useEffect(() => {
     if (gstEnabled) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDraftItems((previous) =>
         previous.map((item) => {
           const numericTax = Number.parseFloat(item.tax_rate || "0");

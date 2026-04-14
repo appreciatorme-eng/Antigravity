@@ -125,6 +125,7 @@ export function useGlobalSearch() {
 
     if (trimmed.length < MIN_QUERY_LENGTH) {
       // Clear results when query is too short, but keep the query text
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- guarded: returns prev unchanged when already empty, preventing infinite re-renders
       setState((prev) =>
         prev.results.length === 0 && !prev.isLoading && !prev.error
           ? prev

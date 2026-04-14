@@ -64,7 +64,7 @@ export default function TopBar({ className }: TopBarProps) {
     const closeMobileSearch = useCallback(() => {
         setMobileSearchOpen(false);
         search.reset();
-    }, [search.reset]);
+    }, [search]);
 
     // Close mobile search on ESC
     const handleKeyDown = useCallback((e: KeyboardEvent) => {
