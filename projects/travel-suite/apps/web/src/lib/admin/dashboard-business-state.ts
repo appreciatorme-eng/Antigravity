@@ -900,20 +900,12 @@ export function buildDashboardRevenueSeries(params: {
   const proposalById = new Map(
     params.proposals.map((proposal) => [proposal.id, proposal]),
   );
+  const tripById = new Map(params.trips.map((trip) => [trip.id, trip]));
+  const invoiceSummaryByTrip = buildInvoiceSummaryByTrip(params.invoices);
   const linkedProposalByTrip = new Map<string, ProposalBusinessRow>();
   for (const proposal of sortByEventDesc(params.proposals)) {
     if (!proposal.trip_id || linkedProposalByTrip.has(proposal.trip_id)) continue;
     linkedProposalByTrip.set(proposal.trip_id, proposal);
-  }
-
-  const invoiceValueByTrip = new Map<string, number>();
-  for (const invoice of params.invoices) {
-    if (!invoice.trip_id) continue;
-    const existing = invoiceValueByTrip.get(invoice.trip_id) || 0;
-    invoiceValueByTrip.set(
-      invoice.trip_id,
-      Math.max(existing, Number(invoice.total_amount || 0)),
-    );
   }
 
   const paymentLinkValueByTrip = new Map<string, number>();
@@ -940,8 +932,21 @@ export function buildDashboardRevenueSeries(params: {
 
   for (const proposal of sortByEventDesc(params.proposals)) {
     if (proposal.lifecycle !== "won" || !proposal.eventIso) continue;
-    if (!proposal.value || !Number.isFinite(proposal.value) || proposal.value <= 0) continue;
     if (!safeDate(proposal.eventIso)) continue;
+
+    const linkedTrip = proposal.trip_id
+      ? tripById.get(proposal.trip_id) || null
+      : null;
+    const invoiceSummary = proposal.trip_id
+      ? invoiceSummaryByTrip.get(proposal.trip_id) || null
+      : null;
+    const targetAmount = resolveCommercialTargetAmount({
+      trip: linkedTrip,
+      invoiceSummary,
+      proposalValue: proposal.value,
+    });
+    if (!targetAmount || !Number.isFinite(targetAmount) || targetAmount <= 0) continue;
+
     const key = getBucketKey(proposal.eventIso, params.range.granularity);
     if (!key || !buckets.has(key)) continue;
     const ownerId = getProposalOwnerKey(proposal);
@@ -949,18 +954,22 @@ export function buildDashboardRevenueSeries(params: {
 
     bookedOwnerKeys.add(ownerId);
     const bucket = buckets.get(key)!;
-    bucket.bookedValue = Number(bucket.bookedValue || 0) + proposal.value;
+    bucket.bookedValue = Number(bucket.bookedValue || 0) + targetAmount;
     bucket.bookedItems = [
       ...(bucket.bookedItems || []),
       createSeriesItem({
         id: proposal.id,
-        kind: "proposal",
-        title: safeTitle(proposal.title, "Won proposal"),
+        kind: linkedTrip ? "trip" : "proposal",
+        title: linkedTrip?.tripTitle || safeTitle(proposal.title, "Won proposal"),
         subtitle:
-          proposal.clientName || proposal.clientEmail || "Client handoff completed",
-        href: `/proposals/${proposal.id}`,
-        status: normalizeStatus(proposal.status, "converted"),
-        amountLabel: formatCompactINR(proposal.value),
+          linkedTrip?.destination ||
+          linkedTrip?.clientName ||
+          proposal.clientName ||
+          proposal.clientEmail ||
+          "Client handoff completed",
+        href: linkedTrip ? `/trips/${linkedTrip.id}` : `/proposals/${proposal.id}`,
+        status: linkedTrip?.status || normalizeStatus(proposal.status, "converted"),
+        amountLabel: formatCompactINR(targetAmount),
         dateLabel: formatDateLabel(proposal.eventIso),
       }),
     ];
@@ -1167,8 +1176,11 @@ export function buildDashboardRevenueSeries(params: {
 
     const linkedProposal = linkedProposalByTrip.get(trip.id) || null;
     const bookedFallbackAmount = getPositiveMax([
-      linkedProposal?.value,
-      invoiceValueByTrip.get(trip.id),
+      resolveCommercialTargetAmount({
+        trip,
+        invoiceSummary: invoiceSummaryByTrip.get(trip.id) || null,
+        proposalValue: linkedProposal?.value,
+      }),
       paymentLinkValueByTrip.get(trip.id),
       commercialPaymentSummaryByTrip.get(trip.id)?.totalPaid,
       getTripManualCashAmount(trip),
