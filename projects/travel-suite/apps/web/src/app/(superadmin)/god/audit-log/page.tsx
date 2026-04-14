@@ -3,6 +3,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { RefreshCw, ScrollText, ChevronDown, ChevronRight } from "lucide-react";
 
 interface AuditEntry {
@@ -57,10 +58,13 @@ function timeAgo(iso: string): string {
 const PAGE_SIZE = 20;
 
 export default function AuditLogPage() {
-    const [category, setCategory] = useState("all");
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const [category, setCategory] = useState(searchParams.get("category") ?? "all");
     const [data, setData] = useState<AuditData | null>(null);
     const [loading, setLoading] = useState(true);
-    const [page, setPage] = useState(0);
+    const [page, setPage] = useState(Math.max(0, Number(searchParams.get("page") || 0)));
     const [expanded, setExpanded] = useState<string | null>(null);
 
     const fetchData = useCallback(async () => {
@@ -76,6 +80,18 @@ export default function AuditLogPage() {
     }, [category, page]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
+
+    useEffect(() => {
+        const params = new URLSearchParams(searchParams.toString());
+        if (category !== "all") params.set("category", category);
+        else params.delete("category");
+        if (page > 0) params.set("page", String(page));
+        else params.delete("page");
+        const next = params.toString();
+        if (next !== searchParams.toString()) {
+            router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+        }
+    }, [category, page, pathname, router, searchParams]);
 
     function handleCategoryChange(value: string) {
         setCategory(value);

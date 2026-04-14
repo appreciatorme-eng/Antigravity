@@ -70,6 +70,20 @@ type AiUsageRow = {
     ai_requests: number | null;
 };
 
+type AuditLogRow = {
+    id: string;
+    action: string | null;
+    category: string | null;
+    created_at: string | null;
+    target_type: string | null;
+    target_id: string | null;
+    details: Record<string, unknown> | null;
+    profiles: {
+        full_name?: string | null;
+        email?: string | null;
+    } | null;
+};
+
 let redisClient: Redis | null | undefined;
 
 function getRedisClient(): Redis | null {
@@ -234,6 +248,7 @@ export async function GET(request: NextRequest) {
             previousProposalRowsResult,
             expiringProposalRowsResult,
             aiUsageRowsResult,
+            auditLogRowsResult,
             pendingNotificationRowsResult,
             failedNotificationsResult,
             deadLetterResult,
@@ -303,6 +318,11 @@ export async function GET(request: NextRequest) {
                 .from("organization_ai_usage")
                 .select("organization_id, estimated_cost_usd, ai_requests")
                 .eq("month_start", monthStart.toISOString().slice(0, 10)),
+            db
+                .from("platform_audit_log")
+                .select("id, action, category, created_at, target_type, target_id, details, profiles!platform_audit_log_actor_id_fkey(full_name, email)")
+                .order("created_at", { ascending: false })
+                .limit(8),
             db
                 .from("notification_queue")
                 .select("created_at")
@@ -444,6 +464,94 @@ export async function GET(request: NextRequest) {
         const topAiSpendOrgs = Array.from(aiByOrg.values())
             .sort((left, right) => right.spend_usd - left.spend_usd)
             .slice(0, 5);
+
+        const overdueByOrg = new Map<string, { overdue_amount: number; overdue_invoices: number }>();
+        for (const invoice of overdueInvoices) {
+            if (!invoice.organization_id) continue;
+            const current = overdueByOrg.get(invoice.organization_id) ?? { overdue_amount: 0, overdue_invoices: 0 };
+            current.overdue_amount += safeNumber(invoice.balance_amount ?? invoice.total_amount);
+            current.overdue_invoices += 1;
+            overdueByOrg.set(invoice.organization_id, current);
+        }
+
+        const expiringProposalByOrg = new Map<string, { expiring_proposals: number; expiring_value: number }>();
+        for (const proposal of expiringProposalRows) {
+            if (!proposal.organization_id) continue;
+            const current = expiringProposalByOrg.get(proposal.organization_id) ?? { expiring_proposals: 0, expiring_value: 0 };
+            current.expiring_proposals += 1;
+            current.expiring_value += proposalValue(proposal);
+            expiringProposalByOrg.set(proposal.organization_id, current);
+        }
+
+        const customerRiskOrgIds = new Set<string>([
+            ...overdueByOrg.keys(),
+            ...supportLoad.keys(),
+            ...expiringProposalByOrg.keys(),
+            ...aiByOrg.keys(),
+        ]);
+
+        const customerRiskOrgs = Array.from(customerRiskOrgIds)
+            .map((orgId) => {
+                const org = organizationMap.get(orgId);
+                const overdue = overdueByOrg.get(orgId) ?? { overdue_amount: 0, overdue_invoices: 0 };
+                const support = supportLoad.get(orgId) ?? { open: 0, urgent: 0, oldest_at: null };
+                const proposals = expiringProposalByOrg.get(orgId) ?? { expiring_proposals: 0, expiring_value: 0 };
+                const ai = aiByOrg.get(orgId) ?? { spend_usd: 0, requests: 0 };
+                const riskFlags = [
+                    overdue.overdue_amount > 0 ? `${overdue.overdue_invoices} overdue invoices` : null,
+                    support.urgent > 0 ? `${support.urgent} urgent tickets` : null,
+                    support.open > 0 ? `${support.open} open tickets` : null,
+                    proposals.expiring_proposals > 0 ? `${proposals.expiring_proposals} expiring proposals` : null,
+                    ai.spend_usd >= 25 ? `$${ai.spend_usd.toFixed(2)} AI spend MTD` : null,
+                ].filter(Boolean) as string[];
+
+                const rank = overdue.overdue_amount
+                    + (support.urgent * 40000)
+                    + (support.open * 10000)
+                    + proposals.expiring_value
+                    + (ai.spend_usd * 1500);
+
+                return {
+                    org_id: orgId,
+                    name: org?.name ?? "Unknown org",
+                    tier: org?.tier ?? "free",
+                    overdue_amount: Number(overdue.overdue_amount.toFixed(0)),
+                    overdue_invoices: overdue.overdue_invoices,
+                    open_tickets: support.open,
+                    urgent_tickets: support.urgent,
+                    oldest_ticket_at: support.oldest_at,
+                    expiring_proposals: proposals.expiring_proposals,
+                    expiring_value: Number(proposals.expiring_value.toFixed(0)),
+                    ai_spend_usd: Number(ai.spend_usd.toFixed(2)),
+                    risk_flags: riskFlags,
+                    href: `/god/directory?search=${encodeURIComponent(org?.name ?? "")}`,
+                    rank,
+                };
+            })
+            .filter((org) => org.risk_flags.length > 0)
+            .sort((left, right) => right.rank - left.rank)
+            .slice(0, 6);
+
+        const decisionLog = ((auditLogRowsResult.data ?? []) as AuditLogRow[]).map((row) => {
+            const actorName = row.profiles?.full_name?.trim() || row.profiles?.email?.trim() || "Unknown";
+            const category = row.category ?? "all";
+            return {
+                id: row.id,
+                action: row.action?.trim() || "Platform action",
+                category,
+                created_at: row.created_at,
+                actor_name: actorName,
+                target_type: row.target_type,
+                target_id: row.target_id,
+                href: category === "support"
+                    ? "/god/support?status=open"
+                    : category === "announcement"
+                        ? "/god/announcements"
+                        : category === "kill_switch" || category === "org_management"
+                            ? "/god/kill-switch"
+                            : `/god/audit-log?category=${encodeURIComponent(category)}`,
+            };
+        });
 
         const newestOrgs = [...organizations]
             .sort((left, right) => new Date(right.created_at ?? 0).getTime() - new Date(left.created_at ?? 0).getTime())
@@ -734,6 +842,7 @@ export async function GET(request: NextRequest) {
                 proposal_conversion_pct: proposalConversion,
             },
             watchlists: {
+                customer_risk_orgs: customerRiskOrgs,
                 ai_spend_orgs: topAiSpendOrgs.map((org) => ({
                     ...org,
                     href: `/god/costs/org/${org.org_id}`,
@@ -766,6 +875,7 @@ export async function GET(request: NextRequest) {
                     resolved_this_week: resolvedThisWeekResult.count ?? 0,
                 },
             },
+            decision_log: decisionLog,
             quick_actions: [
                 { label: "Error events", href: "/god/errors" },
                 { label: "Support queue", href: "/god/support?status=open" },

@@ -4,10 +4,11 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
     Activity,
     ArrowRight,
+    Bookmark,
     Building2,
     LifeBuoy,
     Megaphone,
@@ -20,6 +21,7 @@ import {
     TrendingDown,
     TrendingUp,
     Minus,
+    ScrollText,
 } from "lucide-react";
 import TrendChart from "@/components/god-mode/TrendChart";
 import StatusDot from "@/components/god-mode/StatusDot";
@@ -28,6 +30,7 @@ import { cn } from "@/lib/utils";
 
 type Severity = "critical" | "high" | "medium";
 type Tone = "neutral" | "warning" | "danger";
+type SavedView = "all" | "revenue" | "customer-risk" | "incidents" | "growth";
 
 interface OverviewData {
     generated_at: string;
@@ -90,6 +93,21 @@ interface OverviewData {
         proposal_conversion_pct: number | null;
     };
     watchlists: {
+        customer_risk_orgs: Array<{
+            org_id: string;
+            name: string;
+            tier: string;
+            overdue_amount: number;
+            overdue_invoices: number;
+            open_tickets: number;
+            urgent_tickets: number;
+            oldest_ticket_at: string | null;
+            expiring_proposals: number;
+            expiring_value: number;
+            ai_spend_usd: number;
+            risk_flags: string[];
+            href: string;
+        }>;
         ai_spend_orgs: Array<{
             org_id: string;
             name: string;
@@ -136,12 +154,30 @@ interface OverviewData {
             resolved_this_week: number;
         };
     };
+    decision_log: Array<{
+        id: string;
+        action: string;
+        category: string;
+        created_at: string | null;
+        actor_name: string;
+        target_type: string | null;
+        target_id: string | null;
+        href: string;
+    }>;
     quick_actions: Array<{
         label: string;
         href: string;
         tone?: "danger";
     }>;
 }
+
+const SAVED_VIEWS: Array<{ id: SavedView; label: string }> = [
+    { id: "all", label: "All" },
+    { id: "revenue", label: "Revenue" },
+    { id: "customer-risk", label: "Customer Risk" },
+    { id: "incidents", label: "Incidents" },
+    { id: "growth", label: "Growth" },
+];
 
 function toneBorder(tone: Tone): string {
     if (tone === "danger") return "border-red-900/70";
@@ -245,8 +281,11 @@ function DeltaCard({ item }: { item: OverviewData["delta_strip"][number] }) {
 
 export default function GodCommandCenter() {
     const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
     const [data, setData] = useState<OverviewData | null>(null);
     const [loading, setLoading] = useState(true);
+    const currentView = (searchParams.get("view") as SavedView | null) ?? "all";
 
     const fetchOverview = useCallback(async () => {
         setLoading(true);
@@ -262,6 +301,19 @@ export default function GodCommandCenter() {
     useEffect(() => {
         fetchOverview();
     }, [fetchOverview]);
+
+    const setView = useCallback((view: SavedView) => {
+        const params = new URLSearchParams(searchParams.toString());
+        if (view === "all") params.delete("view");
+        else params.set("view", view);
+        const next = params.toString();
+        router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+    }, [pathname, router, searchParams]);
+
+    const showRevenue = currentView === "all" || currentView === "revenue";
+    const showGrowth = currentView === "all" || currentView === "growth";
+    const showCustomerRisk = currentView === "all" || currentView === "customer-risk";
+    const showIncidents = currentView === "all" || currentView === "incidents";
 
     if (!data && loading) {
         return (
@@ -297,6 +349,22 @@ export default function GodCommandCenter() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
+                    <div className="mr-1 flex items-center gap-1 rounded-md border border-gray-800 bg-gray-900 p-1">
+                        {SAVED_VIEWS.map((view) => (
+                            <button
+                                key={view.id}
+                                onClick={() => setView(view.id)}
+                                className={cn(
+                                    "rounded px-2.5 py-1.5 text-xs transition-colors",
+                                    currentView === view.id
+                                        ? "bg-gray-800 text-white"
+                                        : "text-gray-400 hover:text-gray-200",
+                                )}
+                            >
+                                {view.label}
+                            </button>
+                        ))}
+                    </div>
                     <Link
                         href="/god/support?status=open"
                         className="rounded-md border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white"
@@ -404,176 +472,239 @@ export default function GodCommandCenter() {
                         ))}
                     </section>
 
-                    <section className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-                        <div className="rounded-lg border border-gray-800 bg-gray-900">
-                            <div className="border-b border-gray-800 px-4 py-3">
-                                <h2 className="text-sm font-medium text-white">Growth</h2>
-                                <p className="mt-1 text-xs text-gray-500">Signups across the last 30 days.</p>
-                            </div>
-                            <div className="px-4 pb-4 pt-3">
-                                <div className="grid gap-3 md:grid-cols-3">
-                                    <div className="rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3">
-                                        <p className="text-xs text-gray-500">Signups, 30d</p>
-                                        <p className="mt-1 text-xl font-semibold text-white">{data.growth.signups_last_30d}</p>
+                    {(showGrowth || showRevenue) && (
+                        <section className={cn(
+                            "grid gap-4",
+                            showGrowth && showRevenue
+                                ? "lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]"
+                                : "grid-cols-1",
+                        )}>
+                            {showGrowth && (
+                                <div className="rounded-lg border border-gray-800 bg-gray-900">
+                                    <div className="border-b border-gray-800 px-4 py-3">
+                                        <h2 className="text-sm font-medium text-white">Growth</h2>
+                                        <p className="mt-1 text-xs text-gray-500">Signups across the last 30 days.</p>
                                     </div>
-                                    <div className="rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3">
-                                        <p className="text-xs text-gray-500">Average per day</p>
-                                        <p className="mt-1 text-xl font-semibold text-white">{data.growth.avg_daily_signups}</p>
-                                    </div>
-                                    <div className="rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3">
-                                        <p className="text-xs text-gray-500">New orgs, 30d</p>
-                                        <p className="mt-1 text-xl font-semibold text-white">{data.growth.new_orgs_last_30d}</p>
-                                    </div>
-                                </div>
-                                <div className="mt-4">
-                                    <TrendChart
-                                        data={data.growth.signup_trend_30d}
-                                        series={[{ key: "signups", label: "Signups", color: "#f59e0b" }]}
-                                        type="area"
-                                        height={220}
-                                        onClickBar={(entry) => {
-                                            if (entry.date) {
-                                                router.push(`/god/signups?range=30d&date=${entry.date}`);
-                                            }
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="rounded-lg border border-gray-800 bg-gray-900">
-                            <div className="border-b border-gray-800 px-4 py-3">
-                                <h2 className="text-sm font-medium text-white">Revenue leakage</h2>
-                                <p className="mt-1 text-xs text-gray-500">Outstanding money and expiring deal flow.</p>
-                            </div>
-                            <div className="space-y-4 p-4">
-                                <div className="grid gap-3 sm:grid-cols-2">
-                                    <div className="rounded-md border border-red-900/60 bg-red-950/20 px-3 py-3">
-                                        <p className="text-xs text-gray-400">Overdue invoices</p>
-                                        <p className="mt-1 text-lg font-semibold text-white">{data.revenue_risk.overdue_amount}</p>
-                                        <p className="mt-1 text-xs text-gray-500">{data.revenue_risk.overdue_count} invoices</p>
-                                    </div>
-                                    <div className="rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3">
-                                        <p className="text-xs text-gray-400">Due this week</p>
-                                        <p className="mt-1 text-lg font-semibold text-white">{data.revenue_risk.due_this_week_amount}</p>
-                                        <p className="mt-1 text-xs text-gray-500">{data.revenue_risk.due_this_week_count} invoices</p>
-                                    </div>
-                                    <div className="rounded-md border border-amber-900/60 bg-amber-950/20 px-3 py-3">
-                                        <p className="text-xs text-gray-400">Expiring proposals</p>
-                                        <p className="mt-1 text-lg font-semibold text-white">{data.revenue_risk.expiring_proposals_amount}</p>
-                                        <p className="mt-1 text-xs text-gray-500">{data.revenue_risk.expiring_proposals_count} proposals in 72h</p>
-                                    </div>
-                                    <div className="rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3">
-                                        <p className="text-xs text-gray-400">Open support</p>
-                                        <p className="mt-1 text-lg font-semibold text-white">{data.revenue_risk.open_support_count}</p>
-                                        <p className="mt-1 text-xs text-gray-500">Support load affecting customer trust</p>
-                                    </div>
-                                </div>
-
-                                <div className="grid gap-4 lg:grid-cols-2">
-                                    <div>
-                                        <p className="text-xs text-gray-500">Oldest overdue invoices</p>
-                                        <div className="mt-2 space-y-2">
-                                            {data.revenue_risk.top_overdue_invoices.length === 0 ? (
-                                                <p className="text-sm text-gray-500">No overdue invoices.</p>
-                                            ) : (
-                                                data.revenue_risk.top_overdue_invoices.map((invoice) => (
-                                                    <div key={invoice.id} className="rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3">
-                                                        <div className="flex items-start justify-between gap-3">
-                                                            <div>
-                                                                <p className="text-sm text-white">#{invoice.invoice_number ?? "—"} · {invoice.org_name}</p>
-                                                                <p className="mt-1 text-xs text-gray-500">Due {formatShortDate(invoice.due_date)}</p>
-                                                            </div>
-                                                            <span className="text-sm text-red-200">{invoice.amount}</span>
-                                                        </div>
-                                                    </div>
-                                                ))
-                                            )}
+                                    <div className="px-4 pb-4 pt-3">
+                                        <div className="grid gap-3 md:grid-cols-3">
+                                            <div className="rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3">
+                                                <p className="text-xs text-gray-500">Signups, 30d</p>
+                                                <p className="mt-1 text-xl font-semibold text-white">{data.growth.signups_last_30d}</p>
+                                            </div>
+                                            <div className="rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3">
+                                                <p className="text-xs text-gray-500">Average per day</p>
+                                                <p className="mt-1 text-xl font-semibold text-white">{data.growth.avg_daily_signups}</p>
+                                            </div>
+                                            <div className="rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3">
+                                                <p className="text-xs text-gray-500">New orgs, 30d</p>
+                                                <p className="mt-1 text-xl font-semibold text-white">{data.growth.new_orgs_last_30d}</p>
+                                            </div>
                                         </div>
-                                    </div>
-
-                                    <div>
-                                        <p className="text-xs text-gray-500">Proposals expiring next</p>
-                                        <div className="mt-2 space-y-2">
-                                            {data.revenue_risk.expiring_proposals.length === 0 ? (
-                                                <p className="text-sm text-gray-500">No proposals expiring in the next 72 hours.</p>
-                                            ) : (
-                                                data.revenue_risk.expiring_proposals.map((proposal) => (
-                                                    <div key={proposal.id} className="rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3">
-                                                        <div className="flex items-start justify-between gap-3">
-                                                            <div className="min-w-0">
-                                                                <p className="truncate text-sm text-white">{proposal.title}</p>
-                                                                <p className="mt-1 text-xs text-gray-500">{proposal.org_name} · expires {formatShortDate(proposal.expires_at)}</p>
-                                                            </div>
-                                                            <span className="text-sm text-amber-200">{proposal.value}</span>
-                                                        </div>
-                                                    </div>
-                                                ))
-                                            )}
+                                        <div className="mt-4">
+                                            <TrendChart
+                                                data={data.growth.signup_trend_30d}
+                                                series={[{ key: "signups", label: "Signups", color: "#f59e0b" }]}
+                                                type="area"
+                                                height={220}
+                                                onClickBar={(entry) => {
+                                                    if (entry.date) {
+                                                        router.push(`/god/signups?range=30d&date=${entry.date}`);
+                                                    }
+                                                }}
+                                            />
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    </section>
+                            )}
 
-                    <section className="grid gap-4 lg:grid-cols-2">
-                        <div className="rounded-lg border border-gray-800 bg-gray-900">
-                            <div className="border-b border-gray-800 px-4 py-3">
-                                <h2 className="text-sm font-medium text-white">AI spend watchlist</h2>
-                            </div>
-                            <div className="p-3">
-                                <div className="space-y-2">
-                                    {data.watchlists.ai_spend_orgs.length === 0 ? (
-                                        <p className="px-1 py-2 text-sm text-gray-500">No AI spend data yet.</p>
-                                    ) : (
-                                        data.watchlists.ai_spend_orgs.map((org) => (
-                                            <Link
-                                                key={org.org_id}
-                                                href={org.href}
-                                                className="flex items-start justify-between rounded-md border border-gray-800 px-3 py-3 transition-colors hover:border-gray-700"
-                                            >
-                                                <div>
-                                                    <p className="text-sm text-white">{org.name}</p>
-                                                    <p className="mt-1 text-xs text-gray-500">{org.requests.toLocaleString()} requests · {org.tier}</p>
+                            {showRevenue && (
+                                <div className="rounded-lg border border-gray-800 bg-gray-900">
+                                    <div className="border-b border-gray-800 px-4 py-3">
+                                        <h2 className="text-sm font-medium text-white">Revenue leakage</h2>
+                                        <p className="mt-1 text-xs text-gray-500">Outstanding money and expiring deal flow.</p>
+                                    </div>
+                                    <div className="space-y-4 p-4">
+                                        <div className="grid gap-3 sm:grid-cols-2">
+                                            <div className="rounded-md border border-red-900/60 bg-red-950/20 px-3 py-3">
+                                                <p className="text-xs text-gray-400">Overdue invoices</p>
+                                                <p className="mt-1 text-lg font-semibold text-white">{data.revenue_risk.overdue_amount}</p>
+                                                <p className="mt-1 text-xs text-gray-500">{data.revenue_risk.overdue_count} invoices</p>
+                                            </div>
+                                            <div className="rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3">
+                                                <p className="text-xs text-gray-400">Due this week</p>
+                                                <p className="mt-1 text-lg font-semibold text-white">{data.revenue_risk.due_this_week_amount}</p>
+                                                <p className="mt-1 text-xs text-gray-500">{data.revenue_risk.due_this_week_count} invoices</p>
+                                            </div>
+                                            <div className="rounded-md border border-amber-900/60 bg-amber-950/20 px-3 py-3">
+                                                <p className="text-xs text-gray-400">Expiring proposals</p>
+                                                <p className="mt-1 text-lg font-semibold text-white">{data.revenue_risk.expiring_proposals_amount}</p>
+                                                <p className="mt-1 text-xs text-gray-500">{data.revenue_risk.expiring_proposals_count} proposals in 72h</p>
+                                            </div>
+                                            <div className="rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3">
+                                                <p className="text-xs text-gray-400">Open support</p>
+                                                <p className="mt-1 text-lg font-semibold text-white">{data.revenue_risk.open_support_count}</p>
+                                                <p className="mt-1 text-xs text-gray-500">Support load affecting customer trust</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid gap-4 lg:grid-cols-2">
+                                            <div>
+                                                <p className="text-xs text-gray-500">Oldest overdue invoices</p>
+                                                <div className="mt-2 space-y-2">
+                                                    {data.revenue_risk.top_overdue_invoices.length === 0 ? (
+                                                        <p className="text-sm text-gray-500">No overdue invoices.</p>
+                                                    ) : (
+                                                        data.revenue_risk.top_overdue_invoices.map((invoice) => (
+                                                            <div key={invoice.id} className="rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3">
+                                                                <div className="flex items-start justify-between gap-3">
+                                                                    <div>
+                                                                        <p className="text-sm text-white">#{invoice.invoice_number ?? "—"} · {invoice.org_name}</p>
+                                                                        <p className="mt-1 text-xs text-gray-500">Due {formatShortDate(invoice.due_date)}</p>
+                                                                    </div>
+                                                                    <span className="text-sm text-red-200">{invoice.amount}</span>
+                                                                </div>
+                                                            </div>
+                                                        ))
+                                                    )}
                                                 </div>
-                                                <span className="text-sm text-white">${org.spend_usd.toFixed(2)}</span>
-                                            </Link>
-                                        ))
-                                    )}
-                                </div>
-                            </div>
-                        </div>
+                                            </div>
 
-                        <div className="rounded-lg border border-gray-800 bg-gray-900">
+                                            <div>
+                                                <p className="text-xs text-gray-500">Proposals expiring next</p>
+                                                <div className="mt-2 space-y-2">
+                                                    {data.revenue_risk.expiring_proposals.length === 0 ? (
+                                                        <p className="text-sm text-gray-500">No proposals expiring in the next 72 hours.</p>
+                                                    ) : (
+                                                        data.revenue_risk.expiring_proposals.map((proposal) => (
+                                                            <div key={proposal.id} className="rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3">
+                                                                <div className="flex items-start justify-between gap-3">
+                                                                    <div className="min-w-0">
+                                                                        <p className="truncate text-sm text-white">{proposal.title}</p>
+                                                                        <p className="mt-1 text-xs text-gray-500">{proposal.org_name} · expires {formatShortDate(proposal.expires_at)}</p>
+                                                                    </div>
+                                                                    <span className="text-sm text-amber-200">{proposal.value}</span>
+                                                                </div>
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </section>
+                    )}
+
+                    {showCustomerRisk && (
+                        <section className="rounded-lg border border-gray-800 bg-gray-900">
                             <div className="border-b border-gray-800 px-4 py-3">
-                                <h2 className="text-sm font-medium text-white">Support pressure by org</h2>
+                                <h2 className="text-sm font-medium text-white">Customer risk watchlist</h2>
+                                <p className="mt-1 text-xs text-gray-500">Explicit risk signals by organization, not synthetic scoring.</p>
                             </div>
-                            <div className="p-3">
-                                <div className="space-y-2">
-                                    {data.watchlists.support_load_orgs.length === 0 ? (
-                                        <p className="px-1 py-2 text-sm text-gray-500">No active support backlog.</p>
-                                    ) : (
-                                        data.watchlists.support_load_orgs.map((org) => (
-                                            <Link
-                                                key={org.org_id}
-                                                href={org.href}
-                                                className="flex items-start justify-between rounded-md border border-gray-800 px-3 py-3 transition-colors hover:border-gray-700"
-                                            >
-                                                <div>
+                            <div className="grid gap-3 p-4 lg:grid-cols-2">
+                                {data.watchlists.customer_risk_orgs.length === 0 ? (
+                                    <p className="text-sm text-gray-500">No orgs currently meet the risk thresholds.</p>
+                                ) : (
+                                    data.watchlists.customer_risk_orgs.map((org) => (
+                                        <Link
+                                            key={org.org_id}
+                                            href={org.href}
+                                            className="rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3 transition-colors hover:border-gray-700"
+                                        >
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="min-w-0">
                                                     <p className="text-sm text-white">{org.name}</p>
                                                     <p className="mt-1 text-xs text-gray-500">
-                                                        {org.open} open · {org.urgent} urgent/high · oldest {formatRelative(org.oldest_at)}
+                                                        {org.tier} · {org.open_tickets} open tickets · oldest {formatRelative(org.oldest_ticket_at)}
                                                     </p>
                                                 </div>
-                                                <ArrowRight className="mt-0.5 w-4 h-4 text-gray-600" />
-                                            </Link>
-                                        ))
-                                    )}
+                                                <span className="text-xs text-gray-500">{org.urgent_tickets} urgent</span>
+                                            </div>
+                                            <div className="mt-3 flex flex-wrap gap-2">
+                                                {org.overdue_amount > 0 && (
+                                                    <span className="rounded bg-red-950/30 px-2 py-1 text-xs text-red-200">
+                                                        ₹{org.overdue_amount.toLocaleString("en-IN")} overdue
+                                                    </span>
+                                                )}
+                                                {org.expiring_value > 0 && (
+                                                    <span className="rounded bg-amber-950/30 px-2 py-1 text-xs text-amber-200">
+                                                        ₹{org.expiring_value.toLocaleString("en-IN")} expiring
+                                                    </span>
+                                                )}
+                                                {org.ai_spend_usd > 0 && (
+                                                    <span className="rounded bg-blue-950/30 px-2 py-1 text-xs text-blue-200">
+                                                        ${org.ai_spend_usd.toFixed(2)} AI spend
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className="mt-3 text-xs text-gray-400">{org.risk_flags.join(" · ")}</p>
+                                        </Link>
+                                    ))
+                                )}
+                            </div>
+                        </section>
+                    )}
+
+                    {(currentView === "all" || currentView === "customer-risk" || currentView === "revenue") && (
+                        <section className="grid gap-4 lg:grid-cols-2">
+                            <div className="rounded-lg border border-gray-800 bg-gray-900">
+                                <div className="border-b border-gray-800 px-4 py-3">
+                                    <h2 className="text-sm font-medium text-white">AI spend watchlist</h2>
+                                </div>
+                                <div className="p-3">
+                                    <div className="space-y-2">
+                                        {data.watchlists.ai_spend_orgs.length === 0 ? (
+                                            <p className="px-1 py-2 text-sm text-gray-500">No AI spend data yet.</p>
+                                        ) : (
+                                            data.watchlists.ai_spend_orgs.map((org) => (
+                                                <Link
+                                                    key={org.org_id}
+                                                    href={org.href}
+                                                    className="flex items-start justify-between rounded-md border border-gray-800 px-3 py-3 transition-colors hover:border-gray-700"
+                                                >
+                                                    <div>
+                                                        <p className="text-sm text-white">{org.name}</p>
+                                                        <p className="mt-1 text-xs text-gray-500">{org.requests.toLocaleString()} requests · {org.tier}</p>
+                                                    </div>
+                                                    <span className="text-sm text-white">${org.spend_usd.toFixed(2)}</span>
+                                                </Link>
+                                            ))
+                                        )}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </section>
+
+                            <div className="rounded-lg border border-gray-800 bg-gray-900">
+                                <div className="border-b border-gray-800 px-4 py-3">
+                                    <h2 className="text-sm font-medium text-white">Support pressure by org</h2>
+                                </div>
+                                <div className="p-3">
+                                    <div className="space-y-2">
+                                        {data.watchlists.support_load_orgs.length === 0 ? (
+                                            <p className="px-1 py-2 text-sm text-gray-500">No active support backlog.</p>
+                                        ) : (
+                                            data.watchlists.support_load_orgs.map((org) => (
+                                                <Link
+                                                    key={org.org_id}
+                                                    href={org.href}
+                                                    className="flex items-start justify-between rounded-md border border-gray-800 px-3 py-3 transition-colors hover:border-gray-700"
+                                                >
+                                                    <div>
+                                                        <p className="text-sm text-white">{org.name}</p>
+                                                        <p className="mt-1 text-xs text-gray-500">
+                                                            {org.open} open · {org.urgent} urgent/high · oldest {formatRelative(org.oldest_at)}
+                                                        </p>
+                                                    </div>
+                                                    <ArrowRight className="mt-0.5 w-4 h-4 text-gray-600" />
+                                                </Link>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+                    )}
                 </div>
 
                 <div className="space-y-4">
@@ -669,29 +800,83 @@ export default function GodCommandCenter() {
 
                     <section className="rounded-lg border border-gray-800 bg-gray-900">
                         <div className="border-b border-gray-800 px-4 py-3">
-                            <h2 className="text-sm font-medium text-white">Current posture</h2>
+                            <div className="flex items-center justify-between gap-3">
+                                <div>
+                                    <h2 className="text-sm font-medium text-white">Decision log</h2>
+                                    <p className="mt-1 text-xs text-gray-500">Recent superadmin actions and interventions.</p>
+                                </div>
+                                <Link href="/god/audit-log" className="text-xs text-gray-400 transition-colors hover:text-white">
+                                    Open audit log
+                                </Link>
+                            </div>
+                        </div>
+                        <div className="space-y-2 p-3">
+                            {data.decision_log.length === 0 ? (
+                                <p className="px-1 py-2 text-sm text-gray-500">No recent platform actions logged yet.</p>
+                            ) : (
+                                data.decision_log.map((entry) => (
+                                    <Link
+                                        key={entry.id}
+                                        href={entry.href}
+                                        className="block rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3 transition-colors hover:border-gray-700"
+                                    >
+                                        <div className="flex items-start gap-3">
+                                            <ScrollText className="mt-0.5 w-4 h-4 text-gray-500" />
+                                            <div className="min-w-0">
+                                                <p className="text-sm text-white">{entry.action}</p>
+                                                <p className="mt-1 text-xs text-gray-500">
+                                                    {entry.actor_name} · {entry.category.replace(/_/g, " ")} · {formatRelative(entry.created_at)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </Link>
+                                ))
+                            )}
+                        </div>
+                    </section>
+
+                    <section className="rounded-lg border border-gray-800 bg-gray-900">
+                        <div className="border-b border-gray-800 px-4 py-3">
+                            <div className="flex items-center gap-2">
+                                <Bookmark className="w-4 h-4 text-gray-500" />
+                                <h2 className="text-sm font-medium text-white">Current posture</h2>
+                            </div>
                         </div>
                         <div className="space-y-3 p-4 text-sm">
-                            <div className="flex items-start gap-3">
-                                <ShieldAlert className="mt-0.5 w-4 h-4 text-red-300" />
-                                <p className="text-gray-300">
-                                    {data.ops_health.incidents.open_fatal_errors} fatal issues and {data.ops_health.incidents.open_errors} total open errors are live right now.
-                                </p>
-                            </div>
-                            <div className="flex items-start gap-3">
-                                <Building2 className="mt-0.5 w-4 h-4 text-amber-300" />
-                                <p className="text-gray-300">
-                                    {data.revenue_risk.overdue_count} overdue invoices and {data.revenue_risk.expiring_proposals_count} proposals are the main revenue risks in the next 72 hours.
-                                </p>
-                            </div>
-                            <div className="flex items-start gap-3">
-                                <Zap className="mt-0.5 w-4 h-4 text-blue-300" />
-                                <p className="text-gray-300">
-                                    {data.watchlists.ai_spend_orgs[0]
-                                        ? `${data.watchlists.ai_spend_orgs[0].name} is the highest AI spend org this month at $${data.watchlists.ai_spend_orgs[0].spend_usd.toFixed(2)}.`
-                                        : "AI spend is not reporting yet."}
-                                </p>
-                            </div>
+                            {showIncidents && (
+                                <div className="flex items-start gap-3">
+                                    <ShieldAlert className="mt-0.5 w-4 h-4 text-red-300" />
+                                    <p className="text-gray-300">
+                                        {data.ops_health.incidents.open_fatal_errors} fatal issues and {data.ops_health.incidents.open_errors} total open errors are live right now.
+                                    </p>
+                                </div>
+                            )}
+                            {showRevenue && (
+                                <div className="flex items-start gap-3">
+                                    <Building2 className="mt-0.5 w-4 h-4 text-amber-300" />
+                                    <p className="text-gray-300">
+                                        {data.revenue_risk.overdue_count} overdue invoices and {data.revenue_risk.expiring_proposals_count} proposals are the main revenue risks in the next 72 hours.
+                                    </p>
+                                </div>
+                            )}
+                            {showCustomerRisk && (
+                                <div className="flex items-start gap-3">
+                                    <Zap className="mt-0.5 w-4 h-4 text-blue-300" />
+                                    <p className="text-gray-300">
+                                        {data.watchlists.ai_spend_orgs[0]
+                                            ? `${data.watchlists.ai_spend_orgs[0].name} is the highest AI spend org this month at $${data.watchlists.ai_spend_orgs[0].spend_usd.toFixed(2)}.`
+                                            : "AI spend is not reporting yet."}
+                                    </p>
+                                </div>
+                            )}
+                            {showGrowth && (
+                                <div className="flex items-start gap-3">
+                                    <TrendingUp className="mt-0.5 w-4 h-4 text-emerald-300" />
+                                    <p className="text-gray-300">
+                                        {data.growth.signups_last_30d} signups and {data.growth.new_orgs_last_30d} new orgs landed in the last 30 days.
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     </section>
                 </div>
