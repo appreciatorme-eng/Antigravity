@@ -279,6 +279,69 @@ function DeltaCard({ item }: { item: OverviewData["delta_strip"][number] }) {
     return <Link href={item.href}>{content}</Link>;
 }
 
+function CurrentPosturePanel({
+    data,
+    showIncidents,
+    showRevenue,
+    showCustomerRisk,
+    showGrowth,
+    className,
+}: {
+    data: OverviewData;
+    showIncidents: boolean;
+    showRevenue: boolean;
+    showCustomerRisk: boolean;
+    showGrowth: boolean;
+    className?: string;
+}) {
+    return (
+        <section className={cn("overflow-hidden rounded-lg border border-gray-800 bg-gray-900", className)}>
+            <div className="border-b border-gray-800 px-4 py-3">
+                <div className="flex items-center gap-2">
+                    <Bookmark className="w-4 h-4 text-gray-500" />
+                    <h2 className="text-sm font-medium text-white">Current posture</h2>
+                </div>
+            </div>
+            <div className="space-y-3 p-4 text-sm">
+                {showIncidents && (
+                    <div className="flex items-start gap-3">
+                        <ShieldAlert className="mt-0.5 w-4 h-4 text-red-300" />
+                        <p className="text-gray-300">
+                            {data.ops_health.incidents.open_fatal_errors} fatal issues and {data.ops_health.incidents.open_errors} total open errors are live right now.
+                        </p>
+                    </div>
+                )}
+                {showRevenue && (
+                    <div className="flex items-start gap-3">
+                        <Building2 className="mt-0.5 w-4 h-4 text-amber-300" />
+                        <p className="text-gray-300">
+                            {data.revenue_risk.overdue_count} overdue invoices and {data.revenue_risk.expiring_proposals_count} proposals are the main revenue risks in the next 72 hours.
+                        </p>
+                    </div>
+                )}
+                {showCustomerRisk && (
+                    <div className="flex items-start gap-3">
+                        <Zap className="mt-0.5 w-4 h-4 text-blue-300" />
+                        <p className="text-gray-300">
+                            {data.watchlists.ai_spend_orgs[0]
+                                ? `${data.watchlists.ai_spend_orgs[0].name} is the highest AI spend org this month at $${data.watchlists.ai_spend_orgs[0].spend_usd.toFixed(2)}.`
+                                : "AI spend is not reporting yet."}
+                        </p>
+                    </div>
+                )}
+                {showGrowth && (
+                    <div className="flex items-start gap-3">
+                        <TrendingUp className="mt-0.5 w-4 h-4 text-emerald-300" />
+                        <p className="text-gray-300">
+                            {data.growth.signups_last_30d} signups and {data.growth.new_orgs_last_30d} new orgs landed in the last 30 days.
+                        </p>
+                    </div>
+                )}
+            </div>
+        </section>
+    );
+}
+
 export default function GodCommandCenter() {
     const router = useRouter();
     const pathname = usePathname();
@@ -347,59 +410,68 @@ export default function GodCommandCenter() {
 
     return (
         <div className="space-y-4 min-w-0">
-            <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-start 2xl:justify-between">
-                <div>
-                    <h1 className="text-2xl font-semibold text-white">{data.header.title}</h1>
-                    <p className="mt-1 text-sm text-gray-400">{data.header.subtitle}</p>
-                    <p className="mt-2 text-xs text-gray-500">Last updated {formatLastUpdated(data.generated_at)}</p>
-                </div>
-
-                <div className="flex w-full flex-col gap-2 2xl:w-auto 2xl:items-end">
-                    <div className="overflow-x-auto pb-1">
-                        <div className="flex w-max items-center gap-1 rounded-md border border-gray-800 bg-gray-900 p-1">
-                            {SAVED_VIEWS.map((view) => (
-                                <button
-                                    key={view.id}
-                                    onClick={() => setView(view.id)}
-                                    className={cn(
-                                        "rounded px-2.5 py-1.5 text-xs transition-colors",
-                                        currentView === view.id
-                                            ? "bg-gray-800 text-white"
-                                            : "text-gray-400 hover:text-gray-200",
-                                    )}
-                                >
-                                    {view.label}
-                                </button>
-                            ))}
-                        </div>
+            <div className="grid gap-4 xl:grid-cols-[280px_minmax(0,1fr)]">
+                <CurrentPosturePanel
+                    data={data}
+                    showIncidents={showIncidents}
+                    showRevenue={showRevenue}
+                    showCustomerRisk={showCustomerRisk}
+                    showGrowth={showGrowth}
+                />
+                <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-start 2xl:justify-between">
+                    <div>
+                        <h1 className="text-2xl font-semibold text-white">{data.header.title}</h1>
+                        <p className="mt-1 text-sm text-gray-400">{data.header.subtitle}</p>
+                        <p className="mt-2 text-xs text-gray-500">Last updated {formatLastUpdated(data.generated_at)}</p>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                        <Link
-                            href="/god/support?status=open"
-                            className="rounded-md border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white"
-                        >
-                            Support queue
-                        </Link>
-                        <Link
-                            href="/god/errors?status=open"
-                            className="rounded-md border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white"
-                        >
-                            Incidents
-                        </Link>
-                        <Link
-                            href="/god/costs"
-                            className="rounded-md border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white"
-                        >
-                            Costs
-                        </Link>
-                        <button
-                            onClick={fetchOverview}
-                            disabled={loading}
-                            className="inline-flex items-center gap-2 rounded-md border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white disabled:opacity-50"
-                        >
-                            <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
-                            Refresh
-                        </button>
+
+                    <div className="flex w-full flex-col gap-2 2xl:w-auto 2xl:items-end">
+                        <div className="overflow-x-auto pb-1">
+                            <div className="flex w-max items-center gap-1 rounded-md border border-gray-800 bg-gray-900 p-1">
+                                {SAVED_VIEWS.map((view) => (
+                                    <button
+                                        key={view.id}
+                                        onClick={() => setView(view.id)}
+                                        className={cn(
+                                            "rounded px-2.5 py-1.5 text-xs transition-colors",
+                                            currentView === view.id
+                                                ? "bg-gray-800 text-white"
+                                                : "text-gray-400 hover:text-gray-200",
+                                        )}
+                                    >
+                                        {view.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <Link
+                                href="/god/support?status=open"
+                                className="rounded-md border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white"
+                            >
+                                Support queue
+                            </Link>
+                            <Link
+                                href="/god/errors?status=open"
+                                className="rounded-md border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white"
+                            >
+                                Incidents
+                            </Link>
+                            <Link
+                                href="/god/costs"
+                                className="rounded-md border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white"
+                            >
+                                Costs
+                            </Link>
+                            <button
+                                onClick={fetchOverview}
+                                disabled={loading}
+                                className="inline-flex items-center gap-2 rounded-md border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white disabled:opacity-50"
+                            >
+                                <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
+                                Refresh
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -847,50 +919,6 @@ export default function GodCommandCenter() {
                                 </div>
                             </section>
 
-                            <section className="overflow-hidden rounded-lg border border-gray-800 bg-gray-900">
-                                <div className="border-b border-gray-800 px-4 py-3">
-                                    <div className="flex items-center gap-2">
-                                        <Bookmark className="w-4 h-4 text-gray-500" />
-                                        <h2 className="text-sm font-medium text-white">Current posture</h2>
-                                    </div>
-                                </div>
-                                <div className="space-y-3 p-4 text-sm">
-                                    {showIncidents && (
-                                        <div className="flex items-start gap-3">
-                                            <ShieldAlert className="mt-0.5 w-4 h-4 text-red-300" />
-                                            <p className="text-gray-300">
-                                                {data.ops_health.incidents.open_fatal_errors} fatal issues and {data.ops_health.incidents.open_errors} total open errors are live right now.
-                                            </p>
-                                        </div>
-                                    )}
-                                    {showRevenue && (
-                                        <div className="flex items-start gap-3">
-                                            <Building2 className="mt-0.5 w-4 h-4 text-amber-300" />
-                                            <p className="text-gray-300">
-                                                {data.revenue_risk.overdue_count} overdue invoices and {data.revenue_risk.expiring_proposals_count} proposals are the main revenue risks in the next 72 hours.
-                                            </p>
-                                        </div>
-                                    )}
-                                    {showCustomerRisk && (
-                                        <div className="flex items-start gap-3">
-                                            <Zap className="mt-0.5 w-4 h-4 text-blue-300" />
-                                            <p className="text-gray-300">
-                                                {data.watchlists.ai_spend_orgs[0]
-                                                    ? `${data.watchlists.ai_spend_orgs[0].name} is the highest AI spend org this month at $${data.watchlists.ai_spend_orgs[0].spend_usd.toFixed(2)}.`
-                                                    : "AI spend is not reporting yet."}
-                                            </p>
-                                        </div>
-                                    )}
-                                    {showGrowth && (
-                                        <div className="flex items-start gap-3">
-                                            <TrendingUp className="mt-0.5 w-4 h-4 text-emerald-300" />
-                                            <p className="text-gray-300">
-                                                {data.growth.signups_last_30d} signups and {data.growth.new_orgs_last_30d} new orgs landed in the last 30 days.
-                                            </p>
-                                        </div>
-                                    )}
-                                </div>
-                            </section>
                         </div>
                     </div>
                 </div>
