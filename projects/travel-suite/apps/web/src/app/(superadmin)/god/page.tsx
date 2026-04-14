@@ -3,7 +3,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
     Activity,
@@ -16,6 +16,7 @@ import {
     RefreshCw,
     ShieldAlert,
     TriangleAlert,
+    ReceiptText,
     Wallet,
     Zap,
     TrendingDown,
@@ -171,6 +172,12 @@ interface OverviewData {
     }>;
 }
 
+type ActionItem = {
+    label: string;
+    href: string;
+    tone?: "danger";
+};
+
 const SAVED_VIEWS: Array<{ id: SavedView; label: string }> = [
     { id: "all", label: "All" },
     { id: "revenue", label: "Revenue" },
@@ -279,6 +286,56 @@ function DeltaCard({ item }: { item: OverviewData["delta_strip"][number] }) {
     return <Link href={item.href}>{content}</Link>;
 }
 
+function iconForActionLabel(label: string) {
+    if (label === "Open incident") return TriangleAlert;
+    if (label === "Respond to ticket") return LifeBuoy;
+    if (label === "Open collections item") return ReceiptText;
+    if (label === "Review spend") return Wallet;
+    if (label === "Open queues") return Activity;
+    if (label === "Collections") return ReceiptText;
+    if (label === "Error events") return TriangleAlert;
+    if (label === "Support queue") return LifeBuoy;
+    if (label === "Health monitor") return Activity;
+    if (label === "Cost dashboard") return Wallet;
+    if (label === "Send announcement") return Megaphone;
+    return Power;
+}
+
+function buildContextActions(item: OverviewData["priority_inbox"][number] | null): ActionItem[] {
+    if (!item) return [];
+    if (item.kind === "incident") {
+        return [
+            { label: "Open incident", href: item.href },
+            { label: "Error events", href: "/god/errors?status=open" },
+        ];
+    }
+    if (item.kind === "support") {
+        return [
+            { label: "Respond to ticket", href: item.href },
+            { label: "Support queue", href: "/god/support?status=open" },
+        ];
+    }
+    if (item.kind === "collection_invoice" || item.kind === "collection_proposal") {
+        return [
+            { label: "Open collections item", href: item.href },
+            { label: "Collections", href: "/god/collections?tab=invoices" },
+        ];
+    }
+    if (item.kind === "queue") {
+        return [
+            { label: "Open queues", href: "/god/monitoring?focus=queues" },
+            { label: "Health monitor", href: "/god/monitoring" },
+        ];
+    }
+    if (item.kind === "cost") {
+        return [
+            { label: "Review spend", href: item.href },
+            { label: "Cost dashboard", href: "/god/costs" },
+        ];
+    }
+    return [];
+}
+
 function CurrentPosturePanel({
     data,
     showIncidents,
@@ -348,6 +405,7 @@ export default function GodCommandCenter() {
     const searchParams = useSearchParams();
     const [data, setData] = useState<OverviewData | null>(null);
     const [loading, setLoading] = useState(true);
+    const [focusedInboxId, setFocusedInboxId] = useState<string | null>(null);
     const currentView = (searchParams.get("view") as SavedView | null) ?? "all";
 
     const fetchOverview = useCallback(async () => {
@@ -377,6 +435,22 @@ export default function GodCommandCenter() {
     const showGrowth = currentView === "all" || currentView === "growth";
     const showCustomerRisk = currentView === "all" || currentView === "customer-risk";
     const showIncidents = currentView === "all" || currentView === "incidents";
+
+    useEffect(() => {
+        if (!data?.priority_inbox.length) {
+            setFocusedInboxId(null);
+            return;
+        }
+        if (!focusedInboxId || !data.priority_inbox.some((item) => item.id === focusedInboxId)) {
+            setFocusedInboxId(data.priority_inbox[0].id);
+        }
+    }, [data?.priority_inbox, focusedInboxId]);
+
+    const focusedInboxItem = useMemo(
+        () => data?.priority_inbox.find((item) => item.id === focusedInboxId) ?? null,
+        [data?.priority_inbox, focusedInboxId],
+    );
+    const contextActions = useMemo(() => buildContextActions(focusedInboxItem), [focusedInboxItem]);
 
     if (!data && loading) {
         return (
@@ -463,6 +537,12 @@ export default function GodCommandCenter() {
                             >
                                 Costs
                             </Link>
+                            <Link
+                                href="/god/collections?tab=invoices"
+                                className="rounded-md border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white"
+                            >
+                                Collections
+                            </Link>
                             <button
                                 onClick={fetchOverview}
                                 disabled={loading}
@@ -491,12 +571,12 @@ export default function GodCommandCenter() {
                             ) : (
                                 <div className="space-y-2">
                                     {data.priority_inbox.map((item) => (
-                                        <Link
+                                        <div
                                             key={item.id}
-                                            href={item.href}
                                             className={cn(
-                                                "block rounded-md border px-3 py-3 transition-colors hover:border-gray-700",
+                                                "rounded-md border px-3 py-3 transition-colors",
                                                 severityStyles(item.severity),
+                                                focusedInboxItem?.id === item.id && "ring-1 ring-amber-400/70",
                                             )}
                                         >
                                             <div className="flex items-start justify-between gap-3">
@@ -506,11 +586,24 @@ export default function GodCommandCenter() {
                                                 </div>
                                                 <span className="text-[11px] text-gray-500">{item.age_label}</span>
                                             </div>
-                                            <div className="mt-3 inline-flex items-center gap-1 text-xs text-gray-300">
-                                                {item.action_label}
-                                                <ArrowRight className="w-3 h-3" />
+                                            <div className="mt-3 flex items-center justify-between gap-3">
+                                                <button
+                                                    onClick={() => setFocusedInboxId(item.id)}
+                                                    className={cn(
+                                                        "rounded border px-2 py-1 text-xs transition-colors",
+                                                        focusedInboxItem?.id === item.id
+                                                            ? "border-amber-500/50 bg-amber-500/10 text-amber-200"
+                                                            : "border-gray-700 bg-gray-900/70 text-gray-300 hover:border-gray-600",
+                                                    )}
+                                                >
+                                                    {focusedInboxItem?.id === item.id ? "Focused" : "Focus"}
+                                                </button>
+                                                <Link href={item.href} className="inline-flex items-center gap-1 text-xs text-gray-300 transition-colors hover:text-white">
+                                                    {item.action_label}
+                                                    <ArrowRight className="w-3 h-3" />
+                                                </Link>
                                             </div>
-                                        </Link>
+                                        </div>
                                     ))}
                                 </div>
                             )}
@@ -609,26 +702,26 @@ export default function GodCommandCenter() {
                                             </div>
                                             <div className="space-y-4 p-4">
                                                 <div className="grid gap-3 sm:grid-cols-2">
-                                                    <div className="rounded-md border border-red-900/60 bg-red-950/20 px-3 py-3">
+                                                    <Link href="/god/collections?tab=invoices" className="rounded-md border border-red-900/60 bg-red-950/20 px-3 py-3 transition-colors hover:border-red-800/70">
                                                         <p className="text-xs text-gray-400">Overdue invoices</p>
                                                         <p className="mt-1 text-lg font-semibold text-white">{data.revenue_risk.overdue_amount}</p>
                                                         <p className="mt-1 text-xs text-gray-500">{data.revenue_risk.overdue_count} invoices</p>
-                                                    </div>
-                                                    <div className="rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3">
+                                                    </Link>
+                                                    <Link href="/god/collections?tab=invoices" className="rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3 transition-colors hover:border-gray-700">
                                                         <p className="text-xs text-gray-400">Due this week</p>
                                                         <p className="mt-1 text-lg font-semibold text-white">{data.revenue_risk.due_this_week_amount}</p>
                                                         <p className="mt-1 text-xs text-gray-500">{data.revenue_risk.due_this_week_count} invoices</p>
-                                                    </div>
-                                                    <div className="rounded-md border border-amber-900/60 bg-amber-950/20 px-3 py-3">
+                                                    </Link>
+                                                    <Link href="/god/collections?tab=proposals" className="rounded-md border border-amber-900/60 bg-amber-950/20 px-3 py-3 transition-colors hover:border-amber-800/70">
                                                         <p className="text-xs text-gray-400">Expiring proposals</p>
                                                         <p className="mt-1 text-lg font-semibold text-white">{data.revenue_risk.expiring_proposals_amount}</p>
                                                         <p className="mt-1 text-xs text-gray-500">{data.revenue_risk.expiring_proposals_count} proposals in 72h</p>
-                                                    </div>
-                                                    <div className="rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3">
+                                                    </Link>
+                                                    <Link href="/god/support?status=open" className="rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3 transition-colors hover:border-gray-700">
                                                         <p className="text-xs text-gray-400">Open support</p>
                                                         <p className="mt-1 text-lg font-semibold text-white">{data.revenue_risk.open_support_count}</p>
                                                         <p className="mt-1 text-xs text-gray-500">Support load affecting customer trust</p>
-                                                    </div>
+                                                    </Link>
                                                 </div>
 
                                                 <div className="grid min-w-0 gap-4 2xl:grid-cols-2">
@@ -639,7 +732,11 @@ export default function GodCommandCenter() {
                                                                 <p className="text-sm text-gray-500">No overdue invoices.</p>
                                                             ) : (
                                                                 data.revenue_risk.top_overdue_invoices.map((invoice) => (
-                                                                    <div key={invoice.id} className="rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3">
+                                                                    <Link
+                                                                        key={invoice.id}
+                                                                        href={`/god/collections?tab=invoices&invoiceId=${invoice.id}`}
+                                                                        className="block rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3 transition-colors hover:border-gray-700"
+                                                                    >
                                                                         <div className="flex items-start justify-between gap-3">
                                                                             <div>
                                                                                 <p className="text-sm text-white">#{invoice.invoice_number ?? "—"} · {invoice.org_name}</p>
@@ -647,7 +744,7 @@ export default function GodCommandCenter() {
                                                                             </div>
                                                                             <span className="text-sm text-red-200">{invoice.amount}</span>
                                                                         </div>
-                                                                    </div>
+                                                                    </Link>
                                                                 ))
                                                             )}
                                                         </div>
@@ -660,7 +757,11 @@ export default function GodCommandCenter() {
                                                                 <p className="text-sm text-gray-500">No proposals expiring in the next 72 hours.</p>
                                                             ) : (
                                                                 data.revenue_risk.expiring_proposals.map((proposal) => (
-                                                                    <div key={proposal.id} className="rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3">
+                                                                    <Link
+                                                                        key={proposal.id}
+                                                                        href={`/god/collections?tab=proposals&proposalId=${proposal.id}`}
+                                                                        className="block rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3 transition-colors hover:border-gray-700"
+                                                                    >
                                                                         <div className="flex items-start justify-between gap-3">
                                                                             <div className="min-w-0">
                                                                                 <p className="truncate text-sm text-white">{proposal.title}</p>
@@ -668,7 +769,7 @@ export default function GodCommandCenter() {
                                                                             </div>
                                                                             <span className="text-sm text-amber-200">{proposal.value}</span>
                                                                         </div>
-                                                                    </div>
+                                                                    </Link>
                                                                 ))
                                                             )}
                                                         </div>
@@ -847,19 +948,33 @@ export default function GodCommandCenter() {
                                     <h2 className="text-sm font-medium text-white">Quick actions</h2>
                                 </div>
                                 <div className="grid gap-2 p-3">
+                                    {contextActions.length > 0 && (
+                                        <div className="rounded-md border border-amber-900/40 bg-amber-950/10 p-2">
+                                            <p className="px-1 pb-2 text-[11px] uppercase tracking-wide text-amber-300/80">
+                                                Focused: {focusedInboxItem?.title ?? "priority item"}
+                                            </p>
+                                            <div className="grid gap-2">
+                                                {contextActions.map((action) => {
+                                                    const Icon = iconForActionLabel(action.label);
+                                                    return (
+                                                        <Link
+                                                            key={`context-${action.label}-${action.href}`}
+                                                            href={action.href}
+                                                            className="inline-flex items-center justify-between rounded-md border border-amber-900/50 bg-amber-950/20 px-3 py-2.5 text-sm text-amber-100 transition-colors hover:border-amber-700"
+                                                        >
+                                                            <span className="inline-flex items-center gap-2">
+                                                                <Icon className="h-4 w-4" />
+                                                                {action.label}
+                                                            </span>
+                                                            <ArrowRight className="h-4 w-4" />
+                                                        </Link>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
                                     {data.quick_actions.map((action) => {
-                                        const icon = action.label === "Error events"
-                                            ? TriangleAlert
-                                            : action.label === "Support queue"
-                                                ? LifeBuoy
-                                                : action.label === "Health monitor"
-                                                    ? Activity
-                                                    : action.label === "Cost dashboard"
-                                                        ? Wallet
-                                                        : action.label === "Send announcement"
-                                                            ? Megaphone
-                                                            : Power;
-                                        const Icon = icon;
+                                        const Icon = iconForActionLabel(action.label);
                                         return (
                                             <Link
                                                 key={action.href}

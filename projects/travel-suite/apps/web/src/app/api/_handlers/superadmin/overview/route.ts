@@ -140,6 +140,20 @@ function proposalValue(row: ProposalRow): number {
     return safeNumber(row.client_selected_price ?? row.total_price);
 }
 
+function daysOverdueLabel(dueDate: string | null): string {
+    if (!dueDate) return "Due date missing";
+    const dueAt = new Date(dueDate).getTime();
+    const days = Math.max(1, Math.floor((Date.now() - dueAt) / 86_400_000));
+    return `${days}d overdue`;
+}
+
+function expiresInLabel(expiresAt: string | null): string {
+    if (!expiresAt) return "No expiry";
+    const remainingHours = Math.max(0, Math.floor((new Date(expiresAt).getTime() - Date.now()) / 3_600_000));
+    if (remainingHours < 24) return `${remainingHours}h left`;
+    return `${Math.ceil(remainingHours / 24)}d left`;
+}
+
 function asCurrencyParts(amount: number, currency: "inr" | "usd" = "inr"): { value: number; formatted: string } {
     if (currency === "usd") {
         return { value: Number(amount.toFixed(2)), formatted: `$${amount.toFixed(2)}` };
@@ -592,29 +606,37 @@ export async function GET(request: NextRequest) {
             {
                 id: "fcm",
                 label: "Firebase FCM",
-                status: process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY ? "healthy" : "unknown",
-                detail: process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY ? "Configured" : "Not configured",
+                status: "unknown",
+                detail: process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY
+                    ? "Configured (runtime unverified)"
+                    : "Not configured",
                 configured: Boolean(process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY),
             },
             {
                 id: "whatsapp",
                 label: "WhatsApp",
-                status: process.env.WHATSAPP_PHONE_NUMBER_ID && process.env.WHATSAPP_API_TOKEN ? "healthy" : "unknown",
-                detail: process.env.WHATSAPP_PHONE_NUMBER_ID && process.env.WHATSAPP_API_TOKEN ? "Configured" : "Not configured",
+                status: "unknown",
+                detail: process.env.WHATSAPP_PHONE_NUMBER_ID && process.env.WHATSAPP_API_TOKEN
+                    ? "Configured (runtime unverified)"
+                    : "Not configured",
                 configured: Boolean(process.env.WHATSAPP_PHONE_NUMBER_ID && process.env.WHATSAPP_API_TOKEN),
             },
             {
                 id: "sentry",
                 label: "Sentry",
-                status: process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN ? "healthy" : "unknown",
-                detail: process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN ? "Configured" : "Not configured",
+                status: "unknown",
+                detail: process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN
+                    ? "Configured (runtime unverified)"
+                    : "Not configured",
                 configured: Boolean(process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN),
             },
             {
                 id: "posthog",
                 label: "PostHog",
-                status: process.env.NEXT_PUBLIC_POSTHOG_KEY ? "healthy" : "unknown",
-                detail: process.env.NEXT_PUBLIC_POSTHOG_KEY ? "Configured" : "Not configured",
+                status: "unknown",
+                detail: process.env.NEXT_PUBLIC_POSTHOG_KEY
+                    ? "Configured (runtime unverified)"
+                    : "Not configured",
                 configured: Boolean(process.env.NEXT_PUBLIC_POSTHOG_KEY),
             },
         ];
@@ -629,6 +651,37 @@ export async function GET(request: NextRequest) {
                 age_label: timeAgo(event.first_seen_at ?? event.created_at),
                 action_label: "Open incident",
                 href: `/god/errors?status=${encodeURIComponent(event.status ?? "open")}&eventId=${event.id}`,
+            })),
+            ...overdueInvoices
+                .sort((left, right) => new Date(left.due_date ?? 0).getTime() - new Date(right.due_date ?? 0).getTime())
+                .slice(0, 2)
+                .map((invoice) => ({
+                    id: `invoice:${invoice.id}`,
+                    kind: "collection_invoice",
+                    severity: "high" as const,
+                    title: `Invoice #${invoice.invoice_number ?? "—"} is overdue`,
+                    detail: `${
+                        invoice.organization_id
+                            ? (organizationMap.get(invoice.organization_id)?.name ?? "Unknown org")
+                            : "Unknown org"
+                    } · ${asCurrencyParts(safeNumber(invoice.balance_amount ?? invoice.total_amount)).formatted}`,
+                    age_label: daysOverdueLabel(invoice.due_date),
+                    action_label: "Review invoice",
+                    href: `/god/collections?tab=invoices&invoiceId=${invoice.id}`,
+                })),
+            ...expiringProposalRows.slice(0, 2).map((proposal) => ({
+                id: `proposal:${proposal.id}`,
+                kind: "collection_proposal",
+                severity: "high" as const,
+                title: `${proposal.title?.trim() || "Proposal"} is expiring soon`,
+                detail: `${
+                    proposal.organization_id
+                        ? (organizationMap.get(proposal.organization_id)?.name ?? "Unknown org")
+                        : "Unknown org"
+                } · ${asCurrencyParts(proposalValue(proposal)).formatted}`,
+                age_label: expiresInLabel(proposal.expires_at),
+                action_label: "Review proposal",
+                href: `/god/collections?tab=proposals&proposalId=${proposal.id}`,
             })),
             ...supportRows.slice(0, 3).map((ticket) => ({
                 id: `ticket:${ticket.id}`,
@@ -733,6 +786,7 @@ export async function GET(request: NextRequest) {
                     label: "Overdue invoices",
                     value: asCurrencyParts(overdueInvoiceAmount).formatted,
                     detail: `${overdueInvoices.length} invoices past due`,
+                    href: "/god/collections?tab=invoices",
                     tone: overdueInvoiceAmount > 0 ? "danger" : "neutral",
                 },
                 {
@@ -877,6 +931,7 @@ export async function GET(request: NextRequest) {
             },
             decision_log: decisionLog,
             quick_actions: [
+                { label: "Collections", href: "/god/collections?tab=invoices" },
                 { label: "Error events", href: "/god/errors" },
                 { label: "Support queue", href: "/god/support?status=open" },
                 { label: "Health monitor", href: "/god/monitoring" },

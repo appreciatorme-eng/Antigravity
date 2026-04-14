@@ -10,6 +10,7 @@ import {
     UserPlus,
     Users,
     BarChart3,
+    ReceiptText,
     DollarSign,
     Share2,
     LifeBuoy,
@@ -53,6 +54,7 @@ const NAV_GROUPS: NavGroup[] = [
         title: "ANALYTICS",
         items: [
             { icon: BarChart3, label: "Feature Usage", href: "/god/analytics" },
+            { icon: ReceiptText, label: "Collections", href: "/god/collections" },
             { icon: DollarSign, label: "API Costs", href: "/god/costs" },
         ],
     },
