@@ -2,7 +2,8 @@
 
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Search, RefreshCw, Clock } from "lucide-react";
 import { authedFetch } from "@/lib/api/authed-fetch";
 import SlideOutPanel from "@/components/god-mode/SlideOutPanel";
@@ -67,15 +68,20 @@ function timeAgo(iso: string | null): string {
 }
 
 export default function SupportPage() {
-    const [statusFilter, setStatusFilter] = useState<string>("all");
-    const [search, setSearch] = useState("");
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const [statusFilter, setStatusFilter] = useState<string>(searchParams.get("status") ?? "all");
+    const [search, setSearch] = useState(searchParams.get("search") ?? "");
     const [data, setData] = useState<TicketsResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [selectedTicket, setSelectedTicket] = useState<TicketDetail | null>(null);
-    const [panelOpen, setPanelOpen] = useState(false);
+    const [panelOpen, setPanelOpen] = useState(Boolean(searchParams.get("ticketId")));
     const [responseText, setResponseText] = useState("");
     const [responseStatus, setResponseStatus] = useState("resolved");
     const [submitting, setSubmitting] = useState(false);
+
+    const ticketId = searchParams.get("ticketId");
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -90,7 +96,7 @@ export default function SupportPage() {
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
-    async function openTicket(id: string) {
+    const openTicket = useCallback(async (id: string) => {
         setPanelOpen(true);
         setSelectedTicket(null);
         setResponseText("");
@@ -100,7 +106,43 @@ export default function SupportPage() {
             setSelectedTicket(detail);
             setResponseText(detail.ticket.admin_response ?? "");
         }
-    }
+    }, []);
+
+    useEffect(() => {
+        const params = new URLSearchParams(searchParams.toString());
+        if (statusFilter && statusFilter !== "all") params.set("status", statusFilter);
+        else params.delete("status");
+        if (search.trim()) params.set("search", search.trim());
+        else params.delete("search");
+        const activeTicketId = selectedTicket?.ticket.id ?? (panelOpen ? ticketId : null);
+        if (activeTicketId) params.set("ticketId", activeTicketId);
+        else params.delete("ticketId");
+
+        const next = params.toString();
+        if (next !== searchParams.toString()) {
+            router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+        }
+    }, [pathname, panelOpen, router, search, searchParams, selectedTicket?.ticket.id, statusFilter, ticketId]);
+
+    useEffect(() => {
+        if (!ticketId) return;
+        if (selectedTicket?.ticket.id === ticketId && panelOpen) return;
+        void openTicket(ticketId);
+    }, [openTicket, panelOpen, selectedTicket?.ticket.id, ticketId]);
+
+    const filteredTickets = useMemo(() => {
+        const query = search.trim().toLowerCase();
+        if (!query) return data?.tickets ?? [];
+        return (data?.tickets ?? []).filter((ticket) => {
+            return [
+                ticket.title,
+                ticket.description,
+                ticket.user_name,
+                ticket.user_email,
+                ticket.org_name,
+            ].some((value) => value?.toLowerCase().includes(query));
+        });
+    }, [data?.tickets, search]);
 
     async function submitResponse() {
         if (!selectedTicket || !responseText.trim()) return;
@@ -179,10 +221,10 @@ export default function SupportPage() {
                     Array.from({ length: 5 }).map((_, i) => (
                         <div key={i} className="h-24 bg-gray-900 border border-gray-800 rounded-xl animate-pulse" />
                     ))
-                ) : (data?.tickets ?? []).length === 0 ? (
+                ) : filteredTickets.length === 0 ? (
                     <div className="text-center py-12 text-gray-500">No tickets found</div>
                 ) : (
-                    (data?.tickets ?? []).map((ticket) => (
+                    filteredTickets.map((ticket) => (
                         <button
                             key={ticket.id}
                             onClick={() => openTicket(ticket.id)}

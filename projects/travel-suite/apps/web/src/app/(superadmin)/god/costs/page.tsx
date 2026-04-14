@@ -3,7 +3,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import StackedCostChart from "@/components/god-mode/StackedCostChart";
 import TimeRangePicker from "@/components/god-mode/TimeRangePicker";
@@ -81,10 +81,13 @@ function utilizationColor(pct: number): string {
 
 export default function CostsPage() {
     const router = useRouter();
-    const [range, setRange] = useState<"7d" | "30d" | "90d">("30d");
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const [range, setRange] = useState<"7d" | "30d" | "90d">((searchParams.get("range") as "7d" | "30d" | "90d") ?? "30d");
     const [costData, setCostData] = useState<CostData | null>(null);
     const [trendData, setTrendData] = useState<TrendDay[]>([]);
     const [loading, setLoading] = useState(true);
+    const orgId = searchParams.get("orgId");
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -104,6 +107,21 @@ export default function CostsPage() {
     }, [range]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
+
+    useEffect(() => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("range", range);
+        params.delete("orgId");
+        const next = params.toString();
+        if (next !== searchParams.toString()) {
+            router.replace(`${pathname}?${next}`, { scroll: false });
+        }
+    }, [pathname, range, router, searchParams]);
+
+    useEffect(() => {
+        if (!orgId) return;
+        router.replace(`/god/costs/org/${orgId}`);
+    }, [orgId, router]);
 
     const highAlerts = costData?.by_category.filter((c) => c.utilization_pct >= 80) ?? [];
 

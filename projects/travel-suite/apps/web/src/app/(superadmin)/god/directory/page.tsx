@@ -3,6 +3,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Search, RefreshCw } from "lucide-react";
 import DrillDownTable from "@/components/god-mode/DrillDownTable";
 import SlideOutPanel from "@/components/god-mode/SlideOutPanel";
@@ -98,16 +99,20 @@ const COLUMNS: TableColumn<DirectoryUser>[] = [
 ];
 
 export default function DirectoryPage() {
-    const [search, setSearch] = useState("");
-    const [debouncedSearch, setDebouncedSearch] = useState("");
-    const [role, setRole] = useState("all");
-    const [tier, setTier] = useState("all");
-    const [page, setPage] = useState(0);
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const [search, setSearch] = useState(searchParams.get("search") ?? "");
+    const [debouncedSearch, setDebouncedSearch] = useState(searchParams.get("search") ?? "");
+    const [role, setRole] = useState(searchParams.get("role") ?? "all");
+    const [tier, setTier] = useState(searchParams.get("tier") ?? "all");
+    const [page, setPage] = useState(Math.max(0, Number(searchParams.get("page") || 0)));
     const [data, setData] = useState<DirectoryResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [selectedUser, setSelectedUser] = useState<UserDetail | null>(null);
     const [detailLoading, setDetailLoading] = useState(false);
-    const [panelOpen, setPanelOpen] = useState(false);
+    const [panelOpen, setPanelOpen] = useState(Boolean(searchParams.get("userId")));
+    const userId = searchParams.get("userId");
 
     // Debounce search
     useEffect(() => {
@@ -134,7 +139,7 @@ export default function DirectoryPage() {
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
-    async function openUserDetail(user: DirectoryUser) {
+    const openUserDetail = useCallback(async (user: Pick<DirectoryUser, "id">) => {
         setPanelOpen(true);
         setDetailLoading(true);
         setSelectedUser(null);
@@ -144,7 +149,33 @@ export default function DirectoryPage() {
         } finally {
             setDetailLoading(false);
         }
-    }
+    }, []);
+
+    useEffect(() => {
+        const params = new URLSearchParams(searchParams.toString());
+        if (search.trim()) params.set("search", search.trim());
+        else params.delete("search");
+        if (role !== "all") params.set("role", role);
+        else params.delete("role");
+        if (tier !== "all") params.set("tier", tier);
+        else params.delete("tier");
+        if (page > 0) params.set("page", String(page));
+        else params.delete("page");
+        const activeUserId = selectedUser?.profile.id ?? (panelOpen ? userId : null);
+        if (activeUserId) params.set("userId", activeUserId);
+        else params.delete("userId");
+
+        const next = params.toString();
+        if (next !== searchParams.toString()) {
+            router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+        }
+    }, [page, panelOpen, pathname, role, router, search, searchParams, selectedUser?.profile.id, tier, userId]);
+
+    useEffect(() => {
+        if (!userId) return;
+        if (selectedUser?.profile.id === userId && panelOpen) return;
+        void openUserDetail({ id: userId });
+    }, [openUserDetail, panelOpen, selectedUser?.profile.id, userId]);
 
     return (
         <div className="space-y-6">

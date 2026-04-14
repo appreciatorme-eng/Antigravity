@@ -3,6 +3,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Map, FileText, Sparkles, Share2, RefreshCw } from "lucide-react";
 import TrendChart from "@/components/god-mode/TrendChart";
 import TimeRangePicker from "@/components/god-mode/TimeRangePicker";
@@ -79,7 +80,7 @@ const TOP_ORG_COLS: TableColumn<TopOrg>[] = [
 ];
 
 const DRILL_COLS: TableColumn<DrillRow>[] = [
-    { key: "name", label: "Organization", render: (v) => <span className="font-medium text-white">{v as string}</span> },
+    { key: "org_name", label: "Organization", render: (v) => <span className="font-medium text-white">{v as string}</span> },
     {
         key: "tier", label: "Tier", render: (v) => (
             <span className={`text-xs font-semibold uppercase ${TIER_CLASS[v as string] ?? "text-gray-400"}`}>
@@ -104,10 +105,15 @@ const DRILL_COLS: TableColumn<DrillRow>[] = [
 type FeatureKey = "trips" | "proposals" | "ai_sessions" | "social_posts";
 
 export default function AnalyticsPage() {
-    const [range, setRange] = useState<"7d" | "30d" | "90d">("30d");
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const [range, setRange] = useState<"7d" | "30d" | "90d">((searchParams.get("range") as "7d" | "30d" | "90d") ?? "30d");
     const [data, setData] = useState<AnalyticsData | null>(null);
     const [loading, setLoading] = useState(true);
-    const [selectedFeature, setSelectedFeature] = useState<FeatureKey | null>(null);
+    const [selectedFeature, setSelectedFeature] = useState<FeatureKey | null>(
+        (searchParams.get("feature") as FeatureKey | null) ?? null,
+    );
     const [drillData, setDrillData] = useState<DrillData | null>(null);
     const [drillLoading, setDrillLoading] = useState(false);
 
@@ -123,7 +129,7 @@ export default function AnalyticsPage() {
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
-    async function selectFeature(key: FeatureKey) {
+    const selectFeature = useCallback(async (key: FeatureKey) => {
         setSelectedFeature(key);
         setDrillLoading(true);
         try {
@@ -132,13 +138,37 @@ export default function AnalyticsPage() {
         } finally {
             setDrillLoading(false);
         }
-    }
+    }, [range]);
 
     // Build bar chart data from top orgs
     const chartData = data?.top_orgs.slice(0, 10).map((o) => ({
         date: (o.name || "Unknown").slice(0, 12),
         count: o.trips,
     })) ?? [];
+
+    useEffect(() => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("range", range);
+        if (selectedFeature) params.set("feature", selectedFeature);
+        else params.delete("feature");
+
+        const next = params.toString();
+        if (next !== searchParams.toString()) {
+            router.replace(`${pathname}?${next}`, { scroll: false });
+        }
+    }, [pathname, range, router, searchParams, selectedFeature]);
+
+    useEffect(() => {
+        const featureParam = searchParams.get("feature") as FeatureKey | null;
+        if (!featureParam) return;
+        if (selectedFeature === featureParam && drillData?.feature === featureParam && drillData.range === range) return;
+        void selectFeature(featureParam);
+    }, [drillData?.feature, drillData?.range, range, searchParams, selectFeature, selectedFeature]);
+
+    useEffect(() => {
+        if (!selectedFeature) return;
+        void selectFeature(selectedFeature);
+    }, [range, selectedFeature, selectFeature]);
 
     return (
         <div className="space-y-6">

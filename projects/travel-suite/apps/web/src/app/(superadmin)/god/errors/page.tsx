@@ -3,6 +3,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { RefreshCw, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
 import { authedFetch } from "@/lib/api/authed-fetch";
 import StatCard from "@/components/god-mode/StatCard";
@@ -100,14 +101,19 @@ function timeAgo(iso: string | null): string {
 interface ErrorRowProps {
     event: ErrorEvent;
     onSaved: () => void;
+    autoExpand?: boolean;
 }
 
-function ErrorRow({ event, onSaved }: ErrorRowProps) {
+function ErrorRow({ event, onSaved, autoExpand = false }: ErrorRowProps) {
     const [expanded, setExpanded] = useState(false);
     const [notes, setNotes] = useState(event.resolution_notes ?? "");
     const [newStatus, setNewStatus] = useState<ErrorStatus>(event.status);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
+
+    useEffect(() => {
+        if (autoExpand) setExpanded(true);
+    }, [autoExpand]);
 
     async function handleSave() {
         setSaving(true);
@@ -242,9 +248,13 @@ function ErrorRow({ event, onSaved }: ErrorRowProps) {
 // ---------------------------------------------------------------------------
 
 export default function ErrorsPage() {
-    const [statusFilter, setStatusFilter] = useState("open");
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const [statusFilter, setStatusFilter] = useState(searchParams.get("status") ?? "open");
     const [data, setData] = useState<ErrorsResponse | null>(null);
     const [loading, setLoading] = useState(true);
+    const eventId = searchParams.get("eventId");
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -258,6 +268,17 @@ export default function ErrorsPage() {
     }, [statusFilter]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
+
+    useEffect(() => {
+        const params = new URLSearchParams(searchParams.toString());
+        if (statusFilter && statusFilter !== "all") params.set("status", statusFilter);
+        else params.delete("status");
+
+        const next = params.toString();
+        if (next !== searchParams.toString()) {
+            router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+        }
+    }, [pathname, router, searchParams, statusFilter]);
 
     return (
         <div className="space-y-6">
@@ -314,7 +335,12 @@ export default function ErrorsPage() {
                     </div>
                 ) : (
                     (data?.events ?? []).map((event) => (
-                        <ErrorRow key={event.id} event={event} onSaved={fetchData} />
+                        <ErrorRow
+                            key={event.id}
+                            event={event}
+                            onSaved={fetchData}
+                            autoExpand={eventId === event.id}
+                        />
                     ))
                 )}
             </div>

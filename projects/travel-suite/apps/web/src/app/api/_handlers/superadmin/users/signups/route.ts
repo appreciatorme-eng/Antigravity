@@ -23,9 +23,12 @@ export async function GET(request: NextRequest) {
     const { adminClient } = auth;
     const params = request.nextUrl.searchParams;
     const range = params.get("range") || "30d";
+    const date = params.get("date");
     const page = Math.max(0, Number(params.get("page") || 0));
     const limit = Math.min(100, Math.max(10, Number(params.get("limit") || 50)));
     const since = rangeStart(range);
+    const dateStart = date ? `${date}T00:00:00.000Z` : null;
+    const dateEnd = date ? `${date}T23:59:59.999Z` : null;
 
     try {
         let profilesQuery = adminClient
@@ -35,6 +38,7 @@ export async function GET(request: NextRequest) {
             .range(page * limit, (page + 1) * limit - 1);
 
         if (since) profilesQuery = profilesQuery.gte("created_at", since);
+        if (dateStart && dateEnd) profilesQuery = profilesQuery.gte("created_at", dateStart).lte("created_at", dateEnd);
 
         const [profilesResult, totalResult, monthResult, orgResult] = await Promise.all([
             profilesQuery,

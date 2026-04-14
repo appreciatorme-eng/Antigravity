@@ -3,6 +3,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { RefreshCw } from "lucide-react";
 import TrendChart from "@/components/god-mode/TrendChart";
 import StatCard from "@/components/god-mode/StatCard";
@@ -88,22 +89,45 @@ const COLUMNS: TableColumn<SignupRow>[] = [
 ];
 
 export default function SignupsPage() {
-    const [range, setRange] = useState<"7d" | "30d" | "90d">("30d");
+    const router = useRouter();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const [range, setRange] = useState<"7d" | "30d" | "90d">((searchParams.get("range") as "7d" | "30d" | "90d") ?? "30d");
     const [data, setData] = useState<SignupsData | null>(null);
     const [loading, setLoading] = useState(true);
-    const [page, setPage] = useState(0);
+    const [page, setPage] = useState(Math.max(0, Number(searchParams.get("page") || 0)));
+    const selectedDate = searchParams.get("date");
 
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await fetch(`/api/superadmin/users/signups?range=${range}&page=${page}&limit=50`);
+            const params = new URLSearchParams({
+                range,
+                page: String(page),
+                limit: "50",
+            });
+            if (selectedDate) params.set("date", selectedDate);
+            const res = await fetch(`/api/superadmin/users/signups?${params}`);
             if (res.ok) setData(await res.json());
         } finally {
             setLoading(false);
         }
-    }, [range, page]);
+    }, [page, range, selectedDate]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
+
+    useEffect(() => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("range", range);
+        if (page > 0) params.set("page", String(page));
+        else params.delete("page");
+        if (!selectedDate) params.delete("date");
+
+        const next = params.toString();
+        if (next !== searchParams.toString()) {
+            router.replace(`${pathname}?${next}`, { scroll: false });
+        }
+    }, [page, pathname, range, router, searchParams, selectedDate]);
 
     const totals = data?.totals;
 
@@ -138,15 +162,33 @@ export default function SignupsPage() {
 
             {/* Trend chart */}
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-                <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
-                    Daily Signups
-                </h2>
+                <div className="mb-4 flex items-center justify-between gap-3">
+                    <div>
+                        <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Daily Signups</h2>
+                        {selectedDate && (
+                            <p className="mt-1 text-xs text-amber-300">Showing table rows from {selectedDate}</p>
+                        )}
+                    </div>
+                    {selectedDate && (
+                        <button
+                            onClick={() => router.replace(`${pathname}?range=${range}`, { scroll: false })}
+                            className="text-xs text-gray-500 transition-colors hover:text-gray-300"
+                        >
+                            Clear day filter
+                        </button>
+                    )}
+                </div>
                 {data?.trend ? (
                     <TrendChart
                         data={data.trend}
                         series={[{ key: "count", label: "Signups", color: "#f59e0b" }]}
                         type="area"
                         height={220}
+                        onClickBar={(entry) => {
+                            if (entry.date) {
+                                router.push(`${pathname}?range=${range}&date=${entry.date}`);
+                            }
+                        }}
                     />
                 ) : (
                     <div className="h-52 bg-gray-800 animate-pulse rounded-lg" />

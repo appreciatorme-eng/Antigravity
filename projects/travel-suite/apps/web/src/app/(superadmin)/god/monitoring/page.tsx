@@ -3,6 +3,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { RefreshCw, Activity } from "lucide-react";
 import StatusDot from "@/components/god-mode/StatusDot";
 import StatCard from "@/components/god-mode/StatCard";
@@ -53,10 +54,12 @@ function queueStatus(pending: number, threshold = 50): HealthStatus {
 }
 
 export default function MonitoringPage() {
+    const searchParams = useSearchParams();
     const [health, setHealth] = useState<HealthData | null>(null);
     const [queues, setQueues] = useState<QueueData | null>(null);
     const [loading, setLoading] = useState(true);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
+    const focus = searchParams.get("focus");
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -112,7 +115,7 @@ export default function MonitoringPage() {
             </div>
 
             {/* Service health grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className={`grid grid-cols-2 lg:grid-cols-3 gap-4 ${focus === "services" ? "rounded-xl ring-1 ring-amber-500/60 ring-offset-0" : ""}`}>
                 {services && Object.entries(services).map(([key, svc]) => (
                     <div
                         key={key}
@@ -138,7 +141,7 @@ export default function MonitoringPage() {
             </div>
 
             {/* Queue depths */}
-            <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+            <div className={`bg-gray-900 border border-gray-800 rounded-xl p-5 ${focus === "queues" ? "ring-1 ring-amber-500/60" : ""}`}>
                 <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
                     Queue Depths
                 </h2>
