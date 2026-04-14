@@ -1,8 +1,8 @@
 /**
- * Sentry Service Hook Webhook Handler
+ * Sentry Internal Integration Webhook Handler
  *
  * Receives "issue.created" events from Sentry and:
- *  1. Verifies the HMAC-SHA256 signature (sentry-hook-signature header)
+ *  1. Verifies a shared secret token passed in the URL query param (?token=...)
  *  2. Upserts a row into `error_events` for permanent storage + resolution tracking
  *  3. Posts a rich Block Kit message to Slack via Incoming Webhook
  *
@@ -10,12 +10,13 @@
  * <200ms response (Sentry's webhook timeout is 3 seconds).
  *
  * Setup:
- *  - SENTRY_WEBHOOK_SECRET  — "Client Secret" from Sentry → Project Settings → Service Hooks
+ *  - SENTRY_WEBHOOK_SECRET  — random hex token (in the webhook URL as ?token=<value>)
  *  - SLACK_WEBHOOK_URL      — Slack Incoming Webhook URL from Slack App settings
+ *  Webhook URL in Sentry: https://tripbuilt.com/api/webhooks/sentry?token=<SENTRY_WEBHOOK_SECRET>
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createHmac, timingSafeEqual } from "crypto";
+import { timingSafeEqual } from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logError, logEvent, getRequestId, getRequestContext } from "@/lib/observability/logger";
 import type { LogContext } from "@/lib/observability/logger";
@@ -47,14 +48,17 @@ interface SentryWebhookPayload {
 }
 
 // ---------------------------------------------------------------------------
-// Signature verification
+// Token verification
 // ---------------------------------------------------------------------------
 
-function verifySentrySignature(rawBody: string, signature: string, secret: string): boolean {
-    if (!signature || !secret) return false;
-    const digest = createHmac("sha256", secret).update(rawBody, "utf8").digest("hex");
+function verifyToken(incoming: string, expected: string): boolean {
+    if (!incoming || !expected) return false;
     try {
-        return timingSafeEqual(Buffer.from(digest, "utf8"), Buffer.from(signature, "utf8"));
+        // Pad to same length to avoid length-based timing leaks
+        const a = Buffer.from(incoming.padEnd(64, "\0"), "utf8");
+        const b = Buffer.from(expected.padEnd(64, "\0"), "utf8");
+        if (a.length !== b.length) return false;
+        return timingSafeEqual(a, b) && incoming.length === expected.length;
     } catch {
         return false;
     }
@@ -204,15 +208,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const requestId = getRequestId(request);
     const ctx = getRequestContext(request, requestId);
 
-    // Read raw body first — HMAC must be computed over the raw string
-    const rawBody = await request.text();
-    const signature = request.headers.get("sentry-hook-signature") ?? "";
-    const secret = process.env.SENTRY_WEBHOOK_SECRET ?? "";
+    // Verify shared secret token from query param
+    const incomingToken = request.nextUrl.searchParams.get("token") ?? "";
+    const expectedToken = process.env.SENTRY_WEBHOOK_SECRET ?? "";
 
-    if (!verifySentrySignature(rawBody, signature, secret)) {
-        logEvent("warn", "Sentry webhook: invalid or missing signature", ctx);
+    if (!verifyToken(incomingToken, expectedToken)) {
+        logEvent("warn", "Sentry webhook: invalid or missing token", ctx);
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const rawBody = await request.text();
 
     let payload: SentryWebhookPayload;
     try {
