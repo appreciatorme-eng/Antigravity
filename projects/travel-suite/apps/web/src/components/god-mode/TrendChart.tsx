@@ -87,7 +87,7 @@ export default function TrendChart({
     };
 
     return (
-        <div className={cn("w-full", className)}>
+        <div className={cn("min-w-0 w-full", className)}>
             <ResponsiveContainer width="100%" height={height}>
                 {type === "area" ? (
                     <AreaChart {...commonProps}>
