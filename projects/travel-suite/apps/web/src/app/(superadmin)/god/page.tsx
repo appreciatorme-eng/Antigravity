@@ -455,7 +455,7 @@ export default function GodCommandCenter() {
     if (!data && loading) {
         return (
             <div className="space-y-4">
-                <div className="grid gap-4 xl:grid-cols-[280px_minmax(0,1fr)]">
+                <div className="grid gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
                     <div className="space-y-4">
                         <div className="h-40 rounded-lg bg-gray-900 animate-pulse" />
                         <div className="h-64 rounded-lg bg-gray-900 animate-pulse" />
@@ -464,7 +464,7 @@ export default function GodCommandCenter() {
                     <div className="space-y-4">
                         <div className="h-36 rounded-lg bg-gray-900 animate-pulse" />
                         <div className="h-56 rounded-lg bg-gray-900 animate-pulse" />
-                        <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_320px]">
+                        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
                             <div className="h-96 rounded-lg bg-gray-900 animate-pulse" />
                             <div className="h-80 rounded-lg bg-gray-900 animate-pulse" />
                         </div>
@@ -484,80 +484,78 @@ export default function GodCommandCenter() {
 
     return (
         <div className="space-y-4 min-w-0">
-            <div className="grid gap-4 xl:grid-cols-[280px_minmax(0,1fr)]">
-                <CurrentPosturePanel
-                    data={data}
-                    showIncidents={showIncidents}
-                    showRevenue={showRevenue}
-                    showCustomerRisk={showCustomerRisk}
-                    showGrowth={showGrowth}
-                />
-                <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-start 2xl:justify-between">
-                    <div>
-                        <h1 className="text-2xl font-semibold text-white">{data.header.title}</h1>
-                        <p className="mt-1 text-sm text-gray-400">{data.header.subtitle}</p>
-                        <p className="mt-2 text-xs text-gray-500">Last updated {formatLastUpdated(data.generated_at)}</p>
-                    </div>
+            <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-start 2xl:justify-between">
+                <div>
+                    <h1 className="text-2xl font-semibold text-white">{data.header.title}</h1>
+                    <p className="mt-1 text-sm text-gray-400">{data.header.subtitle}</p>
+                    <p className="mt-2 text-xs text-gray-500">Last updated {formatLastUpdated(data.generated_at)}</p>
+                </div>
 
-                    <div className="flex w-full flex-col gap-2 2xl:w-auto 2xl:items-end">
-                        <div className="overflow-x-auto pb-1">
-                            <div className="flex w-max items-center gap-1 rounded-md border border-gray-800 bg-gray-900 p-1">
-                                {SAVED_VIEWS.map((view) => (
-                                    <button
-                                        key={view.id}
-                                        onClick={() => setView(view.id)}
-                                        className={cn(
-                                            "rounded px-2.5 py-1.5 text-xs transition-colors",
-                                            currentView === view.id
-                                                ? "bg-gray-800 text-white"
-                                                : "text-gray-400 hover:text-gray-200",
-                                        )}
-                                    >
-                                        {view.label}
-                                    </button>
-                                ))}
-                            </div>
+                <div className="flex w-full flex-col gap-2 2xl:w-auto 2xl:items-end">
+                    <div className="overflow-x-auto pb-1">
+                        <div className="flex w-max items-center gap-1 rounded-md border border-gray-800 bg-gray-900 p-1">
+                            {SAVED_VIEWS.map((view) => (
+                                <button
+                                    key={view.id}
+                                    onClick={() => setView(view.id)}
+                                    className={cn(
+                                        "rounded px-2.5 py-1.5 text-xs transition-colors",
+                                        currentView === view.id
+                                            ? "bg-gray-800 text-white"
+                                            : "text-gray-400 hover:text-gray-200",
+                                    )}
+                                >
+                                    {view.label}
+                                </button>
+                            ))}
                         </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                            <Link
-                                href="/god/support?status=open"
-                                className="rounded-md border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white"
-                            >
-                                Support queue
-                            </Link>
-                            <Link
-                                href="/god/errors?status=open"
-                                className="rounded-md border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white"
-                            >
-                                Incidents
-                            </Link>
-                            <Link
-                                href="/god/costs"
-                                className="rounded-md border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white"
-                            >
-                                Costs
-                            </Link>
-                            <Link
-                                href="/god/collections?tab=invoices"
-                                className="rounded-md border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white"
-                            >
-                                Collections
-                            </Link>
-                            <button
-                                onClick={fetchOverview}
-                                disabled={loading}
-                                className="inline-flex items-center gap-2 rounded-md border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white disabled:opacity-50"
-                            >
-                                <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
-                                Refresh
-                            </button>
-                        </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Link
+                            href="/god/support?status=open"
+                            className="rounded-md border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white"
+                        >
+                            Support queue
+                        </Link>
+                        <Link
+                            href="/god/errors?status=open"
+                            className="rounded-md border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white"
+                        >
+                            Incidents
+                        </Link>
+                        <Link
+                            href="/god/costs"
+                            className="rounded-md border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white"
+                        >
+                            Costs
+                        </Link>
+                        <Link
+                            href="/god/collections?tab=invoices"
+                            className="rounded-md border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white"
+                        >
+                            Collections
+                        </Link>
+                        <button
+                            onClick={fetchOverview}
+                            disabled={loading}
+                            className="inline-flex items-center gap-2 rounded-md border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white disabled:opacity-50"
+                        >
+                            <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
+                            Refresh
+                        </button>
                     </div>
                 </div>
             </div>
 
-            <div className="grid min-w-0 gap-4 xl:grid-cols-[280px_minmax(0,1fr)]">
+            <div className="grid min-w-0 gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
                 <div className="min-w-0 space-y-4">
+                    <CurrentPosturePanel
+                        data={data}
+                        showIncidents={showIncidents}
+                        showRevenue={showRevenue}
+                        showCustomerRisk={showCustomerRisk}
+                        showGrowth={showGrowth}
+                    />
                     <section className="overflow-hidden rounded-lg border border-gray-800 bg-gray-900">
                         <div className="border-b border-gray-800 px-4 py-3">
                             <h2 className="text-sm font-medium text-white">Priority inbox</h2>
@@ -635,15 +633,15 @@ export default function GodCommandCenter() {
                 </div>
 
                 <div className="min-w-0 space-y-4">
-                    <div className="grid min-w-0 gap-4 2xl:grid-cols-[minmax(0,1fr)_320px]">
+                    <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
                         <div className="min-w-0 space-y-4">
-                            <section className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
+                            <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                                 {data.summary_kpis.map((metric) => (
                                     <MetricCard key={metric.id} metric={metric} />
                                 ))}
                             </section>
 
-                            <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+                            <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                                 {data.delta_strip.map((item) => (
                                     <DeltaCard key={item.id} item={item} />
                                 ))}
@@ -653,7 +651,7 @@ export default function GodCommandCenter() {
                                 <section className={cn(
                                     "grid min-w-0 gap-4",
                                     showGrowth && showRevenue
-                                        ? "2xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]"
+                                        ? "xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]"
                                         : "grid-cols-1",
                                 )}>
                                     {showGrowth && (
@@ -787,7 +785,7 @@ export default function GodCommandCenter() {
                                         <h2 className="text-sm font-medium text-white">Customer risk watchlist</h2>
                                         <p className="mt-1 text-xs text-gray-500">Explicit risk signals by organization, not synthetic scoring.</p>
                                     </div>
-                                    <div className="grid min-w-0 gap-3 p-4 2xl:grid-cols-2">
+                                    <div className="grid min-w-0 gap-3 p-4 xl:grid-cols-2">
                                         {data.watchlists.customer_risk_orgs.length === 0 ? (
                                             <p className="text-sm text-gray-500">No orgs currently meet the risk thresholds.</p>
                                         ) : (

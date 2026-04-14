@@ -13,6 +13,7 @@ import { ConnectedTourCompletePrompt } from "@/components/tour/ConnectedTourComp
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -33,6 +34,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
     // Avoid double shelling for admin routes because /admin has its own layout shell.
     const isAdminPage = pathname?.startsWith("/admin");
+    const isGodPage = pathname?.startsWith("/god");
     // Marketing, auth, and welcome pages bypass the SaaS shell entirely.
     const MARKETING_PATHS = ["/", "/pricing", "/about", "/blog", "/demo", "/solutions", "/bones"];
     const isMarketingPage = MARKETING_PATHS.some(
@@ -75,9 +77,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                                     duration: 0.4,
                                     ease: [0.175, 0.885, 0.32, 1.05],
                                 }}
-                                className="max-w-7xl mx-auto w-full"
+                                className={cn("w-full", !isGodPage && "max-w-7xl mx-auto")}
                             >
-                                <Breadcrumbs />
+                                {!isGodPage && <Breadcrumbs />}
                                 {children}
                             </motion.div>
                         </AnimatePresence>
