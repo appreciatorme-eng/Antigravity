@@ -3,14 +3,15 @@ import type { ResolvedAdminDateRange } from "@/lib/admin/date-range";
 import type {
   DashboardAiInsightCard,
   DashboardCalendarPreview,
+  DashboardCollectionsWorkspace,
   DashboardHealth,
   DashboardHealthSourceKey,
   DashboardKpis,
   DashboardOverview,
   DashboardQueueItem,
-  DashboardScorecardMetric,
 } from "@/lib/admin/dashboard-overview-types";
 import {
+  buildDashboardCollectionsWorkspaceData,
   buildDashboardOutstandingSnapshot,
   buildDashboardClientMap,
   filterDashboardInvoicesByTrip,
@@ -414,62 +415,67 @@ function buildAiInsights(params: {
   return cards.slice(0, 4);
 }
 
-function buildScorecard(params: {
-  kpis: DashboardKpis;
-}): DashboardScorecardMetric[] {
-  return [
-    {
-      key: "revenue",
-      label: "Revenue",
-      current:
-        params.kpis.cashCollected !== null
-          ? formatCompactINR(params.kpis.cashCollected)
-          : "—",
-      delta: null,
+function buildCollectionsWorkspaceView(params: {
+  workspace: ReturnType<typeof buildDashboardCollectionsWorkspaceData>;
+  health: DashboardHealth;
+}): DashboardCollectionsWorkspace {
+  const invoiceUnavailable = params.health.sources.invoices === "failed";
+  const tripUnavailable = params.health.sources.trips === "failed";
+  const followUpUnavailable = params.health.sources.followUps === "failed";
+  const paymentUnavailable = params.health.sources.payments === "failed";
+
+  return {
+    nextBestAction: params.workspace.nextBestAction,
+    snapshot: {
+      collectedThisWindow: {
+        ...params.workspace.snapshot.collectedThisWindow,
+        amount: paymentUnavailable ? null : params.workspace.snapshot.collectedThisWindow.amount,
+      },
+      outstanding: {
+        ...params.workspace.snapshot.outstanding,
+        amount:
+          paymentUnavailable && tripUnavailable && invoiceUnavailable
+            ? null
+            : params.workspace.snapshot.outstanding.amount,
+        count:
+          paymentUnavailable && tripUnavailable && invoiceUnavailable
+            ? null
+            : params.workspace.snapshot.outstanding.count,
+      },
+      overdue: {
+        ...params.workspace.snapshot.overdue,
+        amount: invoiceUnavailable ? null : params.workspace.snapshot.overdue.amount,
+        count: invoiceUnavailable ? null : params.workspace.snapshot.overdue.count,
+      },
+      expectedIn7Days: {
+        ...params.workspace.snapshot.expectedIn7Days,
+        amount:
+          invoiceUnavailable && followUpUnavailable
+            ? null
+            : params.workspace.snapshot.expectedIn7Days.amount,
+        count:
+          invoiceUnavailable && followUpUnavailable
+            ? null
+            : params.workspace.snapshot.expectedIn7Days.count,
+      },
     },
-    {
-      key: "outstanding",
-      label: "Outstanding Balance",
-      current:
-        params.kpis.outstandingBalance !== null
-          ? formatCompactINR(params.kpis.outstandingBalance)
-          : "—",
-      delta: null,
-    },
-    {
-      key: "pipeline",
-      label: "Open Pipeline",
-      current: params.kpis.openPipelineValue !== null ? formatCompactINR(params.kpis.openPipelineValue) : "—",
-      delta: null,
-    },
-    {
-      key: "winRate",
-      label: "Win Rate",
-      current:
-        params.kpis.winRate !== null
-          ? `${params.kpis.winRate.toFixed(1)}%`
-          : "—",
-      delta: null,
-    },
-    {
-      key: "overdue",
-      label: "Overdue Invoices",
-      current:
-        params.kpis.overdueInvoices !== null
-          ? String(params.kpis.overdueInvoices)
-          : "—",
-      delta: null,
-    },
-    {
-      key: "followups",
-      label: "Follow-ups Due",
-      current:
-        params.kpis.followUpsDue !== null
-          ? String(params.kpis.followUpsDue)
-          : "—",
-      delta: null,
-    },
-  ];
+    buckets: params.workspace.buckets.map((bucket) => {
+      if (bucket.key === "overdue_invoices" || bucket.key === "due_this_week") {
+        return {
+          ...bucket,
+          amount: invoiceUnavailable ? null : bucket.amount,
+          count: invoiceUnavailable ? null : bucket.count,
+        };
+      }
+
+      return {
+        ...bucket,
+        amount: tripUnavailable ? null : bucket.amount,
+        count: tripUnavailable ? null : bucket.count,
+      };
+    }),
+    priorityRows: params.workspace.priorityRows,
+  };
 }
 
 export async function buildDashboardOverview(params: {
@@ -690,6 +696,21 @@ export async function buildDashboardOverview(params: {
     narrative: revenueNarrative,
   };
 
+  const collectionsWorkspace = buildCollectionsWorkspaceView({
+    workspace: buildDashboardCollectionsWorkspaceData({
+      range: params.range,
+      proposals,
+      trips,
+      invoices,
+      paymentLinks: sources.paymentLinks.rows,
+      commercialPayments: sources.commercialPayments.rows,
+      followUps: sources.followUps.rows,
+      collectedThisWindow: totalCashCollected,
+      now,
+    }),
+    health: sources.health,
+  });
+
   return {
     generatedAt: new Date().toISOString(),
     health: sources.health,
@@ -719,7 +740,7 @@ export async function buildDashboardOverview(params: {
           : actionQueue.summary.followUpsDue,
     },
     pipeline,
-    scorecard: buildScorecard({ kpis }),
+    collectionsWorkspace,
     aiInsights: buildAiInsights({
       kpis,
       pipeline,

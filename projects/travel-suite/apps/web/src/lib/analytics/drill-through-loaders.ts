@@ -3,6 +3,7 @@ import type { TimeWindow } from "./adapters";
 import type { ResolvedAdminDateRange } from "@/lib/admin/date-range";
 import {
   buildDashboardClientMap,
+  buildDashboardCollectionsWorkspaceData,
   buildDashboardOutstandingSnapshot,
   buildDashboardRevenueSeries,
   buildDashboardTripStatusMap,
@@ -176,6 +177,45 @@ function getTripQuotedTotal(trip: TripDrillRow): number {
 function isMissingDeletedAtError(message: string | null | undefined): boolean {
   const normalized = (message || "").toLowerCase();
   return normalized.includes("deleted_at") && normalized.includes("column");
+}
+
+async function loadDashboardCommercialState(
+  supabase: SupabaseClient,
+  orgId: string,
+  range: ResolvedAdminDateRange,
+) {
+  const sources = await loadDashboardSourceBundle({
+    client: supabase as unknown as AdminQueryClient,
+    organizationId: orgId,
+    followUpWindowStartIso: range.fromISO,
+    followUpWindowEndIso: range.toExclusiveISO,
+  });
+
+  const clientMap = buildDashboardClientMap(sources.profiles.rows);
+  const tripStatusMap = buildDashboardTripStatusMap(sources.trips.rows);
+  const trips = decorateDashboardTrips({
+    trips: sources.trips.rows,
+    itineraries: sources.itineraries.rows,
+    clientMap,
+  });
+  const proposals = resolveDashboardProposalRows({
+    proposals: sources.proposals.rows,
+    tripStatusMap,
+    clientMap,
+    enforceLinkedTripPresence: sources.trips.health !== "failed",
+  });
+  const invoices = filterDashboardInvoicesByTrip({
+    invoices: sources.invoices.rows,
+    tripStatusMap,
+    enforceLinkedTripPresence: sources.trips.health !== "failed",
+  });
+
+  return {
+    sources,
+    trips,
+    proposals,
+    invoices,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -451,6 +491,189 @@ export async function loadOutstandingDrill(
       href: item.href,
     })),
   };
+}
+
+async function loadCollectionsBucketDrill(params: {
+  supabase: SupabaseClient;
+  orgId: string;
+  range: ResolvedAdminDateRange;
+  bucketKey:
+    | "overdue_invoices"
+      | "due_this_week"
+      | "partially_paid_trips"
+      | "approved_unpaid_trips";
+  summaryLabel: string;
+  rowLabel: string;
+}): Promise<DrillResult> {
+  const { sources, trips, proposals, invoices } = await loadDashboardCommercialState(
+    params.supabase,
+    params.orgId,
+    params.range,
+  );
+  const series = buildDashboardRevenueSeries({
+    range: params.range,
+    proposals,
+    trips,
+    invoices,
+    paymentLinks: sources.paymentLinks.rows,
+    invoicePayments: sources.invoicePayments.rows,
+    commercialPayments: sources.commercialPayments.rows,
+  });
+  const totalCollectedCash = series.reduce(
+    (sum, point) => sum + Number(point.cashCollected || 0),
+    0,
+  );
+  const workspace = buildDashboardCollectionsWorkspaceData({
+    range: params.range,
+    proposals,
+    trips,
+    invoices,
+    paymentLinks: sources.paymentLinks.rows,
+    commercialPayments: sources.commercialPayments.rows,
+    followUps: sources.followUps.rows,
+    collectedThisWindow: totalCollectedCash,
+    now: new Date(),
+  });
+  const bucket = workspace.buckets.find((item) => item.key === params.bucketKey);
+  const rows = (workspace.bucketRows[params.bucketKey] || []).map((row) => ({
+    id: row.id,
+    title: row.title,
+    subtitle: row.clientName || row.followUpState || "Collection record",
+    amountLabel: formatINR(Number(row.outstandingAmount || 0)),
+    status: row.paymentStage,
+    dateLabel: row.dueDate ? formatDate(row.dueDate) : "N/A",
+    href: row.primaryHref,
+  }));
+
+  return {
+    summary: {
+      label: params.summaryLabel,
+      primaryValue: formatINR(Number(bucket?.amount || 0)),
+      secondaryValue: `${rows.length} ${params.rowLabel}${rows.length === 1 ? "" : "s"}`,
+      windowLabel: formatRangeDateLabel(params.range),
+    },
+    rows,
+  };
+}
+
+export async function loadCollectionsOutstandingDrill(
+  supabase: SupabaseClient,
+  orgId: string,
+  range: ResolvedAdminDateRange,
+): Promise<DrillResult> {
+  const { sources, trips, proposals, invoices } = await loadDashboardCommercialState(
+    supabase,
+    orgId,
+    range,
+  );
+  const series = buildDashboardRevenueSeries({
+    range,
+    proposals,
+    trips,
+    invoices,
+    paymentLinks: sources.paymentLinks.rows,
+    invoicePayments: sources.invoicePayments.rows,
+    commercialPayments: sources.commercialPayments.rows,
+  });
+  const totalCollectedCash = series.reduce(
+    (sum, point) => sum + Number(point.cashCollected || 0),
+    0,
+  );
+  const workspace = buildDashboardCollectionsWorkspaceData({
+    range,
+    proposals,
+    trips,
+    invoices,
+    paymentLinks: sources.paymentLinks.rows,
+    commercialPayments: sources.commercialPayments.rows,
+    followUps: sources.followUps.rows,
+    collectedThisWindow: totalCollectedCash,
+    now: new Date(),
+  });
+  const rows = [
+    ...workspace.bucketRows.overdue_invoices,
+    ...workspace.bucketRows.due_this_week,
+    ...workspace.bucketRows.partially_paid_trips,
+    ...workspace.bucketRows.approved_unpaid_trips,
+  ].map((row) => ({
+    id: row.id,
+    title: row.title,
+    subtitle: row.clientName || row.followUpState || "Collection record",
+    amountLabel: formatINR(Number(row.outstandingAmount || 0)),
+    status: row.paymentStage,
+    dateLabel: row.dueDate ? formatDate(row.dueDate) : "N/A",
+    href: row.primaryHref,
+  }));
+
+  return {
+    summary: {
+      label: "Collections outstanding contributors",
+      primaryValue: formatINR(Number(workspace.snapshot.outstanding.amount || 0)),
+      secondaryValue: `${rows.length} linked record${rows.length === 1 ? "" : "s"} contributing to collectible outstanding`,
+      windowLabel: formatRangeDateLabel(range),
+    },
+    rows,
+  };
+}
+
+export async function loadCollectionsOverdueDrill(
+  supabase: SupabaseClient,
+  orgId: string,
+  range: ResolvedAdminDateRange,
+): Promise<DrillResult> {
+  return loadCollectionsBucketDrill({
+    supabase,
+    orgId,
+    range,
+    bucketKey: "overdue_invoices",
+    summaryLabel: "Overdue invoice contributors",
+    rowLabel: "overdue invoice record",
+  });
+}
+
+export async function loadCollectionsDueSoonDrill(
+  supabase: SupabaseClient,
+  orgId: string,
+  range: ResolvedAdminDateRange,
+): Promise<DrillResult> {
+  return loadCollectionsBucketDrill({
+    supabase,
+    orgId,
+    range,
+    bucketKey: "due_this_week",
+    summaryLabel: "Due this week contributors",
+    rowLabel: "due-soon collection record",
+  });
+}
+
+export async function loadCollectionsPartialDrill(
+  supabase: SupabaseClient,
+  orgId: string,
+  range: ResolvedAdminDateRange,
+): Promise<DrillResult> {
+  return loadCollectionsBucketDrill({
+    supabase,
+    orgId,
+    range,
+    bucketKey: "partially_paid_trips",
+    summaryLabel: "Partially paid trip contributors",
+    rowLabel: "partially paid trip",
+  });
+}
+
+export async function loadCollectionsApprovedUnpaidDrill(
+  supabase: SupabaseClient,
+  orgId: string,
+  range: ResolvedAdminDateRange,
+): Promise<DrillResult> {
+  return loadCollectionsBucketDrill({
+    supabase,
+    orgId,
+    range,
+    bucketKey: "approved_unpaid_trips",
+    summaryLabel: "Approved but unpaid trip contributors",
+    rowLabel: "approved unpaid trip",
+  });
 }
 
 export async function loadBookingsDrill(

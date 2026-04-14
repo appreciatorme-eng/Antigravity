@@ -2,7 +2,7 @@
  * Admin Dashboard v2 — Tour Operator Mission Control
  *
  * 6-zone layout: Morning briefing, KPI strip, smart action queue + calendar,
- * revenue intelligence + customer pulse, pipeline + AI insights, scorecard.
+ * revenue intelligence + customer pulse, pipeline + AI insights, collections workspace.
  *
  * Two-phase data loading: critical (above-the-fold) renders first,
  * AI insights load in the background.
@@ -14,10 +14,10 @@ import { AlertTriangle } from 'lucide-react';
 import { SetupChecklist } from '@/components/dashboard/SetupChecklist';
 import { AIInsightsCarousel } from './_components/v2/AIInsightsCarousel';
 import { CalendarPreview } from './_components/v2/CalendarPreview';
+import { CollectionsWorkspace } from './_components/v2/CollectionsWorkspace';
 import { CustomerPulse } from './_components/v2/CustomerPulse';
 import { KPITickerStrip } from './_components/v2/KPITickerStrip';
 import { MorningBriefing } from './_components/v2/MorningBriefing';
-import { PerformanceScorecard } from './_components/v2/PerformanceScorecard';
 import { PipelineFunnel } from './_components/v2/PipelineFunnel';
 import { RevenueIntelligence } from './_components/v2/RevenueIntelligence';
 import { SmartActionQueue } from './_components/v2/SmartActionQueue';
@@ -89,8 +89,8 @@ export default function AdminDashboard() {
         <AIInsightsCarousel data={data} />
       </div>
 
-      {/* Zone 5: Performance Scorecard (collapsible) */}
-      <PerformanceScorecard data={data} />
+      {/* Zone 5: Collections Workspace */}
+      <CollectionsWorkspace data={data} />
     </div>
   );
 }

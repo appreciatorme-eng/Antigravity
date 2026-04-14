@@ -93,6 +93,66 @@ export interface DashboardScorecardMetric {
   delta: number | null;
 }
 
+export type DashboardCollectionsBucketKey =
+  | "overdue_invoices"
+  | "due_this_week"
+  | "partially_paid_trips"
+  | "approved_unpaid_trips";
+
+export interface DashboardCollectionsSnapshotMetric {
+  label: string;
+  amount: number | null;
+  count: number | null;
+  href: string;
+}
+
+export interface DashboardCollectionsBucket {
+  key: DashboardCollectionsBucketKey;
+  label: string;
+  amount: number | null;
+  count: number | null;
+  href: string;
+}
+
+export interface DashboardCollectionsPriorityRow {
+  id: string;
+  recordType: "trip" | "invoice";
+  title: string;
+  clientName: string | null;
+  outstandingAmount: number | null;
+  dueDate: string | null;
+  urgency: "critical" | "warning" | "attention";
+  paymentStage:
+    | "overdue"
+    | "due_soon"
+    | "partially_paid"
+    | "approved"
+    | "unpaid";
+  followUpState: string | null;
+  primaryHref: string;
+  primaryLabel: string;
+  secondaryHref: string | null;
+  secondaryLabel: string | null;
+}
+
+export interface DashboardCollectionsNextAction {
+  title: string;
+  href: string;
+  actionLabel: string;
+}
+
+export interface DashboardCollectionsWorkspace {
+  nextBestAction: DashboardCollectionsNextAction | null;
+  snapshot: {
+    collectedThisWindow: DashboardCollectionsSnapshotMetric;
+    outstanding: DashboardCollectionsSnapshotMetric;
+    overdue: DashboardCollectionsSnapshotMetric;
+    expectedIn7Days: DashboardCollectionsSnapshotMetric;
+  };
+  buckets: DashboardCollectionsBucket[];
+  priorityRows: DashboardCollectionsPriorityRow[];
+}
+
 export interface DashboardAiInsightCard {
   id: string;
   category: "cash" | "pipeline" | "operations" | "growth";
@@ -149,7 +209,7 @@ export interface DashboardOverview {
   revenue: DashboardRevenueSnapshot;
   customerPulse: DashboardCustomerPulse;
   pipeline: DashboardPipelineSummary;
-  scorecard: DashboardScorecardMetric[];
+  collectionsWorkspace: DashboardCollectionsWorkspace;
   aiInsights: DashboardAiInsightCard[];
   calendarPreview: DashboardCalendarPreview;
   lastComputedAt: string;

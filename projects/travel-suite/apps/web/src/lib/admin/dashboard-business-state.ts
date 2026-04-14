@@ -1,7 +1,15 @@
 import type { ResolvedAdminDateRange } from "@/lib/admin/date-range";
-import type { DashboardPipelineStage } from "@/lib/admin/dashboard-overview-types";
+import type {
+  DashboardCollectionsBucket,
+  DashboardCollectionsBucketKey,
+  DashboardCollectionsNextAction,
+  DashboardCollectionsPriorityRow,
+  DashboardCollectionsSnapshotMetric,
+  DashboardPipelineStage,
+} from "@/lib/admin/dashboard-overview-types";
 import type {
   CommercialPaymentSelectorRow,
+  FollowUpSelectorRow,
   InvoicePaymentSelectorRow,
   InvoiceSelectorRow,
   ItinerarySelectorRow,
@@ -29,6 +37,8 @@ import {
   hasWonTripStatus,
   isActiveTripStatus,
   isBookedTripStatus,
+  isDueSoonInvoice,
+  isOverdueInvoice,
   isPaidInvoice,
   safeDate,
 } from "@/lib/admin/operator-state";
@@ -96,6 +106,48 @@ type CommercialTripSummary = {
   totalPaid: number;
   latestPaymentDate: string | null;
 };
+
+type CollectionPriorityRowInternal = Omit<
+  DashboardCollectionsPriorityRow,
+  "outstandingAmount"
+> & {
+  outstandingAmount: number;
+  bucketKey: DashboardCollectionsBucketKey;
+  sortRank: number;
+};
+
+export type DashboardCollectionsWorkspaceData = {
+  nextBestAction: DashboardCollectionsNextAction | null;
+  snapshot: {
+    collectedThisWindow: DashboardCollectionsSnapshotMetric;
+    outstanding: DashboardCollectionsSnapshotMetric;
+    overdue: DashboardCollectionsSnapshotMetric;
+    expectedIn7Days: DashboardCollectionsSnapshotMetric;
+  };
+  buckets: DashboardCollectionsBucket[];
+  priorityRows: DashboardCollectionsPriorityRow[];
+  bucketRows: Record<DashboardCollectionsBucketKey, DashboardCollectionsPriorityRow[]>;
+};
+
+function stripCollectionPriorityRowMeta(
+  row: CollectionPriorityRowInternal,
+): DashboardCollectionsPriorityRow {
+  return {
+    id: row.id,
+    recordType: row.recordType,
+    title: row.title,
+    clientName: row.clientName,
+    outstandingAmount: row.outstandingAmount,
+    dueDate: row.dueDate,
+    urgency: row.urgency,
+    paymentStage: row.paymentStage,
+    followUpState: row.followUpState,
+    primaryHref: row.primaryHref,
+    primaryLabel: row.primaryLabel,
+    secondaryHref: row.secondaryHref,
+    secondaryLabel: row.secondaryLabel,
+  };
+}
 
 export const PROPOSAL_STAGE_LABELS: Record<DashboardPipelineStage["key"], string> = {
   draft: "Draft",
@@ -357,6 +409,141 @@ function getTripTitle(trip: TripBusinessRow): string {
 function getTripSubtitle(trip: TripBusinessRow): string {
   const parts = [trip.destination, trip.clientName].filter(Boolean);
   return parts.length > 0 ? parts.join(" • ") : "Trip record";
+}
+
+type CollectionFollowUpMeta = {
+  label: string;
+  scheduledFor: string | null;
+  href: string;
+  dueWithin7Days: boolean;
+  score: number;
+};
+
+function isCollectionFollowUp(notificationType: string | null | undefined): boolean {
+  const normalized = normalizeStatus(notificationType, "");
+  return (
+    normalized.includes("invoice") ||
+    normalized.includes("payment") ||
+    normalized.includes("follow_up")
+  );
+}
+
+function buildCollectionFollowUpMap(params: {
+  followUps: FollowUpSelectorRow[];
+  now: Date;
+}): Map<string, CollectionFollowUpMeta> {
+  const map = new Map<string, CollectionFollowUpMeta>();
+  const windowEnd = new Date(params.now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+  for (const followUp of params.followUps) {
+    if (!followUp.trip_id || !isCollectionFollowUp(followUp.notification_type)) continue;
+    const scheduled = safeDate(followUp.scheduled_for);
+    const normalizedStatus = normalizeStatus(followUp.status, "");
+    const isFailed = normalizedStatus === "failed";
+    const isPastDue = Boolean(scheduled && scheduled.getTime() < params.now.getTime());
+    const dueWithin7Days = Boolean(
+      scheduled &&
+        scheduled.getTime() >= params.now.getTime() &&
+        scheduled.getTime() <= windowEnd.getTime(),
+    );
+    const label = isFailed
+      ? "Reminder failed"
+      : isPastDue
+        ? "Reminder overdue"
+        : scheduled
+          ? `Reminder ${formatDateLabel(followUp.scheduled_for)}`
+          : "Reminder scheduled";
+
+    const candidate: CollectionFollowUpMeta = {
+      label,
+      scheduledFor: followUp.scheduled_for,
+      href: "/admin/notifications",
+      dueWithin7Days,
+      score: isFailed ? 3 : isPastDue ? 2 : dueWithin7Days ? 1 : 0,
+    };
+
+    const existing = map.get(followUp.trip_id);
+    if (!existing || candidate.score > existing.score) {
+      map.set(followUp.trip_id, candidate);
+      continue;
+    }
+
+    if (
+      candidate.score === existing.score &&
+      candidate.scheduledFor &&
+      (!existing.scheduledFor ||
+        new Date(candidate.scheduledFor).getTime() <
+          new Date(existing.scheduledFor).getTime())
+    ) {
+      map.set(followUp.trip_id, candidate);
+    }
+  }
+
+  return map;
+}
+
+function buildCollectionBucketHref(
+  key: DashboardCollectionsBucketKey,
+  range: ResolvedAdminDateRange,
+): string {
+  const params = new URLSearchParams({
+    type:
+      key === "overdue_invoices"
+        ? "collections_overdue"
+        : key === "due_this_week"
+          ? "collections_due_soon"
+          : key === "partially_paid_trips"
+            ? "collections_partial"
+            : "collections_approved_unpaid",
+    preset: range.preset,
+    from: range.from,
+    to: range.to,
+  });
+  return `/analytics/drill-through?${params.toString()}`;
+}
+
+function createCollectionPriorityRow(params: {
+  bucketKey: DashboardCollectionsBucketKey;
+  id: string;
+  recordType: "trip" | "invoice";
+  title: string;
+  clientName: string | null;
+  outstandingAmount: number;
+  dueDate: string | null;
+  urgency: DashboardCollectionsPriorityRow["urgency"];
+  paymentStage: DashboardCollectionsPriorityRow["paymentStage"];
+  followUpState: string | null;
+  primaryHref: string;
+  primaryLabel: string;
+  secondaryHref?: string | null;
+  secondaryLabel?: string | null;
+}): CollectionPriorityRowInternal {
+  const sortRank =
+    params.bucketKey === "overdue_invoices"
+      ? 0
+      : params.bucketKey === "due_this_week"
+        ? 1
+        : params.bucketKey === "partially_paid_trips"
+          ? 2
+          : 3;
+
+  return {
+    id: params.id,
+    recordType: params.recordType,
+    title: params.title,
+    clientName: params.clientName,
+    outstandingAmount: Number(params.outstandingAmount.toFixed(2)),
+    dueDate: params.dueDate,
+    urgency: params.urgency,
+    paymentStage: params.paymentStage,
+    followUpState: params.followUpState,
+    primaryHref: params.primaryHref,
+    primaryLabel: params.primaryLabel,
+    secondaryHref: params.secondaryHref || null,
+    secondaryLabel: params.secondaryLabel || null,
+    bucketKey: params.bucketKey,
+    sortRank,
+  };
 }
 
 function createSeriesItem(params: {
@@ -1195,6 +1382,295 @@ export function buildDashboardOutstandingSnapshot(params: {
   return {
     totalOutstanding: Number(totalOutstanding.toFixed(2)),
     items,
+  };
+}
+
+export function buildDashboardCollectionsWorkspaceData(params: {
+  range: ResolvedAdminDateRange;
+  proposals: ProposalBusinessRow[];
+  trips: TripBusinessRow[];
+  invoices: InvoiceSelectorRow[];
+  paymentLinks: PaymentLinkSelectorRow[];
+  commercialPayments: CommercialPaymentSelectorRow[];
+  followUps: FollowUpSelectorRow[];
+  collectedThisWindow: number;
+  now: Date;
+}): DashboardCollectionsWorkspaceData {
+  const canonicalProposals = filterCanonicalPipelineProposals(params.proposals);
+  const tripById = new Map(params.trips.map((trip) => [trip.id, trip]));
+  const invoiceSummaryByTrip = buildInvoiceSummaryByTrip(params.invoices);
+  const paidLinkAmountByTrip = buildPaidLinkAmountByTrip({
+    proposals: canonicalProposals,
+    paymentLinks: params.paymentLinks,
+  });
+  const commercialPaymentSummaryByTrip =
+    buildCommercialPaymentSummaryByTrip(params.commercialPayments);
+  const followUpByTrip = buildCollectionFollowUpMap({
+    followUps: params.followUps,
+    now: params.now,
+  });
+  const overdueRows: CollectionPriorityRowInternal[] = [];
+  const dueSoonRows: CollectionPriorityRowInternal[] = [];
+  const partialRows: CollectionPriorityRowInternal[] = [];
+  const approvedRows: CollectionPriorityRowInternal[] = [];
+  const invoiceTripIdsWithBuckets = new Set<string>();
+
+  for (const invoice of params.invoices) {
+    const trip = invoice.trip_id ? tripById.get(invoice.trip_id) || null : null;
+    const followUp = invoice.trip_id ? followUpByTrip.get(invoice.trip_id) || null : null;
+    const outstandingAmount = Number(invoice.balance_amount || 0);
+    if (outstandingAmount <= 0) continue;
+
+    let bucketKey: DashboardCollectionsBucketKey | null = null;
+    let urgency: DashboardCollectionsPriorityRow["urgency"] = "warning";
+    let paymentStage: DashboardCollectionsPriorityRow["paymentStage"] = "due_soon";
+
+    if (isOverdueInvoice(invoice, params.now)) {
+      bucketKey = "overdue_invoices";
+      urgency = "critical";
+      paymentStage = "overdue";
+    } else if (isDueSoonInvoice(invoice, params.now, 7)) {
+      bucketKey = "due_this_week";
+      urgency = "warning";
+      paymentStage = "due_soon";
+    }
+
+    if (!bucketKey) continue;
+    if (invoice.trip_id) invoiceTripIdsWithBuckets.add(invoice.trip_id);
+
+    const row = createCollectionPriorityRow({
+      bucketKey,
+      id: invoice.id,
+      recordType: "invoice",
+      title: `Invoice ${invoice.invoice_number || invoice.id.slice(0, 8)}`,
+      clientName: trip?.clientName || null,
+      outstandingAmount,
+      dueDate: invoice.due_date,
+      urgency,
+      paymentStage,
+      followUpState: followUp?.label || null,
+      primaryHref: "/admin/invoices",
+      primaryLabel: "Open Invoice",
+      secondaryHref: "/admin/notifications",
+      secondaryLabel: followUp ? "Open Reminder" : "Send Reminder",
+    });
+
+    if (bucketKey === "overdue_invoices") {
+      overdueRows.push(row);
+    } else {
+      dueSoonRows.push(row);
+    }
+  }
+
+  const proposalOwnedWonTripIds = new Set(
+    canonicalProposals
+      .filter(
+        (proposal) =>
+          proposal.lifecycle === "won" &&
+          Boolean(proposal.trip_id) &&
+          proposal.hasLiveLinkedTrip,
+      )
+      .map((proposal) => proposal.trip_id as string),
+  );
+
+  for (const trip of params.trips) {
+    if (!trip.isWon) continue;
+    const proposal = canonicalProposals.find((item) => item.trip_id === trip.id) || null;
+    const invoiceSummary = invoiceSummaryByTrip.get(trip.id) || null;
+    const paidLinkAmount = paidLinkAmountByTrip.get(trip.id) || 0;
+    const commercialPaidAmount =
+      commercialPaymentSummaryByTrip.get(trip.id)?.totalPaid || getTripManualCashAmount(trip);
+    const targetAmount = resolveCommercialTargetAmount({
+      trip,
+      invoiceSummary,
+      proposalValue: proposal?.value,
+    });
+    const collectedAmount = getCollectedCommercialAmount({
+      trip,
+      invoiceSummary,
+      paidLinkAmount,
+      commercialPaidAmount,
+    });
+    const outstandingAmount = Math.max(targetAmount - collectedAmount, 0);
+
+    if (outstandingAmount <= 0) continue;
+    if (!proposalOwnedWonTripIds.has(trip.id) && !trip.isWon) continue;
+
+    const stage = resolveWonCommercialStage({
+      tripFinancialPaymentStatus: trip.financialPaymentStatus,
+      commercialPaidAmount,
+      invoiceSummary,
+      paidLinkAmount,
+      targetAmount,
+    });
+    if (stage !== "partially_paid" && stage !== "approved") continue;
+
+    const followUp = followUpByTrip.get(trip.id) || null;
+    const row = createCollectionPriorityRow({
+      bucketKey: stage === "partially_paid" ? "partially_paid_trips" : "approved_unpaid_trips",
+      id: trip.id,
+      recordType: "trip",
+      title: getTripTitle(trip),
+      clientName: trip.clientName,
+      outstandingAmount,
+      dueDate: followUp?.scheduledFor || trip.start_date || null,
+      urgency: stage === "partially_paid" ? "warning" : "attention",
+      paymentStage: stage === "partially_paid" ? "partially_paid" : "approved",
+      followUpState: followUp?.label || null,
+      primaryHref: `/trips/${trip.id}?tab=financials`,
+      primaryLabel: "Open Financials",
+      secondaryHref: "/admin/notifications",
+      secondaryLabel: followUp ? "Open Reminder" : "Send Reminder",
+    });
+
+    if (invoiceTripIdsWithBuckets.has(trip.id)) continue;
+
+    if (stage === "partially_paid") {
+      partialRows.push(row);
+    } else {
+      approvedRows.push(row);
+    }
+  }
+
+  overdueRows.sort((left, right) => right.outstandingAmount - left.outstandingAmount);
+  dueSoonRows.sort((left, right) => right.outstandingAmount - left.outstandingAmount);
+  partialRows.sort((left, right) => right.outstandingAmount - left.outstandingAmount);
+  approvedRows.sort((left, right) => right.outstandingAmount - left.outstandingAmount);
+
+  const expectedTripRows = [...partialRows, ...approvedRows].filter((row) => {
+    if (invoiceTripIdsWithBuckets.has(row.id)) return false;
+    const followUp = followUpByTrip.get(row.id);
+    return Boolean(followUp?.dueWithin7Days);
+  });
+
+  const priorityRows = [
+    ...overdueRows,
+    ...dueSoonRows,
+    ...partialRows,
+    ...approvedRows,
+  ]
+    .sort((left, right) => {
+      if (left.sortRank !== right.sortRank) return left.sortRank - right.sortRank;
+      return right.outstandingAmount - left.outstandingAmount;
+    })
+    .slice(0, 5)
+    .map(stripCollectionPriorityRowMeta);
+
+  const bucketRows = {
+    overdue_invoices: overdueRows.map(stripCollectionPriorityRowMeta),
+    due_this_week: dueSoonRows.map(stripCollectionPriorityRowMeta),
+    partially_paid_trips: partialRows.map(stripCollectionPriorityRowMeta),
+    approved_unpaid_trips: approvedRows.map(stripCollectionPriorityRowMeta),
+  };
+
+  const overdueAmount = overdueRows.reduce((sum, row) => sum + row.outstandingAmount, 0);
+  const dueSoonAmount = dueSoonRows.reduce((sum, row) => sum + row.outstandingAmount, 0);
+  const partialAmount = partialRows.reduce((sum, row) => sum + row.outstandingAmount, 0);
+  const approvedAmount = approvedRows.reduce((sum, row) => sum + row.outstandingAmount, 0);
+  const expectedTripAmount = expectedTripRows.reduce(
+    (sum, row) => sum + row.outstandingAmount,
+    0,
+  );
+  const outstandingAmount = overdueAmount + dueSoonAmount + partialAmount + approvedAmount;
+
+  const buckets: DashboardCollectionsBucket[] = [
+    {
+      key: "overdue_invoices",
+      label: "Overdue Invoices",
+      amount: Number(overdueAmount.toFixed(2)),
+      count: overdueRows.length,
+      href: buildCollectionBucketHref("overdue_invoices", params.range),
+    },
+    {
+      key: "due_this_week",
+      label: "Due This Week",
+      amount: Number(dueSoonAmount.toFixed(2)),
+      count: dueSoonRows.length,
+      href: buildCollectionBucketHref("due_this_week", params.range),
+    },
+    {
+      key: "partially_paid_trips",
+      label: "Partially Paid Trips",
+      amount: Number(partialAmount.toFixed(2)),
+      count: partialRows.length,
+      href: buildCollectionBucketHref("partially_paid_trips", params.range),
+    },
+    {
+      key: "approved_unpaid_trips",
+      label: "Approved but Unpaid Trips",
+      amount: Number(approvedAmount.toFixed(2)),
+      count: approvedRows.length,
+      href: buildCollectionBucketHref("approved_unpaid_trips", params.range),
+    },
+  ];
+
+  const nextBestAction = overdueRows.length > 0
+    ? {
+        title: `Collect ${formatCompactINR(overdueAmount)} from ${overdueRows.length} overdue invoice${overdueRows.length === 1 ? "" : "s"} before following up on trips.`,
+        href: buildCollectionBucketHref("overdue_invoices", params.range),
+        actionLabel: "Open overdue invoices",
+      }
+    : dueSoonRows.length > 0
+      ? {
+          title: `Recover ${formatCompactINR(dueSoonAmount)} due this week before it slips overdue.`,
+          href: buildCollectionBucketHref("due_this_week", params.range),
+          actionLabel: "Open due this week",
+        }
+      : partialRows.length > 0
+        ? {
+            title: `Follow up on ${partialRows.length} partially paid trip${partialRows.length === 1 ? "" : "s"} to close the remaining balance.`,
+            href: buildCollectionBucketHref("partially_paid_trips", params.range),
+            actionLabel: "Open partially paid trips",
+          }
+        : approvedRows.length > 0
+          ? {
+              title: `Convert ${approvedRows.length} approved trip${approvedRows.length === 1 ? "" : "s"} into collected cash with reminders and invoices.`,
+              href: buildCollectionBucketHref("approved_unpaid_trips", params.range),
+              actionLabel: "Open approved trips",
+            }
+          : null;
+
+  return {
+    nextBestAction,
+    snapshot: {
+      collectedThisWindow: {
+        label: "Collected This Window",
+        amount: Number(params.collectedThisWindow.toFixed(2)),
+        count: null,
+        href: `/analytics/drill-through?${new URLSearchParams({
+          type: "booked",
+          preset: params.range.preset,
+          from: params.range.from,
+          to: params.range.to,
+        }).toString()}`,
+      },
+      outstanding: {
+        label: "Outstanding",
+        amount: Number(outstandingAmount.toFixed(2)),
+        count: overdueRows.length + dueSoonRows.length + partialRows.length + approvedRows.length,
+        href: `/analytics/drill-through?${new URLSearchParams({
+          type: "collections_outstanding",
+          preset: params.range.preset,
+          from: params.range.from,
+          to: params.range.to,
+        }).toString()}`,
+      },
+      overdue: {
+        label: "Overdue",
+        amount: Number(overdueAmount.toFixed(2)),
+        count: overdueRows.length,
+        href: buildCollectionBucketHref("overdue_invoices", params.range),
+      },
+      expectedIn7Days: {
+        label: "Expected in 7 Days",
+        amount: Number((dueSoonAmount + expectedTripAmount).toFixed(2)),
+        count: dueSoonRows.length + expectedTripRows.length,
+        href: buildCollectionBucketHref("due_this_week", params.range),
+      },
+    },
+    buckets,
+    priorityRows,
+    bucketRows,
   };
 }
 

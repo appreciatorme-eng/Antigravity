@@ -13,6 +13,7 @@ import {
   Target,
   ArrowUpRight,
   Activity,
+  AlertCircle,
   MapPin,
   Sun,
 } from "lucide-react";
@@ -22,6 +23,11 @@ import { resolveAdminDateRange } from "@/lib/admin/date-range";
 import type { DrillRow, DrillSummary } from "@/lib/analytics/drill-through-loaders";
 import {
   loadBookedValueDrill,
+  loadCollectionsApprovedUnpaidDrill,
+  loadCollectionsDueSoonDrill,
+  loadCollectionsOutstandingDrill,
+  loadCollectionsOverdueDrill,
+  loadCollectionsPartialDrill,
   loadOutstandingDrill,
   loadWonValueDrill,
   loadRevenueDrill,
@@ -39,6 +45,11 @@ import { GlassButton } from "@/components/glass/GlassButton";
 
 type DrillType =
   | "booked"
+  | "collections_approved_unpaid"
+  | "collections_due_soon"
+  | "collections_outstanding"
+  | "collections_overdue"
+  | "collections_partial"
   | "outstanding"
   | "won"
   | "revenue"
@@ -55,6 +66,11 @@ type TimeRange = "1y" | "6m" | "3m" | "1m";
 
 const TYPE_CONFIG: Record<DrillType, { title: string; icon: typeof DollarSign; color: string }> = {
   booked: { title: "Revenue Details", icon: TrendingUp, color: "text-emerald-500" },
+  collections_approved_unpaid: { title: "Approved Unpaid Trips", icon: Target, color: "text-sky-500" },
+  collections_due_soon: { title: "Due This Week Details", icon: Calendar, color: "text-amber-500" },
+  collections_outstanding: { title: "Collections Outstanding Details", icon: DollarSign, color: "text-blue-500" },
+  collections_overdue: { title: "Overdue Invoice Details", icon: AlertCircle, color: "text-rose-500" },
+  collections_partial: { title: "Partially Paid Trip Details", icon: TrendingUp, color: "text-violet-500" },
   outstanding: { title: "Outstanding Balance Details", icon: DollarSign, color: "text-blue-500" },
   won: { title: "Won Value Details", icon: TrendingUp, color: "text-emerald-500" },
   revenue: { title: "Revenue Breakdown", icon: DollarSign, color: "text-emerald-500" },
@@ -71,6 +87,7 @@ const TYPE_CONFIG: Record<DrillType, { title: string; icon: typeof DollarSign; c
 const VALID_TYPES: ReadonlySet<string> = new Set([
   "revenue", "bookings", "conversion", "clients",
   "destinations", "destination-revenue", "season", "pipeline", "operations", "booked", "won", "outstanding",
+  "collections_overdue", "collections_due_soon", "collections_partial", "collections_approved_unpaid", "collections_outstanding",
 ]);
 
 function asDrillType(value: string | null): DrillType {
@@ -136,6 +153,11 @@ function DrillThroughContent() {
 
         const loaderMap: Record<DrillType, () => ReturnType<typeof loadRevenueDrill>> = {
           booked: () => loadBookedValueDrill(supabase, orgId, adminRange),
+          collections_approved_unpaid: () => loadCollectionsApprovedUnpaidDrill(supabase, orgId, adminRange),
+          collections_due_soon: () => loadCollectionsDueSoonDrill(supabase, orgId, adminRange),
+          collections_outstanding: () => loadCollectionsOutstandingDrill(supabase, orgId, adminRange),
+          collections_overdue: () => loadCollectionsOverdueDrill(supabase, orgId, adminRange),
+          collections_partial: () => loadCollectionsPartialDrill(supabase, orgId, adminRange),
           outstanding: () => loadOutstandingDrill(supabase, orgId, adminRange),
           won: () => loadWonValueDrill(supabase, orgId, adminRange),
           revenue: () => loadRevenueDrill(supabase, orgId, win),

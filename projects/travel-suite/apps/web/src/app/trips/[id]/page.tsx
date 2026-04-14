@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Plane } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -40,6 +40,7 @@ import { downloadTripItineraryPdf } from "@/components/pdf/trip-itinerary-pdf";
 export default function TripDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const tripId = params.id as string;
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -66,6 +67,19 @@ export default function TripDetailPage() {
   // --- Derived data ---
   const trip = data?.trip ?? null;
   const invoiceSummary = data?.invoiceSummary ?? null;
+
+  useEffect(() => {
+    const requestedTab = searchParams.get("tab");
+    if (
+      requestedTab === "overview" ||
+      requestedTab === "itinerary" ||
+      requestedTab === "financials" ||
+      requestedTab === "comms" ||
+      requestedTab === "group"
+    ) {
+      setActiveTab(requestedTab);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (!trip?.itineraries?.raw_data) {

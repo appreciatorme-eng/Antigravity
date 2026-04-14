@@ -23,10 +23,25 @@ interface ScorecardMetric {
 }
 
 function buildMetrics(data: DashboardV2State): ScorecardMetric[] {
-  return (data.overview?.scorecard ?? []).map((metric) => ({
+  const snapshot = data.overview?.collectionsWorkspace.snapshot;
+  if (!snapshot) return [];
+
+  return [
+    snapshot.collectedThisWindow,
+    snapshot.outstanding,
+    snapshot.overdue,
+    snapshot.expectedIn7Days,
+  ].map((metric) => ({
     label: metric.label,
-    current: metric.current,
-    delta: metric.delta,
+    current:
+      metric.amount === null || metric.amount === undefined
+        ? '—'
+        : new Intl.NumberFormat('en-IN', {
+            style: 'currency',
+            currency: 'INR',
+            maximumFractionDigits: 0,
+          }).format(metric.amount),
+    delta: null,
     unit: '',
   }));
 }

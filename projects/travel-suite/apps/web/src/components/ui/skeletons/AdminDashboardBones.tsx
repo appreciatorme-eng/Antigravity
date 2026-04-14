@@ -529,3 +529,91 @@ export function AdminPerformanceScorecardBone({ loading = true }: { loading?: bo
     />
   );
 }
+
+function CollectionsWorkspaceFallback() {
+  return (
+    <GlassCard padding="xl">
+      <GlassSkeleton className="h-6 w-56" />
+      <GlassSkeleton className="mt-3 h-12 w-full rounded-2xl" />
+      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <GlassSkeleton key={index} className="h-28 rounded-2xl" />
+        ))}
+      </div>
+      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <GlassSkeleton key={index} className="h-24 rounded-2xl" />
+        ))}
+      </div>
+      <div className="mt-6 space-y-3">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <GlassSkeleton key={index} className="h-24 rounded-2xl" />
+        ))}
+      </div>
+    </GlassCard>
+  );
+}
+
+function CollectionsWorkspaceFixture() {
+  return (
+    <GlassCard padding="xl">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="h-6 w-56 rounded-full bg-slate-200" />
+          <div className="mt-2 h-4 w-80 rounded-full bg-slate-100" />
+        </div>
+        <div className="flex gap-2">
+          <div className="h-10 w-32 rounded-xl bg-slate-100" />
+          <div className="h-10 w-32 rounded-xl bg-emerald-100" />
+        </div>
+      </div>
+      <div className="mt-6 h-14 rounded-2xl bg-amber-100" />
+      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="rounded-2xl border border-gray-100 bg-white/50 px-4 py-4">
+            <div className="flex items-center justify-between">
+              <div className="h-4 w-4 rounded-full bg-slate-200" />
+              <div className="h-3 w-3 rounded-full bg-slate-100" />
+            </div>
+            <div className="mt-3 h-3 w-24 rounded-full bg-slate-100" />
+            <div className="mt-2 h-8 w-20 rounded-full bg-slate-200" />
+            <div className="mt-2 h-3 w-28 rounded-full bg-slate-100" />
+          </div>
+        ))}
+      </div>
+      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="rounded-2xl border border-gray-100 bg-white/50 px-4 py-4">
+            <div className="h-4 w-28 rounded-full bg-slate-200" />
+            <div className="mt-3 h-6 w-16 rounded-full bg-slate-200" />
+            <div className="mt-2 h-3 w-20 rounded-full bg-slate-100" />
+          </div>
+        ))}
+      </div>
+      <div className="mt-6 space-y-3">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="rounded-2xl border border-gray-100 bg-white/50 px-4 py-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="space-y-2">
+                <div className="h-4 w-40 rounded-full bg-slate-200" />
+                <div className="h-3 w-56 rounded-full bg-slate-100" />
+              </div>
+              <div className="h-8 w-16 rounded-full bg-slate-200" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </GlassCard>
+  );
+}
+
+export function AdminCollectionsWorkspaceBone({ loading = true }: { loading?: boolean }) {
+  return (
+    <DashboardBoneShell
+      name="admin-collections-workspace"
+      loading={loading}
+      fallback={<CollectionsWorkspaceFallback />}
+      fixture={<CollectionsWorkspaceFixture />}
+    />
+  );
+}
