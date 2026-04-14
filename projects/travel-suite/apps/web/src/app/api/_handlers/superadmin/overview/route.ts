@@ -8,6 +8,7 @@ import { logError } from "@/lib/observability/logger";
 
 type Severity = "critical" | "high" | "medium";
 type HealthStatus = "healthy" | "degraded" | "down" | "unknown";
+type OverviewRange = "7d" | "30d" | "90d";
 type UntypedAdminClient = Extract<
     Awaited<ReturnType<typeof requireSuperAdmin>>,
     { ok: true }
@@ -85,6 +86,7 @@ type AuditLogRow = {
 };
 
 let redisClient: Redis | null | undefined;
+const RANGE_DAYS: Record<OverviewRange, number> = { "7d": 7, "30d": 30, "90d": 90 };
 
 function getRedisClient(): Redis | null {
     if (redisClient !== undefined) return redisClient;
@@ -112,6 +114,16 @@ function startOfUtcMonth(offsetMonths = 0): Date {
 
 function daysAgo(days: number): string {
     return new Date(Date.now() - days * 86_400_000).toISOString();
+}
+
+function normalizeOverviewRange(value: string | null): OverviewRange {
+    if (value === "7d" || value === "90d") return value;
+    return "30d";
+}
+
+function withRange(href: string, range: OverviewRange): string {
+    const separator = href.includes("?") ? "&" : "?";
+    return `${href}${separator}range=${range}`;
 }
 
 function safeNumber(value: unknown): number {
@@ -222,6 +234,8 @@ export async function GET(request: NextRequest) {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- overview aggregates several cross-table joins not represented in generated types
     const db = auth.adminClient as any;
+    const selectedRange = normalizeOverviewRange(request.nextUrl.searchParams.get("range"));
+    const rangeDays = RANGE_DAYS[selectedRange];
 
     const now = new Date();
     const todayStart = startOfUtcDay();
@@ -229,8 +243,8 @@ export async function GET(request: NextRequest) {
     const tomorrowStart = startOfUtcDay(1);
     const weekStart = startOfUtcDay(7);
     const monthStart = startOfUtcMonth();
-    const thirtyDaysAgo = daysAgo(29);
-    const sixtyDaysAgo = daysAgo(59);
+    const rangeStart = daysAgo(rangeDays - 1);
+    const previousRangeStart = daysAgo((rangeDays * 2) - 1);
     const oneWeekAgo = daysAgo(7);
     const threeDaysOut = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
 
@@ -280,7 +294,7 @@ export async function GET(request: NextRequest) {
             db.from("error_events").select("id", { count: "exact", head: true }).eq("status", "open"),
             db.from("error_events").select("id", { count: "exact", head: true }).eq("status", "resolved").gte("resolved_at", oneWeekAgo),
             db.from("subscriptions").select("amount").eq("status", "active"),
-            db.from("profiles").select("created_at").gte("created_at", thirtyDaysAgo).order("created_at", { ascending: true }),
+            db.from("profiles").select("created_at").gte("created_at", rangeStart).order("created_at", { ascending: true }),
             db.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", todayStart.toISOString()),
             db.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", yesterdayStart.toISOString()).lt("created_at", todayStart.toISOString()),
             db.from("organizations").select("id", { count: "exact", head: true }).gte("created_at", todayStart.toISOString()),
@@ -313,13 +327,13 @@ export async function GET(request: NextRequest) {
             db
                 .from("proposals")
                 .select("id, status, total_price, client_selected_price")
-                .gte("created_at", thirtyDaysAgo)
+                .gte("created_at", rangeStart)
                 .limit(400),
             db
                 .from("proposals")
                 .select("id, status, total_price, client_selected_price")
-                .gte("created_at", sixtyDaysAgo)
-                .lt("created_at", thirtyDaysAgo)
+                .gte("created_at", previousRangeStart)
+                .lt("created_at", rangeStart)
                 .limit(400),
             db
                 .from("proposals")
@@ -371,8 +385,8 @@ export async function GET(request: NextRequest) {
             signupByDay[day] = (signupByDay[day] ?? 0) + 1;
         }
 
-        const signupTrend = Array.from({ length: 30 }, (_, index) => {
-            const date = new Date(Date.now() - (29 - index) * 86_400_000);
+        const signupTrend = Array.from({ length: rangeDays }, (_, index) => {
+            const date = new Date(Date.now() - (rangeDays - 1 - index) * 86_400_000);
             const key = date.toISOString().slice(0, 10);
             return { date: key, signups: signupByDay[key] ?? 0 };
         });
@@ -749,7 +763,7 @@ export async function GET(request: NextRequest) {
                     label: "MRR",
                     value: asCurrencyParts(activeMrr).formatted,
                     detail: `${(activeSubscriptionsResult.data ?? []).length} active subscriptions`,
-                    href: "/god/costs",
+                    href: withRange("/god/costs", selectedRange),
                     tone: "neutral",
                 },
                 {
@@ -767,7 +781,7 @@ export async function GET(request: NextRequest) {
                     value: (totalUsersResult.count ?? 0).toLocaleString(),
                     detail: `${todayUsers} signed up today`,
                     trend_pct: pctChange(todayUsers, yesterdayUsers),
-                    href: "/god/signups?range=30d",
+                    href: withRange("/god/signups", selectedRange),
                     sparkline: signupSparkline,
                     tone: "neutral",
                 },
@@ -776,9 +790,9 @@ export async function GET(request: NextRequest) {
                     label: "Proposal conversion",
                     value: proposalConversion !== null ? `${proposalConversion}%` : "—",
                     detail: proposalConversionDelta !== null
-                        ? `${proposalConversionDelta > 0 ? "+" : ""}${proposalConversionDelta} pts vs prior 30d`
-                        : "Last 30 days",
-                    href: "/god/analytics?feature=proposals&range=30d",
+                        ? `${proposalConversionDelta > 0 ? "+" : ""}${proposalConversionDelta} pts vs prior ${rangeDays}d`
+                        : `Last ${rangeDays} days`,
+                    href: withRange("/god/analytics?feature=proposals", selectedRange),
                     tone: proposalConversionDelta !== null && proposalConversionDelta < 0 ? "warning" : "neutral",
                 },
                 {
@@ -813,7 +827,7 @@ export async function GET(request: NextRequest) {
                     value: asCurrencyParts(aiSpendMtd, "usd").formatted,
                     detail: `${asCurrencyParts(todaySpendUsd, "usd").formatted} today`,
                     trend_pct: pctChange(todaySpendUsd, yesterdaySpendUsd),
-                    href: "/god/costs?range=30d",
+                    href: withRange("/god/costs", selectedRange),
                     tone: todaySpendUsd > yesterdaySpendUsd ? "warning" : "neutral",
                 },
             ],
@@ -823,7 +837,7 @@ export async function GET(request: NextRequest) {
                     label: "New users today",
                     value: todayUsers,
                     comparison: `${yesterdayUsers} yesterday`,
-                    href: "/god/signups?range=30d",
+                    href: withRange("/god/signups", selectedRange),
                 },
                 {
                     id: "orgs-today",
@@ -837,7 +851,7 @@ export async function GET(request: NextRequest) {
                     label: "Trips created today",
                     value: todayTrips,
                     comparison: `${yesterdayTrips} yesterday`,
-                    href: "/god/analytics?feature=trips&range=30d",
+                    href: withRange("/god/analytics?feature=trips", selectedRange),
                 },
                 {
                     id: "tickets-today",
@@ -888,10 +902,10 @@ export async function GET(request: NextRequest) {
             growth: {
                 signup_trend_30d: signupTrend,
                 signups_last_30d: signupTrend.reduce((sum, row) => sum + row.signups, 0),
-                avg_daily_signups: Number((signupTrend.reduce((sum, row) => sum + row.signups, 0) / 30).toFixed(1)),
+                avg_daily_signups: Number((signupTrend.reduce((sum, row) => sum + row.signups, 0) / rangeDays).toFixed(1)),
                 new_orgs_last_30d: organizations.filter((organization) => {
                     if (!organization.created_at) return false;
-                    return new Date(organization.created_at).getTime() >= new Date(thirtyDaysAgo).getTime();
+                    return new Date(organization.created_at).getTime() >= new Date(rangeStart).getTime();
                 }).length,
                 proposal_conversion_pct: proposalConversion,
             },
@@ -935,7 +949,7 @@ export async function GET(request: NextRequest) {
                 { label: "Error events", href: "/god/errors" },
                 { label: "Support queue", href: "/god/support?status=open" },
                 { label: "Health monitor", href: "/god/monitoring" },
-                { label: "Cost dashboard", href: "/god/costs" },
+                { label: "Cost dashboard", href: withRange("/god/costs", selectedRange) },
                 { label: "Send announcement", href: "/god/announcements" },
                 { label: "Kill switch", href: "/god/kill-switch", tone: "danger" },
             ],

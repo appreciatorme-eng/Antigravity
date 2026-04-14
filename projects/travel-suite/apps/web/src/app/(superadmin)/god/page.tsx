@@ -25,6 +25,7 @@ import {
     ScrollText,
 } from "lucide-react";
 import TrendChart from "@/components/god-mode/TrendChart";
+import TimeRangePicker from "@/components/god-mode/TimeRangePicker";
 import StatusDot from "@/components/god-mode/StatusDot";
 import type { HealthStatus } from "@/components/god-mode/StatusDot";
 import { cn } from "@/lib/utils";
@@ -32,6 +33,8 @@ import { cn } from "@/lib/utils";
 type Severity = "critical" | "high" | "medium";
 type Tone = "neutral" | "warning" | "danger";
 type SavedView = "all" | "revenue" | "customer-risk" | "incidents" | "growth";
+type OverviewRange = "7d" | "30d" | "90d";
+type SavedPreset = { id: string; name: string; view: SavedView; range: OverviewRange };
 
 interface OverviewData {
     generated_at: string;
@@ -185,6 +188,37 @@ const SAVED_VIEWS: Array<{ id: SavedView; label: string }> = [
     { id: "incidents", label: "Incidents" },
     { id: "growth", label: "Growth" },
 ];
+const CUSTOM_VIEW_STORAGE_KEY = "god:command-center:presets:v1";
+const LAST_SELECTION_STORAGE_KEY = "god:command-center:last:v1";
+
+function normalizeView(value: string | null): SavedView {
+    if (value === "revenue" || value === "customer-risk" || value === "incidents" || value === "growth") return value;
+    return "all";
+}
+
+function normalizeRange(value: string | null): OverviewRange {
+    if (value === "7d" || value === "90d") return value;
+    return "30d";
+}
+
+function rangeWindowLabel(range: OverviewRange): string {
+    if (range === "7d") return "7 days";
+    if (range === "90d") return "90 days";
+    return "30 days";
+}
+
+function isSavedPreset(value: unknown): value is SavedPreset {
+    if (!value || typeof value !== "object") return false;
+    const candidate = value as Record<string, unknown>;
+    return (
+        typeof candidate.id === "string"
+        && typeof candidate.name === "string"
+        && typeof candidate.view === "string"
+        && typeof candidate.range === "string"
+        && ["all", "revenue", "customer-risk", "incidents", "growth"].includes(candidate.view)
+        && ["7d", "30d", "90d"].includes(candidate.range)
+    );
+}
 
 function toneBorder(tone: Tone): string {
     if (tone === "danger") return "border-red-900/70";
@@ -342,6 +376,7 @@ function CurrentPosturePanel({
     showRevenue,
     showCustomerRisk,
     showGrowth,
+    selectedRange,
     className,
 }: {
     data: OverviewData;
@@ -349,6 +384,7 @@ function CurrentPosturePanel({
     showRevenue: boolean;
     showCustomerRisk: boolean;
     showGrowth: boolean;
+    selectedRange: OverviewRange;
     className?: string;
 }) {
     return (
@@ -390,7 +426,7 @@ function CurrentPosturePanel({
                     <div className="flex items-start gap-3">
                         <TrendingUp className="mt-0.5 w-4 h-4 text-emerald-300" />
                         <p className="text-gray-300">
-                            {data.growth.signups_last_30d} signups and {data.growth.new_orgs_last_30d} new orgs landed in the last 30 days.
+                            {data.growth.signups_last_30d} signups and {data.growth.new_orgs_last_30d} new orgs landed in the last {rangeWindowLabel(selectedRange)}.
                         </p>
                     </div>
                 )}
@@ -405,19 +441,72 @@ export default function GodCommandCenter() {
     const searchParams = useSearchParams();
     const [data, setData] = useState<OverviewData | null>(null);
     const [loading, setLoading] = useState(true);
+    const [customViews, setCustomViews] = useState<SavedPreset[]>([]);
+    const [presetsLoaded, setPresetsLoaded] = useState(false);
     const [focusedInboxId, setFocusedInboxId] = useState<string | null>(null);
-    const currentView = (searchParams.get("view") as SavedView | null) ?? "all";
+    const currentView = normalizeView(searchParams.get("view"));
+    const currentRange = normalizeRange(searchParams.get("range"));
+
+    useEffect(() => {
+        try {
+            const raw = localStorage.getItem(CUSTOM_VIEW_STORAGE_KEY);
+            if (!raw) return;
+            const parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed)) return;
+            setCustomViews(parsed.filter(isSavedPreset).slice(0, 8));
+        } catch {
+            setCustomViews([]);
+        } finally {
+            setPresetsLoaded(true);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!presetsLoaded) return;
+        localStorage.setItem(CUSTOM_VIEW_STORAGE_KEY, JSON.stringify(customViews));
+    }, [customViews, presetsLoaded]);
+
+    useEffect(() => {
+        localStorage.setItem(LAST_SELECTION_STORAGE_KEY, JSON.stringify({ view: currentView, range: currentRange }));
+    }, [currentRange, currentView]);
+
+    useEffect(() => {
+        const hasView = searchParams.has("view");
+        const hasRange = searchParams.has("range");
+        if (hasView && hasRange) return;
+        try {
+            const raw = localStorage.getItem(LAST_SELECTION_STORAGE_KEY);
+            if (!raw) return;
+            const parsed = JSON.parse(raw) as { view?: string; range?: string } | null;
+            if (!parsed) return;
+            const params = new URLSearchParams(searchParams.toString());
+            if (!hasView) {
+                const view = normalizeView(parsed.view ?? null);
+                if (view === "all") params.delete("view");
+                else params.set("view", view);
+            }
+            if (!hasRange) {
+                params.set("range", normalizeRange(parsed.range ?? null));
+            }
+            const next = params.toString();
+            if (next !== searchParams.toString()) {
+                router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+            }
+        } catch {
+            // no-op
+        }
+    }, [pathname, router, searchParams]);
 
     const fetchOverview = useCallback(async () => {
         setLoading(true);
         try {
-            const response = await fetch("/api/superadmin/overview");
+            const response = await fetch(`/api/superadmin/overview?range=${currentRange}`);
             if (!response.ok) return;
             setData(await response.json());
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [currentRange]);
 
     useEffect(() => {
         fetchOverview();
@@ -430,6 +519,42 @@ export default function GodCommandCenter() {
         const next = params.toString();
         router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
     }, [pathname, router, searchParams]);
+
+    const setRange = useCallback((range: OverviewRange) => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("range", range);
+        const next = params.toString();
+        router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+    }, [pathname, router, searchParams]);
+
+    const saveCurrentPreset = useCallback(() => {
+        const defaultName = `${SAVED_VIEWS.find((view) => view.id === currentView)?.label ?? "View"} · ${currentRange}`;
+        const name = window.prompt("Save current view as:", defaultName)?.trim();
+        if (!name) return;
+        const preset: SavedPreset = {
+            id: `preset-${Date.now()}`,
+            name,
+            view: currentView,
+            range: currentRange,
+        };
+        setCustomViews((previous) => [
+            preset,
+            ...previous.filter((item) => item.name.toLowerCase() !== name.toLowerCase()),
+        ].slice(0, 8));
+    }, [currentRange, currentView]);
+
+    const applyPreset = useCallback((preset: SavedPreset) => {
+        const params = new URLSearchParams(searchParams.toString());
+        if (preset.view === "all") params.delete("view");
+        else params.set("view", preset.view);
+        params.set("range", preset.range);
+        const next = params.toString();
+        router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
+    }, [pathname, router, searchParams]);
+
+    const deletePreset = useCallback((presetId: string) => {
+        setCustomViews((previous) => previous.filter((item) => item.id !== presetId));
+    }, []);
 
     const showRevenue = currentView === "all" || currentView === "revenue";
     const showGrowth = currentView === "all" || currentView === "growth";
@@ -492,24 +617,54 @@ export default function GodCommandCenter() {
                 </div>
 
                 <div className="flex w-full flex-col gap-2 2xl:w-auto 2xl:items-end">
-                    <div className="overflow-x-auto pb-1">
-                        <div className="flex w-max items-center gap-1 rounded-md border border-gray-800 bg-gray-900 p-1">
-                            {SAVED_VIEWS.map((view) => (
-                                <button
-                                    key={view.id}
-                                    onClick={() => setView(view.id)}
-                                    className={cn(
-                                        "rounded px-2.5 py-1.5 text-xs transition-colors",
-                                        currentView === view.id
-                                            ? "bg-gray-800 text-white"
-                                            : "text-gray-400 hover:text-gray-200",
-                                    )}
-                                >
-                                    {view.label}
-                                </button>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <div className="overflow-x-auto pb-1">
+                            <div className="flex w-max items-center gap-1 rounded-md border border-gray-800 bg-gray-900 p-1">
+                                {SAVED_VIEWS.map((view) => (
+                                    <button
+                                        key={view.id}
+                                        onClick={() => setView(view.id)}
+                                        className={cn(
+                                            "rounded px-2.5 py-1.5 text-xs transition-colors",
+                                            currentView === view.id
+                                                ? "bg-gray-800 text-white"
+                                                : "text-gray-400 hover:text-gray-200",
+                                        )}
+                                    >
+                                        {view.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <TimeRangePicker value={currentRange} onChange={(value) => setRange(value as OverviewRange)} />
+                        <button
+                            onClick={saveCurrentPreset}
+                            className="rounded-md border border-gray-800 bg-gray-900 px-3 py-2 text-xs text-gray-300 transition-colors hover:border-gray-700 hover:text-white"
+                        >
+                            Save View
+                        </button>
+                    </div>
+                    {customViews.length > 0 && (
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                            {customViews.map((preset) => (
+                                <div key={preset.id} className="inline-flex items-center overflow-hidden rounded-md border border-gray-800 bg-gray-900">
+                                    <button
+                                        onClick={() => applyPreset(preset)}
+                                        className="px-2.5 py-1.5 text-xs text-gray-300 transition-colors hover:bg-gray-800 hover:text-white"
+                                    >
+                                        {preset.name}
+                                    </button>
+                                    <button
+                                        onClick={() => deletePreset(preset.id)}
+                                        className="border-l border-gray-800 px-2 py-1.5 text-xs text-gray-500 transition-colors hover:bg-gray-800 hover:text-red-300"
+                                        aria-label={`Delete ${preset.name} preset`}
+                                    >
+                                        ×
+                                    </button>
+                                </div>
                             ))}
                         </div>
-                    </div>
+                    )}
                     <div className="flex flex-wrap items-center gap-2">
                         <Link
                             href="/god/support?status=open"
@@ -524,7 +679,7 @@ export default function GodCommandCenter() {
                             Incidents
                         </Link>
                         <Link
-                            href="/god/costs"
+                            href={`/god/costs?range=${currentRange}`}
                             className="rounded-md border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white"
                         >
                             Costs
@@ -555,6 +710,7 @@ export default function GodCommandCenter() {
                         showRevenue={showRevenue}
                         showCustomerRisk={showCustomerRisk}
                         showGrowth={showGrowth}
+                        selectedRange={currentRange}
                     />
                     <section className="overflow-hidden rounded-lg border border-gray-800 bg-gray-900">
                         <div className="border-b border-gray-800 px-4 py-3">
@@ -658,12 +814,12 @@ export default function GodCommandCenter() {
                                         <div className="min-w-0 overflow-hidden rounded-lg border border-gray-800 bg-gray-900">
                                             <div className="border-b border-gray-800 px-4 py-3">
                                                 <h2 className="text-sm font-medium text-white">Growth</h2>
-                                                <p className="mt-1 text-xs text-gray-500">Signups across the last 30 days.</p>
+                                                <p className="mt-1 text-xs text-gray-500">Signups across the last {rangeWindowLabel(currentRange)}.</p>
                                             </div>
                                             <div className="px-4 pb-4 pt-3">
                                                 <div className="grid gap-3 md:grid-cols-3">
                                                     <div className="rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3">
-                                                        <p className="text-xs text-gray-500">Signups, 30d</p>
+                                                        <p className="text-xs text-gray-500">Signups, {currentRange}</p>
                                                         <p className="mt-1 text-xl font-semibold text-white">{data.growth.signups_last_30d}</p>
                                                     </div>
                                                     <div className="rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3">
@@ -671,7 +827,7 @@ export default function GodCommandCenter() {
                                                         <p className="mt-1 text-xl font-semibold text-white">{data.growth.avg_daily_signups}</p>
                                                     </div>
                                                     <div className="rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3">
-                                                        <p className="text-xs text-gray-500">New orgs, 30d</p>
+                                                        <p className="text-xs text-gray-500">New orgs, {currentRange}</p>
                                                         <p className="mt-1 text-xl font-semibold text-white">{data.growth.new_orgs_last_30d}</p>
                                                     </div>
                                                 </div>
@@ -683,7 +839,7 @@ export default function GodCommandCenter() {
                                                         height={220}
                                                         onClickBar={(entry) => {
                                                             if (entry.date) {
-                                                                router.push(`/god/signups?range=30d&date=${entry.date}`);
+                                                                router.push(`/god/signups?range=${currentRange}&date=${entry.date}`);
                                                             }
                                                         }}
                                                     />
