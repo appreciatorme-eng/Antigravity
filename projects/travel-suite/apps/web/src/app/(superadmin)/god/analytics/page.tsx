@@ -4,7 +4,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Map, FileText, Sparkles, Share2, RefreshCw } from "lucide-react";
+import { Map, FileText, Sparkles, Share2, RefreshCw, Building2, IndianRupee, Bug, ExternalLink } from "lucide-react";
 import TrendChart from "@/components/god-mode/TrendChart";
 import TimeRangePicker from "@/components/god-mode/TimeRangePicker";
 import DrillDownTable from "@/components/god-mode/DrillDownTable";
@@ -31,6 +31,11 @@ interface AnalyticsData {
         proposals: FeatureStats;
         ai_sessions: FeatureStats;
         social_posts: FeatureStats;
+    };
+    metrics: {
+        new_orgs: FeatureStats;
+        revenue: { total_paise: number; change_pct: number };
+        open_errors: { count: number; autofix_pct: number };
     };
     top_orgs: TopOrg[];
 }
@@ -179,6 +184,16 @@ export default function AnalyticsPage() {
                     <p className="text-sm text-gray-400 mt-0.5">Cross-org feature adoption metrics</p>
                 </div>
                 <div className="flex items-center gap-3">
+                    <a
+                        href="https://us.posthog.com"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700
+                                   text-xs text-gray-400 hover:text-white hover:border-gray-500 transition-colors"
+                    >
+                        <ExternalLink className="w-3 h-3" />
+                        PostHog
+                    </a>
                     <TimeRangePicker value={range} onChange={(v) => setRange(v as "7d" | "30d" | "90d")} />
                     <button
                         onClick={fetchData}
@@ -215,6 +230,69 @@ export default function AnalyticsPage() {
                         </button>
                     );
                 })}
+            </div>
+
+            {/* Business metrics row */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* New orgs */}
+                <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-start gap-3">
+                    <div className="p-2 rounded-lg bg-teal-500/10">
+                        <Building2 className="w-4 h-4 text-teal-400" />
+                    </div>
+                    <div className="min-w-0">
+                        <p className="text-xs text-gray-500 uppercase tracking-wider">New Orgs</p>
+                        <p className="text-2xl font-bold text-white mt-0.5">
+                            {loading ? "…" : (data?.metrics?.new_orgs.total ?? 0).toLocaleString()}
+                        </p>
+                        {data?.metrics?.new_orgs && (
+                            <p className={`text-xs mt-0.5 ${data.metrics.new_orgs.change_pct >= 0 ? "text-teal-400" : "text-red-400"}`}>
+                                {data.metrics.new_orgs.change_pct > 0 ? "+" : ""}{data.metrics.new_orgs.change_pct}% vs prev
+                            </p>
+                        )}
+                    </div>
+                </div>
+
+                {/* Revenue */}
+                <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-start gap-3">
+                    <div className="p-2 rounded-lg bg-amber-500/10">
+                        <IndianRupee className="w-4 h-4 text-amber-400" />
+                    </div>
+                    <div className="min-w-0">
+                        <p className="text-xs text-gray-500 uppercase tracking-wider">Revenue</p>
+                        <p className="text-2xl font-bold text-white mt-0.5">
+                            {loading ? "…" : (() => {
+                                const paise = data?.metrics?.revenue.total_paise ?? 0;
+                                const rupees = paise / 100;
+                                if (rupees >= 100_000) return `₹${(rupees / 100_000).toFixed(1)}L`;
+                                if (rupees >= 1_000) return `₹${(rupees / 1_000).toFixed(1)}k`;
+                                return `₹${rupees.toFixed(0)}`;
+                            })()}
+                        </p>
+                        {data?.metrics?.revenue && (
+                            <p className={`text-xs mt-0.5 ${data.metrics.revenue.change_pct >= 0 ? "text-amber-400" : "text-red-400"}`}>
+                                {data.metrics.revenue.change_pct > 0 ? "+" : ""}{data.metrics.revenue.change_pct}% vs prev
+                            </p>
+                        )}
+                    </div>
+                </div>
+
+                {/* Open errors */}
+                <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-start gap-3">
+                    <div className="p-2 rounded-lg bg-red-500/10">
+                        <Bug className="w-4 h-4 text-red-400" />
+                    </div>
+                    <div className="min-w-0">
+                        <p className="text-xs text-gray-500 uppercase tracking-wider">Open Errors</p>
+                        <p className="text-2xl font-bold text-white mt-0.5">
+                            {loading ? "…" : (data?.metrics?.open_errors.count ?? 0).toLocaleString()}
+                        </p>
+                        {data?.metrics?.open_errors && (
+                            <p className="text-xs mt-0.5 text-gray-500">
+                                {data.metrics.open_errors.autofix_pct}% autofix rate
+                            </p>
+                        )}
+                    </div>
+                </div>
             </div>
 
             {/* Top orgs chart */}
