@@ -11,7 +11,7 @@ function getServerClient() {
   }
 
   return new PostHog(apiKey, {
-    host: process.env.POSTHOG_HOST || "https://app.posthog.com",
+    host: process.env.POSTHOG_HOST || process.env.NEXT_PUBLIC_POSTHOG_HOST || "https://us.i.posthog.com",
     flushAt: 1,
     flushInterval: 0,
   });
