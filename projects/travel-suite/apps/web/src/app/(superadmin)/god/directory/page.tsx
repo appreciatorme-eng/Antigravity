@@ -6,7 +6,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Search, RefreshCw, UserPlus, Building2, Shield, Ban, Trash2, ArrowRightLeft, Loader2, LogIn } from "lucide-react";
+import { Search, RefreshCw, UserPlus, Building2, Shield, Ban, Trash2, ArrowRightLeft, Loader2, LogIn, ChevronRight, Globe, Users, MapPin, FileText, Receipt, BrainCircuit, Clock, Activity, ExternalLink, Sparkles } from "lucide-react";
 import DrillDownTable from "@/components/god-mode/DrillDownTable";
 import SlideOutPanel from "@/components/god-mode/SlideOutPanel";
 import InlineEditField from "@/components/god-mode/InlineEditField";
@@ -45,6 +45,60 @@ interface UserDetail {
 }
 
 interface OrgOption { id: string; name: string; tier: string }
+
+interface OrgDetailMember {
+    id: string;
+    full_name: string | null;
+    email: string | null;
+    phone: string | null;
+    role: string | null;
+    avatar_url: string | null;
+    created_at: string | null;
+    last_sign_in_at: string | null;
+}
+
+interface OrgDetail {
+    organization: {
+        id: string;
+        name: string;
+        slug: string;
+        logo_url: string | null;
+        primary_color: string | null;
+        tier: string;
+        created_at: string;
+        updated_at: string | null;
+        owner: { id: string; full_name: string | null; email: string | null } | null;
+    };
+    last_org_activity: string | null;
+    members: OrgDetailMember[];
+    member_count: number;
+    stats: {
+        trips_total: number;
+        trips_by_status: Record<string, number>;
+        proposals_total: number;
+        proposals_won: number;
+        proposal_total_value: number;
+        proposal_total_value_label: string;
+        proposal_won_value: number;
+        proposal_won_value_label: string;
+        invoices_total: number;
+        invoices_overdue: number;
+        total_billed: number;
+        total_billed_label: string;
+        total_outstanding: number;
+        total_outstanding_label: string;
+        overdue_amount: number;
+        overdue_amount_label: string;
+        total_collected: number;
+        total_collected_label: string;
+        support_tickets_open: number;
+        support_tickets_resolved: number;
+        ai_spend_mtd_usd: number;
+        ai_requests_mtd: number;
+    };
+    features_used: string[];
+    settings: Record<string, unknown> | null;
+}
 
 interface DirectoryResponse {
     users: DirectoryUser[];
@@ -153,6 +207,11 @@ export default function DirectoryPage() {
     const [showImpersonateConfirm, setShowImpersonateConfirm] = useState(false);
     const [impersonating, setImpersonating] = useState(false);
 
+    // Org detail state
+    const [orgDetail, setOrgDetail] = useState<OrgDetail | null>(null);
+    const [orgDetailLoading, setOrgDetailLoading] = useState(false);
+    const [orgPanelOpen, setOrgPanelOpen] = useState(false);
+
     const { toast, showSuccess, showError, dismiss } = useActionToast();
 
     // Debounce search
@@ -250,6 +309,41 @@ export default function DirectoryPage() {
         if (selectedUser?.profile.id === userId && panelOpen) return;
         void openUserDetail({ id: userId });
     }, [openUserDetail, panelOpen, selectedUser?.profile.id, userId]);
+
+    // --- ORG DETAIL ---
+
+    const openOrgDetail = useCallback(async (orgId: string) => {
+        setOrgPanelOpen(true);
+        setOrgDetailLoading(true);
+        setOrgDetail(null);
+        try {
+            const res = await fetch(`/api/superadmin/orgs/org-detail?orgId=${orgId}`);
+            if (res.ok) {
+                setOrgDetail(await res.json());
+            } else {
+                showError("Failed to load organization details");
+                setOrgPanelOpen(false);
+            }
+        } catch {
+            showError("Network error loading organization");
+            setOrgPanelOpen(false);
+        } finally {
+            setOrgDetailLoading(false);
+        }
+    }, [showError]);
+
+    function formatTimeAgo(iso: string | null): string {
+        if (!iso) return "Never";
+        const diffMs = Date.now() - new Date(iso).getTime();
+        const minutes = Math.max(0, Math.floor(diffMs / 60_000));
+        if (minutes < 1) return "Just now";
+        if (minutes < 60) return `${minutes}m ago`;
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `${hours}h ago`;
+        const days = Math.floor(hours / 24);
+        if (days < 30) return `${days}d ago`;
+        return new Date(iso).toLocaleDateString();
+    }
 
     // --- MUTATION HANDLERS ---
 
@@ -600,9 +694,15 @@ export default function DirectoryPage() {
                             <div className="space-y-2">
                                 <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Organization</h3>
                                 <div className="space-y-1 text-sm">
-                                    <div className="flex justify-between">
+                                    <div className="flex justify-between items-center">
                                         <span className="text-gray-400">Name</span>
-                                        <span className="text-white font-medium">{selectedUser.organization.name}</span>
+                                        <button
+                                            onClick={() => openOrgDetail(selectedUser.organization!.id)}
+                                            className="inline-flex items-center gap-1.5 text-amber-400 hover:text-amber-300 font-medium transition-colors group"
+                                        >
+                                            {selectedUser.organization.name}
+                                            <ChevronRight className="h-3.5 w-3.5 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                                        </button>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-gray-400">Slug</span>
@@ -741,6 +841,359 @@ export default function DirectoryPage() {
                                         Delete Organization
                                     </button>
                                 )}
+                            </div>
+                        </div>
+                    </div>
+                ) : null}
+            </SlideOutPanel>
+
+            {/* Org Detail Panel */}
+            <SlideOutPanel
+                open={orgPanelOpen}
+                onClose={() => { setOrgPanelOpen(false); setOrgDetail(null); }}
+                title="Organization Intel"
+                width="xl"
+            >
+                {orgDetailLoading ? (
+                    <div className="space-y-4">
+                        {Array.from({ length: 8 }).map((_, i) => (
+                            <div key={i} className="h-12 bg-gray-800 animate-pulse rounded-lg" />
+                        ))}
+                    </div>
+                ) : orgDetail ? (
+                    <div className="space-y-6">
+                        {/* Org Header */}
+                        <div className="rounded-xl border border-gray-800 bg-gradient-to-br from-gray-900 to-gray-950 p-5">
+                            <div className="flex items-start justify-between">
+                                <div>
+                                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                        <Building2 className="h-5 w-5 text-amber-400" />
+                                        {orgDetail.organization.name}
+                                    </h3>
+                                    <p className="text-sm text-gray-400 mt-0.5">
+                                        <span className="text-gray-500">slug:</span> {orgDetail.organization.slug}
+                                    </p>
+                                </div>
+                                <span className={`px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wider ${
+                                    TIER_BADGE[orgDetail.organization.tier] ?? "bg-gray-700 text-gray-300"
+                                }`}>
+                                    {orgDetail.organization.tier}
+                                </span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 mt-4 text-sm">
+                                <div>
+                                    <span className="text-gray-500 text-xs">Created</span>
+                                    <p className="text-gray-300">
+                                        {new Date(orgDetail.organization.created_at).toLocaleDateString(undefined, {
+                                            month: "long", day: "numeric", year: "numeric",
+                                        })}
+                                    </p>
+                                </div>
+                                <div>
+                                    <span className="text-gray-500 text-xs">Owner</span>
+                                    <p className="text-gray-300">
+                                        {orgDetail.organization.owner?.full_name ?? orgDetail.organization.owner?.email ?? "No owner"}
+                                    </p>
+                                </div>
+                                <div>
+                                    <span className="text-gray-500 text-xs">Members</span>
+                                    <p className="text-white font-semibold">{orgDetail.member_count}</p>
+                                </div>
+                                <div>
+                                    <span className="text-gray-500 text-xs">Last Activity</span>
+                                    <p className="text-white font-semibold flex items-center gap-1.5">
+                                        <Activity className="h-3.5 w-3.5 text-emerald-400" />
+                                        {formatTimeAgo(orgDetail.last_org_activity)}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Features Used */}
+                        {orgDetail.features_used.length > 0 && (
+                            <div className="space-y-2">
+                                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                                    <Sparkles className="h-3.5 w-3.5" />
+                                    Features Used
+                                </h3>
+                                <div className="flex flex-wrap gap-2">
+                                    {orgDetail.features_used.map((feature) => (
+                                        <span
+                                            key={feature}
+                                            className="px-2.5 py-1 rounded-lg bg-gray-800 border border-gray-700 text-xs font-medium text-gray-300"
+                                        >
+                                            {feature}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Usage Stats Grid */}
+                        <div className="space-y-2">
+                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Usage Overview</h3>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-gray-800/60 border border-gray-700/50 rounded-lg p-3">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <MapPin className="h-3.5 w-3.5 text-amber-400" />
+                                        <span className="text-xs text-gray-400">Trips</span>
+                                    </div>
+                                    <p className="text-xl font-bold text-white">{orgDetail.stats.trips_total}</p>
+                                </div>
+                                <div className="bg-gray-800/60 border border-gray-700/50 rounded-lg p-3">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <FileText className="h-3.5 w-3.5 text-blue-400" />
+                                        <span className="text-xs text-gray-400">Proposals</span>
+                                    </div>
+                                    <p className="text-xl font-bold text-white">
+                                        {orgDetail.stats.proposals_total}
+                                        {orgDetail.stats.proposals_won > 0 && (
+                                            <span className="text-xs text-emerald-400 ml-1.5 font-medium">
+                                                {orgDetail.stats.proposals_won} won
+                                            </span>
+                                        )}
+                                    </p>
+                                </div>
+                                <div className="bg-gray-800/60 border border-gray-700/50 rounded-lg p-3">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Receipt className="h-3.5 w-3.5 text-emerald-400" />
+                                        <span className="text-xs text-gray-400">Invoices</span>
+                                    </div>
+                                    <p className="text-xl font-bold text-white">
+                                        {orgDetail.stats.invoices_total}
+                                        {orgDetail.stats.invoices_overdue > 0 && (
+                                            <span className="text-xs text-red-400 ml-1.5 font-medium">
+                                                {orgDetail.stats.invoices_overdue} overdue
+                                            </span>
+                                        )}
+                                    </p>
+                                </div>
+                                <div className="bg-gray-800/60 border border-gray-700/50 rounded-lg p-3">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Shield className="h-3.5 w-3.5 text-purple-400" />
+                                        <span className="text-xs text-gray-400">Support</span>
+                                    </div>
+                                    <p className="text-xl font-bold text-white">
+                                        {orgDetail.stats.support_tickets_open}
+                                        <span className="text-xs text-gray-400 ml-1.5 font-medium">open</span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Financial Health */}
+                        <div className="space-y-2">
+                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Financial Health</h3>
+                            <div className="rounded-xl border border-gray-800 bg-gray-900/50 divide-y divide-gray-800">
+                                <div className="flex justify-between items-center px-4 py-3">
+                                    <span className="text-sm text-gray-400">Total Billed</span>
+                                    <span className="text-sm font-semibold text-white">{orgDetail.stats.total_billed_label}</span>
+                                </div>
+                                <div className="flex justify-between items-center px-4 py-3">
+                                    <span className="text-sm text-gray-400">Collected</span>
+                                    <span className="text-sm font-semibold text-emerald-400">{orgDetail.stats.total_collected_label}</span>
+                                </div>
+                                <div className="flex justify-between items-center px-4 py-3">
+                                    <span className="text-sm text-gray-400">Outstanding</span>
+                                    <span className={`text-sm font-semibold ${orgDetail.stats.total_outstanding > 0 ? "text-amber-400" : "text-gray-400"}`}>
+                                        {orgDetail.stats.total_outstanding_label}
+                                    </span>
+                                </div>
+                                {orgDetail.stats.overdue_amount > 0 && (
+                                    <div className="flex justify-between items-center px-4 py-3 bg-red-950/20">
+                                        <span className="text-sm text-red-300">Overdue</span>
+                                        <span className="text-sm font-bold text-red-400">
+                                            {orgDetail.stats.overdue_amount_label} ({orgDetail.stats.invoices_overdue} inv)
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Proposal Value */}
+                        {orgDetail.stats.proposals_total > 0 && (
+                            <div className="space-y-2">
+                                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Proposal Pipeline</h3>
+                                <div className="rounded-xl border border-gray-800 bg-gray-900/50 divide-y divide-gray-800">
+                                    <div className="flex justify-between items-center px-4 py-3">
+                                        <span className="text-sm text-gray-400">Total Pipeline Value</span>
+                                        <span className="text-sm font-semibold text-white">{orgDetail.stats.proposal_total_value_label}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center px-4 py-3">
+                                        <span className="text-sm text-gray-400">Won Value</span>
+                                        <span className="text-sm font-semibold text-emerald-400">{orgDetail.stats.proposal_won_value_label}</span>
+                                    </div>
+                                    {orgDetail.stats.proposals_total > 0 && (
+                                        <div className="flex justify-between items-center px-4 py-3">
+                                            <span className="text-sm text-gray-400">Conversion Rate</span>
+                                            <span className="text-sm font-semibold text-white">
+                                                {((orgDetail.stats.proposals_won / orgDetail.stats.proposals_total) * 100).toFixed(0)}%
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* AI Usage */}
+                        {(orgDetail.stats.ai_requests_mtd > 0 || orgDetail.stats.ai_spend_mtd_usd > 0) && (
+                            <div className="space-y-2">
+                                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                                    <BrainCircuit className="h-3.5 w-3.5" />
+                                    AI Usage (MTD)
+                                </h3>
+                                <div className="rounded-xl border border-gray-800 bg-gray-900/50 divide-y divide-gray-800">
+                                    <div className="flex justify-between items-center px-4 py-3">
+                                        <span className="text-sm text-gray-400">Requests</span>
+                                        <span className="text-sm font-semibold text-white">
+                                            {orgDetail.stats.ai_requests_mtd.toLocaleString()}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center px-4 py-3">
+                                        <span className="text-sm text-gray-400">Estimated Cost</span>
+                                        <span className={`text-sm font-semibold ${
+                                            orgDetail.stats.ai_spend_mtd_usd >= 25 ? "text-red-400" :
+                                            orgDetail.stats.ai_spend_mtd_usd >= 10 ? "text-amber-400" : "text-gray-300"
+                                        }`}>
+                                            ${orgDetail.stats.ai_spend_mtd_usd.toFixed(2)}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Members */}
+                        <div className="space-y-2">
+                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                                <Users className="h-3.5 w-3.5" />
+                                Members ({orgDetail.member_count})
+                            </h3>
+                            <div className="rounded-xl border border-gray-800 bg-gray-900/50 divide-y divide-gray-800 overflow-hidden">
+                                {orgDetail.members.map((member) => (
+                                    <button
+                                        key={member.id}
+                                        onClick={() => {
+                                            setOrgPanelOpen(false);
+                                            setOrgDetail(null);
+                                            openUserDetail({ id: member.id });
+                                        }}
+                                        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-800/50 transition-colors group"
+                                    >
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-medium text-white truncate">
+                                                {member.full_name ?? member.email ?? "Unknown"}
+                                            </p>
+                                            <p className="text-xs text-gray-500 truncate">
+                                                {member.email ?? "No email"}
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-3 flex-shrink-0">
+                                            <div className="text-right">
+                                                <span className={`px-2 py-0.5 rounded text-xs font-medium uppercase ${
+                                                    ROLE_BADGE[member.role ?? ""] ?? "bg-gray-700 text-gray-300"
+                                                }`}>
+                                                    {member.role?.replace("_", " ") ?? "—"}
+                                                </span>
+                                                <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1 justify-end">
+                                                    <Clock className="h-3 w-3" />
+                                                    {formatTimeAgo(member.last_sign_in_at)}
+                                                </p>
+                                            </div>
+                                            <ChevronRight className="h-4 w-4 text-gray-600 group-hover:text-gray-400 transition-colors" />
+                                        </div>
+                                    </button>
+                                ))}
+                                {orgDetail.members.length === 0 && (
+                                    <p className="px-4 py-4 text-sm text-gray-500 text-center">No members in this organization</p>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Quick Actions */}
+                        <div className="space-y-2">
+                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Quick Actions</h3>
+                            <div className="grid gap-2">
+                                <InlineEditField
+                                    value={orgDetail.organization.tier}
+                                    displayValue={orgDetail.organization.tier}
+                                    label="Tier"
+                                    fieldType="select"
+                                    options={TIER_OPTIONS}
+                                    onSave={async (newTier) => {
+                                        const res = await authedFetch(`/api/superadmin/orgs/${orgDetail.organization.id}`, {
+                                            method: "PATCH",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({ subscription_tier: newTier }),
+                                        });
+                                        if (res.ok) {
+                                            showSuccess(`Tier changed to ${newTier}`);
+                                            // Refresh org detail
+                                            openOrgDetail(orgDetail.organization.id);
+                                            fetchData();
+                                        } else {
+                                            showError("Failed to change tier");
+                                        }
+                                    }}
+                                    badgeClassName={`px-2 py-0.5 rounded text-xs font-semibold uppercase ${TIER_BADGE[orgDetail.organization.tier] ?? ""}`}
+                                />
+                                <a
+                                    href={`/god/collections?tab=invoices&search=${encodeURIComponent(orgDetail.organization.name)}`}
+                                    className="inline-flex items-center justify-between rounded-lg border border-gray-700 bg-gray-800 px-3 py-2.5
+                                               text-sm text-gray-300 transition-colors hover:border-gray-600 hover:text-white"
+                                >
+                                    <span className="flex items-center gap-2">
+                                        <Receipt className="h-4 w-4" />
+                                        View in Collections
+                                    </span>
+                                    <ExternalLink className="h-3.5 w-3.5" />
+                                </a>
+                                <a
+                                    href={`/god/directory?search=${encodeURIComponent(orgDetail.organization.name)}`}
+                                    className="inline-flex items-center justify-between rounded-lg border border-gray-700 bg-gray-800 px-3 py-2.5
+                                               text-sm text-gray-300 transition-colors hover:border-gray-600 hover:text-white"
+                                >
+                                    <span className="flex items-center gap-2">
+                                        <Users className="h-4 w-4" />
+                                        Filter Directory by Org
+                                    </span>
+                                    <ExternalLink className="h-3.5 w-3.5" />
+                                </a>
+                                <a
+                                    href={`/god/support?search=${encodeURIComponent(orgDetail.organization.name)}`}
+                                    className="inline-flex items-center justify-between rounded-lg border border-gray-700 bg-gray-800 px-3 py-2.5
+                                               text-sm text-gray-300 transition-colors hover:border-gray-600 hover:text-white"
+                                >
+                                    <span className="flex items-center gap-2">
+                                        <Shield className="h-4 w-4" />
+                                        Support Tickets
+                                    </span>
+                                    <ExternalLink className="h-3.5 w-3.5" />
+                                </a>
+                                {orgDetail.stats.ai_requests_mtd > 0 && (
+                                    <a
+                                        href={`/god/costs/org/${orgDetail.organization.id}`}
+                                        className="inline-flex items-center justify-between rounded-lg border border-gray-700 bg-gray-800 px-3 py-2.5
+                                                   text-sm text-gray-300 transition-colors hover:border-gray-600 hover:text-white"
+                                    >
+                                        <span className="flex items-center gap-2">
+                                            <BrainCircuit className="h-4 w-4" />
+                                            AI Cost Breakdown
+                                        </span>
+                                        <ExternalLink className="h-3.5 w-3.5" />
+                                    </a>
+                                )}
+                                <button
+                                    onClick={() => setDeleteTarget({
+                                        id: orgDetail.organization.id,
+                                        name: orgDetail.organization.name,
+                                        type: "org",
+                                    })}
+                                    className="inline-flex items-center gap-2 rounded-lg border border-red-800/60 bg-red-950/30 px-3 py-2.5
+                                               text-sm text-red-300 font-medium transition-colors hover:border-red-700 hover:bg-red-950/50"
+                                >
+                                    <Trash2 className="h-4 w-4" />
+                                    Delete Organization
+                                </button>
                             </div>
                         </div>
                     </div>

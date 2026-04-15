@@ -21,6 +21,7 @@ const routes = createCatchAllHandlers([
   ["users/invite", () => import("@/app/api/_handlers/superadmin/users/invite/route")],
   ["users/:id/impersonate", () => import("@/app/api/_handlers/superadmin/users/[id]/impersonate/route")],
   ["users/:id", () => import("@/app/api/_handlers/superadmin/users/[id]/route")],
+  ["orgs/org-detail", () => import("@/app/api/_handlers/superadmin/orgs/org-detail/route")],
   ["orgs/:id", () => import("@/app/api/_handlers/superadmin/orgs/route")],
   ["orgs", () => import("@/app/api/_handlers/superadmin/orgs/route")],
   ["analytics/feature-usage/:feature", () => import("@/app/api/_handlers/superadmin/analytics/feature-usage/[feature]/route")],
