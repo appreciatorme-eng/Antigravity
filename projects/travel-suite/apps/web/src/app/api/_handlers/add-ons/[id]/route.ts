@@ -86,7 +86,8 @@ export async function PUT(
 
     const body = await request.json();
 
-    const updatePayload: Record<string, unknown> = {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase update() rejects Record<string,unknown> due to RejectExcessProperties constraint
+    const updatePayload: Record<string, any> = {};
     if (body.name !== undefined) {
       updatePayload.name = sanitizeText(body.name, { maxLength: 200, stripHtml: true });
     }
