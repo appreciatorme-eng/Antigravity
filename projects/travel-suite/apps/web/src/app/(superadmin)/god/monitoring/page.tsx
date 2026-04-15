@@ -10,9 +10,10 @@ import StatCard from "@/components/god-mode/StatCard";
 import type { HealthStatus } from "@/components/god-mode/StatusDot";
 
 interface ServiceHealth {
-    status: "healthy" | "degraded" | "down";
+    status: "healthy" | "degraded" | "down" | "unknown";
     latency_ms?: number;
     configured?: boolean;
+    detail?: string;
 }
 
 interface HealthData {
@@ -130,6 +131,9 @@ export default function MonitoringPage() {
                             )}
                             {svc.configured !== undefined && !svc.configured && (
                                 <p className="text-xs text-amber-500 mt-1">Not configured</p>
+                            )}
+                            {svc.detail && (
+                                <p className="text-xs text-gray-500 mt-1">{svc.detail}</p>
                             )}
                         </div>
                         <StatusDot status={svc.status as HealthStatus} label={svc.status} />

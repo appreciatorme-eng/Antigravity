@@ -5,15 +5,18 @@ import { Redis } from "@upstash/redis";
 import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { logError } from "@/lib/observability/logger";
+import {
+    checkDatabaseRuntime,
+    checkFirebaseFcmRuntime,
+    checkPosthogRuntime,
+    checkRedisRuntime,
+    checkSentryRuntime,
+    checkWhatsappRuntime,
+} from "@/lib/platform/runtime-probes";
 
 type Severity = "critical" | "high" | "medium";
 type HealthStatus = "healthy" | "degraded" | "down" | "unknown";
 type OverviewRange = "7d" | "30d" | "90d";
-type UntypedAdminClient = Extract<
-    Awaited<ReturnType<typeof requireSuperAdmin>>,
-    { ok: true }
->["adminClient"];
-
 type OrganizationRow = {
     id: string;
     name: string | null;
@@ -192,28 +195,6 @@ function severityForError(level: string | null): Severity {
     return "medium";
 }
 
-async function checkDatabase(client: UntypedAdminClient): Promise<{ status: HealthStatus; latency_ms: number }> {
-    const start = Date.now();
-    try {
-        await client.from("profiles").select("id").limit(1);
-        return { status: "healthy", latency_ms: Date.now() - start };
-    } catch {
-        return { status: "down", latency_ms: Date.now() - start };
-    }
-}
-
-async function checkRedis(): Promise<{ status: HealthStatus; latency_ms: number }> {
-    const redis = getRedisClient();
-    if (!redis) return { status: "unknown", latency_ms: -1 };
-    const start = Date.now();
-    try {
-        await redis.ping();
-        return { status: "healthy", latency_ms: Date.now() - start };
-    } catch {
-        return { status: "down", latency_ms: Date.now() - start };
-    }
-}
-
 async function readRedisSpendFor(date: string): Promise<number> {
     const redis = getRedisClient();
     if (!redis) return 0;
@@ -284,6 +265,10 @@ export async function GET(request: NextRequest) {
             pdfQueueResult,
             databaseHealth,
             redisHealth,
+            fcmHealth,
+            whatsappHealth,
+            sentryHealth,
+            posthogHealth,
             todaySpendUsd,
             yesterdaySpendUsd,
         ] = await Promise.all([
@@ -361,8 +346,12 @@ export async function GET(request: NextRequest) {
             db.from("notification_dead_letters").select("id", { count: "exact", head: true }),
             db.from("social_post_queue").select("id", { count: "exact", head: true }).eq("status", "pending"),
             db.from("pdf_extraction_queue").select("id", { count: "exact", head: true }).eq("status", "pending"),
-            checkDatabase(auth.adminClient),
-            checkRedis(),
+            checkDatabaseRuntime(auth.adminClient),
+            checkRedisRuntime(),
+            checkFirebaseFcmRuntime(),
+            checkWhatsappRuntime(),
+            checkSentryRuntime(),
+            checkPosthogRuntime(),
             readRedisSpendFor(todayStart.toISOString().slice(0, 10)),
             readRedisSpendFor(yesterdayStart.toISOString().slice(0, 10)),
         ]);
@@ -552,7 +541,7 @@ export async function GET(request: NextRequest) {
                     expiring_value: Number(proposals.expiring_value.toFixed(0)),
                     ai_spend_usd: Number(ai.spend_usd.toFixed(2)),
                     risk_flags: riskFlags,
-                    href: `/god/directory?search=${encodeURIComponent(org?.name ?? "")}`,
+                    href: withRange(`/god/directory?search=${encodeURIComponent(org?.name ?? "")}`, selectedRange),
                     rank,
                 };
             })
@@ -572,12 +561,12 @@ export async function GET(request: NextRequest) {
                 target_type: row.target_type,
                 target_id: row.target_id,
                 href: category === "support"
-                    ? "/god/support?status=open"
+                    ? withRange("/god/support?status=open", selectedRange)
                     : category === "announcement"
-                        ? "/god/announcements"
+                        ? withRange("/god/announcements", selectedRange)
                         : category === "kill_switch" || category === "org_management"
-                            ? "/god/kill-switch"
-                            : `/god/audit-log?category=${encodeURIComponent(category)}`,
+                            ? withRange("/god/kill-switch", selectedRange)
+                            : withRange(`/god/audit-log?category=${encodeURIComponent(category)}`, selectedRange),
             };
         });
 
@@ -589,7 +578,7 @@ export async function GET(request: NextRequest) {
                 name: organization.name?.trim() || "Unknown org",
                 tier: organization.subscription_tier ?? "free",
                 created_at: organization.created_at,
-                href: `/god/directory?tier=${organization.subscription_tier ?? "free"}&search=${encodeURIComponent(organization.name?.trim() || "")}`,
+                href: withRange(`/god/directory?tier=${organization.subscription_tier ?? "free"}&search=${encodeURIComponent(organization.name?.trim() || "")}`, selectedRange),
             }));
 
         const notificationQueuePending = pendingNotificationRowsResult.data ?? [];
@@ -620,38 +609,30 @@ export async function GET(request: NextRequest) {
             {
                 id: "fcm",
                 label: "Firebase FCM",
-                status: "unknown",
-                detail: process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY
-                    ? "Configured (runtime unverified)"
-                    : "Not configured",
-                configured: Boolean(process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY),
+                status: fcmHealth.status as HealthStatus,
+                detail: fcmHealth.latency_ms >= 0 ? `${fcmHealth.detail} · ${fcmHealth.latency_ms}ms` : fcmHealth.detail,
+                configured: fcmHealth.configured,
             },
             {
                 id: "whatsapp",
                 label: "WhatsApp",
-                status: "unknown",
-                detail: process.env.WHATSAPP_PHONE_NUMBER_ID && process.env.WHATSAPP_API_TOKEN
-                    ? "Configured (runtime unverified)"
-                    : "Not configured",
-                configured: Boolean(process.env.WHATSAPP_PHONE_NUMBER_ID && process.env.WHATSAPP_API_TOKEN),
+                status: whatsappHealth.status as HealthStatus,
+                detail: whatsappHealth.latency_ms >= 0 ? `${whatsappHealth.detail} · ${whatsappHealth.latency_ms}ms` : whatsappHealth.detail,
+                configured: whatsappHealth.configured,
             },
             {
                 id: "sentry",
                 label: "Sentry",
-                status: "unknown",
-                detail: process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN
-                    ? "Configured (runtime unverified)"
-                    : "Not configured",
-                configured: Boolean(process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN),
+                status: sentryHealth.status as HealthStatus,
+                detail: sentryHealth.latency_ms >= 0 ? `${sentryHealth.detail} · ${sentryHealth.latency_ms}ms` : sentryHealth.detail,
+                configured: sentryHealth.configured,
             },
             {
                 id: "posthog",
                 label: "PostHog",
-                status: "unknown",
-                detail: process.env.NEXT_PUBLIC_POSTHOG_KEY
-                    ? "Configured (runtime unverified)"
-                    : "Not configured",
-                configured: Boolean(process.env.NEXT_PUBLIC_POSTHOG_KEY),
+                status: posthogHealth.status as HealthStatus,
+                detail: posthogHealth.latency_ms >= 0 ? `${posthogHealth.detail} · ${posthogHealth.latency_ms}ms` : posthogHealth.detail,
+                configured: posthogHealth.configured,
             },
         ];
 
@@ -664,7 +645,7 @@ export async function GET(request: NextRequest) {
                 detail: `${safeNumber(event.event_count)} events · ${safeNumber(event.user_count)} impacted users`,
                 age_label: timeAgo(event.first_seen_at ?? event.created_at),
                 action_label: "Open incident",
-                href: `/god/errors?status=${encodeURIComponent(event.status ?? "open")}&eventId=${event.id}`,
+                href: withRange(`/god/errors?status=${encodeURIComponent(event.status ?? "open")}&eventId=${event.id}`, selectedRange),
             })),
             ...overdueInvoices
                 .sort((left, right) => new Date(left.due_date ?? 0).getTime() - new Date(right.due_date ?? 0).getTime())
@@ -681,7 +662,7 @@ export async function GET(request: NextRequest) {
                     } · ${asCurrencyParts(safeNumber(invoice.balance_amount ?? invoice.total_amount)).formatted}`,
                     age_label: daysOverdueLabel(invoice.due_date),
                     action_label: "Review invoice",
-                    href: `/god/collections?tab=invoices&invoiceId=${invoice.id}`,
+                    href: withRange(`/god/collections?tab=invoices&invoiceId=${invoice.id}`, selectedRange),
                 })),
             ...expiringProposalRows.slice(0, 2).map((proposal) => ({
                 id: `proposal:${proposal.id}`,
@@ -695,7 +676,7 @@ export async function GET(request: NextRequest) {
                 } · ${asCurrencyParts(proposalValue(proposal)).formatted}`,
                 age_label: expiresInLabel(proposal.expires_at),
                 action_label: "Review proposal",
-                href: `/god/collections?tab=proposals&proposalId=${proposal.id}`,
+                href: withRange(`/god/collections?tab=proposals&proposalId=${proposal.id}`, selectedRange),
             })),
             ...supportRows.slice(0, 3).map((ticket) => ({
                 id: `ticket:${ticket.id}`,
@@ -705,7 +686,7 @@ export async function GET(request: NextRequest) {
                 detail: ticket.profiles?.full_name?.trim() || ticket.profiles?.email?.trim() || "Unknown requester",
                 age_label: timeAgo(ticket.created_at),
                 action_label: "Respond",
-                href: `/god/support?status=${encodeURIComponent(ticket.status ?? "open")}&ticketId=${ticket.id}`,
+                href: withRange(`/god/support?status=${encodeURIComponent(ticket.status ?? "open")}&ticketId=${ticket.id}`, selectedRange),
             })),
             ...(deadLetterResult.count || oldestPendingMinutes > 15 ? [{
                 id: "queue:notifications",
@@ -717,7 +698,7 @@ export async function GET(request: NextRequest) {
                 detail: `${notificationQueuePending.length} pending · oldest ${oldestPendingMinutes}m`,
                 age_label: oldestPendingMinutes > 0 ? `${oldestPendingMinutes}m oldest` : "Queue check",
                 action_label: "Open queues",
-                href: "/god/monitoring?focus=queues",
+                href: withRange("/god/monitoring?focus=queues", selectedRange),
             }] : []),
             ...topAiSpendOrgs.slice(0, 1).map((org) => ({
                 id: `cost:${org.org_id}`,
@@ -727,7 +708,7 @@ export async function GET(request: NextRequest) {
                 detail: `${org.requests.toLocaleString()} requests · $${org.spend_usd.toFixed(2)} MTD`,
                 age_label: "MTD",
                 action_label: "Review spend",
-                href: `/god/costs/org/${org.org_id}`,
+                href: withRange(`/god/costs/org/${org.org_id}`, selectedRange),
             })),
         ]
             .sort((left, right) => {
@@ -772,7 +753,7 @@ export async function GET(request: NextRequest) {
                     value: activeOrgs.toLocaleString(),
                     detail: `${todayOrgs} created today`,
                     trend_pct: pctChange(todayOrgs, yesterdayOrgs),
-                    href: "/god/directory?role=admin",
+                    href: withRange("/god/directory?role=admin", selectedRange),
                     tone: "neutral",
                 },
                 {
@@ -800,7 +781,7 @@ export async function GET(request: NextRequest) {
                     label: "Overdue invoices",
                     value: asCurrencyParts(overdueInvoiceAmount).formatted,
                     detail: `${overdueInvoices.length} invoices past due`,
-                    href: "/god/collections?tab=invoices",
+                    href: withRange("/god/collections?tab=invoices", selectedRange),
                     tone: overdueInvoiceAmount > 0 ? "danger" : "neutral",
                 },
                 {
@@ -809,7 +790,7 @@ export async function GET(request: NextRequest) {
                     value: openSupportTickets.toLocaleString(),
                     detail: `${supportRows.filter((ticket) => ticket.priority === "urgent").length} urgent`,
                     trend_pct: pctChange(todayTickets, yesterdayTickets),
-                    href: "/god/support?status=open",
+                    href: withRange("/god/support?status=open", selectedRange),
                     tone: openSupportTickets > 0 ? "warning" : "neutral",
                 },
                 {
@@ -818,7 +799,7 @@ export async function GET(request: NextRequest) {
                     value: openFatalErrors.toLocaleString(),
                     detail: `${openErrors} total open issues`,
                     trend_pct: pctChange(todayFatalErrors, yesterdayFatalErrors),
-                    href: "/god/errors?status=open",
+                    href: withRange("/god/errors?status=open", selectedRange),
                     tone: openFatalErrors > 0 ? "danger" : "neutral",
                 },
                 {
@@ -844,7 +825,7 @@ export async function GET(request: NextRequest) {
                     label: "New orgs today",
                     value: todayOrgs,
                     comparison: `${yesterdayOrgs} yesterday`,
-                    href: "/god/directory?role=admin",
+                    href: withRange("/god/directory?role=admin", selectedRange),
                 },
                 {
                     id: "trips-today",
@@ -858,14 +839,14 @@ export async function GET(request: NextRequest) {
                     label: "Tickets opened today",
                     value: todayTickets,
                     comparison: `${yesterdayTickets} yesterday`,
-                    href: "/god/support?status=open",
+                    href: withRange("/god/support?status=open", selectedRange),
                 },
                 {
                     id: "fatal-today",
                     label: "Fatal incidents today",
                     value: todayFatalErrors,
                     comparison: `${yesterdayFatalErrors} yesterday`,
-                    href: "/god/errors?status=open",
+                    href: withRange("/god/errors?status=open", selectedRange),
                 },
             ],
             priority_inbox: priorityInbox,
@@ -913,7 +894,7 @@ export async function GET(request: NextRequest) {
                 customer_risk_orgs: customerRiskOrgs,
                 ai_spend_orgs: topAiSpendOrgs.map((org) => ({
                     ...org,
-                    href: `/god/costs/org/${org.org_id}`,
+                    href: withRange(`/god/costs/org/${org.org_id}`, selectedRange),
                 })),
                 support_load_orgs: Array.from(supportLoad.values())
                     .sort((left, right) => {
@@ -923,7 +904,7 @@ export async function GET(request: NextRequest) {
                     .slice(0, 5)
                     .map((org) => ({
                         ...org,
-                        href: `/god/support?status=open&search=${encodeURIComponent(org.name)}`,
+                        href: withRange(`/god/support?status=open&search=${encodeURIComponent(org.name)}`, selectedRange),
                     })),
                 newest_orgs: newestOrgs,
             },
@@ -945,13 +926,13 @@ export async function GET(request: NextRequest) {
             },
             decision_log: decisionLog,
             quick_actions: [
-                { label: "Collections", href: "/god/collections?tab=invoices" },
-                { label: "Error events", href: "/god/errors" },
-                { label: "Support queue", href: "/god/support?status=open" },
-                { label: "Health monitor", href: "/god/monitoring" },
+                { label: "Collections", href: withRange("/god/collections?tab=invoices", selectedRange) },
+                { label: "Error events", href: withRange("/god/errors", selectedRange) },
+                { label: "Support queue", href: withRange("/god/support?status=open", selectedRange) },
+                { label: "Health monitor", href: withRange("/god/monitoring", selectedRange) },
                 { label: "Cost dashboard", href: withRange("/god/costs", selectedRange) },
-                { label: "Send announcement", href: "/god/announcements" },
-                { label: "Kill switch", href: "/god/kill-switch", tone: "danger" },
+                { label: "Send announcement", href: withRange("/god/announcements", selectedRange) },
+                { label: "Kill switch", href: withRange("/god/kill-switch", selectedRange), tone: "danger" },
             ],
         });
     } catch (err) {

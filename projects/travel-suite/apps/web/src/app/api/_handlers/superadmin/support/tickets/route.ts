@@ -5,6 +5,7 @@ import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logError } from "@/lib/observability/logger";
+import { loadWorkItemMetaForIds } from "@/lib/platform/god-mode";
 
 /**
  * The live DB has a support_tickets_user_id_fkey relationship that is not present
@@ -30,6 +31,12 @@ type TicketWithProfile = {
         organization_id?: string;
         organizations?: { name?: string } | null;
     } | null;
+};
+
+type OwnerProfileRow = {
+    id: string;
+    full_name: string | null;
+    email: string | null;
 };
 
 export async function GET(request: NextRequest) {
@@ -67,8 +74,38 @@ export async function GET(request: NextRequest) {
             db.from("support_tickets").select("id", { count: "exact", head: true }).eq("status", "in_progress"),
         ]);
 
-        const tickets = ((result.data ?? []) as unknown as TicketWithProfile[]).map((t) => {
+        const ticketRows = (result.data ?? []) as unknown as TicketWithProfile[];
+        const metaByTicket = await loadWorkItemMetaForIds(db, "support_ticket", ticketRows.map((ticket) => ticket.id));
+        const ownerIds = Array.from(new Set(
+            Array.from(metaByTicket.values())
+                .map((meta) => meta.owner_id)
+                .filter((ownerId): ownerId is string => Boolean(ownerId)),
+        ));
+        const ownerLookup = new Map<string, { name: string; email: string | null }>();
+        if (ownerIds.length > 0) {
+            const ownersResult = await db
+                .from("profiles")
+                .select("id, full_name, email")
+                .in("id", ownerIds);
+            for (const owner of (ownersResult.data ?? []) as OwnerProfileRow[]) {
+                ownerLookup.set(owner.id, {
+                    name: owner.full_name?.trim() || owner.email?.trim() || "Unknown",
+                    email: owner.email ?? null,
+                });
+            }
+        }
+
+        const nowMs = Date.now();
+        const tickets = ticketRows.map((t) => {
             const profile = t.profiles;
+            const meta = metaByTicket.get(t.id);
+            const owner = meta?.owner_id ? ownerLookup.get(meta.owner_id) : null;
+            const slaDueAt = meta?.sla_due_at ?? null;
+            const isSlaBreached = Boolean(
+                slaDueAt
+                && ["open", "in_progress"].includes(t.status)
+                && new Date(slaDueAt).getTime() < nowMs,
+            );
             return {
                 id: t.id,
                 title: t.title,
@@ -85,14 +122,26 @@ export async function GET(request: NextRequest) {
                 org_name: profile?.organizations?.name ?? null,
                 has_response: Boolean(t.admin_response),
                 responded_at: t.responded_at,
+                owner_id: meta?.owner_id ?? null,
+                owner_name: owner?.name ?? null,
+                escalation_level: meta?.escalation_level ?? "normal",
+                sla_due_at: slaDueAt,
+                ops_note: meta?.ops_note ?? null,
+                is_sla_breached: isSlaBreached,
             };
         });
+        const claimed_count = tickets.filter((ticket) => Boolean(ticket.owner_id)).length;
+        const elevated_count = tickets.filter((ticket) => ticket.escalation_level !== "normal").length;
+        const sla_breach_count = tickets.filter((ticket) => ticket.is_sla_breached).length;
 
         return NextResponse.json({
             tickets,
             total: result.count ?? 0,
             open_count: openCount.count ?? 0,
             in_progress_count: inProgressCount.count ?? 0,
+            claimed_count,
+            elevated_count,
+            sla_breach_count,
             page,
             pages: Math.ceil((result.count ?? 0) / limit),
         });

@@ -14,6 +14,7 @@ const SUPERADMIN_RATE_LIMIT = {
 const routes = createCatchAllHandlers([
   ["me", () => import("@/app/api/_handlers/superadmin/me/route")],
   ["overview", () => import("@/app/api/_handlers/superadmin/overview/route")],
+  ["overview/presets", () => import("@/app/api/_handlers/superadmin/overview/presets/route")],
   ["collections", () => import("@/app/api/_handlers/superadmin/collections/route")],
   ["users/signups", () => import("@/app/api/_handlers/superadmin/users/signups/route")],
   ["users/directory", () => import("@/app/api/_handlers/superadmin/users/directory/route")],

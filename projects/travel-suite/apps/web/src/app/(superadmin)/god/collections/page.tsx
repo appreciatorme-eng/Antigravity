@@ -82,6 +82,10 @@ export default function CollectionsPage() {
     const [search, setSearch] = useState(searchParams.get("search") ?? "");
     const [data, setData] = useState<CollectionsData | null>(null);
     const [loading, setLoading] = useState(true);
+    const rangeParam = searchParams.get("range");
+    const currentRange = (rangeParam === "7d" || rangeParam === "30d" || rangeParam === "90d")
+        ? rangeParam
+        : "30d";
 
     const invoiceId = searchParams.get("invoiceId");
     const proposalId = searchParams.get("proposalId");
@@ -318,7 +322,7 @@ export default function CollectionsPage() {
                                 Open organization
                                 <ArrowRight className="h-4 w-4" />
                             </Link>
-                            <Link href="/god/analytics?feature=proposals&range=30d" className="inline-flex items-center justify-between rounded-lg border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white">
+                            <Link href={`/god/analytics?feature=proposals&range=${currentRange}`} className="inline-flex items-center justify-between rounded-lg border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white">
                                 Open proposal conversion analytics
                                 <ArrowRight className="h-4 w-4" />
                             </Link>

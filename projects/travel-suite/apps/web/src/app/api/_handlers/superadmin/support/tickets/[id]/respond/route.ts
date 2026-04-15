@@ -5,6 +5,7 @@ import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { logPlatformAction, getClientIpFromRequest } from "@/lib/platform/audit";
 import { logError } from "@/lib/observability/logger";
+import { saveWorkItemMeta } from "@/lib/platform/god-mode";
 
 export async function POST(
     request: NextRequest,
@@ -54,6 +55,18 @@ export async function POST(
             "support",
             { ticket_id: id, new_status: newStatus },
             getClientIpFromRequest(request)
+        );
+
+        await saveWorkItemMeta(
+            adminClient,
+            "support_ticket",
+            id,
+            {
+                owner_id: userId,
+                escalation_level: (newStatus === "resolved" || newStatus === "closed") ? "normal" : undefined,
+                sla_due_at: (newStatus === "resolved" || newStatus === "closed") ? null : undefined,
+            },
+            userId,
         );
 
         return NextResponse.json({

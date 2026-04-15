@@ -4,7 +4,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
     LayoutDashboard,
     UserPlus,
@@ -82,11 +82,11 @@ const NAV_GROUPS: NavGroup[] = [
     },
 ];
 
-function NavItemRow({ item, active }: { item: NavItem; active: boolean }) {
+function NavItemRow({ item, active, href }: { item: NavItem; active: boolean; href: string }) {
     const Icon = item.icon;
     return (
         <Link
-            href={item.href}
+            href={href}
             className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all",
                 active
@@ -106,6 +106,15 @@ function NavItemRow({ item, active }: { item: NavItem; active: boolean }) {
 
 export default function GodModeSidebar() {
     const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const currentRange = searchParams.get("range");
+
+    const withRange = (href: string) => {
+        if (!currentRange || !href.startsWith("/god")) return href;
+        const url = new URL(href, "http://localhost");
+        url.searchParams.set("range", currentRange);
+        return `${url.pathname}${url.search}`;
+    };
 
     const isActive = (href: string) => {
         if (href === "/god") return pathname === "/god";
@@ -140,6 +149,7 @@ export default function GodModeSidebar() {
                                     key={item.href}
                                     item={item}
                                     active={isActive(item.href)}
+                                    href={withRange(item.href)}
                                 />
                             ))}
                         </div>

@@ -3,47 +3,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
-import { Redis } from "@upstash/redis";
-import { env } from "@/lib/config/env";
 import { logError } from "@/lib/observability/logger";
-
-let _redis: Redis | null | undefined;
-function getRedisClient(): Redis | null {
-    if (_redis !== undefined) return _redis;
-    const url = process.env.UPSTASH_REDIS_REST_URL?.trim();
-    const token = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
-    if (!url || !token) { _redis = null; return null; }
-    _redis = new Redis({ url, token });
-    return _redis;
-}
-
-type SuperAdminClient = Extract<
-  Awaited<ReturnType<typeof requireSuperAdmin>>,
-  { ok: true }
->["adminClient"];
-
-async function checkDatabase(client: SuperAdminClient): Promise<{ status: "healthy" | "degraded" | "down"; latency_ms: number }> {
-    const start = Date.now();
-    try {
-        if (!client) return { status: "down", latency_ms: -1 };
-        await client.from("profiles").select("id").limit(1);
-        return { status: "healthy", latency_ms: Date.now() - start };
-    } catch {
-        return { status: "down", latency_ms: Date.now() - start };
-    }
-}
-
-async function checkRedis(): Promise<{ status: "healthy" | "degraded" | "down"; latency_ms: number }> {
-    const redis = getRedisClient();
-    if (!redis) return { status: "degraded", latency_ms: -1 };
-    const start = Date.now();
-    try {
-        await redis.ping();
-        return { status: "healthy", latency_ms: Date.now() - start };
-    } catch {
-        return { status: "down", latency_ms: Date.now() - start };
-    }
-}
+import {
+    checkDatabaseRuntime,
+    checkFirebaseFcmRuntime,
+    checkPosthogRuntime,
+    checkRedisRuntime,
+    checkSentryRuntime,
+    checkWhatsappRuntime,
+} from "@/lib/platform/runtime-probes";
 
 export async function GET(request: NextRequest) {
     const auth = await requireSuperAdmin(request);
@@ -53,8 +21,8 @@ export async function GET(request: NextRequest) {
 
     try {
         const [dbCheck, redisCheck, queueResult, deadLetterResult, socialQueueResult] = await Promise.all([
-            checkDatabase(adminClient),
-            checkRedis(),
+            checkDatabaseRuntime(adminClient),
+            checkRedisRuntime(),
             adminClient
                 .from("notification_queue")
                 .select("status", { count: "exact" })
@@ -68,38 +36,43 @@ export async function GET(request: NextRequest) {
                 .select("id", { count: "exact", head: true })
                 .eq("status", "pending"),
         ]);
+        const [fcmCheck, whatsappCheck, sentryCheck, posthogCheck] = await Promise.all([
+            checkFirebaseFcmRuntime(),
+            checkWhatsappRuntime(),
+            checkSentryRuntime(),
+            checkPosthogRuntime(),
+        ]);
 
         const pendingNotifs = (queueResult.data ?? []).filter((r: { status: string | null }) => r.status === "pending").length;
         const failedNotifs = (queueResult.data ?? []).filter((r: { status: string | null }) => r.status === "failed").length;
-
-        // Check FCM configured
-        const fcmConfigured = Boolean(process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY);
-        // Check WhatsApp configured
-        const waConfigured = Boolean(process.env.WHATSAPP_PHONE_NUMBER_ID && process.env.WHATSAPP_API_TOKEN);
-        // Check Sentry configured
-        const sentryConfigured = Boolean(process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN);
-        // Check PostHog configured
-        const posthogConfigured = Boolean(env.posthog.key);
 
         return NextResponse.json({
             services: {
                 database: dbCheck,
                 redis: redisCheck,
                 fcm: {
-                    status: fcmConfigured ? "healthy" : "degraded",
-                    configured: fcmConfigured,
+                    status: fcmCheck.status,
+                    configured: fcmCheck.configured,
+                    latency_ms: fcmCheck.latency_ms,
+                    detail: fcmCheck.detail,
                 },
                 whatsapp: {
-                    status: waConfigured ? "healthy" : "degraded",
-                    configured: waConfigured,
+                    status: whatsappCheck.status,
+                    configured: whatsappCheck.configured,
+                    latency_ms: whatsappCheck.latency_ms,
+                    detail: whatsappCheck.detail,
                 },
                 sentry: {
-                    status: sentryConfigured ? "healthy" : "degraded",
-                    configured: sentryConfigured,
+                    status: sentryCheck.status,
+                    configured: sentryCheck.configured,
+                    latency_ms: sentryCheck.latency_ms,
+                    detail: sentryCheck.detail,
                 },
                 posthog: {
-                    status: posthogConfigured ? "healthy" : "degraded",
-                    configured: posthogConfigured,
+                    status: posthogCheck.status,
+                    configured: posthogCheck.configured,
+                    latency_ms: posthogCheck.latency_ms,
+                    detail: posthogCheck.detail,
                 },
             },
             queues: {

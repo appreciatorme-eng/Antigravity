@@ -29,6 +29,7 @@ import TimeRangePicker from "@/components/god-mode/TimeRangePicker";
 import StatusDot from "@/components/god-mode/StatusDot";
 import type { HealthStatus } from "@/components/god-mode/StatusDot";
 import { cn } from "@/lib/utils";
+import { authedFetch } from "@/lib/api/authed-fetch";
 
 type Severity = "critical" | "high" | "medium";
 type Tone = "neutral" | "warning" | "danger";
@@ -188,7 +189,7 @@ const SAVED_VIEWS: Array<{ id: SavedView; label: string }> = [
     { id: "incidents", label: "Incidents" },
     { id: "growth", label: "Growth" },
 ];
-const CUSTOM_VIEW_STORAGE_KEY = "god:command-center:presets:v1";
+const CUSTOM_VIEW_STORAGE_KEY = "god:command-center:presets:fallback:v1";
 const LAST_SELECTION_STORAGE_KEY = "god:command-center:last:v1";
 
 function normalizeView(value: string | null): SavedView {
@@ -259,6 +260,13 @@ function formatRelative(iso: string | null): string {
     return `${Math.floor(hours / 24)}d ago`;
 }
 
+function withRangeQuery(href: string, range: OverviewRange): string {
+    if (!href.startsWith("/god")) return href;
+    const url = new URL(href, "http://localhost");
+    url.searchParams.set("range", range);
+    return `${url.pathname}${url.search}`;
+}
+
 function TrendIndicator({ value }: { value?: number | null }) {
     if (value === null || value === undefined) {
         return <span className="text-xs text-gray-500">No prior baseline</span>;
@@ -283,7 +291,7 @@ function TrendIndicator({ value }: { value?: number | null }) {
     );
 }
 
-function MetricCard({ metric }: { metric: OverviewData["summary_kpis"][number] }) {
+function MetricCard({ metric, range }: { metric: OverviewData["summary_kpis"][number]; range: OverviewRange }) {
     const content = (
         <div className={cn(
             "rounded-lg border bg-gray-900 px-4 py-4 transition-colors",
@@ -302,10 +310,10 @@ function MetricCard({ metric }: { metric: OverviewData["summary_kpis"][number] }
     );
 
     if (!metric.href) return content;
-    return <Link href={metric.href}>{content}</Link>;
+    return <Link href={withRangeQuery(metric.href, range)}>{content}</Link>;
 }
 
-function DeltaCard({ item }: { item: OverviewData["delta_strip"][number] }) {
+function DeltaCard({ item, range }: { item: OverviewData["delta_strip"][number]; range: OverviewRange }) {
     const content = (
         <div className="rounded-lg border border-gray-800 bg-gray-900 px-4 py-3 transition-colors hover:border-gray-700">
             <p className="text-xs text-gray-500">{item.label}</p>
@@ -317,7 +325,7 @@ function DeltaCard({ item }: { item: OverviewData["delta_strip"][number] }) {
     );
 
     if (!item.href) return content;
-    return <Link href={item.href}>{content}</Link>;
+    return <Link href={withRangeQuery(item.href, range)}>{content}</Link>;
 }
 
 function iconForActionLabel(label: string) {
@@ -335,36 +343,36 @@ function iconForActionLabel(label: string) {
     return Power;
 }
 
-function buildContextActions(item: OverviewData["priority_inbox"][number] | null): ActionItem[] {
+function buildContextActions(item: OverviewData["priority_inbox"][number] | null, range: OverviewRange): ActionItem[] {
     if (!item) return [];
     if (item.kind === "incident") {
         return [
-            { label: "Open incident", href: item.href },
-            { label: "Error events", href: "/god/errors?status=open" },
+            { label: "Open incident", href: withRangeQuery(item.href, range) },
+            { label: "Error events", href: withRangeQuery("/god/errors?status=open", range) },
         ];
     }
     if (item.kind === "support") {
         return [
-            { label: "Respond to ticket", href: item.href },
-            { label: "Support queue", href: "/god/support?status=open" },
+            { label: "Respond to ticket", href: withRangeQuery(item.href, range) },
+            { label: "Support queue", href: withRangeQuery("/god/support?status=open", range) },
         ];
     }
     if (item.kind === "collection_invoice" || item.kind === "collection_proposal") {
         return [
-            { label: "Open collections item", href: item.href },
-            { label: "Collections", href: "/god/collections?tab=invoices" },
+            { label: "Open collections item", href: withRangeQuery(item.href, range) },
+            { label: "Collections", href: withRangeQuery("/god/collections?tab=invoices", range) },
         ];
     }
     if (item.kind === "queue") {
         return [
-            { label: "Open queues", href: "/god/monitoring?focus=queues" },
-            { label: "Health monitor", href: "/god/monitoring" },
+            { label: "Open queues", href: withRangeQuery("/god/monitoring?focus=queues", range) },
+            { label: "Health monitor", href: withRangeQuery("/god/monitoring", range) },
         ];
     }
     if (item.kind === "cost") {
         return [
-            { label: "Review spend", href: item.href },
-            { label: "Cost dashboard", href: "/god/costs" },
+            { label: "Review spend", href: withRangeQuery(item.href, range) },
+            { label: "Cost dashboard", href: withRangeQuery("/god/costs", range) },
         ];
     }
     return [];
@@ -443,28 +451,52 @@ export default function GodCommandCenter() {
     const [loading, setLoading] = useState(true);
     const [customViews, setCustomViews] = useState<SavedPreset[]>([]);
     const [presetsLoaded, setPresetsLoaded] = useState(false);
+    const [savingPreset, setSavingPreset] = useState(false);
     const [focusedInboxId, setFocusedInboxId] = useState<string | null>(null);
     const currentView = normalizeView(searchParams.get("view"));
     const currentRange = normalizeRange(searchParams.get("range"));
 
     useEffect(() => {
-        try {
-            const raw = localStorage.getItem(CUSTOM_VIEW_STORAGE_KEY);
-            if (!raw) return;
-            const parsed = JSON.parse(raw);
-            if (!Array.isArray(parsed)) return;
-            setCustomViews(parsed.filter(isSavedPreset).slice(0, 8));
-        } catch {
-            setCustomViews([]);
-        } finally {
-            setPresetsLoaded(true);
-        }
+        let cancelled = false;
+        const loadPresets = async () => {
+            try {
+                const response = await fetch("/api/superadmin/overview/presets", { cache: "no-store" });
+                if (response.ok) {
+                    const payload = await response.json() as { presets?: unknown[] };
+                    const serverPresets = Array.isArray(payload.presets)
+                        ? payload.presets.filter(isSavedPreset).slice(0, 8)
+                        : [];
+                    if (!cancelled) {
+                        setCustomViews(serverPresets);
+                        localStorage.setItem(CUSTOM_VIEW_STORAGE_KEY, JSON.stringify(serverPresets));
+                        setPresetsLoaded(true);
+                    }
+                    return;
+                }
+            } catch {
+                // fall back to local storage cache when API is unavailable
+            }
+            try {
+                const raw = localStorage.getItem(CUSTOM_VIEW_STORAGE_KEY);
+                if (!raw) {
+                    if (!cancelled) setCustomViews([]);
+                } else {
+                    const parsed = JSON.parse(raw);
+                    if (!cancelled && Array.isArray(parsed)) {
+                        setCustomViews(parsed.filter(isSavedPreset).slice(0, 8));
+                    }
+                }
+            } catch {
+                if (!cancelled) setCustomViews([]);
+            } finally {
+                if (!cancelled) setPresetsLoaded(true);
+            }
+        };
+        void loadPresets();
+        return () => {
+            cancelled = true;
+        };
     }, []);
-
-    useEffect(() => {
-        if (!presetsLoaded) return;
-        localStorage.setItem(CUSTOM_VIEW_STORAGE_KEY, JSON.stringify(customViews));
-    }, [customViews, presetsLoaded]);
 
     useEffect(() => {
         localStorage.setItem(LAST_SELECTION_STORAGE_KEY, JSON.stringify({ view: currentView, range: currentRange }));
@@ -527,6 +559,29 @@ export default function GodCommandCenter() {
         router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
     }, [pathname, router, searchParams]);
 
+    const persistPresets = useCallback(async (nextPresets: SavedPreset[]) => {
+        setCustomViews(nextPresets);
+        localStorage.setItem(CUSTOM_VIEW_STORAGE_KEY, JSON.stringify(nextPresets));
+        if (!presetsLoaded) return;
+        setSavingPreset(true);
+        try {
+            const response = await authedFetch("/api/superadmin/overview/presets", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ presets: nextPresets }),
+            });
+            if (!response.ok) return;
+            const payload = await response.json() as { presets?: unknown[] };
+            if (Array.isArray(payload.presets)) {
+                const normalized = payload.presets.filter(isSavedPreset).slice(0, 8);
+                setCustomViews(normalized);
+                localStorage.setItem(CUSTOM_VIEW_STORAGE_KEY, JSON.stringify(normalized));
+            }
+        } finally {
+            setSavingPreset(false);
+        }
+    }, [presetsLoaded]);
+
     const saveCurrentPreset = useCallback(() => {
         const defaultName = `${SAVED_VIEWS.find((view) => view.id === currentView)?.label ?? "View"} · ${currentRange}`;
         const name = window.prompt("Save current view as:", defaultName)?.trim();
@@ -537,11 +592,12 @@ export default function GodCommandCenter() {
             view: currentView,
             range: currentRange,
         };
-        setCustomViews((previous) => [
+        const next = [
             preset,
-            ...previous.filter((item) => item.name.toLowerCase() !== name.toLowerCase()),
-        ].slice(0, 8));
-    }, [currentRange, currentView]);
+            ...customViews.filter((item) => item.name.toLowerCase() !== name.toLowerCase()),
+        ].slice(0, 8);
+        void persistPresets(next);
+    }, [currentRange, currentView, customViews, persistPresets]);
 
     const applyPreset = useCallback((preset: SavedPreset) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -553,8 +609,8 @@ export default function GodCommandCenter() {
     }, [pathname, router, searchParams]);
 
     const deletePreset = useCallback((presetId: string) => {
-        setCustomViews((previous) => previous.filter((item) => item.id !== presetId));
-    }, []);
+        void persistPresets(customViews.filter((item) => item.id !== presetId));
+    }, [customViews, persistPresets]);
 
     const showRevenue = currentView === "all" || currentView === "revenue";
     const showGrowth = currentView === "all" || currentView === "growth";
@@ -575,7 +631,7 @@ export default function GodCommandCenter() {
         () => data?.priority_inbox.find((item) => item.id === focusedInboxId) ?? null,
         [data?.priority_inbox, focusedInboxId],
     );
-    const contextActions = useMemo(() => buildContextActions(focusedInboxItem), [focusedInboxItem]);
+    const contextActions = useMemo(() => buildContextActions(focusedInboxItem, currentRange), [currentRange, focusedInboxItem]);
 
     if (!data && loading) {
         return (
@@ -639,9 +695,10 @@ export default function GodCommandCenter() {
                         <TimeRangePicker value={currentRange} onChange={(value) => setRange(value as OverviewRange)} />
                         <button
                             onClick={saveCurrentPreset}
+                            disabled={savingPreset}
                             className="rounded-md border border-gray-800 bg-gray-900 px-3 py-2 text-xs text-gray-300 transition-colors hover:border-gray-700 hover:text-white"
                         >
-                            Save View
+                            {savingPreset ? "Saving…" : "Save View"}
                         </button>
                     </div>
                     {customViews.length > 0 && (
@@ -667,25 +724,25 @@ export default function GodCommandCenter() {
                     )}
                     <div className="flex flex-wrap items-center gap-2">
                         <Link
-                            href="/god/support?status=open"
+                            href={withRangeQuery("/god/support?status=open", currentRange)}
                             className="rounded-md border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white"
                         >
                             Support queue
                         </Link>
                         <Link
-                            href="/god/errors?status=open"
+                            href={withRangeQuery("/god/errors?status=open", currentRange)}
                             className="rounded-md border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white"
                         >
                             Incidents
                         </Link>
                         <Link
-                            href={`/god/costs?range=${currentRange}`}
+                            href={withRangeQuery("/god/costs", currentRange)}
                             className="rounded-md border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white"
                         >
                             Costs
                         </Link>
                         <Link
-                            href="/god/collections?tab=invoices"
+                            href={withRangeQuery("/god/collections?tab=invoices", currentRange)}
                             className="rounded-md border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white"
                         >
                             Collections
@@ -752,7 +809,7 @@ export default function GodCommandCenter() {
                                                 >
                                                     {focusedInboxItem?.id === item.id ? "Focused" : "Focus"}
                                                 </button>
-                                                <Link href={item.href} className="inline-flex items-center gap-1 text-xs text-gray-300 transition-colors hover:text-white">
+                                                <Link href={withRangeQuery(item.href, currentRange)} className="inline-flex items-center gap-1 text-xs text-gray-300 transition-colors hover:text-white">
                                                     {item.action_label}
                                                     <ArrowRight className="w-3 h-3" />
                                                 </Link>
@@ -793,13 +850,13 @@ export default function GodCommandCenter() {
                         <div className="min-w-0 space-y-4">
                             <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                                 {data.summary_kpis.map((metric) => (
-                                    <MetricCard key={metric.id} metric={metric} />
+                                    <MetricCard key={metric.id} metric={metric} range={currentRange} />
                                 ))}
                             </section>
 
                             <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                                 {data.delta_strip.map((item) => (
-                                    <DeltaCard key={item.id} item={item} />
+                                    <DeltaCard key={item.id} item={item} range={currentRange} />
                                 ))}
                             </section>
 
@@ -856,22 +913,22 @@ export default function GodCommandCenter() {
                                             </div>
                                             <div className="space-y-4 p-4">
                                                 <div className="grid gap-3 sm:grid-cols-2">
-                                                    <Link href="/god/collections?tab=invoices" className="rounded-md border border-red-900/60 bg-red-950/20 px-3 py-3 transition-colors hover:border-red-800/70">
+                                                    <Link href={withRangeQuery("/god/collections?tab=invoices", currentRange)} className="rounded-md border border-red-900/60 bg-red-950/20 px-3 py-3 transition-colors hover:border-red-800/70">
                                                         <p className="text-xs text-gray-400">Overdue invoices</p>
                                                         <p className="mt-1 text-lg font-semibold text-white">{data.revenue_risk.overdue_amount}</p>
                                                         <p className="mt-1 text-xs text-gray-500">{data.revenue_risk.overdue_count} invoices</p>
                                                     </Link>
-                                                    <Link href="/god/collections?tab=invoices" className="rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3 transition-colors hover:border-gray-700">
+                                                    <Link href={withRangeQuery("/god/collections?tab=invoices", currentRange)} className="rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3 transition-colors hover:border-gray-700">
                                                         <p className="text-xs text-gray-400">Due this week</p>
                                                         <p className="mt-1 text-lg font-semibold text-white">{data.revenue_risk.due_this_week_amount}</p>
                                                         <p className="mt-1 text-xs text-gray-500">{data.revenue_risk.due_this_week_count} invoices</p>
                                                     </Link>
-                                                    <Link href="/god/collections?tab=proposals" className="rounded-md border border-amber-900/60 bg-amber-950/20 px-3 py-3 transition-colors hover:border-amber-800/70">
+                                                    <Link href={withRangeQuery("/god/collections?tab=proposals", currentRange)} className="rounded-md border border-amber-900/60 bg-amber-950/20 px-3 py-3 transition-colors hover:border-amber-800/70">
                                                         <p className="text-xs text-gray-400">Expiring proposals</p>
                                                         <p className="mt-1 text-lg font-semibold text-white">{data.revenue_risk.expiring_proposals_amount}</p>
                                                         <p className="mt-1 text-xs text-gray-500">{data.revenue_risk.expiring_proposals_count} proposals in 72h</p>
                                                     </Link>
-                                                    <Link href="/god/support?status=open" className="rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3 transition-colors hover:border-gray-700">
+                                                    <Link href={withRangeQuery("/god/support?status=open", currentRange)} className="rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3 transition-colors hover:border-gray-700">
                                                         <p className="text-xs text-gray-400">Open support</p>
                                                         <p className="mt-1 text-lg font-semibold text-white">{data.revenue_risk.open_support_count}</p>
                                                         <p className="mt-1 text-xs text-gray-500">Support load affecting customer trust</p>
@@ -888,7 +945,7 @@ export default function GodCommandCenter() {
                                                                 data.revenue_risk.top_overdue_invoices.map((invoice) => (
                                                                     <Link
                                                                         key={invoice.id}
-                                                                        href={`/god/collections?tab=invoices&invoiceId=${invoice.id}`}
+                                                                        href={withRangeQuery(`/god/collections?tab=invoices&invoiceId=${invoice.id}`, currentRange)}
                                                                         className="block rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3 transition-colors hover:border-gray-700"
                                                                     >
                                                                         <div className="flex items-start justify-between gap-3">
@@ -913,7 +970,7 @@ export default function GodCommandCenter() {
                                                                 data.revenue_risk.expiring_proposals.map((proposal) => (
                                                                     <Link
                                                                         key={proposal.id}
-                                                                        href={`/god/collections?tab=proposals&proposalId=${proposal.id}`}
+                                                                        href={withRangeQuery(`/god/collections?tab=proposals&proposalId=${proposal.id}`, currentRange)}
                                                                         className="block rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3 transition-colors hover:border-gray-700"
                                                                     >
                                                                         <div className="flex items-start justify-between gap-3">
@@ -1088,7 +1145,7 @@ export default function GodCommandCenter() {
                                     </div>
 
                                     <Link
-                                        href="/god/monitoring?focus=queues"
+                                        href={withRangeQuery("/god/monitoring?focus=queues", currentRange)}
                                         className="inline-flex items-center gap-2 text-sm text-gray-300 transition-colors hover:text-white"
                                     >
                                         Open health monitor
@@ -1132,7 +1189,7 @@ export default function GodCommandCenter() {
                                         return (
                                             <Link
                                                 key={action.href}
-                                                href={action.href}
+                                                href={withRangeQuery(action.href, currentRange)}
                                                 className={cn(
                                                     "inline-flex items-center justify-between rounded-md border px-3 py-3 text-sm transition-colors",
                                                     action.tone === "danger"
@@ -1158,7 +1215,7 @@ export default function GodCommandCenter() {
                                             <h2 className="text-sm font-medium text-white">Decision log</h2>
                                             <p className="mt-1 text-xs text-gray-500">Recent superadmin actions and interventions.</p>
                                         </div>
-                                        <Link href="/god/audit-log" className="text-xs text-gray-400 transition-colors hover:text-white">
+                                        <Link href={withRangeQuery("/god/audit-log", currentRange)} className="text-xs text-gray-400 transition-colors hover:text-white">
                                             Open audit log
                                         </Link>
                                     </div>
@@ -1170,7 +1227,7 @@ export default function GodCommandCenter() {
                                         data.decision_log.map((entry) => (
                                             <Link
                                                 key={entry.id}
-                                                href={entry.href}
+                                                href={withRangeQuery(entry.href, currentRange)}
                                                 className="block rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3 transition-colors hover:border-gray-700"
                                             >
                                                 <div className="flex items-start gap-3">

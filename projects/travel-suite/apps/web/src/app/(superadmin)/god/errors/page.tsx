@@ -28,6 +28,12 @@ interface ErrorEvent {
     resolution_notes: string | null;
     resolved_at: string | null;
     created_at: string;
+    owner_id: string | null;
+    owner_name: string | null;
+    escalation_level: "normal" | "elevated" | "critical";
+    sla_due_at: string | null;
+    ops_note: string | null;
+    is_sla_breached: boolean;
 }
 
 interface ErrorsResponse {
@@ -36,6 +42,9 @@ interface ErrorsResponse {
     open_count: number;
     fatal_count: number;
     resolved_this_week: number;
+    claimed_count: number;
+    elevated_count: number;
+    sla_breach_count: number;
     page: number;
     pages: number;
 }
@@ -75,6 +84,12 @@ const STATUS_BADGE: Record<string, string> = {
     wont_fix: "bg-gray-800 text-gray-400",
 };
 
+const ESCALATION_BADGE: Record<string, string> = {
+    normal: "bg-gray-800 text-gray-400",
+    elevated: "bg-amber-900/60 text-amber-300",
+    critical: "bg-red-900/60 text-red-300",
+};
+
 const STATUS_OPTIONS: Array<{ value: ErrorStatus; label: string }> = [
     { value: "open", label: "Open" },
     { value: "investigating", label: "Investigating" },
@@ -94,6 +109,17 @@ function timeAgo(iso: string | null): string {
     return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
 }
 
+function dueLabel(iso: string | null): string {
+    if (!iso) return "No SLA";
+    const diffMs = new Date(iso).getTime() - Date.now();
+    const mins = Math.floor(Math.abs(diffMs) / 60_000);
+    if (mins < 60) return diffMs >= 0 ? `in ${mins}m` : `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return diffMs >= 0 ? `in ${hours}h` : `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return diffMs >= 0 ? `in ${days}d` : `${days}d ago`;
+}
+
 // ---------------------------------------------------------------------------
 // Expandable row component
 // ---------------------------------------------------------------------------
@@ -108,6 +134,9 @@ function ErrorRow({ event, onSaved, autoExpand = false }: ErrorRowProps) {
     const [expanded, setExpanded] = useState(false);
     const [notes, setNotes] = useState(event.resolution_notes ?? "");
     const [newStatus, setNewStatus] = useState<ErrorStatus>(event.status);
+    const [opsEscalation, setOpsEscalation] = useState<"normal" | "elevated" | "critical">(event.escalation_level ?? "normal");
+    const [opsSlaDueAt, setOpsSlaDueAt] = useState(event.sla_due_at ? new Date(new Date(event.sla_due_at).getTime() - (new Date().getTimezoneOffset() * 60_000)).toISOString().slice(0, 16) : "");
+    const [opsNote, setOpsNote] = useState(event.ops_note ?? "");
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
 
@@ -115,19 +144,47 @@ function ErrorRow({ event, onSaved, autoExpand = false }: ErrorRowProps) {
         if (autoExpand) setExpanded(true);
     }, [autoExpand]);
 
+    useEffect(() => {
+        setNotes(event.resolution_notes ?? "");
+        setNewStatus(event.status);
+        setOpsEscalation(event.escalation_level ?? "normal");
+        setOpsSlaDueAt(event.sla_due_at ? new Date(new Date(event.sla_due_at).getTime() - (new Date().getTimezoneOffset() * 60_000)).toISOString().slice(0, 16) : "");
+        setOpsNote(event.ops_note ?? "");
+    }, [event.escalation_level, event.ops_note, event.resolution_notes, event.sla_due_at, event.status]);
+
     async function handleSave() {
         setSaving(true);
         try {
             const res = await authedFetch(`/api/superadmin/errors/${event.id}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ status: newStatus, resolution_notes: notes }),
+                body: JSON.stringify({
+                    status: newStatus,
+                    resolution_notes: notes,
+                    escalation_level: opsEscalation,
+                    sla_due_at: opsSlaDueAt ? new Date(opsSlaDueAt).toISOString() : null,
+                    ops_note: opsNote.trim() || null,
+                }),
             });
             if (res.ok) {
                 setSaved(true);
                 setTimeout(() => setSaved(false), 2000);
                 onSaved();
             }
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    async function handleClaimToggle() {
+        setSaving(true);
+        try {
+            const res = await authedFetch(`/api/superadmin/errors/${event.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(event.owner_id ? { release: true } : { claim: true }),
+            });
+            if (res.ok) onSaved();
         } finally {
             setSaving(false);
         }
@@ -166,6 +223,9 @@ function ErrorRow({ event, onSaved, autoExpand = false }: ErrorRowProps) {
                         </div>
                         <span className={`px-2 py-0.5 rounded text-xs font-medium ${STATUS_BADGE[event.status] ?? "bg-gray-800 text-gray-400"}`}>
                             {event.status.replace("_", " ")}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${ESCALATION_BADGE[event.escalation_level] ?? ESCALATION_BADGE.normal}`}>
+                            {event.escalation_level}
                         </span>
                         <span className="text-xs text-gray-500 hidden md:block">{timeAgo(event.first_seen_at)}</span>
                         {expanded ? (
@@ -206,6 +266,27 @@ function ErrorRow({ event, onSaved, autoExpand = false }: ErrorRowProps) {
                     {/* Triage form */}
                     <div className="space-y-3">
                         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Triage</p>
+                        <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                                {event.owner_name ? (
+                                    <span className="rounded bg-blue-950/40 px-2 py-0.5 text-xs text-blue-300">Owner: {event.owner_name}</span>
+                                ) : (
+                                    <span className="rounded bg-gray-800 px-2 py-0.5 text-xs text-gray-400">Unowned</span>
+                                )}
+                                {event.sla_due_at && (
+                                    <span className={`rounded px-2 py-0.5 text-xs ${event.is_sla_breached ? "bg-red-950/40 text-red-300" : "bg-gray-800 text-gray-300"}`}>
+                                        SLA {event.is_sla_breached ? "breached" : dueLabel(event.sla_due_at)}
+                                    </span>
+                                )}
+                            </div>
+                            <button
+                                onClick={handleClaimToggle}
+                                disabled={saving}
+                                className="rounded border border-gray-700 px-2 py-1 text-xs text-gray-300 transition-colors hover:border-gray-600 hover:text-white disabled:opacity-50"
+                            >
+                                {event.owner_id ? "Release" : "Claim"}
+                            </button>
+                        </div>
 
                         <select
                             value={newStatus}
@@ -218,6 +299,24 @@ function ErrorRow({ event, onSaved, autoExpand = false }: ErrorRowProps) {
                             ))}
                         </select>
 
+                        <div className="grid gap-2 sm:grid-cols-2">
+                            <select
+                                value={opsEscalation}
+                                onChange={(e) => setOpsEscalation(e.target.value as "normal" | "elevated" | "critical")}
+                                className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-gray-300 focus:outline-none focus:border-amber-500/50"
+                            >
+                                <option value="normal">Escalation: Normal</option>
+                                <option value="elevated">Escalation: Elevated</option>
+                                <option value="critical">Escalation: Critical</option>
+                            </select>
+                            <input
+                                type="datetime-local"
+                                value={opsSlaDueAt}
+                                onChange={(e) => setOpsSlaDueAt(e.target.value)}
+                                className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-gray-300 focus:outline-none focus:border-amber-500/50"
+                            />
+                        </div>
+
                         <textarea
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
@@ -226,6 +325,13 @@ function ErrorRow({ event, onSaved, autoExpand = false }: ErrorRowProps) {
                             className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700
                                        text-sm text-gray-200 placeholder-gray-500 resize-none
                                        focus:outline-none focus:border-amber-500/50"
+                        />
+                        <textarea
+                            value={opsNote}
+                            onChange={(e) => setOpsNote(e.target.value)}
+                            rows={2}
+                            placeholder="Ops note for handoffs (optional)…"
+                            className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm text-gray-200 placeholder-gray-500 resize-none focus:outline-none focus:border-amber-500/50"
                         />
 
                         <button
@@ -299,10 +405,13 @@ export default function ErrorsPage() {
             </div>
 
             {/* Summary cards */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">
                 <StatCard label="Open" value={loading ? "…" : (data?.open_count ?? 0)} accent="red" />
                 <StatCard label="Fatals" value={loading ? "…" : (data?.fatal_count ?? 0)} accent="red" />
                 <StatCard label="Resolved This Week" value={loading ? "…" : (data?.resolved_this_week ?? 0)} accent="emerald" />
+                <StatCard label="Owned" value={loading ? "…" : (data?.claimed_count ?? 0)} accent="blue" />
+                <StatCard label="Escalated" value={loading ? "…" : (data?.elevated_count ?? 0)} accent="amber" />
+                <StatCard label="SLA Breached" value={loading ? "…" : (data?.sla_breach_count ?? 0)} accent="red" />
             </div>
 
             {/* Status tabs */}

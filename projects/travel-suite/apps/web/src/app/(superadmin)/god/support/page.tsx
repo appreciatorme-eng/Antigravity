@@ -22,6 +22,12 @@ interface TicketSummary {
     org_name: string | null;
     has_response: boolean;
     responded_at: string | null;
+    owner_id: string | null;
+    owner_name: string | null;
+    escalation_level: "normal" | "elevated" | "critical";
+    sla_due_at: string | null;
+    ops_note: string | null;
+    is_sla_breached: boolean;
 }
 
 interface TicketDetail {
@@ -32,6 +38,14 @@ interface TicketDetail {
     };
     user: { id: string; full_name: string | null; email: string | null; phone: string | null; role: string | null };
     organization: { id: string; name: string; slug: string; tier: string } | null;
+    management: {
+        owner_id: string | null;
+        escalation_level: "normal" | "elevated" | "critical";
+        sla_due_at: string | null;
+        ops_note: string | null;
+        updated_at: string | null;
+        owner: { id: string; name: string; email: string | null } | null;
+    };
 }
 
 interface TicketsResponse {
@@ -39,6 +53,9 @@ interface TicketsResponse {
     total: number;
     open_count: number;
     in_progress_count: number;
+    claimed_count: number;
+    elevated_count: number;
+    sla_breach_count: number;
 }
 
 const PRIORITY_BADGE: Record<string, string> = {
@@ -56,6 +73,11 @@ const STATUS_BADGE: Record<string, string> = {
 };
 
 const STATUS_TABS = ["all", "open", "in_progress", "resolved", "closed"] as const;
+const ESCALATION_BADGE: Record<string, string> = {
+    normal: "bg-gray-800 text-gray-400",
+    elevated: "bg-amber-900/60 text-amber-300",
+    critical: "bg-red-900/60 text-red-300",
+};
 
 function timeAgo(iso: string | null): string {
     if (!iso) return "—";
@@ -65,6 +87,25 @@ function timeAgo(iso: string | null): string {
     const hrs = Math.floor(mins / 60);
     if (hrs < 24) return `${hrs}h ago`;
     return `${Math.floor(hrs / 24)}d ago`;
+}
+
+function dueLabel(iso: string | null): string {
+    if (!iso) return "No SLA";
+    const diffMs = new Date(iso).getTime() - Date.now();
+    const mins = Math.floor(Math.abs(diffMs) / 60_000);
+    if (mins < 60) return diffMs >= 0 ? `in ${mins}m` : `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return diffMs >= 0 ? `in ${hours}h` : `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return diffMs >= 0 ? `in ${days}d` : `${days}d ago`;
+}
+
+function toLocalDateTimeInput(iso: string | null): string {
+    if (!iso) return "";
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return "";
+    const localMs = date.getTime() - (date.getTimezoneOffset() * 60_000);
+    return new Date(localMs).toISOString().slice(0, 16);
 }
 
 export default function SupportPage() {
@@ -80,6 +121,10 @@ export default function SupportPage() {
     const [responseText, setResponseText] = useState("");
     const [responseStatus, setResponseStatus] = useState("resolved");
     const [submitting, setSubmitting] = useState(false);
+    const [opsEscalation, setOpsEscalation] = useState<"normal" | "elevated" | "critical">("normal");
+    const [opsSlaDueAt, setOpsSlaDueAt] = useState("");
+    const [opsNote, setOpsNote] = useState("");
+    const [savingOps, setSavingOps] = useState(false);
 
     const ticketId = searchParams.get("ticketId");
 
@@ -105,6 +150,9 @@ export default function SupportPage() {
             const detail = await res.json();
             setSelectedTicket(detail);
             setResponseText(detail.ticket.admin_response ?? "");
+            setOpsEscalation(detail.management?.escalation_level ?? "normal");
+            setOpsSlaDueAt(toLocalDateTimeInput(detail.management?.sla_due_at ?? null));
+            setOpsNote(detail.management?.ops_note ?? "");
         }
     }, []);
 
@@ -162,6 +210,34 @@ export default function SupportPage() {
         }
     }
 
+    async function updateOpsControls(patch: Record<string, unknown>) {
+        if (!selectedTicket) return;
+        setSavingOps(true);
+        try {
+            const response = await authedFetch(`/api/superadmin/support/tickets/${selectedTicket.ticket.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(patch),
+            });
+            if (!response.ok) return;
+            const payload = await response.json();
+            setSelectedTicket((previous) => (
+                previous
+                    ? {
+                        ...previous,
+                        management: {
+                            ...previous.management,
+                            ...(payload.management ?? {}),
+                        },
+                    }
+                    : previous
+            ));
+            await fetchData();
+        } finally {
+            setSavingOps(false);
+        }
+    }
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -181,9 +257,12 @@ export default function SupportPage() {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
                 <StatCard label="Open Tickets" value={loading ? "…" : (data?.open_count ?? 0)} accent="red" />
                 <StatCard label="In Progress" value={loading ? "…" : (data?.in_progress_count ?? 0)} accent="amber" />
+                <StatCard label="Owned" value={loading ? "…" : (data?.claimed_count ?? 0)} accent="blue" />
+                <StatCard label="Escalated" value={loading ? "…" : (data?.elevated_count ?? 0)} accent="amber" />
+                <StatCard label="SLA Breached" value={loading ? "…" : (data?.sla_breach_count ?? 0)} accent="red" />
             </div>
 
             {/* Status tabs */}
@@ -245,17 +324,30 @@ export default function SupportPage() {
                             {ticket.description && (
                                 <p className="text-xs text-gray-500 line-clamp-2">{ticket.description}</p>
                             )}
-                            <div className="flex items-center gap-3 text-xs text-gray-500">
-                                <span>{ticket.user_name ?? ticket.user_email ?? "Unknown"}</span>
-                                {ticket.org_name && <span>· {ticket.org_name}</span>}
-                                <span className="flex items-center gap-1 ml-auto">
-                                    <Clock className="w-3 h-3" />
-                                    {timeAgo(ticket.created_at)}
-                                </span>
-                                {ticket.has_response && (
-                                    <span className="text-emerald-500">✓ Responded</span>
-                                )}
-                            </div>
+                                <div className="flex items-center gap-3 text-xs text-gray-500">
+                                    <span>{ticket.user_name ?? ticket.user_email ?? "Unknown"}</span>
+                                    {ticket.org_name && <span>· {ticket.org_name}</span>}
+                                    {ticket.owner_name && <span>· Owner: {ticket.owner_name}</span>}
+                                    <span className="flex items-center gap-1 ml-auto">
+                                        <Clock className="w-3 h-3" />
+                                        {timeAgo(ticket.created_at)}
+                                    </span>
+                                    {ticket.has_response && (
+                                        <span className="text-emerald-500">✓ Responded</span>
+                                    )}
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                                    <span className={`rounded px-2 py-0.5 ${ESCALATION_BADGE[ticket.escalation_level] ?? ESCALATION_BADGE.normal}`}>
+                                        {ticket.escalation_level}
+                                    </span>
+                                    {ticket.sla_due_at && (
+                                        <span className={`rounded px-2 py-0.5 ${
+                                            ticket.is_sla_breached ? "bg-red-950/50 text-red-300" : "bg-gray-800 text-gray-300"
+                                        }`}>
+                                            SLA {ticket.is_sla_breached ? "breached" : `due ${dueLabel(ticket.sla_due_at)}`}
+                                        </span>
+                                    )}
+                                </div>
                         </button>
                     ))
                 )}
@@ -291,6 +383,71 @@ export default function SupportPage() {
                             {selectedTicket.user.email && <p className="text-gray-400">Email: <span className="text-gray-300">{selectedTicket.user.email}</span></p>}
                             {selectedTicket.organization && (
                                 <p className="text-gray-400">Org: <span className="text-gray-300">{selectedTicket.organization.name} ({selectedTicket.organization.tier})</span></p>
+                            )}
+                        </div>
+
+                        {/* Manager controls */}
+                        <div className="space-y-3 rounded-lg border border-gray-800 bg-gray-950/40 p-3">
+                            <div className="flex items-center justify-between">
+                                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Queue Controls</p>
+                                <div className="flex items-center gap-2">
+                                    {selectedTicket.management.owner ? (
+                                        <span className="rounded bg-blue-950/40 px-2 py-0.5 text-xs text-blue-300">
+                                            Owner: {selectedTicket.management.owner.name}
+                                        </span>
+                                    ) : (
+                                        <span className="rounded bg-gray-800 px-2 py-0.5 text-xs text-gray-400">
+                                            Unowned
+                                        </span>
+                                    )}
+                                    <button
+                                        onClick={() => updateOpsControls(selectedTicket.management.owner ? { release: true } : { claim: true })}
+                                        disabled={savingOps}
+                                        className="rounded border border-gray-700 px-2 py-1 text-xs text-gray-300 transition-colors hover:border-gray-600 hover:text-white disabled:opacity-50"
+                                    >
+                                        {selectedTicket.management.owner ? "Release" : "Claim"}
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="grid gap-2 sm:grid-cols-2">
+                                <select
+                                    value={opsEscalation}
+                                    onChange={(event) => setOpsEscalation(event.target.value as "normal" | "elevated" | "critical")}
+                                    className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-amber-500/50"
+                                >
+                                    <option value="normal">Escalation: Normal</option>
+                                    <option value="elevated">Escalation: Elevated</option>
+                                    <option value="critical">Escalation: Critical</option>
+                                </select>
+                                <input
+                                    type="datetime-local"
+                                    value={opsSlaDueAt}
+                                    onChange={(event) => setOpsSlaDueAt(event.target.value)}
+                                    className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-amber-500/50"
+                                />
+                            </div>
+                            <textarea
+                                rows={3}
+                                value={opsNote}
+                                onChange={(event) => setOpsNote(event.target.value)}
+                                placeholder="Ops note for next responder…"
+                                className="w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-200 placeholder-gray-500 resize-none focus:outline-none focus:border-amber-500/50"
+                            />
+                            <button
+                                onClick={() => updateOpsControls({
+                                    escalation_level: opsEscalation,
+                                    sla_due_at: opsSlaDueAt ? new Date(opsSlaDueAt).toISOString() : null,
+                                    ops_note: opsNote.trim() || null,
+                                })}
+                                disabled={savingOps}
+                                className="w-full rounded-lg border border-amber-500/30 bg-amber-500/10 py-2 text-sm font-medium text-amber-200 transition-colors hover:bg-amber-500/20 disabled:opacity-50"
+                            >
+                                {savingOps ? "Saving controls…" : "Save Queue Controls"}
+                            </button>
+                            {selectedTicket.management.sla_due_at && (
+                                <p className={`text-xs ${new Date(selectedTicket.management.sla_due_at).getTime() < Date.now() ? "text-red-300" : "text-gray-400"}`}>
+                                    SLA due {dueLabel(selectedTicket.management.sla_due_at)}
+                                </p>
                             )}
                         </div>
 
