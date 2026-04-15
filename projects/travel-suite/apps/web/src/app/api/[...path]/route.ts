@@ -141,6 +141,7 @@ const routes = createCatchAllHandlers([
   ["webhooks/evolution", () => import("@/app/api/_handlers/webhooks/evolution/route")],
   ["webhooks/waha", () => import("@/app/api/_handlers/webhooks/waha/route")],
   ["webhooks/sentry", () => import("@/app/api/_handlers/webhooks/sentry/route")],
+  ["webhooks/error-autofix", () => import("@/app/api/_handlers/webhooks/error-autofix/route")],
 ], { rateLimit: { limit: 200, windowMs: 5 * 60 * 1000, prefix: "api:main" } });
 
 export const { GET, POST, PATCH, PUT, DELETE, OPTIONS } = routes;
