@@ -44,7 +44,8 @@ export async function GET(
         }
 
         const profile = profileResult.data;
-        const org = profile.organizations as {
+        const orgRaw = profile.organizations;
+        const org = (Array.isArray(orgRaw) ? orgRaw[0] : orgRaw) as {
             id?: string; name?: string; slug?: string;
             subscription_tier?: string; created_at?: string;
         } | null;

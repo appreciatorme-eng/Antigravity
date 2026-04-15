@@ -186,11 +186,26 @@ export default function DirectoryPage() {
         setSelectedUser(null);
         try {
             const res = await fetch(`/api/superadmin/users/${user.id}`);
-            if (res.ok) setSelectedUser(await res.json());
+            if (res.ok) {
+                setSelectedUser(await res.json());
+            } else {
+                let errText = "Unknown error";
+                try {
+                    const errData = await res.json();
+                    errText = errData.error || res.statusText;
+                } catch {
+                    errText = res.statusText;
+                }
+                showErrorToast(`Failed to load user: ${errText}`);
+                setPanelOpen(false);
+            }
+        } catch (err) {
+            showErrorToast(`Network error: ${err instanceof Error ? err.message : "Failed to load user"}`);
+            setPanelOpen(false);
         } finally {
             setDetailLoading(false);
         }
-    }, []);
+    }, [showErrorToast]);
 
     const refreshUserDetail = useCallback(async (id: string) => {
         try {
