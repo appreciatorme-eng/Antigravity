@@ -35,7 +35,7 @@ interface UserDetail {
     profile: {
         id: string; full_name: string | null; email: string | null; phone: string | null;
         role: string | null; avatar_url: string | null; created_at: string | null;
-        organization_id: string | null; suspended?: boolean;
+        organization_id: string | null;
     };
     organization: {
         id: string; name: string; slug: string; tier: string; created_at: string;
@@ -313,22 +313,7 @@ export default function DirectoryPage() {
         }
     }
 
-    async function handleSuspendToggle() {
-        if (!selectedUser) return;
-        const newSuspended = !selectedUser.profile.suspended;
-        const res = await authedFetch(`/api/superadmin/users/${selectedUser.profile.id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ suspended: newSuspended }),
-        });
-        if (res.ok) {
-            showSuccess(newSuspended ? "User suspended" : "User unsuspended");
-            await refreshUserDetail(selectedUser.profile.id);
-            await fetchData();
-        } else {
-            showError("Failed to update suspension status");
-        }
-    }
+
 
     async function handleDeleteConfirm() {
         if (!deleteTarget) return;
@@ -572,13 +557,7 @@ export default function DirectoryPage() {
                     </div>
                 ) : selectedUser ? (
                     <div className="space-y-6">
-                        {/* Suspended banner */}
-                        {selectedUser.profile.suspended && (
-                            <div className="flex items-center gap-2 rounded-lg border border-red-800/60 bg-red-950/30 px-3 py-2">
-                                <Ban className="h-4 w-4 text-red-400" />
-                                <span className="text-sm text-red-300 font-medium">This user is suspended</span>
-                            </div>
-                        )}
+
 
                         {/* Profile with editable fields */}
                         <div className="space-y-2">
@@ -733,20 +712,7 @@ export default function DirectoryPage() {
                                     Move to Another Org
                                 </button>
 
-                                <button
-                                    onClick={handleSuspendToggle}
-                                    className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${
-                                        selectedUser.profile.suspended
-                                            ? "border-emerald-800/60 bg-emerald-950/30 text-emerald-300 hover:border-emerald-700"
-                                            : "border-amber-800/60 bg-amber-950/30 text-amber-300 hover:border-amber-700"
-                                    }`}
-                                >
-                                    {selectedUser.profile.suspended ? (
-                                        <><Shield className="h-4 w-4" /> Unsuspend User</>
-                                    ) : (
-                                        <><Ban className="h-4 w-4" /> Suspend User</>
-                                    )}
-                                </button>
+
 
                                 <button
                                     onClick={() => setDeleteTarget({

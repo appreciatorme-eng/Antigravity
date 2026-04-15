@@ -23,12 +23,33 @@ export async function GET(
     const { adminClient } = auth;
 
     try {
-        const [profileResult, tripsResult, proposalsResult, ticketsResult] = await Promise.all([
-            adminClient
-                .from("profiles")
-                .select("*, organizations(id, name, slug, subscription_tier, created_at)")
-                .eq("id", id)
-                .single(),
+        // Step 1: fetch profile on its own (no join that could silently fail)
+        const profileResult = await adminClient
+            .from("profiles")
+            .select("id, full_name, email, phone, role, avatar_url, organization_id, created_at")
+            .eq("id", id)
+            .single();
+
+        if (profileResult.error) {
+            logError("[superadmin/users/:id GET] profile query error", profileResult.error);
+            return apiError(`User not found: ${profileResult.error.message}`, 404);
+        }
+
+        if (!profileResult.data) {
+            return apiError("User not found", 404);
+        }
+
+        const profile = profileResult.data;
+
+        // Step 2: fetch org, trips, proposals, tickets in parallel
+        const [orgResult, tripsResult, proposalsResult, ticketsResult] = await Promise.all([
+            profile.organization_id
+                ? adminClient
+                    .from("organizations")
+                    .select("id, name, slug, subscription_tier, created_at")
+                    .eq("id", profile.organization_id)
+                    .single()
+                : Promise.resolve({ data: null, error: null }),
             adminClient.from("trips").select("id", { count: "exact", head: true }).eq("created_by", id),
             adminClient.from("proposals").select("id", { count: "exact", head: true }).eq("created_by", id),
             adminClient
@@ -39,13 +60,7 @@ export async function GET(
                 .limit(10),
         ]);
 
-        if (!profileResult.data) {
-            return apiError("User not found", 404);
-        }
-
-        const profile = profileResult.data;
-        const orgRaw = profile.organizations;
-        const org = (Array.isArray(orgRaw) ? orgRaw[0] : orgRaw) as {
+        const org = orgResult.data as {
             id?: string; name?: string; slug?: string;
             subscription_tier?: string; created_at?: string;
         } | null;
@@ -60,7 +75,7 @@ export async function GET(
                 avatar_url: profile.avatar_url,
                 created_at: profile.created_at,
                 organization_id: profile.organization_id,
-                suspended: (profile as Record<string, unknown>).suspended ?? false,
+                suspended: false, // field does not exist in profiles schema
             },
             organization: org ? {
                 id: org.id,
@@ -119,9 +134,7 @@ export async function PATCH(
         update.role = body.role;
     }
 
-    if (body.suspended !== undefined) {
-        update.suspended = body.suspended;
-    }
+
 
     if (body.organization_id !== undefined) {
         update.organization_id = body.organization_id;
@@ -139,7 +152,7 @@ export async function PATCH(
         // Get current profile for audit log context
         const { data: current } = await db
             .from("profiles")
-            .select("full_name, email, role, organization_id, suspended")
+            .select("full_name, email, role, organization_id")
             .eq("id", id)
             .single();
 
@@ -149,7 +162,7 @@ export async function PATCH(
             .from("profiles")
             .update(update)
             .eq("id", id)
-            .select("id, full_name, email, role, organization_id, suspended")
+            .select("id, full_name, email, role, organization_id")
             .single();
 
         if (error) {
