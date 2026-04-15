@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { logError } from "@/lib/observability/logger";
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
+import { buildGodDataQuality } from "@/lib/platform/god-kpi";
 
 type OrganizationRow = {
     id: string;
@@ -73,24 +75,35 @@ export async function GET(request: NextRequest) {
     const threeDaysOutIso = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
 
     try {
-        const [organizationsResult, invoicesResult, proposalsResult] = await Promise.all([
-            db.from("organizations").select("id, name, subscription_tier"),
-            db
-                .from("invoices")
-                .select("id, invoice_number, status, due_date, balance_amount, total_amount, organization_id")
-                .gt("balance_amount", 0)
-                .in("status", ["issued", "partially_paid", "overdue"])
-                .limit(600),
-            db
-                .from("proposals")
-                .select("id, title, status, expires_at, total_price, client_selected_price, organization_id")
-                .not("expires_at", "is", null)
-                .gte("expires_at", now.toISOString())
-                .lte("expires_at", threeDaysOutIso)
-                .limit(300),
+        const [organizations, invoiceRows, proposalRows] = await Promise.all([
+            fetchAllPages<OrganizationRow>((from, to) => (
+                db
+                    .from("organizations")
+                    .select("id, name, subscription_tier")
+                    .order("id", { ascending: true })
+                    .range(from, to)
+            )),
+            fetchAllPages<InvoiceRow>((from, to) => (
+                db
+                    .from("invoices")
+                    .select("id, invoice_number, status, due_date, balance_amount, total_amount, organization_id")
+                    .gt("balance_amount", 0)
+                    .in("status", ["issued", "partially_paid", "overdue"])
+                    .order("id", { ascending: true })
+                    .range(from, to)
+            )),
+            fetchAllPages<ProposalRow>((from, to) => (
+                db
+                    .from("proposals")
+                    .select("id, title, status, expires_at, total_price, client_selected_price, organization_id")
+                    .not("expires_at", "is", null)
+                    .gte("expires_at", now.toISOString())
+                    .lte("expires_at", threeDaysOutIso)
+                    .order("id", { ascending: true })
+                    .range(from, to)
+            )),
         ]);
 
-        const organizations = (organizationsResult.data ?? []) as OrganizationRow[];
         const organizationMap = new Map(
             organizations.map((org) => [
                 org.id,
@@ -101,7 +114,6 @@ export async function GET(request: NextRequest) {
             ]),
         );
 
-        const invoiceRows = (invoicesResult.data ?? []) as InvoiceRow[];
         const overdueInvoices = invoiceRows.filter((row) => row.due_date && new Date(row.due_date).getTime() < tomorrowStart.getTime());
         const dueThisWeekInvoices = invoiceRows.filter((row) => {
             if (!row.due_date) return false;
@@ -113,7 +125,7 @@ export async function GET(request: NextRequest) {
             return new Date(left.due_date ?? 0).getTime() - new Date(right.due_date ?? 0).getTime();
         });
 
-        const proposalRows = ((proposalsResult.data ?? []) as ProposalRow[]).sort((left, right) => {
+        const proposalRowsSorted = [...proposalRows].sort((left, right) => {
             return new Date(left.expires_at ?? 0).getTime() - new Date(right.expires_at ?? 0).getTime();
         });
 
@@ -136,7 +148,7 @@ export async function GET(request: NextRequest) {
             };
         });
 
-        const proposalPayload = proposalRows.map((row) => {
+        const proposalPayload = proposalRowsSorted.map((row) => {
             const org = row.organization_id ? organizationMap.get(row.organization_id) : null;
             const value = proposalValue(row);
             return {
@@ -173,7 +185,7 @@ export async function GET(request: NextRequest) {
 
         const overdueAmount = overdueInvoices.reduce((sum, row) => sum + safeNumber(row.balance_amount ?? row.total_amount), 0);
         const dueThisWeekAmount = dueThisWeekInvoices.reduce((sum, row) => sum + safeNumber(row.balance_amount ?? row.total_amount), 0);
-        const expiringProposalsAmount = proposalRows.reduce((sum, row) => sum + proposalValue(row), 0);
+        const expiringProposalsAmount = proposalRowsSorted.reduce((sum, row) => sum + proposalValue(row), 0);
 
         return NextResponse.json({
             generated_at: new Date().toISOString(),
@@ -182,11 +194,14 @@ export async function GET(request: NextRequest) {
                 overdue_amount: asCurrency(overdueAmount),
                 due_this_week_count: dueThisWeekInvoices.length,
                 due_this_week_amount: asCurrency(dueThisWeekAmount),
-                expiring_proposals_count: proposalRows.length,
+                expiring_proposals_count: proposalRowsSorted.length,
                 expiring_proposals_amount: asCurrency(expiringProposalsAmount),
             },
             invoices: filteredInvoices,
             proposals: filteredProposals,
+            meta: {
+                data_quality: buildGodDataQuality(["organizations", "invoices", "proposals"]),
+            },
         });
     } catch (error) {
         logError("[superadmin/collections]", error);

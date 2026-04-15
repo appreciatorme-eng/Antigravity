@@ -13,6 +13,8 @@ import {
     checkSentryRuntime,
     checkWhatsappRuntime,
 } from "@/lib/platform/runtime-probes";
+import { buildGodDataQuality, pickGodKpiContracts } from "@/lib/platform/god-kpi";
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
 
 type Severity = "critical" | "high" | "medium";
 type HealthStatus = "healthy" | "degraded" | "down" | "unknown";
@@ -250,15 +252,10 @@ export async function GET(request: NextRequest) {
             todayFatalErrorsResult,
             yesterdayFatalErrorsResult,
             allOrganizationsResult,
-            supportRowsResult,
-            errorRowsResult,
-            invoiceRowsResult,
-            currentProposalRowsResult,
-            previousProposalRowsResult,
-            expiringProposalRowsResult,
             aiUsageRowsResult,
             auditLogRowsResult,
-            pendingNotificationRowsResult,
+            pendingNotificationCountResult,
+            oldestPendingNotificationResult,
             failedNotificationsResult,
             deadLetterResult,
             socialQueueResult,
@@ -292,42 +289,6 @@ export async function GET(request: NextRequest) {
             db.from("error_events").select("id", { count: "exact", head: true }).eq("level", "fatal").gte("created_at", yesterdayStart.toISOString()).lt("created_at", todayStart.toISOString()),
             db.from("organizations").select("id, name, subscription_tier, created_at"),
             db
-                .from("support_tickets")
-                .select("id, title, priority, status, created_at, profiles!support_tickets_user_id_fkey(full_name, email, organization_id)")
-                .in("status", ["open", "in_progress"])
-                .order("created_at", { ascending: true })
-                .limit(40),
-            db
-                .from("error_events")
-                .select("id, title, level, status, created_at, first_seen_at, event_count, user_count")
-                .in("status", ["open", "investigating"])
-                .order("created_at", { ascending: false })
-                .limit(40),
-            db
-                .from("invoices")
-                .select("id, invoice_number, status, due_date, balance_amount, total_amount, organization_id")
-                .gt("balance_amount", 0)
-                .in("status", ["issued", "partially_paid", "overdue"])
-                .limit(400),
-            db
-                .from("proposals")
-                .select("id, status, total_price, client_selected_price")
-                .gte("created_at", rangeStart)
-                .limit(400),
-            db
-                .from("proposals")
-                .select("id, status, total_price, client_selected_price")
-                .gte("created_at", previousRangeStart)
-                .lt("created_at", rangeStart)
-                .limit(400),
-            db
-                .from("proposals")
-                .select("id, title, status, expires_at, total_price, client_selected_price, organization_id")
-                .not("expires_at", "is", null)
-                .gte("expires_at", now.toISOString())
-                .lte("expires_at", threeDaysOut)
-                .limit(20),
-            db
                 .from("organization_ai_usage")
                 .select("organization_id, estimated_cost_usd, ai_requests")
                 .eq("month_start", monthStart.toISOString().slice(0, 10)),
@@ -338,10 +299,14 @@ export async function GET(request: NextRequest) {
                 .limit(8),
             db
                 .from("notification_queue")
+                .select("id", { count: "exact", head: true })
+                .eq("status", "pending"),
+            db
+                .from("notification_queue")
                 .select("created_at")
                 .eq("status", "pending")
                 .order("created_at", { ascending: true })
-                .limit(1000),
+                .limit(1),
             db.from("notification_queue").select("id", { count: "exact", head: true }).eq("status", "failed"),
             db.from("notification_dead_letters").select("id", { count: "exact", head: true }),
             db.from("social_post_queue").select("id", { count: "exact", head: true }).eq("status", "pending"),
@@ -354,6 +319,68 @@ export async function GET(request: NextRequest) {
             checkPosthogRuntime(),
             readRedisSpendFor(todayStart.toISOString().slice(0, 10)),
             readRedisSpendFor(yesterdayStart.toISOString().slice(0, 10)),
+        ]);
+
+        const [
+            fullSupportRows,
+            fullErrorRows,
+            fullInvoiceRows,
+            fullCurrentProposalRows,
+            fullPreviousProposalRows,
+            fullExpiringProposalRows,
+        ] = await Promise.all([
+            fetchAllPages<SupportTicketRow>((from, to) => (
+                db
+                    .from("support_tickets")
+                    .select("id, title, priority, status, created_at, profiles!support_tickets_user_id_fkey(full_name, email, organization_id)")
+                    .in("status", ["open", "in_progress"])
+                    .order("created_at", { ascending: true })
+                    .range(from, to)
+            )),
+            fetchAllPages<ErrorEventRow>((from, to) => (
+                db
+                    .from("error_events")
+                    .select("id, title, level, status, created_at, first_seen_at, event_count, user_count")
+                    .in("status", ["open", "investigating"])
+                    .order("created_at", { ascending: false })
+                    .range(from, to)
+            )),
+            fetchAllPages<InvoiceRow>((from, to) => (
+                db
+                    .from("invoices")
+                    .select("id, invoice_number, status, due_date, balance_amount, total_amount, organization_id")
+                    .gt("balance_amount", 0)
+                    .in("status", ["issued", "partially_paid", "overdue"])
+                    .order("due_date", { ascending: true })
+                    .range(from, to)
+            )),
+            fetchAllPages<ProposalRow>((from, to) => (
+                db
+                    .from("proposals")
+                    .select("id, status, total_price, client_selected_price")
+                    .gte("created_at", rangeStart)
+                    .order("created_at", { ascending: false })
+                    .range(from, to)
+            )),
+            fetchAllPages<ProposalRow>((from, to) => (
+                db
+                    .from("proposals")
+                    .select("id, status, total_price, client_selected_price")
+                    .gte("created_at", previousRangeStart)
+                    .lt("created_at", rangeStart)
+                    .order("created_at", { ascending: false })
+                    .range(from, to)
+            )),
+            fetchAllPages<ProposalRow>((from, to) => (
+                db
+                    .from("proposals")
+                    .select("id, title, status, expires_at, total_price, client_selected_price, organization_id")
+                    .not("expires_at", "is", null)
+                    .gte("expires_at", now.toISOString())
+                    .lte("expires_at", threeDaysOut)
+                    .order("expires_at", { ascending: true })
+                    .range(from, to)
+            )),
         ]);
 
         const organizations = (allOrganizationsResult.data ?? []) as OrganizationRow[];
@@ -386,7 +413,7 @@ export async function GET(request: NextRequest) {
             0,
         );
 
-        const invoiceRows = (invoiceRowsResult.data ?? []) as InvoiceRow[];
+        const invoiceRows = fullInvoiceRows;
         const overdueInvoices = invoiceRows.filter((row) => {
             if (!row.due_date) return false;
             return new Date(row.due_date).getTime() < tomorrowStart.getTime();
@@ -405,9 +432,9 @@ export async function GET(request: NextRequest) {
             0,
         );
 
-        const currentProposalRows = (currentProposalRowsResult.data ?? []) as ProposalRow[];
-        const previousProposalRows = (previousProposalRowsResult.data ?? []) as ProposalRow[];
-        const expiringProposalRows = ((expiringProposalRowsResult.data ?? []) as ProposalRow[]).sort((left, right) => {
+        const currentProposalRows = fullCurrentProposalRows;
+        const previousProposalRows = fullPreviousProposalRows;
+        const expiringProposalRows = [...fullExpiringProposalRows].sort((left, right) => {
             return new Date(left.expires_at ?? 0).getTime() - new Date(right.expires_at ?? 0).getTime();
         });
         const wonStatuses = new Set(["approved", "partially_paid", "fully_paid"]);
@@ -422,7 +449,7 @@ export async function GET(request: NextRequest) {
             : null;
         const expiringProposalValue = expiringProposalRows.reduce((sum, row) => sum + proposalValue(row), 0);
 
-        const supportRows = ((supportRowsResult.data ?? []) as SupportTicketRow[]).sort((left, right) => {
+        const supportRows = [...fullSupportRows].sort((left, right) => {
             const priorityRank = { urgent: 0, high: 1, medium: 2, low: 3 };
             const leftRank = priorityRank[left.priority as keyof typeof priorityRank] ?? 4;
             const rightRank = priorityRank[right.priority as keyof typeof priorityRank] ?? 4;
@@ -450,7 +477,7 @@ export async function GET(request: NextRequest) {
             supportLoad.set(orgId, current);
         }
 
-        const errorRows = ((errorRowsResult.data ?? []) as ErrorEventRow[]).sort((left, right) => {
+        const errorRows = [...fullErrorRows].sort((left, right) => {
             const levelRank = { fatal: 0, error: 1, warning: 2, info: 3, debug: 4 };
             const leftRank = levelRank[left.level as keyof typeof levelRank] ?? 5;
             const rightRank = levelRank[right.level as keyof typeof levelRank] ?? 5;
@@ -581,12 +608,13 @@ export async function GET(request: NextRequest) {
                 href: withRange(`/god/directory?tier=${organization.subscription_tier ?? "free"}&search=${encodeURIComponent(organization.name?.trim() || "")}`, selectedRange),
             }));
 
-        const notificationQueuePending = pendingNotificationRowsResult.data ?? [];
-        const oldestPendingMinutes = notificationQueuePending.length > 0
+        const notificationQueuePending = pendingNotificationCountResult.count ?? 0;
+        const oldestPendingRow = (oldestPendingNotificationResult.data ?? [])[0];
+        const oldestPendingMinutes = oldestPendingRow
             ? Math.max(
                 0,
                 Math.floor(
-                    (Date.now() - new Date(String(notificationQueuePending[0].created_at)).getTime()) / 60_000,
+                    (Date.now() - new Date(String(oldestPendingRow.created_at)).getTime()) / 60_000,
                 ),
             )
             : 0;
@@ -695,7 +723,7 @@ export async function GET(request: NextRequest) {
                 title: deadLetterResult.count
                     ? `${deadLetterResult.count} dead letters need attention`
                     : "Notification queue is aging",
-                detail: `${notificationQueuePending.length} pending · oldest ${oldestPendingMinutes}m`,
+                detail: `${notificationQueuePending} pending · oldest ${oldestPendingMinutes}m`,
                 age_label: oldestPendingMinutes > 0 ? `${oldestPendingMinutes}m oldest` : "Queue check",
                 action_label: "Open queues",
                 href: withRange("/god/monitoring?focus=queues", selectedRange),
@@ -911,7 +939,7 @@ export async function GET(request: NextRequest) {
             ops_health: {
                 services,
                 queues: {
-                    notifications_pending: notificationQueuePending.length,
+                    notifications_pending: notificationQueuePending,
                     notifications_failed: failedNotificationsResult.count ?? 0,
                     dead_letters: deadLetterResult.count ?? 0,
                     social_pending: socialQueueResult.count ?? 0,
@@ -934,6 +962,20 @@ export async function GET(request: NextRequest) {
                 { label: "Send announcement", href: withRange("/god/announcements", selectedRange) },
                 { label: "Kill switch", href: withRange("/god/kill-switch", selectedRange), tone: "danger" },
             ],
+            meta: {
+                data_quality: buildGodDataQuality([
+                    "profiles",
+                    "organizations",
+                    "support_tickets",
+                    "error_events",
+                    "notification_queue",
+                    "notification_dead_letters",
+                    "invoices",
+                    "proposals",
+                    "organization_ai_usage",
+                ]),
+                kpi_contracts: pickGodKpiContracts(["total_users", "notification_pending"]),
+            },
         });
     } catch (err) {
         logError("[superadmin/overview]", err);

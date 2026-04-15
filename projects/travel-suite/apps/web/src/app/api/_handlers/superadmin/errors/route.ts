@@ -7,6 +7,7 @@ import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { logError } from "@/lib/observability/logger";
 import { getClientIpFromRequest, logPlatformAction } from "@/lib/platform/audit";
 import { loadWorkItemMetaForIds, saveWorkItemMeta } from "@/lib/platform/god-mode";
+import { buildGodDataQuality, detectEmptyDrillthrough, pickGodKpiContracts } from "@/lib/platform/god-kpi";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -36,6 +37,11 @@ type OwnerProfileRow = {
     id: string;
     full_name: string | null;
     email: string | null;
+};
+
+type BacklogErrorRow = {
+    id: string;
+    status: ErrorStatus;
 };
 
 // ---------------------------------------------------------------------------
@@ -70,7 +76,7 @@ export async function GET(request: NextRequest) {
         // Run main query + summary counts in parallel
         const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-        const [result, openCount, fatalCount, resolvedThisWeek] = await Promise.all([
+        const [result, openCount, fatalCount, resolvedThisWeek, backlogResult] = await Promise.all([
             query,
             db.from("error_events").select("id", { count: "exact", head: true }).eq("status", "open"),
             db.from("error_events").select("id", { count: "exact", head: true }).eq("level", "fatal").eq("status", "open"),
@@ -78,6 +84,7 @@ export async function GET(request: NextRequest) {
                 .select("id", { count: "exact", head: true })
                 .eq("status", "resolved")
                 .gte("resolved_at", oneWeekAgo),
+            db.from("error_events").select("id, status").in("status", ["open", "investigating"]),
         ]);
 
         // Sort by level priority within the page
@@ -86,6 +93,9 @@ export async function GET(request: NextRequest) {
             const bi = LEVEL_ORDER.indexOf(b.level);
             return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
         });
+        const backlogRows = (backlogResult.data ?? []) as BacklogErrorRow[];
+        const backlogMeta = await loadWorkItemMetaForIds(db, "error_event", backlogRows.map((event) => event.id));
+        const backlogStatusById = new Map(backlogRows.map((event) => [event.id, event.status]));
         const metaByEventId = await loadWorkItemMetaForIds(db, "error_event", eventRows.map((event) => event.id));
         const ownerIds = Array.from(new Set(
             Array.from(metaByEventId.values())
@@ -125,9 +135,39 @@ export async function GET(request: NextRequest) {
                 is_sla_breached: isSlaBreached,
             };
         });
-        const claimed_count = events.filter((event) => Boolean(event.owner_id)).length;
-        const elevated_count = events.filter((event) => event.escalation_level !== "normal").length;
-        const sla_breach_count = events.filter((event) => event.is_sla_breached).length;
+        const claimed_count = Array.from(backlogMeta.values()).filter((meta) => Boolean(meta.owner_id)).length;
+        const elevated_count = Array.from(backlogMeta.values()).filter((meta) => meta.escalation_level !== "normal").length;
+        const sla_breach_count = Array.from(backlogMeta.entries()).filter(([eventId, meta]) => {
+            const statusForEvent = backlogStatusById.get(eventId);
+            if (!statusForEvent || !["open", "investigating"].includes(statusForEvent)) return false;
+            if (!meta.sla_due_at) return false;
+            return new Date(meta.sla_due_at).getTime() < nowMs;
+        }).length;
+
+        const integrityWarnings = [
+            detectEmptyDrillthrough({
+                kpiId: "open_errors",
+                label: "Open errors",
+                total: result.count ?? 0,
+                rows: events.length,
+                page,
+                filtersApplied: status !== "all",
+            }),
+        ].filter((warning) => Boolean(warning));
+
+        if (integrityWarnings.length > 0) {
+            await logPlatformAction(
+                auth.userId,
+                "God mode incident drill-through parity warning",
+                "support",
+                {
+                    route: "/api/superadmin/errors",
+                    warnings: integrityWarnings,
+                    filters: { status, page, limit },
+                },
+                getClientIpFromRequest(request),
+            );
+        }
 
         return NextResponse.json({
             events,
@@ -140,6 +180,11 @@ export async function GET(request: NextRequest) {
             sla_breach_count,
             page,
             pages: Math.ceil((result.count ?? 0) / limit),
+            meta: {
+                data_quality: buildGodDataQuality(["error_events", "platform_settings", "profiles"]),
+                kpi_contracts: pickGodKpiContracts(["errors_owned", "errors_sla_breached"]),
+                integrity_warnings: integrityWarnings,
+            },
         });
     } catch (err) {
         logError("[superadmin/errors GET]", err);

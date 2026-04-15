@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { logError } from "@/lib/observability/logger";
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
+import { buildGodDataQuality } from "@/lib/platform/god-kpi";
 
 function daysAgo(n: number): string {
     return new Date(Date.now() - n * 86_400_000).toISOString();
@@ -19,8 +21,9 @@ export async function GET(request: NextRequest) {
 
     const { adminClient } = auth;
     const params = request.nextUrl.searchParams;
-    const range = params.get("range") || "30d";
-    const days = range === "30d" ? 30 : range === "60d" ? 60 : 90;
+    const rangeParam = params.get("range") || "30d";
+    const range = rangeParam === "7d" || rangeParam === "30d" || rangeParam === "90d" ? rangeParam : "30d";
+    const days = range === "7d" ? 7 : range === "30d" ? 30 : 90;
     const since = daysAgo(days);
 
     try {
@@ -63,15 +66,22 @@ export async function GET(request: NextRequest) {
         });
 
         // Also fetch notification_logs cost_metering for the range (real daily data if available)
-        const logsResult = await adminClient
-            .from("notification_logs")
-            .select("created_at, body, status")
-            .eq("notification_type", "cost_metering")
-            .gte("created_at", since)
-            .limit(10000);
+        const logsRows = await fetchAllPages<{
+            created_at: string | null;
+            body: string | null;
+            status: string | null;
+        }>((from, to) => (
+            adminClient
+                .from("notification_logs")
+                .select("created_at, body, status")
+                .eq("notification_type", "cost_metering")
+                .gte("created_at", since)
+                .order("created_at", { ascending: false })
+                .range(from, to)
+        ));
 
         const logsByDay: Record<string, number> = {};
-        for (const log of (logsResult.data ?? [])) {
+        for (const log of logsRows) {
             if (log.status !== "sent" || !log.created_at) continue;
             const day = (log.created_at as string).slice(0, 10);
             // Parse estimated cost from body: "category|estimated_cost_usd=0.0081|..."
@@ -89,7 +99,13 @@ export async function GET(request: NextRequest) {
                 : d.estimated_usd,
         }));
 
-        return NextResponse.json({ range, daily: finalDaily });
+        return NextResponse.json({
+            range,
+            daily: finalDaily,
+            meta: {
+                data_quality: buildGodDataQuality(["organization_ai_usage", "notification_logs"]),
+            },
+        });
     } catch (err) {
         logError("[superadmin/cost/trends]", err);
         return apiError("Failed to load cost trends", 500);

@@ -5,6 +5,8 @@ import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logError } from "@/lib/observability/logger";
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
+import { buildGodDataQuality } from "@/lib/platform/god-kpi";
 
 /**
  * The live DB schema for referrals and client_referral_incentives has columns
@@ -15,7 +17,7 @@ type UntypedClient = SupabaseClient;
 
 type B2bReferralTopRow = {
     referrer_org_id: string;
-    organizations: { name?: string } | null;
+    organizations: { name?: string } | { name?: string }[] | null;
     status: string;
 };
 
@@ -44,41 +46,52 @@ export async function GET(request: NextRequest) {
         const [
             b2bResult,
             b2bConvertedResult,
-            clientEventsResult,
+            clientTotalResult,
             clientConvertedResult,
-            incentivesResult,
+            recentClientEventsResult,
+            incentivesRows,
         ] = await Promise.all([
             // B2B referrals total
             db.from("referrals").select("id", { count: "exact", head: true }),
             db.from("referrals").select("id", { count: "exact", head: true }).eq("status", "converted"),
             // Client flywheel events
-            db
-                .from("client_referral_events")
-                .select("id, status, created_at, referrer_id, referred_email")
-                .order("created_at", { ascending: false })
-                .limit(200),
+            db.from("client_referral_events").select("id", { count: "exact", head: true }),
             db
                 .from("client_referral_events")
                 .select("id", { count: "exact", head: true })
                 .eq("status", "converted"),
-            // Incentives issued
             db
-                .from("client_referral_incentives")
-                .select("amount, currency, tds_applicable, created_at")
+                .from("client_referral_events")
+                .select("id, status, created_at, referrer_id, referred_email")
                 .order("created_at", { ascending: false })
-                .limit(500),
+                .limit(20),
+            // Incentives issued
+            fetchAllPages<IncentiveRow>((from, to) => (
+                db
+                    .from("client_referral_incentives")
+                    .select("amount, currency, tds_applicable, created_at")
+                    .order("created_at", { ascending: false })
+                    .range(from, to)
+            )),
         ]);
 
         // B2B top referrers
-        const b2bTopResult = await db
-            .from("referrals")
-            .select("referrer_org_id, organizations!referrals_referrer_org_id_fkey(name), status")
-            .limit(500);
+        const b2bTopRows = await fetchAllPages<B2bReferralTopRow>(async (from, to) => {
+            const result = await db
+                .from("referrals")
+                .select("referrer_org_id, organizations!referrals_referrer_org_id_fkey(name), status")
+                .order("id", { ascending: true })
+                .range(from, to);
+            return {
+                data: (result.data ?? []) as B2bReferralTopRow[],
+                error: result.error,
+            };
+        });
 
         const referrerMap: Record<string, { name: string; total: number; converted: number }> = {};
-        for (const row of ((b2bTopResult.data ?? []) as unknown as B2bReferralTopRow[])) {
+        for (const row of b2bTopRows) {
             const orgId = row.referrer_org_id;
-            const org = row.organizations;
+            const org = Array.isArray(row.organizations) ? row.organizations[0] : row.organizations;
             if (!referrerMap[orgId]) {
                 referrerMap[orgId] = { name: org?.name ?? orgId, total: 0, converted: 0 };
             }
@@ -92,8 +105,8 @@ export async function GET(request: NextRequest) {
             .map(([org_id, v]) => ({ org_id, ...v }));
 
         // Client flywheel aggregation
-        const clientEvents = (clientEventsResult.data ?? []) as unknown as ClientEventRow[];
-        const totalClientEvents = clientEvents.length;
+        const clientEvents = (recentClientEventsResult.data ?? []) as unknown as ClientEventRow[];
+        const totalClientEvents = clientTotalResult.count ?? 0;
         const clientConvertedCount = clientConvertedResult.count ?? 0;
 
         const recentClientEvents = clientEvents.slice(0, 20).map((e) => ({
@@ -103,7 +116,7 @@ export async function GET(request: NextRequest) {
             referred_email: e.referred_email,
         }));
 
-        const incentiveRows = (incentivesResult.data ?? []) as unknown as IncentiveRow[];
+        const incentiveRows = incentivesRows;
         let totalRewardsInr = 0;
         let tdsObligationInr = 0;
         for (const i of incentiveRows) {
@@ -132,6 +145,9 @@ export async function GET(request: NextRequest) {
                 total_rewards_inr: Number(totalRewardsInr.toFixed(2)),
                 tds_obligation_inr: Number(tdsObligationInr.toFixed(2)),
                 recent_events: recentClientEvents,
+            },
+            meta: {
+                data_quality: buildGodDataQuality(["referrals", "client_referral_events", "client_referral_incentives"]),
             },
         });
     } catch (err) {

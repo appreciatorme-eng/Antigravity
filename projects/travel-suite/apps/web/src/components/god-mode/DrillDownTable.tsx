@@ -49,16 +49,23 @@ export default function DrillDownTable<T extends Record<string, unknown>>({
     const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
     const [page, setPage] = useState(0);
 
+    const effectiveSearchKeys = useMemo(() => {
+        if (searchKeys.length > 0) {
+            return searchKeys.map((key) => String(key));
+        }
+        return columns.map((column) => String(column.key));
+    }, [columns, searchKeys]);
+
     const filtered = useMemo(() => {
         if (!searchable || !search.trim()) return data;
         const q = search.toLowerCase();
         return data.filter((row) =>
-            searchKeys.some((k) => {
-                const val = getNestedValue(row as Record<string, unknown>, k as string);
+            effectiveSearchKeys.some((k) => {
+                const val = getNestedValue(row as Record<string, unknown>, k);
                 return String(val ?? "").toLowerCase().includes(q);
             })
         );
-    }, [data, search, searchable, searchKeys]);
+    }, [data, effectiveSearchKeys, search, searchable]);
 
     const sorted = useMemo(() => {
         if (!sortKey) return filtered;

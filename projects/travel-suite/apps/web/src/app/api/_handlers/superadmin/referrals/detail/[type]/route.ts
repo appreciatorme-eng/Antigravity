@@ -5,6 +5,7 @@ import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logError } from "@/lib/observability/logger";
+import { buildGodDataQuality } from "@/lib/platform/god-kpi";
 
 /**
  * The live DB schema for referrals, client_referral_events, and client_referral_incentives
@@ -100,10 +101,15 @@ export async function GET(
             .order("created_at", { ascending: false })
             .range(page * limit, (page + 1) * limit - 1);
 
-        const incentivesResult = await db
-            .from("client_referral_incentives")
-            .select("event_id, amount, currency, tds_applicable")
-            .limit(2000);
+        const eventIds = ((result.data ?? []) as unknown as ClientEventRow[])
+            .map((event) => event.id)
+            .filter(Boolean);
+        const incentivesResult = eventIds.length > 0
+            ? await db
+                .from("client_referral_incentives")
+                .select("event_id, amount, currency, tds_applicable")
+                .in("event_id", eventIds)
+            : { data: [] as IncentiveRow[] };
 
         const incentiveMap = new Map<string, { amount: number; tds: boolean }>();
         for (const i of ((incentivesResult.data ?? []) as unknown as IncentiveRow[])) {
@@ -136,6 +142,9 @@ export async function GET(
             total: result.count ?? 0,
             page,
             pages: Math.ceil((result.count ?? 0) / limit),
+            meta: {
+                data_quality: buildGodDataQuality(["client_referral_events", "client_referral_incentives"]),
+            },
         });
     } catch (err) {
         logError(`[superadmin/referrals/detail/${type}]`, err);

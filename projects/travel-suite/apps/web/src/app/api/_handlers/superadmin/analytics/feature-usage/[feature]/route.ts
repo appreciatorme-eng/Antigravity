@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { logError } from "@/lib/observability/logger";
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
+import { buildGodDataQuality } from "@/lib/platform/god-kpi";
 
 type FeatureTableName =
     | "trips"
@@ -25,7 +27,8 @@ type FeatureUsageRow = {
 type UntypedBuilder = {
     select: (columns: string) => UntypedBuilder;
     gte: (column: string, value: string) => UntypedBuilder;
-    limit: (count: number) => UntypedBuilder;
+    order: (column: string, options?: { ascending?: boolean }) => UntypedBuilder;
+    range: (from: number, to: number) => Promise<{ data: FeatureUsageRow[] | null; error?: unknown }>;
 };
 
 type UntypedAdminClient = {
@@ -63,17 +66,21 @@ export async function GET(
 
     try {
         const rawAdminClient = adminClient as unknown as UntypedAdminClient;
-        const result = await ((rawAdminClient
-            .from(featureCfg.table)
-            .select(`${featureCfg.orgCol}, organizations(name, subscription_tier), created_at`)
-            .gte("created_at", since)
-            .limit(5000)) as unknown as Promise<{ data: FeatureUsageRow[] | null }>);
+        const fetchedRows = await fetchAllPages<FeatureUsageRow>((from, to) => (
+            rawAdminClient
+                .from(featureCfg.table)
+                .select(`${featureCfg.orgCol}, organizations(name, subscription_tier), created_at`)
+                .gte("created_at", since)
+                .order("created_at", { ascending: false })
+                .range(from, to)
+        ));
 
         const orgCounts: Record<string, { name: string; tier: string; count: number; last_used: string }> = {};
         let total = 0;
 
-        for (const row of (result.data ?? []) as FeatureUsageRow[]) {
+        for (const row of fetchedRows) {
             const orgId = row[featureCfg.orgCol] as string;
+            if (!orgId) continue;
             const org = row.organizations ?? null;
             const created = row.created_at ?? "";
             if (!orgCounts[orgId]) {
@@ -95,7 +102,15 @@ export async function GET(
                 last_used: v.last_used,
             }));
 
-        return NextResponse.json({ feature, range, total, rows });
+        return NextResponse.json({
+            feature,
+            range,
+            total,
+            rows,
+            meta: {
+                data_quality: buildGodDataQuality([featureCfg.table]),
+            },
+        });
     } catch (err) {
         logError(`[superadmin/analytics/feature-usage/${feature}]`, err);
         return apiError("Failed to load feature drill-down", 500);

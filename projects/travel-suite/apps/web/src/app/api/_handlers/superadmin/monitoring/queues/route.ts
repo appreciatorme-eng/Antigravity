@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { logError } from "@/lib/observability/logger";
+import { buildGodDataQuality, pickGodKpiContracts } from "@/lib/platform/god-kpi";
 
 export async function GET(request: NextRequest) {
     const auth = await requireSuperAdmin(request);
@@ -12,13 +13,17 @@ export async function GET(request: NextRequest) {
     const { adminClient } = auth;
 
     try {
-        const [notifResult, notifFailedResult, deadLetterResult, socialResult, pdfResult] = await Promise.all([
+        const [notifPendingCountResult, notifOldestResult, notifFailedResult, deadLetterResult, socialResult, pdfResult] = await Promise.all([
+            adminClient
+                .from("notification_queue")
+                .select("id", { count: "exact", head: true })
+                .eq("status", "pending"),
             adminClient
                 .from("notification_queue")
                 .select("created_at")
                 .eq("status", "pending")
                 .order("created_at", { ascending: true })
-                .limit(1000),
+                .limit(1),
             adminClient
                 .from("notification_queue")
                 .select("id", { count: "exact", head: true })
@@ -36,7 +41,7 @@ export async function GET(request: NextRequest) {
                 .eq("status", "pending"),
         ]);
 
-        const pendingNotifs = notifResult.data ?? [];
+        const pendingNotifs = notifOldestResult.data ?? [];
         let oldestPendingMinutes = 0;
         if (pendingNotifs.length > 0) {
             const oldest = new Date(pendingNotifs[0].created_at as string);
@@ -45,7 +50,7 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({
             notification_queue: {
-                pending: pendingNotifs.length,
+                pending: notifPendingCountResult.count ?? 0,
                 failed: notifFailedResult.count ?? 0,
                 dead_letters: deadLetterResult.count ?? 0,
                 oldest_pending_minutes: oldestPendingMinutes,
@@ -57,6 +62,10 @@ export async function GET(request: NextRequest) {
                 pending: pdfResult.count ?? 0,
             },
             checked_at: new Date().toISOString(),
+            meta: {
+                data_quality: buildGodDataQuality(["notification_queue", "notification_dead_letters", "social_post_queue", "pdf_extraction_queue"]),
+                kpi_contracts: pickGodKpiContracts(["notification_pending"]),
+            },
         });
     } catch (err) {
         logError("[superadmin/monitoring/queues]", err);

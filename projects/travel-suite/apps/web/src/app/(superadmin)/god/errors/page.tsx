@@ -47,6 +47,9 @@ interface ErrorsResponse {
     sla_breach_count: number;
     page: number;
     pages: number;
+    meta?: {
+        integrity_warnings?: Array<{ message: string }>;
+    };
 }
 
 // ---------------------------------------------------------------------------
@@ -413,6 +416,12 @@ export default function ErrorsPage() {
                 <StatCard label="Escalated" value={loading ? "…" : (data?.elevated_count ?? 0)} accent="amber" />
                 <StatCard label="SLA Breached" value={loading ? "…" : (data?.sla_breach_count ?? 0)} accent="red" />
             </div>
+
+            {(data?.meta?.integrity_warnings?.length ?? 0) > 0 && (
+                <div className="rounded-lg border border-amber-900/60 bg-amber-950/30 p-3 text-xs text-amber-200">
+                    {data?.meta?.integrity_warnings?.[0]?.message}
+                </div>
+            )}
 
             {/* Status tabs */}
             <div className="flex gap-1 p-1 bg-gray-900 border border-gray-800 rounded-lg overflow-x-auto">

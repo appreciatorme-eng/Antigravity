@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { logError } from "@/lib/observability/logger";
+import { buildGodDataQuality, detectEmptyDrillthrough, pickGodKpiContracts } from "@/lib/platform/god-kpi";
+import { getClientIpFromRequest, logPlatformAction } from "@/lib/platform/audit";
 
 function monthStart(): string {
     const now = new Date();
@@ -120,6 +122,30 @@ export async function GET(request: NextRequest) {
 
         const totalInRange = trend.reduce((s, r) => s + r.count, 0);
         const avgDaily = days > 0 ? Number((totalInRange / days).toFixed(1)) : 0;
+        const integrityWarnings = [
+            detectEmptyDrillthrough({
+                kpiId: "signups_in_range",
+                label: "Signups in selected range",
+                total: totalInRange,
+                rows: recentRows.length,
+                page,
+                filtersApplied: Boolean(date),
+            }),
+        ].filter((warning) => Boolean(warning));
+
+        if (integrityWarnings.length > 0) {
+            await logPlatformAction(
+                auth.userId,
+                "God mode signups drill-through parity warning",
+                "settings",
+                {
+                    route: "/api/superadmin/users/signups",
+                    warnings: integrityWarnings,
+                    filters: { range, date, page, limit },
+                },
+                getClientIpFromRequest(request),
+            );
+        }
 
         return NextResponse.json({
             trend,
@@ -135,6 +161,11 @@ export async function GET(request: NextRequest) {
                 page,
                 limit,
                 total: profilesResult.count ?? 0,
+            },
+            meta: {
+                data_quality: buildGodDataQuality(["profiles", "organizations"]),
+                kpi_contracts: pickGodKpiContracts(["total_users", "signups_in_range"]),
+                integrity_warnings: integrityWarnings,
             },
         });
     } catch (err) {

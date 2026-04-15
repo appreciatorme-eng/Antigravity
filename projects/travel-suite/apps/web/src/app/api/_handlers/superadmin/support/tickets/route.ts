@@ -6,6 +6,8 @@ import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logError } from "@/lib/observability/logger";
 import { loadWorkItemMetaForIds } from "@/lib/platform/god-mode";
+import { buildGodDataQuality, detectEmptyDrillthrough, pickGodKpiContracts } from "@/lib/platform/god-kpi";
+import { getClientIpFromRequest, logPlatformAction } from "@/lib/platform/audit";
 
 /**
  * The live DB has a support_tickets_user_id_fkey relationship that is not present
@@ -39,6 +41,11 @@ type OwnerProfileRow = {
     email: string | null;
 };
 
+type BacklogTicket = {
+    id: string;
+    status: string;
+};
+
 export async function GET(request: NextRequest) {
     const auth = await requireSuperAdmin(request);
     if (!auth.ok) return auth.response;
@@ -68,16 +75,22 @@ export async function GET(request: NextRequest) {
         if (priority !== "all") query = query.eq("priority", priority);
         if (search) query = query.ilike("title", `%${search}%`);
 
-        const [result, openCount, inProgressCount] = await Promise.all([
+        const [result, openCount, inProgressCount, backlogResult] = await Promise.all([
             query,
             db.from("support_tickets").select("id", { count: "exact", head: true }).eq("status", "open"),
             db.from("support_tickets").select("id", { count: "exact", head: true }).eq("status", "in_progress"),
+            db.from("support_tickets").select("id, status").in("status", ["open", "in_progress"]),
         ]);
 
         const ticketRows = (result.data ?? []) as unknown as TicketWithProfile[];
+        const backlogRows = (backlogResult.data ?? []) as unknown as BacklogTicket[];
+        const backlogIds = backlogRows.map((ticket) => ticket.id);
+        const backlogStatusById = new Map(backlogRows.map((ticket) => [ticket.id, ticket.status]));
+
         const metaByTicket = await loadWorkItemMetaForIds(db, "support_ticket", ticketRows.map((ticket) => ticket.id));
+        const backlogMeta = await loadWorkItemMetaForIds(db, "support_ticket", backlogIds);
         const ownerIds = Array.from(new Set(
-            Array.from(metaByTicket.values())
+            [...Array.from(metaByTicket.values()), ...Array.from(backlogMeta.values())]
                 .map((meta) => meta.owner_id)
                 .filter((ownerId): ownerId is string => Boolean(ownerId)),
         ));
@@ -130,9 +143,38 @@ export async function GET(request: NextRequest) {
                 is_sla_breached: isSlaBreached,
             };
         });
-        const claimed_count = tickets.filter((ticket) => Boolean(ticket.owner_id)).length;
-        const elevated_count = tickets.filter((ticket) => ticket.escalation_level !== "normal").length;
-        const sla_breach_count = tickets.filter((ticket) => ticket.is_sla_breached).length;
+        const claimed_count = Array.from(backlogMeta.values()).filter((meta) => Boolean(meta.owner_id)).length;
+        const elevated_count = Array.from(backlogMeta.values()).filter((meta) => meta.escalation_level !== "normal").length;
+        const sla_breach_count = Array.from(backlogMeta.entries()).filter(([ticketId, meta]) => {
+            const ticketStatus = backlogStatusById.get(ticketId) ?? "open";
+            if (!meta.sla_due_at || !["open", "in_progress"].includes(ticketStatus)) return false;
+            return new Date(meta.sla_due_at).getTime() < nowMs;
+        }).length;
+
+        const integrityWarnings = [
+            detectEmptyDrillthrough({
+                kpiId: "support_open_tickets",
+                label: "Open support backlog",
+                total: result.count ?? 0,
+                rows: tickets.length,
+                page,
+                filtersApplied: status !== "all" || priority !== "all" || Boolean(search),
+            }),
+        ].filter((warning) => Boolean(warning));
+
+        if (integrityWarnings.length > 0) {
+            await logPlatformAction(
+                auth.userId,
+                "God mode support drill-through parity warning",
+                "support",
+                {
+                    route: "/api/superadmin/support/tickets",
+                    warnings: integrityWarnings,
+                    filters: { status, priority, search, page, limit },
+                },
+                getClientIpFromRequest(request),
+            );
+        }
 
         return NextResponse.json({
             tickets,
@@ -144,6 +186,11 @@ export async function GET(request: NextRequest) {
             sla_breach_count,
             page,
             pages: Math.ceil((result.count ?? 0) / limit),
+            meta: {
+                data_quality: buildGodDataQuality(["support_tickets", "platform_settings", "profiles"]),
+                kpi_contracts: pickGodKpiContracts(["support_owned", "support_sla_breached"]),
+                integrity_warnings: integrityWarnings,
+            },
         });
     } catch (err) {
         logError("[superadmin/support/tickets]", err);

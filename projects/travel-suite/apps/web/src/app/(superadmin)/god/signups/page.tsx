@@ -34,6 +34,9 @@ interface SignupsData {
         avg_daily_signups: number;
     };
     pagination: { page: number; limit: number; total: number };
+    meta?: {
+        integrity_warnings?: Array<{ message: string }>;
+    };
 }
 
 const tierColors: Record<string, string> = {
@@ -194,6 +197,12 @@ export default function SignupsPage() {
                     <div className="h-52 bg-gray-800 animate-pulse rounded-lg" />
                 )}
             </div>
+
+            {(data?.meta?.integrity_warnings?.length ?? 0) > 0 && (
+                <div className="rounded-lg border border-amber-900/60 bg-amber-950/30 p-3 text-xs text-amber-200">
+                    {data?.meta?.integrity_warnings?.[0]?.message}
+                </div>
+            )}
 
             {/* Recent signups table */}
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">

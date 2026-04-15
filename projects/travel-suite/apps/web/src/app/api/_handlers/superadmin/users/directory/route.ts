@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { logError } from "@/lib/observability/logger";
+import { buildGodDataQuality } from "@/lib/platform/god-kpi";
 
 export async function GET(request: NextRequest) {
     const auth = await requireSuperAdmin(request);
@@ -18,10 +19,13 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(100, Math.max(10, Number(params.get("limit") || 50)));
 
     try {
+        const organizationJoin = tier === "all"
+            ? "organizations(name, slug, subscription_tier)"
+            : "organizations!inner(name, slug, subscription_tier)";
         let query = adminClient
             .from("profiles")
             .select(
-                "id, full_name, email, phone, role, avatar_url, organization_id, created_at, organizations(name, slug, subscription_tier)",
+                `id, full_name, email, phone, role, avatar_url, organization_id, created_at, ${organizationJoin}`,
                 { count: "exact" }
             )
             .order("created_at", { ascending: false })
@@ -34,14 +38,13 @@ export async function GET(request: NextRequest) {
         }
 
         if (role !== "all") query = query.eq("role", role);
+        if (tier !== "all") query = query.eq("organizations.subscription_tier", tier);
 
         const result = await query;
 
         const rows = (result.data ?? []).map((p) => {
             const org = p.organizations as { name?: string; slug?: string; subscription_tier?: string } | null;
             const orgTier = org?.subscription_tier ?? null;
-            if (tier !== "all" && orgTier !== tier) return null;
-
             return {
                 id: p.id,
                 full_name: p.full_name,
@@ -62,6 +65,9 @@ export async function GET(request: NextRequest) {
             total: result.count ?? 0,
             page,
             pages: Math.ceil((result.count ?? 0) / limit),
+            meta: {
+                data_quality: buildGodDataQuality(["profiles", "organizations"]),
+            },
         });
     } catch (err) {
         logError("[superadmin/users/directory]", err);

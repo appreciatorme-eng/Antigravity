@@ -5,6 +5,8 @@ import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { Redis } from "@upstash/redis";
 import { logError } from "@/lib/observability/logger";
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
+import { buildGodDataQuality } from "@/lib/platform/god-kpi";
 
 let _redis: Redis | null | undefined;
 function getRedisClient(): Redis | null {
@@ -30,6 +32,11 @@ const CATEGORY_CAPS_USD: Record<Category, number> = {
 function monthStartISO(): string {
     const now = new Date();
     return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().slice(0, 10);
+}
+
+function monthStartTimestamp(): string {
+    const now = new Date();
+    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
 }
 
 function todayISO(): string {
@@ -64,7 +71,7 @@ export async function GET(request: NextRequest) {
     const { adminClient } = auth;
 
     try {
-        const [aiUsageResult, orgsResult, todaySpend] = await Promise.all([
+        const [aiUsageResult, orgsResult, todaySpend, costMeteringRows] = await Promise.all([
             adminClient
                 .from("organization_ai_usage")
                 .select("organization_id, ai_requests, estimated_cost_usd, month_start")
@@ -73,6 +80,15 @@ export async function GET(request: NextRequest) {
                 .from("organizations")
                 .select("id, name, subscription_tier"),
             readRedisSpendToday(),
+            fetchAllPages<{ body: string | null; status: string | null }>((from, to) => (
+                adminClient
+                    .from("notification_logs")
+                    .select("body, status")
+                    .eq("notification_type", "cost_metering")
+                    .gte("created_at", monthStartTimestamp())
+                    .order("created_at", { ascending: false })
+                    .range(from, to)
+            )),
         ]);
 
         const orgMap = new Map(
@@ -107,14 +123,25 @@ export async function GET(request: NextRequest) {
             .sort((a, b) => b.mtd_usd - a.mtd_usd)
             .slice(0, 50);
 
-        // Category breakdown from Redis (today) — MTD category split from ai_usage (approximate, total only)
+        const mtdByCategory = Object.fromEntries(CATEGORIES.map((category) => [category, 0])) as Record<Category, number>;
+        for (const row of costMeteringRows) {
+            if (row.status !== "sent") continue;
+            const category = row.body?.match(/^([a-z_]+)\|/)?.[1] as Category | undefined;
+            if (!category || !CATEGORIES.includes(category)) continue;
+            const cost = Number(row.body?.match(/estimated_cost_usd=([0-9.]+)/)?.[1] ?? 0);
+            if (!Number.isFinite(cost)) continue;
+            mtdByCategory[category] += cost;
+        }
+        const mtdTotalFromLogs = Object.values(mtdByCategory).reduce((sum, value) => sum + value, 0);
+
+        // Category breakdown from Redis (today) + exact MTD from cost metering logs.
         const byCategory = CATEGORIES.map((cat) => {
             const todayUsd = todaySpend.byCategory[cat];
             const cap = CATEGORY_CAPS_USD[cat];
             return {
                 category: cat,
                 today_usd: Number(todayUsd.toFixed(4)),
-                mtd_usd: 0,
+                mtd_usd: Number(mtdByCategory[cat].toFixed(4)),
                 cap_usd: cap,
                 utilization_pct: cap > 0 ? Number(((todayUsd / cap) * 100).toFixed(1)) : 0,
             };
@@ -126,10 +153,13 @@ export async function GET(request: NextRequest) {
                 total_usd: Number(todaySpend.total.toFixed(4)),
             },
             month_to_date: {
-                total_usd: Number(totalMtdUsd.toFixed(4)),
+                total_usd: Number((mtdTotalFromLogs > 0 ? mtdTotalFromLogs : totalMtdUsd).toFixed(4)),
             },
             by_category: byCategory,
             by_org: byOrg,
+            meta: {
+                data_quality: buildGodDataQuality(["organization_ai_usage", "organizations", "notification_logs"]),
+            },
         });
     } catch (err) {
         logError("[superadmin/cost/aggregate]", err);

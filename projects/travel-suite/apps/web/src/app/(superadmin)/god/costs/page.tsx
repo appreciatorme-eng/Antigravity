@@ -120,8 +120,8 @@ export default function CostsPage() {
 
     useEffect(() => {
         if (!orgId) return;
-        router.replace(`/god/costs/org/${orgId}`);
-    }, [orgId, router]);
+        router.replace(`/god/costs/org/${orgId}?range=${range}`);
+    }, [orgId, range, router]);
 
     const highAlerts = costData?.by_category.filter((c) => c.utilization_pct >= 80) ?? [];
 
@@ -232,7 +232,7 @@ export default function CostsPage() {
                     columns={ORG_COLS}
                     data={costData?.by_org ?? []}
                     searchable
-                    onRowClick={(row) => router.push(`/god/costs/org/${row.org_id}`)}
+                    onRowClick={(row) => router.push(`/god/costs/org/${row.org_id}?range=${range}`)}
                     emptyMessage="No cost data available"
                 />
             </div>

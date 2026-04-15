@@ -12,6 +12,7 @@ import {
     checkSentryRuntime,
     checkWhatsappRuntime,
 } from "@/lib/platform/runtime-probes";
+import { buildGodDataQuality } from "@/lib/platform/god-kpi";
 
 export async function GET(request: NextRequest) {
     const auth = await requireSuperAdmin(request);
@@ -20,14 +21,17 @@ export async function GET(request: NextRequest) {
     const { adminClient } = auth;
 
     try {
-        const [dbCheck, redisCheck, queueResult, deadLetterResult, socialQueueResult] = await Promise.all([
+        const [dbCheck, redisCheck, pendingQueueResult, failedQueueResult, deadLetterResult, socialQueueResult] = await Promise.all([
             checkDatabaseRuntime(adminClient),
             checkRedisRuntime(),
             adminClient
                 .from("notification_queue")
-                .select("status", { count: "exact" })
-                .in("status", ["pending", "failed"])
-                .limit(1000),
+                .select("id", { count: "exact", head: true })
+                .eq("status", "pending"),
+            adminClient
+                .from("notification_queue")
+                .select("id", { count: "exact", head: true })
+                .eq("status", "failed"),
             adminClient
                 .from("notification_dead_letters")
                 .select("id", { count: "exact", head: true }),
@@ -43,8 +47,8 @@ export async function GET(request: NextRequest) {
             checkPosthogRuntime(),
         ]);
 
-        const pendingNotifs = (queueResult.data ?? []).filter((r: { status: string | null }) => r.status === "pending").length;
-        const failedNotifs = (queueResult.data ?? []).filter((r: { status: string | null }) => r.status === "failed").length;
+        const pendingNotifs = pendingQueueResult.count ?? 0;
+        const failedNotifs = failedQueueResult.count ?? 0;
 
         return NextResponse.json({
             services: {
@@ -86,6 +90,9 @@ export async function GET(request: NextRequest) {
                 },
             },
             checked_at: new Date().toISOString(),
+            meta: {
+                data_quality: buildGodDataQuality(["notification_queue", "notification_dead_letters", "social_post_queue"]),
+            },
         });
     } catch (err) {
         logError("[superadmin/monitoring/health]", err);

@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { logError } from "@/lib/observability/logger";
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
+import { buildGodDataQuality } from "@/lib/platform/god-kpi";
 
 function daysAgo(n: number): string {
     return new Date(Date.now() - n * 86_400_000).toISOString();
@@ -47,16 +49,24 @@ export async function GET(request: NextRequest) {
         const [aiCount, aiCountPrev] = [aiSessions.count ?? 0, aiPrev.count ?? 0];
         const [socialCount, socialCountPrev] = [socialPosts.count ?? 0, socialPrev.count ?? 0];
 
-        const topOrgsResult = await adminClient
-            .from("trips")
-            .select("organization_id, organizations(name, subscription_tier)", { count: "exact" })
-            .gte("created_at", since)
-            .limit(500);
+        type OrgJoinRow = { organization_id: string | null; organizations: { name?: string; subscription_tier?: string | null } | null };
+        const topOrgRows = await fetchAllPages<OrgJoinRow>(async (from, to) => {
+            const result = await adminClient
+                .from("trips")
+                .select("organization_id, organizations(name, subscription_tier)")
+                .gte("created_at", since)
+                .order("created_at", { ascending: false })
+                .range(from, to);
+            return {
+                data: (result.data ?? []) as OrgJoinRow[],
+                error: result.error,
+            };
+        });
 
-        type OrgJoinRow = { organization_id: string | null; organizations: { name?: string; subscription_tier?: string } | null };
         const orgCounts: Record<string, { name: string; tier: string; trips: number }> = {};
-        for (const row of ((topOrgsResult.data ?? []) as unknown as OrgJoinRow[])) {
+        for (const row of topOrgRows) {
             const orgId = row.organization_id as string;
+            if (!orgId) continue;
             const org = row.organizations;
             if (!orgCounts[orgId]) {
                 orgCounts[orgId] = { name: org?.name ?? orgId, tier: org?.subscription_tier ?? "free", trips: 0 };
@@ -78,6 +88,9 @@ export async function GET(request: NextRequest) {
                 social_posts: { total: socialCount, change_pct: pct(socialCount, socialCountPrev) },
             },
             top_orgs: topOrgs,
+            meta: {
+                data_quality: buildGodDataQuality(["trips", "proposals", "assistant_sessions", "social_posts"]),
+            },
         });
     } catch (err) {
         logError("[superadmin/analytics/feature-usage]", err);

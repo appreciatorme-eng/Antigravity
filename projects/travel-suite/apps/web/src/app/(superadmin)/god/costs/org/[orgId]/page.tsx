@@ -3,10 +3,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import TrendChart from "@/components/god-mode/TrendChart";
 import StatCard from "@/components/god-mode/StatCard";
+import TimeRangePicker from "@/components/god-mode/TimeRangePicker";
 
 interface OrgCostData {
     org: { id: string; name: string; tier: string; created_at: string };
@@ -32,7 +33,13 @@ const TIER_CLASS: Record<string, string> = {
 
 export default function OrgCostPage() {
     const params = useParams<{ orgId: string }>();
+    const pathname = usePathname();
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const initialRange = searchParams.get("range");
+    const [range, setRange] = useState<"7d" | "30d" | "90d">(
+        initialRange === "7d" || initialRange === "30d" || initialRange === "90d" ? initialRange : "30d",
+    );
     const [data, setData] = useState<OrgCostData | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -40,40 +47,52 @@ export default function OrgCostPage() {
         async function fetchData() {
             setLoading(true);
             try {
-                const res = await fetch(`/api/superadmin/cost/org/${params.orgId}?range=30d`);
+                const res = await fetch(`/api/superadmin/cost/org/${params.orgId}?range=${range}`);
                 if (res.ok) setData(await res.json());
             } finally {
                 setLoading(false);
             }
         }
         fetchData();
-    }, [params.orgId]);
+    }, [params.orgId, range]);
+
+    useEffect(() => {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("range", range);
+        const next = params.toString();
+        if (next !== searchParams.toString()) {
+            router.replace(`${pathname}?${next}`, { scroll: false });
+        }
+    }, [pathname, range, router, searchParams]);
 
     const chartData = (data?.trend ?? []).map((d) => ({ date: d.date, cost: d.estimated_usd }));
 
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center gap-4">
-                <button
-                    onClick={() => router.back()}
-                    className="p-2 rounded-lg bg-gray-800 border border-gray-700 text-gray-400 hover:text-white"
-                >
-                    <ArrowLeft className="w-4 h-4" />
-                </button>
-                <div>
-                    <div className="flex items-center gap-2">
-                        <h1 className="text-2xl font-bold text-white">
-                            {data?.org.name ?? "Loading…"}
-                        </h1>
-                        {data?.org.tier && (
-                            <span className={`text-sm font-semibold uppercase ${TIER_CLASS[data.org.tier] ?? "text-gray-400"}`}>
-                                {data.org.tier}
-                            </span>
-                        )}
+            <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={() => router.back()}
+                        className="p-2 rounded-lg bg-gray-800 border border-gray-700 text-gray-400 hover:text-white"
+                    >
+                        <ArrowLeft className="w-4 h-4" />
+                    </button>
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <h1 className="text-2xl font-bold text-white">
+                                {data?.org.name ?? "Loading…"}
+                            </h1>
+                            {data?.org.tier && (
+                                <span className={`text-sm font-semibold uppercase ${TIER_CLASS[data.org.tier] ?? "text-gray-400"}`}>
+                                    {data.org.tier}
+                                </span>
+                            )}
+                        </div>
+                        <p className="text-sm text-gray-400 mt-0.5">API cost breakdown — last {range === "7d" ? "7" : range === "30d" ? "30" : "90"} days</p>
                     </div>
-                    <p className="text-sm text-gray-400 mt-0.5">API cost breakdown — last 30 days</p>
                 </div>
+                <TimeRangePicker value={range} onChange={(value) => setRange(value as "7d" | "30d" | "90d")} />
             </div>
 
             {/* Summary cards */}
@@ -89,7 +108,7 @@ export default function OrgCostPage() {
                     accent="amber"
                 />
                 <StatCard
-                    label="Range Total (30d)"
+                    label={`Range Total (${range})`}
                     value={loading ? "…" : `$${(data?.range_total ?? 0).toFixed(2)}`}
                     accent="red"
                 />
@@ -99,7 +118,7 @@ export default function OrgCostPage() {
             {data?.by_category && Object.keys(data.by_category).length > 0 && (
                 <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
                     <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
-                        By Category (30d)
+                        By Category ({range})
                     </h2>
                     <div className="space-y-3">
                         {Object.entries(data.by_category)

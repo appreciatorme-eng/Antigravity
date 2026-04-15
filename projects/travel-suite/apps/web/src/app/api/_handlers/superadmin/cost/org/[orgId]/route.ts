@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { logError } from "@/lib/observability/logger";
+import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
+import { buildGodDataQuality } from "@/lib/platform/god-kpi";
 
 function monthStartISO(): string {
     const now = new Date();
@@ -23,12 +25,13 @@ export async function GET(
 
     const { orgId } = await params;
     const { adminClient } = auth;
-    const range = request.nextUrl.searchParams.get("range") || "30d";
-    const days = range === "30d" ? 30 : range === "60d" ? 60 : 90;
+    const rangeParam = request.nextUrl.searchParams.get("range") || "30d";
+    const range = rangeParam === "7d" || rangeParam === "30d" || rangeParam === "90d" ? rangeParam : "30d";
+    const days = range === "7d" ? 7 : range === "30d" ? 30 : 90;
     const since = daysAgo(days);
 
     try {
-        const [orgResult, aiUsageResult, logsResult] = await Promise.all([
+        const [orgResult, aiUsageResult] = await Promise.all([
             adminClient
                 .from("organizations")
                 .select("id, name, subscription_tier, created_at")
@@ -40,12 +43,6 @@ export async function GET(
                 .eq("organization_id", orgId)
                 .order("month_start", { ascending: false })
                 .limit(6),
-            adminClient
-                .from("notification_logs")
-                .select("created_at, body, status")
-                .eq("notification_type", "cost_metering")
-                .gte("created_at", since)
-                .limit(5000),
         ]);
 
         if (!orgResult.data) {
@@ -55,19 +52,36 @@ export async function GET(
         const org = orgResult.data;
 
         // Filter logs to this org's users
-        const profilesResult = await adminClient
-            .from("profiles")
-            .select("id")
-            .eq("organization_id", orgId)
-            .limit(1000);
+        const profilesRows = await fetchAllPages<{ id: string }>((from, to) => (
+            adminClient
+                .from("profiles")
+                .select("id")
+                .eq("organization_id", orgId)
+                .order("id", { ascending: true })
+                .range(from, to)
+        ));
 
-        const orgUserIds = new Set((profilesResult.data ?? []).map((p) => p.id));
+        const orgUserIds = new Set(profilesRows.map((p) => p.id));
+
+        const logsRows = await fetchAllPages<{
+            created_at: string | null;
+            body: string | null;
+            status: string | null;
+        }>((from, to) => (
+            adminClient
+                .from("notification_logs")
+                .select("created_at, body, status")
+                .eq("notification_type", "cost_metering")
+                .gte("created_at", since)
+                .order("created_at", { ascending: false })
+                .range(from, to)
+        ));
 
         const byCategoryToday: Record<string, number> = {};
         const byCategoryRange: Record<string, number> = {};
         const byDay: Record<string, number> = {};
 
-        for (const log of (logsResult.data ?? [])) {
+        for (const log of logsRows) {
             if (!log.created_at) continue;
             // Filter by org users via body org_id field
             const bodyOrgMatch = (log.body as string | null)?.match(/organization_id=([a-f0-9-]+)/);
@@ -121,6 +135,9 @@ export async function GET(
             by_category: byCategoryRange,
             mtd,
             trend,
+            meta: {
+                data_quality: buildGodDataQuality(["organizations", "organization_ai_usage", "profiles", "notification_logs"]),
+            },
         });
     } catch (err) {
         logError(`[superadmin/cost/org/${orgId}]`, err);
