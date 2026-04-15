@@ -24,7 +24,14 @@ import {
     TrendingUp,
     Minus,
     ScrollText,
+    LogIn,
+    Search,
+    Users,
+    Settings,
+    Loader2,
+    X,
 } from "lucide-react";
+import { useRef } from "react";
 import TrendChart from "@/components/god-mode/TrendChart";
 import TimeRangePicker from "@/components/god-mode/TimeRangePicker";
 import StatusDot from "@/components/god-mode/StatusDot";
@@ -446,6 +453,8 @@ function CurrentPosturePanel({
     );
 }
 
+interface QuickUser { id: string; full_name: string | null; email: string | null; role: string | null; org_name: string | null; }
+
 export default function GodCommandCenter() {
     const router = useRouter();
     const pathname = usePathname();
@@ -461,6 +470,51 @@ export default function GodCommandCenter() {
     const [focusedInboxId, setFocusedInboxId] = useState<string | null>(null);
     const currentView = normalizeView(searchParams.get("view"));
     const currentRange = normalizeRange(searchParams.get("range"));
+
+    // --- Quick Impersonate from Home ---
+    const [impSearch, setImpSearch] = useState("");
+    const [impResults, setImpResults] = useState<QuickUser[]>([]);
+    const [impSearching, setImpSearching] = useState(false);
+    const [impTarget, setImpTarget] = useState<QuickUser | null>(null);
+    const [impersonating, setImpersonating] = useState(false);
+    const [showImpConfirm, setShowImpConfirm] = useState(false);
+    const impDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const searchImpUsers = useCallback(async (q: string) => {
+        if (!q.trim()) { setImpResults([]); return; }
+        setImpSearching(true);
+        try {
+            const res = await fetch(`/api/superadmin/users/directory?search=${encodeURIComponent(q)}&limit=8`);
+            if (res.ok) {
+                const json = await res.json();
+                setImpResults((json.users ?? []).map((u: { id: string; full_name: string | null; email: string | null; role: string | null; org_name: string | null }) => ({
+                    id: u.id,
+                    full_name: u.full_name,
+                    email: u.email,
+                    role: u.role,
+                    org_name: u.org_name,
+                })));
+            }
+        } catch { /* silent */ } finally { setImpSearching(false); }
+    }, []);
+
+    async function handleHomeImpersonate() {
+        if (!impTarget) return;
+        setImpersonating(true);
+        try {
+            const res = await authedFetch(`/api/superadmin/users/${impTarget.id}/impersonate`, { method: "POST" });
+            if (res.ok) {
+                const d = await res.json();
+                if (d.data?.magic_link) { window.location.href = d.data.magic_link; return; }
+                if (d.magic_link) { window.location.href = d.magic_link; return; }
+                showError("Invalid impersonation response");
+            } else {
+                const json = await res.json();
+                showError(json.error ?? "Failed to impersonate");
+            }
+        } catch { showError("Network error"); }
+        finally { setImpersonating(false); setShowImpConfirm(false); setImpTarget(null); setImpSearch(""); setImpResults([]); }
+    }
 
     useEffect(() => {
         let cancelled = false;
@@ -696,6 +750,59 @@ export default function GodCommandCenter() {
 
     return (
         <div className="space-y-4 min-w-0">
+            {/* ── Power Actions Bar ── */}
+            <div className="flex flex-wrap items-center gap-3 rounded-lg border border-indigo-900/50 bg-indigo-950/20 px-4 py-3">
+                <span className="text-xs font-semibold uppercase tracking-wider text-indigo-400">Power Actions</span>
+                {/* User search + impersonate */}
+                <div className="relative flex-1 min-w-[220px] max-w-xs">
+                    <div className="flex items-center gap-2 rounded-md border border-gray-700 bg-gray-900 px-2.5 py-1.5">
+                        {impSearching ? <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-500" /> : <Search className="h-3.5 w-3.5 text-gray-500" />}
+                        <input
+                            type="text"
+                            value={impSearch}
+                            placeholder="Find user to impersonate…"
+                            className="flex-1 bg-transparent text-sm text-white placeholder-gray-500 focus:outline-none"
+                            onChange={(e) => {
+                                setImpSearch(e.target.value);
+                                if (impDebounce.current) clearTimeout(impDebounce.current);
+                                impDebounce.current = setTimeout(() => searchImpUsers(e.target.value), 300);
+                            }}
+                        />
+                        {impSearch && (
+                            <button onClick={() => { setImpSearch(""); setImpResults([]); setImpTarget(null); }}>
+                                <X className="h-3.5 w-3.5 text-gray-500 hover:text-white" />
+                            </button>
+                        )}
+                    </div>
+                    {impResults.length > 0 && (
+                        <div className="absolute left-0 top-full z-50 mt-1 w-full rounded-md border border-gray-700 bg-gray-900 shadow-xl">
+                            {impResults.map((u) => (
+                                <button
+                                    key={u.id}
+                                    onClick={() => { setImpTarget(u); setImpSearch(u.email ?? u.full_name ?? u.id); setImpResults([]); setShowImpConfirm(true); }}
+                                    className="flex w-full items-start gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gray-800"
+                                >
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-medium text-white truncate">{u.full_name ?? "No name"}</p>
+                                        <p className="text-xs text-gray-400 truncate">{u.email} · {u.role ?? "user"}</p>
+                                        {u.org_name && <p className="text-xs text-gray-500 truncate">{u.org_name}</p>}
+                                    </div>
+                                    <LogIn className="mt-0.5 h-4 w-4 flex-shrink-0 text-indigo-400" />
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+                <Link href="/god/directory" className="inline-flex items-center gap-1.5 rounded-md border border-gray-700 bg-gray-900 px-3 py-1.5 text-sm text-gray-300 transition-colors hover:border-gray-600 hover:text-white">
+                    <Users className="h-3.5 w-3.5" /> Directory
+                </Link>
+                <Link href="/god/announcements" className="inline-flex items-center gap-1.5 rounded-md border border-gray-700 bg-gray-900 px-3 py-1.5 text-sm text-gray-300 transition-colors hover:border-gray-600 hover:text-white">
+                    <Megaphone className="h-3.5 w-3.5" /> Announcement
+                </Link>
+                <Link href="/god/settings" className="inline-flex items-center gap-1.5 rounded-md border border-gray-700 bg-gray-900 px-3 py-1.5 text-sm text-gray-300 transition-colors hover:border-gray-600 hover:text-white">
+                    <Settings className="h-3.5 w-3.5" /> Settings
+                </Link>
+            </div>
             <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-start 2xl:justify-between">
                 <div>
                     <h1 className="text-2xl font-semibold text-white">{data.header.title}</h1>
@@ -1252,6 +1359,36 @@ export default function GodCommandCenter() {
                                             </Link>
                                         );
                                     })}
+                                    <Link
+                                        href="/god/directory"
+                                        className="inline-flex items-center justify-between rounded-md border border-indigo-900/50 bg-indigo-950/20 px-3 py-3 text-sm text-indigo-200 transition-colors hover:border-indigo-800"
+                                    >
+                                        <span className="inline-flex items-center gap-2">
+                                            <Users className="w-4 h-4" />
+                                            User Directory
+                                        </span>
+                                        <ArrowRight className="w-4 h-4" />
+                                    </Link>
+                                    <Link
+                                        href="/god/announcements"
+                                        className="inline-flex items-center justify-between rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white"
+                                    >
+                                        <span className="inline-flex items-center gap-2">
+                                            <Megaphone className="w-4 h-4" />
+                                            Send Announcement
+                                        </span>
+                                        <ArrowRight className="w-4 h-4" />
+                                    </Link>
+                                    <Link
+                                        href="/god/settings"
+                                        className="inline-flex items-center justify-between rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white"
+                                    >
+                                        <span className="inline-flex items-center gap-2">
+                                            <Settings className="w-4 h-4" />
+                                            Platform Settings
+                                        </span>
+                                        <ArrowRight className="w-4 h-4" />
+                                    </Link>
                                     <a
                                         href="https://us.posthog.com"
                                         target="_blank"
@@ -1308,6 +1445,31 @@ export default function GodCommandCenter() {
                     </div>
                 </div>
             </div>
+            {/* Impersonate confirm modal (from Power Actions bar) */}
+            {showImpConfirm && impTarget && (
+                <ConfirmDangerModal
+                    open={true}
+                    title={`Login as ${impTarget.email ?? impTarget.full_name}?`}
+                    message={`This will replace your current superadmin session in this browser window. You will need to log out and sign back in as yourself to regain access.`}
+                    onConfirm={handleHomeImpersonate}
+                    onCancel={() => { setShowImpConfirm(false); setImpTarget(null); setImpSearch(""); setImpResults([]); }}
+                    loading={impersonating}
+                />
+            )}
+
+            {/* Suspend org confirmation */}
+            {suspendTargetId && (
+                <ConfirmDangerModal
+                    open={true}
+                    title="Suspend organization?"
+                    message="This will immediately disable all access for this organization. They will not be able to log in until unsuspended."
+                    onConfirm={handleSuspendOrg}
+                    onCancel={() => setSuspendTargetId(null)}
+                    loading={suspending}
+                />
+            )}
+
+            <ActionToast {...toast} onDismiss={dismiss} />
         </div>
     );
 }
