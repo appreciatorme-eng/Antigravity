@@ -46,14 +46,16 @@ export async function GET(request: NextRequest) {
             new Date().getUTCMonth(),
             1,
         ));
+        // Use last 30d for range-scoped counts (matches KPI cards on overview/feature-usage)
+        const since30d = new Date(Date.now() - 30 * 86_400_000).toISOString();
 
         const [
             membersResult,
             tripsResult,
+            tripsLast30dResult,
             proposalsResult,
+            proposalsLast30dResult,
             invoicesResult,
-            supportTicketsOpenResult,
-            supportTicketsClosedResult,
             aiUsageResult,
             settingsResult,
         ] = await Promise.all([
@@ -63,33 +65,33 @@ export async function GET(request: NextRequest) {
                 .select("id, full_name, email, phone, role, avatar_url, created_at")
                 .eq("organization_id", orgId)
                 .order("created_at", { ascending: true }),
-            // Trips count
+            // Trips — all time
             db
                 .from("trips")
                 .select("id, status, created_at", { count: "exact" })
                 .eq("organization_id", orgId),
-            // Proposals
+            // Trips — last 30d (matches KPI card range)
+            db
+                .from("trips")
+                .select("id", { count: "exact", head: true })
+                .eq("organization_id", orgId)
+                .gte("created_at", since30d),
+            // Proposals — all time
             db
                 .from("proposals")
                 .select("id, status, total_price, client_selected_price, created_at")
                 .eq("organization_id", orgId),
+            // Proposals — last 30d (matches KPI card range)
+            db
+                .from("proposals")
+                .select("id", { count: "exact", head: true })
+                .eq("organization_id", orgId)
+                .gte("created_at", since30d),
             // Invoices
             db
                 .from("invoices")
                 .select("id, status, total_amount, balance_amount, due_date, created_at")
                 .eq("organization_id", orgId),
-            // Open support tickets
-            db
-                .from("support_tickets")
-                .select("id", { count: "exact", head: true })
-                .in("status", ["open", "in_progress"])
-                .in("user_id", db.from("profiles").select("id").eq("organization_id", orgId)),
-            // Closed support tickets
-            db
-                .from("support_tickets")
-                .select("id", { count: "exact", head: true })
-                .eq("status", "resolved")
-                .in("user_id", db.from("profiles").select("id").eq("organization_id", orgId)),
             // AI usage MTD
             db
                 .from("organization_ai_usage")
@@ -114,6 +116,27 @@ export async function GET(request: NextRequest) {
             avatar_url: string | null;
             created_at: string | null;
         }>;
+
+        // Support tickets: fetch by member IDs (two-step — Supabase doesn't support nested subqueries)
+        const memberIds = members.map((m) => m.id);
+        let supportTicketsOpen = 0;
+        let supportTicketsResolved = 0;
+        if (memberIds.length > 0) {
+            const [openResult, resolvedResult] = await Promise.all([
+                db
+                    .from("support_tickets")
+                    .select("id", { count: "exact", head: true })
+                    .in("status", ["open", "in_progress"])
+                    .in("user_id", memberIds),
+                db
+                    .from("support_tickets")
+                    .select("id", { count: "exact", head: true })
+                    .eq("status", "resolved")
+                    .in("user_id", memberIds),
+            ]);
+            supportTicketsOpen = openResult.count ?? 0;
+            supportTicketsResolved = resolvedResult.count ?? 0;
+        }
 
         // Try to get last sign-in times from auth.users
         let lastSignInMap = new Map<string, string | null>();
@@ -171,6 +194,7 @@ export async function GET(request: NextRequest) {
             total_price: number | null; client_selected_price: number | null;
             created_at: string | null;
         }>;
+        const proposalsLast30d = proposalsLast30dResult.count ?? 0;
         const totalProposalValue = proposals.reduce(
             (sum, p) => sum + safeNumber(p.client_selected_price ?? p.total_price), 0,
         );
@@ -240,8 +264,10 @@ export async function GET(request: NextRequest) {
             member_count: members.length,
             stats: {
                 trips_total: trips.length,
+                trips_last_30d: tripsLast30d,
                 trips_by_status: tripsByStatus,
                 proposals_total: proposals.length,
+                proposals_last_30d: proposalsLast30d,
                 proposals_won: wonProposals.length,
                 proposal_total_value: totalProposalValue,
                 proposal_total_value_label: asCurrency(totalProposalValue),
@@ -257,8 +283,8 @@ export async function GET(request: NextRequest) {
                 overdue_amount_label: asCurrency(overdueAmount),
                 total_collected: totalCollected,
                 total_collected_label: asCurrency(totalCollected),
-                support_tickets_open: supportTicketsOpenResult.count ?? 0,
-                support_tickets_resolved: supportTicketsClosedResult.count ?? 0,
+                support_tickets_open: supportTicketsOpen,
+                support_tickets_resolved: supportTicketsResolved,
                 ai_spend_mtd_usd: Number(aiSpendMtd.toFixed(2)),
                 ai_requests_mtd: aiRequestsMtd,
             },

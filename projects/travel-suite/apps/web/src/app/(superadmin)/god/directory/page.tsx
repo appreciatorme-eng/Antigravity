@@ -74,8 +74,10 @@ interface OrgDetail {
     member_count: number;
     stats: {
         trips_total: number;
+        trips_last_30d: number;
         trips_by_status: Record<string, number>;
         proposals_total: number;
+        proposals_last_30d: number;
         proposals_won: number;
         proposal_total_value: number;
         proposal_total_value_label: string;
@@ -931,7 +933,10 @@ export default function DirectoryPage() {
 
                         {/* Usage Stats Grid */}
                         <div className="space-y-2">
-                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Usage Overview</h3>
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Usage Overview</h3>
+                                <span className="text-xs text-gray-600 italic">all-time · last 30d matches KPI cards</span>
+                            </div>
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="bg-gray-800/60 border border-gray-700/50 rounded-lg p-3">
                                     <div className="flex items-center gap-2 mb-1">
@@ -939,6 +944,9 @@ export default function DirectoryPage() {
                                         <span className="text-xs text-gray-400">Trips</span>
                                     </div>
                                     <p className="text-xl font-bold text-white">{orgDetail.stats.trips_total}</p>
+                                    <p className="text-xs text-gray-500 mt-0.5">
+                                        <span className="text-amber-400 font-medium">{orgDetail.stats.trips_last_30d}</span> last 30d
+                                    </p>
                                 </div>
                                 <div className="bg-gray-800/60 border border-gray-700/50 rounded-lg p-3">
                                     <div className="flex items-center gap-2 mb-1">
@@ -953,6 +961,9 @@ export default function DirectoryPage() {
                                             </span>
                                         )}
                                     </p>
+                                    <p className="text-xs text-gray-500 mt-0.5">
+                                        <span className="text-blue-400 font-medium">{orgDetail.stats.proposals_last_30d}</span> last 30d
+                                    </p>
                                 </div>
                                 <div className="bg-gray-800/60 border border-gray-700/50 rounded-lg p-3">
                                     <div className="flex items-center gap-2 mb-1">
@@ -961,21 +972,26 @@ export default function DirectoryPage() {
                                     </div>
                                     <p className="text-xl font-bold text-white">
                                         {orgDetail.stats.invoices_total}
-                                        {orgDetail.stats.invoices_overdue > 0 && (
-                                            <span className="text-xs text-red-400 ml-1.5 font-medium">
-                                                {orgDetail.stats.invoices_overdue} overdue
-                                            </span>
-                                        )}
                                     </p>
+                                    {orgDetail.stats.invoices_overdue > 0 ? (
+                                        <p className="text-xs text-red-400 mt-0.5 font-medium">
+                                            {orgDetail.stats.invoices_overdue} overdue
+                                        </p>
+                                    ) : (
+                                        <p className="text-xs text-gray-500 mt-0.5">all-time</p>
+                                    )}
                                 </div>
                                 <div className="bg-gray-800/60 border border-gray-700/50 rounded-lg p-3">
                                     <div className="flex items-center gap-2 mb-1">
                                         <Shield className="h-3.5 w-3.5 text-purple-400" />
-                                        <span className="text-xs text-gray-400">Support</span>
+                                        <span className="text-xs text-gray-400">Support Tickets</span>
                                     </div>
                                     <p className="text-xl font-bold text-white">
                                         {orgDetail.stats.support_tickets_open}
                                         <span className="text-xs text-gray-400 ml-1.5 font-medium">open</span>
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-0.5">
+                                        {orgDetail.stats.support_tickets_resolved} resolved
                                     </p>
                                 </div>
                             </div>
