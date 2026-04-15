@@ -196,16 +196,16 @@ export default function DirectoryPage() {
                 } catch {
                     errText = res.statusText;
                 }
-                showErrorToast(`Failed to load user: ${errText}`);
+                showError(`Failed to load user: ${errText}`);
                 setPanelOpen(false);
             }
         } catch (err) {
-            showErrorToast(`Network error: ${err instanceof Error ? err.message : "Failed to load user"}`);
+            showError(`Network error: ${err instanceof Error ? err.message : "Failed to load user"}`);
             setPanelOpen(false);
         } finally {
             setDetailLoading(false);
         }
-    }, [showErrorToast]);
+    }, [showError]);
 
     const refreshUserDetail = useCallback(async (id: string) => {
         try {
