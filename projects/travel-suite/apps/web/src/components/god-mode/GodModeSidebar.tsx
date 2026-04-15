@@ -21,6 +21,7 @@ import {
     Shield,
     ChevronLeft,
     TriangleAlert,
+    ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +30,7 @@ interface NavItem {
     label: string;
     href: string;
     dangerous?: boolean;
+    external?: boolean;
 }
 
 interface NavGroup {
@@ -56,6 +58,7 @@ const NAV_GROUPS: NavGroup[] = [
             { icon: BarChart3, label: "Feature Usage", href: "/god/analytics" },
             { icon: ReceiptText, label: "Collections", href: "/god/collections" },
             { icon: DollarSign, label: "API Costs", href: "/god/costs" },
+            { icon: ExternalLink, label: "PostHog", href: "https://us.posthog.com", external: true },
         ],
     },
     {
@@ -84,20 +87,28 @@ const NAV_GROUPS: NavGroup[] = [
 
 function NavItemRow({ item, active, href }: { item: NavItem; active: boolean; href: string }) {
     const Icon = item.icon;
+    const className = cn(
+        "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+        active
+            ? item.dangerous
+                ? "bg-red-500/15 text-red-400 border border-red-500/30"
+                : "bg-amber-500/15 text-amber-400 border border-amber-500/30"
+            : item.dangerous
+                ? "text-red-400/70 hover:bg-red-500/10 hover:text-red-400"
+                : "text-gray-400 hover:bg-gray-800 hover:text-white"
+    );
+
+    if (item.external) {
+        return (
+            <a href={href} target="_blank" rel="noopener noreferrer" className={className}>
+                <Icon className="w-4 h-4 flex-shrink-0" />
+                <span>{item.label}</span>
+            </a>
+        );
+    }
+
     return (
-        <Link
-            href={href}
-            className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all",
-                active
-                    ? item.dangerous
-                        ? "bg-red-500/15 text-red-400 border border-red-500/30"
-                        : "bg-amber-500/15 text-amber-400 border border-amber-500/30"
-                    : item.dangerous
-                        ? "text-red-400/70 hover:bg-red-500/10 hover:text-red-400"
-                        : "text-gray-400 hover:bg-gray-800 hover:text-white"
-            )}
-        >
+        <Link href={href} className={className}>
             <Icon className="w-4 h-4 flex-shrink-0" />
             <span>{item.label}</span>
         </Link>
