@@ -77,6 +77,11 @@ const cspHeader = [
 
 /** @type {import("next").NextConfig} */
 const nextConfig = {
+  env: {
+    // DSN is intentionally public metadata, so expose a safe fallback for client SDK init.
+    NEXT_PUBLIC_SENTRY_DSN:
+      process.env.NEXT_PUBLIC_SENTRY_DSN || process.env.SENTRY_DSN || "",
+  },
   turbopack: {
     root: projectRoot,
   },
