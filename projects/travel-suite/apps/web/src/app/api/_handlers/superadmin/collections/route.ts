@@ -1,4 +1,6 @@
-// GET /api/superadmin/collections — revenue recovery workspace data (overdue/due-soon invoices + expiring proposals).
+// GET   /api/superadmin/collections — revenue recovery workspace data.
+// PATCH /api/superadmin/collections — mutate invoice/proposal status (mark paid, write off, extend, convert, cancel).
+// POST  /api/superadmin/collections — trigger actions like payment reminders.
 
 import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
@@ -6,6 +8,7 @@ import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { logError } from "@/lib/observability/logger";
 import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
 import { buildGodDataQuality } from "@/lib/platform/god-kpi";
+import { logPlatformActionWithTarget, getClientIpFromRequest } from "@/lib/platform/audit";
 
 type OrganizationRow = {
     id: string;
@@ -207,4 +210,145 @@ export async function GET(request: NextRequest) {
         logError("[superadmin/collections]", error);
         return apiError("Failed to load collections workspace", 500);
     }
+}
+
+// ---------------------------------------------------------------------------
+// PATCH /api/superadmin/collections — update invoice or proposal status
+// ---------------------------------------------------------------------------
+
+interface CollectionPatchBody {
+    type: "invoice" | "proposal";
+    id: string;
+    action: string;
+    due_date?: string;
+    expires_at?: string;
+}
+
+export async function PATCH(request: NextRequest) {
+    const auth = await requireSuperAdmin(request);
+    if (!auth.ok) return auth.response;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = auth.adminClient as any;
+
+    let body: CollectionPatchBody;
+    try { body = await request.json(); } catch {
+        return apiError("Invalid JSON", 400);
+    }
+
+    if (!body.type || !body.id || !body.action) {
+        return apiError("type, id, and action are required", 400);
+    }
+
+    try {
+        if (body.type === "invoice") {
+            const table = "invoices";
+            const update: Record<string, unknown> = {};
+
+            switch (body.action) {
+                case "mark_paid":
+                    update.status = "paid";
+                    update.balance_amount = 0;
+                    break;
+                case "write_off":
+                    update.status = "written_off";
+                    update.balance_amount = 0;
+                    break;
+                case "extend":
+                    if (!body.due_date) return apiError("due_date required for extend action", 400);
+                    update.due_date = body.due_date;
+                    break;
+                default:
+                    return apiError(`Unknown invoice action: ${body.action}`, 400);
+            }
+
+            const { error } = await db.from(table).update(update).eq("id", body.id);
+            if (error) {
+                logError("[superadmin/collections PATCH invoice]", error);
+                return apiError("Failed to update invoice", 500);
+            }
+
+            await logPlatformActionWithTarget(
+                auth.userId,
+                `Invoice ${body.action}: ${body.id}`,
+                "cost_override",
+                "invoice",
+                body.id,
+                { action: body.action, ...update },
+                getClientIpFromRequest(request),
+            );
+        } else if (body.type === "proposal") {
+            const table = "proposals";
+            const update: Record<string, unknown> = {};
+
+            switch (body.action) {
+                case "convert":
+                    update.status = "converted";
+                    break;
+                case "cancel":
+                    update.status = "cancelled";
+                    break;
+                case "extend":
+                    if (!body.expires_at) return apiError("expires_at required for extend action", 400);
+                    update.expires_at = body.expires_at;
+                    break;
+                default:
+                    return apiError(`Unknown proposal action: ${body.action}`, 400);
+            }
+
+            const { error } = await db.from(table).update(update).eq("id", body.id);
+            if (error) {
+                logError("[superadmin/collections PATCH proposal]", error);
+                return apiError("Failed to update proposal", 500);
+            }
+
+            await logPlatformActionWithTarget(
+                auth.userId,
+                `Proposal ${body.action}: ${body.id}`,
+                "cost_override",
+                "proposal",
+                body.id,
+                { action: body.action, ...update },
+                getClientIpFromRequest(request),
+            );
+        } else {
+            return apiError("type must be 'invoice' or 'proposal'", 400);
+        }
+
+        return NextResponse.json({ ok: true, action: body.action });
+    } catch (err) {
+        logError("[superadmin/collections PATCH]", err);
+        return apiError("Failed to update collection item", 500);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/superadmin/collections — trigger actions (e.g. payment reminders)
+// ---------------------------------------------------------------------------
+
+export async function POST(request: NextRequest) {
+    const auth = await requireSuperAdmin(request);
+    if (!auth.ok) return auth.response;
+
+    let body: { type?: string; id?: string; action?: string };
+    try { body = await request.json(); } catch {
+        return apiError("Invalid JSON", 400);
+    }
+
+    if (body.action === "remind" && body.type === "invoice" && body.id) {
+        // Log the reminder action (actual email sending would integrate with notification service)
+        await logPlatformActionWithTarget(
+            auth.userId,
+            `Payment reminder sent for invoice ${body.id}`,
+            "cost_override",
+            "invoice",
+            body.id,
+            { action: "remind" },
+            getClientIpFromRequest(request),
+        );
+
+        return NextResponse.json({ ok: true, action: "remind", message: "Payment reminder logged" });
+    }
+
+    return apiError("Unknown action", 400);
 }

@@ -12,6 +12,8 @@ export async function GET(request: NextRequest) {
     const { adminClient } = auth;
     const params = request.nextUrl.searchParams;
     const category = params.get("category") ?? "all";
+    const range = params.get("range") ?? "30d";
+    const search = params.get("search")?.trim() ?? "";
     const page = Math.max(0, Number(params.get("page") || 0));
     const limit = Math.min(100, Math.max(10, Number(params.get("limit") || 50)));
 
@@ -23,6 +25,16 @@ export async function GET(request: NextRequest) {
             .range(page * limit, (page + 1) * limit - 1);
 
         if (category !== "all") query = query.eq("category", category);
+        
+        // Date range filter
+        const days = range === "7d" ? 7 : range === "90d" ? 90 : 30;
+        const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+        query = query.gte("created_at", since);
+
+        // Basic text search on action, ip_address, target_type or target_id
+        if (search) {
+            query = query.or(`action.ilike.%${search}%,ip_address.ilike.%${search}%,target_id.ilike.%${search}%`);
+        }
 
         const result = await query;
 

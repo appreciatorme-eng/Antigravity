@@ -4,11 +4,14 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, UserPlus, ArrowRight } from "lucide-react";
 import TrendChart from "@/components/god-mode/TrendChart";
 import StatCard from "@/components/god-mode/StatCard";
 import TimeRangePicker from "@/components/god-mode/TimeRangePicker";
 import DrillDownTable from "@/components/god-mode/DrillDownTable";
+import ExportButton from "@/components/god-mode/ExportButton";
+import ActionToast, { useActionToast } from "@/components/god-mode/ActionToast";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import type { TableColumn } from "@/components/god-mode/DrillDownTable";
 
 interface SignupRow {
@@ -101,6 +104,58 @@ export default function SignupsPage() {
     const [page, setPage] = useState(Math.max(0, Number(searchParams.get("page") || 0)));
     const selectedDate = searchParams.get("date");
 
+    // Action state
+    const [showInvite, setShowInvite] = useState(false);
+    const [inviteEmail, setInviteEmail] = useState("");
+    const [inviteName, setInviteName] = useState("");
+    const [inviteRole, setInviteRole] = useState("client");
+    const [inviteOrgId, setInviteOrgId] = useState("");
+    const [inviting, setInviting] = useState(false);
+    const [orgList, setOrgList] = useState<{ id: string; name: string; tier: string }[]>([]);
+    
+    const { toast, showSuccess, showError, dismiss } = useActionToast();
+
+    const fetchOrgs = useCallback(async () => {
+        try {
+            const res = await fetch("/api/superadmin/orgs?limit=200");
+            if (res.ok) {
+                const json = await res.json();
+                setOrgList(json.organizations ?? []);
+            }
+        } catch { /* silent */ }
+    }, []);
+
+    async function handleInviteUser() {
+        if (!inviteEmail.trim() || !inviteName.trim()) return;
+        setInviting(true);
+        try {
+            const res = await authedFetch("/api/superadmin/users/invite", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    email: inviteEmail.trim(),
+                    name: inviteName.trim(),
+                    role: inviteRole,
+                    org_id: inviteOrgId || null,
+                }),
+            });
+            if (res.ok) {
+                showSuccess(`User ${inviteEmail.trim()} invited`);
+                setShowInvite(false);
+                setInviteEmail("");
+                setInviteName("");
+                setInviteRole("client");
+                setInviteOrgId("");
+                await fetchData();
+            } else {
+                const json = await res.json();
+                showError(json.error ?? "Failed to invite user");
+            }
+        } finally {
+            setInviting(false);
+        }
+    }
+
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
@@ -143,6 +198,26 @@ export default function SignupsPage() {
                     <p className="text-sm text-gray-400 mt-0.5">Registration trends and recent signups</p>
                 </div>
                 <div className="flex items-center gap-3">
+                    <ExportButton
+                        data={(data?.recent ?? []) as Record<string, unknown>[]}
+                        filename="god-mode-signups"
+                        columns={[
+                            { key: "full_name", label: "Name" },
+                            { key: "email", label: "Email" },
+                            { key: "phone", label: "Phone" },
+                            { key: "role", label: "Role" },
+                            { key: "org_name", label: "Organization" },
+                            { key: "created_at", label: "Signed Up" },
+                        ]}
+                    />
+                    <button
+                        onClick={() => { setShowInvite(true); fetchOrgs(); }}
+                        className="inline-flex items-center gap-2 rounded-lg border border-gray-700 bg-gray-800 px-3 py-2
+                                   text-sm text-gray-300 transition-colors hover:border-gray-600 hover:text-white"
+                    >
+                        <UserPlus className="h-4 w-4" />
+                        Invite User
+                    </button>
                     <TimeRangePicker value={range} onChange={(v) => { setRange(v as "7d" | "30d" | "90d"); setPage(0); }} />
                     <button
                         onClick={fetchData}
@@ -154,6 +229,72 @@ export default function SignupsPage() {
                     </button>
                 </div>
             </div>
+
+            {/* Invite User Modal area */}
+            {showInvite && (
+                <div className="bg-gray-900 border border-amber-500/30 rounded-xl p-5 space-y-4">
+                    <h2 className="text-sm font-semibold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                        <UserPlus className="w-4 h-4" />
+                        Invite User
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input
+                            value={inviteName}
+                            onChange={(e) => setInviteName(e.target.value)}
+                            placeholder="Full name…"
+                            className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700
+                                       text-white text-sm placeholder-gray-500 focus:outline-none focus:border-amber-500/50"
+                        />
+                        <input
+                            value={inviteEmail}
+                            onChange={(e) => setInviteEmail(e.target.value)}
+                            placeholder="Email address…"
+                            type="email"
+                            className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700
+                                       text-white text-sm placeholder-gray-500 focus:outline-none focus:border-amber-500/50"
+                        />
+                        <select
+                            value={inviteRole}
+                            onChange={(e) => setInviteRole(e.target.value)}
+                            className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700
+                                       text-sm text-gray-300 focus:outline-none focus:border-amber-500/50"
+                        >
+                            <option value="client">Client</option>
+                            <option value="admin">Admin</option>
+                            <option value="team_member">Team Member</option>
+                            <option value="driver">Driver</option>
+                            <option value="super_admin">Super Admin</option>
+                        </select>
+                        <select
+                            value={inviteOrgId}
+                            onChange={(e) => setInviteOrgId(e.target.value)}
+                            className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700
+                                       text-sm text-gray-300 focus:outline-none focus:border-amber-500/50"
+                        >
+                            <option value="">No organization (Orphan)</option>
+                            {orgList.map((org) => (
+                                <option key={org.id} value={org.id}>{org.name} ({org.tier})</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="flex gap-3 pt-2">
+                        <button
+                            onClick={handleInviteUser}
+                            disabled={inviting || !inviteEmail.trim() || !inviteName.trim()}
+                            className="flex-1 py-2 rounded-lg bg-amber-500 text-black font-semibold text-sm
+                                       hover:bg-amber-400 transition-colors disabled:opacity-50"
+                        >
+                            {inviting ? "Sending Invite…" : "Send Invite"}
+                        </button>
+                        <button
+                            onClick={() => { setShowInvite(false); setInviteEmail(""); setInviteName(""); }}
+                            className="px-4 py-2 rounded-lg bg-gray-800 border border-gray-700 text-gray-400 text-sm hover:text-white"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Stat cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -212,6 +353,7 @@ export default function SignupsPage() {
                 <DrillDownTable<SignupRow>
                     columns={COLUMNS}
                     data={data?.recent ?? []}
+                    onRowClick={(row) => router.push(`/god/directory?userId=${row.id}`)}
                     searchable
                     emptyMessage="No signups in this period"
                 />
@@ -242,6 +384,9 @@ export default function SignupsPage() {
                     </div>
                 )}
             </div>
+
+            {/* Toast notifications */}
+            <ActionToast {...toast} onDismiss={dismiss} />
         </div>
     );
 }

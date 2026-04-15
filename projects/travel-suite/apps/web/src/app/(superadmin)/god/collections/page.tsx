@@ -5,9 +5,12 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, RefreshCw, Search } from "lucide-react";
+import { ArrowRight, RefreshCw, Search, CheckCircle2, XCircle, CalendarClock, Bell, Ban } from "lucide-react";
 import SlideOutPanel from "@/components/god-mode/SlideOutPanel";
 import StatCard from "@/components/god-mode/StatCard";
+import ConfirmActionButton from "@/components/god-mode/ConfirmActionButton";
+import ActionToast, { useActionToast } from "@/components/god-mode/ActionToast";
+import { authedFetch } from "@/lib/api/authed-fetch";
 
 type WorkspaceTab = "invoices" | "proposals";
 
@@ -90,6 +93,8 @@ export default function CollectionsPage() {
     const invoiceId = searchParams.get("invoiceId");
     const proposalId = searchParams.get("proposalId");
     const orgId = searchParams.get("orgId");
+
+    const { toast, showSuccess, showError, dismiss } = useActionToast();
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -294,6 +299,90 @@ export default function CollectionsPage() {
                             <p className="mt-1 text-xs text-gray-500">{dueLabel(selectedInvoice.days_until_due)}</p>
                         </div>
 
+                        {/* Revenue recovery actions */}
+                        <div className="space-y-2">
+                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Recovery Actions</h3>
+                            <div className="grid gap-2">
+                                <ConfirmActionButton
+                                    label="Mark as Paid"
+                                    confirmLabel="Confirm Paid"
+                                    variant="success"
+                                    icon={<CheckCircle2 className="h-4 w-4" />}
+                                    onConfirm={async () => {
+                                        const res = await authedFetch(`/api/superadmin/collections`, {
+                                            method: "PATCH",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({ type: "invoice", id: selectedInvoice.id, action: "mark_paid" }),
+                                        });
+                                        if (res.ok) { showSuccess("Invoice marked as paid"); closePanel(); fetchData(); }
+                                        else showError("Failed to mark as paid");
+                                    }}
+                                />
+                                <ConfirmActionButton
+                                    label="Send Payment Reminder"
+                                    confirmLabel="Send Now"
+                                    icon={<Bell className="h-4 w-4" />}
+                                    onConfirm={async () => {
+                                        const res = await authedFetch(`/api/superadmin/collections`, {
+                                            method: "POST",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({ type: "invoice", id: selectedInvoice.id, action: "remind" }),
+                                        });
+                                        if (res.ok) showSuccess("Payment reminder sent");
+                                        else showError("Failed to send reminder");
+                                    }}
+                                />
+                                <ConfirmActionButton
+                                    label="Extend Due Date (+7 days)"
+                                    confirmLabel="Extend"
+                                    icon={<CalendarClock className="h-4 w-4" />}
+                                    onConfirm={async () => {
+                                        const newDate = selectedInvoice.due_date
+                                            ? new Date(new Date(selectedInvoice.due_date).getTime() + 7 * 86_400_000).toISOString()
+                                            : new Date(Date.now() + 7 * 86_400_000).toISOString();
+                                        const res = await authedFetch(`/api/superadmin/collections`, {
+                                            method: "PATCH",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({ type: "invoice", id: selectedInvoice.id, action: "extend", due_date: newDate }),
+                                        });
+                                        if (res.ok) { showSuccess("Due date extended by 7 days"); fetchData(); }
+                                        else showError("Failed to extend due date");
+                                    }}
+                                />
+                                <ConfirmActionButton
+                                    label="Write Off"
+                                    confirmLabel="Yes, Write Off"
+                                    variant="danger"
+                                    icon={<XCircle className="h-4 w-4" />}
+                                    onConfirm={async () => {
+                                        const res = await authedFetch(`/api/superadmin/collections`, {
+                                            method: "PATCH",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({ type: "invoice", id: selectedInvoice.id, action: "write_off" }),
+                                        });
+                                        if (res.ok) { showSuccess("Invoice written off"); closePanel(); fetchData(); }
+                                        else showError("Failed to write off");
+                                    }}
+                                />
+                                <ConfirmActionButton
+                                    label="Suspend Org for Non-Payment"
+                                    confirmLabel="Suspend Org"
+                                    variant="danger"
+                                    icon={<Ban className="h-4 w-4" />}
+                                    onConfirm={async () => {
+                                        if (!selectedInvoice.org_id) { showError("No org associated"); return; }
+                                        const res = await authedFetch(`/api/superadmin/settings/org-suspend`, {
+                                            method: "POST",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({ org_id: selectedInvoice.org_id, action: "suspend", reason: `Non-payment: invoice #${selectedInvoice.invoice_number}` }),
+                                        });
+                                        if (res.ok) showSuccess("Organization suspended");
+                                        else showError("Failed to suspend org");
+                                    }}
+                                />
+                            </div>
+                        </div>
+
                         <div className="grid gap-2">
                             <Link href={`/god/directory?search=${encodeURIComponent(selectedInvoice.org_name)}`} className="inline-flex items-center justify-between rounded-lg border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white">
                                 Open organization
@@ -317,6 +406,60 @@ export default function CollectionsPage() {
                             <p className="mt-1 text-xs text-gray-500">{expiryLabel(selectedProposal.hours_until_expiry)}</p>
                         </div>
 
+                        {/* Proposal actions */}
+                        <div className="space-y-2">
+                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Deal Actions</h3>
+                            <div className="grid gap-2">
+                                <ConfirmActionButton
+                                    label="Mark as Converted"
+                                    confirmLabel="Confirm Conversion"
+                                    variant="success"
+                                    icon={<CheckCircle2 className="h-4 w-4" />}
+                                    onConfirm={async () => {
+                                        const res = await authedFetch(`/api/superadmin/collections`, {
+                                            method: "PATCH",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({ type: "proposal", id: selectedProposal.id, action: "convert" }),
+                                        });
+                                        if (res.ok) { showSuccess("Proposal marked as converted"); closePanel(); fetchData(); }
+                                        else showError("Failed to mark as converted");
+                                    }}
+                                />
+                                <ConfirmActionButton
+                                    label="Extend Expiry (+48 hours)"
+                                    confirmLabel="Extend"
+                                    icon={<CalendarClock className="h-4 w-4" />}
+                                    onConfirm={async () => {
+                                        const newExpiry = selectedProposal.expires_at
+                                            ? new Date(new Date(selectedProposal.expires_at).getTime() + 48 * 3_600_000).toISOString()
+                                            : new Date(Date.now() + 48 * 3_600_000).toISOString();
+                                        const res = await authedFetch(`/api/superadmin/collections`, {
+                                            method: "PATCH",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({ type: "proposal", id: selectedProposal.id, action: "extend", expires_at: newExpiry }),
+                                        });
+                                        if (res.ok) { showSuccess("Expiry extended by 48 hours"); fetchData(); }
+                                        else showError("Failed to extend expiry");
+                                    }}
+                                />
+                                <ConfirmActionButton
+                                    label="Cancel Proposal"
+                                    confirmLabel="Yes, Cancel"
+                                    variant="danger"
+                                    icon={<XCircle className="h-4 w-4" />}
+                                    onConfirm={async () => {
+                                        const res = await authedFetch(`/api/superadmin/collections`, {
+                                            method: "PATCH",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify({ type: "proposal", id: selectedProposal.id, action: "cancel" }),
+                                        });
+                                        if (res.ok) { showSuccess("Proposal cancelled"); closePanel(); fetchData(); }
+                                        else showError("Failed to cancel proposal");
+                                    }}
+                                />
+                            </div>
+                        </div>
+
                         <div className="grid gap-2">
                             <Link href={`/god/directory?search=${encodeURIComponent(selectedProposal.org_name)}`} className="inline-flex items-center justify-between rounded-lg border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white">
                                 Open organization
@@ -330,6 +473,9 @@ export default function CollectionsPage() {
                     </div>
                 )}
             </SlideOutPanel>
+
+            {/* Toast notifications */}
+            <ActionToast {...toast} onDismiss={dismiss} />
         </div>
     );
 }

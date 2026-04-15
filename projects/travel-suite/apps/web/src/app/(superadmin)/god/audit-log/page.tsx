@@ -4,7 +4,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { RefreshCw, ScrollText, ChevronDown, ChevronRight } from "lucide-react";
+import { RefreshCw, ScrollText, ChevronDown, ChevronRight, Search } from "lucide-react";
+import ExportButton from "@/components/god-mode/ExportButton";
+import TimeRangePicker from "@/components/god-mode/TimeRangePicker";
 
 interface AuditEntry {
     id: string;
@@ -62,22 +64,31 @@ export default function AuditLogPage() {
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const [category, setCategory] = useState(searchParams.get("category") ?? "all");
+    const [range, setRange] = useState<"7d" | "30d" | "90d">((searchParams.get("range") as "7d" | "30d" | "90d") ?? "30d");
+    const [search, setSearch] = useState(searchParams.get("search") ?? "");
+    const [debouncedSearch, setDebouncedSearch] = useState(search);
     const [data, setData] = useState<AuditData | null>(null);
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(Math.max(0, Number(searchParams.get("page") || 0)));
     const [expanded, setExpanded] = useState<string | null>(null);
 
+    useEffect(() => {
+        const t = setTimeout(() => { setDebouncedSearch(search); setPage(0); }, 400);
+        return () => clearTimeout(t);
+    }, [search]);
+
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
+            const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE), range });
             if (category !== "all") params.set("category", category);
+            if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
             const res = await fetch(`/api/superadmin/audit-log?${params}`);
             if (res.ok) setData(await res.json());
         } finally {
             setLoading(false);
         }
-    }, [category, page]);
+    }, [category, page, range, debouncedSearch]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -85,13 +96,20 @@ export default function AuditLogPage() {
         const params = new URLSearchParams(searchParams.toString());
         if (category !== "all") params.set("category", category);
         else params.delete("category");
+        
+        params.set("range", range);
+        
+        if (debouncedSearch.trim()) params.set("search", debouncedSearch.trim());
+        else params.delete("search");
+
         if (page > 0) params.set("page", String(page));
         else params.delete("page");
+
         const next = params.toString();
         if (next !== searchParams.toString()) {
             router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
         }
-    }, [category, page, pathname, router, searchParams]);
+    }, [category, page, pathname, router, searchParams, range, debouncedSearch]);
 
     function handleCategoryChange(value: string) {
         setCategory(value);
@@ -117,6 +135,16 @@ export default function AuditLogPage() {
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
+                    <div className="relative min-w-[200px]">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+                        <input
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Actor, IP, or Target..."
+                            className="w-full rounded-lg border border-gray-700 bg-gray-800 py-1.5 pl-9 pr-3
+                                       text-sm text-gray-300 placeholder-gray-500 focus:border-gray-500 focus:outline-none"
+                        />
+                    </div>
                     <select
                         value={category}
                         onChange={(e) => handleCategoryChange(e.target.value)}
@@ -127,6 +155,20 @@ export default function AuditLogPage() {
                             <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
                     </select>
+                    <TimeRangePicker value={range} onChange={(v) => { setRange(v as "7d" | "30d" | "90d"); setPage(0); }} />
+                    <ExportButton
+                        data={(data?.entries ?? []) as unknown as Record<string, unknown>[]}
+                        filename="god-mode-audit-log"
+                        columns={[
+                            { key: "created_at", label: "Date" },
+                            { key: "actor_name", label: "Actor" },
+                            { key: "action", label: "Action" },
+                            { key: "category", label: "Category" },
+                            { key: "ip_address", label: "IP Address" },
+                            { key: "target_type", label: "Target Type" },
+                            { key: "target_id", label: "Target ID" },
+                        ]}
+                    />
                     <button
                         onClick={fetchData}
                         disabled={loading}

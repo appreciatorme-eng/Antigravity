@@ -8,6 +8,7 @@ import { Map, FileText, Sparkles, Share2, RefreshCw, Building2, IndianRupee, Bug
 import TrendChart from "@/components/god-mode/TrendChart";
 import TimeRangePicker from "@/components/god-mode/TimeRangePicker";
 import DrillDownTable from "@/components/god-mode/DrillDownTable";
+import ExportButton from "@/components/god-mode/ExportButton";
 import StatCard from "@/components/god-mode/StatCard";
 import type { TableColumn } from "@/components/god-mode/DrillDownTable";
 
@@ -195,6 +196,21 @@ export default function AnalyticsPage() {
                         PostHog
                     </a>
                     <TimeRangePicker value={range} onChange={(v) => setRange(v as "7d" | "30d" | "90d")} />
+                    <ExportButton
+                        data={selectedFeature ? (drillData?.rows ?? []) as Record<string, unknown>[] : (data?.top_orgs ?? []) as Record<string, unknown>[]}
+                        filename={`god-mode-analytics-${selectedFeature ?? "top-orgs"}`}
+                        columns={selectedFeature ? [
+                            { key: "org_name", label: "Organization" },
+                            { key: "tier", label: "Tier" },
+                            { key: "count", label: "Usage Count" },
+                            { key: "pct_of_total", label: "% of Total" },
+                            { key: "last_used", label: "Last Used" },
+                        ] : [
+                            { key: "name", label: "Organization" },
+                            { key: "tier", label: "Tier" },
+                            { key: "trips", label: "Trips Created" },
+                        ]}
+                    />
                     <button
                         onClick={fetchData}
                         disabled={loading}
@@ -339,6 +355,7 @@ export default function AnalyticsPage() {
                         <DrillDownTable<DrillRow>
                             columns={DRILL_COLS}
                             data={drillData?.rows ?? []}
+                            onRowClick={(row) => router.push(`/god/directory?search=${encodeURIComponent((row.name || row.org_name) as string)}`)}
                             searchable
                             emptyMessage="No data for this feature"
                         />
@@ -355,6 +372,7 @@ export default function AnalyticsPage() {
                     <DrillDownTable<TopOrg>
                         columns={TOP_ORG_COLS}
                         data={data?.top_orgs ?? []}
+                        onRowClick={(row) => router.push(`/god/directory?search=${encodeURIComponent(row.name as string)}`)}
                         emptyMessage="No data available"
                     />
                 </div>

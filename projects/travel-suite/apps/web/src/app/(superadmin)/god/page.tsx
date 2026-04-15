@@ -31,6 +31,8 @@ import StatusDot from "@/components/god-mode/StatusDot";
 import type { HealthStatus } from "@/components/god-mode/StatusDot";
 import { cn } from "@/lib/utils";
 import { authedFetch } from "@/lib/api/authed-fetch";
+import ConfirmDangerModal from "@/components/god-mode/ConfirmDangerModal";
+import ActionToast, { useActionToast } from "@/components/god-mode/ActionToast";
 
 type Severity = "critical" | "high" | "medium";
 type Tone = "neutral" | "warning" | "danger";
@@ -448,6 +450,9 @@ export default function GodCommandCenter() {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
+    const { toast, showSuccess, showError, dismiss } = useActionToast();
+    const [suspendTargetId, setSuspendTargetId] = useState<string | null>(null);
+    const [suspending, setSuspending] = useState(false);
     const [data, setData] = useState<OverviewData | null>(null);
     const [loading, setLoading] = useState(true);
     const [customViews, setCustomViews] = useState<SavedPreset[]>([]);
@@ -530,16 +535,41 @@ export default function GodCommandCenter() {
         }
     }, [pathname, router, searchParams]);
 
-    const fetchOverview = useCallback(async () => {
+    const fetchOverview = useCallback(async (force = false) => {
         setLoading(true);
         try {
-            const response = await fetch(`/api/superadmin/overview?range=${currentRange}`);
+            const query = force ? `&_t=${Date.now()}` : '';
+            const response = await fetch(`/api/superadmin/overview?range=${currentRange}${query}`);
             if (!response.ok) return;
             setData(await response.json());
         } finally {
             setLoading(false);
         }
     }, [currentRange]);
+
+    async function handleSuspendOrg() {
+        if (!suspendTargetId) return;
+        setSuspending(true);
+        try {
+            const res = await authedFetch("/api/superadmin/settings/org-suspend", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ org_id: suspendTargetId, action: "suspend", reason: "Suspended from Command Center watchlist" }),
+            });
+            if (res.ok) {
+                showSuccess("Organization suspended instantly.");
+                await fetchOverview(true);
+            } else {
+                const json = await res.json();
+                showError(json.error ?? "Failed to suspend org");
+            }
+        } catch {
+            showError("Network error suspending org");
+        } finally {
+            setSuspending(false);
+            setSuspendTargetId(null);
+        }
+    }
 
     useEffect(() => {
         fetchOverview();
@@ -749,7 +779,7 @@ export default function GodCommandCenter() {
                             Collections
                         </Link>
                         <button
-                            onClick={fetchOverview}
+                            onClick={() => fetchOverview(true)}
                             disabled={loading}
                             className="inline-flex items-center gap-2 rounded-md border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white disabled:opacity-50"
                         >
@@ -1004,21 +1034,28 @@ export default function GodCommandCenter() {
                                             <p className="text-sm text-gray-500">No orgs currently meet the risk thresholds.</p>
                                         ) : (
                                             data.watchlists.customer_risk_orgs.map((org) => (
-                                                <Link
+                                                <div
                                                     key={org.org_id}
-                                                    href={org.href}
-                                                    className="rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3 transition-colors hover:border-gray-700"
+                                                    className="rounded-md border border-gray-800 bg-gray-950/50 p-3"
                                                 >
                                                     <div className="flex items-start justify-between gap-3">
                                                         <div className="min-w-0">
-                                                            <p className="text-sm text-white">{org.name}</p>
+                                                            <Link href={org.href} className="text-sm font-medium text-white hover:underline">{org.name}</Link>
                                                             <p className="mt-1 text-xs text-gray-500">
                                                                 {org.tier} · {org.open_tickets} open tickets · oldest {formatRelative(org.oldest_ticket_at)}
                                                             </p>
                                                         </div>
-                                                        <span className="text-xs text-gray-500">{org.urgent_tickets} urgent</span>
+                                                        <div className="flex flex-col items-end gap-2">
+                                                            <span className="text-xs text-gray-500">{org.urgent_tickets} urgent</span>
+                                                            <button 
+                                                                onClick={(e) => { e.preventDefault(); setSuspendTargetId(org.org_id); }}
+                                                                className="rounded bg-red-950/50 border border-red-900/50 px-2 py-1 text-xs text-red-300 hover:bg-red-900/50 transition-colors"
+                                                            >
+                                                                Suspend
+                                                            </button>
+                                                        </div>
                                                     </div>
-                                                    <div className="mt-3 flex flex-wrap gap-2">
+                                                    <div className="mt-3 flex flex-wrap items-center gap-2">
                                                         {org.overdue_amount > 0 && (
                                                             <span className="rounded bg-red-950/30 px-2 py-1 text-xs text-red-200">
                                                                 ₹{org.overdue_amount.toLocaleString("en-IN")} overdue
@@ -1036,7 +1073,7 @@ export default function GodCommandCenter() {
                                                         )}
                                                     </div>
                                                     <p className="mt-3 text-xs text-gray-400">{org.risk_flags.join(" · ")}</p>
-                                                </Link>
+                                                </div>
                                             ))
                                         )}
                                     </div>
@@ -1055,17 +1092,26 @@ export default function GodCommandCenter() {
                                                     <p className="px-1 py-2 text-sm text-gray-500">No AI spend data yet.</p>
                                                 ) : (
                                                     data.watchlists.ai_spend_orgs.map((org) => (
-                                                        <Link
+                                                        <div
                                                             key={org.org_id}
-                                                            href={org.href}
-                                                            className="flex items-start justify-between rounded-md border border-gray-800 px-3 py-3 transition-colors hover:border-gray-700"
+                                                            className="flex flex-col gap-2 rounded-md border border-gray-800 p-3"
                                                         >
-                                                            <div>
-                                                                <p className="text-sm text-white">{org.name}</p>
-                                                                <p className="mt-1 text-xs text-gray-500">{org.requests.toLocaleString()} requests · {org.tier}</p>
+                                                            <div className="flex items-start justify-between">
+                                                                <div>
+                                                                    <Link href={org.href} className="text-sm font-medium text-white hover:underline">{org.name}</Link>
+                                                                    <p className="mt-1 text-xs text-gray-500">{org.requests.toLocaleString()} requests · {org.tier}</p>
+                                                                </div>
+                                                                <span className="text-sm text-white">${org.spend_usd.toFixed(2)}</span>
                                                             </div>
-                                                            <span className="text-sm text-white">${org.spend_usd.toFixed(2)}</span>
-                                                        </Link>
+                                                            <div className="flex justify-end">
+                                                                <button 
+                                                                    onClick={(e) => { e.preventDefault(); setSuspendTargetId(org.org_id); }}
+                                                                    className="rounded bg-red-950/50 border border-red-900/50 px-2 py-1 text-xs text-red-300 hover:bg-red-900/50 transition-colors"
+                                                                >
+                                                                    Suspend
+                                                                </button>
+                                                            </div>
+                                                        </div>
                                                     ))
                                                 )}
                                             </div>

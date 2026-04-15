@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import DrillDownTable from "@/components/god-mode/DrillDownTable";
+import ExportButton from "@/components/god-mode/ExportButton";
 import StatCard from "@/components/god-mode/StatCard";
 import type { TableColumn } from "@/components/god-mode/DrillDownTable";
 
@@ -101,14 +102,29 @@ export default function ReferralsPage() {
                     <h1 className="text-2xl font-bold text-white">Referral Tracking</h1>
                     <p className="text-sm text-gray-400 mt-0.5">B2B and client flywheel overview</p>
                 </div>
-                <button
-                    onClick={fetchData}
-                    disabled={loading}
-                    className="p-2 rounded-lg bg-gray-800 border border-gray-700 text-gray-400
-                               hover:text-white transition-colors disabled:opacity-50"
-                >
-                    <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-                </button>
+                <div className="flex items-center gap-3">
+                    <ExportButton
+                        data={tab === "b2b" ? (b2b?.top_referrers ?? []) as Record<string, unknown>[] : (client?.recent_events ?? []) as Record<string, unknown>[]}
+                        filename={`god-mode-referrals-${tab}`}
+                        columns={tab === "b2b" ? [
+                            { key: "name", label: "Organization" },
+                            { key: "total", label: "Referrals" },
+                            { key: "converted", label: "Converted" }
+                        ] : [
+                            { key: "status", label: "Status" },
+                            { key: "referred_email", label: "Referred Email" },
+                            { key: "created_at", label: "Date" }
+                        ]}
+                    />
+                    <button
+                        onClick={fetchData}
+                        disabled={loading}
+                        className="p-2 rounded-lg bg-gray-800 border border-gray-700 text-gray-400
+                                   hover:text-white transition-colors disabled:opacity-50"
+                    >
+                        <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+                    </button>
+                </div>
             </div>
 
             {/* Tabs */}

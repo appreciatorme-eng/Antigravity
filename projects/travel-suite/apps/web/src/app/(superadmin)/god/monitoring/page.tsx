@@ -1,12 +1,17 @@
 // Health Monitor — real-time service health, queue depths, and system observability.
+// Now includes queue management: retry, flush, and purge operations.
 
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import { RefreshCw, Activity } from "lucide-react";
+import { RefreshCw, Activity, RotateCcw, Trash2, Eraser } from "lucide-react";
 import StatusDot from "@/components/god-mode/StatusDot";
 import StatCard from "@/components/god-mode/StatCard";
+import ConfirmActionButton from "@/components/god-mode/ConfirmActionButton";
+import ConfirmDangerModal from "@/components/god-mode/ConfirmDangerModal";
+import ActionToast, { useActionToast } from "@/components/god-mode/ActionToast";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import type { HealthStatus } from "@/components/god-mode/StatusDot";
 
 interface ServiceHealth {
@@ -62,6 +67,11 @@ export default function MonitoringPage() {
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
     const focus = searchParams.get("focus");
 
+    // Action state
+    const [purgeTarget, setPurgeTarget] = useState<{ queue: string; label: string } | null>(null);
+    const [purgeLoading, setPurgeLoading] = useState(false);
+    const { toast, showSuccess, showError, dismiss } = useActionToast();
+
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
@@ -84,6 +94,43 @@ export default function MonitoringPage() {
             if (intervalRef.current) clearInterval(intervalRef.current);
         };
     }, [fetchData]);
+
+    // --- QUEUE ACTION HANDLERS ---
+
+    async function handleQueueAction(queue: string, action: "retry" | "flush") {
+        const res = await authedFetch(`/api/superadmin/monitoring/queues/${queue}/${action}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+        });
+        if (res.ok) {
+            const json = await res.json();
+            showSuccess(`${action === "retry" ? "Retried" : "Flushed"} ${json.affected_count ?? 0} items from ${queue}`);
+            await fetchData();
+        } else {
+            showError(`Failed to ${action} queue: ${queue}`);
+        }
+    }
+
+    async function handlePurgeConfirm() {
+        if (!purgeTarget) return;
+        setPurgeLoading(true);
+        try {
+            const res = await authedFetch(`/api/superadmin/monitoring/queues/${purgeTarget.queue}/purge`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+            });
+            if (res.ok) {
+                const json = await res.json();
+                showSuccess(`Purged ${json.affected_count ?? 0} items from ${purgeTarget.label}`);
+                await fetchData();
+            } else {
+                showError(`Failed to purge ${purgeTarget.label}`);
+            }
+        } finally {
+            setPurgeLoading(false);
+            setPurgeTarget(null);
+        }
+    }
 
     const services = health?.services;
 
@@ -172,6 +219,120 @@ export default function MonitoringPage() {
                     />
                 </div>
 
+                {/* Queue management actions */}
+                <div className="mt-6 space-y-4">
+                    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Queue Management</h3>
+
+                    {/* Notifications queue */}
+                    <div className="rounded-lg border border-gray-800 bg-gray-950/50 p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-white">Notification Queue</p>
+                                <p className="text-xs text-gray-500">
+                                    {queues?.notification_queue.failed ?? 0} failed · {queues?.notification_queue.dead_letters ?? 0} dead letters
+                                </p>
+                            </div>
+                            <StatusDot status={queueStatus(queues?.notification_queue.pending ?? 0)} label="" />
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <ConfirmActionButton
+                                label="Retry Failed"
+                                confirmLabel="Retry All"
+                                icon={<RotateCcw className="h-3.5 w-3.5" />}
+                                disabled={(queues?.notification_queue.failed ?? 0) === 0}
+                                onConfirm={() => handleQueueAction("notifications", "retry")}
+                            />
+                            <ConfirmActionButton
+                                label="Flush Dead Letters"
+                                confirmLabel="Retry Dead Letters"
+                                icon={<RotateCcw className="h-3.5 w-3.5" />}
+                                disabled={(queues?.notification_queue.dead_letters ?? 0) === 0}
+                                onConfirm={() => handleQueueAction("dead-letters", "retry")}
+                            />
+                            <ConfirmActionButton
+                                label="Clean Up"
+                                confirmLabel="Flush Completed"
+                                icon={<Eraser className="h-3.5 w-3.5" />}
+                                onConfirm={() => handleQueueAction("notifications", "flush")}
+                            />
+                            <button
+                                onClick={() => setPurgeTarget({ queue: "notifications", label: "Notification Queue" })}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-red-800/50 bg-red-950/20 px-3 py-2 text-sm text-red-300
+                                           transition-colors hover:border-red-700 hover:bg-red-950/30"
+                            >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                Purge All
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Social queue */}
+                    <div className="rounded-lg border border-gray-800 bg-gray-950/50 p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-white">Social Post Queue</p>
+                                <p className="text-xs text-gray-500">{queues?.social_post_queue.pending ?? 0} pending</p>
+                            </div>
+                            <StatusDot status={queueStatus(queues?.social_post_queue.pending ?? 0, 20)} label="" />
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <ConfirmActionButton
+                                label="Retry Failed"
+                                confirmLabel="Retry All"
+                                icon={<RotateCcw className="h-3.5 w-3.5" />}
+                                onConfirm={() => handleQueueAction("social", "retry")}
+                            />
+                            <ConfirmActionButton
+                                label="Clean Up"
+                                confirmLabel="Flush Completed"
+                                icon={<Eraser className="h-3.5 w-3.5" />}
+                                onConfirm={() => handleQueueAction("social", "flush")}
+                            />
+                            <button
+                                onClick={() => setPurgeTarget({ queue: "social", label: "Social Post Queue" })}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-red-800/50 bg-red-950/20 px-3 py-2 text-sm text-red-300
+                                           transition-colors hover:border-red-700 hover:bg-red-950/30"
+                            >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                Purge All
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* PDF queue */}
+                    <div className="rounded-lg border border-gray-800 bg-gray-950/50 p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-white">PDF Extraction Queue</p>
+                                <p className="text-xs text-gray-500">{queues?.pdf_queue.pending ?? 0} pending</p>
+                            </div>
+                            <StatusDot status={queueStatus(queues?.pdf_queue.pending ?? 0, 20)} label="" />
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            <ConfirmActionButton
+                                label="Retry Failed"
+                                confirmLabel="Retry All"
+                                icon={<RotateCcw className="h-3.5 w-3.5" />}
+                                onConfirm={() => handleQueueAction("pdf", "retry")}
+                            />
+                            <ConfirmActionButton
+                                label="Clean Up"
+                                confirmLabel="Flush Completed"
+                                icon={<Eraser className="h-3.5 w-3.5" />}
+                                onConfirm={() => handleQueueAction("pdf", "flush")}
+                            />
+                            <button
+                                onClick={() => setPurgeTarget({ queue: "pdf", label: "PDF Extraction Queue" })}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-red-800/50 bg-red-950/20 px-3 py-2 text-sm text-red-300
+                                           transition-colors hover:border-red-700 hover:bg-red-950/30"
+                            >
+                                <Trash2 className="h-3.5 w-3.5" />
+                                Purge All
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Oldest pending */}
                 {(queues?.notification_queue.oldest_pending_minutes ?? 0) > 5 && (
                     <div className="mt-4 p-3 rounded-lg bg-amber-950/30 border border-amber-900/40">
@@ -183,19 +344,20 @@ export default function MonitoringPage() {
                 )}
             </div>
 
-            {/* PDF queue */}
-            {(queues?.pdf_queue.pending ?? 0) > 0 && (
-                <div className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex items-center justify-between">
-                    <div>
-                        <p className="text-sm text-gray-300 font-medium">PDF Extraction Queue</p>
-                        <p className="text-xs text-gray-500">Pending items awaiting processing</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <span className="text-xl font-bold text-amber-400">{queues?.pdf_queue.pending}</span>
-                        <StatusDot status={queueStatus(queues?.pdf_queue.pending ?? 0, 20)} label="" />
-                    </div>
-                </div>
+            {/* Purge confirmation modal */}
+            {purgeTarget && (
+                <ConfirmDangerModal
+                    open={true}
+                    title={`Purge ${purgeTarget.label}`}
+                    message={`This will permanently delete ALL items from the ${purgeTarget.label}, including pending items. This cannot be undone.`}
+                    onConfirm={handlePurgeConfirm}
+                    onCancel={() => setPurgeTarget(null)}
+                    loading={purgeLoading}
+                />
             )}
+
+            {/* Toast notifications */}
+            <ActionToast {...toast} onDismiss={dismiss} />
         </div>
     );
 }

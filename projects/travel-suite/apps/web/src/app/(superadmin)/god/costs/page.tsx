@@ -9,6 +9,10 @@ import StackedCostChart from "@/components/god-mode/StackedCostChart";
 import TimeRangePicker from "@/components/god-mode/TimeRangePicker";
 import DrillDownTable from "@/components/god-mode/DrillDownTable";
 import StatCard from "@/components/god-mode/StatCard";
+import InlineEditField from "@/components/god-mode/InlineEditField";
+import ExportButton from "@/components/god-mode/ExportButton";
+import ActionToast, { useActionToast } from "@/components/god-mode/ActionToast";
+import { authedFetch } from "@/lib/api/authed-fetch";
 import type { TableColumn } from "@/components/god-mode/DrillDownTable";
 
 interface CategoryRow {
@@ -88,6 +92,26 @@ export default function CostsPage() {
     const [trendData, setTrendData] = useState<TrendDay[]>([]);
     const [loading, setLoading] = useState(true);
     const orgId = searchParams.get("orgId");
+    const { toast, showSuccess, showError, dismiss } = useActionToast();
+
+    async function handleUpdateCap(category: string, newCapStr: string) {
+        const newCap = parseFloat(newCapStr);
+        if (isNaN(newCap) || newCap < 0) {
+            showError("Invalid cap value");
+            return;
+        }
+        const res = await authedFetch("/api/superadmin/cost/aggregate", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ category, cap_usd: newCap }),
+        });
+        if (res.ok) {
+            showSuccess(`Cap for ${CATEGORY_LABELS[category] ?? category} updated to $${newCap}`);
+            await fetchData();
+        } else {
+            showError("Failed to update cap");
+        }
+    }
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -204,9 +228,14 @@ export default function CostsPage() {
                                 style={{ width: `${Math.min(100, cat.utilization_pct)}%` }}
                             />
                         </div>
-                        <p className="text-xs text-gray-500">
-                            Cap: ${cat.cap_usd} / day
-                        </p>
+                        <InlineEditField
+                            value={String(cat.cap_usd)}
+                            displayValue={`Cap: $${cat.cap_usd} / day`}
+                            label=""
+                            fieldType="text"
+                            onSave={(v) => handleUpdateCap(cat.category, v)}
+                            className="text-xs text-gray-500"
+                        />
                     </div>
                 ))}
             </div>
@@ -225,9 +254,21 @@ export default function CostsPage() {
 
             {/* Per-org table */}
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-                <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
-                    Per-Organization MTD Spend
-                </h2>
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
+                        Per-Organization MTD Spend
+                    </h2>
+                    <ExportButton
+                        data={(costData?.by_org ?? []) as Record<string, unknown>[]}
+                        filename="god-mode-costs-by-org"
+                        columns={[
+                            { key: "org_name", label: "Organization" },
+                            { key: "tier", label: "Tier" },
+                            { key: "mtd_usd", label: "MTD Spend (USD)" },
+                            { key: "requests", label: "Requests" },
+                        ]}
+                    />
+                </div>
                 <DrillDownTable<OrgRow>
                     columns={ORG_COLS}
                     data={costData?.by_org ?? []}
@@ -236,6 +277,9 @@ export default function CostsPage() {
                     emptyMessage="No cost data available"
                 />
             </div>
+
+            {/* Toast notifications */}
+            <ActionToast {...toast} onDismiss={dismiss} />
         </div>
     );
 }
