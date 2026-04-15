@@ -7,6 +7,7 @@ import { QueryProvider } from "./query-provider";
 import { DemoModeProvider } from "@/lib/demo/demo-mode-context";
 import { SessionRefreshGuard } from "./SessionRefreshGuard";
 import { SentryUserContext } from "./SentryUserContext";
+import { PostHogUserIdentity } from "./PostHogUserIdentity";
 
 export default function AppProviders({ children }: { children: React.ReactNode }) {
     return (
@@ -17,6 +18,7 @@ export default function AppProviders({ children }: { children: React.ReactNode }
                     <QueryProvider>
                         <SessionRefreshGuard />
                         <SentryUserContext />
+                        <PostHogUserIdentity />
                         {children}
                     </QueryProvider>
                     <AlertToToastBridge />

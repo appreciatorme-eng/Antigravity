@@ -48,6 +48,12 @@ export function PostHogProvider({ children }: { children: React.ReactNode }) {
       api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com",
       capture_pageview: false,
       person_profiles: "identified_only",
+      enable_heatmaps: true,
+      session_recording: {
+        // Mask inputs by default for privacy; text nodes are still captured.
+        maskAllInputs: true,
+        maskInputOptions: { password: true },
+      },
     });
 
     // Capture initial pageview here — PageViewTracker fires before init due to React's
