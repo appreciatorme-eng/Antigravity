@@ -122,13 +122,12 @@ export async function checkSentryRuntime(): Promise<RuntimeProbe> {
     if (!dsn) {
         return { status: "unknown", latency_ms: -1, detail: "SENTRY_DSN missing", configured: false };
     }
-    let endpoint = "";
     try {
-        const parsed = new URL(dsn);
-        endpoint = `${parsed.protocol}//${parsed.host}/api/0/`;
+        new URL(dsn); // validate DSN is parseable
     } catch {
         return { status: "degraded", latency_ms: -1, detail: "Invalid DSN format", configured: true };
     }
+    const endpoint = "https://sentry.io/api/0/";
     const result = await timedFetch(endpoint, { method: "GET" });
     if (result.error) {
         return { status: "down", latency_ms: result.latencyMs, detail: result.error, configured: true };
