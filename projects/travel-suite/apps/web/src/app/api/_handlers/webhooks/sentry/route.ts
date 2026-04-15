@@ -21,6 +21,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { waitUntil } from "@vercel/functions";
 import { timingSafeEqual } from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logError, logEvent, getRequestId, getRequestContext } from "@/lib/observability/logger";
@@ -340,16 +341,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             sentry_level: issue.level,
         });
 
-        // Fire-and-forget chain: persist first (to detect regression), then Slack
-        persistErrorEvent(issue, ctx)
-            .then((isRegression) =>
-                postToSlack(issue, isRegression).catch((err) =>
-                    logError("Failed to post Sentry event to Slack", err, ctx)
+        // waitUntil keeps the Vercel function alive after the response is sent
+        waitUntil(
+            persistErrorEvent(issue, ctx)
+                .then((isRegression) =>
+                    postToSlack(issue, isRegression).catch((err) =>
+                        logError("Failed to post Sentry event to Slack", err, ctx)
+                    )
                 )
-            )
-            .catch((err) =>
-                logError("Failed to persist Sentry error event to DB", err, ctx)
-            );
+                .catch((err) =>
+                    logError("Failed to persist Sentry error event to DB", err, ctx)
+                )
+        );
 
         return NextResponse.json({ ok: true });
     }
