@@ -10,6 +10,7 @@ import {
     ArrowRight,
     Bookmark,
     Building2,
+    ExternalLink,
     LifeBuoy,
     Megaphone,
     Power,
@@ -1205,6 +1206,18 @@ export default function GodCommandCenter() {
                                             </Link>
                                         );
                                     })}
+                                    <a
+                                        href="https://us.posthog.com"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center justify-between rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white"
+                                    >
+                                        <span className="inline-flex items-center gap-2">
+                                            <ExternalLink className="w-4 h-4" />
+                                            PostHog
+                                        </span>
+                                        <ArrowRight className="w-4 h-4" />
+                                    </a>
                                 </div>
                             </section>
 
