@@ -14,7 +14,6 @@ import {
     checkWhatsappRuntime,
 } from "@/lib/platform/runtime-probes";
 import { buildGodDataQuality, pickGodKpiContracts } from "@/lib/platform/god-kpi";
-import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
 
 type Severity = "critical" | "high" | "medium";
 type HealthStatus = "healthy" | "degraded" | "down" | "unknown";
@@ -252,6 +251,12 @@ export async function GET(request: NextRequest) {
             todayFatalErrorsResult,
             yesterdayFatalErrorsResult,
             allOrganizationsResult,
+            supportRowsResult,
+            errorRowsResult,
+            invoiceRowsResult,
+            currentProposalRowsResult,
+            previousProposalRowsResult,
+            expiringProposalRowsResult,
             aiUsageRowsResult,
             auditLogRowsResult,
             pendingNotificationCountResult,
@@ -289,6 +294,42 @@ export async function GET(request: NextRequest) {
             db.from("error_events").select("id", { count: "exact", head: true }).eq("level", "fatal").gte("created_at", yesterdayStart.toISOString()).lt("created_at", todayStart.toISOString()),
             db.from("organizations").select("id, name, subscription_tier, created_at"),
             db
+                .from("support_tickets")
+                .select("id, title, priority, status, created_at, profiles!support_tickets_user_id_fkey(full_name, email, organization_id)")
+                .in("status", ["open", "in_progress"])
+                .order("created_at", { ascending: true })
+                .limit(80),
+            db
+                .from("error_events")
+                .select("id, title, level, status, created_at, first_seen_at, event_count, user_count")
+                .in("status", ["open", "investigating"])
+                .order("created_at", { ascending: false })
+                .limit(80),
+            db
+                .from("invoices")
+                .select("id, invoice_number, status, due_date, balance_amount, total_amount, organization_id")
+                .gt("balance_amount", 0)
+                .in("status", ["issued", "partially_paid", "overdue"])
+                .limit(600),
+            db
+                .from("proposals")
+                .select("id, status, total_price, client_selected_price")
+                .gte("created_at", rangeStart)
+                .limit(600),
+            db
+                .from("proposals")
+                .select("id, status, total_price, client_selected_price")
+                .gte("created_at", previousRangeStart)
+                .lt("created_at", rangeStart)
+                .limit(600),
+            db
+                .from("proposals")
+                .select("id, title, status, expires_at, total_price, client_selected_price, organization_id")
+                .not("expires_at", "is", null)
+                .gte("expires_at", now.toISOString())
+                .lte("expires_at", threeDaysOut)
+                .limit(40),
+            db
                 .from("organization_ai_usage")
                 .select("organization_id, estimated_cost_usd, ai_requests")
                 .eq("month_start", monthStart.toISOString().slice(0, 10)),
@@ -321,68 +362,6 @@ export async function GET(request: NextRequest) {
             readRedisSpendFor(yesterdayStart.toISOString().slice(0, 10)),
         ]);
 
-        const [
-            fullSupportRows,
-            fullErrorRows,
-            fullInvoiceRows,
-            fullCurrentProposalRows,
-            fullPreviousProposalRows,
-            fullExpiringProposalRows,
-        ] = await Promise.all([
-            fetchAllPages<SupportTicketRow>((from, to) => (
-                db
-                    .from("support_tickets")
-                    .select("id, title, priority, status, created_at, profiles!support_tickets_user_id_fkey(full_name, email, organization_id)")
-                    .in("status", ["open", "in_progress"])
-                    .order("created_at", { ascending: true })
-                    .range(from, to)
-            )),
-            fetchAllPages<ErrorEventRow>((from, to) => (
-                db
-                    .from("error_events")
-                    .select("id, title, level, status, created_at, first_seen_at, event_count, user_count")
-                    .in("status", ["open", "investigating"])
-                    .order("created_at", { ascending: false })
-                    .range(from, to)
-            )),
-            fetchAllPages<InvoiceRow>((from, to) => (
-                db
-                    .from("invoices")
-                    .select("id, invoice_number, status, due_date, balance_amount, total_amount, organization_id")
-                    .gt("balance_amount", 0)
-                    .in("status", ["issued", "partially_paid", "overdue"])
-                    .order("due_date", { ascending: true })
-                    .range(from, to)
-            )),
-            fetchAllPages<ProposalRow>((from, to) => (
-                db
-                    .from("proposals")
-                    .select("id, status, total_price, client_selected_price")
-                    .gte("created_at", rangeStart)
-                    .order("created_at", { ascending: false })
-                    .range(from, to)
-            )),
-            fetchAllPages<ProposalRow>((from, to) => (
-                db
-                    .from("proposals")
-                    .select("id, status, total_price, client_selected_price")
-                    .gte("created_at", previousRangeStart)
-                    .lt("created_at", rangeStart)
-                    .order("created_at", { ascending: false })
-                    .range(from, to)
-            )),
-            fetchAllPages<ProposalRow>((from, to) => (
-                db
-                    .from("proposals")
-                    .select("id, title, status, expires_at, total_price, client_selected_price, organization_id")
-                    .not("expires_at", "is", null)
-                    .gte("expires_at", now.toISOString())
-                    .lte("expires_at", threeDaysOut)
-                    .order("expires_at", { ascending: true })
-                    .range(from, to)
-            )),
-        ]);
-
         const organizations = (allOrganizationsResult.data ?? []) as OrganizationRow[];
         const organizationMap = new Map(
             organizations.map((organization) => [
@@ -413,7 +392,7 @@ export async function GET(request: NextRequest) {
             0,
         );
 
-        const invoiceRows = fullInvoiceRows;
+        const invoiceRows = (invoiceRowsResult.data ?? []) as InvoiceRow[];
         const overdueInvoices = invoiceRows.filter((row) => {
             if (!row.due_date) return false;
             return new Date(row.due_date).getTime() < tomorrowStart.getTime();
@@ -432,9 +411,9 @@ export async function GET(request: NextRequest) {
             0,
         );
 
-        const currentProposalRows = fullCurrentProposalRows;
-        const previousProposalRows = fullPreviousProposalRows;
-        const expiringProposalRows = [...fullExpiringProposalRows].sort((left, right) => {
+        const currentProposalRows = (currentProposalRowsResult.data ?? []) as ProposalRow[];
+        const previousProposalRows = (previousProposalRowsResult.data ?? []) as ProposalRow[];
+        const expiringProposalRows = ((expiringProposalRowsResult.data ?? []) as ProposalRow[]).sort((left, right) => {
             return new Date(left.expires_at ?? 0).getTime() - new Date(right.expires_at ?? 0).getTime();
         });
         const wonStatuses = new Set(["approved", "partially_paid", "fully_paid"]);
@@ -449,7 +428,7 @@ export async function GET(request: NextRequest) {
             : null;
         const expiringProposalValue = expiringProposalRows.reduce((sum, row) => sum + proposalValue(row), 0);
 
-        const supportRows = [...fullSupportRows].sort((left, right) => {
+        const supportRows = ((supportRowsResult.data ?? []) as SupportTicketRow[]).sort((left, right) => {
             const priorityRank = { urgent: 0, high: 1, medium: 2, low: 3 };
             const leftRank = priorityRank[left.priority as keyof typeof priorityRank] ?? 4;
             const rightRank = priorityRank[right.priority as keyof typeof priorityRank] ?? 4;
@@ -477,7 +456,7 @@ export async function GET(request: NextRequest) {
             supportLoad.set(orgId, current);
         }
 
-        const errorRows = [...fullErrorRows].sort((left, right) => {
+        const errorRows = ((errorRowsResult.data ?? []) as ErrorEventRow[]).sort((left, right) => {
             const levelRank = { fatal: 0, error: 1, warning: 2, info: 3, debug: 4 };
             const leftRank = levelRank[left.level as keyof typeof levelRank] ?? 5;
             const rightRank = levelRank[right.level as keyof typeof levelRank] ?? 5;
@@ -973,7 +952,7 @@ export async function GET(request: NextRequest) {
                     "invoices",
                     "proposals",
                     "organization_ai_usage",
-                ]),
+                ], { completeness: "partial", sampled: true }),
                 kpi_contracts: pickGodKpiContracts(["total_users", "notification_pending"]),
             },
         });
