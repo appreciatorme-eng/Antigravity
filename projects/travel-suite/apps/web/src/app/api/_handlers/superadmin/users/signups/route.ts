@@ -31,9 +31,25 @@ export async function GET(request: NextRequest) {
     const dateEnd = date ? `${date}T23:59:59.999Z` : null;
 
     try {
+        type ProfileRow = {
+            id: string;
+            full_name: string | null;
+            email: string | null;
+            phone: string | null;
+            role: string | null;
+            avatar_url: string | null;
+            organization_id: string | null;
+            created_at: string | null;
+        };
+        type OrganizationRow = {
+            id: string;
+            name: string | null;
+            subscription_tier: string | null;
+        };
+
         let profilesQuery = adminClient
             .from("profiles")
-            .select("id, full_name, email, phone, role, avatar_url, organization_id, created_at, organizations(name, subscription_tier)", { count: "exact" })
+            .select("id, full_name, email, phone, role, avatar_url, organization_id, created_at", { count: "exact" })
             .order("created_at", { ascending: false })
             .range(page * limit, (page + 1) * limit - 1);
 
@@ -49,7 +65,27 @@ export async function GET(request: NextRequest) {
                 : adminClient.from("organizations").select("id", { count: "exact", head: true }),
         ]);
 
-        const recentRows = (profilesResult.data ?? []).map((p) => ({
+        const profileRows = (profilesResult.data ?? []) as ProfileRow[];
+        const organizationIds = Array.from(new Set(
+            profileRows
+                .map((row) => row.organization_id)
+                .filter((value): value is string => Boolean(value)),
+        ));
+        let organizationLookup = new Map<string, { name: string | null; tier: string | null }>();
+        if (organizationIds.length > 0) {
+            const orgsResult = await adminClient
+                .from("organizations")
+                .select("id, name, subscription_tier")
+                .in("id", organizationIds);
+            organizationLookup = new Map(
+                ((orgsResult.data ?? []) as OrganizationRow[]).map((org) => [
+                    org.id,
+                    { name: org.name, tier: org.subscription_tier },
+                ]),
+            );
+        }
+
+        const recentRows = profileRows.map((p) => ({
             id: p.id,
             full_name: p.full_name,
             email: p.email,
@@ -57,8 +93,8 @@ export async function GET(request: NextRequest) {
             role: p.role,
             avatar_url: p.avatar_url,
             org_id: p.organization_id,
-            org_name: (p.organizations as { name?: string } | null)?.name ?? null,
-            org_tier: (p.organizations as { subscription_tier?: string } | null)?.subscription_tier ?? null,
+            org_name: p.organization_id ? (organizationLookup.get(p.organization_id)?.name ?? null) : null,
+            org_tier: p.organization_id ? (organizationLookup.get(p.organization_id)?.tier ?? null) : null,
             created_at: p.created_at,
         }));
 
