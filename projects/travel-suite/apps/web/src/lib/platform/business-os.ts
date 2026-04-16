@@ -575,7 +575,14 @@ function buildChangedSinceReview(
     return [`No major account events have landed since the last review on ${new Date(reviewedAt).toLocaleDateString()}.`];
 }
 
-function buildPendingItems(detail: AccountDetail, account: BusinessOsAccountRow): string[] {
+function buildPendingItems(
+    detail: AccountDetail,
+    account: BusinessOsAccountRow,
+    context?: {
+        commsSequences?: GodCommsSequence[];
+        commitments?: GodCommitment[];
+    },
+): string[] {
     const pending: string[] = [];
     if (detail.work_items.length > 0) pending.push(`${detail.work_items.length} open work items`);
     if (detail.snapshot.overdue_invoice_count > 0) pending.push(`${detail.snapshot.overdue_invoice_count} overdue invoices`);
@@ -589,6 +596,27 @@ function buildPendingItems(detail: AccountDetail, account: BusinessOsAccountRow)
     if (detail.account_state.next_action) {
         pending.push(`Promised next step: ${detail.account_state.next_action}`);
     }
+
+    const now = Date.now();
+    const commitments = context?.commitments ?? [];
+    const openCommitments = commitments.filter((commitment) => commitment.status === "open");
+    const breachedCommitments = commitments.filter((commitment) => {
+        if (commitment.status === "breached") return true;
+        if (commitment.status !== "open" || !commitment.due_at) return false;
+        return new Date(commitment.due_at).getTime() < now;
+    });
+    if (openCommitments.length > 0) pending.push(`${openCommitments.length} open commitments`);
+    if (breachedCommitments.length > 0) pending.push(`${breachedCommitments.length} breached commitments`);
+
+    const commsSequences = context?.commsSequences ?? [];
+    const activeComms = commsSequences.filter((sequence) => sequence.status === "active");
+    const overdueCommsFollowUps = activeComms.filter((sequence) => {
+        if (!sequence.next_follow_up_at) return false;
+        return new Date(sequence.next_follow_up_at).getTime() < now;
+    });
+    if (activeComms.length > 0) pending.push(`${activeComms.length} active comms sequences`);
+    if (overdueCommsFollowUps.length > 0) pending.push(`${overdueCommsFollowUps.length} overdue comms follow-ups`);
+
     return pending;
 }
 
@@ -1209,6 +1237,10 @@ async function buildOrgMemory(
     db: AdminClient,
     detail: AccountDetail,
     account: BusinessOsAccountRow,
+    context?: {
+        commsSequences?: GodCommsSequence[];
+        commitments?: GodCommitment[];
+    },
 ): Promise<BusinessOsAccountDetail["org_memory"]> {
     const [recentEvents, notes] = await Promise.all([
         listOrgActivityEvents(db, detail.organization.id, 12),
@@ -1217,7 +1249,7 @@ async function buildOrgMemory(
 
     return {
         support_ready_summary: buildSupportReadySummary(detail, account),
-        pending_items: buildPendingItems(detail, account),
+        pending_items: buildPendingItems(detail, account, context),
         recent_events: recentEvents,
         notes,
     };
@@ -1393,12 +1425,15 @@ export async function buildBusinessOsPayload(
                 open_work_item_count: detail.work_items.length,
                 risk: "healthy",
             });
-            const [context, orgMemory, commsSequences, commitments] = await Promise.all([
+            const [context, commsSequences, commitments] = await Promise.all([
                 loadAccountContext(db, detail),
-                buildOrgMemory(db, detail, matchingRow),
                 loadCommsSequences(db, detail.organization.id, "all"),
                 loadCommitments(db, detail.organization.id, "all"),
             ]);
+            const orgMemory = await buildOrgMemory(db, detail, matchingRow, {
+                commsSequences,
+                commitments,
+            });
             const now = Date.now();
             const breachedCommitments = commitments.filter((commitment) => {
                 if (commitment.status === "breached") return true;

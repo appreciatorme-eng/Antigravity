@@ -138,6 +138,13 @@ type MemoryNoteDraft = {
     pinned: boolean;
 };
 
+type ActivitySourceFilter = "all" | "business_os" | "business_os_ops_loop" | "support_queue" | "support_response" | "system";
+
+type ActivityFeedResponse = {
+    events: BusinessOsAccountDetail["org_memory"]["recent_events"];
+    next_cursor: string | null;
+};
+
 function toDateInput(value: string | null | undefined): string {
     if (!value) return "";
     return value.slice(0, 10);
@@ -176,6 +183,11 @@ export default function BusinessOsPage() {
     const [recordingOutcomeId, setRecordingOutcomeId] = useState<string | null>(null);
     const [savingComms, setSavingComms] = useState(false);
     const [savingCommitment, setSavingCommitment] = useState(false);
+    const [activitySource, setActivitySource] = useState<ActivitySourceFilter>("all");
+    const [activityFeed, setActivityFeed] = useState<BusinessOsAccountDetail["org_memory"]["recent_events"]>([]);
+    const [activityCursor, setActivityCursor] = useState<string | null>(null);
+    const [loadingActivity, setLoadingActivity] = useState(false);
+    const [loadingMoreActivity, setLoadingMoreActivity] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [message, setMessage] = useState<string | null>(null);
     const [rightTab, setRightTab] = useState<"operate" | "growth">("operate");
@@ -253,6 +265,35 @@ export default function BusinessOsPage() {
         }
     }
 
+    async function loadActivityFeed(options?: { append?: boolean; source?: ActivitySourceFilter }) {
+        const selectedAccount = data?.selected_account;
+        if (!selectedAccount) return;
+
+        const append = Boolean(options?.append);
+        const source = options?.source ?? activitySource;
+        const cursor = append ? activityCursor : null;
+
+        if (append) setLoadingMoreActivity(true);
+        else setLoadingActivity(true);
+
+        try {
+            const params = new URLSearchParams();
+            params.set("limit", "20");
+            if (source !== "all") params.set("source", source);
+            if (cursor) params.set("cursor", cursor);
+            const response = await authedFetch(`/api/superadmin/accounts/${selectedAccount.organization.id}/activity?${params.toString()}`);
+            if (!response.ok) throw new Error("Failed to load org activity log");
+            const payload = await response.json() as ActivityFeedResponse;
+            setActivityFeed((current) => append ? [...current, ...payload.events] : payload.events);
+            setActivityCursor(payload.next_cursor);
+        } catch (loadError) {
+            setError(loadError instanceof Error ? loadError.message : "Failed to load org activity log");
+        } finally {
+            if (append) setLoadingMoreActivity(false);
+            else setLoadingActivity(false);
+        }
+    }
+
     useEffect(() => {
         const controller = new AbortController();
         const timer = window.setTimeout(() => {
@@ -298,6 +339,18 @@ export default function BusinessOsPage() {
             due_at: current.due_at || toDateInput(selected.account_state.next_action_due_at),
         }));
     }, [data?.selected_account?.organization.id]);
+
+    useEffect(() => {
+        const selected = data?.selected_account;
+        if (!selected) {
+            setActivityFeed([]);
+            setActivityCursor(null);
+            return;
+        }
+        setActivityFeed(selected.org_memory.recent_events);
+        setActivityCursor(null);
+        void loadActivityFeed({ append: false, source: activitySource });
+    }, [data?.selected_account?.organization.id, activitySource]);
 
     function applyAiSuggestion(kind: "next" | "playbook" | "note" | "work-item" | "outreach") {
         const ai = data?.selected_account?.ai;
@@ -1908,9 +1961,32 @@ export default function BusinessOsPage() {
                                                         </div>
                                                     </div>
                                                     <div className="rounded-lg border border-gray-800 bg-gray-950/40 p-3">
-                                                        <div className="text-xs uppercase tracking-wide text-gray-500">Recent org events</div>
+                                                        <div className="flex items-center justify-between gap-3">
+                                                            <div className="text-xs uppercase tracking-wide text-gray-500">Org operating log</div>
+                                                            <div className="flex items-center gap-2">
+                                                                <select
+                                                                    value={activitySource}
+                                                                    onChange={(event) => setActivitySource(event.target.value as ActivitySourceFilter)}
+                                                                    className="rounded-md border border-gray-800 bg-black/30 px-2 py-1 text-[11px] text-white outline-none focus:border-amber-700/60"
+                                                                >
+                                                                    <option value="all">All sources</option>
+                                                                    <option value="business_os">Business OS</option>
+                                                                    <option value="business_os_ops_loop">AI ops loop</option>
+                                                                    <option value="support_queue">Support queue</option>
+                                                                    <option value="support_response">Support response</option>
+                                                                    <option value="system">System</option>
+                                                                </select>
+                                                                <button
+                                                                    onClick={() => void loadActivityFeed({ append: false, source: activitySource })}
+                                                                    disabled={loadingActivity}
+                                                                    className="rounded-md border border-gray-800 px-2 py-1 text-[11px] text-gray-300 hover:border-gray-700 hover:text-white disabled:opacity-60"
+                                                                >
+                                                                    {loadingActivity ? "Loading..." : "Refresh"}
+                                                                </button>
+                                                            </div>
+                                                        </div>
                                                         <div className="mt-2 space-y-2">
-                                                            {selected.org_memory.recent_events.length > 0 ? selected.org_memory.recent_events.map((event) => (
+                                                            {activityFeed.length > 0 ? activityFeed.map((event) => (
                                                                 <div key={event.id} className="rounded-lg border border-gray-800 bg-black/30 px-3 py-2">
                                                                     <div className="flex items-center justify-between gap-3">
                                                                         <div className="text-sm text-white">{event.title}</div>
@@ -1919,8 +1995,11 @@ export default function BusinessOsPage() {
                                                                     <div className="mt-1 text-xs text-gray-400">
                                                                         {event.detail ?? event.event_type.replaceAll("_", " ")}
                                                                     </div>
-                                                                    <div className="mt-1 text-[11px] text-gray-500">
-                                                                        {event.actor_name ?? "System"} • {event.source.replaceAll("_", " ")}
+                                                                    <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-gray-500">
+                                                                        <span>{event.actor_name ?? "System"} • {event.source.replaceAll("_", " ")}</span>
+                                                                        <span className="rounded border border-gray-800 bg-gray-950/60 px-1.5 py-0.5">
+                                                                            {event.event_type.replaceAll("_", " ")}
+                                                                        </span>
                                                                     </div>
                                                                 </div>
                                                             )) : (
@@ -1928,6 +2007,15 @@ export default function BusinessOsPage() {
                                                                     No org events have been captured yet.
                                                                 </div>
                                                             )}
+                                                            {activityCursor ? (
+                                                                <button
+                                                                    onClick={() => void loadActivityFeed({ append: true, source: activitySource })}
+                                                                    disabled={loadingMoreActivity}
+                                                                    className="w-full rounded-lg border border-gray-800 bg-black/20 px-3 py-2 text-xs text-gray-300 hover:border-gray-700 hover:text-white disabled:opacity-60"
+                                                                >
+                                                                    {loadingMoreActivity ? "Loading older events..." : "Load older activity"}
+                                                                </button>
+                                                            ) : null}
                                                         </div>
                                                     </div>
                                                 </div>

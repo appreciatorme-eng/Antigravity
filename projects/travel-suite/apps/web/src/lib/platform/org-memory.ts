@@ -67,6 +67,12 @@ function cleanText(value: string | null | undefined): string | null {
     return trimmed ? trimmed : null;
 }
 
+function normalizeMetadata(value: unknown): Record<string, unknown> | null {
+    return value && typeof value === "object" && !Array.isArray(value)
+        ? value as Record<string, unknown>
+        : null;
+}
+
 async function loadProfileLookup(db: AdminClient, ids: string[]): Promise<Map<string, string>> {
     const uniqueIds = Array.from(new Set(ids.filter(Boolean)));
     if (!uniqueIds.length) return new Map();
@@ -117,6 +123,10 @@ export async function listOrgActivityEvents(db: AdminClient, orgId: string, limi
         .limit(limit);
 
     const rows = (result.data ?? []) as OrgActivityEventRow[];
+    return hydrateOrgActivityEvents(db, rows);
+}
+
+async function hydrateOrgActivityEvents(db: AdminClient, rows: OrgActivityEventRow[]): Promise<OrgActivityEvent[]> {
     const actorLookup = await loadProfileLookup(
         db,
         rows.map((row) => row.actor_id ?? "").filter(Boolean),
@@ -133,11 +143,51 @@ export async function listOrgActivityEvents(db: AdminClient, orgId: string, limi
         entity_type: cleanText(row.entity_type),
         entity_id: cleanText(row.entity_id),
         source: cleanText(row.source) ?? "system",
-        metadata: row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
-            ? row.metadata as Record<string, unknown>
-            : null,
+        metadata: normalizeMetadata(row.metadata),
         occurred_at: cleanText(row.occurred_at),
     }));
+}
+
+export async function listOrgActivityEventFeed(
+    db: AdminClient,
+    options: {
+        orgId: string;
+        limit?: number;
+        cursor?: string | null;
+        source?: string | "all" | null;
+        eventType?: string | "all" | null;
+        search?: string | null;
+    },
+): Promise<{ events: OrgActivityEvent[]; next_cursor: string | null }> {
+    const limit = Math.min(80, Math.max(5, options.limit ?? 25));
+    const source = cleanText(options.source);
+    const eventType = cleanText(options.eventType);
+    const cursor = cleanText(options.cursor);
+    const search = cleanText(options.search);
+
+    let query = db
+        .from("org_activity_events")
+        .select("id, org_id, actor_id, event_type, title, detail, entity_type, entity_id, source, metadata, occurred_at")
+        .eq("org_id", options.orgId)
+        .order("occurred_at", { ascending: false })
+        .limit(limit + 1);
+
+    if (source && source !== "all") query = query.eq("source", source);
+    if (eventType && eventType !== "all") query = query.eq("event_type", eventType);
+    if (cursor) query = query.lt("occurred_at", cursor);
+    if (search) query = query.or(`title.ilike.%${search}%,detail.ilike.%${search}%`);
+
+    const result = await query;
+    const rows = (result.data ?? []) as OrgActivityEventRow[];
+    const trimmedRows = rows.slice(0, limit);
+    const nextCursor = rows.length > limit
+        ? cleanText(trimmedRows[trimmedRows.length - 1]?.occurred_at ?? null)
+        : null;
+
+    return {
+        events: await hydrateOrgActivityEvents(db, trimmedRows),
+        next_cursor: nextCursor,
+    };
 }
 
 export async function listOrgMemoryNotes(db: AdminClient, orgId: string, limit = 10): Promise<OrgMemoryNote[]> {
