@@ -11,6 +11,7 @@ import { getPaymentClient, resolveCompanyState, wrapPaymentError } from './payme
 import { logPaymentEvent } from './payment-logger';
 import { ensureCustomer } from './customer-service';
 import { calculateGST } from '../tax/gst-calculator';
+import { sendHitlProposal } from '@/lib/god-slack';
 import type {
   CreateSubscriptionOptions,
   PaymentExecutionContext,
@@ -249,6 +250,36 @@ export async function cancelSubscription(
       },
       context
     );
+
+    // Churn Autopsy Pipeline Trigger
+    // Instantly generate a highly contextual counter-offer for the operator to approve in Slack
+    try {
+      const { data: usageData } = await supabase
+        .from('organization_ai_usage')
+        .select('ai_requests')
+        .eq('organization_id', subscription.organization_id)
+        .order('month_start', { ascending: false })
+        .limit(1)
+        .single();
+      
+      const requests = usageData?.ai_requests ?? 0;
+      let reasoning = "";
+      if (requests > 500) {
+        reasoning = `*Heavy AI User (${requests} requests)* cancelled their subscription.\n\nAI drafted save attempt: "Hi there! I noticed you cancelled, but you've been a power user of our AI tools. I'd love to offer you 50% off your next 3 months to stay with us. Just click here."`;
+      } else {
+        reasoning = `*Low usage (${requests} requests)* cancelled their subscription. They never reached the 'Aha!' moment.\n\nAI drafted exit survey: "Hi! I noticed you cancelled. We failed to show you the full value of the AI suite. Would you mind answering a 2-minute survey on why you left?"`;
+      }
+
+      await sendHitlProposal(
+        `Churn Alert: Auto-Save Attempt [Org: ${subscription.organization_id}]`,
+        reasoning,
+        `trigger_churn_email|org:${subscription.organization_id}`,
+        "critical"
+      );
+    } catch(e) {
+      console.error("Failed to trigger churn autopsy:", e);
+    }
+
   } catch (error) {
     wrapPaymentError(error, {
       code: 'payments_provider_error',

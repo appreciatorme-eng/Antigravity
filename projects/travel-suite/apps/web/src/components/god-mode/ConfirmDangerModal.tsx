@@ -9,12 +9,13 @@ import { cn } from "@/lib/utils";
 interface ConfirmDangerModalProps {
     open: boolean;
     title: string;
-    message: string;
+    message?: string;
     confirmLabel?: string;
     cancelLabel?: string;
     onConfirm: () => void;
     onCancel: () => void;
     loading?: boolean;
+    children?: React.ReactNode;
 }
 
 export default function ConfirmDangerModal({
@@ -26,6 +27,7 @@ export default function ConfirmDangerModal({
     onConfirm,
     onCancel,
     loading = false,
+    children,
 }: ConfirmDangerModalProps) {
     useEffect(() => {
         if (!open) return;
@@ -59,9 +61,10 @@ export default function ConfirmDangerModal({
                         </div>
                         <div>
                             <h3 id="confirm-danger-title" className="text-base font-bold text-white">{title}</h3>
-                            <p id="confirm-danger-desc" className="text-sm text-gray-400 mt-1">{message}</p>
+                            {message && <p id="confirm-danger-desc" className="text-sm text-gray-400 mt-1">{message}</p>}
                         </div>
                     </div>
+                    {children && <div className="mt-4">{children}</div>}
                     <div className="flex gap-3 mt-6 justify-end">
                         <button
                             onClick={onCancel}

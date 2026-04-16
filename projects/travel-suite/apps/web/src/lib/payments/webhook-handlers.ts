@@ -4,6 +4,7 @@ import { PaymentServiceError } from './errors';
 import { getPaymentClient, wrapPaymentError } from './payment-utils';
 import { logPaymentEvent } from './payment-logger';
 import { notifyOrganizationSubscriptionPaused } from './payment-notifications';
+import { sendHitlProposal } from '@/lib/god-slack';
 import { createInvoice } from './invoice-service';
 import type { PaymentExecutionContext, PaymentExecutionOptions } from './payment-types';
 import type { Database } from '@/lib/database.types';
@@ -204,6 +205,18 @@ export async function handlePaymentFailed(
           );
         }
       }
+    }
+
+    // Trigger AI Subscriptions Dunning Slack Proposal
+    // AI has analyzed the failure and drafted a recovery message for the operator.
+    if (subscriptionId) {
+      const reasoning = `Organization has experienced a failed payment (${errorCode}: ${errorDescription}). \n\nWe recommend sending a graceful WhatsApp recovery drafted via AI: "Hi there! It looks like your subscription renewal failed. We've granted a 3-day grace period so your app remains 100% active. Please update your card here."`;
+      await sendHitlProposal(
+        `Failed Payment Detected [Org: ${organizationId}]`,
+        reasoning,
+        `trigger_payment_recovery|org:${organizationId}`,
+        "high"
+      ).catch(e => console.error("Failed to send HITL proposal:", e));
     }
 
     await logPaymentEvent(

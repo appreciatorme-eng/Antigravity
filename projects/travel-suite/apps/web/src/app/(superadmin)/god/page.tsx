@@ -461,6 +461,7 @@ export default function GodCommandCenter() {
     const searchParams = useSearchParams();
     const { toast, showSuccess, showError, dismiss } = useActionToast();
     const [suspendTargetId, setSuspendTargetId] = useState<string | null>(null);
+    const [suspendReason, setSuspendReason] = useState("");
     const [suspending, setSuspending] = useState(false);
     const [data, setData] = useState<OverviewData | null>(null);
     const [loading, setLoading] = useState(true);
@@ -603,12 +604,16 @@ export default function GodCommandCenter() {
 
     async function handleSuspendOrg() {
         if (!suspendTargetId) return;
+        if (!suspendReason.trim()) {
+            showError("A reason is required to suspend an organization");
+            return;
+        }
         setSuspending(true);
         try {
             const res = await authedFetch("/api/superadmin/settings/org-suspend", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ org_id: suspendTargetId, action: "suspend", reason: "Suspended from Command Center watchlist" }),
+                body: JSON.stringify({ org_id: suspendTargetId, action: "suspend", reason: suspendReason.trim() }),
             });
             if (res.ok) {
                 showSuccess("Organization suspended instantly.");
@@ -622,6 +627,7 @@ export default function GodCommandCenter() {
         } finally {
             setSuspending(false);
             setSuspendTargetId(null);
+            setSuspendReason("");
         }
     }
 
@@ -1445,9 +1451,21 @@ export default function GodCommandCenter() {
                     title="Suspend organization?"
                     message="This will immediately disable all access for this organization. They will not be able to log in until unsuspended."
                     onConfirm={handleSuspendOrg}
-                    onCancel={() => setSuspendTargetId(null)}
+                    onCancel={() => { setSuspendTargetId(null); setSuspendReason(""); }}
                     loading={suspending}
-                />
+                >
+                    <div className="space-y-2">
+                        <label className="text-xs font-semibold text-gray-400 uppercase">Reason for suspension <span className="text-red-400">*</span></label>
+                        <input
+                            type="text"
+                            value={suspendReason}
+                            onChange={(e) => setSuspendReason(e.target.value)}
+                            placeholder="e.g. Overdue invoices, TOS Violation..."
+                            className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-red-500/50"
+                            autoFocus
+                        />
+                    </div>
+                </ConfirmDangerModal>
             )}
 
             <ActionToast {...toast} onDismiss={dismiss} />

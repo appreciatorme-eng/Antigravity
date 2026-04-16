@@ -2,6 +2,43 @@ import { apiSuccess, apiError } from "@/lib/api/response";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/database.types";
 import { logError } from "@/lib/observability/logger";
+import { sendOpsAlert, sendHitlProposal } from "@/lib/god-slack";
+
+// Lightweight keyword-based AI triage (no LLM cost, runs in-process)
+function triageTicket(title: string, description: string, priority: string): {
+    type: "urgent_bug" | "howto" | "billing" | "general";
+    suggestedResponse: string;
+} {
+    const text = `${title} ${description}`.toLowerCase();
+    // Urgent bug signals
+    if (
+        priority === "urgent" ||
+        ["crash", "down", "broken", "error", "500", "not working", "can't login", "cannot login", "data loss"]
+            .some(kw => text.includes(kw))
+    ) {
+        return { type: "urgent_bug", suggestedResponse: "" };
+    }
+    // How-to signals
+    if (["how", "how do i", "how to", "where do", "how can i", "what is", "steps to"].some(kw => text.includes(kw))) {
+        return {
+            type: "howto",
+            suggestedResponse:
+                `Hi! Thanks for reaching out. For your question about "${title}", ` +
+                `you can find step-by-step guidance in our Help Center at https://help.travelsuite.app. ` +
+                `If you need more help, reply and a human will follow up within 24 hours.`,
+        };
+    }
+    // Billing signals
+    if (["invoice", "payment", "billing", "charge", "refund", "subscription", "plan"].some(kw => text.includes(kw))) {
+        return {
+            type: "billing",
+            suggestedResponse:
+                `Hi! For billing questions like "${title}", please check your Billing page at /admin/billing. ` +
+                `If you see an unexpected charge, reply here and our billing team will investigate within 1 business day.`,
+        };
+    }
+    return { type: "general", suggestedResponse: "" };
+}
 
 const SUPPORT_TICKET_SELECT = [
     "admin_response",
@@ -67,6 +104,31 @@ export async function POST(req: Request) {
             logError("Error creating ticket", error);
             return apiError("Failed to create support ticket", 500);
         }
+
+        // ── AI Support Triage (Zero Inbox Protocol) ─────────────────────────────
+        // Runs synchronously but never blocks the HTTP response (errors are swallowed)
+        try {
+            const triage = triageTicket(title, description, priority);
+
+            if (triage.type === "urgent_bug") {
+                // Immediate Slack ops alert — skip HITL, fire directly
+                await sendOpsAlert(
+                    `🚨 *Urgent Bug Ticket Filed* by org \`${profile.organization_id}\`\n` +
+                    `*Title:* ${title}\n*Description:* ${description.slice(0, 300)}`
+                );
+            } else if (triage.type === "howto" || triage.type === "billing") {
+                // Propose a pre-drafted AI response via Slack HITL
+                await sendHitlProposal(
+                    `Auto-Respond to Ticket: "${title}"`,
+                    `AI classified this as a *${triage.type}* question and drafted the reply below.\n\n*Draft:* ${triage.suggestedResponse}`,
+                    `send_ticket_response|ticket:${data?.id}|org:${profile.organization_id}`,
+                    "medium"
+                );
+            }
+        } catch (triageErr) {
+            logError("AI triage error (non-fatal)", triageErr);
+        }
+        // ────────────────────────────────────────────────────────────────────────
 
         return apiSuccess(data);
     } catch (error) {

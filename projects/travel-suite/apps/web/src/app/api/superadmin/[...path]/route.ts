@@ -46,6 +46,7 @@ const routes = createCatchAllHandlers([
   ["audit-log", () => import("@/app/api/_handlers/superadmin/audit-log/route")],
   ["errors/:id", () => import("@/app/api/_handlers/superadmin/errors/route")],
   ["errors", () => import("@/app/api/_handlers/superadmin/errors/route")],
+  ["mcp", () => import("@/app/api/_handlers/superadmin/mcp/route")],
 ], { rateLimit: SUPERADMIN_RATE_LIMIT });
 
 export const { GET, POST, PATCH, PUT, DELETE, OPTIONS } = routes;

@@ -33,6 +33,7 @@
     "@json-render/core": "^0.15.0",
     "@json-render/react": "^0.15.0",
     "@json-render/shadcn": "^0.15.0",
+    "@modelcontextprotocol/sdk": "^1.6.0",
     "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-toast": "^1.2.15",
     "@react-email/components": "^1.0.10",
