@@ -9,6 +9,7 @@ import { logError } from "@/lib/observability/logger";
 import { getClientIpFromRequest, logPlatformAction } from "@/lib/platform/audit";
 import { type EscalationLevel, loadWorkItemMeta, saveWorkItemMeta } from "@/lib/platform/god-mode";
 import { buildAccountMetricsMap, buildBusinessImpact, loadGodAccountStateMap, loadWorkItemsForOrgAndTarget } from "@/lib/platform/god-accounts";
+import { recordOrgActivityEvent } from "@/lib/platform/org-memory";
 
 /**
  * The live DB has a support_tickets_user_id_fkey relationship that is not present
@@ -70,6 +71,23 @@ async function readOwnerProfile(db: UntypedClient, ownerId: string | null): Prom
         name: owner.full_name?.trim() || owner.email?.trim() || "Unknown",
         email: owner.email,
     };
+}
+
+async function lookupTicketOrgId(db: UntypedClient, ticketId: string): Promise<string | null> {
+    const result = await db
+        .from("support_tickets")
+        .select("profiles!support_tickets_user_id_fkey(organization_id, organizations(id))")
+        .eq("id", ticketId)
+        .maybeSingle();
+
+    const profile = result.data && typeof result.data === "object" && "profiles" in result.data
+        ? (result.data.profiles as {
+            organization_id?: string | null;
+            organizations?: { id?: string | null } | null;
+        } | null)
+        : null;
+
+    return profile?.organizations?.id ?? profile?.organization_id ?? null;
 }
 
 export async function GET(
@@ -232,6 +250,22 @@ export async function PATCH(
             },
             getClientIpFromRequest(request),
         );
+        const orgId = await lookupTicketOrgId(db, id);
+        await recordOrgActivityEvent(db, {
+            org_id: orgId,
+            actor_id: auth.userId,
+            event_type: "support_ticket_controls_updated",
+            title: "Updated support ticket controls",
+            detail: `${management.escalation_level.replaceAll("_", " ")} escalation${management.owner_id ? " • owner assigned" : ""}`,
+            entity_type: "ticket",
+            entity_id: id,
+            source: "support_queue",
+            metadata: {
+                owner_id: management.owner_id,
+                escalation_level: management.escalation_level,
+                sla_due_at: management.sla_due_at,
+            },
+        });
 
         return NextResponse.json({
             ok: true,

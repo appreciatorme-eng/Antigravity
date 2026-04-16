@@ -11,6 +11,7 @@ import {
     type AccountLifecycleStage,
     upsertGodAccountState,
 } from "@/lib/platform/god-accounts";
+import { recordOrgActivityEvent } from "@/lib/platform/org-memory";
 import { getClientIpFromRequest, logPlatformActionWithTarget } from "@/lib/platform/audit";
 import { logError } from "@/lib/observability/logger";
 
@@ -37,6 +38,36 @@ function normalizeNullableText(value: unknown): string | null {
     if (typeof value !== "string") return null;
     const trimmed = value.trim();
     return trimmed ? trimmed : null;
+}
+
+function describePatch(patch: PatchBody): { title: string; detail: string } {
+    const labels: Record<string, string> = {
+        owner_id: "owner",
+        lifecycle_stage: "lifecycle",
+        activation_stage: "activation stage",
+        health_score: "health score",
+        health_band: "health band",
+        next_action: "next action",
+        next_action_due_at: "next action due date",
+        last_contacted_at: "last contacted",
+        renewal_at: "renewal date",
+        first_proposal_sent_at: "first proposal sent",
+        last_proposal_sent_at: "last proposal sent",
+        last_reviewed_at: "last reviewed",
+        last_review_summary: "review summary",
+        playbook: "playbook",
+        notes: "notes",
+    };
+    const changedFields = Object.keys(patch)
+        .map((key) => labels[key] ?? key)
+        .slice(0, 6);
+
+    return {
+        title: "Updated account operating state",
+        detail: changedFields.length > 0
+            ? `Changed ${changedFields.join(", ")}.`
+            : "Account operating fields were updated.",
+    };
 }
 
 export async function GET(
@@ -107,6 +138,18 @@ export async function PATCH(
             { patch },
             getClientIpFromRequest(request),
         );
+        const memoryEvent = describePatch(patch);
+        await recordOrgActivityEvent(auth.adminClient as never, {
+            org_id: orgId,
+            actor_id: auth.userId,
+            event_type: "account_state_updated",
+            title: memoryEvent.title,
+            detail: memoryEvent.detail,
+            entity_type: "organization",
+            entity_id: orgId,
+            source: "business_os",
+            metadata: { patch },
+        });
         return NextResponse.json({
             account_state: state,
             business_impact: detail ? buildBusinessImpact(detail.account_state, detail.snapshot) : null,

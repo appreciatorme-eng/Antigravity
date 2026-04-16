@@ -20,6 +20,7 @@ const routes = createCatchAllHandlers([
   ["ai/daily-brief", () => import("@/app/api/_handlers/superadmin/ai/daily-brief/route")],
   ["ai/account-playbook", () => import("@/app/api/_handlers/superadmin/ai/account-playbook/route")],
   ["ai/propose-account-action", () => import("@/app/api/_handlers/superadmin/ai/propose-account-action/route")],
+  ["accounts/:orgId/memory", () => import("@/app/api/_handlers/superadmin/accounts/[orgId]/memory/route")],
   ["accounts/:orgId", () => import("@/app/api/_handlers/superadmin/accounts/[orgId]/route")],
   ["accounts", () => import("@/app/api/_handlers/superadmin/accounts/route")],
   ["work-items", () => import("@/app/api/_handlers/superadmin/work-items/route")],

@@ -6,6 +6,24 @@ import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { logPlatformAction, getClientIpFromRequest } from "@/lib/platform/audit";
 import { logError } from "@/lib/observability/logger";
 import { saveWorkItemMeta } from "@/lib/platform/god-mode";
+import { recordOrgActivityEvent } from "@/lib/platform/org-memory";
+
+async function lookupTicketOrgId(adminClient: { from: (table: string) => any }, ticketId: string): Promise<string | null> {
+    const result = await adminClient
+        .from("support_tickets")
+        .select("profiles!support_tickets_user_id_fkey(organization_id, organizations(id))")
+        .eq("id", ticketId)
+        .maybeSingle();
+
+    const profile = result.data && typeof result.data === "object" && "profiles" in result.data
+        ? (result.data.profiles as {
+            organization_id?: string | null;
+            organizations?: { id?: string | null } | null;
+        } | null)
+        : null;
+
+    return profile?.organizations?.id ?? profile?.organization_id ?? null;
+}
 
 export async function POST(
     request: NextRequest,
@@ -68,6 +86,20 @@ export async function POST(
             },
             userId,
         );
+        const orgId = await lookupTicketOrgId(adminClient, id);
+        await recordOrgActivityEvent(adminClient as never, {
+            org_id: orgId,
+            actor_id: userId,
+            event_type: "support_ticket_responded",
+            title: "Responded to support ticket",
+            detail: `${body.response.trim().slice(0, 180)}${body.response.trim().length > 180 ? "..." : ""}`,
+            entity_type: "ticket",
+            entity_id: id,
+            source: "support_queue",
+            metadata: {
+                new_status: newStatus,
+            },
+        });
 
         return NextResponse.json({
             id: result.data.id,

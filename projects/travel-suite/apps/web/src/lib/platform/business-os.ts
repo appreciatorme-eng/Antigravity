@@ -17,6 +17,7 @@ import {
     type GodWorkItemSeverity,
     type GodWorkItem,
 } from "@/lib/platform/god-accounts";
+import { listOrgActivityEvents, listOrgMemoryNotes, recordOrgActivityEvent, type OrgActivityEvent, type OrgMemoryNote } from "@/lib/platform/org-memory";
 
 type AdminClient = SupabaseClient;
 
@@ -126,6 +127,12 @@ export type BusinessOsAccountDetail = AccountDetail & {
         created_at: string | null;
         href: string;
     }>;
+    org_memory: {
+        support_ready_summary: string;
+        pending_items: string[];
+        recent_events: OrgActivityEvent[];
+        notes: OrgMemoryNote[];
+    };
     ai: BusinessOsAiRecommendation;
 };
 
@@ -541,6 +548,37 @@ function buildChangedSinceReview(
 
     if (changes.length > 0) return changes;
     return [`No major account events have landed since the last review on ${new Date(reviewedAt).toLocaleDateString()}.`];
+}
+
+function buildPendingItems(detail: AccountDetail, account: BusinessOsAccountRow): string[] {
+    const pending: string[] = [];
+    if (detail.work_items.length > 0) pending.push(`${detail.work_items.length} open work items`);
+    if (detail.snapshot.overdue_invoice_count > 0) pending.push(`${detail.snapshot.overdue_invoice_count} overdue invoices`);
+    if (detail.snapshot.expiring_proposal_count > 0) pending.push(`${detail.snapshot.expiring_proposal_count} proposals expiring soon`);
+    if (detail.snapshot.proposal_viewed_count > 0 && detail.snapshot.proposal_approved_count === 0) {
+        pending.push(`${detail.snapshot.proposal_viewed_count} viewed proposals awaiting approval`);
+    }
+    if (detail.snapshot.urgent_support_count > 0) pending.push(`${detail.snapshot.urgent_support_count} urgent support tickets`);
+    if (detail.snapshot.fatal_error_count > 0) pending.push(`${detail.snapshot.fatal_error_count} fatal incidents`);
+    if (account.activation_risk) pending.push(account.activation_risk_reasons[0] ?? "Activation is stalled");
+    if (detail.account_state.next_action) {
+        pending.push(`Promised next step: ${detail.account_state.next_action}`);
+    }
+    return pending;
+}
+
+function buildSupportReadySummary(detail: AccountDetail, account: BusinessOsAccountRow): string {
+    const parts = [
+        `${detail.organization.name} is ${account.account_state.owner_id ? "owned" : "unowned"} and currently ${account.account_state.health_band.replaceAll("_", " ")}`,
+        detail.account_state.last_contacted_at ? `last contacted ${new Date(detail.account_state.last_contacted_at).toLocaleDateString()}` : "no last-contact timestamp recorded",
+        detail.account_state.next_action ? `next step is "${detail.account_state.next_action}"` : "no next step is recorded",
+        detail.snapshot.overdue_invoice_count > 0 ? `${detail.snapshot.overdue_invoice_count} overdue invoices are open` : "no overdue invoices are open",
+        detail.snapshot.proposal_viewed_count > 0 && detail.snapshot.proposal_approved_count === 0
+            ? `${detail.snapshot.proposal_viewed_count} proposals were viewed without approval`
+            : `${detail.snapshot.proposal_sent_count} proposals have been sent`,
+        detail.snapshot.urgent_support_count > 0 ? `${detail.snapshot.urgent_support_count} urgent support tickets need attention` : "no urgent support tickets are open",
+    ];
+    return parts.join(". ") + ".";
 }
 
 function buildWhatChanged(account: AccountRow, activationRiskReasons: string[], effectiveActivationStage: AccountActivationStage): string {
@@ -1059,6 +1097,24 @@ async function loadAccountContext(db: AdminClient, detail: AccountDetail): Promi
     };
 }
 
+async function buildOrgMemory(
+    db: AdminClient,
+    detail: AccountDetail,
+    account: BusinessOsAccountRow,
+): Promise<BusinessOsAccountDetail["org_memory"]> {
+    const [recentEvents, notes] = await Promise.all([
+        listOrgActivityEvents(db, detail.organization.id, 12),
+        listOrgMemoryNotes(db, detail.organization.id, 8),
+    ]);
+
+    return {
+        support_ready_summary: buildSupportReadySummary(detail, account),
+        pending_items: buildPendingItems(detail, account),
+        recent_events: recentEvents,
+        notes,
+    };
+}
+
 function enrichAccountRow(account: AccountRow): BusinessOsAccountRow {
     const effectiveActivationStage = resolveActivationStage(account.account_state, account.snapshot, account.created_at);
     const activationRiskReasons = getActivationRiskReasons(account.snapshot, account.created_at);
@@ -1202,7 +1258,10 @@ export async function buildBusinessOsPayload(
                 open_work_item_count: detail.work_items.length,
                 risk: "healthy",
             });
-            const context = await loadAccountContext(db, detail);
+            const [context, orgMemory] = await Promise.all([
+                loadAccountContext(db, detail),
+                buildOrgMemory(db, detail, matchingRow),
+            ]);
             selectedAccount = {
                 ...detail,
                 account_state: matchingRow.account_state,
@@ -1219,6 +1278,7 @@ export async function buildBusinessOsPayload(
                 timeline: context.timeline,
                 recent_support_tickets: context.recentSupportTickets,
                 recent_incidents: context.recentIncidents,
+                org_memory: orgMemory,
                 ai: buildAiRecommendation(matchingRow, matchingRow.effective_activation_stage, matchingRow.activation_risk_reasons),
             };
         }
@@ -1373,6 +1433,21 @@ export async function runBusinessOpsLoop(db: AdminClient): Promise<BusinessOsOps
             },
         });
         createdWorkItems.push(workItem);
+        await recordOrgActivityEvent(db, {
+            org_id: suggestion.org_id,
+            actor_id: null,
+            event_type: "ops_loop_work_item_created",
+            title: suggestion.title,
+            detail: suggestion.summary,
+            entity_type: "work_item",
+            entity_id: workItem.id,
+            source: "business_os_ops_loop",
+            metadata: {
+                automation_key: suggestion.automation_key,
+                reason: suggestion.reason,
+                kind: suggestion.kind,
+            },
+        });
     }
 
     const candidateCount = payload.ops_loop_preview.candidate_count;

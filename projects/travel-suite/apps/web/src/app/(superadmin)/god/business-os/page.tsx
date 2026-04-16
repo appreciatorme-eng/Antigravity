@@ -97,6 +97,13 @@ type WorkItemDraft = {
     due_at: string;
 };
 
+type MemoryNoteDraft = {
+    category: "context" | "handoff" | "promise" | "support";
+    title: string;
+    body: string;
+    pinned: boolean;
+};
+
 function toDateInput(value: string | null | undefined): string {
     if (!value) return "";
     return value.slice(0, 10);
@@ -161,6 +168,12 @@ export default function BusinessOsPage() {
         severity: "medium",
         due_at: "",
     });
+    const [memoryNoteDraft, setMemoryNoteDraft] = useState<MemoryNoteDraft>({
+        category: "context",
+        title: "",
+        body: "",
+        pinned: false,
+    });
 
     async function loadData(signal?: AbortSignal) {
         setLoading(true);
@@ -219,6 +232,12 @@ export default function BusinessOsPage() {
             ...current,
             due_at: current.due_at || toDateInput(selected.account_state.next_action_due_at),
         }));
+        setMemoryNoteDraft({
+            category: "context",
+            title: "",
+            body: "",
+            pinned: false,
+        });
     }, [data?.selected_account?.organization.id]);
 
     function applyAiSuggestion(kind: "next" | "playbook" | "note" | "work-item" | "outreach") {
@@ -434,6 +453,40 @@ export default function BusinessOsPage() {
             await loadData();
         } catch (updateError) {
             setError(updateError instanceof Error ? updateError.message : "Failed to update work item");
+        }
+    }
+
+    async function createMemoryNote() {
+        const selectedAccount = data?.selected_account;
+        if (!selectedAccount) return;
+        if (!memoryNoteDraft.title.trim() || !memoryNoteDraft.body.trim()) return;
+
+        setSavingAccount(true);
+        setError(null);
+        try {
+            const response = await authedFetch(`/api/superadmin/accounts/${selectedAccount.organization.id}/memory`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    category: memoryNoteDraft.category,
+                    title: memoryNoteDraft.title.trim(),
+                    body: memoryNoteDraft.body.trim(),
+                    pinned: memoryNoteDraft.pinned,
+                }),
+            });
+            if (!response.ok) throw new Error("Failed to create org memory note");
+            setMemoryNoteDraft({
+                category: "context",
+                title: "",
+                body: "",
+                pinned: false,
+            });
+            setMessage("Org memory note saved.");
+            await loadData();
+        } catch (noteError) {
+            setError(noteError instanceof Error ? noteError.message : "Failed to create org memory note");
+        } finally {
+            setSavingAccount(false);
         }
     }
 
@@ -1322,6 +1375,128 @@ export default function BusinessOsPage() {
                                     <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
                                         <div className="text-sm font-medium text-gray-200">Revenue and customer context</div>
                                         <div className="mt-4 grid gap-4">
+                                            <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
+                                                <div className="mb-3 flex items-center gap-2 text-sm font-medium text-white">
+                                                    <BriefcaseBusiness className="h-4 w-4" />
+                                                    Org memory
+                                                </div>
+                                                <div className="rounded-lg border border-gray-800 bg-gray-950/50 px-3 py-3 text-sm text-gray-300">
+                                                    {selected.org_memory.support_ready_summary}
+                                                </div>
+                                                <div className="mt-3 grid gap-3 xl:grid-cols-2">
+                                                    <div className="rounded-lg border border-gray-800 bg-gray-950/40 p-3">
+                                                        <div className="text-xs uppercase tracking-wide text-gray-500">Pending right now</div>
+                                                        <div className="mt-2 space-y-2">
+                                                            {selected.org_memory.pending_items.length > 0 ? selected.org_memory.pending_items.map((item) => (
+                                                                <div key={item} className="rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-sm text-gray-300">
+                                                                    {item}
+                                                                </div>
+                                                            )) : (
+                                                                <div className="rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-sm text-gray-400">
+                                                                    No pending items are surfaced for this org right now.
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="rounded-lg border border-gray-800 bg-gray-950/40 p-3">
+                                                        <div className="text-xs uppercase tracking-wide text-gray-500">Recent org events</div>
+                                                        <div className="mt-2 space-y-2">
+                                                            {selected.org_memory.recent_events.length > 0 ? selected.org_memory.recent_events.map((event) => (
+                                                                <div key={event.id} className="rounded-lg border border-gray-800 bg-black/30 px-3 py-2">
+                                                                    <div className="flex items-center justify-between gap-3">
+                                                                        <div className="text-sm text-white">{event.title}</div>
+                                                                        <div className="text-xs text-gray-500">{formatDate(event.occurred_at)}</div>
+                                                                    </div>
+                                                                    <div className="mt-1 text-xs text-gray-400">
+                                                                        {event.detail ?? event.event_type.replaceAll("_", " ")}
+                                                                    </div>
+                                                                    <div className="mt-1 text-[11px] text-gray-500">
+                                                                        {event.actor_name ?? "System"} • {event.source.replaceAll("_", " ")}
+                                                                    </div>
+                                                                </div>
+                                                            )) : (
+                                                                <div className="rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-sm text-gray-400">
+                                                                    No org events have been captured yet.
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="mt-3 rounded-lg border border-gray-800 bg-gray-950/40 p-3">
+                                                    <div className="mb-3 text-xs uppercase tracking-wide text-gray-500">Operator notes</div>
+                                                    <div className="space-y-2">
+                                                        {selected.org_memory.notes.length > 0 ? selected.org_memory.notes.map((note) => (
+                                                            <div key={note.id} className="rounded-lg border border-gray-800 bg-black/30 px-3 py-3">
+                                                                <div className="flex items-center justify-between gap-3">
+                                                                    <div className="text-sm font-medium text-white">{note.title}</div>
+                                                                    <div className="flex items-center gap-2 text-[11px] text-gray-500">
+                                                                        {note.pinned ? <span className="rounded border border-amber-800/60 bg-amber-950/20 px-2 py-0.5 text-amber-200">Pinned</span> : null}
+                                                                        <span>{note.category}</span>
+                                                                        <span>{formatDate(note.updated_at ?? note.created_at)}</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="mt-2 text-sm text-gray-300">{note.body}</div>
+                                                                <div className="mt-2 text-[11px] text-gray-500">
+                                                                    {note.author_name ?? "Unknown operator"}
+                                                                </div>
+                                                            </div>
+                                                        )) : (
+                                                            <div className="rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-sm text-gray-400">
+                                                                No operator notes yet. Save a handoff, promise, or support note below.
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                                                        <select
+                                                            value={memoryNoteDraft.category}
+                                                            onChange={(event) => setMemoryNoteDraft((current) => ({
+                                                                ...current,
+                                                                category: event.target.value as MemoryNoteDraft["category"],
+                                                            }))}
+                                                            className="rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-amber-700/60"
+                                                        >
+                                                            <option value="context">Context</option>
+                                                            <option value="handoff">Handoff</option>
+                                                            <option value="promise">Promise</option>
+                                                            <option value="support">Support</option>
+                                                        </select>
+                                                        <label className="flex items-center justify-between rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-sm text-gray-300">
+                                                            Pin note
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={memoryNoteDraft.pinned}
+                                                                onChange={(event) => setMemoryNoteDraft((current) => ({
+                                                                    ...current,
+                                                                    pinned: event.target.checked,
+                                                                }))}
+                                                                className="h-4 w-4 rounded border-gray-700 bg-transparent text-amber-500"
+                                                            />
+                                                        </label>
+                                                        <input
+                                                            value={memoryNoteDraft.title}
+                                                            onChange={(event) => setMemoryNoteDraft((current) => ({ ...current, title: event.target.value }))}
+                                                            placeholder="Note title"
+                                                            className="rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-amber-700/60 md:col-span-2"
+                                                        />
+                                                        <textarea
+                                                            value={memoryNoteDraft.body}
+                                                            onChange={(event) => setMemoryNoteDraft((current) => ({ ...current, body: event.target.value }))}
+                                                            rows={4}
+                                                            placeholder="What happened, what is pending, and what was promised."
+                                                            className="rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-amber-700/60 md:col-span-2"
+                                                        />
+                                                        <button
+                                                            onClick={() => void createMemoryNote()}
+                                                            disabled={savingAccount || !memoryNoteDraft.title.trim() || !memoryNoteDraft.body.trim()}
+                                                            className="inline-flex items-center justify-center gap-2 rounded-lg border border-amber-800/60 bg-amber-950/20 px-3 py-2 text-sm text-amber-200 transition-colors hover:border-amber-700/60 disabled:opacity-60 md:col-span-2"
+                                                        >
+                                                            {savingAccount ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardList className="h-4 w-4" />}
+                                                            Save org memory note
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
                                             <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
                                                 <div className="mb-3 flex items-center gap-2 text-sm font-medium text-white">
                                                     <Building2 className="h-4 w-4" />

@@ -12,6 +12,7 @@ import {
     type GodWorkItemTargetType,
     updateGodWorkItem,
 } from "@/lib/platform/god-accounts";
+import { recordOrgActivityEvent } from "@/lib/platform/org-memory";
 import { getClientIpFromRequest, logPlatformAction } from "@/lib/platform/audit";
 import { logError } from "@/lib/observability/logger";
 
@@ -101,6 +102,22 @@ export async function POST(request: NextRequest) {
             { work_item_id: workItem.id, kind: workItem.kind, target_type: workItem.target_type, target_id: workItem.target_id },
             getClientIpFromRequest(request),
         );
+        await recordOrgActivityEvent(auth.adminClient as never, {
+            org_id: workItem.org_id,
+            actor_id: auth.userId,
+            event_type: "work_item_created",
+            title: `Created ${workItem.kind.replaceAll("_", " ")} work item`,
+            detail: workItem.title,
+            entity_type: "work_item",
+            entity_id: workItem.id,
+            source: "business_os",
+            metadata: {
+                status: workItem.status,
+                severity: workItem.severity,
+                target_type: workItem.target_type,
+                target_id: workItem.target_id,
+            },
+        });
         return NextResponse.json({ work_item: workItem }, { status: 201 });
     } catch (error) {
         logError("[superadmin/work-items POST]", error);
@@ -142,6 +159,21 @@ export async function PATCH(request: NextRequest) {
             { work_item_id: workItem.id, status: workItem.status, owner_id: workItem.owner_id },
             getClientIpFromRequest(request),
         );
+        await recordOrgActivityEvent(auth.adminClient as never, {
+            org_id: workItem.org_id,
+            actor_id: auth.userId,
+            event_type: "work_item_updated",
+            title: `Updated ${workItem.kind.replaceAll("_", " ")} work item`,
+            detail: `${workItem.title} • ${workItem.status.replaceAll("_", " ")}${workItem.owner_id ? " • owner assigned" : ""}`,
+            entity_type: "work_item",
+            entity_id: workItem.id,
+            source: "business_os",
+            metadata: {
+                status: workItem.status,
+                severity: workItem.severity,
+                owner_id: workItem.owner_id,
+            },
+        });
         return NextResponse.json({ work_item: workItem });
     } catch (error) {
         logError("[superadmin/work-items PATCH]", error);
