@@ -182,6 +182,7 @@ export async function GET(request: NextRequest) {
 
         // Process trips
         const trips = (tripsResult.data ?? []) as Array<{ id: string; status: string | null; created_at: string | null }>;
+        const tripsLast30d = tripsLast30dResult.count ?? 0;
         const tripsByStatus: Record<string, number> = {};
         for (const t of trips) {
             const status = t.status ?? "unknown";
