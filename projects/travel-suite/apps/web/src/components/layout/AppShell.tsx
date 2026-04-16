@@ -54,7 +54,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
     if (!isMounted) return null;
 
-    if (isPublicPage || isAdminPage) {
+    if (isPublicPage || isAdminPage || isGodPage) {
         return <>{children}</>;
     }
 
