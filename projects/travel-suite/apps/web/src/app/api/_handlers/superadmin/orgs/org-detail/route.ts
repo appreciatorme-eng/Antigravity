@@ -239,7 +239,7 @@ export async function GET(request: NextRequest) {
         if (proposals.length > 0) featuresUsed.push("Proposals");
         if (invoices.length > 0) featuresUsed.push("Invoicing");
         if (aiRequestsMtd > 0) featuresUsed.push("AI Assistant");
-        if ((supportTicketsOpenResult.count ?? 0) + (supportTicketsClosedResult.count ?? 0) > 0) {
+        if (supportTicketsOpen + supportTicketsResolved > 0) {
             featuresUsed.push("Support");
         }
 
