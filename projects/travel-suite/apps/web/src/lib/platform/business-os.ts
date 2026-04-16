@@ -19,6 +19,13 @@ import {
 } from "@/lib/platform/god-accounts";
 import { listOrgActivityEvents, listOrgMemoryNotes, recordOrgActivityEvent, type OrgActivityEvent, type OrgMemoryNote } from "@/lib/platform/org-memory";
 import { buildWorkItemOutcomeLearning, type WorkItemOutcomeLearning } from "@/lib/platform/work-item-outcomes";
+import {
+    buildCommitmentCounts,
+    loadCommsSequences,
+    loadCommitments,
+    type GodCommitment,
+    type GodCommsSequence,
+} from "@/lib/platform/business-comms";
 
 type AdminClient = SupabaseClient;
 
@@ -128,6 +135,9 @@ export type BusinessOsAccountDetail = AccountDetail & {
         created_at: string | null;
         href: string;
     }>;
+    comms_sequences: GodCommsSequence[];
+    commitments: GodCommitment[];
+    breached_commitments: GodCommitment[];
     org_memory: {
         support_ready_summary: string;
         pending_items: string[];
@@ -168,6 +178,8 @@ export type BusinessOsPayload = {
         margin_watch_accounts: number;
         ops_loop_candidates: number;
         policy_violations: number;
+        open_commitments: number;
+        breached_commitments: number;
     };
     ai_daily_brief: BusinessOsDailyBrief;
     playbook_learning: WorkItemOutcomeLearning[];
@@ -836,6 +848,7 @@ function buildAiRecommendation(account: AccountRow, effectiveActivationStage: Ac
 function buildOpsLoopSuggestions(
     account: BusinessOsAccountRow,
     existingKeys: Set<string>,
+    breachedCommitmentCount = 0,
 ): BusinessOsOpsSuggestion[] {
     const suggestions: BusinessOsOpsSuggestion[] = [];
 
@@ -925,12 +938,25 @@ function buildOpsLoopSuggestions(
         });
     }
 
+    if (breachedCommitmentCount > 0) {
+        addSuggestion({
+            automation_key: `commitment:${account.org_id}`,
+            kind: "churn_risk",
+            severity: breachedCommitmentCount >= 2 ? "critical" : "high",
+            title: "Recover breached customer commitments",
+            summary: `${breachedCommitmentCount} customer commitments are overdue and need escalation recovery.`,
+            due_at: new Date().toISOString(),
+            reason: `${breachedCommitmentCount} commitments are breached or overdue`,
+        });
+    }
+
     return suggestions;
 }
 
 function buildPolicyViolations(
     account: BusinessOsAccountRow,
     activeKinds: Set<GodWorkItemKind>,
+    breachedCommitmentCount = 0,
 ): BusinessOsPolicyViolation[] {
     const violations: BusinessOsPolicyViolation[] = [];
 
@@ -980,6 +1006,17 @@ function buildPolicyViolations(
             severity: "medium",
             rule: "Viewed proposals need explicit follow-up",
             detail: "Client viewed proposals but no approval-focused follow-up work item is active.",
+        });
+    }
+
+    if (breachedCommitmentCount > 0 && !activeKinds.has("churn_risk") && !activeKinds.has("support_escalation")) {
+        violations.push({
+            id: `${account.org_id}:commitments`,
+            org_id: account.org_id,
+            account_name: account.name,
+            severity: breachedCommitmentCount >= 2 ? "critical" : "high",
+            rule: "Breached commitments require active escalation work",
+            detail: `${breachedCommitmentCount} commitments are breached/overdue with no churn-risk or support escalation work item.`,
         });
     }
 
@@ -1284,6 +1321,7 @@ export async function buildBusinessOsPayload(
         status: "active",
         limit: 500,
     });
+    const commitmentCounts = await buildCommitmentCounts(db, enriched.map((account) => account.org_id));
     const activeKindsByOrg = new Map<string, Set<GodWorkItemKind>>();
     for (const item of activeItems) {
         if (!item.org_id) continue;
@@ -1299,9 +1337,17 @@ export async function buildBusinessOsPayload(
             })
             .filter(Boolean) as string[],
     );
-    const opsLoopSuggestions = enriched.flatMap((account) => buildOpsLoopSuggestions(account, existingAutomationKeys));
+    const opsLoopSuggestions = enriched.flatMap((account) => buildOpsLoopSuggestions(
+        account,
+        existingAutomationKeys,
+        commitmentCounts.get(account.org_id)?.breached ?? 0,
+    ));
     const policyViolations = enriched
-        .flatMap((account) => buildPolicyViolations(account, activeKindsByOrg.get(account.org_id) ?? new Set<GodWorkItemKind>()))
+        .flatMap((account) => buildPolicyViolations(
+            account,
+            activeKindsByOrg.get(account.org_id) ?? new Set<GodWorkItemKind>(),
+            commitmentCounts.get(account.org_id)?.breached ?? 0,
+        ))
         .sort((left, right) => {
             const weight = (value: BusinessOsPolicyViolation["severity"]) => (value === "critical" ? 3 : value === "high" ? 2 : 1);
             return weight(right.severity) - weight(left.severity) || left.account_name.localeCompare(right.account_name);
@@ -1347,10 +1393,18 @@ export async function buildBusinessOsPayload(
                 open_work_item_count: detail.work_items.length,
                 risk: "healthy",
             });
-            const [context, orgMemory] = await Promise.all([
+            const [context, orgMemory, commsSequences, commitments] = await Promise.all([
                 loadAccountContext(db, detail),
                 buildOrgMemory(db, detail, matchingRow),
+                loadCommsSequences(db, detail.organization.id, "all"),
+                loadCommitments(db, detail.organization.id, "all"),
             ]);
+            const now = Date.now();
+            const breachedCommitments = commitments.filter((commitment) => {
+                if (commitment.status === "breached") return true;
+                if (commitment.status !== "open" || !commitment.due_at) return false;
+                return new Date(commitment.due_at).getTime() < now;
+            });
             selectedAccount = {
                 ...detail,
                 account_state: matchingRow.account_state,
@@ -1367,6 +1421,9 @@ export async function buildBusinessOsPayload(
                 timeline: context.timeline,
                 recent_support_tickets: context.recentSupportTickets,
                 recent_incidents: context.recentIncidents,
+                comms_sequences: commsSequences,
+                commitments,
+                breached_commitments: breachedCommitments,
                 org_memory: orgMemory,
                 ai: buildAiRecommendation(matchingRow, matchingRow.effective_activation_stage, matchingRow.activation_risk_reasons),
             };
@@ -1399,6 +1456,8 @@ export async function buildBusinessOsPayload(
             margin_watch_accounts: enriched.filter((account) => account.margin_watch).length,
             ops_loop_candidates: opsLoopSuggestions.length,
             policy_violations: policyViolations.length,
+            open_commitments: Array.from(commitmentCounts.values()).reduce((sum, value) => sum + value.open, 0),
+            breached_commitments: Array.from(commitmentCounts.values()).reduce((sum, value) => sum + value.breached, 0),
         },
         ai_daily_brief: buildDailyBrief(enriched, currentUserId),
         playbook_learning: playbookLearning,

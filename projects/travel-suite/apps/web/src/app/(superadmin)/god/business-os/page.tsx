@@ -48,6 +48,8 @@ type Payload = {
         margin_watch_accounts: number;
         ops_loop_candidates: number;
         policy_violations: number;
+        open_commitments: number;
+        breached_commitments: number;
     };
     ai_daily_brief: BusinessOsDailyBrief;
     playbook_learning: Array<{
@@ -114,6 +116,21 @@ type WorkItemDraft = {
     due_at: string;
 };
 
+type CommsDraft = {
+    sequence_type: "activation_rescue" | "viewed_not_approved" | "collections" | "incident_recovery" | "renewal_prep";
+    channel: "email" | "whatsapp" | "in_app" | "mixed";
+    next_follow_up_at: string;
+    promise: string;
+};
+
+type CommitmentDraft = {
+    title: string;
+    detail: string;
+    source: "support" | "sales" | "collections" | "incident" | "ops";
+    severity: "low" | "medium" | "high" | "critical";
+    due_at: string;
+};
+
 type MemoryNoteDraft = {
     category: "context" | "handoff" | "promise" | "support";
     title: string;
@@ -157,6 +174,8 @@ export default function BusinessOsPage() {
     const [savingWorkItem, setSavingWorkItem] = useState(false);
     const [runningOpsLoop, setRunningOpsLoop] = useState(false);
     const [recordingOutcomeId, setRecordingOutcomeId] = useState<string | null>(null);
+    const [savingComms, setSavingComms] = useState(false);
+    const [savingCommitment, setSavingCommitment] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [message, setMessage] = useState<string | null>(null);
     const [rightTab, setRightTab] = useState<"operate" | "growth">("operate");
@@ -191,6 +210,19 @@ export default function BusinessOsPage() {
         title: "",
         body: "",
         pinned: false,
+    });
+    const [commsDraft, setCommsDraft] = useState<CommsDraft>({
+        sequence_type: "activation_rescue",
+        channel: "mixed",
+        next_follow_up_at: "",
+        promise: "",
+    });
+    const [commitmentDraft, setCommitmentDraft] = useState<CommitmentDraft>({
+        title: "",
+        detail: "",
+        source: "ops",
+        severity: "medium",
+        due_at: "",
     });
 
     async function loadData(signal?: AbortSignal) {
@@ -256,6 +288,15 @@ export default function BusinessOsPage() {
             body: "",
             pinned: false,
         });
+        setCommsDraft((current) => ({
+            ...current,
+            next_follow_up_at: current.next_follow_up_at || toDateInput(selected.account_state.next_action_due_at),
+            promise: current.promise || selected.account_state.next_action || "",
+        }));
+        setCommitmentDraft((current) => ({
+            ...current,
+            due_at: current.due_at || toDateInput(selected.account_state.next_action_due_at),
+        }));
     }, [data?.selected_account?.organization.id]);
 
     function applyAiSuggestion(kind: "next" | "playbook" | "note" | "work-item" | "outreach") {
@@ -534,6 +575,108 @@ export default function BusinessOsPage() {
         }
     }
 
+    async function createCommsSequence() {
+        const selectedAccount = data?.selected_account;
+        if (!selectedAccount) return;
+        setSavingComms(true);
+        setError(null);
+        try {
+            const response = await authedFetch(`/api/superadmin/accounts/${selectedAccount.organization.id}/comms`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    sequence_type: commsDraft.sequence_type,
+                    channel: commsDraft.channel,
+                    owner_id: accountDraft.owner_id || null,
+                    next_follow_up_at: commsDraft.next_follow_up_at || null,
+                    promise: commsDraft.promise || null,
+                }),
+            });
+            if (!response.ok) throw new Error("Failed to create communication sequence");
+            setMessage("Communication sequence created.");
+            await loadData();
+        } catch (saveError) {
+            setError(saveError instanceof Error ? saveError.message : "Failed to create communication sequence");
+        } finally {
+            setSavingComms(false);
+        }
+    }
+
+    async function updateCommsSequence(id: string, patch: Record<string, unknown>) {
+        const selectedAccount = data?.selected_account;
+        if (!selectedAccount) return;
+        setSavingComms(true);
+        setError(null);
+        try {
+            const response = await authedFetch(`/api/superadmin/accounts/${selectedAccount.organization.id}/comms`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id, ...patch }),
+            });
+            if (!response.ok) throw new Error("Failed to update communication sequence");
+            await loadData();
+        } catch (saveError) {
+            setError(saveError instanceof Error ? saveError.message : "Failed to update communication sequence");
+        } finally {
+            setSavingComms(false);
+        }
+    }
+
+    async function createCommitment() {
+        const selectedAccount = data?.selected_account;
+        if (!selectedAccount || !commitmentDraft.title.trim() || !commitmentDraft.due_at) return;
+        setSavingCommitment(true);
+        setError(null);
+        try {
+            const response = await authedFetch(`/api/superadmin/accounts/${selectedAccount.organization.id}/commitments`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    owner_id: accountDraft.owner_id || null,
+                    source: commitmentDraft.source,
+                    title: commitmentDraft.title.trim(),
+                    detail: commitmentDraft.detail.trim() || null,
+                    severity: commitmentDraft.severity,
+                    due_at: commitmentDraft.due_at,
+                }),
+            });
+            if (!response.ok) throw new Error("Failed to create commitment");
+            setCommitmentDraft({
+                title: "",
+                detail: "",
+                source: "ops",
+                severity: "medium",
+                due_at: "",
+            });
+            setMessage("Commitment created.");
+            await loadData();
+        } catch (saveError) {
+            setError(saveError instanceof Error ? saveError.message : "Failed to create commitment");
+        } finally {
+            setSavingCommitment(false);
+        }
+    }
+
+    async function updateCommitment(id: string, patch: Record<string, unknown>) {
+        const selectedAccount = data?.selected_account;
+        if (!selectedAccount) return;
+        setSavingCommitment(true);
+        setError(null);
+        try {
+            const response = await authedFetch(`/api/superadmin/accounts/${selectedAccount.organization.id}/commitments`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id, ...patch }),
+            });
+            if (!response.ok) throw new Error("Failed to update commitment");
+            await loadData();
+        } catch (saveError) {
+            setError(saveError instanceof Error ? saveError.message : "Failed to update commitment");
+        } finally {
+            setSavingCommitment(false);
+        }
+    }
+
     const selected = data?.selected_account ?? null;
 
     return (
@@ -706,6 +849,14 @@ export default function BusinessOsPage() {
                         <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
                             <div className="text-xs uppercase tracking-wide text-gray-400">Revenue risk</div>
                             <div className="mt-2 text-xl font-semibold text-white">{data?.summary.revenue_risk_accounts ?? "—"}</div>
+                        </div>
+                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
+                            <div className="text-xs uppercase tracking-wide text-gray-400">Open commitments</div>
+                            <div className="mt-2 text-xl font-semibold text-white">{data?.summary.open_commitments ?? "—"}</div>
+                        </div>
+                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
+                            <div className="text-xs uppercase tracking-wide text-gray-400">Breached commitments</div>
+                            <div className="mt-2 text-xl font-semibold text-red-300">{data?.summary.breached_commitments ?? "—"}</div>
                         </div>
                     </div>
                     <div className="mt-4 space-y-2">
@@ -1525,6 +1676,214 @@ export default function BusinessOsPage() {
                                     <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
                                         <div className="text-sm font-medium text-gray-200">Revenue and customer context</div>
                                         <div className="mt-4 grid gap-4">
+                                            <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
+                                                <div className="mb-3 flex items-center gap-2 text-sm font-medium text-white">
+                                                    <BriefcaseBusiness className="h-4 w-4" />
+                                                    Customer comms + commitments
+                                                </div>
+                                                <div className="grid gap-3 xl:grid-cols-2">
+                                                    <div className="rounded-lg border border-gray-800 bg-gray-950/40 p-3">
+                                                        <div className="text-xs uppercase tracking-wide text-gray-500">Communication sequences</div>
+                                                        <div className="mt-2 space-y-2">
+                                                            {selected.comms_sequences.length > 0 ? selected.comms_sequences.map((sequence) => (
+                                                                <div key={sequence.id} className="rounded-lg border border-gray-800 bg-black/30 px-3 py-2">
+                                                                    <div className="flex items-center justify-between gap-3">
+                                                                        <div className="text-sm text-white">{sequence.sequence_type.replaceAll("_", " ")}</div>
+                                                                        <div className="text-xs text-gray-500">{sequence.status}</div>
+                                                                    </div>
+                                                                    <div className="mt-1 text-xs text-gray-400">
+                                                                        {sequence.channel} • next {formatDate(sequence.next_follow_up_at)}
+                                                                    </div>
+                                                                    <div className="mt-2 flex flex-wrap gap-2">
+                                                                        <button
+                                                                            onClick={() => void updateCommsSequence(sequence.id, {
+                                                                                status: "active",
+                                                                                last_sent_at: new Date().toISOString(),
+                                                                                step_index: sequence.step_index + 1,
+                                                                            })}
+                                                                            disabled={savingComms}
+                                                                            className="rounded-lg border border-gray-800 px-2 py-1 text-xs text-gray-300 hover:border-gray-700 hover:text-white disabled:opacity-60"
+                                                                        >
+                                                                            Sent
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => void updateCommsSequence(sequence.id, { status: "paused" })}
+                                                                            disabled={savingComms}
+                                                                            className="rounded-lg border border-gray-800 px-2 py-1 text-xs text-gray-300 hover:border-gray-700 hover:text-white disabled:opacity-60"
+                                                                        >
+                                                                            Pause
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => void updateCommsSequence(sequence.id, { status: "completed" })}
+                                                                            disabled={savingComms}
+                                                                            className="rounded-lg border border-emerald-800/60 bg-emerald-950/20 px-2 py-1 text-xs text-emerald-200 hover:border-emerald-700/60 disabled:opacity-60"
+                                                                        >
+                                                                            Complete
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            )) : (
+                                                                <div className="rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-sm text-gray-400">
+                                                                    No communication sequences yet.
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div className="mt-3 grid gap-2 md:grid-cols-2">
+                                                            <select
+                                                                value={commsDraft.sequence_type}
+                                                                onChange={(event) => setCommsDraft((current) => ({
+                                                                    ...current,
+                                                                    sequence_type: event.target.value as CommsDraft["sequence_type"],
+                                                                }))}
+                                                                className="rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-amber-700/60"
+                                                            >
+                                                                <option value="activation_rescue">Activation rescue</option>
+                                                                <option value="viewed_not_approved">Viewed not approved</option>
+                                                                <option value="collections">Collections</option>
+                                                                <option value="incident_recovery">Incident recovery</option>
+                                                                <option value="renewal_prep">Renewal prep</option>
+                                                            </select>
+                                                            <select
+                                                                value={commsDraft.channel}
+                                                                onChange={(event) => setCommsDraft((current) => ({
+                                                                    ...current,
+                                                                    channel: event.target.value as CommsDraft["channel"],
+                                                                }))}
+                                                                className="rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-amber-700/60"
+                                                            >
+                                                                <option value="mixed">Mixed</option>
+                                                                <option value="email">Email</option>
+                                                                <option value="whatsapp">WhatsApp</option>
+                                                                <option value="in_app">In-app</option>
+                                                            </select>
+                                                            <input
+                                                                type="date"
+                                                                value={commsDraft.next_follow_up_at}
+                                                                onChange={(event) => setCommsDraft((current) => ({ ...current, next_follow_up_at: event.target.value }))}
+                                                                className="rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-amber-700/60 md:col-span-2"
+                                                            />
+                                                            <input
+                                                                value={commsDraft.promise}
+                                                                onChange={(event) => setCommsDraft((current) => ({ ...current, promise: event.target.value }))}
+                                                                placeholder="Promise or intent"
+                                                                className="rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-amber-700/60 md:col-span-2"
+                                                            />
+                                                            <button
+                                                                onClick={() => void createCommsSequence()}
+                                                                disabled={savingComms}
+                                                                className="inline-flex items-center justify-center rounded-lg border border-amber-800/60 bg-amber-950/20 px-3 py-2 text-sm text-amber-200 hover:border-amber-700/60 disabled:opacity-60 md:col-span-2"
+                                                            >
+                                                                {savingComms ? "Saving..." : "Create sequence"}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="rounded-lg border border-gray-800 bg-gray-950/40 p-3">
+                                                        <div className="flex items-center justify-between gap-2">
+                                                            <div className="text-xs uppercase tracking-wide text-gray-500">Commitments / SLA promises</div>
+                                                            <div className="text-xs text-red-300">{selected.breached_commitments.length} breached</div>
+                                                        </div>
+                                                        <div className="mt-2 space-y-2">
+                                                            {selected.commitments.length > 0 ? selected.commitments.map((commitment) => (
+                                                                <div key={commitment.id} className="rounded-lg border border-gray-800 bg-black/30 px-3 py-2">
+                                                                    <div className="flex items-center justify-between gap-3">
+                                                                        <div className="text-sm text-white">{commitment.title}</div>
+                                                                        <div className={cn("text-xs", commitment.status === "breached" ? "text-red-300" : "text-gray-500")}>
+                                                                            {commitment.status}
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="mt-1 text-xs text-gray-400">
+                                                                        {commitment.source} • due {formatDate(commitment.due_at)} • {commitment.severity}
+                                                                    </div>
+                                                                    <div className="mt-2 flex flex-wrap gap-2">
+                                                                        <button
+                                                                            onClick={() => void updateCommitment(commitment.id, { status: "met" })}
+                                                                            disabled={savingCommitment}
+                                                                            className="rounded-lg border border-emerald-800/60 bg-emerald-950/20 px-2 py-1 text-xs text-emerald-200 hover:border-emerald-700/60 disabled:opacity-60"
+                                                                        >
+                                                                            Met
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => void updateCommitment(commitment.id, { status: "breached" })}
+                                                                            disabled={savingCommitment}
+                                                                            className="rounded-lg border border-red-900/60 bg-red-950/20 px-2 py-1 text-xs text-red-200 hover:border-red-800/60 disabled:opacity-60"
+                                                                        >
+                                                                            Breached
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => void updateCommitment(commitment.id, { status: "cancelled" })}
+                                                                            disabled={savingCommitment}
+                                                                            className="rounded-lg border border-gray-800 px-2 py-1 text-xs text-gray-300 hover:border-gray-700 hover:text-white disabled:opacity-60"
+                                                                        >
+                                                                            Cancel
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            )) : (
+                                                                <div className="rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-sm text-gray-400">
+                                                                    No commitments logged yet.
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <div className="mt-3 grid gap-2 md:grid-cols-2">
+                                                            <input
+                                                                value={commitmentDraft.title}
+                                                                onChange={(event) => setCommitmentDraft((current) => ({ ...current, title: event.target.value }))}
+                                                                placeholder="Commitment title"
+                                                                className="rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-amber-700/60 md:col-span-2"
+                                                            />
+                                                            <textarea
+                                                                value={commitmentDraft.detail}
+                                                                onChange={(event) => setCommitmentDraft((current) => ({ ...current, detail: event.target.value }))}
+                                                                rows={2}
+                                                                placeholder="Promise detail"
+                                                                className="rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-amber-700/60 md:col-span-2"
+                                                            />
+                                                            <select
+                                                                value={commitmentDraft.source}
+                                                                onChange={(event) => setCommitmentDraft((current) => ({
+                                                                    ...current,
+                                                                    source: event.target.value as CommitmentDraft["source"],
+                                                                }))}
+                                                                className="rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-amber-700/60"
+                                                            >
+                                                                <option value="ops">Ops</option>
+                                                                <option value="support">Support</option>
+                                                                <option value="sales">Sales</option>
+                                                                <option value="collections">Collections</option>
+                                                                <option value="incident">Incident</option>
+                                                            </select>
+                                                            <select
+                                                                value={commitmentDraft.severity}
+                                                                onChange={(event) => setCommitmentDraft((current) => ({
+                                                                    ...current,
+                                                                    severity: event.target.value as CommitmentDraft["severity"],
+                                                                }))}
+                                                                className="rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-amber-700/60"
+                                                            >
+                                                                <option value="low">Low</option>
+                                                                <option value="medium">Medium</option>
+                                                                <option value="high">High</option>
+                                                                <option value="critical">Critical</option>
+                                                            </select>
+                                                            <input
+                                                                type="date"
+                                                                value={commitmentDraft.due_at}
+                                                                onChange={(event) => setCommitmentDraft((current) => ({ ...current, due_at: event.target.value }))}
+                                                                className="rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-amber-700/60 md:col-span-2"
+                                                            />
+                                                            <button
+                                                                onClick={() => void createCommitment()}
+                                                                disabled={savingCommitment || !commitmentDraft.title.trim() || !commitmentDraft.due_at}
+                                                                className="inline-flex items-center justify-center rounded-lg border border-amber-800/60 bg-amber-950/20 px-3 py-2 text-sm text-amber-200 hover:border-amber-700/60 disabled:opacity-60 md:col-span-2"
+                                                            >
+                                                                {savingCommitment ? "Saving..." : "Create commitment"}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
                                             <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
                                                 <div className="mb-3 flex items-center gap-2 text-sm font-medium text-white">
                                                     <BriefcaseBusiness className="h-4 w-4" />
