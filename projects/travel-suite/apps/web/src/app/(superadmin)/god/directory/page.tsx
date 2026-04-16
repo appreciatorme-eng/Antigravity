@@ -226,6 +226,7 @@ export default function DirectoryPage() {
     const [movingOrg, setMovingOrg] = useState(false);
     const [showImpersonateConfirm, setShowImpersonateConfirm] = useState(false);
     const [impersonating, setImpersonating] = useState(false);
+    const [impersonationLink, setImpersonationLink] = useState<string | null>(null);
 
     // Org detail state
     const [orgDetail, setOrgDetail] = useState<OrgDetail | null>(null);
@@ -393,7 +394,7 @@ export default function DirectoryPage() {
             if (res.ok) {
                 const data = await res.json();
                 if (data.magic_link) {
-                    window.location.href = data.magic_link;
+                    setImpersonationLink(data.magic_link);
                 } else {
                     showError("Invalid impersonation response");
                     setShowImpersonateConfirm(false);
@@ -1247,15 +1248,58 @@ export default function DirectoryPage() {
             )}
 
             {/* Impersonate confirmation modal */}
-            {showImpersonateConfirm && selectedUser && (
+            {showImpersonateConfirm && selectedUser && !impersonationLink && (
                 <ConfirmDangerModal
                     open={true}
                     title={`Impersonate ${selectedUser.profile.email}?`}
-                    message={`This will overwrite your existing Superadmin session in this browser window. You will need to log out and sign back in to regain Superadmin privileges.`}
+                    message={`Generate a magic link to access this user's account.`}
                     onConfirm={handleImpersonate}
                     onCancel={() => setShowImpersonateConfirm(false)}
                     loading={impersonating}
                 />
+            )}
+
+            {/* Impersonation Link Modal */}
+            {impersonationLink && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="w-full max-w-md bg-gray-900 border border-amber-500/30 rounded-2xl p-6 shadow-2xl flex flex-col items-center">
+                        <div className="w-12 h-12 bg-amber-500/10 rounded-full flex items-center justify-center mb-4 border border-amber-500/20">
+                            <Sparkles className="w-6 h-6 text-amber-400" />
+                        </div>
+                        <h2 className="text-xl font-bold text-white text-center mb-2">Impersonation Link Ready</h2>
+                        <p className="text-sm text-gray-400 text-center mb-6">
+                            To avoid overwriting your current God Mode session, <strong className="text-white font-semibold">right-click</strong> the button below and open it in an Incognito / Private window.
+                        </p>
+                        
+                        <div className="flex flex-col gap-3 w-full">
+                            <a
+                                href={impersonationLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-full py-3 rounded-lg bg-amber-500 text-gray-950 font-bold text-center hover:bg-amber-400 transition-colors"
+                            >
+                                Open in New Tab (Right-Click Me)
+                            </a>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    navigator.clipboard.writeText(impersonationLink);
+                                    showSuccess("Link copied to clipboard!");
+                                }}
+                                className="w-full py-3 rounded-lg bg-gray-800 border border-gray-700 text-white font-medium text-center hover:bg-gray-700 transition-colors"
+                            >
+                                Copy Link
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => { setImpersonationLink(null); setShowImpersonateConfirm(false); }}
+                                className="mt-2 text-sm text-gray-400 hover:text-white transition-colors"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {/* Toast notifications */}
