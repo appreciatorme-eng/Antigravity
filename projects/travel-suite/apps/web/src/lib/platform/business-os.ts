@@ -5,6 +5,7 @@ import {
     getAccountDetail,
     listAccounts,
     loadGodWorkItems,
+    updateGodWorkItem,
     type AccountActivationStage,
     type AccountDetail,
     type AccountHealthBand,
@@ -18,8 +19,10 @@ import {
     type GodWorkItem,
 } from "@/lib/platform/god-accounts";
 import { listOrgActivityEvents, listOrgMemoryNotes, recordOrgActivityEvent, type OrgActivityEvent, type OrgMemoryNote } from "@/lib/platform/org-memory";
-import { buildWorkItemOutcomeLearning, type WorkItemOutcomeLearning } from "@/lib/platform/work-item-outcomes";
+import { buildWorkItemOutcomeLearning, recordWorkItemOutcome, type WorkItemOutcomeLearning } from "@/lib/platform/work-item-outcomes";
 import {
+    createCommsSequence,
+    createCommitment,
     buildCommsFollowupCounts,
     buildCommitmentCounts,
     loadCommsSequences,
@@ -237,6 +240,16 @@ export type BusinessOsOpsLoopResult = {
     created_work_items: GodWorkItem[];
 };
 
+export type BusinessOsDailyAutopilotResult = {
+    generated_at: string;
+    ops_loop: BusinessOsOpsLoopResult;
+    activation_sequences_created: number;
+    collections_sequences_created: number;
+    commitments_created: number;
+    collections_auto_closed: number;
+    outcomes_recorded: number;
+};
+
 type SupportContextRow = {
     id: string;
     title: string | null;
@@ -306,9 +319,35 @@ type WhatsAppDraftRow = {
     updated_at: string | null;
 };
 
+type CommsSequenceAutopilotRow = {
+    id: string;
+    org_id: string | null;
+    sequence_type: string | null;
+    status: string | null;
+};
+
+type CommitmentAutopilotRow = {
+    id: string;
+    org_id: string | null;
+    status: string | null;
+    metadata: unknown;
+};
+
+type CollectionsWorkItemAutopilotRow = {
+    id: string;
+    org_id: string | null;
+    title: string | null;
+};
+
 function normalizeText(value: string | null | undefined, fallback = "Unknown"): string {
     const trimmed = value?.trim();
     return trimmed ? trimmed : fallback;
+}
+
+function normalizeMetadata(value: unknown): Record<string, unknown> | null {
+    return value && typeof value === "object" && !Array.isArray(value)
+        ? value as Record<string, unknown>
+        : null;
 }
 
 function normalizeKey(value: string | null | undefined): string {
@@ -1676,6 +1715,237 @@ export async function runBusinessOpsLoop(db: AdminClient): Promise<BusinessOsOps
         by_kind: payload.ops_loop_preview.by_kind,
         suggestions: payload.ops_loop_preview.suggestions,
         created_work_items: createdWorkItems,
+    };
+}
+
+export async function runBusinessDailyAutopilot(
+    db: AdminClient,
+    options: { limit?: number; maxActionsPerLoop?: number } = {},
+): Promise<BusinessOsDailyAutopilotResult> {
+    const limit = Math.min(160, Math.max(40, options.limit ?? 120));
+    const maxActionsPerLoop = Math.min(60, Math.max(10, options.maxActionsPerLoop ?? 30));
+    const [payload, opsLoop] = await Promise.all([
+        buildBusinessOsPayload(db, "", { limit }),
+        runBusinessOpsLoop(db),
+    ]);
+
+    const orgIds = payload.accounts.map((account) => account.org_id);
+    if (orgIds.length === 0) {
+        return {
+            generated_at: new Date().toISOString(),
+            ops_loop: opsLoop,
+            activation_sequences_created: 0,
+            collections_sequences_created: 0,
+            commitments_created: 0,
+            collections_auto_closed: 0,
+            outcomes_recorded: 0,
+        };
+    }
+
+    const [sequencesResult, commitmentsResult, collectionsWorkItemsResult] = await Promise.all([
+        db
+            .from("god_comms_sequences")
+            .select("id, org_id, sequence_type, status")
+            .in("org_id", orgIds)
+            .in("status", ["active", "paused"]),
+        db
+            .from("god_commitments")
+            .select("id, org_id, status, metadata")
+            .in("org_id", orgIds)
+            .eq("status", "open"),
+        db
+            .from("god_work_items")
+            .select("id, org_id, title")
+            .in("org_id", orgIds)
+            .eq("kind", "collections")
+            .in("status", ["open", "in_progress", "blocked", "snoozed"]),
+    ]);
+
+    const sequenceRows = (sequencesResult.data ?? []) as CommsSequenceAutopilotRow[];
+    const commitmentRows = (commitmentsResult.data ?? []) as CommitmentAutopilotRow[];
+    const collectionsWorkItemRows = (collectionsWorkItemsResult.data ?? []) as CollectionsWorkItemAutopilotRow[];
+
+    const sequenceKeys = new Set<string>();
+    for (const row of sequenceRows) {
+        if (!row.org_id || !row.sequence_type) continue;
+        if (row.status === "completed") continue;
+        sequenceKeys.add(`${row.org_id}:${row.sequence_type}`);
+    }
+
+    const activationCommitmentOrgIds = new Set<string>();
+    for (const row of commitmentRows) {
+        if (!row.org_id || row.status !== "open") continue;
+        const metadata = normalizeMetadata(row.metadata);
+        const autopilotKind = typeof metadata?.autopilot_kind === "string"
+            ? metadata.autopilot_kind
+            : "";
+        if (autopilotKind === "first_proposal_activation") {
+            activationCommitmentOrgIds.add(row.org_id);
+        }
+    }
+
+    let activationSequencesCreated = 0;
+    let collectionsSequencesCreated = 0;
+    let commitmentsCreated = 0;
+    let collectionsAutoClosed = 0;
+    let outcomesRecorded = 0;
+
+    const activationAccounts = payload.accounts.filter((account) =>
+        account.activation_risk
+        && account.snapshot.proposal_sent_count === 0,
+    );
+    for (const account of activationAccounts) {
+        if (activationSequencesCreated >= maxActionsPerLoop) break;
+        const sequenceKey = `${account.org_id}:activation_rescue`;
+        if (sequenceKeys.has(sequenceKey)) continue;
+        const nextFollowUpAt = account.account_state.next_action_due_at ?? new Date(Date.now() + 86_400_000).toISOString();
+        const sequence = await createCommsSequence(db, {
+            org_id: account.org_id,
+            owner_id: account.account_state.owner_id,
+            sequence_type: "activation_rescue",
+            status: "active",
+            channel: "mixed",
+            next_follow_up_at: nextFollowUpAt,
+            promise: "Send first proposal to complete activation and confirm decision timeline.",
+            metadata: {
+                source: "business_os_daily_autopilot",
+                autopilot_kind: "activation_rescue",
+            },
+        });
+        sequenceKeys.add(sequenceKey);
+        activationSequencesCreated += 1;
+        await recordOrgActivityEvent(db, {
+            org_id: account.org_id,
+            actor_id: null,
+            event_type: "autopilot_activation_sequence_created",
+            title: "Autopilot created activation sequence",
+            detail: `Activation rescue sequence scheduled for ${account.name}.`,
+            entity_type: "comms_sequence",
+            entity_id: sequence.id,
+            source: "business_os_autopilot",
+            metadata: {
+                sequence_type: sequence.sequence_type,
+                next_follow_up_at: sequence.next_follow_up_at,
+            },
+        });
+
+        if (activationCommitmentOrgIds.has(account.org_id)) continue;
+        if (commitmentsCreated >= maxActionsPerLoop) continue;
+        const commitment = await createCommitment(db, {
+            org_id: account.org_id,
+            owner_id: account.account_state.owner_id,
+            source: "ops",
+            title: "First proposal must be sent",
+            detail: "Activation target: send the first client proposal and capture follow-up owner/date.",
+            severity: "high",
+            due_at: nextFollowUpAt,
+            metadata: {
+                source: "business_os_daily_autopilot",
+                autopilot_kind: "first_proposal_activation",
+            },
+        });
+        activationCommitmentOrgIds.add(account.org_id);
+        commitmentsCreated += 1;
+        await recordOrgActivityEvent(db, {
+            org_id: account.org_id,
+            actor_id: null,
+            event_type: "autopilot_activation_commitment_created",
+            title: "Autopilot created activation commitment",
+            detail: "First proposal commitment was added to avoid activation drift.",
+            entity_type: "commitment",
+            entity_id: commitment.id,
+            source: "business_os_autopilot",
+            metadata: {
+                due_at: commitment.due_at,
+                severity: commitment.severity,
+            },
+        });
+    }
+
+    const collectionsAccounts = payload.accounts.filter((account) => account.snapshot.overdue_balance > 0);
+    for (const account of collectionsAccounts) {
+        if (collectionsSequencesCreated >= maxActionsPerLoop) break;
+        const sequenceKey = `${account.org_id}:collections`;
+        if (sequenceKeys.has(sequenceKey)) continue;
+        const nextFollowUpAt = account.account_state.next_action_due_at ?? new Date().toISOString();
+        const sequence = await createCommsSequence(db, {
+            org_id: account.org_id,
+            owner_id: account.account_state.owner_id,
+            sequence_type: "collections",
+            status: "active",
+            channel: "mixed",
+            next_follow_up_at: nextFollowUpAt,
+            promise: `Collect overdue balance (${account.snapshot.overdue_balance_label}) and confirm payment date.`,
+            metadata: {
+                source: "business_os_daily_autopilot",
+                autopilot_kind: "collections_dunning",
+                overdue_balance: account.snapshot.overdue_balance,
+            },
+        });
+        sequenceKeys.add(sequenceKey);
+        collectionsSequencesCreated += 1;
+        await recordOrgActivityEvent(db, {
+            org_id: account.org_id,
+            actor_id: null,
+            event_type: "autopilot_collections_sequence_created",
+            title: "Autopilot created collections sequence",
+            detail: `${account.snapshot.overdue_invoice_count} overdue invoices are queued for follow-up.`,
+            entity_type: "comms_sequence",
+            entity_id: sequence.id,
+            source: "business_os_autopilot",
+            metadata: {
+                overdue_balance: account.snapshot.overdue_balance,
+                next_follow_up_at: sequence.next_follow_up_at,
+            },
+        });
+    }
+
+    const zeroOverdueOrgIds = new Set(
+        payload.accounts
+            .filter((account) => account.snapshot.overdue_balance <= 0)
+            .map((account) => account.org_id),
+    );
+    for (const item of collectionsWorkItemRows) {
+        if (collectionsAutoClosed >= maxActionsPerLoop) break;
+        if (!item.org_id || !zeroOverdueOrgIds.has(item.org_id)) continue;
+        const updated = await updateGodWorkItem(db, item.id, { status: "done" });
+        if (!updated) continue;
+        await recordWorkItemOutcome(db, {
+            work_item_id: item.id,
+            org_id: item.org_id,
+            outcome_type: "payment_collected",
+            note: "Auto-closed by Business OS daily autopilot after overdue balance cleared.",
+            metadata: {
+                source: "business_os_daily_autopilot",
+                autopilot_kind: "collections_auto_close",
+            },
+            recorded_by: null,
+        });
+        outcomesRecorded += 1;
+        collectionsAutoClosed += 1;
+        await recordOrgActivityEvent(db, {
+            org_id: item.org_id,
+            actor_id: null,
+            event_type: "autopilot_collections_work_item_closed",
+            title: "Autopilot closed collections work item",
+            detail: item.title ?? "Collections work item was marked done after payment recovery.",
+            entity_type: "work_item",
+            entity_id: item.id,
+            source: "business_os_autopilot",
+            metadata: {
+                outcome_type: "payment_collected",
+            },
+        });
+    }
+
+    return {
+        generated_at: new Date().toISOString(),
+        ops_loop: opsLoop,
+        activation_sequences_created: activationSequencesCreated,
+        collections_sequences_created: collectionsSequencesCreated,
+        commitments_created: commitmentsCreated,
+        collections_auto_closed: collectionsAutoClosed,
+        outcomes_recorded: outcomesRecorded,
     };
 }
 

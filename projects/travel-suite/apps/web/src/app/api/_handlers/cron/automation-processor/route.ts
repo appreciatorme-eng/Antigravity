@@ -6,7 +6,7 @@ import { scheduleAutomation } from "@/lib/automation/qstash-scheduler";
 import { sendOpsAlert } from "@/lib/god-slack";
 import { authorizeCronRequest } from "@/lib/security/cron-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { generateDailyOpsBrief, runBusinessOpsLoop } from "@/lib/platform/business-os";
+import { generateDailyOpsBrief, runBusinessDailyAutopilot } from "@/lib/platform/business-os";
 import { logError, logEvent } from "@/lib/observability/logger";
 
 /**
@@ -86,6 +86,11 @@ interface BusinessOsAutopilotResult {
   readonly createdWorkItems: number;
   readonly candidateWorkItems: number;
   readonly dedupedWorkItems: number;
+  readonly activationSequencesCreated: number;
+  readonly collectionsSequencesCreated: number;
+  readonly commitmentsCreated: number;
+  readonly collectionsAutoClosed: number;
+  readonly outcomesRecorded: number;
   readonly priorityCount: number;
   readonly gapCount: number;
   readonly slackPosted: boolean;
@@ -128,14 +133,16 @@ async function runAutomationEngineWithQStash(): Promise<QStashScheduleResult> {
 
 async function runBusinessOsAutopilot(): Promise<BusinessOsAutopilotResult> {
   const adminClient = createAdminClient();
-  const [opsLoop, brief] = await Promise.all([
-    runBusinessOpsLoop(adminClient as never),
+  const [autopilot, brief] = await Promise.all([
+    runBusinessDailyAutopilot(adminClient as never),
     generateDailyOpsBrief(adminClient as never, ""),
   ]);
 
   const summary = [
     "Business OS daily autopilot completed.",
-    `Created ${opsLoop.created_count}/${opsLoop.candidate_count} queue items (${opsLoop.deduped_count} already covered).`,
+    `Created ${autopilot.ops_loop.created_count}/${autopilot.ops_loop.candidate_count} queue items (${autopilot.ops_loop.deduped_count} already covered).`,
+    `Activation sequences: ${autopilot.activation_sequences_created} • Collections sequences: ${autopilot.collections_sequences_created}`,
+    `Activation commitments: ${autopilot.commitments_created} • Collections auto-closed: ${autopilot.collections_auto_closed}`,
     `Top focus: ${brief.headline}`,
     ...(brief.gaps.slice(0, 3).map((gap) => `Gap: ${gap}`)),
   ].join("\n");
@@ -145,9 +152,14 @@ async function runBusinessOsAutopilot(): Promise<BusinessOsAutopilotResult> {
   return {
     ran: true,
     generatedAt: new Date().toISOString(),
-    createdWorkItems: opsLoop.created_count,
-    candidateWorkItems: opsLoop.candidate_count,
-    dedupedWorkItems: opsLoop.deduped_count,
+    createdWorkItems: autopilot.ops_loop.created_count,
+    candidateWorkItems: autopilot.ops_loop.candidate_count,
+    dedupedWorkItems: autopilot.ops_loop.deduped_count,
+    activationSequencesCreated: autopilot.activation_sequences_created,
+    collectionsSequencesCreated: autopilot.collections_sequences_created,
+    commitmentsCreated: autopilot.commitments_created,
+    collectionsAutoClosed: autopilot.collections_auto_closed,
+    outcomesRecorded: autopilot.outcomes_recorded,
     priorityCount: brief.priorities.length,
     gapCount: brief.gaps.length,
     slackPosted,
