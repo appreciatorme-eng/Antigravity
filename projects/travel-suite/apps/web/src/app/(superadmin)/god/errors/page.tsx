@@ -34,6 +34,28 @@ interface ErrorEvent {
     sla_due_at: string | null;
     ops_note: string | null;
     is_sla_breached: boolean;
+    org_account_state?: {
+        lifecycle_stage: string;
+        health_band: string;
+        renewal_at: string | null;
+        next_action: string | null;
+    } | null;
+    linked_work_items?: Array<{
+        id: string;
+        title: string;
+        status: string;
+        severity: string;
+        due_at: string | null;
+        owner_name: string | null;
+    }>;
+    business_impact?: {
+        outstanding_balance_label: string;
+        overdue_balance_label: string;
+        overdue_invoice_count: number;
+        expiring_proposal_count: number;
+        fatal_error_count: number;
+        risk_flags: string[];
+    } | null;
 }
 
 interface ErrorsResponse {
@@ -265,6 +287,63 @@ function ErrorRow({ event, onSaved, autoExpand = false }: ErrorRowProps) {
                             <span>Resolved: {timeAgo(event.resolved_at)}</span>
                         )}
                     </div>
+
+                    {(event.business_impact || event.org_account_state || (event.linked_work_items?.length ?? 0) > 0) && (
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="rounded-lg border border-gray-800 bg-gray-900/70 p-3">
+                                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Account Impact</p>
+                                <div className="mt-3 space-y-2 text-sm text-gray-300">
+                                    <div className="flex justify-between gap-3">
+                                        <span className="text-gray-500">Health</span>
+                                        <span className="capitalize text-white">{event.org_account_state?.health_band ?? "unknown"}</span>
+                                    </div>
+                                    <div className="flex justify-between gap-3">
+                                        <span className="text-gray-500">Lifecycle</span>
+                                        <span className="capitalize text-white">{event.org_account_state?.lifecycle_stage ?? "unknown"}</span>
+                                    </div>
+                                    <div className="flex justify-between gap-3">
+                                        <span className="text-gray-500">Overdue balance</span>
+                                        <span className="text-white">{event.business_impact?.overdue_balance_label ?? "₹0"}</span>
+                                    </div>
+                                    <div className="flex justify-between gap-3">
+                                        <span className="text-gray-500">Outstanding</span>
+                                        <span className="text-white">{event.business_impact?.outstanding_balance_label ?? "₹0"}</span>
+                                    </div>
+                                </div>
+                                {(event.business_impact?.risk_flags?.length ?? 0) > 0 && (
+                                    <div className="mt-3 flex flex-wrap gap-1">
+                                        {event.business_impact?.risk_flags.map((flag) => (
+                                            <span key={flag} className="rounded bg-amber-950/30 px-2 py-1 text-[11px] text-amber-200">
+                                                {flag}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                            <div className="rounded-lg border border-gray-800 bg-gray-900/70 p-3">
+                                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Linked Work</p>
+                                {(event.linked_work_items?.length ?? 0) === 0 ? (
+                                    <p className="mt-3 text-sm text-gray-500">No linked work items.</p>
+                                ) : (
+                                    <div className="mt-3 space-y-2">
+                                        {event.linked_work_items?.map((item) => (
+                                            <div key={item.id} className="rounded border border-gray-800 bg-gray-950/60 p-3 text-sm">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div>
+                                                        <p className="font-medium text-white">{item.title}</p>
+                                                        <p className="mt-1 text-xs text-gray-500">
+                                                            {item.owner_name ?? "Unowned"} · {item.status.replace("_", " ")}
+                                                        </p>
+                                                    </div>
+                                                    <span className="text-xs text-gray-500">{item.due_at ? dueLabel(item.due_at) : "No due date"}</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Triage form */}
                     <div className="space-y-3">

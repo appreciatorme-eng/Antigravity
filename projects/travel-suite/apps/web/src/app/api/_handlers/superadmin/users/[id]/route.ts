@@ -20,13 +20,14 @@ export async function GET(
     if (!auth.ok) return auth.response;
 
     const { id } = await params;
-    const { adminClient } = auth;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const db = auth.adminClient as any;
 
     try {
         // Step 1: fetch profile on its own (no join that could silently fail)
-        const profileResult = await adminClient
+        const profileResult = await db
             .from("profiles")
-            .select("id, full_name, email, phone, role, avatar_url, organization_id, created_at")
+            .select("id, full_name, email, phone, role, avatar_url, organization_id, created_at, is_suspended")
             .eq("id", id)
             .single();
 
@@ -44,15 +45,15 @@ export async function GET(
         // Step 2: fetch org, trips, proposals, tickets in parallel
         const [orgResult, tripsResult, proposalsResult, ticketsResult] = await Promise.all([
             profile.organization_id
-                ? adminClient
+                ? db
                     .from("organizations")
                     .select("id, name, slug, subscription_tier, created_at")
                     .eq("id", profile.organization_id)
                     .single()
                 : Promise.resolve({ data: null, error: null }),
-            adminClient.from("trips").select("id", { count: "exact", head: true }).eq("created_by", id),
-            adminClient.from("proposals").select("id", { count: "exact", head: true }).eq("created_by", id),
-            adminClient
+            db.from("trips").select("id", { count: "exact", head: true }).eq("created_by", id),
+            db.from("proposals").select("id", { count: "exact", head: true }).eq("created_by", id),
+            db
                 .from("support_tickets")
                 .select("id, title, status, priority, created_at")
                 .eq("user_id", id)
@@ -75,7 +76,7 @@ export async function GET(
                 avatar_url: profile.avatar_url,
                 created_at: profile.created_at,
                 organization_id: profile.organization_id,
-                suspended: false, // field does not exist in profiles schema
+                suspended: Boolean(profile.is_suspended),
             },
             organization: org ? {
                 id: org.id,
@@ -125,16 +126,17 @@ export async function PATCH(
         return apiError("Invalid JSON", 400);
     }
 
-    const update: Record<string, unknown> = {};
+        const update: Record<string, unknown> = {};
 
-    if (body.role !== undefined) {
-        if (!VALID_ROLES.includes(body.role)) {
-            return apiError(`Invalid role. Must be one of: ${VALID_ROLES.join(", ")}`, 400);
+        if (body.role !== undefined) {
+            if (!VALID_ROLES.includes(body.role)) {
+                return apiError(`Invalid role. Must be one of: ${VALID_ROLES.join(", ")}`, 400);
+            }
+            update.role = body.role;
         }
-        update.role = body.role;
-    }
-
-
+        if (body.suspended !== undefined) {
+            update.is_suspended = body.suspended;
+        }
 
     if (body.organization_id !== undefined) {
         update.organization_id = body.organization_id;
@@ -152,7 +154,7 @@ export async function PATCH(
         // Get current profile for audit log context
         const { data: current } = await db
             .from("profiles")
-            .select("full_name, email, role, organization_id")
+            .select("full_name, email, role, organization_id, is_suspended")
             .eq("id", id)
             .single();
 
@@ -162,7 +164,7 @@ export async function PATCH(
             .from("profiles")
             .update(update)
             .eq("id", id)
-            .select("id, full_name, email, role, organization_id")
+            .select("id, full_name, email, role, organization_id, is_suspended")
             .single();
 
         if (error) {
@@ -175,7 +177,7 @@ export async function PATCH(
         if (body.role !== undefined && body.role !== current.role) {
             changes.push(`role: ${current.role} → ${body.role}`);
         }
-        if (body.suspended !== undefined && body.suspended !== current.suspended) {
+        if (body.suspended !== undefined && body.suspended !== current.is_suspended) {
             changes.push(body.suspended ? "suspended user" : "unsuspended user");
         }
         if (body.organization_id !== undefined && body.organization_id !== current.organization_id) {
@@ -191,11 +193,16 @@ export async function PATCH(
             "org_management",
             "user",
             id,
-            { changes: update, previous: { role: current.role, org_id: current.organization_id, suspended: current.suspended } },
+            { changes: update, previous: { role: current.role, org_id: current.organization_id, suspended: current.is_suspended } },
             getClientIpFromRequest(request),
         );
 
-        return NextResponse.json({ profile: data });
+        return NextResponse.json({
+            profile: {
+                ...data,
+                suspended: Boolean(data?.is_suspended),
+            },
+        });
     } catch (err) {
         logError("[superadmin/users/:id PATCH]", err);
         return apiError("Failed to update user", 500);

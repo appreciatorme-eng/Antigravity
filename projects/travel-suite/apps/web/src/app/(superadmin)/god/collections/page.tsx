@@ -14,6 +14,34 @@ import { authedFetch } from "@/lib/api/authed-fetch";
 
 type WorkspaceTab = "invoices" | "proposals";
 
+type AccountState = {
+    owner_id: string | null;
+    lifecycle_stage: string;
+    health_band: string;
+    renewal_at: string | null;
+    next_action: string | null;
+};
+
+type BusinessImpact = {
+    outstanding_balance_label: string;
+    overdue_balance_label: string;
+    overdue_invoice_count: number;
+    expiring_proposal_count: number;
+    open_support_count: number;
+    urgent_support_count: number;
+    fatal_error_count: number;
+    risk_flags: string[];
+};
+
+type LinkedWorkItem = {
+    id: string;
+    status: string;
+    severity: string;
+    title: string;
+    due_at: string | null;
+    owner_name: string | null;
+};
+
 interface CollectionsData {
     generated_at: string;
     summary: {
@@ -36,6 +64,10 @@ interface CollectionsData {
         org_tier: string;
         days_until_due: number | null;
         href: string;
+        account_state: AccountState | null;
+        business_impact: BusinessImpact | null;
+        work_item: LinkedWorkItem | null;
+        recommended_playbook: string;
     }>;
     proposals: Array<{
         id: string;
@@ -49,6 +81,10 @@ interface CollectionsData {
         org_tier: string;
         hours_until_expiry: number | null;
         href: string;
+        account_state: AccountState | null;
+        business_impact: BusinessImpact | null;
+        work_item: LinkedWorkItem | null;
+        recommended_playbook: string;
     }>;
 }
 
@@ -74,6 +110,12 @@ function expiryLabel(hours: number | null): string {
     if (hours <= 0) return "Expires now";
     if (hours < 24) return `Expires in ${hours}h`;
     return `Expires in ${Math.ceil(hours / 24)}d`;
+}
+
+function healthBadge(band: string | null | undefined) {
+    if (band === "at_risk") return "bg-red-950/40 text-red-300";
+    if (band === "watch") return "bg-amber-950/40 text-amber-300";
+    return "bg-emerald-950/40 text-emerald-300";
 }
 
 export default function CollectionsPage() {
@@ -165,8 +207,8 @@ export default function CollectionsPage() {
         <div className="space-y-6">
             <div className="flex items-center justify-between gap-3">
                 <div>
-                    <h1 className="text-2xl font-bold text-white">Collections Workspace</h1>
-                    <p className="mt-0.5 text-sm text-gray-400">Recover overdue invoices and close expiring deals.</p>
+                    <h1 className="text-2xl font-bold text-white">Revenue Ops</h1>
+                    <p className="mt-0.5 text-sm text-gray-400">Recover overdue invoices, rescue renewals, and move owned revenue work.</p>
                 </div>
                 <button
                     onClick={fetchData}
@@ -236,6 +278,17 @@ export default function CollectionsPage() {
                                     <div className="min-w-0">
                                         <p className="text-sm font-medium text-white">#{invoice.invoice_number ?? "—"} · {invoice.org_name}</p>
                                         <p className="mt-1 text-xs text-gray-500">{invoice.org_tier} · due {formatDate(invoice.due_date)}</p>
+                                        <div className="mt-2 flex flex-wrap gap-1">
+                                            <span className={`rounded px-2 py-1 text-[11px] ${healthBadge(invoice.account_state?.health_band)}`}>
+                                                {invoice.account_state?.health_band ?? "healthy"}
+                                            </span>
+                                            <span className="rounded bg-gray-800 px-2 py-1 text-[11px] text-gray-300">
+                                                {invoice.work_item?.owner_name ?? "Unowned"}
+                                            </span>
+                                            <span className="rounded bg-blue-950/30 px-2 py-1 text-[11px] text-blue-200">
+                                                {invoice.recommended_playbook}
+                                            </span>
+                                        </div>
                                     </div>
                                     <div className="text-right">
                                         <p className="text-sm font-semibold text-red-200">{invoice.amount_label}</p>
@@ -271,6 +324,17 @@ export default function CollectionsPage() {
                                     <div className="min-w-0">
                                         <p className="truncate text-sm font-medium text-white">{proposal.title}</p>
                                         <p className="mt-1 text-xs text-gray-500">{proposal.org_name} · expires {formatDate(proposal.expires_at)}</p>
+                                        <div className="mt-2 flex flex-wrap gap-1">
+                                            <span className={`rounded px-2 py-1 text-[11px] ${healthBadge(proposal.account_state?.health_band)}`}>
+                                                {proposal.account_state?.health_band ?? "healthy"}
+                                            </span>
+                                            <span className="rounded bg-gray-800 px-2 py-1 text-[11px] text-gray-300">
+                                                {proposal.work_item?.owner_name ?? "Unowned"}
+                                            </span>
+                                            <span className="rounded bg-blue-950/30 px-2 py-1 text-[11px] text-blue-200">
+                                                {proposal.recommended_playbook}
+                                            </span>
+                                        </div>
                                     </div>
                                     <div className="text-right">
                                         <p className="text-sm font-semibold text-amber-200">{proposal.value_label}</p>
@@ -299,6 +363,69 @@ export default function CollectionsPage() {
                             <p className="mt-1 text-xs text-gray-500">{dueLabel(selectedInvoice.days_until_due)}</p>
                         </div>
 
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="rounded-lg border border-gray-800 bg-gray-950/40 p-3">
+                                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Account State</p>
+                                <div className="mt-3 space-y-2 text-sm text-gray-300">
+                                    <div className="flex justify-between gap-3">
+                                        <span className="text-gray-500">Health</span>
+                                        <span className="capitalize text-white">{selectedInvoice.account_state?.health_band ?? "healthy"}</span>
+                                    </div>
+                                    <div className="flex justify-between gap-3">
+                                        <span className="text-gray-500">Lifecycle</span>
+                                        <span className="capitalize text-white">{selectedInvoice.account_state?.lifecycle_stage ?? "active"}</span>
+                                    </div>
+                                    <div className="flex justify-between gap-3">
+                                        <span className="text-gray-500">Renewal</span>
+                                        <span className="text-white">{selectedInvoice.account_state?.renewal_at ? formatDate(selectedInvoice.account_state.renewal_at) : "Not set"}</span>
+                                    </div>
+                                    <div className="flex justify-between gap-3">
+                                        <span className="text-gray-500">Next action</span>
+                                        <span className="text-right text-white">{selectedInvoice.account_state?.next_action ?? "None set"}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="rounded-lg border border-gray-800 bg-gray-950/40 p-3">
+                                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Revenue Risk</p>
+                                <div className="mt-3 space-y-2 text-sm text-gray-300">
+                                    <div className="flex justify-between gap-3">
+                                        <span className="text-gray-500">Outstanding</span>
+                                        <span className="text-white">{selectedInvoice.business_impact?.outstanding_balance_label ?? selectedInvoice.amount_label}</span>
+                                    </div>
+                                    <div className="flex justify-between gap-3">
+                                        <span className="text-gray-500">Overdue balance</span>
+                                        <span className="text-white">{selectedInvoice.business_impact?.overdue_balance_label ?? selectedInvoice.amount_label}</span>
+                                    </div>
+                                    <div className="flex justify-between gap-3">
+                                        <span className="text-gray-500">Support pressure</span>
+                                        <span className="text-white">{selectedInvoice.business_impact?.urgent_support_count ?? 0} urgent / {selectedInvoice.business_impact?.open_support_count ?? 0} open</span>
+                                    </div>
+                                </div>
+                                <div className="mt-3 flex flex-wrap gap-1">
+                                    {selectedInvoice.business_impact?.risk_flags?.map((flag) => (
+                                        <span key={flag} className="rounded bg-amber-950/30 px-2 py-1 text-[11px] text-amber-200">
+                                            {flag}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {selectedInvoice.work_item && (
+                            <div className="rounded-lg border border-gray-800 bg-gray-950/40 p-3">
+                                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Linked Work Item</p>
+                                <div className="mt-3 flex items-start justify-between gap-3 text-sm">
+                                    <div>
+                                        <p className="font-medium text-white">{selectedInvoice.work_item.title}</p>
+                                        <p className="mt-1 text-xs text-gray-500">
+                                            {selectedInvoice.work_item.owner_name ?? "Unowned"} · {selectedInvoice.work_item.status.replace("_", " ")}
+                                        </p>
+                                    </div>
+                                    <span className="text-xs text-gray-500">{selectedInvoice.work_item.due_at ? formatDate(selectedInvoice.work_item.due_at) : "No due date"}</span>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Revenue recovery actions */}
                         <div className="space-y-2">
                             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Recovery Actions</h3>
@@ -312,7 +439,12 @@ export default function CollectionsPage() {
                                         const res = await authedFetch(`/api/superadmin/collections`, {
                                             method: "PATCH",
                                             headers: { "Content-Type": "application/json" },
-                                            body: JSON.stringify({ type: "invoice", id: selectedInvoice.id, action: "mark_paid" }),
+                                            body: JSON.stringify({
+                                                type: "invoice",
+                                                id: selectedInvoice.id,
+                                                action: "mark_paid",
+                                                work_item_update: selectedInvoice.work_item ? { id: selectedInvoice.work_item.id, status: "done" } : undefined,
+                                            }),
                                         });
                                         if (res.ok) { showSuccess("Invoice marked as paid"); closePanel(); fetchData(); }
                                         else showError("Failed to mark as paid");
@@ -326,7 +458,13 @@ export default function CollectionsPage() {
                                         const res = await authedFetch(`/api/superadmin/collections`, {
                                             method: "POST",
                                             headers: { "Content-Type": "application/json" },
-                                            body: JSON.stringify({ type: "invoice", id: selectedInvoice.id, action: "remind" }),
+                                            body: JSON.stringify({
+                                                type: "invoice",
+                                                id: selectedInvoice.id,
+                                                action: "remind",
+                                                org_id: selectedInvoice.org_id,
+                                                work_item_id: selectedInvoice.work_item?.id ?? null,
+                                            }),
                                         });
                                         if (res.ok) showSuccess("Payment reminder sent");
                                         else showError("Failed to send reminder");
@@ -343,7 +481,13 @@ export default function CollectionsPage() {
                                         const res = await authedFetch(`/api/superadmin/collections`, {
                                             method: "PATCH",
                                             headers: { "Content-Type": "application/json" },
-                                            body: JSON.stringify({ type: "invoice", id: selectedInvoice.id, action: "extend", due_date: newDate }),
+                                            body: JSON.stringify({
+                                                type: "invoice",
+                                                id: selectedInvoice.id,
+                                                action: "extend",
+                                                due_date: newDate,
+                                                work_item_update: selectedInvoice.work_item ? { id: selectedInvoice.work_item.id, status: "in_progress", due_at: newDate } : undefined,
+                                            }),
                                         });
                                         if (res.ok) { showSuccess("Due date extended by 7 days"); fetchData(); }
                                         else showError("Failed to extend due date");
@@ -358,7 +502,12 @@ export default function CollectionsPage() {
                                         const res = await authedFetch(`/api/superadmin/collections`, {
                                             method: "PATCH",
                                             headers: { "Content-Type": "application/json" },
-                                            body: JSON.stringify({ type: "invoice", id: selectedInvoice.id, action: "write_off" }),
+                                            body: JSON.stringify({
+                                                type: "invoice",
+                                                id: selectedInvoice.id,
+                                                action: "write_off",
+                                                work_item_update: selectedInvoice.work_item ? { id: selectedInvoice.work_item.id, status: "done" } : undefined,
+                                            }),
                                         });
                                         if (res.ok) { showSuccess("Invoice written off"); closePanel(); fetchData(); }
                                         else showError("Failed to write off");
@@ -406,6 +555,69 @@ export default function CollectionsPage() {
                             <p className="mt-1 text-xs text-gray-500">{expiryLabel(selectedProposal.hours_until_expiry)}</p>
                         </div>
 
+                        <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="rounded-lg border border-gray-800 bg-gray-950/40 p-3">
+                                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Account State</p>
+                                <div className="mt-3 space-y-2 text-sm text-gray-300">
+                                    <div className="flex justify-between gap-3">
+                                        <span className="text-gray-500">Health</span>
+                                        <span className="capitalize text-white">{selectedProposal.account_state?.health_band ?? "healthy"}</span>
+                                    </div>
+                                    <div className="flex justify-between gap-3">
+                                        <span className="text-gray-500">Lifecycle</span>
+                                        <span className="capitalize text-white">{selectedProposal.account_state?.lifecycle_stage ?? "active"}</span>
+                                    </div>
+                                    <div className="flex justify-between gap-3">
+                                        <span className="text-gray-500">Renewal</span>
+                                        <span className="text-white">{selectedProposal.account_state?.renewal_at ? formatDate(selectedProposal.account_state.renewal_at) : "Not set"}</span>
+                                    </div>
+                                    <div className="flex justify-between gap-3">
+                                        <span className="text-gray-500">Playbook</span>
+                                        <span className="text-right text-white">{selectedProposal.recommended_playbook}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="rounded-lg border border-gray-800 bg-gray-950/40 p-3">
+                                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Business Impact</p>
+                                <div className="mt-3 space-y-2 text-sm text-gray-300">
+                                    <div className="flex justify-between gap-3">
+                                        <span className="text-gray-500">Outstanding</span>
+                                        <span className="text-white">{selectedProposal.business_impact?.outstanding_balance_label ?? "₹0"}</span>
+                                    </div>
+                                    <div className="flex justify-between gap-3">
+                                        <span className="text-gray-500">Expiring proposals</span>
+                                        <span className="text-white">{selectedProposal.business_impact?.expiring_proposal_count ?? 0}</span>
+                                    </div>
+                                    <div className="flex justify-between gap-3">
+                                        <span className="text-gray-500">Support pressure</span>
+                                        <span className="text-white">{selectedProposal.business_impact?.urgent_support_count ?? 0} urgent / {selectedProposal.business_impact?.open_support_count ?? 0} open</span>
+                                    </div>
+                                </div>
+                                <div className="mt-3 flex flex-wrap gap-1">
+                                    {selectedProposal.business_impact?.risk_flags?.map((flag) => (
+                                        <span key={flag} className="rounded bg-amber-950/30 px-2 py-1 text-[11px] text-amber-200">
+                                            {flag}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {selectedProposal.work_item && (
+                            <div className="rounded-lg border border-gray-800 bg-gray-950/40 p-3">
+                                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Linked Work Item</p>
+                                <div className="mt-3 flex items-start justify-between gap-3 text-sm">
+                                    <div>
+                                        <p className="font-medium text-white">{selectedProposal.work_item.title}</p>
+                                        <p className="mt-1 text-xs text-gray-500">
+                                            {selectedProposal.work_item.owner_name ?? "Unowned"} · {selectedProposal.work_item.status.replace("_", " ")}
+                                        </p>
+                                    </div>
+                                    <span className="text-xs text-gray-500">{selectedProposal.work_item.due_at ? formatDate(selectedProposal.work_item.due_at) : "No due date"}</span>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Proposal actions */}
                         <div className="space-y-2">
                             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Deal Actions</h3>
@@ -419,7 +631,12 @@ export default function CollectionsPage() {
                                         const res = await authedFetch(`/api/superadmin/collections`, {
                                             method: "PATCH",
                                             headers: { "Content-Type": "application/json" },
-                                            body: JSON.stringify({ type: "proposal", id: selectedProposal.id, action: "convert" }),
+                                            body: JSON.stringify({
+                                                type: "proposal",
+                                                id: selectedProposal.id,
+                                                action: "convert",
+                                                work_item_update: selectedProposal.work_item ? { id: selectedProposal.work_item.id, status: "done" } : undefined,
+                                            }),
                                         });
                                         if (res.ok) { showSuccess("Proposal marked as converted"); closePanel(); fetchData(); }
                                         else showError("Failed to mark as converted");
@@ -436,7 +653,13 @@ export default function CollectionsPage() {
                                         const res = await authedFetch(`/api/superadmin/collections`, {
                                             method: "PATCH",
                                             headers: { "Content-Type": "application/json" },
-                                            body: JSON.stringify({ type: "proposal", id: selectedProposal.id, action: "extend", expires_at: newExpiry }),
+                                            body: JSON.stringify({
+                                                type: "proposal",
+                                                id: selectedProposal.id,
+                                                action: "extend",
+                                                expires_at: newExpiry,
+                                                work_item_update: selectedProposal.work_item ? { id: selectedProposal.work_item.id, status: "in_progress", due_at: newExpiry } : undefined,
+                                            }),
                                         });
                                         if (res.ok) { showSuccess("Expiry extended by 48 hours"); fetchData(); }
                                         else showError("Failed to extend expiry");
@@ -451,7 +674,12 @@ export default function CollectionsPage() {
                                         const res = await authedFetch(`/api/superadmin/collections`, {
                                             method: "PATCH",
                                             headers: { "Content-Type": "application/json" },
-                                            body: JSON.stringify({ type: "proposal", id: selectedProposal.id, action: "cancel" }),
+                                            body: JSON.stringify({
+                                                type: "proposal",
+                                                id: selectedProposal.id,
+                                                action: "cancel",
+                                                work_item_update: selectedProposal.work_item ? { id: selectedProposal.work_item.id, status: "done" } : undefined,
+                                            }),
                                         });
                                         if (res.ok) { showSuccess("Proposal cancelled"); closePanel(); fetchData(); }
                                         else showError("Failed to cancel proposal");

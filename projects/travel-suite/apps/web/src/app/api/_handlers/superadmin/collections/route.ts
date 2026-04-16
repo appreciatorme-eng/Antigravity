@@ -9,6 +9,14 @@ import { logError } from "@/lib/observability/logger";
 import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
 import { buildGodDataQuality } from "@/lib/platform/god-kpi";
 import { logPlatformActionWithTarget, getClientIpFromRequest } from "@/lib/platform/audit";
+import {
+    buildAccountMetricsMap,
+    buildBusinessImpact,
+    createGodWorkItem,
+    loadGodAccountStateMap,
+    loadGodWorkItems,
+    updateGodWorkItem,
+} from "@/lib/platform/god-accounts";
 
 type OrganizationRow = {
     id: string;
@@ -107,6 +115,17 @@ export async function GET(request: NextRequest) {
             )),
         ]);
 
+        const orgIds = organizations.map((org) => org.id);
+        const [accountStateMap, accountMetricsMap, activeWorkItems] = await Promise.all([
+            loadGodAccountStateMap(db, orgIds),
+            buildAccountMetricsMap(db, orgIds),
+            loadGodWorkItems(db, { orgIds, status: "active", limit: 500 }),
+        ]);
+        const workItemMap = new Map<string, typeof activeWorkItems[number]>();
+        for (const item of activeWorkItems) {
+            workItemMap.set(`${item.target_type}:${item.target_id}`, item);
+        }
+
         const organizationMap = new Map(
             organizations.map((org) => [
                 org.id,
@@ -134,6 +153,9 @@ export async function GET(request: NextRequest) {
 
         const invoicePayload = workspaceInvoices.map((row) => {
             const org = row.organization_id ? organizationMap.get(row.organization_id) : null;
+            const accountState = row.organization_id ? accountStateMap.get(row.organization_id) : null;
+            const snapshot = row.organization_id ? accountMetricsMap.get(row.organization_id) : null;
+            const linkedWorkItem = workItemMap.get(`invoice:${row.id}`) ?? null;
             const amountDue = safeNumber(row.balance_amount ?? row.total_amount);
             const days = daysUntil(row.due_date);
             return {
@@ -148,11 +170,18 @@ export async function GET(request: NextRequest) {
                 org_tier: org?.tier ?? "free",
                 days_until_due: days,
                 href: `/god/collections?tab=invoices&invoiceId=${row.id}`,
+                account_state: accountState,
+                business_impact: accountState && snapshot ? buildBusinessImpact(accountState, snapshot) : null,
+                work_item: linkedWorkItem,
+                recommended_playbook: amountDue >= 100000 ? "Executive collections" : days !== null && days < -14 ? "Recovery call + suspension review" : "Reminder + follow-up",
             };
         });
 
         const proposalPayload = proposalRowsSorted.map((row) => {
             const org = row.organization_id ? organizationMap.get(row.organization_id) : null;
+            const accountState = row.organization_id ? accountStateMap.get(row.organization_id) : null;
+            const snapshot = row.organization_id ? accountMetricsMap.get(row.organization_id) : null;
+            const linkedWorkItem = workItemMap.get(`proposal:${row.id}`) ?? null;
             const value = proposalValue(row);
             return {
                 id: row.id,
@@ -166,6 +195,10 @@ export async function GET(request: NextRequest) {
                 org_tier: org?.tier ?? "free",
                 hours_until_expiry: hoursUntil(row.expires_at),
                 href: `/god/collections?tab=proposals&proposalId=${row.id}`,
+                account_state: accountState,
+                business_impact: accountState && snapshot ? buildBusinessImpact(accountState, snapshot) : null,
+                work_item: linkedWorkItem,
+                recommended_playbook: value >= 100000 ? "Executive rescue" : "Sales follow-up",
             };
         });
 
@@ -222,6 +255,12 @@ interface CollectionPatchBody {
     action: string;
     due_date?: string;
     expires_at?: string;
+    work_item_update?: {
+        id?: string;
+        status?: "open" | "in_progress" | "blocked" | "snoozed" | "done";
+        due_at?: string | null;
+        summary?: string | null;
+    };
 }
 
 export async function PATCH(request: NextRequest) {
@@ -244,6 +283,7 @@ export async function PATCH(request: NextRequest) {
         if (body.type === "invoice") {
             const table = "invoices";
             const update: Record<string, unknown> = {};
+            let orgId: string | null = null;
 
             switch (body.action) {
                 case "mark_paid":
@@ -262,10 +302,35 @@ export async function PATCH(request: NextRequest) {
                     return apiError(`Unknown invoice action: ${body.action}`, 400);
             }
 
+            const existing = await db.from(table).select("organization_id, invoice_number").eq("id", body.id).maybeSingle();
+            orgId = existing.data?.organization_id ?? null;
             const { error } = await db.from(table).update(update).eq("id", body.id);
             if (error) {
                 logError("[superadmin/collections PATCH invoice]", error);
                 return apiError("Failed to update invoice", 500);
+            }
+
+            if (body.work_item_update?.id) {
+                await updateGodWorkItem(db, body.work_item_update.id, {
+                    status: body.work_item_update.status ?? (["mark_paid", "write_off"].includes(body.action) ? "done" : undefined),
+                    due_at: body.work_item_update.due_at,
+                    summary: body.work_item_update.summary ?? undefined,
+                });
+            } else if (orgId) {
+                const status = ["mark_paid", "write_off"].includes(body.action) ? "done" : "in_progress";
+                await createGodWorkItem(db, {
+                    kind: "collections",
+                    target_type: "invoice",
+                    target_id: body.id,
+                    org_id: orgId,
+                    owner_id: auth.userId,
+                    status,
+                    severity: body.action === "write_off" ? "high" : "medium",
+                    title: `Invoice ${body.action.replace("_", " ")}: ${existing.data?.invoice_number ?? body.id}`,
+                    summary: body.work_item_update?.summary ?? `Collections action recorded for invoice ${body.id}`,
+                    due_at: body.work_item_update?.due_at ?? null,
+                    metadata: { action: body.action },
+                });
             }
 
             await logPlatformActionWithTarget(
@@ -280,6 +345,7 @@ export async function PATCH(request: NextRequest) {
         } else if (body.type === "proposal") {
             const table = "proposals";
             const update: Record<string, unknown> = {};
+            let orgId: string | null = null;
 
             switch (body.action) {
                 case "convert":
@@ -296,10 +362,35 @@ export async function PATCH(request: NextRequest) {
                     return apiError(`Unknown proposal action: ${body.action}`, 400);
             }
 
+            const existing = await db.from(table).select("organization_id, title").eq("id", body.id).maybeSingle();
+            orgId = existing.data?.organization_id ?? null;
             const { error } = await db.from(table).update(update).eq("id", body.id);
             if (error) {
                 logError("[superadmin/collections PATCH proposal]", error);
                 return apiError("Failed to update proposal", 500);
+            }
+
+            if (body.work_item_update?.id) {
+                await updateGodWorkItem(db, body.work_item_update.id, {
+                    status: body.work_item_update.status ?? (["convert", "cancel"].includes(body.action) ? "done" : undefined),
+                    due_at: body.work_item_update.due_at,
+                    summary: body.work_item_update.summary ?? undefined,
+                });
+            } else if (orgId) {
+                const status = ["convert", "cancel"].includes(body.action) ? "done" : "in_progress";
+                await createGodWorkItem(db, {
+                    kind: body.action === "convert" ? "renewal" : "collections",
+                    target_type: "proposal",
+                    target_id: body.id,
+                    org_id: orgId,
+                    owner_id: auth.userId,
+                    status,
+                    severity: "medium",
+                    title: `Proposal ${body.action}: ${existing.data?.title ?? body.id}`,
+                    summary: body.work_item_update?.summary ?? `Proposal action recorded for ${body.id}`,
+                    due_at: body.work_item_update?.due_at ?? null,
+                    metadata: { action: body.action },
+                });
             }
 
             await logPlatformActionWithTarget(
@@ -330,12 +421,31 @@ export async function POST(request: NextRequest) {
     const auth = await requireSuperAdmin(request);
     if (!auth.ok) return auth.response;
 
-    let body: { type?: string; id?: string; action?: string };
+    let body: { type?: string; id?: string; action?: string; org_id?: string | null; work_item_id?: string | null };
     try { body = await request.json(); } catch {
         return apiError("Invalid JSON", 400);
     }
 
     if (body.action === "remind" && body.type === "invoice" && body.id) {
+        if (body.work_item_id) {
+            await updateGodWorkItem(auth.adminClient as never, body.work_item_id, {
+                status: "in_progress",
+            });
+        } else if (body.org_id) {
+            await createGodWorkItem(auth.adminClient as never, {
+                kind: "collections",
+                target_type: "invoice",
+                target_id: body.id,
+                org_id: body.org_id,
+                owner_id: auth.userId,
+                status: "in_progress",
+                severity: "medium",
+                title: `Invoice reminder sent`,
+                summary: `Reminder logged for invoice ${body.id}`,
+                due_at: null,
+                metadata: { action: "remind" },
+            });
+        }
         // Log the reminder action (actual email sending would integrate with notification service)
         await logPlatformActionWithTarget(
             auth.userId,

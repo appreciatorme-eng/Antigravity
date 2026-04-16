@@ -43,12 +43,13 @@ import ActionToast, { useActionToast } from "@/components/god-mode/ActionToast";
 
 type Severity = "critical" | "high" | "medium";
 type Tone = "neutral" | "warning" | "danger";
-type SavedView = "all" | "revenue" | "customer-risk" | "incidents" | "growth";
+type SavedView = "all" | "my-queue" | "unowned" | "due-today" | "revenue-risk" | "churn-risk";
 type OverviewRange = "7d" | "30d" | "90d";
 type SavedPreset = { id: string; name: string; view: SavedView; range: OverviewRange };
 
 interface OverviewData {
     generated_at: string;
+    current_user_id: string;
     header: { title: string; subtitle: string };
     summary_kpis: Array<{
         id: string;
@@ -69,6 +70,7 @@ interface OverviewData {
     }>;
     priority_inbox: Array<{
         id: string;
+        work_item_id: string | null;
         kind: string;
         severity: Severity;
         title: string;
@@ -76,6 +78,9 @@ interface OverviewData {
         age_label: string;
         action_label: string;
         href: string;
+        owner_id: string | null;
+        due_at: string | null;
+        buckets: string[];
     }>;
     revenue_risk: {
         overdue_amount: string;
@@ -194,16 +199,19 @@ type ActionItem = {
 
 const SAVED_VIEWS: Array<{ id: SavedView; label: string }> = [
     { id: "all", label: "All" },
-    { id: "revenue", label: "Revenue" },
-    { id: "customer-risk", label: "Customer Risk" },
-    { id: "incidents", label: "Incidents" },
-    { id: "growth", label: "Growth" },
+    { id: "my-queue", label: "My Queue" },
+    { id: "unowned", label: "Unowned" },
+    { id: "due-today", label: "Due Today" },
+    { id: "revenue-risk", label: "Revenue Risk" },
+    { id: "churn-risk", label: "Churn Risk" },
 ];
 const CUSTOM_VIEW_STORAGE_KEY = "god:command-center:presets:fallback:v1";
 const LAST_SELECTION_STORAGE_KEY = "god:command-center:last:v1";
 
 function normalizeView(value: string | null): SavedView {
-    if (value === "revenue" || value === "customer-risk" || value === "incidents" || value === "growth") return value;
+    if (value === "my-queue" || value === "unowned" || value === "due-today" || value === "revenue-risk" || value === "churn-risk") {
+        return value;
+    }
     return "all";
 }
 
@@ -226,7 +234,7 @@ function isSavedPreset(value: unknown): value is SavedPreset {
         && typeof candidate.name === "string"
         && typeof candidate.view === "string"
         && typeof candidate.range === "string"
-        && ["all", "revenue", "customer-risk", "incidents", "growth"].includes(candidate.view)
+        && ["all", "my-queue", "unowned", "due-today", "revenue-risk", "churn-risk"].includes(candidate.view)
         && ["7d", "30d", "90d"].includes(candidate.range)
     );
 }
@@ -342,9 +350,13 @@ function iconForActionLabel(label: string) {
     if (label === "Open incident") return TriangleAlert;
     if (label === "Respond to ticket") return LifeBuoy;
     if (label === "Open collections item") return ReceiptText;
+    if (label === "Open revenue item") return ReceiptText;
+    if (label === "Open account") return Building2;
     if (label === "Review spend") return Wallet;
     if (label === "Open queues") return Activity;
     if (label === "Collections") return ReceiptText;
+    if (label === "Revenue Ops") return ReceiptText;
+    if (label === "Accounts") return Building2;
     if (label === "Error events") return TriangleAlert;
     if (label === "Support queue") return LifeBuoy;
     if (label === "Health monitor") return Activity;
@@ -355,22 +367,22 @@ function iconForActionLabel(label: string) {
 
 function buildContextActions(item: OverviewData["priority_inbox"][number] | null, range: OverviewRange): ActionItem[] {
     if (!item) return [];
-    if (item.kind === "incident") {
+    if (item.kind === "incident" || item.kind === "incident_followup") {
         return [
             { label: "Open incident", href: withRangeQuery(item.href, range) },
             { label: "Error events", href: withRangeQuery("/god/errors?status=open", range) },
         ];
     }
-    if (item.kind === "support") {
+    if (item.kind === "support" || item.kind === "support_escalation") {
         return [
             { label: "Respond to ticket", href: withRangeQuery(item.href, range) },
             { label: "Support queue", href: withRangeQuery("/god/support?status=open", range) },
         ];
     }
-    if (item.kind === "collection_invoice" || item.kind === "collection_proposal") {
+    if (item.kind === "collection_invoice" || item.kind === "collection_proposal" || item.kind === "collections" || item.kind === "renewal") {
         return [
-            { label: "Open collections item", href: withRangeQuery(item.href, range) },
-            { label: "Collections", href: withRangeQuery("/god/collections?tab=invoices", range) },
+            { label: "Open revenue item", href: withRangeQuery(item.href, range) },
+            { label: "Revenue Ops", href: withRangeQuery("/god/collections?tab=invoices", range) },
         ];
     }
     if (item.kind === "queue") {
@@ -385,7 +397,18 @@ function buildContextActions(item: OverviewData["priority_inbox"][number] | null
             { label: "Cost dashboard", href: withRangeQuery("/god/costs", range) },
         ];
     }
+    if (item.kind === "churn_risk" || item.kind === "growth_followup" || item.kind === "account") {
+        return [
+            { label: "Open account", href: withRangeQuery(item.href, range) },
+            { label: "Accounts", href: withRangeQuery("/god/directory", range) },
+        ];
+    }
     return [];
+}
+
+function filterPriorityInbox(items: OverviewData["priority_inbox"], view: SavedView) {
+    if (view === "all") return items;
+    return items.filter((item) => item.buckets.includes(view));
 }
 
 function CurrentPosturePanel({
@@ -434,9 +457,9 @@ function CurrentPosturePanel({
                     <div className="flex items-start gap-3">
                         <Zap className="mt-0.5 w-4 h-4 text-blue-300" />
                         <p className="text-gray-300">
-                            {data.watchlists.ai_spend_orgs[0]
-                                ? `${data.watchlists.ai_spend_orgs[0].name} is the highest AI spend org this month at $${data.watchlists.ai_spend_orgs[0].spend_usd.toFixed(2)}.`
-                                : "AI spend is not reporting yet."}
+                            {data.watchlists.customer_risk_orgs[0]
+                                ? `${data.watchlists.customer_risk_orgs[0].name} is carrying the most customer-save pressure right now with ${data.watchlists.customer_risk_orgs[0].risk_flags.join(", ")}.`
+                                : "No churn-risk accounts are flagged right now."}
                         </p>
                     </div>
                 )}
@@ -703,26 +726,47 @@ export default function GodCommandCenter() {
         void persistPresets(customViews.filter((item) => item.id !== presetId));
     }, [customViews, persistPresets]);
 
-    const showRevenue = currentView === "all" || currentView === "revenue";
-    const showGrowth = currentView === "all" || currentView === "growth";
-    const showCustomerRisk = currentView === "all" || currentView === "customer-risk";
-    const showIncidents = currentView === "all" || currentView === "incidents";
+    const showRevenue = currentView === "all" || currentView === "revenue-risk";
+    const showGrowth = currentView === "all";
+    const showCustomerRisk = currentView === "all" || currentView === "churn-risk";
+    const showIncidents = currentView === "all" || currentView === "due-today";
 
     useEffect(() => {
-        if (!data?.priority_inbox.length) {
+        const visibleItems = filterPriorityInbox(data?.priority_inbox ?? [], currentView);
+        if (!visibleItems.length) {
             setFocusedInboxId(null);
             return;
         }
-        if (!focusedInboxId || !data.priority_inbox.some((item) => item.id === focusedInboxId)) {
-            setFocusedInboxId(data.priority_inbox[0].id);
+        if (!focusedInboxId || !visibleItems.some((item) => item.id === focusedInboxId)) {
+            setFocusedInboxId(visibleItems[0].id);
         }
-    }, [data?.priority_inbox, focusedInboxId]);
+    }, [currentView, data?.priority_inbox, focusedInboxId]);
+
+    const visiblePriorityInbox = useMemo(
+        () => filterPriorityInbox(data?.priority_inbox ?? [], currentView),
+        [currentView, data?.priority_inbox],
+    );
 
     const focusedInboxItem = useMemo(
-        () => data?.priority_inbox.find((item) => item.id === focusedInboxId) ?? null,
-        [data?.priority_inbox, focusedInboxId],
+        () => visiblePriorityInbox.find((item) => item.id === focusedInboxId) ?? null,
+        [focusedInboxId, visiblePriorityInbox],
     );
     const contextActions = useMemo(() => buildContextActions(focusedInboxItem, currentRange), [currentRange, focusedInboxItem]);
+
+    async function mutateFocusedWorkItem(patch: Record<string, unknown>, successMessage: string) {
+        if (!focusedInboxItem?.work_item_id) return;
+        const response = await authedFetch("/api/superadmin/work-items", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: focusedInboxItem.work_item_id, ...patch }),
+        });
+        if (!response.ok) {
+            showError("Failed to update work item");
+            return;
+        }
+        showSuccess(successMessage);
+        await fetchOverview(true);
+    }
 
     if (!data && loading) {
         return (
@@ -919,13 +963,13 @@ export default function GodCommandCenter() {
                             <p className="mt-1 text-xs text-gray-500">What needs action next.</p>
                         </div>
                         <div className="p-3">
-                            {data.priority_inbox.length === 0 ? (
+                            {visiblePriorityInbox.length === 0 ? (
                                 <div className="rounded-md border border-emerald-900/50 bg-emerald-950/20 px-3 py-4 text-sm text-emerald-200">
-                                    No urgent work is stacked right now.
+                                    No work items match this view right now.
                                 </div>
                             ) : (
                                 <div className="space-y-2">
-                                    {data.priority_inbox.map((item) => (
+                                    {visiblePriorityInbox.map((item) => (
                                         <div
                                             key={item.id}
                                             className={cn(
@@ -938,6 +982,13 @@ export default function GodCommandCenter() {
                                                 <div className="min-w-0">
                                                     <p className="text-sm font-medium text-white">{item.title}</p>
                                                     <p className="mt-1 text-xs text-gray-400">{item.detail}</p>
+                                                    <div className="mt-2 flex flex-wrap gap-1">
+                                                        {item.buckets.filter((bucket) => bucket !== "all").slice(0, 3).map((bucket) => (
+                                                            <span key={bucket} className="rounded bg-gray-900/70 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-gray-400">
+                                                                {bucket.replace("-", " ")}
+                                                            </span>
+                                                        ))}
+                                                    </div>
                                                 </div>
                                                 <span className="text-[11px] text-gray-500">{item.age_label}</span>
                                             </div>
@@ -1193,7 +1244,7 @@ export default function GodCommandCenter() {
                                 </section>
                             )}
 
-                            {(currentView === "all" || currentView === "customer-risk" || currentView === "revenue") && (
+                            {(showCustomerRisk || showRevenue) && (
                                 <section className="grid gap-4 xl:grid-cols-2">
                                     <div className="overflow-hidden rounded-lg border border-gray-800 bg-gray-900">
                                         <div className="border-b border-gray-800 px-4 py-3">
@@ -1344,6 +1395,37 @@ export default function GodCommandCenter() {
                                             </div>
                                         </div>
                                     )}
+                                    {focusedInboxItem?.work_item_id && (
+                                        <div className="rounded-md border border-blue-900/40 bg-blue-950/10 p-2">
+                                            <p className="px-1 pb-2 text-[11px] uppercase tracking-wide text-blue-300/80">
+                                                Queue controls
+                                            </p>
+                                            <div className="grid gap-2">
+                                                {focusedInboxItem.owner_id !== data.current_user_id && (
+                                                    <button
+                                                        onClick={() => mutateFocusedWorkItem({ owner_id: data.current_user_id, status: "in_progress" }, "Work item claimed")}
+                                                        className="inline-flex items-center justify-between rounded-md border border-blue-900/50 bg-blue-950/20 px-3 py-2.5 text-sm text-blue-100 transition-colors hover:border-blue-700"
+                                                    >
+                                                        <span className="inline-flex items-center gap-2">
+                                                            <LogIn className="h-4 w-4" />
+                                                            Claim work item
+                                                        </span>
+                                                        <ArrowRight className="h-4 w-4" />
+                                                    </button>
+                                                )}
+                                                <button
+                                                    onClick={() => mutateFocusedWorkItem({ status: "done" }, "Work item completed")}
+                                                    className="inline-flex items-center justify-between rounded-md border border-emerald-900/50 bg-emerald-950/20 px-3 py-2.5 text-sm text-emerald-100 transition-colors hover:border-emerald-700"
+                                                >
+                                                    <span className="inline-flex items-center gap-2">
+                                                        <LogIn className="h-4 w-4" />
+                                                        Mark done
+                                                    </span>
+                                                    <ArrowRight className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
                                     {data.quick_actions.map((action) => {
                                         const Icon = iconForActionLabel(action.label);
                                         return (
@@ -1371,7 +1453,7 @@ export default function GodCommandCenter() {
                                     >
                                         <span className="inline-flex items-center gap-2">
                                             <Users className="w-4 h-4" />
-                                            User Directory
+                                            Accounts
                                         </span>
                                         <ArrowRight className="w-4 h-4" />
                                     </Link>

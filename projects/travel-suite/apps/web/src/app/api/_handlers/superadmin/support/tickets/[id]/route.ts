@@ -8,6 +8,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { logError } from "@/lib/observability/logger";
 import { getClientIpFromRequest, logPlatformAction } from "@/lib/platform/audit";
 import { type EscalationLevel, loadWorkItemMeta, saveWorkItemMeta } from "@/lib/platform/god-mode";
+import { buildAccountMetricsMap, buildBusinessImpact, loadGodAccountStateMap, loadWorkItemsForOrgAndTarget } from "@/lib/platform/god-accounts";
 
 /**
  * The live DB has a support_tickets_user_id_fkey relationship that is not present
@@ -99,6 +100,16 @@ export async function GET(
         const profile = t.profiles;
         const management = await loadWorkItemMeta(db, "support_ticket", id);
         const owner = await readOwnerProfile(db, management.owner_id);
+        const orgId = profile?.organizations?.id ?? profile?.organization_id ?? null;
+        const [accountStateMap, metricsMap, linkedWorkItems] = await Promise.all([
+            orgId ? loadGodAccountStateMap(db, [orgId]) : Promise.resolve(new Map()),
+            orgId ? buildAccountMetricsMap(db, [orgId]) : Promise.resolve(new Map()),
+            loadWorkItemsForOrgAndTarget(db, { orgId, targetType: "ticket", targetId: id }),
+        ]);
+        const orgAccountState = orgId ? (accountStateMap.get(orgId) ?? null) : null;
+        const businessImpact = orgId && orgAccountState
+            ? buildBusinessImpact(orgAccountState, metricsMap.get(orgId)!)
+            : null;
 
         return NextResponse.json({
             ticket: {
@@ -133,6 +144,9 @@ export async function GET(
                 ...management,
                 owner,
             },
+            org_account_state: orgAccountState,
+            linked_work_items: linkedWorkItems,
+            business_impact: businessImpact,
         });
     } catch (err) {
         logError(`[superadmin/support/tickets/${id}]`, err);

@@ -14,6 +14,7 @@ import {
     checkWhatsappRuntime,
 } from "@/lib/platform/runtime-probes";
 import { buildGodDataQuality, pickGodKpiContracts } from "@/lib/platform/god-kpi";
+import { listAccounts, loadGodWorkItems, type GodWorkItem } from "@/lib/platform/god-accounts";
 
 type Severity = "critical" | "high" | "medium";
 type HealthStatus = "healthy" | "degraded" | "down" | "unknown";
@@ -194,6 +195,60 @@ function severityForError(level: string | null): Severity {
     if (level === "fatal") return "critical";
     if (level === "error") return "high";
     return "medium";
+}
+
+function workItemHref(item: GodWorkItem, organizationName?: string): string {
+    switch (item.target_type) {
+        case "invoice":
+            return `/god/collections?tab=invoices&invoiceId=${encodeURIComponent(item.target_id)}`;
+        case "proposal":
+            return `/god/collections?tab=proposals&proposalId=${encodeURIComponent(item.target_id)}`;
+        case "ticket":
+            return `/god/support?status=open&ticketId=${encodeURIComponent(item.target_id)}`;
+        case "error_event":
+            return `/god/errors?status=open&eventId=${encodeURIComponent(item.target_id)}`;
+        case "organization":
+            return `/god/directory?search=${encodeURIComponent(organizationName ?? item.target_id)}`;
+        default:
+            return "/god";
+    }
+}
+
+function workItemActionLabel(item: GodWorkItem): string {
+    switch (item.target_type) {
+        case "invoice":
+        case "proposal":
+            return "Open revenue item";
+        case "ticket":
+            return "Open ticket";
+        case "error_event":
+            return "Open incident";
+        case "organization":
+            return "Open account";
+        default:
+            return "Open item";
+    }
+}
+
+function workItemBuckets(
+    item: GodWorkItem,
+    currentUserId: string,
+    revenueRisk: boolean,
+    churnRisk: boolean,
+    todayEndMs: number,
+): string[] {
+    const buckets = ["all"];
+    if (item.owner_id === currentUserId) buckets.push("my-queue");
+    if (!item.owner_id) buckets.push("unowned");
+    if (item.due_at) {
+        const dueMs = new Date(item.due_at).getTime();
+        if (Number.isFinite(dueMs) && dueMs <= todayEndMs) buckets.push("due-today");
+    }
+    if (revenueRisk || item.kind === "collections" || item.kind === "renewal") buckets.push("revenue-risk");
+    if (churnRisk || item.kind === "churn_risk" || item.kind === "support_escalation" || item.kind === "incident_followup") {
+        buckets.push("churn-risk");
+    }
+    return Array.from(new Set(buckets));
 }
 
 async function readRedisSpendFor(date: string): Promise<number> {
@@ -506,54 +561,40 @@ export async function GET(request: NextRequest) {
             expiringProposalByOrg.set(proposal.organization_id, current);
         }
 
-        const customerRiskOrgIds = new Set<string>([
-            ...overdueByOrg.keys(),
-            ...supportLoad.keys(),
-            ...expiringProposalByOrg.keys(),
-            ...aiByOrg.keys(),
-        ]);
-
-        const customerRiskOrgs = Array.from(customerRiskOrgIds)
-            .map((orgId) => {
-                const org = organizationMap.get(orgId);
-                const overdue = overdueByOrg.get(orgId) ?? { overdue_amount: 0, overdue_invoices: 0 };
-                const support = supportLoad.get(orgId) ?? { open: 0, urgent: 0, oldest_at: null };
-                const proposals = expiringProposalByOrg.get(orgId) ?? { expiring_proposals: 0, expiring_value: 0 };
-                const ai = aiByOrg.get(orgId) ?? { spend_usd: 0, requests: 0 };
-                const riskFlags = [
-                    overdue.overdue_amount > 0 ? `${overdue.overdue_invoices} overdue invoices` : null,
-                    support.urgent > 0 ? `${support.urgent} urgent tickets` : null,
-                    support.open > 0 ? `${support.open} open tickets` : null,
-                    proposals.expiring_proposals > 0 ? `${proposals.expiring_proposals} expiring proposals` : null,
-                    ai.spend_usd >= 25 ? `$${ai.spend_usd.toFixed(2)} AI spend MTD` : null,
-                ].filter(Boolean) as string[];
-
-                const rank = overdue.overdue_amount
-                    + (support.urgent * 40000)
-                    + (support.open * 10000)
-                    + proposals.expiring_value
-                    + (ai.spend_usd * 1500);
-
-                return {
-                    org_id: orgId,
-                    name: org?.name ?? "Unknown org",
-                    tier: org?.tier ?? "free",
-                    overdue_amount: Number(overdue.overdue_amount.toFixed(0)),
-                    overdue_invoices: overdue.overdue_invoices,
-                    open_tickets: support.open,
-                    urgent_tickets: support.urgent,
-                    oldest_ticket_at: support.oldest_at,
-                    expiring_proposals: proposals.expiring_proposals,
-                    expiring_value: Number(proposals.expiring_value.toFixed(0)),
-                    ai_spend_usd: Number(ai.spend_usd.toFixed(2)),
-                    risk_flags: riskFlags,
-                    href: withRange(`/god/directory?search=${encodeURIComponent(org?.name ?? "")}`, selectedRange),
-                    rank,
-                };
+        const accountListResult = await listAccounts(db, { risk: "all", limit: 5000, page: 0 });
+        const activeWorkItems = await loadGodWorkItems(db, { status: "active", limit: 40 });
+        const accountRowMap = new Map(accountListResult.accounts.map((account) => [account.org_id, account]));
+        const customerRiskOrgs = accountListResult.accounts
+            .filter((account) => account.risk === "churn" || account.account_state.health_band !== "healthy")
+            .sort((left, right) => {
+                const leftRank = left.snapshot.overdue_balance
+                    + (left.snapshot.urgent_support_count * 40000)
+                    + (left.snapshot.open_support_count * 10000)
+                    + left.snapshot.expiring_proposal_value
+                    + (left.snapshot.fatal_error_count * 50000);
+                const rightRank = right.snapshot.overdue_balance
+                    + (right.snapshot.urgent_support_count * 40000)
+                    + (right.snapshot.open_support_count * 10000)
+                    + right.snapshot.expiring_proposal_value
+                    + (right.snapshot.fatal_error_count * 50000);
+                return rightRank - leftRank;
             })
-            .filter((org) => org.risk_flags.length > 0)
-            .sort((left, right) => right.rank - left.rank)
-            .slice(0, 6);
+            .slice(0, 6)
+            .map((account) => ({
+                org_id: account.org_id,
+                name: account.name,
+                tier: account.tier,
+                overdue_amount: account.snapshot.overdue_balance,
+                overdue_invoices: account.snapshot.overdue_invoice_count,
+                open_tickets: account.snapshot.open_support_count,
+                urgent_tickets: account.snapshot.urgent_support_count,
+                oldest_ticket_at: supportLoad.get(account.org_id)?.oldest_at ?? account.snapshot.latest_org_activity,
+                expiring_proposals: account.snapshot.expiring_proposal_count,
+                expiring_value: account.snapshot.expiring_proposal_value,
+                ai_spend_usd: account.snapshot.ai_spend_mtd_usd,
+                risk_flags: account.snapshot.risk_flags,
+                href: withRange(`/god/directory?search=${encodeURIComponent(account.name)}`, selectedRange),
+            }));
 
         const decisionLog = ((auditLogRowsResult.data ?? []) as AuditLogRow[]).map((row) => {
             const actorName = row.profiles?.full_name?.trim() || row.profiles?.email?.trim() || "Unknown";
@@ -643,9 +684,39 @@ export async function GET(request: NextRequest) {
             },
         ];
 
-        const priorityInbox = [
+        const workItemPriorityInbox = activeWorkItems.map((item) => {
+            const account = item.org_id ? accountRowMap.get(item.org_id) : null;
+            const summaryParts = [
+                account?.name,
+                item.summary,
+                account?.account_state.next_action ? `Next: ${account.account_state.next_action}` : null,
+            ].filter(Boolean);
+            const revenueRisk = Boolean(account && (account.snapshot.overdue_balance > 0 || account.snapshot.expiring_proposal_count > 0));
+            const churnRisk = Boolean(account && (
+                account.account_state.health_band !== "healthy"
+                || account.snapshot.urgent_support_count > 0
+                || account.snapshot.fatal_error_count > 0
+            ));
+            return {
+                id: `work:${item.id}`,
+                work_item_id: item.id,
+                kind: item.kind,
+                severity: item.severity === "low" ? "medium" : item.severity,
+                title: item.title,
+                detail: summaryParts.join(" · ") || "No summary",
+                age_label: item.due_at ? `Due ${timeAgo(item.due_at)}` : timeAgo(item.created_at),
+                action_label: workItemActionLabel(item),
+                href: workItemHref(item, account?.name),
+                owner_id: item.owner_id,
+                due_at: item.due_at,
+                buckets: workItemBuckets(item, auth.userId, revenueRisk, churnRisk, tomorrowStart.getTime()),
+            };
+        });
+
+        const legacyPriorityInbox = [
             ...errorRows.slice(0, 2).map((event) => ({
                 id: `error:${event.id}`,
+                work_item_id: null,
                 kind: "incident",
                 severity: severityForError(event.level),
                 title: event.title?.trim() || "Untitled error",
@@ -653,12 +724,16 @@ export async function GET(request: NextRequest) {
                 age_label: timeAgo(event.first_seen_at ?? event.created_at),
                 action_label: "Open incident",
                 href: withRange(`/god/errors?status=${encodeURIComponent(event.status ?? "open")}&eventId=${event.id}`, selectedRange),
+                owner_id: null,
+                due_at: null,
+                buckets: ["all", "churn-risk"],
             })),
             ...overdueInvoices
                 .sort((left, right) => new Date(left.due_date ?? 0).getTime() - new Date(right.due_date ?? 0).getTime())
                 .slice(0, 2)
                 .map((invoice) => ({
                     id: `invoice:${invoice.id}`,
+                    work_item_id: null,
                     kind: "collection_invoice",
                     severity: "high" as const,
                     title: `Invoice #${invoice.invoice_number ?? "—"} is overdue`,
@@ -670,9 +745,13 @@ export async function GET(request: NextRequest) {
                     age_label: daysOverdueLabel(invoice.due_date),
                     action_label: "Review invoice",
                     href: withRange(`/god/collections?tab=invoices&invoiceId=${invoice.id}`, selectedRange),
+                    owner_id: null,
+                    due_at: invoice.due_date,
+                    buckets: ["all", "revenue-risk", "due-today"],
                 })),
             ...expiringProposalRows.slice(0, 2).map((proposal) => ({
                 id: `proposal:${proposal.id}`,
+                work_item_id: null,
                 kind: "collection_proposal",
                 severity: "high" as const,
                 title: `${proposal.title?.trim() || "Proposal"} is expiring soon`,
@@ -684,9 +763,13 @@ export async function GET(request: NextRequest) {
                 age_label: expiresInLabel(proposal.expires_at),
                 action_label: "Review proposal",
                 href: withRange(`/god/collections?tab=proposals&proposalId=${proposal.id}`, selectedRange),
+                owner_id: null,
+                due_at: proposal.expires_at,
+                buckets: ["all", "revenue-risk", "due-today"],
             })),
             ...supportRows.slice(0, 3).map((ticket) => ({
                 id: `ticket:${ticket.id}`,
+                work_item_id: null,
                 kind: "support",
                 severity: severityForTicket(ticket.priority),
                 title: ticket.title?.trim() || "Untitled support ticket",
@@ -694,9 +777,13 @@ export async function GET(request: NextRequest) {
                 age_label: timeAgo(ticket.created_at),
                 action_label: "Respond",
                 href: withRange(`/god/support?status=${encodeURIComponent(ticket.status ?? "open")}&ticketId=${ticket.id}`, selectedRange),
+                owner_id: null,
+                due_at: null,
+                buckets: ["all", "churn-risk"],
             })),
             ...(deadLetterResult.count || oldestPendingMinutes > 15 ? [{
                 id: "queue:notifications",
+                work_item_id: null,
                 kind: "queue",
                 severity: deadLetterResult.count ? "high" as const : "medium" as const,
                 title: deadLetterResult.count
@@ -706,9 +793,13 @@ export async function GET(request: NextRequest) {
                 age_label: oldestPendingMinutes > 0 ? `${oldestPendingMinutes}m oldest` : "Queue check",
                 action_label: "Open queues",
                 href: withRange("/god/monitoring?focus=queues", selectedRange),
+                owner_id: null,
+                due_at: null,
+                buckets: ["all"],
             }] : []),
             ...topAiSpendOrgs.slice(0, 1).map((org) => ({
                 id: `cost:${org.org_id}`,
+                work_item_id: null,
                 kind: "cost",
                 severity: org.spend_usd >= 25 ? "high" as const : "medium" as const,
                 title: `${org.name} is leading AI spend`,
@@ -716,7 +807,15 @@ export async function GET(request: NextRequest) {
                 age_label: "MTD",
                 action_label: "Review spend",
                 href: withRange(`/god/costs/org/${org.org_id}`, selectedRange),
+                owner_id: null,
+                due_at: null,
+                buckets: ["all"],
             })),
+        ];
+
+        const priorityInbox = [
+            ...workItemPriorityInbox,
+            ...legacyPriorityInbox.filter((item) => !workItemPriorityInbox.some((workItem) => workItem.href === item.href)),
         ]
             .sort((left, right) => {
                 const rank = { critical: 0, high: 1, medium: 2 };
@@ -741,9 +840,10 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({
             generated_at: new Date().toISOString(),
+            current_user_id: auth.userId,
             header: {
                 title: "Command Center",
-                subtitle: "Revenue, incidents, customers, and queue pressure in one place.",
+                subtitle: "Owned work, revenue risk, and customer save actions in one operating view.",
             },
             summary_kpis: [
                 {
@@ -933,7 +1033,8 @@ export async function GET(request: NextRequest) {
             },
             decision_log: decisionLog,
             quick_actions: [
-                { label: "Collections", href: withRange("/god/collections?tab=invoices", selectedRange) },
+                { label: "Revenue Ops", href: withRange("/god/collections?tab=invoices", selectedRange) },
+                { label: "Accounts", href: withRange("/god/directory", selectedRange) },
                 { label: "Error events", href: withRange("/god/errors", selectedRange) },
                 { label: "Support queue", href: withRange("/god/support?status=open", selectedRange) },
                 { label: "Health monitor", href: withRange("/god/monitoring", selectedRange) },

@@ -8,6 +8,7 @@ import { logError } from "@/lib/observability/logger";
 import { getClientIpFromRequest, logPlatformAction } from "@/lib/platform/audit";
 import { loadWorkItemMetaForIds, saveWorkItemMeta } from "@/lib/platform/god-mode";
 import { buildGodDataQuality, detectEmptyDrillthrough, pickGodKpiContracts } from "@/lib/platform/god-kpi";
+import { buildAccountMetricsMap, buildBusinessImpact, loadGodAccountStateMap, loadWorkItemsForOrgAndTarget } from "@/lib/platform/god-accounts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -31,6 +32,7 @@ interface ErrorEventRow {
     resolved_at: string | null;
     created_at: string;
     updated_at: string;
+    organization_id?: string | null;
 }
 
 type OwnerProfileRow = {
@@ -115,7 +117,27 @@ export async function GET(request: NextRequest) {
                 });
             }
         }
+        const orgIds = Array.from(new Set(
+            eventRows
+                .map((event) => (typeof event.organization_id === "string" ? event.organization_id : ""))
+                .filter(Boolean),
+        ));
+        const [accountStateMap, metricsMap] = await Promise.all([
+            loadGodAccountStateMap(db, orgIds),
+            buildAccountMetricsMap(db, orgIds),
+        ]);
         const nowMs = Date.now();
+        const workItemsByEvent = await Promise.all(
+            eventRows.map(async (event) => {
+                const items = await loadWorkItemsForOrgAndTarget(db, {
+                    orgId: event.organization_id ?? null,
+                    targetType: "error_event",
+                    targetId: event.id,
+                });
+                return [event.id, items] as const;
+            }),
+        );
+        const workItemMap = new Map(workItemsByEvent);
         const events = eventRows.map((event) => {
             const meta = metaByEventId.get(event.id);
             const owner = meta?.owner_id ? ownerLookup.get(meta.owner_id) : null;
@@ -125,6 +147,11 @@ export async function GET(request: NextRequest) {
                 && ["open", "investigating"].includes(event.status)
                 && new Date(slaDueAt).getTime() < nowMs,
             );
+            const orgId = typeof event.organization_id === "string" ? event.organization_id : null;
+            const orgAccountState = orgId ? (accountStateMap.get(orgId) ?? null) : null;
+            const businessImpact = orgId && orgAccountState
+                ? buildBusinessImpact(orgAccountState, metricsMap.get(orgId)!)
+                : null;
             return {
                 ...event,
                 owner_id: meta?.owner_id ?? null,
@@ -133,6 +160,9 @@ export async function GET(request: NextRequest) {
                 sla_due_at: slaDueAt,
                 ops_note: meta?.ops_note ?? null,
                 is_sla_breached: isSlaBreached,
+                org_account_state: orgAccountState,
+                linked_work_items: workItemMap.get(event.id) ?? [],
+                business_impact: businessImpact,
             };
         });
         const claimed_count = Array.from(backlogMeta.values()).filter((meta) => Boolean(meta.owner_id)).length;

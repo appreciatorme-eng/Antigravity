@@ -40,23 +40,23 @@ interface NavGroup {
 
 const NAV_GROUPS: NavGroup[] = [
     {
-        title: "OVERVIEW",
+        title: "EXECUTIVE",
         items: [
             { icon: LayoutDashboard, label: "Command Center", href: "/god" },
         ],
     },
     {
-        title: "USERS & ORGS",
+        title: "ACCOUNTS",
         items: [
             { icon: UserPlus, label: "Signups", href: "/god/signups" },
-            { icon: Users, label: "Directory", href: "/god/directory" },
+            { icon: Users, label: "Accounts", href: "/god/directory" },
         ],
     },
     {
-        title: "ANALYTICS",
+        title: "REVENUE OPS",
         items: [
             { icon: BarChart3, label: "Feature Usage", href: "/god/analytics" },
-            { icon: ReceiptText, label: "Collections", href: "/god/collections" },
+            { icon: ReceiptText, label: "Revenue Ops", href: "/god/collections" },
             { icon: DollarSign, label: "API Costs", href: "/god/costs" },
             { icon: ExternalLink, label: "PostHog", href: "https://us.posthog.com", external: true },
         ],
@@ -68,14 +68,14 @@ const NAV_GROUPS: NavGroup[] = [
         ],
     },
     {
-        title: "OPERATIONS",
+        title: "CUSTOMER SAVE",
         items: [
             { icon: LifeBuoy, label: "Support Tickets", href: "/god/support" },
             { icon: Megaphone, label: "Announcements", href: "/god/announcements" },
         ],
     },
     {
-        title: "SYSTEM",
+        title: "PLATFORM",
         items: [
             { icon: TriangleAlert, label: "Error Events", href: "/god/errors" },
             { icon: Power, label: "Kill Switch", href: "/god/kill-switch", dangerous: true },

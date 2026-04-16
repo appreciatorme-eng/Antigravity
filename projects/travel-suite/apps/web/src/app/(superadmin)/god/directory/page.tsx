@@ -100,6 +100,45 @@ interface OrgDetail {
     };
     features_used: string[];
     settings: Record<string, unknown> | null;
+    account_state?: {
+        owner_id: string | null;
+        lifecycle_stage: string;
+        health_band: string;
+        renewal_at: string | null;
+        next_action: string | null;
+    };
+    open_work_items?: Array<{
+        id: string;
+        title: string;
+        status: string;
+        severity: string;
+        due_at: string | null;
+        owner_name?: string | null;
+    }>;
+    business_impact?: {
+        outstanding_balance_label: string;
+        overdue_balance_label: string;
+        overdue_invoice_count: number;
+        expiring_proposal_count: number;
+        open_support_count: number;
+        urgent_support_count: number;
+        fatal_error_count: number;
+        risk_flags: string[];
+    } | null;
+    recent_invoices?: Array<{
+        id: string;
+        invoice_number: string | null;
+        due_date: string | null;
+        balance_amount_label: string;
+        status: string | null;
+    }>;
+    expiring_proposals?: Array<{
+        id: string;
+        title: string | null;
+        expires_at: string | null;
+        value_label: string;
+        status: string | null;
+    }>;
 }
 
 interface DirectoryResponse {
@@ -504,9 +543,9 @@ export default function DirectoryPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-white">All Contacts</h1>
+                    <h1 className="text-2xl font-bold text-white">Accounts</h1>
                     <p className="text-sm text-gray-400 mt-0.5">
-                        {data ? `${data.total.toLocaleString()} users across all organizations` : "Loading…"}
+                        {data ? `${data.total.toLocaleString()} users and org operators across the business` : "Loading…"}
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -872,7 +911,7 @@ export default function DirectoryPage() {
             <SlideOutPanel
                 open={orgPanelOpen}
                 onClose={() => { setOrgPanelOpen(false); setOrgDetail(null); }}
-                title="Organization Intel"
+                title="Account Command Center"
                 width="xl"
             >
                 {orgDetailLoading ? (
@@ -929,6 +968,77 @@ export default function DirectoryPage() {
                                 </div>
                             </div>
                         </div>
+
+                        {(orgDetail.account_state || orgDetail.business_impact) && (
+                            <div className="grid gap-3 xl:grid-cols-2">
+                                <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
+                                    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Operating State</h3>
+                                    <div className="mt-3 space-y-2 text-sm text-gray-300">
+                                        <div className="flex justify-between gap-3">
+                                            <span className="text-gray-500">Health</span>
+                                            <span className="capitalize text-white">{orgDetail.account_state?.health_band ?? "healthy"}</span>
+                                        </div>
+                                        <div className="flex justify-between gap-3">
+                                            <span className="text-gray-500">Lifecycle</span>
+                                            <span className="capitalize text-white">{orgDetail.account_state?.lifecycle_stage ?? "active"}</span>
+                                        </div>
+                                        <div className="flex justify-between gap-3">
+                                            <span className="text-gray-500">Renewal</span>
+                                            <span className="text-white">{orgDetail.account_state?.renewal_at ? new Date(orgDetail.account_state.renewal_at).toLocaleDateString() : "Not set"}</span>
+                                        </div>
+                                        <div className="flex justify-between gap-3">
+                                            <span className="text-gray-500">Next action</span>
+                                            <span className="text-right text-white">{orgDetail.account_state?.next_action ?? "None set"}</span>
+                                        </div>
+                                    </div>
+                                    {(orgDetail.open_work_items?.length ?? 0) > 0 && (
+                                        <div className="mt-4 space-y-2">
+                                            {orgDetail.open_work_items?.slice(0, 3).map((item) => (
+                                                <div key={item.id} className="rounded-lg border border-gray-800 bg-gray-950/60 p-3 text-sm">
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        <div>
+                                                            <p className="font-medium text-white">{item.title}</p>
+                                                            <p className="mt-1 text-xs text-gray-500">
+                                                                {item.owner_name ?? "Unowned"} · {item.status.replace("_", " ")}
+                                                            </p>
+                                                        </div>
+                                                        <span className="text-xs text-gray-500">{item.due_at ? formatTimeAgo(item.due_at) : "No due date"}</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="rounded-xl border border-gray-800 bg-gray-900/50 p-4">
+                                    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Business Impact</h3>
+                                    <div className="mt-3 space-y-2 text-sm text-gray-300">
+                                        <div className="flex justify-between gap-3">
+                                            <span className="text-gray-500">Outstanding</span>
+                                            <span className="text-white">{orgDetail.business_impact?.outstanding_balance_label ?? "₹0"}</span>
+                                        </div>
+                                        <div className="flex justify-between gap-3">
+                                            <span className="text-gray-500">Overdue</span>
+                                            <span className="text-white">{orgDetail.business_impact?.overdue_balance_label ?? "₹0"}</span>
+                                        </div>
+                                        <div className="flex justify-between gap-3">
+                                            <span className="text-gray-500">Support pressure</span>
+                                            <span className="text-white">{orgDetail.business_impact?.urgent_support_count ?? 0} urgent / {orgDetail.business_impact?.open_support_count ?? 0} open</span>
+                                        </div>
+                                        <div className="flex justify-between gap-3">
+                                            <span className="text-gray-500">Fatal incidents</span>
+                                            <span className="text-white">{orgDetail.business_impact?.fatal_error_count ?? 0}</span>
+                                        </div>
+                                    </div>
+                                    <div className="mt-3 flex flex-wrap gap-1">
+                                        {orgDetail.business_impact?.risk_flags?.map((flag) => (
+                                            <span key={flag} className="rounded bg-amber-950/30 px-2 py-1 text-[11px] text-amber-200">
+                                                {flag}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Features Used */}
                         {orgDetail.features_used.length > 0 && (

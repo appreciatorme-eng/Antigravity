@@ -22,6 +22,7 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprot
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendHitlProposal, sendOpsAlert } from "@/lib/god-slack";
 import { Redis } from "@upstash/redis";
+import { getAccountDetail, listAccounts } from "@/lib/platform/god-accounts";
 
 export const maxDuration = 60;
 
@@ -365,40 +366,10 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request: any) => {
 
         // ── get_churn_risk_orgs ───────────────────────────────────────────────
         case "get_churn_risk_orgs": {
-            const [overdueInv, urgentTickets] = await Promise.all([
-                db.from("invoices")
-                    .select("organization_id, balance_amount")
-                    .in("status", ["issued", "overdue"])
-                    .gt("balance_amount", 0)
-                    .lt("due_date", new Date().toISOString()),
-                db.from("support_tickets")
-                    .select("user_id, profiles!support_tickets_user_id_fkey(organization_id)")
-                    .in("priority", ["urgent", "high"])
-                    .in("status", ["open", "in_progress"]),
-            ]);
-
-            const riskMap: Record<string, { overdue: number; urgent_tickets: number }> = {};
-            for (const inv of overdueInv.data ?? []) {
-                const id = inv.organization_id;
-                if (!id) continue;
-                riskMap[id] = riskMap[id] ?? { overdue: 0, urgent_tickets: 0 };
-                riskMap[id].overdue += Number(inv.balance_amount ?? 0);
-            }
-            for (const t of urgentTickets.data ?? []) {
-                const id = (t as any).profiles?.organization_id;
-                if (!id) continue;
-                riskMap[id] = riskMap[id] ?? { overdue: 0, urgent_tickets: 0 };
-                riskMap[id].urgent_tickets += 1;
-            }
-
-            const sorted = Object.entries(riskMap)
-                .sort(([, a], [, b]) => (b.overdue + b.urgent_tickets * 50000) - (a.overdue + a.urgent_tickets * 50000))
-                .slice(0, 10);
-
-            if (!sorted.length) return { content: [{ type: "text", text: "✅ No high-risk churn signals detected." }] };
-
-            const lines = sorted.map(([orgId, risk]) =>
-                `- **Org:** ${orgId} | Overdue: ₹${Math.round(risk.overdue).toLocaleString("en-IN")} | Urgent tickets: ${risk.urgent_tickets}`
+            const { accounts } = await listAccounts(db, { risk: "churn", limit: 10, page: 0 });
+            if (!accounts.length) return { content: [{ type: "text", text: "✅ No high-risk churn signals detected." }] };
+            const lines = accounts.map((account, index) =>
+                `${index + 1}. **${account.name}** [${account.tier}] — ${account.snapshot.overdue_balance_label} overdue | ${account.snapshot.urgent_support_count} urgent tickets | health ${account.account_state.health_band}`
             );
             return { content: [{ type: "text", text: `## Churn Risk Organizations\n\n${lines.join("\n")}` }] };
         }
@@ -407,29 +378,19 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request: any) => {
         case "get_org_details": {
             const orgId = String(args.org_id ?? "");
             if (!orgId) throw new Error("org_id is required");
-
-            const [org, users, aiUsage, tickets, invoices] = await Promise.all([
-                db.from("organizations").select("*").eq("id", orgId).single(),
-                db.from("profiles").select("id", { count: "exact", head: true }).eq("organization_id", orgId),
-                db.from("organization_ai_usage").select("ai_requests, estimated_cost_usd").eq("organization_id", orgId).eq("month_start", monthStartISO()).single(),
-                db.from("support_tickets").select("priority, status").eq("organization_id", orgId).not("status", "eq", "closed"),
-                db.from("invoices").select("status, balance_amount, total_amount").eq("organization_id", orgId).in("status", ["issued", "overdue", "partially_paid"]),
-            ]);
-
-            const o = org.data;
-            if (!o) return { content: [{ type: "text", text: `Org ${orgId} not found.` }] };
-
-            const overdueAmt = (invoices.data ?? []).reduce((s: number, r: any) => s + Number(r.balance_amount ?? r.total_amount ?? 0), 0);
-            const urgentTickets = (tickets.data ?? []).filter((t: any) => t.priority === "urgent" || t.priority === "high").length;
+            const detail = await getAccountDetail(db, orgId);
+            if (!detail) return { content: [{ type: "text", text: `Org ${orgId} not found.` }] };
 
             return { content: [{ type: "text", text: [
-                `## Org: ${o.name ?? orgId}`,
-                `- **Tier:** ${o.subscription_tier ?? "free"} | **Status:** ${o.is_suspended ? "⛔ SUSPENDED" : "✅ Active"}`,
-                `- **Created:** ${o.created_at?.slice(0, 10)}`,
-                `- **Users:** ${users.count ?? 0}`,
-                `- **AI Usage MTD:** ${aiUsage.data?.ai_requests ?? 0} requests | $${Number(aiUsage.data?.estimated_cost_usd ?? 0).toFixed(2)}`,
-                `- **Open Tickets:** ${(tickets.data ?? []).length} (${urgentTickets} urgent/high)`,
-                `- **Overdue Invoices:** ₹${Math.round(overdueAmt).toLocaleString("en-IN")}`,
+                `## Org: ${detail.organization.name}`,
+                `- **Tier:** ${detail.organization.tier} | **Health:** ${detail.account_state.health_band} | **Lifecycle:** ${detail.account_state.lifecycle_stage}`,
+                `- **Created:** ${detail.organization.created_at?.slice(0, 10) ?? "unknown"}`,
+                `- **Members:** ${detail.snapshot.member_count}`,
+                `- **AI Usage MTD:** ${detail.snapshot.ai_requests_mtd} requests | $${detail.snapshot.ai_spend_mtd_usd.toFixed(2)}`,
+                `- **Open Tickets:** ${detail.snapshot.open_support_count} (${detail.snapshot.urgent_support_count} urgent/high)`,
+                `- **Open Errors:** ${detail.snapshot.open_error_count} (${detail.snapshot.fatal_error_count} fatal)`,
+                `- **Overdue Invoices:** ${detail.snapshot.overdue_balance_label}`,
+                `- **Open Work Items:** ${detail.work_items.length}`,
             ].join("\n") }] };
         }
 

@@ -46,6 +46,34 @@ interface TicketDetail {
         updated_at: string | null;
         owner: { id: string; name: string; email: string | null } | null;
     };
+    org_account_state?: {
+        owner_id: string | null;
+        lifecycle_stage: string;
+        health_band: string;
+        renewal_at: string | null;
+        next_action: string | null;
+        next_action_due_at: string | null;
+    } | null;
+    linked_work_items?: Array<{
+        id: string;
+        title: string;
+        status: string;
+        severity: string;
+        due_at: string | null;
+        owner_name: string | null;
+    }>;
+    business_impact?: {
+        outstanding_balance_label: string;
+        overdue_balance_label: string;
+        overdue_invoice_count: number;
+        expiring_proposal_count: number;
+        renewal_at: string | null;
+        open_support_count: number;
+        urgent_support_count: number;
+        fatal_error_count: number;
+        ai_spend_mtd_usd: number;
+        risk_flags: string[];
+    } | null;
 }
 
 interface TicketsResponse {
@@ -395,6 +423,62 @@ export default function SupportPage() {
                             )}
                         </div>
 
+                        {(selectedTicket.business_impact || selectedTicket.org_account_state) && (
+                            <div className="grid gap-3 sm:grid-cols-2">
+                                <div className="rounded-lg border border-gray-800 bg-gray-950/40 p-3">
+                                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Account State</p>
+                                    <div className="mt-3 space-y-2 text-sm text-gray-300">
+                                        <div className="flex justify-between gap-3">
+                                            <span className="text-gray-500">Health</span>
+                                            <span className="capitalize text-white">{selectedTicket.org_account_state?.health_band ?? "healthy"}</span>
+                                        </div>
+                                        <div className="flex justify-between gap-3">
+                                            <span className="text-gray-500">Lifecycle</span>
+                                            <span className="capitalize text-white">{selectedTicket.org_account_state?.lifecycle_stage ?? "active"}</span>
+                                        </div>
+                                        <div className="flex justify-between gap-3">
+                                            <span className="text-gray-500">Renewal</span>
+                                            <span className="text-white">{selectedTicket.org_account_state?.renewal_at ? new Date(selectedTicket.org_account_state.renewal_at).toLocaleDateString() : "Not set"}</span>
+                                        </div>
+                                        <div className="flex justify-between gap-3">
+                                            <span className="text-gray-500">Next action</span>
+                                            <span className="text-right text-white">{selectedTicket.org_account_state?.next_action ?? "None set"}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="rounded-lg border border-gray-800 bg-gray-950/40 p-3">
+                                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Business Impact</p>
+                                    <div className="mt-3 space-y-2 text-sm text-gray-300">
+                                        <div className="flex justify-between gap-3">
+                                            <span className="text-gray-500">Outstanding</span>
+                                            <span className="text-white">{selectedTicket.business_impact?.outstanding_balance_label ?? "₹0"}</span>
+                                        </div>
+                                        <div className="flex justify-between gap-3">
+                                            <span className="text-gray-500">Overdue</span>
+                                            <span className="text-white">{selectedTicket.business_impact?.overdue_balance_label ?? "₹0"}</span>
+                                        </div>
+                                        <div className="flex justify-between gap-3">
+                                            <span className="text-gray-500">Expiring proposals</span>
+                                            <span className="text-white">{selectedTicket.business_impact?.expiring_proposal_count ?? 0}</span>
+                                        </div>
+                                        <div className="flex justify-between gap-3">
+                                            <span className="text-gray-500">Fatal incidents</span>
+                                            <span className="text-white">{selectedTicket.business_impact?.fatal_error_count ?? 0}</span>
+                                        </div>
+                                    </div>
+                                    {(selectedTicket.business_impact?.risk_flags?.length ?? 0) > 0 && (
+                                        <div className="mt-3 flex flex-wrap gap-1">
+                                            {selectedTicket.business_impact?.risk_flags.map((flag) => (
+                                                <span key={flag} className="rounded bg-amber-950/30 px-2 py-1 text-[11px] text-amber-200">
+                                                    {flag}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
                         {/* Manager controls */}
                         <div className="space-y-3 rounded-lg border border-gray-800 bg-gray-950/40 p-3">
                             <div className="flex items-center justify-between">
@@ -459,6 +543,27 @@ export default function SupportPage() {
                                 </p>
                             )}
                         </div>
+
+                        {(selectedTicket.linked_work_items?.length ?? 0) > 0 && (
+                            <div className="space-y-2 rounded-lg border border-gray-800 bg-gray-950/40 p-3">
+                                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Linked Work Items</p>
+                                <div className="space-y-2">
+                                    {selectedTicket.linked_work_items?.map((item) => (
+                                        <div key={item.id} className="rounded border border-gray-800 bg-gray-900/70 p-3 text-sm">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <p className="font-medium text-white">{item.title}</p>
+                                                    <p className="mt-1 text-xs text-gray-500">
+                                                        {item.owner_name ?? "Unowned"} · {item.status.replace("_", " ")}
+                                                    </p>
+                                                </div>
+                                                <span className="text-xs text-gray-500">{item.due_at ? dueLabel(item.due_at) : "No due date"}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Existing response */}
                         {selectedTicket.ticket.admin_response && (
