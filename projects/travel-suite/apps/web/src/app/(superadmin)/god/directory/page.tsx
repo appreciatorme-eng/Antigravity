@@ -137,7 +137,9 @@ const TIER_OPTIONS = [
     { value: "enterprise", label: "Enterprise" },
 ];
 
-const COLUMNS: TableColumn<DirectoryUser>[] = [
+const getColumns = (
+    openOrgDetail: (orgId: string) => void
+): TableColumn<DirectoryUser>[] => [
     {
         key: "full_name",
         label: "Name",
@@ -156,7 +158,23 @@ const COLUMNS: TableColumn<DirectoryUser>[] = [
             </span>
         ),
     },
-    { key: "org_name", label: "Org", render: (v) => <span className="text-gray-300">{String(v ?? "—")}</span> },
+    { 
+        key: "org_name", 
+        label: "Org", 
+        render: (v, row) => (
+            <button
+                type="button"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    if (row.org_id) openOrgDetail(row.org_id);
+                }}
+                className="text-amber-400 hover:text-amber-300 font-medium text-left transition-colors truncate max-w-[150px]"
+                title={String(v ?? "")}
+            >
+                {String(v ?? "—")}
+            </button>
+        ) 
+    },
     {
         key: "org_tier",
         label: "Tier",
@@ -607,7 +625,7 @@ export default function DirectoryPage() {
             {/* Table */}
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
                 <DrillDownTable<DirectoryUser>
-                    columns={COLUMNS}
+                    columns={getColumns(openOrgDetail)}
                     data={data?.users ?? []}
                     onRowClick={openUserDetail}
                     emptyMessage="No users found"
