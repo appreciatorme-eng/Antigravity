@@ -52,6 +52,39 @@ const DEFAULT_COMPOSE = {
     delivery_channels: ["in_app"],
 };
 
+const SCENARIO_TEMPLATES = [
+    {
+        label: "Maintenance Window",
+        title: "Scheduled Maintenance Notification",
+        body: "We will be performing scheduled maintenance on our infrastructure on [Date] between [Time] and [Time] UTC. During this window, you may experience brief periods of degraded performance or unavailability. We apologize for any inconvenience this may cause and appreciate your patience as we work to improve the platform.",
+        announcement_type: "maintenance",
+    },
+    {
+        label: "New Feature Launch",
+        title: "New Feature available: [Feature Name]",
+        body: "We are excited to announce the launch of [Feature Name]! This new capability allows you to [Benefit/Action]. You can access it starting today by navigating to [Location]. Check out our documentation for a full walkthrough.",
+        announcement_type: "info",
+    },
+    {
+        label: "Bug Fix / Stability Update",
+        title: "Recent System Updates & Fixes",
+        body: "We've deployed a patch that addresses recent issues with [Specific Issue]. You should now experience improved stability and performance when [Action]. Please refresh your browser to ensure you are on the latest version.",
+        announcement_type: "info",
+    },
+    {
+        label: "Critical Incident / System Degradation",
+        title: "Investigating: System Performance Issues",
+        body: "We are currently investigating reports of degraded performance impacting [Service/Feature]. Our engineering team is engaged and actively working to identify the root cause. We will provide further updates as soon as more information becomes available. We apologize for the disruption.",
+        announcement_type: "critical",
+    },
+    {
+        label: "Billing / Pricing Update",
+        title: "Important Update Regarding Your Subscription",
+        body: "We are writing to inform you about upcoming changes to our subscription plans starting on [Date]. We are introducing new features to the [Tier] tier while adjusting the pricing to [Amount]. Existing users will be grandfathered into their current rates until [Date]. Please review the full details on our pricing page.",
+        announcement_type: "warning",
+    }
+];
+
 export default function AnnouncementsPage() {
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
     const [loading, setLoading] = useState(true);
@@ -141,10 +174,33 @@ export default function AnnouncementsPage() {
             {/* Compose form */}
             {showCompose && (
                 <div className="bg-gray-900 border border-amber-500/30 rounded-xl p-5 space-y-4">
-                    <h2 className="text-sm font-semibold text-amber-400 uppercase tracking-wider flex items-center gap-2">
-                        <Megaphone className="w-4 h-4" />
-                        Compose Announcement
-                    </h2>
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-sm font-semibold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                            <Megaphone className="w-4 h-4" />
+                            Compose Announcement
+                        </h2>
+                        <select
+                            onChange={(e) => {
+                                const index = e.target.value;
+                                if (index === "") return;
+                                const template = SCENARIO_TEMPLATES[Number(index)];
+                                if (template) {
+                                    setCompose({
+                                        ...compose,
+                                        title: template.title,
+                                        body: template.body,
+                                        announcement_type: template.announcement_type,
+                                    });
+                                }
+                            }}
+                            className="bg-gray-800 border border-gray-700 text-xs text-gray-300 rounded-md px-2 py-1 focus:outline-none focus:border-amber-500/50"
+                        >
+                            <option value="">Load a template…</option>
+                            {SCENARIO_TEMPLATES.map((t, i) => (
+                                <option key={i} value={i}>{t.label}</option>
+                            ))}
+                        </select>
+                    </div>
 
                     <input
                         value={compose.title}
