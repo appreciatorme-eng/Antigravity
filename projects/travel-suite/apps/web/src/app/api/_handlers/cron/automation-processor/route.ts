@@ -3,7 +3,10 @@ import { apiError } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { runAutomationEngine } from "@/lib/automation/engine";
 import { scheduleAutomation } from "@/lib/automation/qstash-scheduler";
+import { sendOpsAlert } from "@/lib/god-slack";
 import { authorizeCronRequest } from "@/lib/security/cron-auth";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { generateDailyOpsBrief, runBusinessOpsLoop } from "@/lib/platform/business-os";
 import { logError, logEvent } from "@/lib/observability/logger";
 
 /**
@@ -32,18 +35,34 @@ export async function POST(request: NextRequest) {
     }
 
     const hasQStash = Boolean(process.env.QSTASH_TOKEN?.trim());
+    const runBusinessOs = process.env.BUSINESS_OS_AUTOPILOT_ENABLED?.trim().toLowerCase() !== "false";
+
+    let automationResult: unknown;
+    let mode: "direct" | "qstash";
 
     if (!hasQStash) {
       // Fallback: run engine directly (sends immediately)
       logEvent("info", "[automation-processor] No QStash, running engine directly");
-      const result = await runAutomationEngine("scheduled");
-      return NextResponse.json({ success: true, mode: "direct", result });
+      automationResult = await runAutomationEngine("scheduled");
+      mode = "direct";
+    } else {
+      // QStash mode: run engine to find candidates, then schedule via QStash
+      logEvent("info", "[automation-processor] QStash mode, scheduling messages");
+      automationResult = await runAutomationEngineWithQStash();
+      mode = "qstash";
     }
 
-    // QStash mode: run engine to find candidates, then schedule via QStash
-    logEvent("info", "[automation-processor] QStash mode, scheduling messages");
-    const result = await runAutomationEngineWithQStash();
-    return NextResponse.json({ success: true, mode: "qstash", result });
+    if (!runBusinessOs) {
+      return NextResponse.json({ success: true, mode, result: automationResult, business_os_autopilot: { ran: false, reason: "disabled" } });
+    }
+
+    const businessOsAutopilot = await runBusinessOsAutopilot();
+    return NextResponse.json({
+      success: true,
+      mode,
+      result: automationResult,
+      business_os_autopilot: businessOsAutopilot,
+    });
   } catch (error) {
     logError("[/api/cron/automation-processor:POST] failed", error);
     return NextResponse.json(
@@ -59,6 +78,17 @@ interface QStashScheduleResult {
   readonly scheduled: number;
   readonly skipped: number;
   readonly failed: number;
+}
+
+interface BusinessOsAutopilotResult {
+  readonly ran: boolean;
+  readonly generatedAt: string;
+  readonly createdWorkItems: number;
+  readonly candidateWorkItems: number;
+  readonly dedupedWorkItems: number;
+  readonly priorityCount: number;
+  readonly gapCount: number;
+  readonly slackPosted: boolean;
 }
 
 /**
@@ -93,5 +123,33 @@ async function runAutomationEngineWithQStash(): Promise<QStashScheduleResult> {
     scheduled: result.messagesSent,
     skipped: result.messagesSkipped,
     failed: result.messagesFailed,
+  };
+}
+
+async function runBusinessOsAutopilot(): Promise<BusinessOsAutopilotResult> {
+  const adminClient = createAdminClient();
+  const [opsLoop, brief] = await Promise.all([
+    runBusinessOpsLoop(adminClient as never),
+    generateDailyOpsBrief(adminClient as never, ""),
+  ]);
+
+  const summary = [
+    "Business OS daily autopilot completed.",
+    `Created ${opsLoop.created_count}/${opsLoop.candidate_count} queue items (${opsLoop.deduped_count} already covered).`,
+    `Top focus: ${brief.headline}`,
+    ...(brief.gaps.slice(0, 3).map((gap) => `Gap: ${gap}`)),
+  ].join("\n");
+
+  const slackPosted = await sendOpsAlert(summary);
+
+  return {
+    ran: true,
+    generatedAt: new Date().toISOString(),
+    createdWorkItems: opsLoop.created_count,
+    candidateWorkItems: opsLoop.candidate_count,
+    dedupedWorkItems: opsLoop.deduped_count,
+    priorityCount: brief.priorities.length,
+    gapCount: brief.gaps.length,
+    slackPosted,
   };
 }

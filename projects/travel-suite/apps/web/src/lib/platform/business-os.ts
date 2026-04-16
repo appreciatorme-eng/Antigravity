@@ -20,6 +20,7 @@ import {
 import { listOrgActivityEvents, listOrgMemoryNotes, recordOrgActivityEvent, type OrgActivityEvent, type OrgMemoryNote } from "@/lib/platform/org-memory";
 import { buildWorkItemOutcomeLearning, type WorkItemOutcomeLearning } from "@/lib/platform/work-item-outcomes";
 import {
+    buildCommsFollowupCounts,
     buildCommitmentCounts,
     loadCommsSequences,
     loadCommitments,
@@ -877,6 +878,7 @@ function buildOpsLoopSuggestions(
     account: BusinessOsAccountRow,
     existingKeys: Set<string>,
     breachedCommitmentCount = 0,
+    overdueCommsFollowupCount = 0,
 ): BusinessOsOpsSuggestion[] {
     const suggestions: BusinessOsOpsSuggestion[] = [];
 
@@ -978,6 +980,18 @@ function buildOpsLoopSuggestions(
         });
     }
 
+    if (overdueCommsFollowupCount > 0) {
+        addSuggestion({
+            automation_key: `promise-watchdog:${account.org_id}`,
+            kind: "churn_risk",
+            severity: overdueCommsFollowupCount >= 2 ? "high" : "medium",
+            title: "Resolve overdue customer follow-ups",
+            summary: `${overdueCommsFollowupCount} active communication follow-ups are overdue and need owner action.`,
+            due_at: new Date().toISOString(),
+            reason: `${overdueCommsFollowupCount} overdue comms follow-ups detected`,
+        });
+    }
+
     return suggestions;
 }
 
@@ -985,6 +999,7 @@ function buildPolicyViolations(
     account: BusinessOsAccountRow,
     activeKinds: Set<GodWorkItemKind>,
     breachedCommitmentCount = 0,
+    overdueCommsFollowupCount = 0,
 ): BusinessOsPolicyViolation[] {
     const violations: BusinessOsPolicyViolation[] = [];
 
@@ -1045,6 +1060,17 @@ function buildPolicyViolations(
             severity: breachedCommitmentCount >= 2 ? "critical" : "high",
             rule: "Breached commitments require active escalation work",
             detail: `${breachedCommitmentCount} commitments are breached/overdue with no churn-risk or support escalation work item.`,
+        });
+    }
+
+    if (overdueCommsFollowupCount > 0 && !activeKinds.has("churn_risk") && !activeKinds.has("support_escalation")) {
+        violations.push({
+            id: `${account.org_id}:promise-watchdog`,
+            org_id: account.org_id,
+            account_name: account.name,
+            severity: overdueCommsFollowupCount >= 2 ? "high" : "medium",
+            rule: "Overdue customer follow-ups require active escalation work",
+            detail: `${overdueCommsFollowupCount} active communication follow-ups are overdue with no churn-risk/support escalation work item.`,
         });
     }
 
@@ -1353,7 +1379,10 @@ export async function buildBusinessOsPayload(
         status: "active",
         limit: 500,
     });
-    const commitmentCounts = await buildCommitmentCounts(db, enriched.map((account) => account.org_id));
+    const [commitmentCounts, commsFollowupCounts] = await Promise.all([
+        buildCommitmentCounts(db, enriched.map((account) => account.org_id)),
+        buildCommsFollowupCounts(db, enriched.map((account) => account.org_id)),
+    ]);
     const activeKindsByOrg = new Map<string, Set<GodWorkItemKind>>();
     for (const item of activeItems) {
         if (!item.org_id) continue;
@@ -1373,12 +1402,14 @@ export async function buildBusinessOsPayload(
         account,
         existingAutomationKeys,
         commitmentCounts.get(account.org_id)?.breached ?? 0,
+        commsFollowupCounts.get(account.org_id)?.overdue ?? 0,
     ));
     const policyViolations = enriched
         .flatMap((account) => buildPolicyViolations(
             account,
             activeKindsByOrg.get(account.org_id) ?? new Set<GodWorkItemKind>(),
             commitmentCounts.get(account.org_id)?.breached ?? 0,
+            commsFollowupCounts.get(account.org_id)?.overdue ?? 0,
         ))
         .sort((left, right) => {
             const weight = (value: BusinessOsPolicyViolation["severity"]) => (value === "critical" ? 3 : value === "high" ? 2 : 1);

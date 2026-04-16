@@ -54,6 +54,11 @@ export type CommitmentCounts = {
     breached: number;
 };
 
+export type CommsFollowupCounts = {
+    active: number;
+    overdue: number;
+};
+
 function normalizeIso(value: unknown): string | null {
     if (typeof value !== "string" || !value.trim()) return null;
     const date = new Date(value);
@@ -357,6 +362,47 @@ export async function buildCommitmentCounts(db: AdminClient, orgIds: string[]): 
         if (!row.org_id || !map.has(row.org_id)) continue;
         const current = map.get(row.org_id)!;
         current.breached += 1;
+        map.set(row.org_id, current);
+    }
+
+    return map;
+}
+
+export async function buildCommsFollowupCounts(db: AdminClient, orgIds: string[]): Promise<Map<string, CommsFollowupCounts>> {
+    const uniqueOrgIds = Array.from(new Set(orgIds.filter(Boolean)));
+    const map = new Map<string, CommsFollowupCounts>();
+    if (uniqueOrgIds.length === 0) return map;
+    for (const orgId of uniqueOrgIds) {
+        map.set(orgId, { active: 0, overdue: 0 });
+    }
+
+    const nowIso = new Date().toISOString();
+    const [activeResult, overdueResult] = await Promise.all([
+        db
+            .from("god_comms_sequences")
+            .select("org_id")
+            .in("org_id", uniqueOrgIds)
+            .eq("status", "active"),
+        db
+            .from("god_comms_sequences")
+            .select("org_id")
+            .in("org_id", uniqueOrgIds)
+            .eq("status", "active")
+            .not("next_follow_up_at", "is", null)
+            .lt("next_follow_up_at", nowIso),
+    ]);
+
+    for (const row of ((activeResult.data ?? []) as Array<{ org_id: string | null }>)) {
+        if (!row.org_id || !map.has(row.org_id)) continue;
+        const current = map.get(row.org_id)!;
+        current.active += 1;
+        map.set(row.org_id, current);
+    }
+
+    for (const row of ((overdueResult.data ?? []) as Array<{ org_id: string | null }>)) {
+        if (!row.org_id || !map.has(row.org_id)) continue;
+        const current = map.get(row.org_id)!;
+        current.overdue += 1;
         map.set(row.org_id, current);
     }
 
