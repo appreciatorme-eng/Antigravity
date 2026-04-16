@@ -799,8 +799,8 @@ export default function GodCommandCenter() {
                 <Link href="/god/announcements" className="inline-flex items-center gap-1.5 rounded-md border border-gray-700 bg-gray-900 px-3 py-1.5 text-sm text-gray-300 transition-colors hover:border-gray-600 hover:text-white">
                     <Megaphone className="h-3.5 w-3.5" /> Announcement
                 </Link>
-                <Link href="/god/settings" className="inline-flex items-center gap-1.5 rounded-md border border-gray-700 bg-gray-900 px-3 py-1.5 text-sm text-gray-300 transition-colors hover:border-gray-600 hover:text-white">
-                    <Settings className="h-3.5 w-3.5" /> Settings
+                <Link href="/god/kill-switch" className="inline-flex items-center gap-1.5 rounded-md border border-gray-700 bg-gray-900 px-3 py-1.5 text-sm text-gray-300 transition-colors hover:border-gray-600 hover:text-white">
+                    <Power className="h-3.5 w-3.5" /> Kill Switch
                 </Link>
             </div>
             <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-start 2xl:justify-between">
@@ -1380,12 +1380,12 @@ export default function GodCommandCenter() {
                                         <ArrowRight className="w-4 h-4" />
                                     </Link>
                                     <Link
-                                        href="/god/settings"
+                                        href="/god/kill-switch"
                                         className="inline-flex items-center justify-between rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white"
                                     >
                                         <span className="inline-flex items-center gap-2">
-                                            <Settings className="w-4 h-4" />
-                                            Platform Settings
+                                            <Power className="w-4 h-4" />
+                                            Kill Switch
                                         </span>
                                         <ArrowRight className="w-4 h-4" />
                                     </Link>
