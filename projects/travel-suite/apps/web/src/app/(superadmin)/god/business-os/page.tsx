@@ -318,6 +318,30 @@ export default function BusinessOsPage() {
         }
     }
 
+    async function markReviewedNow() {
+        const selected = data?.selected_account;
+        if (!selected) return;
+        setSavingAccount(true);
+        setError(null);
+        try {
+            const response = await authedFetch(`/api/superadmin/accounts/${selected.organization.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    last_reviewed_at: new Date().toISOString(),
+                    last_review_summary: selected.ai.what_changed,
+                }),
+            });
+            if (!response.ok) throw new Error("Failed to mark account reviewed");
+            setMessage("Account review timestamp updated.");
+            await loadData();
+        } catch (reviewError) {
+            setError(reviewError instanceof Error ? reviewError.message : "Failed to mark account reviewed");
+        } finally {
+            setSavingAccount(false);
+        }
+    }
+
     async function createWorkItem() {
         const selected = data?.selected_account;
         if (!selected || !workItemDraft.title.trim()) return;
@@ -640,6 +664,7 @@ export default function BusinessOsPage() {
                                             <span>Owner: {selected.owner?.name ?? "Unassigned"}</span>
                                             <span>Renewal: {formatDate(selected.account_state.renewal_at)}</span>
                                             <span>Priority score: {selected.priority_score}</span>
+                                            <span>Last reviewed: {formatDate(selected.account_state.last_reviewed_at)}</span>
                                         </div>
                                         <div className="max-w-4xl text-sm text-gray-300">
                                             {selected.ai.what_changed}
@@ -658,6 +683,14 @@ export default function BusinessOsPage() {
                                             className="inline-flex items-center gap-2 rounded-lg border border-gray-800 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white"
                                         >
                                             Release owner
+                                        </button>
+                                        <button
+                                            onClick={() => void markReviewedNow()}
+                                            disabled={savingAccount}
+                                            className="inline-flex items-center gap-2 rounded-lg border border-gray-800 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white disabled:opacity-60"
+                                        >
+                                            <ClipboardList className="h-4 w-4" />
+                                            Mark reviewed
                                         </button>
                                         <button
                                             onClick={() => void refreshDrafts()}
@@ -687,9 +720,104 @@ export default function BusinessOsPage() {
                                         <div className="mt-1 text-xs text-gray-400">Urgent tickets / fatal incidents</div>
                                     </div>
                                     <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
-                                        <div className="text-xs uppercase tracking-wide text-gray-400">Adoption</div>
-                                        <div className="mt-2 text-xl font-semibold text-white">{selected.snapshot.proposal_sent_count} proposals sent</div>
-                                        <div className="mt-1 text-xs text-gray-400">{selected.snapshot.trip_count} trips • {selected.snapshot.social_post_count} social posts • {selected.snapshot.portal_touchpoints} portal touches</div>
+                                        <div className="text-xs uppercase tracking-wide text-gray-400">Activation funnel</div>
+                                        <div className="mt-2 text-xl font-semibold text-white">
+                                            {selected.snapshot.proposal_draft_count + selected.snapshot.whatsapp_proposal_draft_count} drafts • {selected.snapshot.proposal_sent_count} sent
+                                        </div>
+                                        <div className="mt-1 text-xs text-gray-400">
+                                            {selected.snapshot.proposal_viewed_count} viewed • {selected.snapshot.proposal_approved_count || selected.snapshot.proposal_won_count} approved • {selected.snapshot.trip_count} trips
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+                                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <div className="text-sm font-medium text-gray-200">Activation funnel</div>
+                                            <div className="mt-1 text-sm text-gray-400">Track the account from signup to first proposal, approval, and converted trip.</div>
+                                        </div>
+                                        <div className="text-xs uppercase tracking-wide text-gray-500">
+                                            Time to first proposal: {selected.snapshot.time_to_first_proposal_days ?? "—"} days
+                                        </div>
+                                    </div>
+                                    <div className="mt-4 grid gap-3 md:grid-cols-2 2xl:grid-cols-4">
+                                        {selected.activation_funnel.map((step) => (
+                                            <div
+                                                key={step.id}
+                                                className={cn(
+                                                    "rounded-xl border p-4",
+                                                    step.status === "done"
+                                                        ? "border-emerald-900/60 bg-emerald-950/20"
+                                                        : step.status === "current"
+                                                            ? "border-amber-800/60 bg-amber-950/20"
+                                                            : "border-gray-800 bg-black/30",
+                                                )}
+                                            >
+                                                <div className="flex items-center justify-between gap-3">
+                                                    <div className="text-sm font-medium text-white">{step.label}</div>
+                                                    <span
+                                                        className={cn(
+                                                            "rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wide",
+                                                            step.status === "done"
+                                                                ? "bg-emerald-950/70 text-emerald-200"
+                                                                : step.status === "current"
+                                                                    ? "bg-amber-950/70 text-amber-200"
+                                                                    : "bg-gray-900 text-gray-400",
+                                                        )}
+                                                    >
+                                                        {step.status}
+                                                    </span>
+                                                </div>
+                                                <div className="mt-3 text-lg font-semibold text-white">{step.value}</div>
+                                                <div className="mt-1 text-xs text-gray-400">{step.detail}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
+                                    <div className="text-sm font-medium text-gray-200">Review loop</div>
+                                    <div className="mt-1 text-sm text-gray-400">
+                                        Use AI as memory, but keep a clear human review cadence for high-risk accounts.
+                                    </div>
+                                    <div className="mt-4 space-y-3">
+                                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
+                                            <div className="text-xs uppercase tracking-wide text-gray-500">Last review</div>
+                                            <div className="mt-2 text-sm text-white">
+                                                {selected.account_state.last_reviewed_at
+                                                    ? new Date(selected.account_state.last_reviewed_at).toLocaleString()
+                                                    : "No Business OS review recorded yet."}
+                                            </div>
+                                            <div className="mt-2 text-xs text-gray-400">
+                                                {selected.account_state.last_review_summary ?? "Use “Mark reviewed” once the account has been explicitly triaged."}
+                                            </div>
+                                        </div>
+                                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
+                                            <div className="mb-2 text-xs uppercase tracking-wide text-gray-500">What changed since review</div>
+                                            <div className="space-y-2 text-sm text-gray-300">
+                                                {selected.changed_since_review.map((item) => (
+                                                    <div key={item} className="rounded-lg border border-gray-800 bg-gray-950/50 px-3 py-2">
+                                                        {item}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
+                                            <div className="mb-2 text-xs uppercase tracking-wide text-gray-500">Operating gaps</div>
+                                            <div className="space-y-2 text-sm text-gray-300">
+                                                {selected.operating_gaps.length > 0 ? selected.operating_gaps.map((gap) => (
+                                                    <div key={gap} className="rounded-lg border border-amber-900/60 bg-amber-950/20 px-3 py-2 text-amber-200">
+                                                        {gap}
+                                                    </div>
+                                                )) : (
+                                                    <div className="rounded-lg border border-gray-800 bg-gray-950/50 px-3 py-2 text-gray-400">
+                                                        No major operating gaps surfaced right now.
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

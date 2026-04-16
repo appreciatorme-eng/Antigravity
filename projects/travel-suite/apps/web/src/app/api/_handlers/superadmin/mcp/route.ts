@@ -1,7 +1,7 @@
 /**
  * Travel Suite God Mode — MCP Server
  *
- * Exposes 14 live business intelligence tools to AI agents (Claude, Cursor, etc.)
+ * Exposes live business intelligence and operating tools to AI agents (Claude, Cursor, etc.)
  * All tools are protected by requireSuperAdmin() — only authenticated super admins
  * can establish a connection.
  *
@@ -34,6 +34,8 @@ import {
     getActivationRiskAccounts,
     getStalledAccounts,
     getUnownedHighRiskAccounts,
+    getUnreviewedHighRiskAccounts,
+    getWhatsAppActivationGapAccounts,
     proposeAccountStateUpdate,
     proposeWorkItemBatch,
 } from "@/lib/platform/business-os";
@@ -193,6 +195,30 @@ mcpServer.setRequestHandler(ListToolsRequestSchema, async () => ({
             description:
                 "Accounts that still have not crossed the first proposal sent milestone. " +
                 "Use to focus activation work around Trip Built's core product value.",
+            inputSchema: {
+                type: "object",
+                properties: {
+                    limit: { type: "number", description: "How many accounts to return (default 10)" },
+                },
+            },
+        },
+        {
+            name: "get_unreviewed_high_risk_accounts",
+            description:
+                "High-risk accounts that have not been reviewed recently in Business OS. " +
+                "Use this as an AI COO review-enforcement queue.",
+            inputSchema: {
+                type: "object",
+                properties: {
+                    limit: { type: "number", description: "How many accounts to return (default 10)" },
+                },
+            },
+        },
+        {
+            name: "get_whatsapp_activation_gaps",
+            description:
+                "Accounts where WhatsApp captured proposal intent but no proposal was actually sent. " +
+                "Use to close the strongest activation leak in Trip Built.",
             inputSchema: {
                 type: "object",
                 properties: {
@@ -639,6 +665,37 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request: any) => {
                     type: "text",
                     text: `## Accounts Needing First Proposal\n\n${accounts.map((account, index) =>
                         `${index + 1}. **${account.name}** — ${account.activation_risk_reasons.join(", ") || "no proposal sent yet"}`
+                    ).join("\n")}`,
+                }],
+            };
+        }
+
+        case "get_unreviewed_high_risk_accounts": {
+            const limit = Number(args.limit ?? 10);
+            const accounts = await getUnreviewedHighRiskAccounts(db, limit);
+            if (!accounts.length) return { content: [{ type: "text", text: "✅ No high-risk review gaps right now." }] };
+            return {
+                content: [{
+                    type: "text",
+                    text: `## Unreviewed High-Risk Accounts\n\n${accounts.map((account, index) => {
+                        const reviewText = account.account_state.last_reviewed_at
+                            ? `last reviewed ${new Date(account.account_state.last_reviewed_at).toLocaleDateString()}`
+                            : "never reviewed";
+                        return `${index + 1}. **${account.name}** — ${reviewText}; ${account.priority_reasons.slice(0, 3).join(", ")}`;
+                    }).join("\n")}`,
+                }],
+            };
+        }
+
+        case "get_whatsapp_activation_gaps": {
+            const limit = Number(args.limit ?? 10);
+            const accounts = await getWhatsAppActivationGapAccounts(db, limit);
+            if (!accounts.length) return { content: [{ type: "text", text: "✅ No WhatsApp-to-proposal activation gaps right now." }] };
+            return {
+                content: [{
+                    type: "text",
+                    text: `## WhatsApp Activation Gaps\n\n${accounts.map((account, index) =>
+                        `${index + 1}. **${account.name}** — ${account.snapshot.whatsapp_proposal_draft_count} WhatsApp drafts, ${account.snapshot.proposal_sent_count} proposals sent, ${account.activation_risk_reasons.join(", ")}`
                     ).join("\n")}`,
                 }],
             };

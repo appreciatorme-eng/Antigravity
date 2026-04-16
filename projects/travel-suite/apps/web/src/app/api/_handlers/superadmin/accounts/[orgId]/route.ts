@@ -26,6 +26,8 @@ type PatchBody = {
     renewal_at?: string | null;
     first_proposal_sent_at?: string | null;
     last_proposal_sent_at?: string | null;
+    last_reviewed_at?: string | null;
+    last_review_summary?: string | null;
     playbook?: string | null;
     notes?: string | null;
 };
@@ -86,6 +88,8 @@ export async function PATCH(
     if (body.renewal_at !== undefined) patch.renewal_at = normalizeNullableText(body.renewal_at);
     if (body.first_proposal_sent_at !== undefined) patch.first_proposal_sent_at = normalizeNullableText(body.first_proposal_sent_at);
     if (body.last_proposal_sent_at !== undefined) patch.last_proposal_sent_at = normalizeNullableText(body.last_proposal_sent_at);
+    if (body.last_reviewed_at !== undefined) patch.last_reviewed_at = normalizeNullableText(body.last_reviewed_at);
+    if (body.last_review_summary !== undefined) patch.last_review_summary = normalizeNullableText(body.last_review_summary);
     if (body.playbook !== undefined) patch.playbook = normalizeNullableText(body.playbook);
     if (body.notes !== undefined) patch.notes = normalizeNullableText(body.notes);
 

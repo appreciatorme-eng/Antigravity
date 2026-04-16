@@ -38,6 +38,8 @@ export type GodAccountState = {
     renewal_at: string | null;
     first_proposal_sent_at: string | null;
     last_proposal_sent_at: string | null;
+    last_reviewed_at: string | null;
+    last_review_summary: string | null;
     playbook: string | null;
     notes: string | null;
     created_at: string | null;
@@ -63,7 +65,10 @@ export type AccountSnapshot = {
     outstanding_balance_label: string;
     trip_count: number;
     proposal_count: number;
+    proposal_draft_count: number;
     proposal_sent_count: number;
+    proposal_viewed_count: number;
+    proposal_approved_count: number;
     proposal_won_count: number;
     social_post_count: number;
     portal_touchpoints: number;
@@ -71,6 +76,14 @@ export type AccountSnapshot = {
     last_proposal_sent_at: string | null;
     time_to_first_proposal_days: number | null;
     days_since_last_proposal_sent: number | null;
+    first_trip_created_at: string | null;
+    last_trip_activity_at: string | null;
+    whatsapp_session_count: number;
+    active_whatsapp_session_count: number;
+    whatsapp_handoff_count: number;
+    whatsapp_last_message_at: string | null;
+    whatsapp_proposal_draft_count: number;
+    whatsapp_proposal_converted_count: number;
     risk_flags: string[];
 };
 
@@ -234,6 +247,24 @@ type SocialPostRow = {
     created_at: string | null;
 };
 
+type WhatsAppChatbotSessionRow = {
+    id: string;
+    organization_id: string | null;
+    state: string | null;
+    last_message_at: string | null;
+    handed_off_at: string | null;
+    created_at: string | null;
+    updated_at: string | null;
+};
+
+type WhatsAppProposalDraftRow = {
+    id: string;
+    organization_id: string | null;
+    status: string | null;
+    created_at: string | null;
+    updated_at: string | null;
+};
+
 function monthStartIso(): string {
     const now = new Date();
     return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().slice(0, 10);
@@ -361,6 +392,8 @@ export function defaultAccountState(orgId: string): GodAccountState {
         renewal_at: null,
         first_proposal_sent_at: null,
         last_proposal_sent_at: null,
+        last_reviewed_at: null,
+        last_review_summary: null,
         playbook: null,
         notes: null,
         created_at: null,
@@ -388,7 +421,10 @@ function emptyAccountSnapshot(): AccountSnapshot {
         outstanding_balance_label: asCurrency(0),
         trip_count: 0,
         proposal_count: 0,
+        proposal_draft_count: 0,
         proposal_sent_count: 0,
+        proposal_viewed_count: 0,
+        proposal_approved_count: 0,
         proposal_won_count: 0,
         social_post_count: 0,
         portal_touchpoints: 0,
@@ -396,6 +432,14 @@ function emptyAccountSnapshot(): AccountSnapshot {
         last_proposal_sent_at: null,
         time_to_first_proposal_days: null,
         days_since_last_proposal_sent: null,
+        first_trip_created_at: null,
+        last_trip_activity_at: null,
+        whatsapp_session_count: 0,
+        active_whatsapp_session_count: 0,
+        whatsapp_handoff_count: 0,
+        whatsapp_last_message_at: null,
+        whatsapp_proposal_draft_count: 0,
+        whatsapp_proposal_converted_count: 0,
         risk_flags: [],
     };
 }
@@ -416,6 +460,8 @@ function normalizeAccountState(row: Record<string, unknown> | null | undefined, 
         renewal_at: normalizeIso(row.renewal_at),
         first_proposal_sent_at: normalizeIso(row.first_proposal_sent_at),
         last_proposal_sent_at: normalizeIso(row.last_proposal_sent_at),
+        last_reviewed_at: normalizeIso(row.last_reviewed_at),
+        last_review_summary: typeof row.last_review_summary === "string" && row.last_review_summary.trim() ? row.last_review_summary.trim() : null,
         playbook: typeof row.playbook === "string" && row.playbook.trim() ? row.playbook.trim() : null,
         notes: typeof row.notes === "string" && row.notes.trim() ? row.notes.trim() : null,
         created_at: normalizeIso(row.created_at),
@@ -604,6 +650,8 @@ export async function upsertGodAccountState(
         renewal_at: patch.renewal_at === undefined ? current.renewal_at : patch.renewal_at,
         first_proposal_sent_at: patch.first_proposal_sent_at === undefined ? current.first_proposal_sent_at : patch.first_proposal_sent_at,
         last_proposal_sent_at: patch.last_proposal_sent_at === undefined ? current.last_proposal_sent_at : patch.last_proposal_sent_at,
+        last_reviewed_at: patch.last_reviewed_at === undefined ? current.last_reviewed_at : patch.last_reviewed_at,
+        last_review_summary: patch.last_review_summary === undefined ? current.last_review_summary : patch.last_review_summary,
         playbook: patch.playbook === undefined ? current.playbook : patch.playbook,
         notes: patch.notes === undefined ? current.notes : patch.notes,
     };
@@ -617,7 +665,19 @@ export async function buildAccountMetricsMap(db: AdminClient, orgIds: string[]):
     if (uniqueIds.length === 0) return map;
 
     const monthStart = monthStartIso();
-    const [orgsResult, profilesResult, invoicesResult, proposalsResult, aiUsageResult, errorEventsResult, tripsResult, socialPostsResult, supportTicketsResult] = await Promise.all([
+    const [
+        orgsResult,
+        profilesResult,
+        invoicesResult,
+        proposalsResult,
+        aiUsageResult,
+        errorEventsResult,
+        tripsResult,
+        socialPostsResult,
+        supportTicketsResult,
+        whatsappSessionsResult,
+        whatsappProposalDraftsResult,
+    ] = await Promise.all([
         db.from("organizations").select("id, created_at").in("id", uniqueIds),
         db.from("profiles").select("id, organization_id, created_at, updated_at").in("organization_id", uniqueIds),
         db.from("invoices").select("id, invoice_number, organization_id, status, due_date, balance_amount, total_amount, created_at").in("organization_id", uniqueIds),
@@ -627,6 +687,8 @@ export async function buildAccountMetricsMap(db: AdminClient, orgIds: string[]):
         db.from("trips").select("id, organization_id, status, created_at, updated_at").in("organization_id", uniqueIds),
         db.from("social_posts").select("id, organization_id, status, created_at").in("organization_id", uniqueIds),
         db.from("support_tickets").select("id, organization_id, title, user_id, priority, status, created_at, updated_at").in("organization_id", uniqueIds),
+        db.from("whatsapp_chatbot_sessions").select("id, organization_id, state, last_message_at, handed_off_at, created_at, updated_at").in("organization_id", uniqueIds),
+        db.from("whatsapp_proposal_drafts").select("id, organization_id, status, created_at, updated_at").in("organization_id", uniqueIds),
     ]);
 
     const organizations = (orgsResult.data ?? []) as OrganizationMetricRow[];
@@ -638,6 +700,8 @@ export async function buildAccountMetricsMap(db: AdminClient, orgIds: string[]):
     const trips = (tripsResult.data ?? []) as TripRow[];
     const socialPosts = (socialPostsResult.data ?? []) as SocialPostRow[];
     const supportTickets = (supportTicketsResult.data ?? []) as SupportTicketRow[];
+    const whatsappSessions = (whatsappSessionsResult.data ?? []) as WhatsAppChatbotSessionRow[];
+    const whatsappProposalDrafts = (whatsappProposalDraftsResult.data ?? []) as WhatsAppProposalDraftRow[];
     const orgCreatedAtMap = new Map<string, string | null>();
     for (const org of organizations) orgCreatedAtMap.set(org.id, normalizeIso(org.created_at));
 
@@ -681,12 +745,15 @@ export async function buildAccountMetricsMap(db: AdminClient, orgIds: string[]):
         const snapshot = map.get(proposal.organization_id);
         if (!snapshot) continue;
         snapshot.proposal_count += 1;
+        if (normalizedKey(proposal.status) === "draft") snapshot.proposal_draft_count += 1;
         const value = safeNumber(proposal.client_selected_price ?? proposal.total_price);
         const expiresMs = proposal.expires_at ? new Date(proposal.expires_at).getTime() : NaN;
         if (Number.isFinite(expiresMs) && expiresMs >= nowMs && expiresMs <= expiringThresholdMs && !["cancelled", "converted"].includes(proposal.status ?? "")) {
             snapshot.expiring_proposal_count += 1;
             snapshot.expiring_proposal_value += value;
         }
+        if (proposal.viewed_at) snapshot.proposal_viewed_count += 1;
+        if (proposal.approved_at) snapshot.proposal_approved_count += 1;
         if (isSentProposalStatus(proposal.status)) {
             snapshot.proposal_sent_count += 1;
             if (proposal.viewed_at) snapshot.portal_touchpoints += 1;
@@ -709,6 +776,14 @@ export async function buildAccountMetricsMap(db: AdminClient, orgIds: string[]):
         const snapshot = map.get(trip.organization_id);
         if (!snapshot) continue;
         snapshot.trip_count += 1;
+        const createdAt = normalizeIso(trip.created_at);
+        const updatedAt = normalizeIso(trip.updated_at ?? trip.created_at);
+        if (createdAt && (!snapshot.first_trip_created_at || new Date(createdAt).getTime() < new Date(snapshot.first_trip_created_at).getTime())) {
+            snapshot.first_trip_created_at = createdAt;
+        }
+        if (updatedAt && (!snapshot.last_trip_activity_at || new Date(updatedAt).getTime() > new Date(snapshot.last_trip_activity_at).getTime())) {
+            snapshot.last_trip_activity_at = updatedAt;
+        }
         bumpActivity(trip.organization_id, trip.updated_at ?? trip.created_at);
     }
 
@@ -751,6 +826,31 @@ export async function buildAccountMetricsMap(db: AdminClient, orgIds: string[]):
         bumpActivity(orgId, ticket.updated_at ?? ticket.created_at ?? null);
     }
 
+    for (const session of whatsappSessions) {
+        const orgId = session.organization_id;
+        if (!orgId) continue;
+        const snapshot = map.get(orgId);
+        if (!snapshot) continue;
+        snapshot.whatsapp_session_count += 1;
+        if ((session.state ?? "") !== "handed_off") snapshot.active_whatsapp_session_count += 1;
+        if (session.handed_off_at) snapshot.whatsapp_handoff_count += 1;
+        const lastMessageAt = normalizeIso(session.last_message_at ?? session.updated_at ?? session.created_at);
+        if (lastMessageAt && (!snapshot.whatsapp_last_message_at || new Date(lastMessageAt).getTime() > new Date(snapshot.whatsapp_last_message_at).getTime())) {
+            snapshot.whatsapp_last_message_at = lastMessageAt;
+        }
+        bumpActivity(orgId, session.last_message_at ?? session.updated_at ?? session.created_at);
+    }
+
+    for (const draft of whatsappProposalDrafts) {
+        const orgId = draft.organization_id;
+        if (!orgId) continue;
+        const snapshot = map.get(orgId);
+        if (!snapshot) continue;
+        snapshot.whatsapp_proposal_draft_count += 1;
+        if (normalizedKey(draft.status) === "converted") snapshot.whatsapp_proposal_converted_count += 1;
+        bumpActivity(orgId, draft.updated_at ?? draft.created_at);
+    }
+
     for (const [orgId, snapshot] of map.entries()) {
         snapshot.overdue_balance = Number(snapshot.overdue_balance.toFixed(0));
         snapshot.overdue_balance_label = asCurrency(snapshot.overdue_balance);
@@ -769,6 +869,10 @@ export async function buildAccountMetricsMap(db: AdminClient, orgIds: string[]):
             snapshot.urgent_support_count > 0 ? `${snapshot.urgent_support_count} urgent tickets` : null,
             snapshot.fatal_error_count > 0 ? `${snapshot.fatal_error_count} fatal incidents` : null,
             snapshot.ai_spend_mtd_usd >= 25 ? `$${snapshot.ai_spend_mtd_usd.toFixed(2)} AI spend MTD` : null,
+            snapshot.proposal_draft_count > 0 && snapshot.proposal_sent_count === 0 ? `${snapshot.proposal_draft_count} draft proposals not sent` : null,
+            snapshot.whatsapp_proposal_draft_count > 0 && snapshot.proposal_sent_count === 0 ? `${snapshot.whatsapp_proposal_draft_count} WhatsApp proposal drafts waiting` : null,
+            snapshot.proposal_viewed_count > 0 && snapshot.proposal_approved_count === 0 ? `${snapshot.proposal_viewed_count} proposals viewed but not approved` : null,
+            snapshot.active_whatsapp_session_count > 0 && snapshot.proposal_sent_count === 0 ? `${snapshot.active_whatsapp_session_count} active WhatsApp sessions without proposal send` : null,
             snapshot.proposal_sent_count === 0 ? "No proposals sent yet" : null,
             snapshot.proposal_sent_count > 0 && snapshot.trip_count === 0 ? "Proposal sent but no converted trip yet" : null,
             snapshot.proposal_sent_count > 0 && (snapshot.days_since_last_proposal_sent ?? 0) >= 14 ? `${snapshot.days_since_last_proposal_sent} days since last proposal` : null,
@@ -969,6 +1073,8 @@ export function buildBusinessImpact(accountState: GodAccountState, snapshot: Acc
         last_proposal_sent_at: accountState.last_proposal_sent_at,
         next_action: accountState.next_action,
         next_action_due_at: accountState.next_action_due_at,
+        last_reviewed_at: accountState.last_reviewed_at,
+        last_review_summary: accountState.last_review_summary,
         outstanding_balance: snapshot.outstanding_balance,
         outstanding_balance_label: snapshot.outstanding_balance_label,
         overdue_invoice_count: snapshot.overdue_invoice_count,
@@ -985,12 +1091,23 @@ export function buildBusinessImpact(accountState: GodAccountState, snapshot: Acc
         ai_requests_mtd: snapshot.ai_requests_mtd,
         trip_count: snapshot.trip_count,
         proposal_count: snapshot.proposal_count,
+        proposal_draft_count: snapshot.proposal_draft_count,
         proposal_sent_count: snapshot.proposal_sent_count,
+        proposal_viewed_count: snapshot.proposal_viewed_count,
+        proposal_approved_count: snapshot.proposal_approved_count,
         proposal_won_count: snapshot.proposal_won_count,
         social_post_count: snapshot.social_post_count,
         portal_touchpoints: snapshot.portal_touchpoints,
         time_to_first_proposal_days: snapshot.time_to_first_proposal_days,
         days_since_last_proposal_sent: snapshot.days_since_last_proposal_sent,
+        first_trip_created_at: snapshot.first_trip_created_at,
+        last_trip_activity_at: snapshot.last_trip_activity_at,
+        whatsapp_session_count: snapshot.whatsapp_session_count,
+        active_whatsapp_session_count: snapshot.active_whatsapp_session_count,
+        whatsapp_handoff_count: snapshot.whatsapp_handoff_count,
+        whatsapp_last_message_at: snapshot.whatsapp_last_message_at,
+        whatsapp_proposal_draft_count: snapshot.whatsapp_proposal_draft_count,
+        whatsapp_proposal_converted_count: snapshot.whatsapp_proposal_converted_count,
         latest_org_activity: snapshot.latest_org_activity,
         risk_flags: snapshot.risk_flags,
     };

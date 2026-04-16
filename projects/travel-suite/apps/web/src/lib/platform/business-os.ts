@@ -32,12 +32,22 @@ export type BusinessOsFilters = {
 
 export type BusinessOsTimelineItem = {
     id: string;
-    kind: "signup" | "proposal" | "invoice" | "support" | "incident" | "announcement" | "admin_action";
+    kind: "signup" | "proposal" | "trip" | "invoice" | "support" | "incident" | "announcement" | "admin_action" | "whatsapp";
     title: string;
     detail: string;
     at: string | null;
     href: string | null;
     tone: "neutral" | "warning" | "danger";
+};
+
+export type BusinessOsActivationStageStatus = "done" | "current" | "next";
+
+export type BusinessOsActivationStep = {
+    id: "signup" | "trip_created" | "proposal_drafted" | "proposal_sent" | "proposal_viewed" | "proposal_approved" | "trip_converted";
+    label: string;
+    status: BusinessOsActivationStageStatus;
+    value: string;
+    detail: string;
 };
 
 export type BusinessOsAiAction = {
@@ -89,6 +99,9 @@ export type BusinessOsAccountDetail = AccountDetail & {
     priority_reasons: string[];
     activation_risk: boolean;
     activation_risk_reasons: string[];
+    activation_funnel: BusinessOsActivationStep[];
+    operating_gaps: string[];
+    changed_since_review: string[];
     timeline: BusinessOsTimelineItem[];
     recent_support_tickets: Array<{
         id: string;
@@ -179,6 +192,40 @@ type AuditLogRow = {
     created_at: string | null;
 };
 
+type TripTimelineRow = {
+    id: string;
+    status: string | null;
+    created_at: string | null;
+    updated_at: string | null;
+};
+
+type ProposalTimelineRow = {
+    id: string;
+    title: string | null;
+    status: string | null;
+    created_at: string | null;
+    updated_at: string | null;
+    viewed_at: string | null;
+    approved_at: string | null;
+    expires_at: string | null;
+};
+
+type WhatsAppSessionRow = {
+    id: string;
+    state: string | null;
+    last_message_at: string | null;
+    handed_off_at: string | null;
+    created_at: string | null;
+};
+
+type WhatsAppDraftRow = {
+    id: string;
+    title: string | null;
+    status: string | null;
+    created_at: string | null;
+    updated_at: string | null;
+};
+
 function normalizeText(value: string | null | undefined, fallback = "Unknown"): string {
     const trimmed = value?.trim();
     return trimmed ? trimmed : fallback;
@@ -194,6 +241,15 @@ function diffDays(fromIso: string | null | undefined, toIso: string | null | und
     const to = new Date(toIso).getTime();
     if (!Number.isFinite(from) || !Number.isFinite(to) || to < from) return null;
     return Math.max(0, Math.round((to - from) / 86_400_000));
+}
+
+function formatRelativeDate(value: string | null | undefined): string {
+    if (!value) return "No date";
+    const age = diffDays(value);
+    if (age === null) return "No date";
+    if (age === 0) return "Today";
+    if (age === 1) return "1 day ago";
+    return `${age} days ago`;
 }
 
 function resolveActivationStage(state: GodAccountState, snapshot: AccountSnapshot, createdAt: string | null): AccountActivationStage {
@@ -225,11 +281,23 @@ function getActivationRiskReasons(snapshot: AccountSnapshot, createdAt: string |
     if (snapshot.proposal_sent_count === 0 && orgAge !== null && orgAge >= 5) {
         reasons.push("No proposal sent yet");
     }
+    if (snapshot.proposal_draft_count > 0 && snapshot.proposal_sent_count === 0) {
+        reasons.push("Draft proposals exist but none were sent");
+    }
+    if (snapshot.whatsapp_proposal_draft_count > 0 && snapshot.proposal_sent_count === 0) {
+        reasons.push("WhatsApp proposal drafts are waiting for conversion");
+    }
+    if (snapshot.active_whatsapp_session_count > 0 && snapshot.proposal_sent_count === 0) {
+        reasons.push("Active WhatsApp conversations are not converting");
+    }
     if (snapshot.ai_requests_mtd > 0 && snapshot.proposal_sent_count === 0) {
         reasons.push("AI usage started before proposal activation");
     }
     if (snapshot.proposal_sent_count > 0 && snapshot.trip_count === 0 && (snapshot.days_since_last_proposal_sent ?? 0) >= 7) {
         reasons.push("Proposal sent but no trip conversion signal");
+    }
+    if (snapshot.proposal_viewed_count > 0 && snapshot.proposal_approved_count === 0 && (snapshot.days_since_last_proposal_sent ?? 0) >= 5) {
+        reasons.push("Proposal was viewed but not approved");
     }
     if (snapshot.proposal_sent_count > 0 && snapshot.portal_touchpoints === 0) {
         reasons.push("Proposal sent with no client portal activity");
@@ -268,6 +336,11 @@ function getPriorityScore(account: AccountRow, activationRiskReasons: string[], 
         score += 20;
         reasons.push("Unowned");
     }
+    const lastReviewedAge = diffDays(account.account_state.last_reviewed_at);
+    if (score > 0 && (lastReviewedAge === null || lastReviewedAge >= 7)) {
+        score += 14;
+        reasons.push(lastReviewedAge === null ? "Never reviewed in Business OS" : `Not reviewed for ${lastReviewedAge} days`);
+    }
     const nextActionDelta = account.account_state.next_action_due_at
         ? Math.round((new Date(account.account_state.next_action_due_at).getTime() - Date.now()) / 86_400_000)
         : null;
@@ -287,6 +360,125 @@ function getPriorityScore(account: AccountRow, activationRiskReasons: string[], 
     return { score, reasons: Array.from(new Set(reasons)) };
 }
 
+function buildOperatingGaps(account: BusinessOsAccountRow): string[] {
+    const gaps: string[] = [];
+    const reviewAge = diffDays(account.account_state.last_reviewed_at);
+    const nextActionAge = diffDays(account.account_state.next_action_due_at);
+
+    if (!account.account_state.owner_id && account.priority_score >= 40) gaps.push("High-signal account does not have an owner");
+    if (!account.account_state.next_action) gaps.push("No explicit next action is set");
+    if (nextActionAge !== null && nextActionAge >= 1) gaps.push(`Next action is overdue by ${nextActionAge} day${nextActionAge === 1 ? "" : "s"}`);
+    if (reviewAge === null) gaps.push("Account has never been reviewed in Business OS");
+    else if (reviewAge >= 7) gaps.push(`Account has not been reviewed for ${reviewAge} days`);
+    if (account.open_work_item_count > 0 && !account.account_state.owner_id) gaps.push("Open work exists without a clear owner");
+    if (account.snapshot.proposal_draft_count > 0 && account.snapshot.proposal_sent_count === 0) gaps.push("Proposal drafts are accumulating before first send");
+    if (account.snapshot.whatsapp_proposal_draft_count > 0 && account.snapshot.proposal_sent_count === 0) gaps.push("WhatsApp proposal drafts are not converting to sent proposals");
+    if (account.snapshot.proposal_viewed_count > 0 && account.snapshot.proposal_approved_count === 0) gaps.push("Clients have viewed proposals without approval follow-through");
+    if (account.snapshot.proposal_sent_count > 0 && account.snapshot.trip_count === 0 && (account.snapshot.days_since_last_proposal_sent ?? 0) >= 7) {
+        gaps.push("Proposal activity is not converting into trips");
+    }
+
+    return gaps;
+}
+
+function buildActivationFunnel(account: BusinessOsAccountRow): BusinessOsActivationStep[] {
+    const snapshot = account.snapshot;
+    const completion = {
+        signup: true,
+        trip_created: snapshot.trip_count > 0,
+        proposal_drafted: snapshot.proposal_draft_count > 0 || snapshot.whatsapp_proposal_draft_count > 0 || snapshot.proposal_sent_count > 0,
+        proposal_sent: snapshot.proposal_sent_count > 0,
+        proposal_viewed: snapshot.proposal_viewed_count > 0,
+        proposal_approved: snapshot.proposal_approved_count > 0 || snapshot.proposal_won_count > 0,
+        trip_converted: snapshot.trip_count > 0 && snapshot.proposal_sent_count > 0,
+    } as const;
+
+    const steps: Array<Omit<BusinessOsActivationStep, "status"> & { done: boolean }> = [
+        {
+            id: "signup",
+            label: "Signup",
+            value: formatRelativeDate(account.created_at),
+            detail: "Organization created",
+            done: completion.signup,
+        },
+        {
+            id: "trip_created",
+            label: "Trip created",
+            value: snapshot.trip_count > 0 ? String(snapshot.trip_count) : "0",
+            detail: snapshot.first_trip_created_at ? `First trip ${formatRelativeDate(snapshot.first_trip_created_at)}` : "No trip created yet",
+            done: completion.trip_created,
+        },
+        {
+            id: "proposal_drafted",
+            label: "Proposal drafted",
+            value: String(snapshot.proposal_draft_count + snapshot.whatsapp_proposal_draft_count + snapshot.proposal_sent_count),
+            detail: snapshot.whatsapp_proposal_draft_count > 0
+                ? `${snapshot.whatsapp_proposal_draft_count} WhatsApp drafts captured`
+                : "No proposal draft signal yet",
+            done: completion.proposal_drafted,
+        },
+        {
+            id: "proposal_sent",
+            label: "Proposal sent",
+            value: String(snapshot.proposal_sent_count),
+            detail: snapshot.first_proposal_sent_at
+                ? `First send in ${snapshot.time_to_first_proposal_days ?? 0} days`
+                : "First proposal milestone not reached",
+            done: completion.proposal_sent,
+        },
+        {
+            id: "proposal_viewed",
+            label: "Proposal viewed",
+            value: String(snapshot.proposal_viewed_count),
+            detail: snapshot.proposal_viewed_count > 0 ? `${snapshot.portal_touchpoints} portal touchpoints` : "No client view signal yet",
+            done: completion.proposal_viewed,
+        },
+        {
+            id: "proposal_approved",
+            label: "Proposal approved",
+            value: String(snapshot.proposal_approved_count || snapshot.proposal_won_count),
+            detail: snapshot.proposal_approved_count > 0 || snapshot.proposal_won_count > 0 ? "Commercial approval signal captured" : "Awaiting approval",
+            done: completion.proposal_approved,
+        },
+        {
+            id: "trip_converted",
+            label: "Trip converted",
+            value: String(snapshot.trip_count),
+            detail: snapshot.trip_count > 0 ? `Last trip activity ${formatRelativeDate(snapshot.last_trip_activity_at)}` : "No converted trip yet",
+            done: completion.trip_converted,
+        },
+    ];
+
+    let currentMarked = false;
+    return steps.map((step) => {
+        if (step.done) return { ...step, status: "done" as const };
+        if (!currentMarked) {
+            currentMarked = true;
+            return { ...step, status: "current" as const };
+        }
+        return { ...step, status: "next" as const };
+    });
+}
+
+function buildChangedSinceReview(
+    account: BusinessOsAccountRow,
+    timeline: BusinessOsTimelineItem[],
+): string[] {
+    const reviewedAt = account.account_state.last_reviewed_at;
+    if (!reviewedAt) {
+        return account.priority_reasons.slice(0, 4);
+    }
+
+    const reviewedAtMs = new Date(reviewedAt).getTime();
+    const changes = timeline
+        .filter((item) => item.at && new Date(item.at).getTime() > reviewedAtMs)
+        .slice(0, 5)
+        .map((item) => `${item.title}: ${item.detail}`);
+
+    if (changes.length > 0) return changes;
+    return [`No major account events have landed since the last review on ${new Date(reviewedAt).toLocaleDateString()}.`];
+}
+
 function buildWhatChanged(account: AccountRow, activationRiskReasons: string[], effectiveActivationStage: AccountActivationStage): string {
     const highlights: string[] = [];
     if (account.snapshot.latest_org_activity) highlights.push(`Latest activity on ${new Date(account.snapshot.latest_org_activity).toLocaleDateString()}`);
@@ -294,6 +486,10 @@ function buildWhatChanged(account: AccountRow, activationRiskReasons: string[], 
     if (account.snapshot.expiring_proposal_count > 0) highlights.push(`${account.snapshot.expiring_proposal_count} proposals expiring within 72h`);
     if (account.snapshot.urgent_support_count > 0) highlights.push(`${account.snapshot.urgent_support_count} urgent support tickets`);
     if (account.snapshot.fatal_error_count > 0) highlights.push(`${account.snapshot.fatal_error_count} fatal incidents`);
+    if (account.snapshot.whatsapp_proposal_draft_count > 0) highlights.push(`${account.snapshot.whatsapp_proposal_draft_count} WhatsApp proposal drafts`);
+    if (account.snapshot.proposal_viewed_count > 0 && account.snapshot.proposal_approved_count === 0) {
+        highlights.push(`${account.snapshot.proposal_viewed_count} proposals viewed with no approval yet`);
+    }
     if (activationRiskReasons.length > 0) highlights.push(...activationRiskReasons);
     if (highlights.length === 0) highlights.push(`Activation stage is ${effectiveActivationStage.replaceAll("_", " ")}`);
     return highlights.join(". ") + ".";
@@ -312,6 +508,20 @@ function buildRecommendedNextStep(account: AccountRow, activationRiskReasons: st
             nextStep: "Review the oldest unpaid invoice, confirm payer contact, and start a two-step collections sequence with a due date.",
             rationale: "Cash recovery is immediate business leverage and should be handled before low-severity growth work.",
             playbook: "collections",
+        };
+    }
+    if (account.snapshot.whatsapp_proposal_draft_count > 0 && account.snapshot.proposal_sent_count === 0) {
+        return {
+            nextStep: "Convert the WhatsApp proposal draft into a client-ready proposal, assign an owner, and send it within 24 hours.",
+            rationale: "The account has already shown buying intent in WhatsApp; the operating miss is execution, not demand.",
+            playbook: "activation_rescue",
+        };
+    }
+    if (account.snapshot.proposal_viewed_count > 0 && account.snapshot.proposal_approved_count === 0) {
+        return {
+            nextStep: "Follow up on the viewed proposal with a decision-oriented message and confirm the blocker before it goes stale.",
+            rationale: "Client attention has already happened, so the best leverage is tightening the approval loop rather than sending net-new material.",
+            playbook: "low_adoption_follow_up",
         };
     }
     if (activationRiskReasons.length > 0) {
@@ -373,6 +583,9 @@ function buildRenewalStrategy(account: AccountRow, effectiveActivationStage: Acc
 }
 
 function buildGrowthExperiment(account: AccountRow): string {
+    if (account.snapshot.whatsapp_proposal_draft_count > 0 && account.snapshot.proposal_sent_count === 0) {
+        return "Run a WhatsApp-to-proposal recovery loop: convert one captured chat draft into a sent proposal within 24 hours and measure approval velocity.";
+    }
     if (account.snapshot.proposal_sent_count === 0) {
         return "Run a first-proposal concierge experiment: give the team a ready-to-send proposal template and measure activation within 72 hours.";
     }
@@ -384,6 +597,9 @@ function buildGrowthExperiment(account: AccountRow): string {
 
 function buildGrowthOpportunities(account: AccountRow, effectiveActivationStage: AccountActivationStage): string[] {
     const opportunities: string[] = [];
+    if (account.snapshot.whatsapp_session_count > 0 && account.snapshot.proposal_sent_count === 0) {
+        opportunities.push("WhatsApp demand exists but is not turning into proposals");
+    }
     if (effectiveActivationStage === "first_proposal_sent" && account.snapshot.trip_count === 0) {
         opportunities.push("Likely to convert with a tighter follow-up after proposal send");
     }
@@ -508,11 +724,15 @@ async function loadAccountContext(db: AdminClient, detail: AccountDetail): Promi
     timeline: BusinessOsTimelineItem[];
 }> {
     const orgId = detail.organization.id;
-    const [supportResult, incidentResult, announcementResult, auditResult] = await Promise.all([
+    const [supportResult, incidentResult, announcementResult, auditResult, tripResult, proposalResult, whatsappSessionsResult, whatsappDraftsResult] = await Promise.all([
         db.from("support_tickets").select("id, title, priority, status, created_at, updated_at").eq("organization_id", orgId).order("updated_at", { ascending: false }).limit(5),
         db.from("error_events").select("id, title, level, status, created_at").eq("organization_id", orgId).order("created_at", { ascending: false }).limit(5),
         db.from("platform_announcements").select("id, title, target_segment, target_org_ids, sent_at, status").in("status", ["sent", "scheduled"]).order("sent_at", { ascending: false }).limit(8),
         db.from("platform_audit_log").select("id, action, category, target_type, target_id, created_at").eq("target_type", "organization").eq("target_id", orgId).order("created_at", { ascending: false }).limit(6),
+        db.from("trips").select("id, status, created_at, updated_at").eq("organization_id", orgId).order("updated_at", { ascending: false }).limit(5),
+        db.from("proposals").select("id, title, status, created_at, updated_at, viewed_at, approved_at, expires_at").eq("organization_id", orgId).order("updated_at", { ascending: false }).limit(8),
+        db.from("whatsapp_chatbot_sessions").select("id, state, last_message_at, handed_off_at, created_at").eq("organization_id", orgId).order("last_message_at", { ascending: false }).limit(5),
+        db.from("whatsapp_proposal_drafts").select("id, title, status, created_at, updated_at").eq("organization_id", orgId).order("updated_at", { ascending: false }).limit(5),
     ]);
 
     const recentSupportTickets = ((supportResult.data ?? []) as SupportContextRow[]).map((ticket) => ({
@@ -551,6 +771,74 @@ async function loadAccountContext(db: AdminClient, detail: AccountDetail): Promi
             tone: "neutral" as const,
         }));
 
+    const tripTimeline = ((tripResult.data ?? []) as TripTimelineRow[]).map((trip) => ({
+        id: `trip:${trip.id}`,
+        kind: "trip" as const,
+        title: "Trip activity",
+        detail: `Trip is ${normalizeText(trip.status, "active")}`,
+        at: trip.updated_at ?? trip.created_at,
+        href: `/god/directory?org=${orgId}`,
+        tone: normalizeKey(trip.status) === "cancelled" ? "warning" as const : "neutral" as const,
+    }));
+
+    const proposalTimeline = ((proposalResult.data ?? []) as ProposalTimelineRow[]).flatMap((proposal) => {
+        const entries: BusinessOsTimelineItem[] = [
+            {
+                id: `proposal:${proposal.id}`,
+                kind: "proposal",
+                title: normalizeText(proposal.title, "Proposal"),
+                detail: `Status ${normalizeText(proposal.status, "draft")}`,
+                at: proposal.updated_at ?? proposal.created_at,
+                href: `/god/collections?proposal=${proposal.id}`,
+                tone: normalizeKey(proposal.status) === "draft" ? "neutral" : "warning",
+            },
+        ];
+        if (proposal.viewed_at) {
+            entries.push({
+                id: `proposal-view:${proposal.id}`,
+                kind: "proposal",
+                title: normalizeText(proposal.title, "Proposal viewed"),
+                detail: "Client viewed the proposal in the portal",
+                at: proposal.viewed_at,
+                href: `/god/collections?proposal=${proposal.id}`,
+                tone: "warning",
+            });
+        }
+        if (proposal.approved_at) {
+            entries.push({
+                id: `proposal-approve:${proposal.id}`,
+                kind: "proposal",
+                title: normalizeText(proposal.title, "Proposal approved"),
+                detail: "Client approval signal captured",
+                at: proposal.approved_at,
+                href: `/god/collections?proposal=${proposal.id}`,
+                tone: "neutral",
+            });
+        }
+        return entries;
+    });
+
+    const whatsappTimeline = [
+        ...((whatsappSessionsResult.data ?? []) as WhatsAppSessionRow[]).map((session) => ({
+            id: `whatsapp-session:${session.id}`,
+            kind: "whatsapp" as const,
+            title: "WhatsApp session",
+            detail: `${normalizeText(session.state, "active")} conversation${session.handed_off_at ? " handed off" : ""}`,
+            at: session.last_message_at ?? session.created_at,
+            href: `/god/directory?org=${orgId}`,
+            tone: session.handed_off_at ? "neutral" as const : "warning" as const,
+        })),
+        ...((whatsappDraftsResult.data ?? []) as WhatsAppDraftRow[]).map((draft) => ({
+            id: `whatsapp-draft:${draft.id}`,
+            kind: "whatsapp" as const,
+            title: normalizeText(draft.title, "WhatsApp proposal draft"),
+            detail: `Draft status ${normalizeText(draft.status, "ready")}`,
+            at: draft.updated_at ?? draft.created_at,
+            href: `/god/directory?org=${orgId}`,
+            tone: normalizeKey(draft.status) === "converted" ? "neutral" as const : "warning" as const,
+        })),
+    ];
+
     const timeline: BusinessOsTimelineItem[] = [
         {
             id: `signup:${detail.organization.id}`,
@@ -561,15 +849,7 @@ async function loadAccountContext(db: AdminClient, detail: AccountDetail): Promi
             href: `/god/directory?org=${detail.organization.id}`,
             tone: "neutral" as const,
         },
-        ...detail.expiring_proposals.map((proposal) => ({
-            id: `proposal:${proposal.id}`,
-            kind: "proposal" as const,
-            title: normalizeText(proposal.title, "Proposal"),
-            detail: `${proposal.value_label} • status ${normalizeText(proposal.status, "unknown")}`,
-            at: proposal.expires_at,
-            href: `/god/collections?proposal=${proposal.id}`,
-            tone: (proposal.status && normalizeKey(proposal.status) === "draft" ? "neutral" : "warning") as BusinessOsTimelineItem["tone"],
-        })),
+        ...proposalTimeline,
         ...detail.recent_invoices.map((invoice) => ({
             id: `invoice:${invoice.id}`,
             kind: "invoice" as const,
@@ -597,6 +877,8 @@ async function loadAccountContext(db: AdminClient, detail: AccountDetail): Promi
             href: incident.href,
             tone: (normalizeKey(incident.level) === "fatal" ? "danger" : "warning") as BusinessOsTimelineItem["tone"],
         })),
+        ...tripTimeline,
+        ...whatsappTimeline,
         ...announcementTimeline,
         ...((auditResult.data ?? []) as AuditLogRow[]).map((entry) => ({
             id: `audit:${entry.id}`,
@@ -643,19 +925,28 @@ function buildDailyBrief(accounts: BusinessOsAccountRow[], currentUserId: string
     const unownedHighRisk = accounts.filter((account) => !account.account_state.owner_id && account.priority_score >= 60).length;
     const dueToday = accounts.filter((account) => account.account_state.next_action_due_at && diffDays(new Date().toISOString(), account.account_state.next_action_due_at) === 0).length;
     const myQueue = accounts.filter((account) => account.account_state.owner_id === currentUserId && account.priority_score > 0).length;
+    const staleReviews = accounts.filter((account) => {
+        const reviewAge = diffDays(account.account_state.last_reviewed_at);
+        return account.priority_score >= 60 && (reviewAge === null || reviewAge >= 7);
+    }).length;
+    const whatsappActivationGaps = accounts.filter((account) =>
+        account.snapshot.whatsapp_proposal_draft_count > 0 && account.snapshot.proposal_sent_count === 0,
+    ).length;
 
     return {
         headline: highestRisk.length > 0
             ? `${highestRisk[0].name} is the highest-risk account to handle first.`
             : "No critical accounts surfaced in the current Business OS filters.",
         summary: highestRisk.length > 0
-            ? `The current operating load is concentrated in ${highestRisk.filter((account) => account.priority_score >= 60).length} high-risk accounts, with ${unownedHighRisk} of them still unowned.`
+            ? `The current operating load is concentrated in ${highestRisk.filter((account) => account.priority_score >= 60).length} high-risk accounts, with ${unownedHighRisk} of them still unowned and ${staleReviews} overdue for human review.`
             : "Current posture is stable. Focus on moving low-risk accounts toward stronger activation and repeat usage.",
         queue_focus: `My queue has ${myQueue} owned accounts with real priority. ${dueToday} accounts have next actions due today.`,
         priorities: highestRisk.map((account) => `${account.name}: ${account.priority_reasons.slice(0, 3).join(", ") || "review operating posture"}`),
         gaps: [
             unownedHighRisk > 0 ? `${unownedHighRisk} high-risk accounts do not have an owner.` : null,
             accounts.some((account) => account.activation_risk) ? `${accounts.filter((account) => account.activation_risk).length} accounts are still stuck before healthy activation.` : null,
+            staleReviews > 0 ? `${staleReviews} high-risk accounts have not been reviewed in the last 7 days.` : null,
+            whatsappActivationGaps > 0 ? `${whatsappActivationGaps} accounts have WhatsApp proposal drafts but no sent proposal.` : null,
             accounts.every((account) => account.account_state.next_action) ? null : "Some accounts still lack an explicit next action.",
         ].filter(Boolean) as string[],
         generated_at: new Date().toISOString(),
@@ -719,6 +1010,9 @@ export async function buildBusinessOsPayload(
                 priority_reasons: matchingRow.priority_reasons,
                 activation_risk: matchingRow.activation_risk,
                 activation_risk_reasons: matchingRow.activation_risk_reasons,
+                activation_funnel: buildActivationFunnel(matchingRow),
+                operating_gaps: buildOperatingGaps(matchingRow),
+                changed_since_review: buildChangedSinceReview(matchingRow, context.timeline),
                 timeline: context.timeline,
                 recent_support_tickets: context.recentSupportTickets,
                 recent_incidents: context.recentIncidents,
@@ -806,6 +1100,30 @@ export async function getAccountsNeedingFirstProposal(db: AdminClient, limit = 1
     const accounts = await getActivationRiskAccounts(db, Math.max(12, limit * 2));
     return accounts
         .filter((account) => account.snapshot.proposal_sent_count === 0)
+        .slice(0, limit);
+}
+
+export async function getUnreviewedHighRiskAccounts(db: AdminClient, limit = 10): Promise<BusinessOsAccountRow[]> {
+    const { accounts } = await listAccounts(db, { limit: Math.max(20, limit * 4), page: 0 });
+    return accounts
+        .map(enrichAccountRow)
+        .filter((account) => {
+            const reviewAge = diffDays(account.account_state.last_reviewed_at);
+            return account.priority_score >= 60 && (reviewAge === null || reviewAge >= 7);
+        })
+        .sort((left, right) => right.priority_score - left.priority_score)
+        .slice(0, limit);
+}
+
+export async function getWhatsAppActivationGapAccounts(db: AdminClient, limit = 10): Promise<BusinessOsAccountRow[]> {
+    const { accounts } = await listAccounts(db, { limit: Math.max(20, limit * 4), page: 0 });
+    return accounts
+        .map(enrichAccountRow)
+        .filter((account) =>
+            account.snapshot.whatsapp_proposal_draft_count > 0
+            && account.snapshot.proposal_sent_count === 0,
+        )
+        .sort((left, right) => right.priority_score - left.priority_score)
         .slice(0, limit);
 }
 
