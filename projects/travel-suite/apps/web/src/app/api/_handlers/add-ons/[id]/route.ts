@@ -17,6 +17,16 @@ import type { Database } from '@/lib/database.types';
 import { logError } from "@/lib/observability/logger";
 
 type AddOnRow = Database["public"]["Tables"]["add_ons"]["Row"];
+type AddOnUpdate = Database["public"]["Tables"]["add_ons"]["Update"];
+type AddOnUpdateBody = Partial<{
+  name: string;
+  description: string | null;
+  price: number | string;
+  category: string;
+  image_url: string | null;
+  duration: string | null;
+  is_active: boolean;
+}>;
 
 export async function GET(
   request: Request,
@@ -84,10 +94,9 @@ export async function PUT(
       return apiError('No organization found', 404);
     }
 
-    const body = await request.json();
+    const body = await request.json() as AddOnUpdateBody;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase update() rejects Record<string,unknown> due to RejectExcessProperties constraint
-    const updatePayload: Record<string, any> = {};
+    const updatePayload: AddOnUpdate = {};
     if (body.name !== undefined) {
       updatePayload.name = sanitizeText(body.name, { maxLength: 200, stripHtml: true });
     }
@@ -97,7 +106,7 @@ export async function PUT(
         : null;
     }
     if (body.price !== undefined) {
-      const price = parseFloat(body.price);
+      const price = typeof body.price === 'number' ? body.price : parseFloat(body.price);
       if (isNaN(price) || price < 0) {
         return apiError('Price must be zero or greater', 400);
       }
