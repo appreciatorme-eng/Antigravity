@@ -32,11 +32,13 @@ import {
     generateDailyOpsBrief,
     getAccountsNeedingFirstProposal,
     getActivationRiskAccounts,
+    getMarginWatchAccounts,
     getStalledAccounts,
     getUnownedHighRiskAccounts,
     getUnreviewedHighRiskAccounts,
     getWhatsAppActivationGapAccounts,
     proposeAccountStateUpdate,
+    runBusinessOpsLoop,
     proposeWorkItemBatch,
 } from "@/lib/platform/business-os";
 
@@ -225,6 +227,25 @@ mcpServer.setRequestHandler(ListToolsRequestSchema, async () => ({
                     limit: { type: "number", description: "How many accounts to return (default 10)" },
                 },
             },
+        },
+        {
+            name: "get_margin_watch_accounts",
+            description:
+                "Accounts where AI cost, proposal throughput, and monetization are drifting out of balance. " +
+                "Use to catch underpriced or inefficient accounts early.",
+            inputSchema: {
+                type: "object",
+                properties: {
+                    limit: { type: "number", description: "How many accounts to return (default 10)" },
+                },
+            },
+        },
+        {
+            name: "run_business_ops_loop",
+            description:
+                "Creates missing Business OS work items for activation rescue, collections, support recovery, review enforcement, and margin watch. " +
+                "Use when you want AI to populate today's queue directly.",
+            inputSchema: { type: "object", properties: {} },
         },
         {
             name: "draft_account_playbook",
@@ -697,6 +718,40 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request: any) => {
                     text: `## WhatsApp Activation Gaps\n\n${accounts.map((account, index) =>
                         `${index + 1}. **${account.name}** — ${account.snapshot.whatsapp_proposal_draft_count} WhatsApp drafts, ${account.snapshot.proposal_sent_count} proposals sent, ${account.activation_risk_reasons.join(", ")}`
                     ).join("\n")}`,
+                }],
+            };
+        }
+
+        case "get_margin_watch_accounts": {
+            const limit = Number(args.limit ?? 10);
+            const accounts = await getMarginWatchAccounts(db, limit);
+            if (!accounts.length) return { content: [{ type: "text", text: "✅ No margin-watch accounts right now." }] };
+            return {
+                content: [{
+                    type: "text",
+                    text: `## Margin Watch Accounts\n\n${accounts.map((account, index) =>
+                        `${index + 1}. **${account.name}** — ${account.margin_watch_reasons.join(", ")}`
+                    ).join("\n")}`,
+                }],
+            };
+        }
+
+        case "run_business_ops_loop": {
+            const result = await runBusinessOpsLoop(db);
+            return {
+                content: [{
+                    type: "text",
+                    text: [
+                        "## Business OS AI Ops Loop",
+                        `- **Candidates:** ${result.candidate_count}`,
+                        `- **Created:** ${result.created_count}`,
+                        `- **Deduped:** ${result.deduped_count}`,
+                        "",
+                        "### Created queue",
+                        ...(result.created_work_items.length > 0
+                            ? result.created_work_items.map((item) => `- ${item.title} (${item.kind})`)
+                            : ["- No new work items were needed."]),
+                    ].join("\n"),
                 }],
             };
         }

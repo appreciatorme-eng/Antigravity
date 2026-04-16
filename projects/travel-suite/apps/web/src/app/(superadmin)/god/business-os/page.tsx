@@ -45,8 +45,34 @@ type Payload = {
         activation_risk_accounts: number;
         revenue_risk_accounts: number;
         urgent_support_accounts: number;
+        margin_watch_accounts: number;
+        ops_loop_candidates: number;
     };
     ai_daily_brief: BusinessOsDailyBrief;
+    margin_watch: Array<{
+        org_id: string;
+        name: string;
+        reasons: string[];
+        ai_spend_mtd_usd: number;
+        proposal_sent_count: number;
+        proposal_approved_count: number;
+        trip_count: number;
+    }>;
+    ops_loop_preview: {
+        candidate_count: number;
+        by_kind: Record<string, number>;
+        suggestions: Array<{
+            automation_key: string;
+            org_id: string;
+            account_name: string;
+            kind: string;
+            severity: "low" | "medium" | "high" | "critical";
+            title: string;
+            summary: string;
+            due_at: string | null;
+            reason: string;
+        }>;
+    };
     accounts: BusinessOsAccountRow[];
     selected_org_id: string | null;
     selected_account: BusinessOsAccountDetail | null;
@@ -105,6 +131,7 @@ export default function BusinessOsPage() {
     const [refreshingDrafts, setRefreshingDrafts] = useState(false);
     const [savingAccount, setSavingAccount] = useState(false);
     const [savingWorkItem, setSavingWorkItem] = useState(false);
+    const [runningOpsLoop, setRunningOpsLoop] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [message, setMessage] = useState<string | null>(null);
     const [rightTab, setRightTab] = useState<"operate" | "growth">("operate");
@@ -342,6 +369,28 @@ export default function BusinessOsPage() {
         }
     }
 
+    async function runOpsLoop() {
+        setRunningOpsLoop(true);
+        setError(null);
+        try {
+            const response = await authedFetch("/api/superadmin/business-os/ops-loop", {
+                method: "POST",
+            });
+            if (!response.ok) throw new Error("Failed to run AI ops loop");
+            const payload = await response.json() as {
+                created_count: number;
+                candidate_count: number;
+                deduped_count: number;
+            };
+            setMessage(`AI ops loop created ${payload.created_count} work items from ${payload.candidate_count} candidates (${payload.deduped_count} already covered).`);
+            await loadData();
+        } catch (opsError) {
+            setError(opsError instanceof Error ? opsError.message : "Failed to run AI ops loop");
+        } finally {
+            setRunningOpsLoop(false);
+        }
+    }
+
     async function createWorkItem() {
         const selected = data?.selected_account;
         if (!selected || !workItemDraft.title.trim()) return;
@@ -482,6 +531,113 @@ export default function BusinessOsPage() {
                                 </div>
                             ))}
                         </div>
+                    </div>
+                </div>
+            </section>
+
+            <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                        <div>
+                            <div className="text-sm font-medium text-gray-200">AI ops loop</div>
+                            <div className="mt-1 text-sm text-gray-400">
+                                Generate missing work items for activation rescue, collections, support recovery, review enforcement, and margin watch.
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => void runOpsLoop()}
+                            disabled={runningOpsLoop || (data?.ops_loop_preview.candidate_count ?? 0) === 0}
+                            className="inline-flex items-center gap-2 rounded-lg border border-amber-800/60 bg-amber-950/20 px-3 py-2 text-sm text-amber-200 transition-colors hover:border-amber-700/60 disabled:opacity-60"
+                        >
+                            {runningOpsLoop ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                            {runningOpsLoop ? "Running AI ops loop..." : "Run AI ops loop"}
+                        </button>
+                    </div>
+                    <div className="mt-4 grid gap-3 md:grid-cols-4">
+                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
+                            <div className="text-xs uppercase tracking-wide text-gray-400">Candidates</div>
+                            <div className="mt-2 text-xl font-semibold text-white">{data?.summary.ops_loop_candidates ?? "—"}</div>
+                        </div>
+                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
+                            <div className="text-xs uppercase tracking-wide text-gray-400">Collections</div>
+                            <div className="mt-2 text-xl font-semibold text-white">{data?.ops_loop_preview.by_kind.collections ?? 0}</div>
+                        </div>
+                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
+                            <div className="text-xs uppercase tracking-wide text-gray-400">Activation</div>
+                            <div className="mt-2 text-xl font-semibold text-white">{data?.ops_loop_preview.by_kind.growth_followup ?? 0}</div>
+                        </div>
+                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
+                            <div className="text-xs uppercase tracking-wide text-gray-400">Review + margin</div>
+                            <div className="mt-2 text-xl font-semibold text-white">
+                                {(data?.ops_loop_preview.by_kind.churn_risk ?? 0) + (data?.ops_loop_preview.by_kind.renewal ?? 0)}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="mt-4 space-y-2">
+                        {(data?.ops_loop_preview.suggestions ?? []).slice(0, 6).map((suggestion) => (
+                            <div key={suggestion.automation_key} className="rounded-xl border border-gray-800 bg-black/30 p-4">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                        <div className="text-sm font-medium text-white">{suggestion.account_name}</div>
+                                        <div className="mt-1 text-sm text-gray-300">{suggestion.title}</div>
+                                        <div className="mt-1 text-xs text-gray-500">{suggestion.reason}</div>
+                                    </div>
+                                    <div className={cn("rounded-md border px-2 py-1 text-xs font-medium", priorityTone(suggestion.severity === "critical" ? 100 : suggestion.severity === "high" ? 70 : 40))}>
+                                        {suggestion.kind.replaceAll("_", " ")}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                        {(data?.ops_loop_preview.candidate_count ?? 0) === 0 ? (
+                            <div className="rounded-xl border border-gray-800 bg-black/30 p-4 text-sm text-gray-400">
+                                AI ops loop is clear right now. No missing work items were detected.
+                            </div>
+                        ) : null}
+                    </div>
+                </div>
+
+                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
+                    <div className="text-sm font-medium text-gray-200">Margin watch</div>
+                    <div className="mt-1 text-sm text-gray-400">
+                        Accounts where AI cost, proposal effort, and monetization are drifting out of balance.
+                    </div>
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
+                            <div className="text-xs uppercase tracking-wide text-gray-400">Accounts flagged</div>
+                            <div className="mt-2 text-xl font-semibold text-white">{data?.summary.margin_watch_accounts ?? "—"}</div>
+                        </div>
+                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
+                            <div className="text-xs uppercase tracking-wide text-gray-400">Revenue risk</div>
+                            <div className="mt-2 text-xl font-semibold text-white">{data?.summary.revenue_risk_accounts ?? "—"}</div>
+                        </div>
+                    </div>
+                    <div className="mt-4 space-y-2">
+                        {(data?.margin_watch ?? []).slice(0, 5).map((account) => (
+                            <button
+                                key={account.org_id}
+                                onClick={() => setSelectedOrgId(account.org_id)}
+                                className="w-full rounded-xl border border-gray-800 bg-black/30 p-4 text-left transition-colors hover:border-gray-700 hover:bg-black/40"
+                            >
+                                <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                        <div className="text-sm font-medium text-white">{account.name}</div>
+                                        <div className="mt-1 text-xs text-gray-500">${account.ai_spend_mtd_usd.toFixed(2)} AI spend • {account.proposal_sent_count} sent • {account.proposal_approved_count} approved • {account.trip_count} trips</div>
+                                    </div>
+                                </div>
+                                <div className="mt-3 space-y-2">
+                                    {account.reasons.map((reason) => (
+                                        <div key={reason} className="rounded-lg border border-amber-900/60 bg-amber-950/20 px-3 py-2 text-sm text-amber-200">
+                                            {reason}
+                                        </div>
+                                    ))}
+                                </div>
+                            </button>
+                        ))}
+                        {(data?.margin_watch?.length ?? 0) === 0 ? (
+                            <div className="rounded-xl border border-gray-800 bg-black/30 p-4 text-sm text-gray-400">
+                                No accounts are currently failing the margin-watch heuristics.
+                            </div>
+                        ) : null}
                     </div>
                 </div>
             </section>

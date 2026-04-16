@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
     buildBusinessImpact,
+    createGodWorkItem,
     getAccountDetail,
     listAccounts,
     loadGodWorkItems,
@@ -12,6 +13,8 @@ import {
     type AccountRow,
     type AccountSnapshot,
     type GodAccountState,
+    type GodWorkItemKind,
+    type GodWorkItemSeverity,
     type GodWorkItem,
 } from "@/lib/platform/god-accounts";
 
@@ -89,6 +92,8 @@ export type BusinessOsAccountRow = AccountRow & {
     priority_reasons: string[];
     activation_risk: boolean;
     activation_risk_reasons: string[];
+    margin_watch: boolean;
+    margin_watch_reasons: string[];
     effective_activation_stage: AccountActivationStage;
 };
 
@@ -99,6 +104,8 @@ export type BusinessOsAccountDetail = AccountDetail & {
     priority_reasons: string[];
     activation_risk: boolean;
     activation_risk_reasons: string[];
+    margin_watch: boolean;
+    margin_watch_reasons: string[];
     activation_funnel: BusinessOsActivationStep[];
     operating_gaps: string[];
     changed_since_review: string[];
@@ -150,11 +157,51 @@ export type BusinessOsPayload = {
         activation_risk_accounts: number;
         revenue_risk_accounts: number;
         urgent_support_accounts: number;
+        margin_watch_accounts: number;
+        ops_loop_candidates: number;
     };
     ai_daily_brief: BusinessOsDailyBrief;
+    margin_watch: Array<{
+        org_id: string;
+        name: string;
+        reasons: string[];
+        ai_spend_mtd_usd: number;
+        proposal_sent_count: number;
+        proposal_approved_count: number;
+        trip_count: number;
+    }>;
+    ops_loop_preview: {
+        candidate_count: number;
+        by_kind: Record<string, number>;
+        suggestions: BusinessOsOpsSuggestion[];
+    };
     accounts: BusinessOsAccountRow[];
     selected_org_id: string | null;
     selected_account: BusinessOsAccountDetail | null;
+};
+
+export type BusinessOsOpsSuggestion = {
+    automation_key: string;
+    org_id: string;
+    account_name: string;
+    kind: GodWorkItemKind;
+    severity: GodWorkItemSeverity;
+    title: string;
+    summary: string;
+    due_at: string | null;
+    target_type: "organization";
+    target_id: string;
+    reason: string;
+};
+
+export type BusinessOsOpsLoopResult = {
+    generated_at: string;
+    candidate_count: number;
+    created_count: number;
+    deduped_count: number;
+    by_kind: Record<string, number>;
+    suggestions: BusinessOsOpsSuggestion[];
+    created_work_items: GodWorkItem[];
 };
 
 type SupportContextRow = {
@@ -379,6 +426,23 @@ function buildOperatingGaps(account: BusinessOsAccountRow): string[] {
     }
 
     return gaps;
+}
+
+function getMarginWatchReasons(account: BusinessOsAccountRow): string[] {
+    const reasons: string[] = [];
+    if (account.snapshot.ai_spend_mtd_usd >= 25 && account.snapshot.proposal_approved_count === 0 && account.snapshot.trip_count === 0) {
+        reasons.push(`AI spend is $${account.snapshot.ai_spend_mtd_usd.toFixed(2)} MTD without commercial conversion`);
+    }
+    if (account.snapshot.ai_requests_mtd >= 250 && account.snapshot.proposal_sent_count <= 1) {
+        reasons.push("Heavy AI usage is not producing enough proposal output");
+    }
+    if (account.snapshot.proposal_sent_count >= 3 && account.snapshot.proposal_approved_count === 0) {
+        reasons.push("Proposal volume is not turning into approvals");
+    }
+    if (account.snapshot.overdue_balance > 0 && account.snapshot.ai_spend_mtd_usd >= 10) {
+        reasons.push("AI cost is accumulating on an account with overdue balance");
+    }
+    return reasons;
 }
 
 function buildActivationFunnel(account: BusinessOsAccountRow): BusinessOsActivationStep[] {
@@ -718,6 +782,101 @@ function buildAiRecommendation(account: AccountRow, effectiveActivationStage: Ac
     };
 }
 
+function buildOpsLoopSuggestions(
+    account: BusinessOsAccountRow,
+    existingKeys: Set<string>,
+): BusinessOsOpsSuggestion[] {
+    const suggestions: BusinessOsOpsSuggestion[] = [];
+
+    const addSuggestion = (suggestion: Omit<BusinessOsOpsSuggestion, "org_id" | "account_name" | "target_type" | "target_id">) => {
+        if (existingKeys.has(suggestion.automation_key)) return;
+        suggestions.push({
+            ...suggestion,
+            org_id: account.org_id,
+            account_name: account.name,
+            target_type: "organization",
+            target_id: account.org_id,
+        });
+    };
+
+    if (account.snapshot.overdue_balance > 0) {
+        addSuggestion({
+            automation_key: `collections:${account.org_id}`,
+            kind: "collections",
+            severity: account.snapshot.overdue_balance >= 100000 ? "critical" : "high",
+            title: "Recover overdue balance",
+            summary: `Collections follow-up for ${account.snapshot.overdue_invoice_count || 1} overdue invoices totaling ${account.snapshot.overdue_balance_label}.`,
+            due_at: new Date(Date.now() + 86_400_000).toISOString(),
+            reason: `${account.snapshot.overdue_invoice_count || 1} overdue invoices and ${account.snapshot.overdue_balance_label} at risk`,
+        });
+    }
+
+    if (account.snapshot.fatal_error_count > 0) {
+        addSuggestion({
+            automation_key: `incident:${account.org_id}`,
+            kind: "incident_followup",
+            severity: "critical",
+            title: "Run incident recovery follow-up",
+            summary: `Fatal incident recovery is required for ${account.snapshot.fatal_error_count} open fatal events.`,
+            due_at: new Date().toISOString(),
+            reason: `${account.snapshot.fatal_error_count} fatal incidents are still open`,
+        });
+    }
+
+    if (account.snapshot.urgent_support_count > 0) {
+        addSuggestion({
+            automation_key: `support:${account.org_id}`,
+            kind: "support_escalation",
+            severity: account.snapshot.urgent_support_count >= 2 ? "critical" : "high",
+            title: "Own urgent support recovery",
+            summary: `Urgent support pressure needs an explicit owner and same-day recovery note.`,
+            due_at: new Date().toISOString(),
+            reason: `${account.snapshot.urgent_support_count} urgent support tickets are open`,
+        });
+    }
+
+    if (account.activation_risk) {
+        addSuggestion({
+            automation_key: `activation:${account.org_id}`,
+            kind: "growth_followup",
+            severity: account.snapshot.whatsapp_proposal_draft_count > 0 ? "high" : "medium",
+            title: "Recover first proposal milestone",
+            summary: account.activation_risk_reasons.join(". ") || "Activation is stalled before first proposal send.",
+            due_at: new Date(Date.now() + 86_400_000).toISOString(),
+            reason: account.activation_risk_reasons[0] ?? "Activation is stalled",
+        });
+    }
+
+    const reviewAge = diffDays(account.account_state.last_reviewed_at);
+    if (account.priority_score >= 60 && (reviewAge === null || reviewAge >= 7)) {
+        addSuggestion({
+            automation_key: `review:${account.org_id}`,
+            kind: "churn_risk",
+            severity: "high",
+            title: "Review high-risk account posture",
+            summary: reviewAge === null
+                ? "This high-risk account has never been reviewed in Business OS."
+                : `This high-risk account has not been reviewed for ${reviewAge} days.`,
+            due_at: new Date(Date.now() + 86_400_000).toISOString(),
+            reason: reviewAge === null ? "No prior review recorded" : `Last review was ${reviewAge} days ago`,
+        });
+    }
+
+    if (account.margin_watch) {
+        addSuggestion({
+            automation_key: `margin:${account.org_id}`,
+            kind: "renewal",
+            severity: "medium",
+            title: "Review margin and upsell posture",
+            summary: account.margin_watch_reasons.join(". "),
+            due_at: new Date(Date.now() + (2 * 86_400_000)).toISOString(),
+            reason: account.margin_watch_reasons[0] ?? "Usage and monetization are out of sync",
+        });
+    }
+
+    return suggestions;
+}
+
 async function loadAccountContext(db: AdminClient, detail: AccountDetail): Promise<{
     recentSupportTickets: BusinessOsAccountDetail["recent_support_tickets"];
     recentIncidents: BusinessOsAccountDetail["recent_incidents"];
@@ -904,7 +1063,7 @@ function enrichAccountRow(account: AccountRow): BusinessOsAccountRow {
     const effectiveActivationStage = resolveActivationStage(account.account_state, account.snapshot, account.created_at);
     const activationRiskReasons = getActivationRiskReasons(account.snapshot, account.created_at);
     const priority = getPriorityScore(account, activationRiskReasons, effectiveActivationStage);
-    return {
+    const provisional = {
         ...account,
         account_state: {
             ...account.account_state,
@@ -916,6 +1075,15 @@ function enrichAccountRow(account: AccountRow): BusinessOsAccountRow {
         priority_reasons: priority.reasons,
         activation_risk: activationRiskReasons.length > 0,
         activation_risk_reasons: activationRiskReasons,
+        margin_watch: false,
+        margin_watch_reasons: [],
+        effective_activation_stage: effectiveActivationStage,
+    } satisfies BusinessOsAccountRow;
+    const marginWatchReasons = getMarginWatchReasons(provisional);
+    return {
+        ...provisional,
+        margin_watch: marginWatchReasons.length > 0,
+        margin_watch_reasons: marginWatchReasons,
         effective_activation_stage: effectiveActivationStage,
     };
 }
@@ -932,6 +1100,7 @@ function buildDailyBrief(accounts: BusinessOsAccountRow[], currentUserId: string
     const whatsappActivationGaps = accounts.filter((account) =>
         account.snapshot.whatsapp_proposal_draft_count > 0 && account.snapshot.proposal_sent_count === 0,
     ).length;
+    const marginWatch = accounts.filter((account) => account.margin_watch).length;
 
     return {
         headline: highestRisk.length > 0
@@ -947,6 +1116,7 @@ function buildDailyBrief(accounts: BusinessOsAccountRow[], currentUserId: string
             accounts.some((account) => account.activation_risk) ? `${accounts.filter((account) => account.activation_risk).length} accounts are still stuck before healthy activation.` : null,
             staleReviews > 0 ? `${staleReviews} high-risk accounts have not been reviewed in the last 7 days.` : null,
             whatsappActivationGaps > 0 ? `${whatsappActivationGaps} accounts have WhatsApp proposal drafts but no sent proposal.` : null,
+            marginWatch > 0 ? `${marginWatch} accounts need margin review because usage and monetization are out of sync.` : null,
             accounts.every((account) => account.account_state.next_action) ? null : "Some accounts still lack an explicit next action.",
         ].filter(Boolean) as string[],
         generated_at: new Date().toISOString(),
@@ -982,6 +1152,37 @@ export async function buildBusinessOsPayload(
         || Number(Boolean(right.account_state.owner_id)) - Number(Boolean(left.account_state.owner_id))
         || left.name.localeCompare(right.name));
 
+    const activeItems = await loadGodWorkItems(db, {
+        orgIds: enriched.map((account) => account.org_id),
+        status: "active",
+        limit: 500,
+    });
+    const existingAutomationKeys = new Set(
+        activeItems
+            .map((item) => {
+                const key = item.metadata && typeof item.metadata.automation_key === "string" ? item.metadata.automation_key : null;
+                return key;
+            })
+            .filter(Boolean) as string[],
+    );
+    const opsLoopSuggestions = enriched.flatMap((account) => buildOpsLoopSuggestions(account, existingAutomationKeys));
+    const opsLoopByKind = opsLoopSuggestions.reduce<Record<string, number>>((counts, suggestion) => {
+        counts[suggestion.kind] = (counts[suggestion.kind] ?? 0) + 1;
+        return counts;
+    }, {});
+    const marginWatchAccounts = enriched
+        .filter((account) => account.margin_watch)
+        .slice(0, 8)
+        .map((account) => ({
+            org_id: account.org_id,
+            name: account.name,
+            reasons: account.margin_watch_reasons,
+            ai_spend_mtd_usd: account.snapshot.ai_spend_mtd_usd,
+            proposal_sent_count: account.snapshot.proposal_sent_count,
+            proposal_approved_count: account.snapshot.proposal_approved_count,
+            trip_count: account.snapshot.trip_count,
+        }));
+
     const selectedOrgId = filters.selected_org_id
         ?? enriched[0]?.org_id
         ?? null;
@@ -1010,6 +1211,8 @@ export async function buildBusinessOsPayload(
                 priority_reasons: matchingRow.priority_reasons,
                 activation_risk: matchingRow.activation_risk,
                 activation_risk_reasons: matchingRow.activation_risk_reasons,
+                margin_watch: matchingRow.margin_watch,
+                margin_watch_reasons: matchingRow.margin_watch_reasons,
                 activation_funnel: buildActivationFunnel(matchingRow),
                 operating_gaps: buildOperatingGaps(matchingRow),
                 changed_since_review: buildChangedSinceReview(matchingRow, context.timeline),
@@ -1044,8 +1247,16 @@ export async function buildBusinessOsPayload(
             activation_risk_accounts: enriched.filter((account) => account.activation_risk).length,
             revenue_risk_accounts: enriched.filter((account) => account.snapshot.overdue_balance > 0 || account.snapshot.expiring_proposal_count > 0).length,
             urgent_support_accounts: enriched.filter((account) => account.snapshot.urgent_support_count > 0).length,
+            margin_watch_accounts: enriched.filter((account) => account.margin_watch).length,
+            ops_loop_candidates: opsLoopSuggestions.length,
         },
         ai_daily_brief: buildDailyBrief(enriched, currentUserId),
+        margin_watch: marginWatchAccounts,
+        ops_loop_preview: {
+            candidate_count: opsLoopSuggestions.length,
+            by_kind: opsLoopByKind,
+            suggestions: opsLoopSuggestions,
+        },
         accounts: enriched,
         selected_org_id: selectedOrgId,
         selected_account: selectedAccount,
@@ -1125,6 +1336,55 @@ export async function getWhatsAppActivationGapAccounts(db: AdminClient, limit = 
         )
         .sort((left, right) => right.priority_score - left.priority_score)
         .slice(0, limit);
+}
+
+export async function getMarginWatchAccounts(db: AdminClient, limit = 10): Promise<BusinessOsAccountRow[]> {
+    const { accounts } = await listAccounts(db, { limit: Math.max(20, limit * 4), page: 0 });
+    return accounts
+        .map(enrichAccountRow)
+        .filter((account) => account.margin_watch)
+        .sort((left, right) =>
+            right.snapshot.ai_spend_mtd_usd - left.snapshot.ai_spend_mtd_usd
+            || right.priority_score - left.priority_score,
+        )
+        .slice(0, limit);
+}
+
+export async function runBusinessOpsLoop(db: AdminClient): Promise<BusinessOsOpsLoopResult> {
+    const payload = await buildBusinessOsPayload(db, "", { limit: 120 });
+    const createdWorkItems: GodWorkItem[] = [];
+
+    for (const suggestion of payload.ops_loop_preview.suggestions) {
+        const workItem = await createGodWorkItem(db, {
+            kind: suggestion.kind,
+            target_type: "organization",
+            target_id: suggestion.target_id,
+            org_id: suggestion.org_id,
+            owner_id: null,
+            status: "open",
+            severity: suggestion.severity,
+            title: suggestion.title,
+            summary: suggestion.summary,
+            due_at: suggestion.due_at,
+            metadata: {
+                automation_key: suggestion.automation_key,
+                automation_reason: suggestion.reason,
+                source: "business_os_ops_loop",
+            },
+        });
+        createdWorkItems.push(workItem);
+    }
+
+    const candidateCount = payload.ops_loop_preview.candidate_count;
+    return {
+        generated_at: new Date().toISOString(),
+        candidate_count: candidateCount,
+        created_count: createdWorkItems.length,
+        deduped_count: Math.max(0, candidateCount - createdWorkItems.length),
+        by_kind: payload.ops_loop_preview.by_kind,
+        suggestions: payload.ops_loop_preview.suggestions,
+        created_work_items: createdWorkItems,
+    };
 }
 
 export async function getBusinessOsAccountDetail(db: AdminClient, orgId: string): Promise<BusinessOsAccountDetail | null> {

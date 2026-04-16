@@ -16,6 +16,7 @@ const routes = createCatchAllHandlers([
   ["overview", () => import("@/app/api/_handlers/superadmin/overview/route")],
   ["overview/presets", () => import("@/app/api/_handlers/superadmin/overview/presets/route")],
   ["business-os", () => import("@/app/api/_handlers/superadmin/business-os/route")],
+  ["business-os/ops-loop", () => import("@/app/api/_handlers/superadmin/business-os/ops-loop/route")],
   ["ai/daily-brief", () => import("@/app/api/_handlers/superadmin/ai/daily-brief/route")],
   ["ai/account-playbook", () => import("@/app/api/_handlers/superadmin/ai/account-playbook/route")],
   ["ai/propose-account-action", () => import("@/app/api/_handlers/superadmin/ai/propose-account-action/route")],
