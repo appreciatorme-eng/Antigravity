@@ -23,6 +23,7 @@ const routes = createCatchAllHandlers([
   ["accounts/:orgId/memory", () => import("@/app/api/_handlers/superadmin/accounts/[orgId]/memory/route")],
   ["accounts/:orgId", () => import("@/app/api/_handlers/superadmin/accounts/[orgId]/route")],
   ["accounts", () => import("@/app/api/_handlers/superadmin/accounts/route")],
+  ["work-items/:id/outcomes", () => import("@/app/api/_handlers/superadmin/work-items/[id]/outcomes/route")],
   ["work-items", () => import("@/app/api/_handlers/superadmin/work-items/route")],
   ["collections", () => import("@/app/api/_handlers/superadmin/collections/route")],
   ["users/signups", () => import("@/app/api/_handlers/superadmin/users/signups/route")],

@@ -18,6 +18,7 @@ import {
     type GodWorkItem,
 } from "@/lib/platform/god-accounts";
 import { listOrgActivityEvents, listOrgMemoryNotes, recordOrgActivityEvent, type OrgActivityEvent, type OrgMemoryNote } from "@/lib/platform/org-memory";
+import { buildWorkItemOutcomeLearning, type WorkItemOutcomeLearning } from "@/lib/platform/work-item-outcomes";
 
 type AdminClient = SupabaseClient;
 
@@ -166,8 +167,11 @@ export type BusinessOsPayload = {
         urgent_support_accounts: number;
         margin_watch_accounts: number;
         ops_loop_candidates: number;
+        policy_violations: number;
     };
     ai_daily_brief: BusinessOsDailyBrief;
+    playbook_learning: WorkItemOutcomeLearning[];
+    policy_violations: BusinessOsPolicyViolation[];
     margin_watch: Array<{
         org_id: string;
         name: string;
@@ -199,6 +203,15 @@ export type BusinessOsOpsSuggestion = {
     target_type: "organization";
     target_id: string;
     reason: string;
+};
+
+export type BusinessOsPolicyViolation = {
+    id: string;
+    org_id: string;
+    account_name: string;
+    severity: "medium" | "high" | "critical";
+    rule: string;
+    detail: string;
 };
 
 export type BusinessOsOpsLoopResult = {
@@ -915,6 +928,64 @@ function buildOpsLoopSuggestions(
     return suggestions;
 }
 
+function buildPolicyViolations(
+    account: BusinessOsAccountRow,
+    activeKinds: Set<GodWorkItemKind>,
+): BusinessOsPolicyViolation[] {
+    const violations: BusinessOsPolicyViolation[] = [];
+
+    if (!account.account_state.owner_id && account.priority_score >= 60) {
+        violations.push({
+            id: `${account.org_id}:owner`,
+            org_id: account.org_id,
+            account_name: account.name,
+            severity: "high",
+            rule: "High-risk accounts must have an owner",
+            detail: "This account is high risk and still unowned.",
+        });
+    }
+
+    if (account.snapshot.overdue_balance > 0 && !activeKinds.has("collections")) {
+        violations.push({
+            id: `${account.org_id}:collections`,
+            org_id: account.org_id,
+            account_name: account.name,
+            severity: account.snapshot.overdue_balance >= 100000 ? "critical" : "high",
+            rule: "Overdue accounts must have an active collections work item",
+            detail: `${account.snapshot.overdue_invoice_count || 1} overdue invoices with no active collections follow-up.`,
+        });
+    }
+
+    if (account.snapshot.fatal_error_count > 0 && !activeKinds.has("incident_followup")) {
+        violations.push({
+            id: `${account.org_id}:incident`,
+            org_id: account.org_id,
+            account_name: account.name,
+            severity: "critical",
+            rule: "Fatal incidents must have a recovery follow-up",
+            detail: `${account.snapshot.fatal_error_count} fatal incidents are open without incident follow-up work.`,
+        });
+    }
+
+    if (
+        account.snapshot.proposal_viewed_count > 0
+        && account.snapshot.proposal_approved_count === 0
+        && !activeKinds.has("growth_followup")
+        && !activeKinds.has("churn_risk")
+    ) {
+        violations.push({
+            id: `${account.org_id}:proposal-followup`,
+            org_id: account.org_id,
+            account_name: account.name,
+            severity: "medium",
+            rule: "Viewed proposals need explicit follow-up",
+            detail: "Client viewed proposals but no approval-focused follow-up work item is active.",
+        });
+    }
+
+    return violations;
+}
+
 async function loadAccountContext(db: AdminClient, detail: AccountDetail): Promise<{
     recentSupportTickets: BusinessOsAccountDetail["recent_support_tickets"];
     recentIncidents: BusinessOsAccountDetail["recent_incidents"];
@@ -1213,6 +1284,13 @@ export async function buildBusinessOsPayload(
         status: "active",
         limit: 500,
     });
+    const activeKindsByOrg = new Map<string, Set<GodWorkItemKind>>();
+    for (const item of activeItems) {
+        if (!item.org_id) continue;
+        const kinds = activeKindsByOrg.get(item.org_id) ?? new Set<GodWorkItemKind>();
+        kinds.add(item.kind);
+        activeKindsByOrg.set(item.org_id, kinds);
+    }
     const existingAutomationKeys = new Set(
         activeItems
             .map((item) => {
@@ -1222,10 +1300,21 @@ export async function buildBusinessOsPayload(
             .filter(Boolean) as string[],
     );
     const opsLoopSuggestions = enriched.flatMap((account) => buildOpsLoopSuggestions(account, existingAutomationKeys));
+    const policyViolations = enriched
+        .flatMap((account) => buildPolicyViolations(account, activeKindsByOrg.get(account.org_id) ?? new Set<GodWorkItemKind>()))
+        .sort((left, right) => {
+            const weight = (value: BusinessOsPolicyViolation["severity"]) => (value === "critical" ? 3 : value === "high" ? 2 : 1);
+            return weight(right.severity) - weight(left.severity) || left.account_name.localeCompare(right.account_name);
+        })
+        .slice(0, 20);
     const opsLoopByKind = opsLoopSuggestions.reduce<Record<string, number>>((counts, suggestion) => {
         counts[suggestion.kind] = (counts[suggestion.kind] ?? 0) + 1;
         return counts;
     }, {});
+    const playbookLearning = await buildWorkItemOutcomeLearning(db, {
+        orgIds: enriched.map((account) => account.org_id),
+        sinceDays: 30,
+    });
     const marginWatchAccounts = enriched
         .filter((account) => account.margin_watch)
         .slice(0, 8)
@@ -1309,8 +1398,11 @@ export async function buildBusinessOsPayload(
             urgent_support_accounts: enriched.filter((account) => account.snapshot.urgent_support_count > 0).length,
             margin_watch_accounts: enriched.filter((account) => account.margin_watch).length,
             ops_loop_candidates: opsLoopSuggestions.length,
+            policy_violations: policyViolations.length,
         },
         ai_daily_brief: buildDailyBrief(enriched, currentUserId),
+        playbook_learning: playbookLearning,
+        policy_violations: policyViolations,
         margin_watch: marginWatchAccounts,
         ops_loop_preview: {
             candidate_count: opsLoopSuggestions.length,

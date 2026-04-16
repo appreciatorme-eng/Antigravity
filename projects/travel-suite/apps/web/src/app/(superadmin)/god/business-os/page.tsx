@@ -47,8 +47,25 @@ type Payload = {
         urgent_support_accounts: number;
         margin_watch_accounts: number;
         ops_loop_candidates: number;
+        policy_violations: number;
     };
     ai_daily_brief: BusinessOsDailyBrief;
+    playbook_learning: Array<{
+        kind: string;
+        total: number;
+        success: number;
+        neutral: number;
+        fail: number;
+        success_rate: number;
+    }>;
+    policy_violations: Array<{
+        id: string;
+        org_id: string;
+        account_name: string;
+        severity: "medium" | "high" | "critical";
+        rule: string;
+        detail: string;
+    }>;
     margin_watch: Array<{
         org_id: string;
         name: string;
@@ -139,6 +156,7 @@ export default function BusinessOsPage() {
     const [savingAccount, setSavingAccount] = useState(false);
     const [savingWorkItem, setSavingWorkItem] = useState(false);
     const [runningOpsLoop, setRunningOpsLoop] = useState(false);
+    const [recordingOutcomeId, setRecordingOutcomeId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [message, setMessage] = useState<string | null>(null);
     const [rightTab, setRightTab] = useState<"operate" | "growth">("operate");
@@ -456,6 +474,32 @@ export default function BusinessOsPage() {
         }
     }
 
+    async function recordWorkItemOutcome(
+        id: string,
+        outcomeType: "recovered" | "no_change" | "worse" | "payment_collected" | "proposal_approved",
+    ) {
+        setRecordingOutcomeId(id);
+        setError(null);
+        try {
+            const markDone = outcomeType !== "worse";
+            const response = await authedFetch(`/api/superadmin/work-items/${id}/outcomes`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    outcome_type: outcomeType,
+                    mark_done: markDone,
+                }),
+            });
+            if (!response.ok) throw new Error("Failed to record work item outcome");
+            setMessage(`Outcome recorded: ${outcomeType.replaceAll("_", " ")}.`);
+            await loadData();
+        } catch (recordError) {
+            setError(recordError instanceof Error ? recordError.message : "Failed to record work item outcome");
+        } finally {
+            setRecordingOutcomeId(null);
+        }
+    }
+
     async function createMemoryNote() {
         const selectedAccount = data?.selected_account;
         if (!selectedAccount) return;
@@ -689,6 +733,77 @@ export default function BusinessOsPage() {
                         {(data?.margin_watch?.length ?? 0) === 0 ? (
                             <div className="rounded-xl border border-gray-800 bg-black/30 p-4 text-sm text-gray-400">
                                 No accounts are currently failing the margin-watch heuristics.
+                            </div>
+                        ) : null}
+                    </div>
+                </div>
+            </section>
+
+            <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <div className="text-sm font-medium text-gray-200">Policy enforcement</div>
+                            <div className="mt-1 text-sm text-gray-400">
+                                Accounts violating operating rules that should always trigger explicit action.
+                            </div>
+                        </div>
+                        <div className="rounded-lg border border-amber-900/60 bg-amber-950/20 px-3 py-2 text-sm text-amber-200">
+                            {data?.summary.policy_violations ?? 0} violations
+                        </div>
+                    </div>
+                    <div className="mt-4 space-y-2">
+                        {(data?.policy_violations ?? []).slice(0, 8).map((violation) => (
+                            <button
+                                key={violation.id}
+                                onClick={() => setSelectedOrgId(violation.org_id)}
+                                className="w-full rounded-xl border border-gray-800 bg-black/30 p-4 text-left transition-colors hover:border-gray-700 hover:bg-black/40"
+                            >
+                                <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                        <div className="text-sm font-medium text-white">{violation.account_name}</div>
+                                        <div className="mt-1 text-xs text-gray-500">{violation.rule}</div>
+                                    </div>
+                                    <div className={cn("rounded-md border px-2 py-1 text-xs font-medium", priorityTone(violation.severity === "critical" ? 100 : violation.severity === "high" ? 70 : 40))}>
+                                        {violation.severity}
+                                    </div>
+                                </div>
+                                <div className="mt-3 rounded-lg border border-amber-900/50 bg-amber-950/20 px-3 py-2 text-sm text-amber-200">
+                                    {violation.detail}
+                                </div>
+                            </button>
+                        ))}
+                        {(data?.policy_violations?.length ?? 0) === 0 ? (
+                            <div className="rounded-xl border border-gray-800 bg-black/30 p-4 text-sm text-gray-400">
+                                No enforcement violations are active in the current account set.
+                            </div>
+                        ) : null}
+                    </div>
+                </div>
+
+                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
+                    <div className="text-sm font-medium text-gray-200">Playbook learning (30d)</div>
+                    <div className="mt-1 text-sm text-gray-400">
+                        Outcome feedback from completed interventions, used to improve next recommendations.
+                    </div>
+                    <div className="mt-4 space-y-2">
+                        {(data?.playbook_learning ?? []).map((row) => (
+                            <div key={row.kind} className="rounded-xl border border-gray-800 bg-black/30 p-4">
+                                <div className="flex items-center justify-between gap-3">
+                                    <div className="text-sm font-medium text-white">{row.kind.replaceAll("_", " ")}</div>
+                                    <div className="text-sm text-emerald-300">{Math.round(row.success_rate * 100)}% success</div>
+                                </div>
+                                <div className="mt-2 grid grid-cols-4 gap-2 text-xs text-gray-400">
+                                    <div>Total: {row.total}</div>
+                                    <div>Success: {row.success}</div>
+                                    <div>Neutral: {row.neutral}</div>
+                                    <div>Fail: {row.fail}</div>
+                                </div>
+                            </div>
+                        ))}
+                        {(data?.playbook_learning?.length ?? 0) === 0 ? (
+                            <div className="rounded-xl border border-gray-800 bg-black/30 p-4 text-sm text-gray-400">
+                                No outcome data yet. Record outcomes on work items to train playbook quality.
                             </div>
                         ) : null}
                     </div>
@@ -1212,6 +1327,41 @@ export default function BusinessOsPage() {
                                                                 <button onClick={() => void updateWorkItem(item.id, { owner_id: data?.current_user_id ?? null, status: "in_progress" })} className="rounded-lg border border-gray-800 px-3 py-2 text-xs text-gray-300 hover:border-gray-700 hover:text-white">Claim</button>
                                                                 <button onClick={() => void updateWorkItem(item.id, { status: "blocked" })} className="rounded-lg border border-gray-800 px-3 py-2 text-xs text-gray-300 hover:border-gray-700 hover:text-white">Block</button>
                                                                 <button onClick={() => void updateWorkItem(item.id, { status: "done" })} className="rounded-lg border border-emerald-800/60 bg-emerald-950/20 px-3 py-2 text-xs text-emerald-200 hover:border-emerald-700/60">Done</button>
+                                                                <button
+                                                                    onClick={() => void recordWorkItemOutcome(item.id, "recovered")}
+                                                                    disabled={recordingOutcomeId === item.id}
+                                                                    className="rounded-lg border border-emerald-800/60 bg-emerald-950/20 px-3 py-2 text-xs text-emerald-200 hover:border-emerald-700/60 disabled:opacity-60"
+                                                                >
+                                                                    {recordingOutcomeId === item.id ? "Saving..." : "Recovered"}
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => void recordWorkItemOutcome(item.id, "payment_collected")}
+                                                                    disabled={recordingOutcomeId === item.id}
+                                                                    className="rounded-lg border border-emerald-800/60 bg-emerald-950/20 px-3 py-2 text-xs text-emerald-200 hover:border-emerald-700/60 disabled:opacity-60"
+                                                                >
+                                                                    Payment
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => void recordWorkItemOutcome(item.id, "proposal_approved")}
+                                                                    disabled={recordingOutcomeId === item.id}
+                                                                    className="rounded-lg border border-emerald-800/60 bg-emerald-950/20 px-3 py-2 text-xs text-emerald-200 hover:border-emerald-700/60 disabled:opacity-60"
+                                                                >
+                                                                    Approved
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => void recordWorkItemOutcome(item.id, "no_change")}
+                                                                    disabled={recordingOutcomeId === item.id}
+                                                                    className="rounded-lg border border-gray-800 px-3 py-2 text-xs text-gray-300 hover:border-gray-700 hover:text-white disabled:opacity-60"
+                                                                >
+                                                                    No change
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => void recordWorkItemOutcome(item.id, "worse")}
+                                                                    disabled={recordingOutcomeId === item.id}
+                                                                    className="rounded-lg border border-red-900/60 bg-red-950/20 px-3 py-2 text-xs text-red-200 hover:border-red-800/60 disabled:opacity-60"
+                                                                >
+                                                                    Worse
+                                                                </button>
                                                             </div>
                                                         </div>
                                                     </div>
