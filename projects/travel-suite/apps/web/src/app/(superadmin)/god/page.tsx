@@ -9,6 +9,7 @@ import {
     Activity,
     ArrowRight,
     Bookmark,
+    BriefcaseBusiness,
     Building2,
     ExternalLink,
     LifeBuoy,
@@ -846,6 +847,9 @@ export default function GodCommandCenter() {
                 <Link href="/god/directory" className="inline-flex items-center gap-1.5 rounded-md border border-gray-700 bg-gray-900 px-3 py-1.5 text-sm text-gray-300 transition-colors hover:border-gray-600 hover:text-white">
                     <Users className="h-3.5 w-3.5" /> Directory
                 </Link>
+                <Link href="/god/business-os" className="inline-flex items-center gap-1.5 rounded-md border border-amber-700/50 bg-amber-950/20 px-3 py-1.5 text-sm text-amber-200 transition-colors hover:border-amber-600/60 hover:text-amber-100">
+                    <BriefcaseBusiness className="h-3.5 w-3.5" /> Business OS
+                </Link>
                 <Link href="/god/announcements" className="inline-flex items-center gap-1.5 rounded-md border border-gray-700 bg-gray-900 px-3 py-1.5 text-sm text-gray-300 transition-colors hover:border-gray-600 hover:text-white">
                     <Megaphone className="h-3.5 w-3.5" /> Announcement
                 </Link>
@@ -911,6 +915,12 @@ export default function GodCommandCenter() {
                         </div>
                     )}
                     <div className="flex flex-wrap items-center gap-2">
+                        <Link
+                            href={withRangeQuery("/god/business-os", currentRange)}
+                            className="rounded-md border border-amber-700/50 bg-amber-950/20 px-3 py-2 text-sm text-amber-200 transition-colors hover:border-amber-600/60 hover:text-amber-100"
+                        >
+                            Business OS
+                        </Link>
                         <Link
                             href={withRangeQuery("/god/support?status=open", currentRange)}
                             className="rounded-md border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white"

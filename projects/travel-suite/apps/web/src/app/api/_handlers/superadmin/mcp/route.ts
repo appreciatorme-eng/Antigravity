@@ -23,6 +23,20 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendHitlProposal, sendOpsAlert } from "@/lib/god-slack";
 import { Redis } from "@upstash/redis";
 import { getAccountDetail, listAccounts } from "@/lib/platform/god-accounts";
+import {
+    draftAccountPlaybook,
+    draftCollectionsSequence,
+    draftCustomerSaveOutreach,
+    draftGrowthExperiment,
+    draftRenewalStrategy,
+    generateDailyOpsBrief,
+    getAccountsNeedingFirstProposal,
+    getActivationRiskAccounts,
+    getStalledAccounts,
+    getUnownedHighRiskAccounts,
+    proposeAccountStateUpdate,
+    proposeWorkItemBatch,
+} from "@/lib/platform/business-os";
 
 export const maxDuration = 60;
 
@@ -129,6 +143,144 @@ mcpServer.setRequestHandler(ListToolsRequestSchema, async () => ({
                 type: "object",
                 properties: {
                     days: { type: "number", description: "Look-back window in days (default 7)" },
+                },
+            },
+        },
+        {
+            name: "generate_daily_ops_brief",
+            description:
+                "AI COO brief for the current operating day. Ranks the highest-risk accounts, " +
+                "calls out ownership gaps, and summarizes where the team should focus first.",
+            inputSchema: { type: "object", properties: {} },
+        },
+        {
+            name: "get_activation_risk_accounts",
+            description:
+                "Accounts stuck before healthy activation. Use to find orgs that signed up or used AI, " +
+                "but have not yet reached the first proposal milestone cleanly.",
+            inputSchema: {
+                type: "object",
+                properties: {
+                    limit: { type: "number", description: "How many accounts to return (default 10)" },
+                },
+            },
+        },
+        {
+            name: "get_unowned_high_risk_accounts",
+            description:
+                "Accounts with meaningful risk but no assigned owner. Use as an AI COO handoff queue.",
+            inputSchema: {
+                type: "object",
+                properties: {
+                    limit: { type: "number", description: "How many accounts to return (default 10)" },
+                },
+            },
+        },
+        {
+            name: "get_stalled_accounts",
+            description:
+                "Accounts with blocked or snoozed work, overdue next actions, or ownership gaps. " +
+                "Use to catch operating drift before it turns into churn.",
+            inputSchema: {
+                type: "object",
+                properties: {
+                    limit: { type: "number", description: "How many stalled accounts to return (default 10)" },
+                },
+            },
+        },
+        {
+            name: "get_accounts_needing_first_proposal",
+            description:
+                "Accounts that still have not crossed the first proposal sent milestone. " +
+                "Use to focus activation work around Trip Built's core product value.",
+            inputSchema: {
+                type: "object",
+                properties: {
+                    limit: { type: "number", description: "How many accounts to return (default 10)" },
+                },
+            },
+        },
+        {
+            name: "draft_account_playbook",
+            description:
+                "Draft an operator playbook for a specific organization using the shared Business OS account model.",
+            inputSchema: {
+                type: "object",
+                properties: {
+                    org_id: { type: "string", description: "The organization UUID" },
+                },
+                required: ["org_id"],
+            },
+        },
+        {
+            name: "draft_customer_save_outreach",
+            description:
+                "Draft outreach copy to stabilize a specific account without sending it.",
+            inputSchema: {
+                type: "object",
+                properties: {
+                    org_id: { type: "string", description: "The organization UUID" },
+                },
+                required: ["org_id"],
+            },
+        },
+        {
+            name: "draft_collections_sequence",
+            description:
+                "Draft a collections workflow for a specific account with overdue balance or expiring commercial risk.",
+            inputSchema: {
+                type: "object",
+                properties: {
+                    org_id: { type: "string", description: "The organization UUID" },
+                },
+                required: ["org_id"],
+            },
+        },
+        {
+            name: "draft_renewal_strategy",
+            description:
+                "Draft a renewal and expansion stance for a specific account using activation, usage, and risk signals.",
+            inputSchema: {
+                type: "object",
+                properties: {
+                    org_id: { type: "string", description: "The organization UUID" },
+                },
+                required: ["org_id"],
+            },
+        },
+        {
+            name: "draft_growth_experiment",
+            description:
+                "Draft a focused growth experiment for a specific account, emphasizing activation, repeat usage, or expansion.",
+            inputSchema: {
+                type: "object",
+                properties: {
+                    org_id: { type: "string", description: "The organization UUID" },
+                },
+                required: ["org_id"],
+            },
+        },
+        {
+            name: "propose_account_state_update",
+            description:
+                "Create a HITL-ready proposal for updating account state, ownership, or posture. " +
+                "Never mutates directly; returns reasoning or can be forwarded to Slack approval.",
+            inputSchema: {
+                type: "object",
+                properties: {
+                    org_id: { type: "string", description: "The organization UUID" },
+                },
+                required: ["org_id"],
+            },
+        },
+        {
+            name: "propose_work_item_batch",
+            description:
+                "Generate a HITL-ready batch proposal for creating follow-up work items on the highest-priority Business OS accounts.",
+            inputSchema: {
+                type: "object",
+                properties: {
+                    limit: { type: "number", description: "How many top accounts to include (default 5)" },
                 },
             },
         },
@@ -415,6 +567,133 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request: any) => {
             ].join("\n") }] };
         }
 
+        case "generate_daily_ops_brief": {
+            const brief = await generateDailyOpsBrief(db, "");
+            return {
+                content: [{
+                    type: "text",
+                    text: [
+                        `## AI COO Daily Brief`,
+                        `- **Headline:** ${brief.headline}`,
+                        `- **Summary:** ${brief.summary}`,
+                        `- **Queue focus:** ${brief.queue_focus}`,
+                        "",
+                        `### Priorities`,
+                        ...(brief.priorities.length > 0 ? brief.priorities.map((item) => `- ${item}`) : ["- No urgent priorities in the current posture."]),
+                        "",
+                        `### Gaps`,
+                        ...(brief.gaps.length > 0 ? brief.gaps.map((item) => `- ${item}`) : ["- No major ownership or posture gaps surfaced."]),
+                    ].join("\n"),
+                }],
+            };
+        }
+
+        case "get_activation_risk_accounts": {
+            const limit = Number(args.limit ?? 10);
+            const accounts = await getActivationRiskAccounts(db, limit);
+            if (!accounts.length) return { content: [{ type: "text", text: "✅ No activation-risk accounts surfaced right now." }] };
+            return {
+                content: [{
+                    type: "text",
+                    text: `## Activation Risk Accounts\n\n${accounts.map((account, index) =>
+                        `${index + 1}. **${account.name}** — ${account.activation_risk_reasons.join(", ") || "stalled before first proposal"}`
+                    ).join("\n")}`,
+                }],
+            };
+        }
+
+        case "get_unowned_high_risk_accounts": {
+            const limit = Number(args.limit ?? 10);
+            const accounts = await getUnownedHighRiskAccounts(db, limit);
+            if (!accounts.length) return { content: [{ type: "text", text: "✅ No unowned high-risk accounts right now." }] };
+            return {
+                content: [{
+                    type: "text",
+                    text: `## Unowned High-Risk Accounts\n\n${accounts.map((account, index) =>
+                        `${index + 1}. **${account.name}** — ${account.priority_reasons.slice(0, 3).join(", ")}`
+                    ).join("\n")}`,
+                }],
+            };
+        }
+
+        case "get_stalled_accounts": {
+            const limit = Number(args.limit ?? 10);
+            const accounts = await getStalledAccounts(db, limit);
+            if (!accounts.length) return { content: [{ type: "text", text: "✅ No stalled accounts right now." }] };
+            return {
+                content: [{
+                    type: "text",
+                    text: `## Stalled Accounts\n\n${accounts.map((account, index) =>
+                        `${index + 1}. **${account.name}** — ${account.priority_reasons.slice(0, 3).join(", ")}`
+                    ).join("\n")}`,
+                }],
+            };
+        }
+
+        case "get_accounts_needing_first_proposal": {
+            const limit = Number(args.limit ?? 10);
+            const accounts = await getAccountsNeedingFirstProposal(db, limit);
+            if (!accounts.length) return { content: [{ type: "text", text: "✅ All visible accounts have crossed the first proposal milestone." }] };
+            return {
+                content: [{
+                    type: "text",
+                    text: `## Accounts Needing First Proposal\n\n${accounts.map((account, index) =>
+                        `${index + 1}. **${account.name}** — ${account.activation_risk_reasons.join(", ") || "no proposal sent yet"}`
+                    ).join("\n")}`,
+                }],
+            };
+        }
+
+        case "draft_account_playbook": {
+            const orgId = String(args.org_id ?? "");
+            if (!orgId) throw new Error("org_id is required");
+            const draft = await draftAccountPlaybook(db, orgId);
+            return { content: [{ type: "text", text: `## Account Playbook\n\n${draft}` }] };
+        }
+
+        case "draft_customer_save_outreach": {
+            const orgId = String(args.org_id ?? "");
+            if (!orgId) throw new Error("org_id is required");
+            const draft = await draftCustomerSaveOutreach(db, orgId);
+            return { content: [{ type: "text", text: `## Customer Save Outreach\n\n${draft}` }] };
+        }
+
+        case "draft_collections_sequence": {
+            const orgId = String(args.org_id ?? "");
+            if (!orgId) throw new Error("org_id is required");
+            const draft = await draftCollectionsSequence(db, orgId);
+            return { content: [{ type: "text", text: `## Collections Sequence\n\n${draft}` }] };
+        }
+
+        case "draft_renewal_strategy": {
+            const orgId = String(args.org_id ?? "");
+            if (!orgId) throw new Error("org_id is required");
+            const draft = await draftRenewalStrategy(db, orgId);
+            return { content: [{ type: "text", text: `## Renewal Strategy\n\n${draft}` }] };
+        }
+
+        case "draft_growth_experiment": {
+            const orgId = String(args.org_id ?? "");
+            if (!orgId) throw new Error("org_id is required");
+            const draft = await draftGrowthExperiment(db, orgId);
+            return { content: [{ type: "text", text: `## Growth Experiment\n\n${draft}` }] };
+        }
+
+        case "propose_account_state_update": {
+            const orgId = String(args.org_id ?? "");
+            if (!orgId) throw new Error("org_id is required");
+            const proposal = await proposeAccountStateUpdate(db, orgId);
+            await sendHitlProposal(proposal.title, proposal.reasoning, proposal.actionPayload, proposal.riskLevel);
+            return { content: [{ type: "text", text: `✅ Account state proposal sent to Slack for approval.` }] };
+        }
+
+        case "propose_work_item_batch": {
+            const limit = Number(args.limit ?? 5);
+            const proposal = await proposeWorkItemBatch(db, limit);
+            await sendHitlProposal(proposal.title, proposal.reasoning, proposal.actionPayload, proposal.riskLevel);
+            return { content: [{ type: "text", text: `✅ Business OS work-item batch proposal sent to Slack for approval.` }] };
+        }
+
         // ── get_support_backlog ───────────────────────────────────────────────
         case "get_support_backlog": {
             const { data: tickets } = await db
@@ -535,7 +814,7 @@ export async function GET(req: NextRequest) {
     if (!auth.ok) return auth.response;
     const transport = new SSEServerTransport("/api/superadmin/mcp/messages", NextResponse as any);
     await mcpServer.connect(transport);
-    return NextResponse.json({ status: "streaming_ready", endpoint: "/api/superadmin/mcp/messages", tool_count: 14 });
+    return NextResponse.json({ status: "streaming_ready", endpoint: "/api/superadmin/mcp/messages", tool_count: 26 });
 }
 
 export async function POST(req: NextRequest) {

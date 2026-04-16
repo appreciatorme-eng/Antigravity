@@ -5,6 +5,14 @@ type AdminClient = SupabaseClient;
 
 export type AccountLifecycleStage = "new" | "onboarding" | "active" | "watch" | "at_risk" | "churned";
 export type AccountHealthBand = "healthy" | "watch" | "at_risk";
+export type AccountActivationStage =
+    | "signed_up"
+    | "onboarding"
+    | "first_proposal_sent"
+    | "active"
+    | "expansion"
+    | "at_risk"
+    | "churned";
 export type GodWorkItemKind =
   | "collections"
   | "renewal"
@@ -21,12 +29,15 @@ export type GodAccountState = {
     org_id: string;
     owner_id: string | null;
     lifecycle_stage: AccountLifecycleStage;
+    activation_stage: AccountActivationStage;
     health_score: number;
     health_band: AccountHealthBand;
     next_action: string | null;
     next_action_due_at: string | null;
     last_contacted_at: string | null;
     renewal_at: string | null;
+    first_proposal_sent_at: string | null;
+    last_proposal_sent_at: string | null;
     playbook: string | null;
     notes: string | null;
     created_at: string | null;
@@ -50,6 +61,16 @@ export type AccountSnapshot = {
     latest_org_activity: string | null;
     outstanding_balance: number;
     outstanding_balance_label: string;
+    trip_count: number;
+    proposal_count: number;
+    proposal_sent_count: number;
+    proposal_won_count: number;
+    social_post_count: number;
+    portal_touchpoints: number;
+    first_proposal_sent_at: string | null;
+    last_proposal_sent_at: string | null;
+    time_to_first_proposal_days: number | null;
+    days_since_last_proposal_sent: number | null;
     risk_flags: string[];
 };
 
@@ -142,6 +163,11 @@ type ProfileRow = {
     is_suspended?: boolean | null;
 };
 
+type OrganizationMetricRow = {
+    id: string;
+    created_at: string | null;
+};
+
 type InvoiceRow = {
     id: string;
     invoice_number: string | null;
@@ -162,14 +188,21 @@ type ProposalRow = {
     client_selected_price: number | null;
     organization_id: string | null;
     created_at: string | null;
+    updated_at: string | null;
+    viewed_at?: string | null;
+    approved_at?: string | null;
+    share_token?: string | null;
 };
 
 type SupportTicketRow = {
     id: string;
+    organization_id: string | null;
+    title?: string | null;
     user_id: string | null;
     priority: string | null;
     status: string | null;
     created_at: string | null;
+    updated_at?: string | null;
 };
 
 type ErrorEventRow = {
@@ -184,6 +217,21 @@ type AiUsageRow = {
     organization_id: string | null;
     estimated_cost_usd: number | null;
     ai_requests: number | null;
+};
+
+type TripRow = {
+    id: string;
+    organization_id: string | null;
+    status: string | null;
+    created_at: string | null;
+    updated_at: string | null;
+};
+
+type SocialPostRow = {
+    id: string;
+    organization_id: string | null;
+    status: string | null;
+    created_at: string | null;
 };
 
 function monthStartIso(): string {
@@ -211,6 +259,20 @@ function normalizeLifecycleStage(value: unknown): AccountLifecycleStage {
         return value;
     }
     return "active";
+}
+
+function normalizeActivationStage(value: unknown): AccountActivationStage {
+    switch (value) {
+        case "onboarding":
+        case "first_proposal_sent":
+        case "active":
+        case "expansion":
+        case "at_risk":
+        case "churned":
+            return value;
+        default:
+            return "signed_up";
+    }
 }
 
 function normalizeHealthBand(value: unknown): AccountHealthBand {
@@ -253,21 +315,88 @@ function normalizeTargetType(value: unknown): GodWorkItemTargetType {
     }
 }
 
+function normalizedKey(value: unknown): string {
+    return typeof value === "string" ? value.trim().toLowerCase() : "";
+}
+
+function isOpenSupportStatus(status: string | null | undefined): boolean {
+    const normalized = normalizedKey(status);
+    return normalized === "open" || normalized === "in progress" || normalized === "in_progress";
+}
+
+function isUrgentSupportPriority(priority: string | null | undefined): boolean {
+    const normalized = normalizedKey(priority);
+    return normalized === "urgent" || normalized === "high";
+}
+
+function isSentProposalStatus(status: string | null | undefined): boolean {
+    const normalized = normalizedKey(status);
+    return Boolean(normalized) && normalized !== "draft";
+}
+
+function isWonProposalStatus(status: string | null | undefined): boolean {
+    const normalized = normalizedKey(status);
+    return ["approved", "accepted", "confirmed", "converted"].includes(normalized);
+}
+
+function daysBetween(startIso: string | null, endIso: string | null): number | null {
+    if (!startIso || !endIso) return null;
+    const start = new Date(startIso).getTime();
+    const end = new Date(endIso).getTime();
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return null;
+    return Math.max(0, Math.round((end - start) / 86_400_000));
+}
+
 export function defaultAccountState(orgId: string): GodAccountState {
     return {
         org_id: orgId,
         owner_id: null,
         lifecycle_stage: "active",
+        activation_stage: "signed_up",
         health_score: 75,
         health_band: "healthy",
         next_action: null,
         next_action_due_at: null,
         last_contacted_at: null,
         renewal_at: null,
+        first_proposal_sent_at: null,
+        last_proposal_sent_at: null,
         playbook: null,
         notes: null,
         created_at: null,
         updated_at: null,
+    };
+}
+
+function emptyAccountSnapshot(): AccountSnapshot {
+    return {
+        overdue_balance: 0,
+        overdue_balance_label: asCurrency(0),
+        overdue_invoice_count: 0,
+        expiring_proposal_value: 0,
+        expiring_proposal_value_label: asCurrency(0),
+        expiring_proposal_count: 0,
+        open_support_count: 0,
+        urgent_support_count: 0,
+        open_error_count: 0,
+        fatal_error_count: 0,
+        ai_spend_mtd_usd: 0,
+        ai_requests_mtd: 0,
+        member_count: 0,
+        latest_org_activity: null,
+        outstanding_balance: 0,
+        outstanding_balance_label: asCurrency(0),
+        trip_count: 0,
+        proposal_count: 0,
+        proposal_sent_count: 0,
+        proposal_won_count: 0,
+        social_post_count: 0,
+        portal_touchpoints: 0,
+        first_proposal_sent_at: null,
+        last_proposal_sent_at: null,
+        time_to_first_proposal_days: null,
+        days_since_last_proposal_sent: null,
+        risk_flags: [],
     };
 }
 
@@ -278,12 +407,15 @@ function normalizeAccountState(row: Record<string, unknown> | null | undefined, 
         org_id: orgId,
         owner_id: typeof row.owner_id === "string" && row.owner_id.trim() ? row.owner_id : null,
         lifecycle_stage: normalizeLifecycleStage(row.lifecycle_stage),
+        activation_stage: normalizeActivationStage(row.activation_stage),
         health_score: Math.max(0, Math.min(100, Math.round(safeNumber(row.health_score || base.health_score)))),
         health_band: normalizeHealthBand(row.health_band),
         next_action: typeof row.next_action === "string" && row.next_action.trim() ? row.next_action.trim() : null,
         next_action_due_at: normalizeIso(row.next_action_due_at),
         last_contacted_at: normalizeIso(row.last_contacted_at),
         renewal_at: normalizeIso(row.renewal_at),
+        first_proposal_sent_at: normalizeIso(row.first_proposal_sent_at),
+        last_proposal_sent_at: normalizeIso(row.last_proposal_sent_at),
         playbook: typeof row.playbook === "string" && row.playbook.trim() ? row.playbook.trim() : null,
         notes: typeof row.notes === "string" && row.notes.trim() ? row.notes.trim() : null,
         created_at: normalizeIso(row.created_at),
@@ -463,12 +595,15 @@ export async function upsertGodAccountState(
         org_id: orgId,
         owner_id: patch.owner_id === undefined ? current.owner_id : patch.owner_id,
         lifecycle_stage: patch.lifecycle_stage ?? current.lifecycle_stage,
+        activation_stage: patch.activation_stage ?? current.activation_stage,
         health_score: patch.health_score === undefined ? current.health_score : Math.max(0, Math.min(100, Math.round(safeNumber(patch.health_score)))),
         health_band: patch.health_band ?? current.health_band,
         next_action: patch.next_action === undefined ? current.next_action : patch.next_action,
         next_action_due_at: patch.next_action_due_at === undefined ? current.next_action_due_at : patch.next_action_due_at,
         last_contacted_at: patch.last_contacted_at === undefined ? current.last_contacted_at : patch.last_contacted_at,
         renewal_at: patch.renewal_at === undefined ? current.renewal_at : patch.renewal_at,
+        first_proposal_sent_at: patch.first_proposal_sent_at === undefined ? current.first_proposal_sent_at : patch.first_proposal_sent_at,
+        last_proposal_sent_at: patch.last_proposal_sent_at === undefined ? current.last_proposal_sent_at : patch.last_proposal_sent_at,
         playbook: patch.playbook === undefined ? current.playbook : patch.playbook,
         notes: patch.notes === undefined ? current.notes : patch.notes,
     };
@@ -482,50 +617,32 @@ export async function buildAccountMetricsMap(db: AdminClient, orgIds: string[]):
     if (uniqueIds.length === 0) return map;
 
     const monthStart = monthStartIso();
-    const [profilesResult, invoicesResult, proposalsResult, aiUsageResult, errorEventsResult] = await Promise.all([
+    const [orgsResult, profilesResult, invoicesResult, proposalsResult, aiUsageResult, errorEventsResult, tripsResult, socialPostsResult, supportTicketsResult] = await Promise.all([
+        db.from("organizations").select("id, created_at").in("id", uniqueIds),
         db.from("profiles").select("id, organization_id, created_at, updated_at").in("organization_id", uniqueIds),
         db.from("invoices").select("id, invoice_number, organization_id, status, due_date, balance_amount, total_amount, created_at").in("organization_id", uniqueIds),
-        db.from("proposals").select("id, title, organization_id, status, expires_at, total_price, client_selected_price, created_at").in("organization_id", uniqueIds),
+        db.from("proposals").select("id, title, organization_id, status, expires_at, total_price, client_selected_price, created_at, updated_at, viewed_at, approved_at, share_token").in("organization_id", uniqueIds),
         db.from("organization_ai_usage").select("organization_id, estimated_cost_usd, ai_requests").in("organization_id", uniqueIds).eq("month_start", monthStart),
         db.from("error_events").select("id, organization_id, status, level, created_at").in("organization_id", uniqueIds),
+        db.from("trips").select("id, organization_id, status, created_at, updated_at").in("organization_id", uniqueIds),
+        db.from("social_posts").select("id, organization_id, status, created_at").in("organization_id", uniqueIds),
+        db.from("support_tickets").select("id, organization_id, title, user_id, priority, status, created_at, updated_at").in("organization_id", uniqueIds),
     ]);
 
+    const organizations = (orgsResult.data ?? []) as OrganizationMetricRow[];
     const profiles = (profilesResult.data ?? []) as ProfileRow[];
     const invoices = (invoicesResult.data ?? []) as InvoiceRow[];
     const proposals = (proposalsResult.data ?? []) as ProposalRow[];
     const aiUsage = (aiUsageResult.data ?? []) as AiUsageRow[];
     const errorEvents = (errorEventsResult.data ?? []) as ErrorEventRow[];
-
-    const userOrgMap = new Map<string, string>();
-    for (const profile of profiles) {
-        if (profile.organization_id) userOrgMap.set(profile.id, profile.organization_id);
-    }
-
-    const supportTicketsResult = profiles.length > 0
-        ? await db.from("support_tickets").select("id, user_id, priority, status, created_at").in("user_id", profiles.map((profile) => profile.id))
-        : { data: [] };
+    const trips = (tripsResult.data ?? []) as TripRow[];
+    const socialPosts = (socialPostsResult.data ?? []) as SocialPostRow[];
     const supportTickets = (supportTicketsResult.data ?? []) as SupportTicketRow[];
+    const orgCreatedAtMap = new Map<string, string | null>();
+    for (const org of organizations) orgCreatedAtMap.set(org.id, normalizeIso(org.created_at));
 
     for (const orgId of uniqueIds) {
-        map.set(orgId, {
-            overdue_balance: 0,
-            overdue_balance_label: asCurrency(0),
-            overdue_invoice_count: 0,
-            expiring_proposal_value: 0,
-            expiring_proposal_value_label: asCurrency(0),
-            expiring_proposal_count: 0,
-            open_support_count: 0,
-            urgent_support_count: 0,
-            open_error_count: 0,
-            fatal_error_count: 0,
-            ai_spend_mtd_usd: 0,
-            ai_requests_mtd: 0,
-            member_count: 0,
-            latest_org_activity: null,
-            outstanding_balance: 0,
-            outstanding_balance_label: asCurrency(0),
-            risk_flags: [],
-        });
+        map.set(orgId, emptyAccountSnapshot());
     }
 
     const nowMs = Date.now();
@@ -563,13 +680,44 @@ export async function buildAccountMetricsMap(db: AdminClient, orgIds: string[]):
         if (!proposal.organization_id) continue;
         const snapshot = map.get(proposal.organization_id);
         if (!snapshot) continue;
+        snapshot.proposal_count += 1;
         const value = safeNumber(proposal.client_selected_price ?? proposal.total_price);
         const expiresMs = proposal.expires_at ? new Date(proposal.expires_at).getTime() : NaN;
         if (Number.isFinite(expiresMs) && expiresMs >= nowMs && expiresMs <= expiringThresholdMs && !["cancelled", "converted"].includes(proposal.status ?? "")) {
             snapshot.expiring_proposal_count += 1;
             snapshot.expiring_proposal_value += value;
         }
-        bumpActivity(proposal.organization_id, proposal.created_at);
+        if (isSentProposalStatus(proposal.status)) {
+            snapshot.proposal_sent_count += 1;
+            if (proposal.viewed_at) snapshot.portal_touchpoints += 1;
+            const sentAt = normalizeIso(proposal.viewed_at ?? proposal.approved_at ?? proposal.updated_at ?? proposal.created_at);
+            if (sentAt && (!snapshot.first_proposal_sent_at || new Date(sentAt).getTime() < new Date(snapshot.first_proposal_sent_at).getTime())) {
+                snapshot.first_proposal_sent_at = sentAt;
+            }
+            if (sentAt && (!snapshot.last_proposal_sent_at || new Date(sentAt).getTime() > new Date(snapshot.last_proposal_sent_at).getTime())) {
+                snapshot.last_proposal_sent_at = sentAt;
+            }
+        }
+        if (isWonProposalStatus(proposal.status)) {
+            snapshot.proposal_won_count += 1;
+        }
+        bumpActivity(proposal.organization_id, proposal.approved_at ?? proposal.viewed_at ?? proposal.updated_at ?? proposal.created_at);
+    }
+
+    for (const trip of trips) {
+        if (!trip.organization_id) continue;
+        const snapshot = map.get(trip.organization_id);
+        if (!snapshot) continue;
+        snapshot.trip_count += 1;
+        bumpActivity(trip.organization_id, trip.updated_at ?? trip.created_at);
+    }
+
+    for (const post of socialPosts) {
+        if (!post.organization_id) continue;
+        const snapshot = map.get(post.organization_id);
+        if (!snapshot) continue;
+        snapshot.social_post_count += 1;
+        bumpActivity(post.organization_id, post.created_at);
     }
 
     for (const row of aiUsage) {
@@ -592,18 +740,18 @@ export async function buildAccountMetricsMap(db: AdminClient, orgIds: string[]):
     }
 
     for (const ticket of supportTickets) {
-        const orgId = ticket.user_id ? userOrgMap.get(ticket.user_id) : null;
+        const orgId = ticket.organization_id;
         if (!orgId) continue;
         const snapshot = map.get(orgId);
         if (!snapshot) continue;
-        if (["open", "in_progress"].includes(ticket.status ?? "")) {
+        if (isOpenSupportStatus(ticket.status)) {
             snapshot.open_support_count += 1;
-            if (ticket.priority === "urgent" || ticket.priority === "high") snapshot.urgent_support_count += 1;
+            if (isUrgentSupportPriority(ticket.priority)) snapshot.urgent_support_count += 1;
         }
-        bumpActivity(orgId, ticket.created_at);
+        bumpActivity(orgId, ticket.updated_at ?? ticket.created_at ?? null);
     }
 
-    for (const snapshot of map.values()) {
+    for (const [orgId, snapshot] of map.entries()) {
         snapshot.overdue_balance = Number(snapshot.overdue_balance.toFixed(0));
         snapshot.overdue_balance_label = asCurrency(snapshot.overdue_balance);
         snapshot.expiring_proposal_value = Number(snapshot.expiring_proposal_value.toFixed(0));
@@ -611,12 +759,19 @@ export async function buildAccountMetricsMap(db: AdminClient, orgIds: string[]):
         snapshot.ai_spend_mtd_usd = Number(snapshot.ai_spend_mtd_usd.toFixed(2));
         snapshot.outstanding_balance = Number(snapshot.outstanding_balance.toFixed(0));
         snapshot.outstanding_balance_label = asCurrency(snapshot.outstanding_balance);
+        snapshot.time_to_first_proposal_days = daysBetween(orgCreatedAtMap.get(orgId) ?? null, snapshot.first_proposal_sent_at);
+        snapshot.days_since_last_proposal_sent = snapshot.last_proposal_sent_at
+            ? daysBetween(snapshot.last_proposal_sent_at, new Date().toISOString())
+            : null;
         snapshot.risk_flags = [
             snapshot.overdue_invoice_count > 0 ? `${snapshot.overdue_invoice_count} overdue invoices` : null,
             snapshot.expiring_proposal_count > 0 ? `${snapshot.expiring_proposal_count} expiring proposals` : null,
             snapshot.urgent_support_count > 0 ? `${snapshot.urgent_support_count} urgent tickets` : null,
             snapshot.fatal_error_count > 0 ? `${snapshot.fatal_error_count} fatal incidents` : null,
             snapshot.ai_spend_mtd_usd >= 25 ? `$${snapshot.ai_spend_mtd_usd.toFixed(2)} AI spend MTD` : null,
+            snapshot.proposal_sent_count === 0 ? "No proposals sent yet" : null,
+            snapshot.proposal_sent_count > 0 && snapshot.trip_count === 0 ? "Proposal sent but no converted trip yet" : null,
+            snapshot.proposal_sent_count > 0 && (snapshot.days_since_last_proposal_sent ?? 0) >= 14 ? `${snapshot.days_since_last_proposal_sent} days since last proposal` : null,
         ].filter(Boolean) as string[];
     }
 
@@ -659,25 +814,7 @@ export async function listAccounts(
 
     const rows = organizations.map((org) => {
         const state = statesMap.get(org.id) ?? defaultAccountState(org.id);
-        const snapshot = metricsMap.get(org.id) ?? {
-            overdue_balance: 0,
-            overdue_balance_label: asCurrency(0),
-            overdue_invoice_count: 0,
-            expiring_proposal_value: 0,
-            expiring_proposal_value_label: asCurrency(0),
-            expiring_proposal_count: 0,
-            open_support_count: 0,
-            urgent_support_count: 0,
-            open_error_count: 0,
-            fatal_error_count: 0,
-            ai_spend_mtd_usd: 0,
-            ai_requests_mtd: 0,
-            member_count: 0,
-            latest_org_activity: null,
-            outstanding_balance: 0,
-            outstanding_balance_label: asCurrency(0),
-            risk_flags: [],
-        };
+        const snapshot = metricsMap.get(org.id) ?? emptyAccountSnapshot();
         return {
             org_id: org.id,
             name: org.name?.trim() || "Unknown org",
@@ -723,25 +860,7 @@ export async function getAccountDetail(db: AdminClient, orgId: string): Promise<
     if (!org) return null;
 
     const state = statesMap.get(orgId) ?? defaultAccountState(orgId);
-    const snapshot = metricsMap.get(orgId) ?? {
-        overdue_balance: 0,
-        overdue_balance_label: asCurrency(0),
-        overdue_invoice_count: 0,
-        expiring_proposal_value: 0,
-        expiring_proposal_value_label: asCurrency(0),
-        expiring_proposal_count: 0,
-        open_support_count: 0,
-        urgent_support_count: 0,
-        open_error_count: 0,
-        fatal_error_count: 0,
-        ai_spend_mtd_usd: 0,
-        ai_requests_mtd: 0,
-        member_count: 0,
-        latest_org_activity: null,
-        outstanding_balance: 0,
-        outstanding_balance_label: asCurrency(0),
-        risk_flags: [],
-    };
+    const snapshot = metricsMap.get(orgId) ?? emptyAccountSnapshot();
     const ownerLookup = await loadOwnerLookup(db, state.owner_id ? [state.owner_id] : []);
     const owner = state.owner_id ? ownerLookup.get(state.owner_id) : null;
 
@@ -844,7 +963,10 @@ export function buildBusinessImpact(accountState: GodAccountState, snapshot: Acc
         owner_id: accountState.owner_id,
         health_band: accountState.health_band,
         lifecycle_stage: accountState.lifecycle_stage,
+        activation_stage: accountState.activation_stage,
         renewal_at: accountState.renewal_at,
+        first_proposal_sent_at: accountState.first_proposal_sent_at,
+        last_proposal_sent_at: accountState.last_proposal_sent_at,
         next_action: accountState.next_action,
         next_action_due_at: accountState.next_action_due_at,
         outstanding_balance: snapshot.outstanding_balance,
@@ -861,6 +983,14 @@ export function buildBusinessImpact(accountState: GodAccountState, snapshot: Acc
         fatal_error_count: snapshot.fatal_error_count,
         ai_spend_mtd_usd: snapshot.ai_spend_mtd_usd,
         ai_requests_mtd: snapshot.ai_requests_mtd,
+        trip_count: snapshot.trip_count,
+        proposal_count: snapshot.proposal_count,
+        proposal_sent_count: snapshot.proposal_sent_count,
+        proposal_won_count: snapshot.proposal_won_count,
+        social_post_count: snapshot.social_post_count,
+        portal_touchpoints: snapshot.portal_touchpoints,
+        time_to_first_proposal_days: snapshot.time_to_first_proposal_days,
+        days_since_last_proposal_sent: snapshot.days_since_last_proposal_sent,
         latest_org_activity: snapshot.latest_org_activity,
         risk_flags: snapshot.risk_flags,
     };

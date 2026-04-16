@@ -7,6 +7,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
     LayoutDashboard,
+    BriefcaseBusiness,
     UserPlus,
     Users,
     BarChart3,
@@ -43,6 +44,7 @@ const NAV_GROUPS: NavGroup[] = [
         title: "EXECUTIVE",
         items: [
             { icon: LayoutDashboard, label: "Command Center", href: "/god" },
+            { icon: BriefcaseBusiness, label: "Business OS", href: "/god/business-os" },
         ],
     },
     {
