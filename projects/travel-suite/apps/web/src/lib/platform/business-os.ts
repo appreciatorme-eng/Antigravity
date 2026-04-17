@@ -83,6 +83,7 @@ export type BusinessOsAiAction = {
         | "draft_outreach"
         | "draft_work_item"
         | "draft_summary"
+        | "guarded_customer_communication"
         | "guarded_support_escalation"
         | "guarded_feature_flag_change"
         | "guarded_collections_writeoff";
@@ -130,7 +131,7 @@ export type AutopilotApproval = {
     account_name: string;
     priority_score: number;
     severity: "medium" | "high" | "critical";
-    action_kind: Extract<BusinessOsAiAction["action_kind"], "guarded_support_escalation" | "guarded_feature_flag_change" | "guarded_collections_writeoff">;
+    action_kind: Extract<BusinessOsAiAction["action_kind"], "guarded_customer_communication" | "guarded_support_escalation" | "guarded_feature_flag_change" | "guarded_collections_writeoff">;
     title: string;
     description: string;
     rationale: string;
@@ -322,9 +323,24 @@ export type AutopilotLoopSummary = {
     detail: string;
 };
 
+export type FounderDigestSection = {
+    id: "approvals" | "revenue" | "churn" | "automation";
+    title: string;
+    items: string[];
+};
+
+export type FounderDigest = {
+    generated_at: string;
+    headline: string;
+    summary: string;
+    sections: FounderDigestSection[];
+    slack_text: string;
+};
+
 export type AutopilotSnapshot = {
     generated_at: string;
     daily_brief: BusinessOsDailyBrief;
+    founder_digest: FounderDigest;
     daily_brief_history: Array<{
         id: string;
         headline: string;
@@ -534,19 +550,21 @@ function normalizeKey(value: string | null | undefined): string {
     return (value || "").trim().toLowerCase();
 }
 
-function autopilotApprovalId(orgId: string, actionKind: AutopilotApproval["action_kind"]): string {
-    return `${orgId}__${actionKind}`;
+function autopilotApprovalId(orgId: string, actionKind: AutopilotApproval["action_kind"], qualifier?: string | null): string {
+    return qualifier?.trim()
+        ? `${orgId}__${actionKind}__${qualifier.trim()}`
+        : `${orgId}__${actionKind}`;
 }
 
-function parseAutopilotApprovalId(id: string): { orgId: string; actionKind: AutopilotApproval["action_kind"] } | null {
-    const separator = "__";
-    const index = id.indexOf(separator);
-    if (index <= 0) return null;
-    const orgId = id.slice(0, index).trim();
-    const actionKind = id.slice(index + separator.length).trim();
+function parseAutopilotApprovalId(id: string): { orgId: string; actionKind: AutopilotApproval["action_kind"]; qualifier: string | null } | null {
+    const [orgIdRaw, actionKindRaw, ...qualifierParts] = id.split("__");
+    const orgId = orgIdRaw?.trim() ?? "";
+    const actionKind = actionKindRaw?.trim() ?? "";
+    const qualifier = qualifierParts.join("__").trim() || null;
     if (
         !orgId
-        || (actionKind !== "guarded_support_escalation"
+        || (actionKind !== "guarded_customer_communication"
+            && actionKind !== "guarded_support_escalation"
             && actionKind !== "guarded_feature_flag_change"
             && actionKind !== "guarded_collections_writeoff")
     ) {
@@ -554,7 +572,8 @@ function parseAutopilotApprovalId(id: string): { orgId: string; actionKind: Auto
     }
     return {
         orgId,
-        actionKind,
+        actionKind: actionKind as AutopilotApproval["action_kind"],
+        qualifier,
     };
 }
 
@@ -1098,6 +1117,42 @@ function buildCommunicationDrafts(account: BusinessOsAccountRow, effectiveActiva
     return drafts.slice(0, 3);
 }
 
+function workItemKindForCommunicationSequenceType(sequenceType: CommsSequenceType): GodWorkItemKind {
+    switch (sequenceType) {
+        case "collections":
+            return "collections";
+        case "incident_recovery":
+            return "incident_followup";
+        case "renewal_prep":
+            return "renewal";
+        default:
+            return "growth_followup";
+    }
+}
+
+function parseSequenceType(value: unknown): CommsSequenceType {
+    switch (value) {
+        case "collections":
+        case "viewed_not_approved":
+        case "incident_recovery":
+        case "renewal_prep":
+            return value;
+        default:
+            return "activation_rescue";
+    }
+}
+
+function parseCommsChannel(value: unknown): CommsChannel {
+    switch (value) {
+        case "email":
+        case "whatsapp":
+        case "in_app":
+            return value;
+        default:
+            return "mixed";
+    }
+}
+
 function buildAiExplainability(account: BusinessOsAccountRow, activationRiskReasons: string[]): {
     confidence_score: number;
     confidence_label: BusinessOsAiRecommendation["confidence_label"];
@@ -1212,6 +1267,68 @@ function buildFounderMode(accounts: BusinessOsAccountRow[], approvals: Autopilot
     };
 }
 
+function buildFounderDigest(input: {
+    generatedAt?: string | null;
+    founderMode: FounderModeSnapshot;
+    dailyBrief: BusinessOsDailyBrief;
+    approvals: AutopilotApproval[];
+    communicationDrafts: BusinessOsCommunicationDraft[];
+    promiseWatchdog: AutopilotSnapshot["promise_watchdog"];
+    recentRuns: AutopilotRun[];
+}): FounderDigest {
+    const pendingApprovals = input.approvals.filter((approval) => approval.status === "pending");
+    const pendingCommsApprovals = pendingApprovals.filter((approval) => approval.action_kind === "guarded_customer_communication");
+    const approvalsSection = pendingApprovals
+        .slice(0, 3)
+        .map((approval) => `${approval.account_name}: ${approval.title}`);
+    const revenueSection = input.founderMode.revenue_moves
+        .slice(0, 3)
+        .map((item) => `${item.account_name}: ${item.detail}`);
+    const churnSection = input.founderMode.churn_risks
+        .slice(0, 3)
+        .map((item) => `${item.account_name}: ${item.detail}`);
+
+    const automationSection: string[] = [];
+    if (pendingCommsApprovals.length > 0) {
+        automationSection.push(`${pendingCommsApprovals.length} approved-send communication${pendingCommsApprovals.length === 1 ? "" : "s"} still need founder approval`);
+    }
+    if (input.promiseWatchdog[0]) {
+        automationSection.push(`${input.promiseWatchdog[0].account_name}: ${input.promiseWatchdog[0].reasons.join(" • ")}`);
+    }
+    if (input.communicationDrafts.length > 0) {
+        automationSection.push(`${input.communicationDrafts.length} customer communication draft${input.communicationDrafts.length === 1 ? "" : "s"} ready for review`);
+    }
+    if (input.recentRuns[0]) {
+        automationSection.push(`Latest run: ${input.recentRuns[0].summary}`);
+    } else {
+        automationSection.push(input.dailyBrief.queue_focus);
+    }
+
+    const sections = [
+        { id: "approvals", title: "Approvals", items: approvalsSection },
+        { id: "revenue", title: "Revenue moves", items: revenueSection },
+        { id: "churn", title: "Churn risks", items: churnSection },
+        { id: "automation", title: "Automation watch", items: automationSection.slice(0, 4) },
+    ] satisfies FounderDigestSection[];
+
+    const slackText = [
+        `*${input.founderMode.headline}*`,
+        input.founderMode.summary,
+        ...sections.filter((section) => section.items.length > 0).flatMap((section) => [
+            `*${section.title}*`,
+            ...section.items.map((item) => `• ${item}`),
+        ]),
+    ].join("\n");
+
+    return {
+        generated_at: input.generatedAt ?? new Date().toISOString(),
+        headline: input.founderMode.headline,
+        summary: input.founderMode.summary,
+        sections: sections.filter((section) => section.items.length > 0),
+        slack_text: slackText,
+    };
+}
+
 function buildAiRecommendation(account: BusinessOsAccountRow, effectiveActivationStage: AccountActivationStage, activationRiskReasons: string[]): BusinessOsAiRecommendation {
     const { nextStep, rationale, playbook } = buildRecommendedNextStep(account, activationRiskReasons, effectiveActivationStage);
     const explainability = buildAiExplainability(account, activationRiskReasons);
@@ -1286,6 +1403,16 @@ function buildAiRecommendation(account: BusinessOsAccountRow, effectiveActivatio
             },
         ],
         guarded_actions: [
+            {
+                id: "guarded-customer-communication",
+                label: "Approve customer send",
+                description: "Requires approval before customer-facing communication is queued to send.",
+                action_kind: "guarded_customer_communication",
+                requires_approval: true,
+                payload: {
+                    reason: rationale,
+                },
+            },
             {
                 id: "guarded-support-escalation",
                 label: "Escalate support",
@@ -1378,6 +1505,35 @@ function buildApprovalCandidates(account: BusinessOsAccountRow): AutopilotApprov
             description: "Review whether an incident mitigation or feature-flag change should be pushed for this account.",
             severity: "critical",
             suggestedWorkItemKind: "incident_followup",
+        });
+    }
+
+    for (const draft of ai.communication_drafts) {
+        approvals.push({
+            id: autopilotApprovalId(account.org_id, "guarded_customer_communication", draft.sequence_type),
+            org_id: account.org_id,
+            account_name: account.name,
+            priority_score: account.priority_score,
+            severity: draft.sequence_type === "incident_recovery"
+                ? "critical"
+                : draft.sequence_type === "collections" || draft.sequence_type === "renewal_prep"
+                    ? "high"
+                    : "medium",
+            action_kind: "guarded_customer_communication",
+            title: `Approve send: ${draft.title}`,
+            description: `${draft.reason}. Queue ${draft.channel} delivery once approved.`,
+            rationale: ai.rationale,
+            suggested_work_item_kind: workItemKindForCommunicationSequenceType(draft.sequence_type),
+            status: "pending",
+            decided_at: null,
+            decided_by: null,
+            payload: {
+                sequence_type: draft.sequence_type,
+                channel: draft.channel,
+                title: draft.title,
+                reason: draft.reason,
+                draft: draft.draft,
+            },
         });
     }
 
@@ -2720,14 +2876,15 @@ export async function applyAutopilotApprovalDecision(
         approvalId: string;
         decision: "approved" | "rejected";
     },
-): Promise<{ approval: AutopilotApproval; work_item: GodWorkItem | null }> {
+): Promise<{ approval: AutopilotApproval; work_item: GodWorkItem | null; comms_sequence: GodCommsSequence | null }> {
     const approval = await getAutopilotApprovalById(db, options.currentUserId, options.approvalId);
     if (!approval) throw new Error("Approval not found");
     if (approval.status !== "pending") {
-        return { approval, work_item: null };
+        return { approval, work_item: null, comms_sequence: null };
     }
 
     let workItem: GodWorkItem | null = null;
+    let commsSequence: GodCommsSequence | null = null;
     if (options.decision === "approved") {
         const existing = await loadGodWorkItems(db, {
             orgIds: [approval.org_id],
@@ -2739,7 +2896,56 @@ export async function applyAutopilotApprovalDecision(
             return typeof metadata?.approval_id === "string" && metadata.approval_id === approval.id;
         }) ?? null;
 
+        if (approval.action_kind === "guarded_customer_communication") {
+            const sequenceType = parseSequenceType(approval.payload.sequence_type);
+            const channel = parseCommsChannel(approval.payload.channel);
+            const dueAt = new Date(Date.now() + 86_400_000).toISOString();
+            const accountDetail = await getAccountDetail(db, approval.org_id);
+            const primaryContact = accountDetail?.members.find((member) => member.email && !member.is_suspended) ?? null;
+            const existingSequences = await loadCommsSequences(db, approval.org_id, "all");
+            const matchingSequence = existingSequences.find((sequence) =>
+                sequence.sequence_type === sequenceType && sequence.status !== "completed",
+            ) ?? null;
+            const metadata = {
+                ...(normalizeMetadata(matchingSequence?.metadata) ?? {}),
+                source: "business_os_autopilot_approval",
+                approval_id: approval.id,
+                action_kind: approval.action_kind,
+                send_state: "approved_pending_send",
+                approved_at: new Date().toISOString(),
+                approved_by: options.currentUserId,
+                draft_title: typeof approval.payload.title === "string" ? approval.payload.title : approval.title,
+                draft_reason: typeof approval.payload.reason === "string" ? approval.payload.reason : approval.description,
+                draft_body: typeof approval.payload.draft === "string" ? approval.payload.draft : approval.description,
+                primary_contact_name: primaryContact?.full_name ?? null,
+                primary_contact_email: primaryContact?.email ?? null,
+            } satisfies Record<string, unknown>;
+
+            commsSequence = matchingSequence
+                ? await updateCommsSequence(db, matchingSequence.id, {
+                    status: "active",
+                    channel,
+                    promise: typeof approval.payload.reason === "string" ? approval.payload.reason : approval.description,
+                    next_follow_up_at: matchingSequence.next_follow_up_at ?? dueAt,
+                    metadata,
+                })
+                : await createCommsSequence(db, {
+                    org_id: approval.org_id,
+                    owner_id: null,
+                    sequence_type: sequenceType,
+                    status: "active",
+                    channel,
+                    step_index: 0,
+                    next_follow_up_at: dueAt,
+                    promise: typeof approval.payload.reason === "string" ? approval.payload.reason : approval.description,
+                    metadata,
+                });
+        }
+
         if (!workItem) {
+            const dueAt = new Date(Date.now() + 86_400_000).toISOString();
+            const approvedDraftBody = typeof approval.payload.draft === "string" ? approval.payload.draft : null;
+            const approvedDraftReason = typeof approval.payload.reason === "string" ? approval.payload.reason : approval.description;
             workItem = await createGodWorkItem(db, {
                 kind: approval.suggested_work_item_kind,
                 target_type: "organization",
@@ -2748,14 +2954,26 @@ export async function applyAutopilotApprovalDecision(
                 owner_id: null,
                 status: "open",
                 severity: approval.severity,
-                title: approval.title,
-                summary: `${approval.description}\n\nRationale: ${approval.rationale}`,
-                due_at: new Date(Date.now() + 86_400_000).toISOString(),
+                title: approval.action_kind === "guarded_customer_communication"
+                    ? `Send approved ${parseSequenceType(approval.payload.sequence_type).replaceAll("_", " ")} communication`
+                    : approval.title,
+                summary: approval.action_kind === "guarded_customer_communication"
+                    ? [
+                        approvedDraftReason,
+                        commsSequence
+                            ? `Comms sequence ${commsSequence.sequence_type.replaceAll("_", " ")} is queued and awaiting send.`
+                            : "Approved customer communication should be sent and logged.",
+                        approvedDraftBody ? `Draft:\n${approvedDraftBody}` : null,
+                    ].filter(Boolean).join("\n\n")
+                    : `${approval.description}\n\nRationale: ${approval.rationale}`,
+                due_at: dueAt,
                 metadata: {
                     source: "business_os_autopilot_approval",
                     approval_id: approval.id,
                     action_kind: approval.action_kind,
                     decision: "approved",
+                    comms_sequence_id: commsSequence?.id ?? null,
+                    send_state: approval.action_kind === "guarded_customer_communication" ? "approved_pending_send" : null,
                 },
             });
         }
@@ -2774,6 +2992,7 @@ export async function applyAutopilotApprovalDecision(
             approval_id: approval.id,
             action_kind: approval.action_kind,
             work_item_id: workItem?.id ?? null,
+            comms_sequence_id: commsSequence?.id ?? null,
         },
     });
 
@@ -2785,6 +3004,7 @@ export async function applyAutopilotApprovalDecision(
             decided_by: null,
         },
         work_item: workItem,
+        comms_sequence: commsSequence,
     };
 }
 
@@ -2883,9 +3103,20 @@ export async function buildAutopilotSnapshot(
         });
     }
 
+    const founderDigest = buildFounderDigest({
+        generatedAt: payload.generated_at,
+        founderMode: payload.founder_mode,
+        dailyBrief: payload.ai_daily_brief,
+        approvals,
+        communicationDrafts: payload.communication_drafts,
+        promiseWatchdog,
+        recentRuns,
+    });
+
     return {
         generated_at: new Date().toISOString(),
         daily_brief: payload.ai_daily_brief,
+        founder_digest: founderDigest,
         daily_brief_history: dailyBriefHistory,
         summary: {
             pending_approvals: approvals.filter((approval) => approval.status === "pending").length,

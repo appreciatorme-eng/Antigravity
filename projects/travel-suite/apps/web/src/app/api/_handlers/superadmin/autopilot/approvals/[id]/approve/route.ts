@@ -31,6 +31,7 @@ export async function POST(
                 approval_id: result.approval.id,
                 action_kind: result.approval.action_kind,
                 work_item_id: result.work_item?.id ?? null,
+                comms_sequence_id: result.comms_sequence?.id ?? null,
             },
             getClientIpFromRequest(request),
         );
@@ -38,7 +39,7 @@ export async function POST(
         const automation = await runBusinessOsEventAutomation(auth.adminClient as never, {
             orgId: result.approval.org_id,
             currentUserId: auth.userId,
-            trigger: "work_item_updated",
+            trigger: result.comms_sequence ? "comms_updated" : "work_item_updated",
         });
 
         return NextResponse.json({ ...result, automation }, { status: 201 });

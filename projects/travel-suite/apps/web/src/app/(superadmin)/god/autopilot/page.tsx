@@ -247,6 +247,28 @@ export default function GodAutopilotPage() {
             </section>
 
             <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+                <div className="rounded-2xl border border-amber-900/40 bg-amber-950/10 p-5">
+                    <div className="flex items-center gap-2 text-sm font-medium text-amber-100">
+                        <Sparkles className="h-4 w-4" />
+                        Founder digest
+                    </div>
+                    <div className="mt-3 text-lg font-semibold text-white">{data?.founder_digest.headline ?? "Loading founder digest..."}</div>
+                    <p className="mt-2 text-sm text-amber-100/80">{data?.founder_digest.summary ?? "Building the current founder exception digest..."}</p>
+                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                        {(data?.founder_digest.sections ?? []).map((section) => (
+                            <div key={section.id} className="rounded-xl border border-amber-900/30 bg-black/20 p-4">
+                                <div className="text-xs uppercase tracking-wide text-amber-200/70">{section.title}</div>
+                                <div className="mt-3 space-y-2">
+                                    {section.items.map((item) => (
+                                        <div key={item} className="rounded-lg border border-amber-900/20 bg-amber-950/10 px-3 py-2 text-sm text-amber-50/90">
+                                            {item}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
                 <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
                     <div className="flex items-center gap-2 text-sm font-medium text-gray-200">
                         <Sparkles className="h-4 w-4 text-amber-300" />

@@ -6,7 +6,7 @@ import { scheduleAutomation } from "@/lib/automation/qstash-scheduler";
 import { sendOpsAlert } from "@/lib/god-slack";
 import { authorizeCronRequest } from "@/lib/security/cron-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { buildAutopilotAuditDetails, generateDailyOpsBrief, runBusinessDailyAutopilot } from "@/lib/platform/business-os";
+import { buildAutopilotAuditDetails, buildAutopilotSnapshot, generateDailyOpsBrief, runBusinessDailyAutopilot } from "@/lib/platform/business-os";
 import { logPlatformAction } from "@/lib/platform/audit";
 import { logError, logEvent } from "@/lib/observability/logger";
 
@@ -84,6 +84,8 @@ interface QStashScheduleResult {
 interface BusinessOsAutopilotResult {
   readonly ran: boolean;
   readonly generatedAt: string;
+  readonly founderDigestHeadline: string;
+  readonly founderDigestSummary: string;
   readonly createdWorkItems: number;
   readonly candidateWorkItems: number;
   readonly dedupedWorkItems: number;
@@ -143,24 +145,23 @@ async function runBusinessOsAutopilot(): Promise<BusinessOsAutopilotResult> {
   ]);
   const auditDetails = buildAutopilotAuditDetails(autopilot, brief, "scheduled");
 
-  const summary = [
-    "Business OS daily autopilot completed.",
-    String(auditDetails.summary ?? ""),
-    `Top focus: ${brief.headline}`,
-    ...(brief.gaps.slice(0, 3).map((gap) => `Gap: ${gap}`)),
-  ].join("\n");
-
   await logPlatformAction(
     null,
     "Autopilot: Scheduled Business OS run",
     "automation",
     auditDetails,
   );
-  const slackPosted = await sendOpsAlert(summary);
+  const snapshot = await buildAutopilotSnapshot(adminClient as never, "");
+  const slackPosted = await sendOpsAlert([
+    "Business OS founder digest",
+    snapshot.founder_digest.slack_text,
+  ].join("\n\n"));
 
   return {
     ran: true,
     generatedAt: new Date().toISOString(),
+    founderDigestHeadline: snapshot.founder_digest.headline,
+    founderDigestSummary: snapshot.founder_digest.summary,
     createdWorkItems: autopilot.ops_loop.created_count,
     candidateWorkItems: autopilot.ops_loop.candidate_count,
     dedupedWorkItems: autopilot.ops_loop.deduped_count,
