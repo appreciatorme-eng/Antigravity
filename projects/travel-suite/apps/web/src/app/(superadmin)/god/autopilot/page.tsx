@@ -27,6 +27,13 @@ function formatDateTime(value: string | null | undefined): string {
     });
 }
 
+function formatHoursSince(value: string | null | undefined): string {
+    if (!value) return "new";
+    const hours = Math.max(0, Math.round((Date.now() - new Date(value).getTime()) / 3_600_000));
+    if (hours < 1) return "<1h";
+    return `${hours}h`;
+}
+
 function severityClasses(value: "medium" | "high" | "critical"): string {
     if (value === "critical") return "border-red-900/70 bg-red-950/20 text-red-200";
     if (value === "high") return "border-amber-900/70 bg-amber-950/20 text-amber-200";
@@ -161,6 +168,14 @@ export default function GodAutopilotPage() {
                 <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-4">
                     <div className="text-xs uppercase tracking-wide text-gray-500">Pending approvals</div>
                     <div className="mt-2 text-2xl font-semibold text-white">{data?.summary.pending_approvals ?? "—"}</div>
+                </div>
+                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-4">
+                    <div className="text-xs uppercase tracking-wide text-gray-500">Stale approvals</div>
+                    <div className="mt-2 text-2xl font-semibold text-white">{data?.summary.stale_approvals ?? "—"}</div>
+                </div>
+                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-4">
+                    <div className="text-xs uppercase tracking-wide text-gray-500">Blocked accounts</div>
+                    <div className="mt-2 text-2xl font-semibold text-white">{data?.summary.blocked_by_approval_accounts ?? "—"}</div>
                 </div>
                 <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-4">
                     <div className="text-xs uppercase tracking-wide text-gray-500">Policy violations</div>
@@ -340,6 +355,17 @@ export default function GodAutopilotPage() {
                         </div>
                     </div>
                     <div className="mt-4 space-y-3">
+                        <div className="grid gap-2 md:grid-cols-3">
+                            <div className="rounded-lg border border-gray-800 bg-black/20 px-3 py-2 text-xs text-gray-300">
+                                Pending: <span className="text-white">{data?.approval_watchdog.pending ?? 0}</span>
+                            </div>
+                            <div className="rounded-lg border border-amber-900/60 bg-amber-950/20 px-3 py-2 text-xs text-amber-200">
+                                Stale &gt;24h: <span className="text-amber-100">{data?.approval_watchdog.stale_24h ?? 0}</span>
+                            </div>
+                            <div className="rounded-lg border border-red-900/60 bg-red-950/20 px-3 py-2 text-xs text-red-200">
+                                Stale &gt;48h: <span className="text-red-100">{data?.approval_watchdog.stale_48h ?? 0}</span>
+                            </div>
+                        </div>
                         {(data?.approvals ?? []).length > 0 ? data?.approvals.map((approval) => (
                             <div key={approval.id} className={cn("rounded-xl border p-4", severityClasses(approval.severity))}>
                                 <div className="flex items-start justify-between gap-3">
@@ -351,6 +377,7 @@ export default function GodAutopilotPage() {
                                     </div>
                                     <div className="text-right text-xs text-gray-400">
                                         <div>{approval.status}</div>
+                                        <div className="mt-1">age {formatHoursSince(approval.first_seen_at)}</div>
                                         <div className="mt-1">priority {approval.priority_score}</div>
                                     </div>
                                 </div>
@@ -410,6 +437,9 @@ export default function GodAutopilotPage() {
                                     <div className="mt-2 text-xs text-gray-500">
                                         {run.trigger} • {run.actor_name ?? "System"}
                                     </div>
+                                    {run.run_key ? (
+                                        <div className="mt-1 text-xs text-gray-600">run {run.run_key}</div>
+                                    ) : null}
                                 </div>
                             )) : (
                                 <div className="rounded-xl border border-gray-800 bg-black/30 p-4 text-sm text-gray-400">
@@ -576,6 +606,99 @@ export default function GodAutopilotPage() {
                             </div>
                         </div>
                     </div>
+                </div>
+            </section>
+
+            <section className="grid gap-4 xl:grid-cols-[1fr_1fr]">
+                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
+                    <div className="text-sm font-medium text-gray-200">Automation ROI (7d)</div>
+                    <div className="mt-3 grid gap-3 md:grid-cols-2">
+                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
+                            <div className="text-xs uppercase tracking-wide text-gray-500">Runs</div>
+                            <div className="mt-2 text-xl font-semibold text-white">{data?.roi_scorecard.run_count ?? "—"}</div>
+                        </div>
+                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
+                            <div className="text-xs uppercase tracking-wide text-gray-500">Work items created</div>
+                            <div className="mt-2 text-xl font-semibold text-white">{data?.roi_scorecard.work_items_created ?? "—"}</div>
+                        </div>
+                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
+                            <div className="text-xs uppercase tracking-wide text-gray-500">Auto-closed items</div>
+                            <div className="mt-2 text-xl font-semibold text-white">{data?.roi_scorecard.work_items_auto_closed ?? "—"}</div>
+                        </div>
+                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
+                            <div className="text-xs uppercase tracking-wide text-gray-500">Estimated hours saved</div>
+                            <div className="mt-2 text-xl font-semibold text-white">{data?.roi_scorecard.estimated_hours_saved ?? "—"}h</div>
+                        </div>
+                    </div>
+                    <div className="mt-3 rounded-xl border border-emerald-900/60 bg-emerald-950/20 p-4">
+                        <div className="text-xs uppercase tracking-wide text-emerald-300">Estimated cash recovered</div>
+                        <div className="mt-2 text-xl font-semibold text-emerald-100">
+                            ₹{(data?.roi_scorecard.estimated_cash_recovered_inr ?? 0).toLocaleString("en-IN")}
+                        </div>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                        {(data?.roi_scorecard.notes ?? []).map((note) => (
+                            <div key={note} className="rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-sm text-gray-300">
+                                {note}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
+                    <div className="text-sm font-medium text-gray-200">Truth lock</div>
+                    <div className="mt-2 text-sm text-gray-400">KPI and approval snapshots must stay source-backed with deterministic identifiers.</div>
+                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
+                            <div className="text-xs uppercase tracking-wide text-gray-500">Coverage</div>
+                            <div className="mt-2 text-xl font-semibold text-white">{data?.truth_lock.coverage_pct ?? "—"}%</div>
+                        </div>
+                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
+                            <div className="text-xs uppercase tracking-wide text-gray-500">Unresolved checks</div>
+                            <div className="mt-2 text-xl font-semibold text-white">{data?.truth_lock.unresolved_checks ?? "—"}</div>
+                        </div>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                        {(data?.truth_lock.checks ?? []).map((check) => (
+                            <div key={check.id} className={cn(
+                                "rounded-lg border px-3 py-2 text-sm",
+                                check.status === "pass"
+                                    ? "border-emerald-900/60 bg-emerald-950/20 text-emerald-200"
+                                    : "border-amber-900/60 bg-amber-950/20 text-amber-200",
+                            )}>
+                                <div className="font-medium">{check.label}</div>
+                                <div className="mt-1 text-xs">{check.detail}</div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            <section className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
+                <div className="text-sm font-medium text-gray-200">Autopilot trace log</div>
+                <div className="mt-1 text-sm text-gray-400">Why AI created, escalated, or closed work across recent runs.</div>
+                <div className="mt-4 space-y-2">
+                    {(data?.run_traces ?? []).length > 0 ? data?.run_traces.map((trace) => (
+                        <Link key={trace.id} href={trace.href} className="block rounded-xl border border-gray-800 bg-black/30 px-4 py-3 transition-colors hover:border-gray-700">
+                            <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                                <span>{formatDateTime(trace.occurred_at)}</span>
+                                <span>•</span>
+                                <span>{trace.account_name ?? trace.org_id}</span>
+                                {trace.run_key ? (
+                                    <>
+                                        <span>•</span>
+                                        <span>{trace.run_key}</span>
+                                    </>
+                                ) : null}
+                            </div>
+                            <div className="mt-1 text-sm font-medium text-white">{trace.title}</div>
+                            <div className="mt-1 text-xs text-gray-400">{trace.reason ?? trace.detail ?? "No reason recorded."}</div>
+                        </Link>
+                    )) : (
+                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4 text-sm text-gray-400">
+                            No autopilot trace events are recorded yet.
+                        </div>
+                    )}
                 </div>
             </section>
         </div>

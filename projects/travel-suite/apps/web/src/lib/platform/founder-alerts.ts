@@ -3,6 +3,8 @@
 
 import { sendWhatsAppText } from "@/lib/whatsapp.server";
 import { logError, logEvent } from "@/lib/observability/logger";
+import { createAdminClient } from "@/lib/supabase/admin";
+import type { Json } from "@/lib/database.types";
 
 export interface FounderAlertContext {
   approvalsSurfaced: number;
@@ -78,4 +80,64 @@ export async function sendFounderCriticalAlert(message: string): Promise<boolean
     logError("[founder-alerts] Critical alert send failed", err, {});
     return false;
   }
+}
+
+export async function sendFounderCriticalAlertOnce(input: {
+  dedupeKey: string;
+  message: string;
+  minIntervalMinutes?: number;
+  metadata?: Record<string, unknown>;
+}): Promise<{ sent: boolean; skipped: boolean }> {
+  const dedupeKey = input.dedupeKey.trim();
+  if (!dedupeKey) {
+    const sent = await sendFounderCriticalAlert(input.message);
+    return { sent, skipped: false };
+  }
+
+  const minIntervalMinutes = Math.max(1, Math.floor(input.minIntervalMinutes ?? 180));
+  const thresholdIso = new Date(Date.now() - (minIntervalMinutes * 60_000)).toISOString();
+  const admin = createAdminClient();
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- JSON path filters are not captured in generated types
+    const db = admin as any;
+    const { data: existing } = await db
+      .from("platform_audit_log")
+      .select("id, created_at")
+      .eq("action", "Founder: Critical alert")
+      .eq("category", "automation")
+      .gte("created_at", thresholdIso)
+      .filter("details->>dedupe_key", "eq", dedupeKey)
+      .limit(1)
+      .maybeSingle();
+
+    if (existing?.id) {
+      return { sent: false, skipped: true };
+    }
+  } catch (err) {
+    logError("[founder-alerts] Failed to check critical-alert dedupe state", err, { dedupeKey });
+  }
+
+  const sent = await sendFounderCriticalAlert(input.message);
+  if (!sent) return { sent: false, skipped: false };
+
+  try {
+    await admin
+      .from("platform_audit_log")
+      .insert({
+        actor_id: null,
+        action: "Founder: Critical alert",
+        category: "automation",
+        details: {
+          dedupe_key: dedupeKey,
+          min_interval_minutes: minIntervalMinutes,
+          ...(input.metadata ?? {}),
+        } as Json,
+      } as never);
+    logEvent("info", "[founder-alerts] Critical alert sent", { dedupeKey });
+  } catch (err) {
+    logError("[founder-alerts] Failed to persist critical-alert audit log", err, { dedupeKey });
+  }
+
+  return { sent: true, skipped: false };
 }

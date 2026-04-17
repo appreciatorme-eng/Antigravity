@@ -93,8 +93,13 @@ interface QStashScheduleResult {
   readonly failed: number;
 }
 
-interface BusinessOsAutopilotResult {
-  readonly ran: boolean;
+type BusinessOsAutopilotResult = {
+  readonly ran: false;
+  readonly reason: string;
+  readonly runKey: string | null;
+} | {
+  readonly ran: true;
+  readonly runKey: string;
   readonly generatedAt: string;
   readonly founderDigestHeadline: string;
   readonly founderDigestSummary: string;
@@ -119,7 +124,7 @@ interface BusinessOsAutopilotResult {
   readonly priorityCount: number;
   readonly gapCount: number;
   readonly slackPosted: boolean;
-}
+};
 
 /**
  * Runs the automation engine in "schedule" mode:
@@ -158,8 +163,33 @@ async function runAutomationEngineWithQStash(): Promise<QStashScheduleResult> {
 
 async function runBusinessOsAutopilot(): Promise<BusinessOsAutopilotResult> {
   const adminClient = createAdminClient();
+  const runKey = `scheduled:${new Date().toISOString().slice(0, 10)}`;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- JSON path filter over audit details
+  const rawDb = adminClient as any;
+  const existingRun = await rawDb
+    .from("platform_audit_log")
+    .select("id")
+    .eq("action", "Autopilot: Scheduled Business OS run")
+    .filter("details->>run_key", "eq", runKey)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existingRun.data?.id) {
+    return {
+      ran: false,
+      reason: "already_ran_for_run_key",
+      runKey,
+    };
+  }
+
   const [autopilot, brief] = await Promise.all([
-    runBusinessDailyAutopilot(adminClient as never),
+    runBusinessDailyAutopilot(adminClient as never, {
+      trigger: "scheduled",
+      runKey,
+      idempotencyKey: runKey,
+      enforceIdempotency: false,
+    }),
     generateDailyOpsBrief(adminClient as never, ""),
   ]);
   const auditDetails = buildAutopilotAuditDetails(autopilot, brief, "scheduled");
@@ -189,6 +219,7 @@ async function runBusinessOsAutopilot(): Promise<BusinessOsAutopilotResult> {
 
   return {
     ran: true,
+    runKey,
     generatedAt: new Date().toISOString(),
     founderDigestHeadline: snapshot.founder_digest.headline,
     founderDigestSummary: snapshot.founder_digest.summary,

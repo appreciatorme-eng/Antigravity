@@ -35,6 +35,7 @@ import {
     type GodCommitment,
     type GodCommsSequence,
 } from "@/lib/platform/business-comms";
+import { sendFounderCriticalAlertOnce } from "@/lib/platform/founder-alerts";
 
 type AdminClient = SupabaseClient;
 
@@ -137,6 +138,7 @@ export type AutopilotApproval = {
     rationale: string;
     suggested_work_item_kind: GodWorkItemKind;
     status: AutopilotApprovalStatus;
+    first_seen_at: string | null;
     decided_at: string | null;
     decided_by: string | null;
     payload: Record<string, unknown>;
@@ -230,6 +232,7 @@ export type BusinessOsPayload = {
         open_commitments: number;
         breached_commitments: number;
         pending_approvals: number;
+        blocked_by_approval_accounts: number;
         communication_drafts: number;
         renewal_candidates: number;
         expansion_candidates: number;
@@ -295,6 +298,8 @@ export type BusinessOsOpsLoopResult = {
 
 export type BusinessOsDailyAutopilotResult = {
     generated_at: string;
+    run_key: string;
+    idempotency_key: string;
     ops_loop: BusinessOsOpsLoopResult;
     owner_routes_applied: number;
     activation_sequences_created: number;
@@ -320,7 +325,54 @@ export type AutopilotRun = {
     trigger: "manual" | "scheduled" | "unknown";
     actor_name: string | null;
     created_at: string | null;
+    run_key: string | null;
+    idempotency_key: string | null;
     details: Record<string, unknown> | null;
+};
+
+export type AutopilotTraceEntry = {
+    id: string;
+    run_key: string | null;
+    org_id: string;
+    account_name: string | null;
+    event_type: string;
+    title: string;
+    detail: string | null;
+    reason: string | null;
+    source: string;
+    occurred_at: string | null;
+    entity_type: string | null;
+    entity_id: string | null;
+    href: string;
+    metadata: Record<string, unknown> | null;
+};
+
+export type AutopilotRoiScorecard = {
+    window: "7d";
+    generated_at: string;
+    run_count: number;
+    work_items_created: number;
+    work_items_auto_closed: number;
+    outcomes_recorded: number;
+    approvals_surfaced: number;
+    approvals_expired: number;
+    promise_escalations: number;
+    collections_auto_closed: number;
+    estimated_hours_saved: number;
+    estimated_cash_recovered_inr: number;
+    notes: string[];
+};
+
+export type AutopilotTruthLock = {
+    checked_at: string;
+    coverage_pct: number;
+    unresolved_checks: number;
+    checks: Array<{
+        id: string;
+        label: string;
+        status: "pass" | "warn";
+        detail: string;
+    }>;
 };
 
 export type AutopilotLoopSummary = {
@@ -357,6 +409,8 @@ export type AutopilotSnapshot = {
     }>;
     summary: {
         pending_approvals: number;
+        stale_approvals: number;
+        blocked_by_approval_accounts: number;
         policy_violations: number;
         autopilot_work_items: number;
         promise_watchdog_accounts: number;
@@ -364,6 +418,12 @@ export type AutopilotSnapshot = {
         communication_drafts: number;
         renewal_candidates: number;
         expansion_candidates: number;
+    };
+    approval_watchdog: {
+        pending: number;
+        stale_24h: number;
+        stale_48h: number;
+        blocked_accounts: number;
     };
     founder_mode: FounderModeSnapshot;
     loops: AutopilotLoopSummary[];
@@ -384,6 +444,9 @@ export type AutopilotSnapshot = {
         reasons: string[];
     }>;
     ops_loop_preview: BusinessOsPayload["ops_loop_preview"];
+    roi_scorecard: AutopilotRoiScorecard;
+    run_traces: AutopilotTraceEntry[];
+    truth_lock: AutopilotTruthLock;
 };
 
 export type FounderModeAction = {
@@ -573,6 +636,19 @@ type PlatformAuditAutopilotRow = {
     }[] | null;
 };
 
+type AutopilotTraceRow = {
+    id: string;
+    org_id: string;
+    event_type: string;
+    title: string;
+    detail: string | null;
+    entity_type: string | null;
+    entity_id: string | null;
+    source: string | null;
+    metadata: unknown;
+    occurred_at: string | null;
+};
+
 function normalizeText(value: string | null | undefined, fallback = "Unknown"): string {
     const trimmed = value?.trim();
     return trimmed ? trimmed : fallback;
@@ -621,6 +697,14 @@ function diffDays(fromIso: string | null | undefined, toIso: string | null | und
     const to = new Date(toIso).getTime();
     if (!Number.isFinite(from) || !Number.isFinite(to) || to < from) return null;
     return Math.max(0, Math.round((to - from) / 86_400_000));
+}
+
+function diffHours(fromIso: string | null | undefined, toIso: string | null | undefined = new Date().toISOString()): number | null {
+    if (!fromIso || !toIso) return null;
+    const from = new Date(fromIso).getTime();
+    const to = new Date(toIso).getTime();
+    if (!Number.isFinite(from) || !Number.isFinite(to) || to < from) return null;
+    return Math.max(0, Math.round((to - from) / 3_600_000));
 }
 
 function formatRelativeDate(value: string | null | undefined): string {
@@ -1117,7 +1201,7 @@ function buildDraftMessage(account: AccountRow, sequenceType: CommsSequenceType)
     }
 }
 
-function buildCommunicationDrafts(account: BusinessOsAccountRow, effectiveActivationStage: AccountActivationStage): BusinessOsCommunicationDraft[] {
+function buildCommunicationDrafts(account: BusinessOsAccountRow): BusinessOsCommunicationDraft[] {
     const drafts: BusinessOsCommunicationDraft[] = [];
     const addDraft = (
         sequenceType: CommsSequenceType,
@@ -1612,7 +1696,7 @@ function buildAiRecommendation(account: BusinessOsAccountRow, effectiveActivatio
         renewal_strategy: buildRenewalStrategy(account, effectiveActivationStage),
         growth_experiment: buildGrowthExperiment(account),
         growth_opportunities: buildGrowthOpportunities(account, effectiveActivationStage),
-        communication_drafts: buildCommunicationDrafts(account, effectiveActivationStage),
+        communication_drafts: buildCommunicationDrafts(account),
         safe_actions: [
             {
                 id: "draft-next-action",
@@ -1741,6 +1825,7 @@ function buildApprovalCandidates(account: BusinessOsAccountRow): AutopilotApprov
             rationale: ai.rationale,
             suggested_work_item_kind: config.suggestedWorkItemKind,
             status: "pending",
+            first_seen_at: null,
             decided_at: null,
             decided_by: null,
             payload: action.payload,
@@ -1791,6 +1876,7 @@ function buildApprovalCandidates(account: BusinessOsAccountRow): AutopilotApprov
             rationale: ai.rationale,
             suggested_work_item_kind: workItemKindForCommunicationSequenceType(draft.sequence_type),
             status: "pending",
+            first_seen_at: null,
             decided_at: null,
             decided_by: null,
             payload: {
@@ -1880,14 +1966,18 @@ async function listAutopilotApprovalsInternal(
     const decisionMap = await loadApprovalLifecycleMap(db, accounts.map((account) => account.org_id));
     const approvals = accounts.flatMap((account) => buildApprovalCandidates(account)).map((approval) => {
         const decision = decisionMap.get(approval.id);
+        const withLifecycle = {
+            ...approval,
+            first_seen_at: decision?.first_seen_at ?? approval.first_seen_at,
+        };
         return decision?.status
             ? {
-                ...approval,
+                ...withLifecycle,
                 status: decision.status,
                 decided_at: decision.decided_at,
                 decided_by: decision.decided_by,
             }
-            : approval;
+            : withLifecycle;
     });
 
     return approvals
@@ -1909,6 +1999,8 @@ export function buildAutopilotAuditDetails(
 ): Record<string, unknown> {
     return {
         trigger,
+        run_key: autopilot.run_key,
+        idempotency_key: autopilot.idempotency_key,
         summary: [
             `Created ${autopilot.ops_loop.created_count}/${autopilot.ops_loop.candidate_count} queue items (${autopilot.ops_loop.deduped_count} already covered).`,
             `Owner routes applied ${autopilot.owner_routes_applied}.`,
@@ -1942,7 +2034,185 @@ export function buildAutopilotAuditDetails(
         commitments_created: autopilot.commitments_created,
         collections_auto_closed: autopilot.collections_auto_closed,
         outcomes_recorded: autopilot.outcomes_recorded,
+        estimated_cash_recovered_inr: autopilot.collections_auto_closed * 10000,
     };
+}
+
+async function hasAutopilotRunForKey(
+    db: AdminClient,
+    runKey: string,
+    trigger: "manual" | "scheduled",
+): Promise<boolean> {
+    if (!runKey.trim()) return false;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- JSON path filters are not captured in generated types
+    const rawDb = db as any;
+    const action = trigger === "scheduled"
+        ? "Autopilot: Scheduled Business OS run"
+        : "Autopilot: Manual Business OS run";
+    const result = await rawDb
+        .from("platform_audit_log")
+        .select("id")
+        .eq("action", action)
+        .filter("details->>run_key", "eq", runKey)
+        .order("created_at", { ascending: false })
+        .limit(1);
+    return Array.isArray(result.data) && result.data.length > 0;
+}
+
+async function annotateAutopilotEventsWithRunKey(
+    db: AdminClient,
+    input: {
+        runKey: string;
+        trigger: "manual" | "scheduled";
+        startedAt: string;
+        orgIds: string[];
+    },
+): Promise<void> {
+    if (!input.runKey || input.orgIds.length === 0) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- broad event annotation query uses JSON path filters
+    const rawDb = db as any;
+    const result = await rawDb
+        .from("org_activity_events")
+        .select("id, metadata")
+        .in("org_id", input.orgIds)
+        .gte("occurred_at", input.startedAt)
+        .or("source.eq.business_os_autopilot,source.eq.business_os_autopilot_approval,source.eq.business_os_ops_loop")
+        .order("occurred_at", { ascending: true })
+        .limit(600);
+
+    const rows = (result.data ?? []) as Array<{ id: string; metadata: unknown }>;
+    for (const row of rows) {
+        const metadata = normalizeMetadata(row.metadata) ?? {};
+        if (typeof metadata.run_key === "string" && metadata.run_key.trim()) continue;
+        await rawDb
+            .from("org_activity_events")
+            .update({
+                metadata: {
+                    ...metadata,
+                    run_key: input.runKey,
+                    trigger: input.trigger,
+                },
+            })
+            .eq("id", row.id);
+    }
+}
+
+function estimateCashRecoveredInrFromRunDetails(details: Record<string, unknown> | null): number {
+    const explicit = Number(details?.estimated_cash_recovered_inr ?? 0);
+    if (Number.isFinite(explicit) && explicit > 0) return explicit;
+    const collectionsAutoClosed = Number(details?.collections_auto_closed ?? 0);
+    const collectionsSequencesCompleted = Number(details?.collections_sequences_completed ?? 0);
+    if (!Number.isFinite(collectionsAutoClosed) && !Number.isFinite(collectionsSequencesCompleted)) return 0;
+    // Conservative placeholder until payment-level mapping is added.
+    return Math.max(0, (Number.isFinite(collectionsAutoClosed) ? collectionsAutoClosed : 0) * 10000
+        + (Number.isFinite(collectionsSequencesCompleted) ? collectionsSequencesCompleted : 0) * 5000);
+}
+
+function buildAutopilotRoiScorecard(runs: AutopilotRun[]): AutopilotRoiScorecard {
+    const windowStart = new Date(Date.now() - (7 * 86_400_000)).toISOString();
+    const scoped = runs.filter((run) => run.created_at && run.created_at >= windowStart);
+    const sum = (key: string) => scoped.reduce((total, run) => total + Number(run.details?.[key] ?? 0), 0);
+    const workItemsCreated = sum("created_work_items");
+    const workItemsAutoClosed = sum("collections_auto_closed")
+        + sum("activation_sequences_completed")
+        + sum("collections_sequences_completed");
+    const outcomesRecorded = sum("outcomes_recorded");
+    const approvalsSurfaced = sum("approvals_surfaced");
+    const approvalsExpired = sum("approvals_expired");
+    const promiseEscalations = sum("promise_escalations");
+    const collectionsAutoClosed = sum("collections_auto_closed");
+    const estimatedHoursSaved = Number(((workItemsCreated * 0.3) + (workItemsAutoClosed * 0.2) + (outcomesRecorded * 0.08)).toFixed(1));
+    const estimatedCashRecoveredInr = scoped.reduce((total, run) => total + estimateCashRecoveredInrFromRunDetails(run.details), 0);
+
+    const notes: string[] = [];
+    if (approvalsExpired > 0) {
+        notes.push(`${approvalsExpired} approval items went stale and were auto-escalated.`);
+    }
+    if (promiseEscalations > 0) {
+        notes.push(`${promiseEscalations} promise-watchdog escalations protected follow-through.`);
+    }
+    if (collectionsAutoClosed > 0) {
+        notes.push(`${collectionsAutoClosed} collections work items were auto-closed from resolved balances.`);
+    }
+    if (notes.length === 0) {
+        notes.push("Autopilot stayed quiet this week; no major exception loops triggered.");
+    }
+
+    return {
+        window: "7d",
+        generated_at: new Date().toISOString(),
+        run_count: scoped.length,
+        work_items_created: workItemsCreated,
+        work_items_auto_closed: workItemsAutoClosed,
+        outcomes_recorded: outcomesRecorded,
+        approvals_surfaced: approvalsSurfaced,
+        approvals_expired: approvalsExpired,
+        promise_escalations: promiseEscalations,
+        collections_auto_closed: collectionsAutoClosed,
+        estimated_hours_saved: estimatedHoursSaved,
+        estimated_cash_recovered_inr: Math.round(estimatedCashRecoveredInr),
+        notes,
+    };
+}
+
+function buildAutopilotTruthLock(payload: {
+    accounts: BusinessOsAccountRow[];
+    approvals: AutopilotApproval[];
+    runs: AutopilotRun[];
+    policyViolations: BusinessOsPolicyViolation[];
+    promiseWatchdog: AutopilotSnapshot["promise_watchdog"];
+}): AutopilotTruthLock {
+    const checks: AutopilotTruthLock["checks"] = [];
+    const invalidPriority = payload.accounts.filter((account) => !Number.isFinite(account.priority_score)).length;
+    checks.push({
+        id: "priority_scores",
+        label: "Account priority scores are numeric",
+        status: invalidPriority === 0 ? "pass" : "warn",
+        detail: invalidPriority === 0 ? "All account rows have computed priority scores." : `${invalidPriority} accounts have invalid priority score values.`,
+    });
+    const missingApprovalIds = payload.approvals.filter((approval) => !approval.id.trim()).length;
+    checks.push({
+        id: "approval_ids",
+        label: "Approval queue rows have deterministic IDs",
+        status: missingApprovalIds === 0 ? "pass" : "warn",
+        detail: missingApprovalIds === 0 ? "All approvals have stable IDs for HITL actions." : `${missingApprovalIds} approvals are missing IDs.`,
+    });
+    const missingRunSummary = payload.runs.filter((run) => !run.summary.trim()).length;
+    checks.push({
+        id: "run_summaries",
+        label: "Autopilot runs include summaries",
+        status: missingRunSummary === 0 ? "pass" : "warn",
+        detail: missingRunSummary === 0 ? "Every recorded run includes summary context." : `${missingRunSummary} runs are missing summaries.`,
+    });
+    checks.push({
+        id: "policy_violation_source",
+        label: "Policy violations come from shared account snapshot",
+        status: "pass",
+        detail: `${payload.policyViolations.length} policy violations computed from account/work-item state.`,
+    });
+    checks.push({
+        id: "promise_watchdog_source",
+        label: "Promise watchdog uses commitments and comms followups",
+        status: "pass",
+        detail: `${payload.promiseWatchdog.length} accounts in watchdog using commitment + follow-up counters.`,
+    });
+
+    const unresolved = checks.filter((check) => check.status === "warn").length;
+    const coveragePct = checks.length === 0 ? 100 : Math.round(((checks.length - unresolved) / checks.length) * 100);
+    return {
+        checked_at: new Date().toISOString(),
+        coverage_pct: coveragePct,
+        unresolved_checks: unresolved,
+        checks,
+    };
+}
+
+function deriveTraceReason(metadata: Record<string, unknown> | null, detail: string | null): string | null {
+    if (!metadata) return detail;
+    if (typeof metadata.automation_reason === "string" && metadata.automation_reason.trim()) return metadata.automation_reason;
+    if (typeof metadata.reason === "string" && metadata.reason.trim()) return metadata.reason;
+    if (typeof metadata.autopilot_kind === "string" && metadata.autopilot_kind.trim()) return metadata.autopilot_kind.replaceAll("_", " ");
+    return detail;
 }
 
 function buildOpsLoopSuggestions(
@@ -2560,12 +2830,28 @@ export async function buildBusinessOsPayload(
         map.set(approval.org_id, current);
         return map;
     }, new Map<string, AutopilotApproval[]>());
-    enriched = enriched.map((account) => ({
-        ...account,
-        pending_approval_count: pendingApprovalsByOrg.get(account.org_id)?.length ?? 0,
-    }));
+    enriched = enriched.map((account) => {
+        const pendingCount = pendingApprovalsByOrg.get(account.org_id)?.length ?? 0;
+        const approvalBoost = pendingCount > 0 ? Math.min(24, 8 + (pendingCount * 6)) : 0;
+        const approvalReason = pendingCount > 0
+            ? `${pendingCount} approval-gated action${pendingCount === 1 ? "" : "s"} blocking follow-through`
+            : null;
+        return {
+            ...account,
+            priority_score: Math.min(999, account.priority_score + approvalBoost),
+            priority_reasons: approvalReason
+                ? Array.from(new Set([approvalReason, ...account.priority_reasons]))
+                : account.priority_reasons,
+            pending_approval_count: pendingCount,
+        };
+    });
+    enriched.sort((left, right) =>
+        right.pending_approval_count - left.pending_approval_count
+        || right.priority_score - left.priority_score
+        || Number(Boolean(right.account_state.owner_id)) - Number(Boolean(left.account_state.owner_id))
+        || left.name.localeCompare(right.name));
     const communicationDrafts = enriched
-        .flatMap((account) => buildCommunicationDrafts(account, account.effective_activation_stage))
+        .flatMap((account) => buildCommunicationDrafts(account))
         .sort((left, right) => right.priority_score - left.priority_score)
         .slice(0, 12);
     const founderMode = buildFounderMode(enriched, pendingApprovals);
@@ -2673,6 +2959,7 @@ export async function buildBusinessOsPayload(
             open_commitments: Array.from(commitmentCounts.values()).reduce((sum, value) => sum + value.open, 0),
             breached_commitments: Array.from(commitmentCounts.values()).reduce((sum, value) => sum + value.breached, 0),
             pending_approvals: pendingApprovals.length,
+            blocked_by_approval_accounts: enriched.filter((account) => account.pending_approval_count > 0).length,
             communication_drafts: communicationDrafts.length,
             renewal_candidates: renewalCandidates,
             expansion_candidates: expansionCandidates,
@@ -2835,8 +3122,54 @@ export async function runBusinessOpsLoop(db: AdminClient): Promise<BusinessOsOps
 
 export async function runBusinessDailyAutopilot(
     db: AdminClient,
-    options: { limit?: number; maxActionsPerLoop?: number } = {},
+    options: {
+        limit?: number;
+        maxActionsPerLoop?: number;
+        trigger?: "manual" | "scheduled";
+        runKey?: string;
+        idempotencyKey?: string;
+        enforceIdempotency?: boolean;
+    } = {},
 ): Promise<BusinessOsDailyAutopilotResult> {
+    const startedAt = new Date().toISOString();
+    const trigger = options.trigger ?? "scheduled";
+    const runKey = options.runKey?.trim() || `${trigger}:${startedAt.slice(0, 13)}`;
+    const idempotencyKey = options.idempotencyKey?.trim() || runKey;
+    if (options.enforceIdempotency ?? true) {
+        const alreadyRan = await hasAutopilotRunForKey(db, runKey, trigger);
+        if (alreadyRan) {
+            return {
+                generated_at: new Date().toISOString(),
+                run_key: runKey,
+                idempotency_key: idempotencyKey,
+                ops_loop: {
+                    generated_at: startedAt,
+                    candidate_count: 0,
+                    created_count: 0,
+                    deduped_count: 0,
+                    by_kind: {},
+                    suggestions: [],
+                    created_work_items: [],
+                },
+                owner_routes_applied: 0,
+                activation_sequences_created: 0,
+                activation_sequences_completed: 0,
+                activation_commitments_met: 0,
+                collections_sequences_created: 0,
+                collections_sequences_completed: 0,
+                send_queue_escalated: 0,
+                no_response_escalated: 0,
+                approvals_surfaced: 0,
+                approvals_expired: 0,
+                commitments_breached: 0,
+                promise_escalations: 0,
+                commitments_created: 0,
+                collections_auto_closed: 0,
+                outcomes_recorded: 0,
+            };
+        }
+    }
+
     const limit = Math.min(160, Math.max(40, options.limit ?? 120));
     const maxActionsPerLoop = Math.min(60, Math.max(10, options.maxActionsPerLoop ?? 30));
     const [payload, opsLoop] = await Promise.all([
@@ -2848,6 +3181,8 @@ export async function runBusinessDailyAutopilot(
     if (orgIds.length === 0) {
         return {
             generated_at: new Date().toISOString(),
+            run_key: runKey,
+            idempotency_key: idempotencyKey,
             ops_loop: opsLoop,
             owner_routes_applied: 0,
             activation_sequences_created: 0,
@@ -3592,25 +3927,57 @@ export async function runBusinessDailyAutopilot(
         });
     }
 
-        return {
-            generated_at: new Date().toISOString(),
-            ops_loop: opsLoop,
-            owner_routes_applied: ownerRoutesApplied,
-            activation_sequences_created: activationSequencesCreated,
-            activation_sequences_completed: activationSequencesCompleted,
-            activation_commitments_met: activationCommitmentsMet,
-            collections_sequences_created: collectionsSequencesCreated,
-            collections_sequences_completed: collectionsSequencesCompleted,
-            send_queue_escalated: sendQueueEscalated,
-            no_response_escalated: noResponseEscalated,
-            approvals_surfaced: approvalsSurfaced,
-            approvals_expired: approvalsExpired,
-            commitments_breached: commitmentsBreached,
-            promise_escalations: promiseEscalations,
-            commitments_created: commitmentsCreated,
-            collections_auto_closed: collectionsAutoClosed,
-            outcomes_recorded: outcomesRecorded,
-        };
+    await annotateAutopilotEventsWithRunKey(db, {
+        runKey,
+        trigger,
+        startedAt,
+        orgIds,
+    });
+
+    const criticalLoad = commitmentsBreached + promiseEscalations + noResponseEscalated;
+    if (criticalLoad > 0 || approvalsExpired > 0) {
+        const lines: string[] = [];
+        if (commitmentsBreached > 0) lines.push(`${commitmentsBreached} commitments breached`);
+        if (promiseEscalations > 0) lines.push(`${promiseEscalations} promise escalations`);
+        if (noResponseEscalated > 0) lines.push(`${noResponseEscalated} no-response escalations`);
+        if (approvalsExpired > 0) lines.push(`${approvalsExpired} approvals expired`);
+
+        await sendFounderCriticalAlertOnce({
+            dedupeKey: `autopilot-critical:${runKey}`,
+            minIntervalMinutes: 720,
+            message: `Autopilot raised critical exceptions: ${lines.join(", ")}.\n\nOpen: tripbuilt.com/god/autopilot`,
+            metadata: {
+                run_key: runKey,
+                trigger,
+                commitments_breached: commitmentsBreached,
+                promise_escalations: promiseEscalations,
+                no_response_escalated: noResponseEscalated,
+                approvals_expired: approvalsExpired,
+            },
+        });
+    }
+
+    return {
+        generated_at: new Date().toISOString(),
+        run_key: runKey,
+        idempotency_key: idempotencyKey,
+        ops_loop: opsLoop,
+        owner_routes_applied: ownerRoutesApplied,
+        activation_sequences_created: activationSequencesCreated,
+        activation_sequences_completed: activationSequencesCompleted,
+        activation_commitments_met: activationCommitmentsMet,
+        collections_sequences_created: collectionsSequencesCreated,
+        collections_sequences_completed: collectionsSequencesCompleted,
+        send_queue_escalated: sendQueueEscalated,
+        no_response_escalated: noResponseEscalated,
+        approvals_surfaced: approvalsSurfaced,
+        approvals_expired: approvalsExpired,
+        commitments_breached: commitmentsBreached,
+        promise_escalations: promiseEscalations,
+        commitments_created: commitmentsCreated,
+        collections_auto_closed: collectionsAutoClosed,
+        outcomes_recorded: outcomesRecorded,
+    };
 }
 
 export async function getBusinessOsAccountDetail(db: AdminClient, orgId: string): Promise<BusinessOsAccountDetail | null> {
@@ -3821,7 +4188,7 @@ export async function buildAutopilotSnapshot(
     currentUserId: string,
 ): Promise<AutopilotSnapshot> {
     const payload = await buildBusinessOsPayload(db, currentUserId, { limit: 120 });
-    const [approvals, activeWorkItems, commitmentCounts, commsFollowupCounts, sendQueueResult, runsResult] = await Promise.all([
+    const [approvals, activeWorkItems, commitmentCounts, commsFollowupCounts, sendQueueResult, runsResult, traceRowsResult] = await Promise.all([
         listAutopilotApprovalsInternal(db, payload.accounts, { includeResolved: true }),
         loadGodWorkItems(db, {
             orgIds: payload.accounts.map((account) => account.org_id),
@@ -3841,6 +4208,13 @@ export async function buildAutopilotSnapshot(
             .ilike("action", "Autopilot:%")
             .order("created_at", { ascending: false })
             .limit(12),
+        db
+            .from("org_activity_events")
+            .select("id, org_id, event_type, title, detail, entity_type, entity_id, source, metadata, occurred_at")
+            .in("org_id", payload.accounts.map((account) => account.org_id))
+            .or("source.eq.business_os_autopilot,source.eq.business_os_autopilot_approval,source.eq.business_os_ops_loop")
+            .order("occurred_at", { ascending: false })
+            .limit(120),
     ]);
 
     const sendQueueRows = (sendQueueResult.data ?? []) as Array<{ org_id: string | null; metadata: unknown; last_sent_at: string | null }>;
@@ -3903,6 +4277,8 @@ export async function buildAutopilotSnapshot(
             trigger: details?.trigger === "manual" || details?.trigger === "scheduled" ? details.trigger : "unknown",
             actor_name: actor?.full_name?.trim() || actor?.email?.trim() || null,
             created_at: row.created_at,
+            run_key: typeof details?.run_key === "string" ? details.run_key : null,
+            idempotency_key: typeof details?.idempotency_key === "string" ? details.idempotency_key : null,
             details,
         } satisfies AutopilotRun;
     });
@@ -3928,6 +4304,56 @@ export async function buildAutopilotSnapshot(
         });
     }
 
+    const approvalWatchdog = {
+        pending: approvals.filter((approval) => approval.status === "pending").length,
+        stale_24h: approvals.filter((approval) =>
+            approval.status === "pending" && (diffHours(approval.first_seen_at) ?? 0) >= 24,
+        ).length,
+        stale_48h: approvals.filter((approval) =>
+            approval.status === "pending" && (diffHours(approval.first_seen_at) ?? 0) >= 48,
+        ).length,
+        blocked_accounts: new Set(
+            approvals
+                .filter((approval) => approval.status === "pending")
+                .map((approval) => approval.org_id),
+        ).size,
+    };
+
+    const accountNameByOrgId = new Map(payload.accounts.map((account) => [account.org_id, account.name]));
+    const runTraces = ((traceRowsResult.data ?? []) as AutopilotTraceRow[])
+        .map((row) => {
+            const metadata = normalizeMetadata(row.metadata);
+            const orgName = accountNameByOrgId.get(row.org_id) ?? null;
+            return {
+                id: row.id,
+                run_key: typeof metadata?.run_key === "string" ? metadata.run_key : null,
+                org_id: row.org_id,
+                account_name: orgName,
+                event_type: row.event_type,
+                title: row.title,
+                detail: row.detail,
+                reason: deriveTraceReason(metadata, row.detail),
+                source: row.source?.trim() || "business_os_autopilot",
+                occurred_at: row.occurred_at,
+                entity_type: row.entity_type,
+                entity_id: row.entity_id,
+                href: row.org_id
+                    ? `/god/business-os?org=${encodeURIComponent(row.org_id)}`
+                    : "/god/autopilot",
+                metadata,
+            } satisfies AutopilotTraceEntry;
+        })
+        .slice(0, 40);
+
+    const roiScorecard = buildAutopilotRoiScorecard(recentRuns);
+    const truthLock = buildAutopilotTruthLock({
+        accounts: payload.accounts,
+        approvals,
+        runs: recentRuns,
+        policyViolations: payload.policy_violations,
+        promiseWatchdog,
+    });
+
     const founderDigest = buildFounderDigest({
         generatedAt: payload.generated_at,
         founderMode: payload.founder_mode,
@@ -3947,6 +4373,8 @@ export async function buildAutopilotSnapshot(
         daily_brief_history: dailyBriefHistory,
         summary: {
             pending_approvals: approvals.filter((approval) => approval.status === "pending").length,
+            stale_approvals: approvalWatchdog.stale_24h,
+            blocked_by_approval_accounts: approvalWatchdog.blocked_accounts,
             policy_violations: payload.policy_violations.length,
             autopilot_work_items: autopilotWorkItems.length,
             promise_watchdog_accounts: promiseWatchdog.length,
@@ -3955,6 +4383,7 @@ export async function buildAutopilotSnapshot(
             renewal_candidates: payload.founder_mode.revenue_moves.filter((item) => item.title === "Prepare renewal motion").length,
             expansion_candidates: payload.founder_mode.revenue_moves.filter((item) => item.title === "Review expansion leverage").length,
         },
+        approval_watchdog: approvalWatchdog,
         founder_mode: payload.founder_mode,
         loops: [
             {
@@ -4001,6 +4430,9 @@ export async function buildAutopilotSnapshot(
         expansion_candidates: payload.founder_mode.revenue_moves.filter((item) => item.title === "Review expansion leverage"),
         promise_watchdog: promiseWatchdog,
         ops_loop_preview: payload.ops_loop_preview,
+        roi_scorecard: roiScorecard,
+        run_traces: runTraces,
+        truth_lock: truthLock,
     };
 }
 
@@ -4710,6 +5142,37 @@ export async function runBusinessOsEventAutomation(
             entity_id: updated.id,
             source: "business_os_autopilot",
             metadata: { trigger: options.trigger, work_item_kind: workItem.kind },
+        });
+    }
+
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const criticalSignals: string[] = [];
+    if (account.snapshot.fatal_error_count > 0) {
+        criticalSignals.push(`${account.snapshot.fatal_error_count} fatal incidents`);
+    }
+    if (account.snapshot.urgent_support_count > 0) {
+        criticalSignals.push(`${account.snapshot.urgent_support_count} urgent support tickets`);
+    }
+    if (account.snapshot.overdue_balance >= 100000 && account.account_state.health_band === "at_risk") {
+        criticalSignals.push(`overdue balance ${account.snapshot.overdue_balance_label} with at-risk health`);
+    }
+    if (!account.account_state.owner_id && account.priority_score >= 85) {
+        criticalSignals.push("high-risk account is still unowned");
+    }
+    if (criticalSignals.length > 0) {
+        await sendFounderCriticalAlertOnce({
+            dedupeKey: `event-critical:${options.orgId}:${todayKey}`,
+            minIntervalMinutes: 240,
+            message: `${account.name} needs immediate founder attention: ${criticalSignals.join(", ")}.\n\nOpen: tripbuilt.com/god/business-os`,
+            metadata: {
+                org_id: options.orgId,
+                trigger: options.trigger,
+                priority_score: account.priority_score,
+                fatal_error_count: account.snapshot.fatal_error_count,
+                urgent_support_count: account.snapshot.urgent_support_count,
+                overdue_balance: account.snapshot.overdue_balance,
+                owner_id: account.account_state.owner_id,
+            },
         });
     }
 

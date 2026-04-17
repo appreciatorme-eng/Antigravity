@@ -10,8 +10,37 @@ export async function POST(request: NextRequest) {
     if (!auth.ok) return auth.response;
 
     try {
+        const requestedRunKey = request.headers.get("x-idempotency-key")?.trim() ?? "";
+        const fallbackRunKey = `manual:${auth.userId}:${new Date().toISOString().slice(0, 16)}`;
+        const runKey = requestedRunKey || fallbackRunKey;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- JSON path filter over audit details
+        const rawDb = auth.adminClient as any;
+        const existingRun = await rawDb
+            .from("platform_audit_log")
+            .select("id")
+            .eq("action", "Autopilot: Manual Business OS run")
+            .filter("details->>run_key", "eq", runKey)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+        if (existingRun.data?.id) {
+            const snapshot = await buildAutopilotSnapshot(auth.adminClient as never, auth.userId);
+            return NextResponse.json({
+                generated_at: new Date().toISOString(),
+                skipped: true,
+                reason: "already_ran_for_run_key",
+                run_key: runKey,
+                snapshot,
+            }, { status: 200 });
+        }
+
         const [autopilot, brief] = await Promise.all([
-            runBusinessDailyAutopilot(auth.adminClient as never),
+            runBusinessDailyAutopilot(auth.adminClient as never, {
+                trigger: "manual",
+                runKey,
+                idempotencyKey: runKey,
+                enforceIdempotency: false,
+            }),
             generateDailyOpsBrief(auth.adminClient as never, auth.userId),
         ]);
 
@@ -26,6 +55,7 @@ export async function POST(request: NextRequest) {
         const snapshot = await buildAutopilotSnapshot(auth.adminClient as never, auth.userId);
         return NextResponse.json({
             generated_at: new Date().toISOString(),
+            run_key: runKey,
             result: autopilot,
             brief,
             snapshot,
