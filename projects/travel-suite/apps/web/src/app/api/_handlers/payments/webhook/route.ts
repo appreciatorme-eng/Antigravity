@@ -28,6 +28,7 @@ import {
   isPaymentsIntegrationEnabled,
 } from '@/lib/integrations';
 import { trackFunnelEvent } from '@/lib/funnel/track';
+import { loadCommsSequences, updateCommsSequence } from '@/lib/platform/business-comms';
 
 interface RazorpayPaymentEntity {
   id: string;
@@ -372,6 +373,10 @@ async function handlePaymentCaptured(
       });
     }
 
+    if (paidInvoice?.status === 'paid' && paidInvoice.organization_id) {
+      void autoCloseCollectionsSequence(supabase, paidInvoice.organization_id, payment.id, requestContext);
+    }
+
     const { data: invoiceRow } = await supabase
       .from('invoices')
       .select('invoice_number, client_id, organization_id')
@@ -634,5 +639,41 @@ async function handleInvoicePaid(payload: RazorpayWebhookPayload, requestContext
       tripId: syncedInvoice.trip_id,
       confirmDraftTrip: true,
     });
+  }
+}
+
+async function autoCloseCollectionsSequence(
+  supabase: ReturnType<typeof createAdminClient>,
+  organizationId: string,
+  paymentId: string,
+  requestContext: WebhookLogContext,
+) {
+  try {
+    const sequences = await loadCommsSequences(supabase as never, organizationId, "active");
+    const collectionsSequences = sequences.filter((seq) => seq.sequence_type === "collections");
+    if (collectionsSequences.length === 0) return;
+
+    await Promise.all(
+      collectionsSequences.map((seq) =>
+        updateCommsSequence(supabase as never, seq.id, {
+          status: "completed",
+          metadata: {
+            ...(seq.metadata ?? {}),
+            auto_closed: true,
+            auto_closed_reason: "payment_captured",
+            auto_closed_payment_id: paymentId,
+            auto_closed_at: new Date().toISOString(),
+          },
+        }),
+      ),
+    );
+
+    logWebhookHandlerEvent("info", "Auto-closed collections sequences after payment", requestContext, {
+      payment_event_type: "payment.captured",
+      organization_id: organizationId,
+      sequences_closed: collectionsSequences.length,
+    });
+  } catch (err) {
+    logError("Failed to auto-close collections sequences", err, requestContext);
   }
 }

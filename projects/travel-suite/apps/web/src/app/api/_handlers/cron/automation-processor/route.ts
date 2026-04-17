@@ -9,6 +9,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { buildAutopilotAuditDetails, buildAutopilotSnapshot, generateDailyOpsBrief, runBusinessDailyAutopilot } from "@/lib/platform/business-os";
 import { logPlatformAction } from "@/lib/platform/audit";
 import { logError, logEvent } from "@/lib/observability/logger";
+import { runErrorDigest } from "@/lib/platform/error-digest";
+import { deliverMonthlyOperatorScorecards } from "@/lib/admin/operator-scorecard-delivery";
+import { triggerCampaignSendsForOrg } from "@/lib/reputation/campaign-trigger";
+import { sendFounderDailyAlert } from "@/lib/platform/founder-alerts";
 
 /**
  * Automation cron processor.
@@ -57,12 +61,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, mode, result: automationResult, business_os_autopilot: { ran: false, reason: "disabled" } });
     }
 
-    const businessOsAutopilot = await runBusinessOsAutopilot();
+    const [businessOsAutopilot, chainedResults] = await Promise.all([
+      runBusinessOsAutopilot(),
+      runChainedCrons(),
+    ]);
+
     return NextResponse.json({
       success: true,
       mode,
       result: automationResult,
       business_os_autopilot: businessOsAutopilot,
+      chained: chainedResults,
     });
   } catch (error) {
     logError("[/api/cron/automation-processor:POST] failed", error);
@@ -164,6 +173,17 @@ async function runBusinessOsAutopilot(): Promise<BusinessOsAutopilotResult> {
     snapshot.founder_digest.slack_text,
   ].join("\n\n"));
 
+  await sendFounderDailyAlert({
+    approvalsSurfaced: autopilot.approvals_surfaced,
+    commitmentsBreached: autopilot.commitments_breached,
+    collectionsAutoClosed: autopilot.collections_auto_closed,
+    sendQueueEscalated: autopilot.send_queue_escalated,
+    noResponseEscalated: autopilot.no_response_escalated,
+    promiseEscalations: autopilot.promise_escalations,
+    priorityCount: brief.priorities.length,
+    founderDigestHeadline: snapshot.founder_digest.headline,
+  });
+
   return {
     ran: true,
     generatedAt: new Date().toISOString(),
@@ -191,4 +211,120 @@ async function runBusinessOsAutopilot(): Promise<BusinessOsAutopilotResult> {
     gapCount: brief.gaps.length,
     slackPosted,
   };
+}
+
+// ─── Chained Orphaned Crons ────────────────────────────────────────────────
+// These cron handlers have no Vercel schedule slots. We chain them here so
+// they actually run. Each is gated to its natural cadence (daily / weekly /
+// monthly) and wrapped in try/catch so one failure never blocks the others.
+
+interface ChainedCronResults {
+  readonly reputationCampaigns: { sent: number; orgs: number; errors: number } | { skipped: true };
+  readonly errorDigest: { posted: boolean; count: number } | { skipped: true };
+  readonly operatorScorecards: { delivered: boolean } | { skipped: true };
+  readonly aiSpendAlert: { alerted: boolean; spend_usd: number } | { skipped: true };
+}
+
+async function runChainedCrons(): Promise<ChainedCronResults> {
+  const now = new Date();
+  const dayOfWeek = now.getUTCDay(); // 0=Sun, 1=Mon
+  const dayOfMonth = now.getUTCDate();
+
+  const [reputationResult, errorDigestResult, scorecardResult, aiSpendResult] = await Promise.allSettled([
+    // Reputation campaigns — run every day
+    runReputationCampaigns(),
+
+    // Error digest — run on Mondays only
+    dayOfWeek === 1
+      ? runErrorDigest()
+      : Promise.resolve({ skipped: true as const }),
+
+    // Operator scorecards — run on the 1st of each month only
+    dayOfMonth === 1
+      ? deliverMonthlyOperatorScorecards({})
+        .then(() => ({ delivered: true }))
+        .catch((err: unknown) => {
+          logError("[automation-processor] operator-scorecards failed", err);
+          return { delivered: false };
+        })
+      : Promise.resolve({ skipped: true as const }),
+
+    // OpenAI daily spend alert — run every day
+    runAiSpendAlert(),
+  ]);
+
+  return {
+    reputationCampaigns: reputationResult.status === "fulfilled" ? reputationResult.value : { sent: 0, orgs: 0, errors: 1 },
+    errorDigest: errorDigestResult.status === "fulfilled" ? errorDigestResult.value : { posted: false, count: 0 },
+    operatorScorecards: scorecardResult.status === "fulfilled" ? scorecardResult.value : { delivered: false },
+    aiSpendAlert: aiSpendResult.status === "fulfilled" ? aiSpendResult.value : { alerted: false, spend_usd: 0 },
+  };
+}
+
+async function runAiSpendAlert(): Promise<{ alerted: boolean; spend_usd: number }> {
+  const threshold = Number(process.env.AI_MONTHLY_SPEND_ALERT_USD ?? "50");
+  const supabase = createAdminClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rawSupabase = supabase as any;
+
+  const now = new Date();
+  const monthStart = new Date(now.getUTCFullYear(), now.getUTCMonth(), 1).toISOString().slice(0, 10);
+  const { data, error } = await rawSupabase
+    .from("organization_ai_usage")
+    .select("estimated_cost_usd")
+    .eq("month_start", monthStart);
+
+  if (error) {
+    logError("[automation-processor] ai-spend-alert query failed", error);
+    return { alerted: false, spend_usd: 0 };
+  }
+
+  const spendUsd = ((data ?? []) as Array<{ estimated_cost_usd: number | null }>)
+    .reduce((sum, row) => sum + (row.estimated_cost_usd ?? 0), 0);
+
+  if (spendUsd < threshold) {
+    return { alerted: false, spend_usd: spendUsd };
+  }
+
+  const { sendFounderCriticalAlert } = await import("@/lib/platform/founder-alerts");
+  await sendFounderCriticalAlert(
+    `AI spend this month: $${spendUsd.toFixed(2)} (threshold: $${threshold.toFixed(2)})\n\nReview at tripbuilt.com/god/costs`,
+  );
+  logEvent("info", "[automation-processor] ai-spend-alert fired", { spendUsd, threshold });
+  return { alerted: true, spend_usd: spendUsd };
+}
+
+async function runReputationCampaigns(): Promise<{ sent: number; orgs: number; errors: number }> {
+  const supabase = createAdminClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rawSupabase = supabase as any;
+  const { data, error } = await rawSupabase
+    .from("reputation_review_campaigns")
+    .select("organization_id")
+    .eq("status", "active")
+    .in("trigger_event", ["trip_completed", "trip_day_2"]);
+
+  if (error) {
+    logError("[automation-processor] reputation-campaigns query failed", error);
+    return { sent: 0, orgs: 0, errors: 1 };
+  }
+
+  const orgIds: string[] = [...new Set(((data ?? []) as Array<{ organization_id: string }>).map((r) => r.organization_id))];
+  if (orgIds.length === 0) return { sent: 0, orgs: 0, errors: 0 };
+
+  let totalSent = 0;
+  let totalErrors = 0;
+  for (const orgId of orgIds) {
+    try {
+      const result = await triggerCampaignSendsForOrg(supabase, orgId);
+      totalSent += result.sends_created;
+      totalErrors += result.errors.length;
+    } catch (err) {
+      logError("[automation-processor] reputation campaign send failed", err, { orgId });
+      totalErrors += 1;
+    }
+  }
+
+  logEvent("info", "[automation-processor] reputation-campaigns completed", { orgIds: orgIds.length, sent: totalSent });
+  return { sent: totalSent, orgs: orgIds.length, errors: totalErrors };
 }

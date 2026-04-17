@@ -328,6 +328,8 @@ export async function GET(request: NextRequest) {
             posthogHealth,
             todaySpendUsd,
             yesterdaySpendUsd,
+            onboardingStartedResult,
+            onboardingCompletedResult,
         ] = await Promise.all([
             db.from("profiles").select("id", { count: "exact", head: true }),
             db.from("organizations").select("id", { count: "exact", head: true }),
@@ -415,6 +417,8 @@ export async function GET(request: NextRequest) {
             checkPosthogRuntime(),
             readRedisSpendFor(todayStart.toISOString().slice(0, 10)),
             readRedisSpendFor(yesterdayStart.toISOString().slice(0, 10)),
+            db.from("profiles").select("id", { count: "exact", head: true }).eq("role", "admin").gt("onboarding_step", 0),
+            db.from("profiles").select("id", { count: "exact", head: true }).eq("role", "admin").gte("onboarding_step", 5),
         ]);
 
         const organizations = (allOrganizationsResult.data ?? []) as OrganizationRow[];
@@ -838,6 +842,12 @@ export async function GET(request: NextRequest) {
         const todayFatalErrors = todayFatalErrorsResult.count ?? 0;
         const yesterdayFatalErrors = yesterdayFatalErrorsResult.count ?? 0;
 
+        const onboardingStarted = onboardingStartedResult.count ?? 0;
+        const onboardingCompleted = onboardingCompletedResult.count ?? 0;
+        const onboardingCompletionPct = onboardingStarted > 0
+            ? Number(((onboardingCompleted / onboardingStarted) * 100).toFixed(1))
+            : null;
+
         return NextResponse.json({
             generated_at: new Date().toISOString(),
             current_user_id: auth.userId,
@@ -862,6 +872,14 @@ export async function GET(request: NextRequest) {
                     trend_pct: pctChange(todayOrgs, yesterdayOrgs),
                     href: withRange("/god/directory?role=admin", selectedRange),
                     tone: "neutral",
+                },
+                {
+                    id: "onboarding",
+                    label: "Onboarding completion",
+                    value: onboardingCompletionPct !== null ? `${onboardingCompletionPct}%` : "—",
+                    detail: `${onboardingCompleted} of ${onboardingStarted} admins completed`,
+                    href: withRange("/god/signups", selectedRange),
+                    tone: onboardingCompletionPct !== null && onboardingCompletionPct < 50 ? "warning" : "neutral",
                 },
                 {
                     id: "users",

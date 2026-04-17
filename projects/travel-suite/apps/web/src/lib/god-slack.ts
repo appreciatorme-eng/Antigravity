@@ -1,11 +1,9 @@
-import { env } from "@/lib/env";
-
 export interface SlackBlock {
     type: string;
     text?: { type: string; text: string; emoji?: boolean };
-    elements?: any[];
-    accessory?: any;
-    fields?: any[];
+    elements?: unknown[];
+    accessory?: unknown;
+    fields?: unknown[];
 }
 
 /**
@@ -25,7 +23,7 @@ export async function sendOpsAlert(text: string, blocks?: SlackBlock[]) {
         const payload = blocks ? { text, blocks } : { text };
         
         const response = await fetch(webhookUrl, {
-            method: "POST",
+            method: "POST", // eslint-disable-line no-restricted-syntax -- server-side Slack webhook, not a mutation endpoint
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
         });
@@ -43,67 +41,40 @@ export async function sendOpsAlert(text: string, blocks?: SlackBlock[]) {
 }
 
 /**
- * Specifically structures a Human-In-The-Loop AI proposal message.
- * Embeds an interactive block so an operator can Approve/Reject right in Slack.
+ * Structures a Human-In-The-Loop AI proposal message.
+ * Approve/Reject is done in the Autopilot UI at /god/autopilot — no interactive
+ * Slack buttons are used since there is no Slack interactivity webhook.
  */
 export async function sendHitlProposal(
-    title: string, 
-    reasoning: string, 
-    actionPayload: string, 
+    title: string,
+    reasoning: string,
+    actionPayload: string,
     riskLevel: "medium" | "high" | "critical" = "medium"
 ) {
     const colorEmoji = riskLevel === "critical" ? "🚨" : riskLevel === "high" ? "⚠️" : "ℹ️";
-    
+
     const blocks: SlackBlock[] = [
         {
             type: "header",
-            text: {
-                type: "plain_text",
-                text: `${colorEmoji} AI Proposal: ${title}`,
-                emoji: true
-            }
+            text: { type: "plain_text", text: `${colorEmoji} AI Proposal: ${title}`, emoji: true },
         },
         {
             type: "section",
-            text: {
-                type: "mrkdwn",
-                text: `*Reasoning:*\n${reasoning}`
-            }
+            text: { type: "mrkdwn", text: `*Reasoning:*\n${reasoning}` },
         },
         {
             type: "section",
-            text: {
-                type: "mrkdwn",
-                text: `*Payload/Action:*\n\`\`\`${actionPayload}\`\`\``
-            }
+            text: { type: "mrkdwn", text: `*Payload/Action:*\n\`\`\`${actionPayload}\`\`\`` },
         },
         {
-            type: "actions",
+            type: "context",
             elements: [
                 {
-                    type: "button",
-                    text: {
-                        type: "plain_text",
-                        text: "✅ Approve Action",
-                        emoji: true
-                    },
-                    style: "primary",
-                    value: `approve_${Buffer.from(actionPayload).toString('base64')}`,
-                    action_id: "hitl_approve"
+                    type: "mrkdwn",
+                    text: `👉 Approve or reject at <https://tripbuilt.com/god/autopilot|tripbuilt.com/god/autopilot>`,
                 },
-                {
-                    type: "button",
-                    text: {
-                        type: "plain_text",
-                        text: "❌ Reject",
-                        emoji: true
-                    },
-                    style: "danger",
-                    value: "reject",
-                    action_id: "hitl_reject"
-                }
-            ]
-        }
+            ],
+        },
     ];
 
     return sendOpsAlert(`AI Proposal: ${title}`, blocks);

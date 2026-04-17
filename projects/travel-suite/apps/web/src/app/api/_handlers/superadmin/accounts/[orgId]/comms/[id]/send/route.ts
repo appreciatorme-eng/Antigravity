@@ -9,6 +9,8 @@ import { runBusinessOsEventAutomation } from "@/lib/platform/business-os";
 import { getClientIpFromRequest, logPlatformActionWithTarget } from "@/lib/platform/audit";
 import { recordOrgActivityEvent } from "@/lib/platform/org-memory";
 import { logError } from "@/lib/observability/logger";
+import { createPaymentLinkRecord } from "@/lib/payments/payment-links.server";
+import { buildPaymentUrl } from "@/lib/payments/payment-links";
 
 function normalizeMetadata(value: unknown): Record<string, unknown> | null {
     return value && typeof value === "object" && !Array.isArray(value)
@@ -71,7 +73,35 @@ export async function POST(
         }
 
         const draftBody = typeof metadata.draft_body === "string" ? metadata.draft_body : "";
-        const { subject, body } = parseEmailDraft(draftBody);
+        const sequenceType = typeof metadata.sequence_type === "string" ? metadata.sequence_type : commsSequence.sequence_type ?? "";
+        const overdueBalance = typeof detail.snapshot?.overdue_balance === "number" ? detail.snapshot.overdue_balance : 0;
+        const orgName = detail.organization.name;
+
+        let paymentLinkUrl: string | null = null;
+        if (sequenceType === "collections" && overdueBalance > 0) {
+            try {
+                const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://tripbuilt.com";
+                const { link } = await createPaymentLinkRecord(auth.adminClient as never, {
+                    organizationId: orgId,
+                    createdBy: auth.userId,
+                    amount: overdueBalance,
+                    description: `Outstanding balance — ${orgName}`,
+                    clientName: orgName,
+                    clientEmail: recipient.email ?? undefined,
+                    expiresInHours: 72,
+                    baseUrl,
+                });
+                paymentLinkUrl = buildPaymentUrl(link.token, baseUrl);
+            } catch (err) {
+                logError("[comms/send] Failed to create collections payment link", err);
+            }
+        }
+
+        const bodyWithPaymentLink = paymentLinkUrl
+            ? `${draftBody}\n\n💳 Pay now: ${paymentLinkUrl}`
+            : draftBody;
+
+        const { subject, body } = parseEmailDraft(bodyWithPaymentLink);
         const sent = await sendEmailForOrg({
             orgId,
             to: recipient.email,
