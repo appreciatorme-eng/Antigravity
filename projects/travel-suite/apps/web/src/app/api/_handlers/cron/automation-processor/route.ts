@@ -87,7 +87,10 @@ interface BusinessOsAutopilotResult {
   readonly candidateWorkItems: number;
   readonly dedupedWorkItems: number;
   readonly activationSequencesCreated: number;
+  readonly activationSequencesCompleted: number;
+  readonly activationCommitmentsMet: number;
   readonly collectionsSequencesCreated: number;
+  readonly collectionsSequencesCompleted: number;
   readonly commitmentsCreated: number;
   readonly collectionsAutoClosed: number;
   readonly outcomesRecorded: number;
@@ -141,8 +144,10 @@ async function runBusinessOsAutopilot(): Promise<BusinessOsAutopilotResult> {
   const summary = [
     "Business OS daily autopilot completed.",
     `Created ${autopilot.ops_loop.created_count}/${autopilot.ops_loop.candidate_count} queue items (${autopilot.ops_loop.deduped_count} already covered).`,
-    `Activation sequences: ${autopilot.activation_sequences_created} • Collections sequences: ${autopilot.collections_sequences_created}`,
-    `Activation commitments: ${autopilot.commitments_created} • Collections auto-closed: ${autopilot.collections_auto_closed}`,
+    `Activation seq +${autopilot.activation_sequences_created} / closed ${autopilot.activation_sequences_completed}`,
+    `Activation commitments +${autopilot.commitments_created} / met ${autopilot.activation_commitments_met}`,
+    `Collections seq +${autopilot.collections_sequences_created} / closed ${autopilot.collections_sequences_completed}`,
+    `Collections work auto-closed: ${autopilot.collections_auto_closed}`,
     `Top focus: ${brief.headline}`,
     ...(brief.gaps.slice(0, 3).map((gap) => `Gap: ${gap}`)),
   ].join("\n");
@@ -156,7 +161,10 @@ async function runBusinessOsAutopilot(): Promise<BusinessOsAutopilotResult> {
     candidateWorkItems: autopilot.ops_loop.candidate_count,
     dedupedWorkItems: autopilot.ops_loop.deduped_count,
     activationSequencesCreated: autopilot.activation_sequences_created,
+    activationSequencesCompleted: autopilot.activation_sequences_completed,
+    activationCommitmentsMet: autopilot.activation_commitments_met,
     collectionsSequencesCreated: autopilot.collections_sequences_created,
+    collectionsSequencesCompleted: autopilot.collections_sequences_completed,
     commitmentsCreated: autopilot.commitments_created,
     collectionsAutoClosed: autopilot.collections_auto_closed,
     outcomesRecorded: autopilot.outcomes_recorded,

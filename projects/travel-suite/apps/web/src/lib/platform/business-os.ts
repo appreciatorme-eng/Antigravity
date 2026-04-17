@@ -27,6 +27,8 @@ import {
     buildCommitmentCounts,
     loadCommsSequences,
     loadCommitments,
+    updateCommitment,
+    updateCommsSequence,
     type GodCommitment,
     type GodCommsSequence,
 } from "@/lib/platform/business-comms";
@@ -244,7 +246,10 @@ export type BusinessOsDailyAutopilotResult = {
     generated_at: string;
     ops_loop: BusinessOsOpsLoopResult;
     activation_sequences_created: number;
+    activation_sequences_completed: number;
+    activation_commitments_met: number;
     collections_sequences_created: number;
+    collections_sequences_completed: number;
     commitments_created: number;
     collections_auto_closed: number;
     outcomes_recorded: number;
@@ -1735,7 +1740,10 @@ export async function runBusinessDailyAutopilot(
             generated_at: new Date().toISOString(),
             ops_loop: opsLoop,
             activation_sequences_created: 0,
+            activation_sequences_completed: 0,
+            activation_commitments_met: 0,
             collections_sequences_created: 0,
+            collections_sequences_completed: 0,
             commitments_created: 0,
             collections_auto_closed: 0,
             outcomes_recorded: 0,
@@ -1785,7 +1793,10 @@ export async function runBusinessDailyAutopilot(
     }
 
     let activationSequencesCreated = 0;
+    let activationSequencesCompleted = 0;
+    let activationCommitmentsMet = 0;
     let collectionsSequencesCreated = 0;
+    let collectionsSequencesCompleted = 0;
     let commitmentsCreated = 0;
     let collectionsAutoClosed = 0;
     let outcomesRecorded = 0;
@@ -1900,11 +1911,100 @@ export async function runBusinessDailyAutopilot(
         });
     }
 
+    const activatedOrgIds = new Set(
+        payload.accounts
+            .filter((account) => account.snapshot.proposal_sent_count > 0)
+            .map((account) => account.org_id),
+    );
+    for (const row of commitmentRows) {
+        if (activationCommitmentsMet >= maxActionsPerLoop) break;
+        if (!row.org_id || !activatedOrgIds.has(row.org_id)) continue;
+        if (row.status !== "open") continue;
+        const metadata = normalizeMetadata(row.metadata);
+        const autopilotKind = typeof metadata?.autopilot_kind === "string" ? metadata.autopilot_kind : "";
+        if (autopilotKind !== "first_proposal_activation") continue;
+        const nextMetadata = {
+            ...(metadata ?? {}),
+            autopilot_resolved_at: new Date().toISOString(),
+            autopilot_resolved_by: "business_os_daily_autopilot",
+        };
+        const commitment = await updateCommitment(db, row.id, {
+            status: "met",
+            metadata: nextMetadata,
+        });
+        if (!commitment) continue;
+        activationCommitmentsMet += 1;
+        await recordOrgActivityEvent(db, {
+            org_id: row.org_id,
+            actor_id: null,
+            event_type: "autopilot_activation_commitment_met",
+            title: "Autopilot marked activation commitment met",
+            detail: "First proposal milestone reached; activation commitment resolved automatically.",
+            entity_type: "commitment",
+            entity_id: commitment.id,
+            source: "business_os_autopilot",
+            metadata: {
+                status: commitment.status,
+                due_at: commitment.due_at,
+            },
+        });
+    }
+
+    for (const row of sequenceRows) {
+        if (activationSequencesCompleted >= maxActionsPerLoop) break;
+        if (!row.org_id || !activatedOrgIds.has(row.org_id)) continue;
+        if (row.sequence_type !== "activation_rescue" || row.status === "completed") continue;
+        const sequence = await updateCommsSequence(db, row.id, {
+            status: "completed",
+            next_follow_up_at: null,
+        });
+        if (!sequence) continue;
+        activationSequencesCompleted += 1;
+        await recordOrgActivityEvent(db, {
+            org_id: row.org_id,
+            actor_id: null,
+            event_type: "autopilot_activation_sequence_completed",
+            title: "Autopilot completed activation sequence",
+            detail: "Activation rescue sequence closed after first proposal milestone.",
+            entity_type: "comms_sequence",
+            entity_id: sequence.id,
+            source: "business_os_autopilot",
+            metadata: {
+                status: sequence.status,
+            },
+        });
+    }
+
     const zeroOverdueOrgIds = new Set(
         payload.accounts
             .filter((account) => account.snapshot.overdue_balance <= 0)
             .map((account) => account.org_id),
     );
+    for (const row of sequenceRows) {
+        if (collectionsSequencesCompleted >= maxActionsPerLoop) break;
+        if (!row.org_id || !zeroOverdueOrgIds.has(row.org_id)) continue;
+        if (row.sequence_type !== "collections" || row.status === "completed") continue;
+        const sequence = await updateCommsSequence(db, row.id, {
+            status: "completed",
+            next_follow_up_at: null,
+        });
+        if (!sequence) continue;
+        collectionsSequencesCompleted += 1;
+        await recordOrgActivityEvent(db, {
+            org_id: row.org_id,
+            actor_id: null,
+            event_type: "autopilot_collections_sequence_completed",
+            title: "Autopilot completed collections sequence",
+            detail: "Collections follow-up sequence closed after overdue balance cleared.",
+            entity_type: "comms_sequence",
+            entity_id: sequence.id,
+            source: "business_os_autopilot",
+            metadata: {
+                status: sequence.status,
+            },
+        });
+    }
+
     for (const item of collectionsWorkItemRows) {
         if (collectionsAutoClosed >= maxActionsPerLoop) break;
         if (!item.org_id || !zeroOverdueOrgIds.has(item.org_id)) continue;
@@ -1942,7 +2042,10 @@ export async function runBusinessDailyAutopilot(
         generated_at: new Date().toISOString(),
         ops_loop: opsLoop,
         activation_sequences_created: activationSequencesCreated,
+        activation_sequences_completed: activationSequencesCompleted,
+        activation_commitments_met: activationCommitmentsMet,
         collections_sequences_created: collectionsSequencesCreated,
+        collections_sequences_completed: collectionsSequencesCompleted,
         commitments_created: commitmentsCreated,
         collections_auto_closed: collectionsAutoClosed,
         outcomes_recorded: outcomesRecorded,
