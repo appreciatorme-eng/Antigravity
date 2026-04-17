@@ -183,6 +183,7 @@ async function runBusinessOsAutopilot(): Promise<BusinessOsAutopilotResult> {
     };
   }
 
+  const runStartedMs = Date.now();
   const [autopilot, brief] = await Promise.all([
     runBusinessDailyAutopilot(adminClient as never, {
       trigger: "scheduled",
@@ -192,7 +193,7 @@ async function runBusinessOsAutopilot(): Promise<BusinessOsAutopilotResult> {
     }),
     generateDailyOpsBrief(adminClient as never, ""),
   ]);
-  const auditDetails = buildAutopilotAuditDetails(autopilot, brief, "scheduled");
+  const auditDetails = buildAutopilotAuditDetails(autopilot, brief, "scheduled", Date.now() - runStartedMs);
 
   await logPlatformAction(
     null,

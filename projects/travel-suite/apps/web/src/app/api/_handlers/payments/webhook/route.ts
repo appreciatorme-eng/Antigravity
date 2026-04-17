@@ -29,6 +29,8 @@ import {
 } from '@/lib/integrations';
 import { trackFunnelEvent } from '@/lib/funnel/track';
 import { loadCommsSequences, updateCommsSequence } from '@/lib/platform/business-comms';
+import { recordPaymentLinkEvent } from '@/lib/payments/payment-links.server';
+import { runBusinessOsEventAutomation } from '@/lib/platform/business-os';
 
 interface RazorpayPaymentEntity {
   id: string;
@@ -344,6 +346,8 @@ async function handlePaymentCaptured(
 
   const supabase = createAdminClient();
   const invoiceId = payment.notes?.invoice_id;
+  let paidInvoiceOrgId: string | null = null;
+  let orgIdForFunnel = payment.notes?.organization_id || null;
 
   if (invoiceId) {
     // Record payment against invoice
@@ -364,6 +368,13 @@ async function handlePaymentCaptured(
       .eq('id', invoiceId)
       .maybeSingle();
 
+    if (paidInvoice?.organization_id) {
+      paidInvoiceOrgId = paidInvoice.organization_id;
+      if (!orgIdForFunnel) {
+        orgIdForFunnel = paidInvoice.organization_id;
+      }
+    }
+
     if (paidInvoice?.status === 'paid' && paidInvoice.trip_id && paidInvoice.organization_id) {
       void syncWonCommercialState({
         adminClient: supabase,
@@ -371,10 +382,6 @@ async function handlePaymentCaptured(
         tripId: paidInvoice.trip_id,
         confirmDraftTrip: true,
       });
-    }
-
-    if (paidInvoice?.status === 'paid' && paidInvoice.organization_id) {
-      void autoCloseCollectionsSequence(supabase, paidInvoice.organization_id, payment.id, requestContext);
     }
 
     const { data: invoiceRow } = await supabase
@@ -418,14 +425,28 @@ async function handlePaymentCaptured(
     }
   }
 
-  let orgIdForFunnel = payment.notes?.organization_id || null;
-  if (!orgIdForFunnel && invoiceId) {
-    const { data: invoiceRow } = await supabase
-      .from('invoices')
-      .select('organization_id')
-      .eq('id', invoiceId)
-      .maybeSingle();
-    orgIdForFunnel = invoiceRow?.organization_id || null;
+  const syncedPaymentLinkOrgId = await syncCapturedPaymentLinks(supabase, payment, requestContext);
+  if (!orgIdForFunnel && syncedPaymentLinkOrgId) {
+    orgIdForFunnel = syncedPaymentLinkOrgId;
+  }
+
+  const orgIdsToClose = Array.from(new Set([paidInvoiceOrgId, syncedPaymentLinkOrgId].filter(Boolean) as string[]));
+  for (const orgId of orgIdsToClose) {
+    await autoCloseCollectionsSequence(supabase, orgId, payment.id, requestContext);
+    await autoCloseCollectionsWorkItems(supabase, orgId, payment.id, requestContext);
+    try {
+      await runBusinessOsEventAutomation(supabase as never, {
+        orgId,
+        currentUserId: null,
+        trigger: "collections_updated",
+      });
+    } catch (err) {
+      logError("Failed to run Business OS event automation after payment capture", err, {
+        ...requestContext,
+        payment_event_type: "payment.captured",
+        organization_id: orgId,
+      });
+    }
   }
 
   if (orgIdForFunnel) {
@@ -639,6 +660,116 @@ async function handleInvoicePaid(payload: RazorpayWebhookPayload, requestContext
       tripId: syncedInvoice.trip_id,
       confirmDraftTrip: true,
     });
+  }
+}
+
+async function syncCapturedPaymentLinks(
+  supabase: ReturnType<typeof createAdminClient>,
+  payment: RazorpayPaymentEntity,
+  requestContext: WebhookLogContext,
+): Promise<string | null> {
+  const orderId = payment.order_id?.trim();
+  if (!orderId) return null;
+
+  const { data: links, error } = await supabase
+    .from("payment_links")
+    .select("token, organization_id, status")
+    .eq("razorpay_order_id", orderId)
+    .limit(20);
+
+  if (error) {
+    logError("Failed to lookup payment links for captured payment", error, {
+      ...requestContext,
+      payment_event_type: "payment.captured",
+      payment_order_id: orderId,
+    });
+    return null;
+  }
+
+  let matchedOrgId: string | null = null;
+  let markedPaid = 0;
+  for (const link of links ?? []) {
+    matchedOrgId = matchedOrgId ?? link.organization_id ?? null;
+    if (!link.token || (link.status !== "pending" && link.status !== "viewed")) continue;
+    try {
+      await recordPaymentLinkEvent(supabase as never, {
+        token: link.token,
+        event: "paid",
+        razorpayPaymentId: payment.id,
+        metadata: {
+          source: "payments_webhook",
+          payment_event_type: "payment.captured",
+        },
+        _callerVerified: true,
+      });
+      markedPaid += 1;
+    } catch (err) {
+      logError("Failed to mark payment link as paid from captured webhook", err, {
+        ...requestContext,
+        payment_event_type: "payment.captured",
+        payment_order_id: orderId,
+        payment_link_token: link.token,
+      });
+    }
+  }
+
+  if (markedPaid > 0) {
+    logWebhookHandlerEvent("info", "Marked payment links as paid from captured webhook", requestContext, {
+      payment_event_type: "payment.captured",
+      payment_order_id: orderId,
+      links_marked_paid: markedPaid,
+    });
+  }
+
+  return matchedOrgId;
+}
+
+async function autoCloseCollectionsWorkItems(
+  supabase: ReturnType<typeof createAdminClient>,
+  organizationId: string,
+  paymentId: string,
+  requestContext: WebhookLogContext,
+): Promise<void> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- god_work_items not present in generated payment webhook db type
+    const rawDb = supabase as any;
+    const { data: items } = await rawDb
+      .from("god_work_items")
+      .select("id, metadata, status")
+      .eq("org_id", organizationId)
+      .eq("kind", "collections")
+      .in("status", ["open", "in_progress", "blocked", "snoozed"]);
+
+    if (!items || items.length === 0) return;
+
+    await Promise.all(
+      (items as Array<{ id: string; metadata: unknown }>).map((item) =>
+        rawDb
+          .from("god_work_items")
+          .update({
+            status: "done",
+            metadata: {
+              ...((item.metadata && typeof item.metadata === "object" && !Array.isArray(item.metadata))
+                ? item.metadata
+                : {}),
+              auto_closed: true,
+              auto_closed_reason: "payment_captured",
+              auto_closed_payment_id: paymentId,
+              auto_closed_at: new Date().toISOString(),
+              source: "payments_webhook",
+            },
+          })
+          .eq("id", item.id),
+      ),
+    );
+
+    logWebhookHandlerEvent("info", "Auto-closed collections work items after payment", requestContext, {
+      payment_event_type: "payment.captured",
+      organization_id: organizationId,
+      work_items_closed: items.length,
+    });
+  } catch (err) {
+    logError("Failed to auto-close collections work items", err, requestContext);
   }
 }
 

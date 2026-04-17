@@ -36,6 +36,7 @@ import {
     type GodCommsSequence,
 } from "@/lib/platform/business-comms";
 import { sendFounderCriticalAlertOnce } from "@/lib/platform/founder-alerts";
+import { ensureCollectionsPaymentLink } from "@/lib/payments/payment-links.server";
 
 type AdminClient = SupabaseClient;
 
@@ -382,6 +383,24 @@ export type AutopilotLoopSummary = {
     detail: string;
 };
 
+export type AutopilotRunHealthLoop = {
+    id: AutopilotLoopSummary["id"];
+    label: string;
+    status: "healthy" | "degraded" | "stalled";
+    last_run_at: string | null;
+    last_run_trigger: "manual" | "scheduled" | "unknown";
+    last_run_duration_ms: number | null;
+    processed_count: number;
+    detail: string;
+};
+
+export type AutopilotRunHealth = {
+    generated_at: string;
+    run_age_hours: number | null;
+    alerts: string[];
+    loops: AutopilotRunHealthLoop[];
+};
+
 export type FounderDigestSection = {
     id: "approvals" | "revenue" | "churn" | "automation";
     title: string;
@@ -445,6 +464,7 @@ export type AutopilotSnapshot = {
     }>;
     ops_loop_preview: BusinessOsPayload["ops_loop_preview"];
     roi_scorecard: AutopilotRoiScorecard;
+    run_health: AutopilotRunHealth;
     run_traces: AutopilotTraceEntry[];
     truth_lock: AutopilotTruthLock;
 };
@@ -1189,7 +1209,7 @@ function daysUntilDate(value: string | null | undefined): number | null {
 function buildDraftMessage(account: AccountRow, sequenceType: CommsSequenceType): string {
     switch (sequenceType) {
         case "collections":
-            return `Subject: Quick payment alignment for ${account.name}\n\nHi team,\n\nWe still have ${account.snapshot.overdue_invoice_count || 1} overdue invoice${account.snapshot.overdue_invoice_count === 1 ? "" : "s"} totaling ${account.snapshot.overdue_balance_label}. Please confirm the billing owner and expected payment date today so we can keep planning and delivery moving smoothly.\n\nTrip Built Ops`;
+            return `Subject: Quick payment alignment for ${account.name}\n\nHi team,\n\nWe still have ${account.snapshot.overdue_invoice_count || 1} overdue invoice${account.snapshot.overdue_invoice_count === 1 ? "" : "s"} totaling ${account.snapshot.overdue_balance_label}. Please confirm the billing owner and expected payment date today so we can keep planning and delivery moving smoothly.\n\nPayment link: (auto-attached on approval/send)\n\nTrip Built Ops`;
         case "viewed_not_approved":
             return `Subject: Quick decision follow-up on your Trip Built proposal\n\nHi team,\n\nI noticed the proposal was viewed but we have not captured approval yet. If there is a blocker on pricing, itinerary, or traveler fit, reply with the concern and we will tighten the proposal today.\n\nTrip Built Ops`;
         case "renewal_prep":
@@ -1199,6 +1219,12 @@ function buildDraftMessage(account: AccountRow, sequenceType: CommsSequenceType)
         default:
             return `Subject: Let’s get your first Trip Built proposal out\n\nHi team,\n\nYour account is close to activation but has not crossed the first proposal sent milestone yet. We can help turn the current trip draft into a client-ready proposal and tighten the workflow so the team can send it today.\n\nTrip Built Ops`;
     }
+}
+
+function appendPaymentLinkToDraft(draft: string, paymentLinkUrl: string | null): string {
+    if (!paymentLinkUrl) return draft;
+    if (draft.includes(paymentLinkUrl)) return draft;
+    return `${draft}\n\n💳 Pay now: ${paymentLinkUrl}`;
 }
 
 function buildCommunicationDrafts(account: BusinessOsAccountRow): BusinessOsCommunicationDraft[] {
@@ -1996,7 +2022,9 @@ export function buildAutopilotAuditDetails(
     autopilot: BusinessOsDailyAutopilotResult,
     brief: BusinessOsDailyBrief,
     trigger: "manual" | "scheduled",
+    durationMs?: number | null,
 ): Record<string, unknown> {
+    const normalizedDurationMs = Number.isFinite(durationMs) ? Math.max(0, Math.round(durationMs ?? 0)) : null;
     return {
         trigger,
         run_key: autopilot.run_key,
@@ -2011,7 +2039,9 @@ export function buildAutopilotAuditDetails(
             `Approvals surfaced ${autopilot.approvals_surfaced}; expired ${autopilot.approvals_expired}.`,
             `Breached commitments ${autopilot.commitments_breached} / promise escalations ${autopilot.promise_escalations}.`,
             `Collections work auto-closed ${autopilot.collections_auto_closed}; outcomes recorded ${autopilot.outcomes_recorded}.`,
-        ].join(" "),
+            normalizedDurationMs !== null ? `Run duration ${Math.round(normalizedDurationMs / 1000)}s.` : null,
+        ].filter(Boolean).join(" "),
+        duration_ms: normalizedDurationMs,
         brief_headline: brief.headline,
         brief_summary: brief.summary,
         priorities: brief.priorities,
@@ -2152,6 +2182,110 @@ function buildAutopilotRoiScorecard(runs: AutopilotRun[]): AutopilotRoiScorecard
         estimated_hours_saved: estimatedHoursSaved,
         estimated_cash_recovered_inr: Math.round(estimatedCashRecoveredInr),
         notes,
+    };
+}
+
+function detailNumber(details: Record<string, unknown> | null | undefined, key: string): number {
+    const value = Number(details?.[key] ?? 0);
+    return Number.isFinite(value) ? value : 0;
+}
+
+function buildAutopilotRunHealth(input: {
+    runs: AutopilotRun[];
+    accounts: BusinessOsAccountRow[];
+    promiseWatchdogCount: number;
+    staleApprovals48h: number;
+    sendQueueStale: number;
+}): AutopilotRunHealth {
+    const latestRun = input.runs[0] ?? null;
+    const runAgeHours = diffHours(latestRun?.created_at);
+    const staleRun = runAgeHours === null || runAgeHours > 30;
+    const latestDetails = latestRun?.details ?? null;
+    const durationMsRaw = Number(latestDetails?.duration_ms ?? Number.NaN);
+    const lastDurationMs = Number.isFinite(durationMsRaw) ? Math.max(0, Math.round(durationMsRaw)) : null;
+
+    const risk = {
+        ai_coo: input.accounts.filter((account) =>
+            account.priority_score >= 60 && !account.account_state.owner_id,
+        ).length,
+        ai_customer_success: input.accounts.filter((account) => account.activation_risk).length,
+        ai_revenue_ops: input.accounts.filter((account) =>
+            account.snapshot.overdue_balance > 0 || account.snapshot.expiring_proposal_count > 0,
+        ).length,
+        ai_promise_watchdog: input.promiseWatchdogCount,
+        ai_production_operator: input.accounts.filter((account) =>
+            account.snapshot.proposal_draft_count > 0 && account.snapshot.proposal_sent_count === 0,
+        ).length,
+    } as const;
+
+    const processed = {
+        ai_coo: detailNumber(latestDetails, "owner_routes_applied") + detailNumber(latestDetails, "approvals_surfaced"),
+        ai_customer_success: detailNumber(latestDetails, "activation_sequences_created")
+            + detailNumber(latestDetails, "activation_sequences_completed")
+            + detailNumber(latestDetails, "activation_commitments_met"),
+        ai_revenue_ops: detailNumber(latestDetails, "collections_sequences_created")
+            + detailNumber(latestDetails, "collections_sequences_completed")
+            + detailNumber(latestDetails, "collections_auto_closed"),
+        ai_promise_watchdog: detailNumber(latestDetails, "commitments_breached")
+            + detailNumber(latestDetails, "promise_escalations")
+            + detailNumber(latestDetails, "no_response_escalated"),
+        ai_production_operator: detailNumber(latestDetails, "send_queue_escalated")
+            + detailNumber(latestDetails, "no_response_escalated"),
+    } as const;
+
+    const loopLabel: Record<AutopilotLoopSummary["id"], string> = {
+        ai_coo: "AI COO",
+        ai_customer_success: "AI Customer Success",
+        ai_revenue_ops: "AI Revenue Ops",
+        ai_promise_watchdog: "AI Promise Watchdog",
+        ai_production_operator: "AI Production Operator",
+    };
+
+    const loops = (Object.keys(loopLabel) as AutopilotLoopSummary["id"][]).map((id) => {
+        const loopRisk = risk[id];
+        const loopProcessed = staleRun ? 0 : processed[id];
+        const status: AutopilotRunHealthLoop["status"] = staleRun
+            ? "stalled"
+            : (loopRisk > 0 && loopProcessed === 0)
+                ? "degraded"
+                : "healthy";
+        return {
+            id,
+            label: loopLabel[id],
+            status,
+            last_run_at: latestRun?.created_at ?? null,
+            last_run_trigger: latestRun?.trigger ?? "unknown",
+            last_run_duration_ms: lastDurationMs,
+            processed_count: loopProcessed,
+            detail: `${loopProcessed} actions in latest run • ${loopRisk} accounts currently in risk scope.`,
+        } satisfies AutopilotRunHealthLoop;
+    });
+
+    const alerts: string[] = [];
+    if (!latestRun) {
+        alerts.push("No autopilot runs have been recorded yet.");
+    } else if (staleRun) {
+        alerts.push(`Autopilot last run is stale (${runAgeHours ?? "unknown"}h ago).`);
+    }
+    if (lastDurationMs !== null && lastDurationMs > 180_000) {
+        alerts.push(`Latest autopilot run took ${Math.round(lastDurationMs / 1000)}s, which is above the 180s budget.`);
+    }
+    if (input.staleApprovals48h > 0) {
+        alerts.push(`${input.staleApprovals48h} approvals are stale for over 48 hours.`);
+    }
+    if (input.sendQueueStale > 0) {
+        alerts.push(`${input.sendQueueStale} approved customer communications are stalled in the send queue.`);
+    }
+    const degradedLoops = loops.filter((loop) => loop.status === "degraded").map((loop) => loop.label);
+    if (degradedLoops.length > 0) {
+        alerts.push(`Degraded loops: ${degradedLoops.join(", ")}.`);
+    }
+
+    return {
+        generated_at: new Date().toISOString(),
+        run_age_hours: runAgeHours,
+        alerts,
+        loops,
     };
 }
 
@@ -4066,6 +4200,12 @@ export async function applyAutopilotApprovalDecision(
             status: "active",
             limit: 50,
         });
+        let approvedDraftBody = typeof approval.payload.draft === "string" ? approval.payload.draft : null;
+        const approvedDraftReason = typeof approval.payload.reason === "string" ? approval.payload.reason : approval.description;
+        let approvedPaymentLinkUrl: string | null = null;
+        let approvedPaymentLinkToken: string | null = null;
+        let approvedPaymentLinkId: string | null = null;
+        let approvedPaymentLinkStatus: string | null = null;
         workItem = existing.find((item) => {
             const metadata = normalizeMetadata(item.metadata);
             return typeof metadata?.approval_id === "string" && metadata.approval_id === approval.id;
@@ -4081,6 +4221,36 @@ export async function applyAutopilotApprovalDecision(
             const matchingSequence = existingSequences.find((sequence) =>
                 sequence.sequence_type === sequenceType && sequence.status !== "completed",
             ) ?? null;
+
+            if (sequenceType === "collections") {
+                const overdueBalanceInr = Math.max(0, Number(accountDetail?.snapshot?.overdue_balance ?? 0));
+                if (overdueBalanceInr > 0) {
+                    try {
+                        const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://tripbuilt.com";
+                        const link = await ensureCollectionsPaymentLink(db as never, {
+                            organizationId: approval.org_id,
+                            createdBy: options.currentUserId,
+                            amountInr: overdueBalanceInr,
+                            description: `Outstanding balance — ${accountDetail?.organization.name ?? approval.account_name}`,
+                            clientName: primaryContact?.full_name ?? accountDetail?.organization.name ?? approval.account_name,
+                            clientEmail: primaryContact?.email ?? undefined,
+                            baseUrl,
+                        });
+                        approvedPaymentLinkUrl = link.paymentUrl;
+                        approvedPaymentLinkToken = link.token;
+                        approvedPaymentLinkId = link.id;
+                        approvedPaymentLinkStatus = link.status;
+                        approvedDraftBody = appendPaymentLinkToDraft(approvedDraftBody ?? approval.description, link.paymentUrl);
+                    } catch {
+                        // Do not block approval flow if link creation fails.
+                        approvedPaymentLinkUrl = null;
+                        approvedPaymentLinkToken = null;
+                        approvedPaymentLinkId = null;
+                        approvedPaymentLinkStatus = null;
+                    }
+                }
+            }
+
             const metadata = {
                 ...(normalizeMetadata(matchingSequence?.metadata) ?? {}),
                 source: "business_os_autopilot_approval",
@@ -4090,10 +4260,14 @@ export async function applyAutopilotApprovalDecision(
                 approved_at: new Date().toISOString(),
                 approved_by: options.currentUserId,
                 draft_title: typeof approval.payload.title === "string" ? approval.payload.title : approval.title,
-                draft_reason: typeof approval.payload.reason === "string" ? approval.payload.reason : approval.description,
-                draft_body: typeof approval.payload.draft === "string" ? approval.payload.draft : approval.description,
+                draft_reason: approvedDraftReason,
+                draft_body: approvedDraftBody ?? approval.description,
                 primary_contact_name: primaryContact?.full_name ?? null,
                 primary_contact_email: primaryContact?.email ?? null,
+                payment_link_url: approvedPaymentLinkUrl,
+                payment_link_token: approvedPaymentLinkToken,
+                payment_link_id: approvedPaymentLinkId,
+                payment_link_status: approvedPaymentLinkStatus,
             } satisfies Record<string, unknown>;
 
             commsSequence = matchingSequence
@@ -4112,15 +4286,13 @@ export async function applyAutopilotApprovalDecision(
                     channel,
                     step_index: 0,
                     next_follow_up_at: dueAt,
-                    promise: typeof approval.payload.reason === "string" ? approval.payload.reason : approval.description,
+                    promise: approvedDraftReason,
                     metadata,
                 });
         }
 
         if (!workItem) {
             const dueAt = new Date(Date.now() + 86_400_000).toISOString();
-            const approvedDraftBody = typeof approval.payload.draft === "string" ? approval.payload.draft : null;
-            const approvedDraftReason = typeof approval.payload.reason === "string" ? approval.payload.reason : approval.description;
             workItem = await createGodWorkItem(db, {
                 kind: approval.suggested_work_item_kind,
                 target_type: "organization",
@@ -4149,6 +4321,10 @@ export async function applyAutopilotApprovalDecision(
                     decision: "approved",
                     comms_sequence_id: commsSequence?.id ?? null,
                     send_state: approval.action_kind === "guarded_customer_communication" ? "approved_pending_send" : null,
+                    payment_link_url: approvedPaymentLinkUrl,
+                    payment_link_token: approvedPaymentLinkToken,
+                    payment_link_id: approvedPaymentLinkId,
+                    payment_link_status: approvedPaymentLinkStatus,
                 },
             });
         }
@@ -4346,6 +4522,13 @@ export async function buildAutopilotSnapshot(
         .slice(0, 40);
 
     const roiScorecard = buildAutopilotRoiScorecard(recentRuns);
+    const runHealth = buildAutopilotRunHealth({
+        runs: recentRuns,
+        accounts: payload.accounts,
+        promiseWatchdogCount: promiseWatchdog.length,
+        staleApprovals48h: approvalWatchdog.stale_48h,
+        sendQueueStale,
+    });
     const truthLock = buildAutopilotTruthLock({
         accounts: payload.accounts,
         approvals,
@@ -4431,6 +4614,7 @@ export async function buildAutopilotSnapshot(
         promise_watchdog: promiseWatchdog,
         ops_loop_preview: payload.ops_loop_preview,
         roi_scorecard: roiScorecard,
+        run_health: runHealth,
         run_traces: runTraces,
         truth_lock: truthLock,
     };

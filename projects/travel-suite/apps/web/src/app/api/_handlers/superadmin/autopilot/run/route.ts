@@ -35,6 +35,7 @@ export async function POST(request: NextRequest) {
             }, { status: 200 });
         }
 
+        const runStartedMs = Date.now();
         const [autopilot, brief] = await Promise.all([
             runBusinessDailyAutopilot(auth.adminClient as never, {
                 trigger: "manual",
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
             auth.userId,
             "Autopilot: Manual Business OS run",
             "automation",
-            buildAutopilotAuditDetails(autopilot, brief, "manual"),
+            buildAutopilotAuditDetails(autopilot, brief, "manual", Date.now() - runStartedMs),
             getClientIpFromRequest(request),
         );
 

@@ -45,6 +45,12 @@ function severityClasses(value: "medium" | "high" | "critical"): string {
     return "border-gray-800 bg-gray-950/50 text-gray-300";
 }
 
+function loopHealthClasses(value: "healthy" | "degraded" | "stalled"): string {
+    if (value === "healthy") return "border-emerald-900/60 bg-emerald-950/20 text-emerald-200";
+    if (value === "degraded") return "border-amber-900/60 bg-amber-950/20 text-amber-200";
+    return "border-red-900/60 bg-red-950/20 text-red-200";
+}
+
 function workItemHref(kind: string): string {
     if (kind === "collections" || kind === "renewal") return "/god/collections?tab=invoices";
     if (kind === "support_escalation") return "/god/support?status=open";
@@ -267,6 +273,46 @@ export default function GodAutopilotPage() {
                 <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-4">
                     <div className="text-xs uppercase tracking-wide text-gray-500">Expansion candidates</div>
                     <div className="mt-2 text-2xl font-semibold text-white">{data?.summary.expansion_candidates ?? "—"}</div>
+                </div>
+            </section>
+
+            <section className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
+                <div className="flex items-center justify-between gap-3">
+                    <div>
+                        <div className="text-sm font-medium text-gray-200">Run health</div>
+                        <div className="mt-1 text-sm text-gray-400">
+                            Per-loop health from the latest autopilot run and live backlog signals.
+                        </div>
+                    </div>
+                    <div className="text-xs text-gray-500">
+                        Last run age: {data?.run_health.run_age_hours === null ? "unknown" : `${data?.run_health.run_age_hours}h`}
+                    </div>
+                </div>
+                <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+                    {(data?.run_health.loops ?? []).map((loop) => (
+                        <div key={loop.id} className={cn("rounded-xl border p-4", loopHealthClasses(loop.status))}>
+                            <div className="flex items-center justify-between gap-2">
+                                <div className="text-sm font-medium text-white">{loop.label}</div>
+                                <div className="text-[11px] uppercase tracking-wide">{loop.status}</div>
+                            </div>
+                            <div className="mt-2 text-xl font-semibold text-white">{loop.processed_count}</div>
+                            <div className="mt-1 text-xs text-gray-300">
+                                {loop.last_run_duration_ms === null ? "No duration" : `${Math.round(loop.last_run_duration_ms / 1000)}s`} · {loop.last_run_trigger}
+                            </div>
+                            <div className="mt-2 text-xs text-gray-300">{loop.detail}</div>
+                        </div>
+                    ))}
+                </div>
+                <div className="mt-3 space-y-2">
+                    {(data?.run_health.alerts ?? []).length > 0 ? data?.run_health.alerts.map((alert) => (
+                        <div key={alert} className="rounded-lg border border-amber-900/60 bg-amber-950/20 px-3 py-2 text-sm text-amber-200">
+                            {alert}
+                        </div>
+                    )) : (
+                        <div className="rounded-lg border border-emerald-900/60 bg-emerald-950/20 px-3 py-2 text-sm text-emerald-200">
+                            No run-health alerts are active.
+                        </div>
+                    )}
                 </div>
             </section>
 

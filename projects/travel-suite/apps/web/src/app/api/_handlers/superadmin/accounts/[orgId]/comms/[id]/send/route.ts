@@ -9,8 +9,7 @@ import { runBusinessOsEventAutomation } from "@/lib/platform/business-os";
 import { getClientIpFromRequest, logPlatformActionWithTarget } from "@/lib/platform/audit";
 import { recordOrgActivityEvent } from "@/lib/platform/org-memory";
 import { logError } from "@/lib/observability/logger";
-import { createPaymentLinkRecord } from "@/lib/payments/payment-links.server";
-import { buildPaymentUrl } from "@/lib/payments/payment-links";
+import { ensureCollectionsPaymentLink } from "@/lib/payments/payment-links.server";
 
 function normalizeMetadata(value: unknown): Record<string, unknown> | null {
     return value && typeof value === "object" && !Array.isArray(value)
@@ -78,26 +77,31 @@ export async function POST(
         const orgName = detail.organization.name;
 
         let paymentLinkUrl: string | null = null;
+        let paymentLinkToken: string | null = null;
+        let paymentLinkId: string | null = null;
+        let paymentLinkStatus: string | null = null;
         if (sequenceType === "collections" && overdueBalance > 0) {
             try {
                 const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://tripbuilt.com";
-                const { link } = await createPaymentLinkRecord(auth.adminClient as never, {
+                const link = await ensureCollectionsPaymentLink(auth.adminClient as never, {
                     organizationId: orgId,
                     createdBy: auth.userId,
-                    amount: overdueBalance,
+                    amountInr: overdueBalance,
                     description: `Outstanding balance — ${orgName}`,
                     clientName: orgName,
                     clientEmail: recipient.email ?? undefined,
-                    expiresInHours: 72,
                     baseUrl,
                 });
-                paymentLinkUrl = buildPaymentUrl(link.token, baseUrl);
+                paymentLinkUrl = link.paymentUrl;
+                paymentLinkToken = link.token;
+                paymentLinkId = link.id;
+                paymentLinkStatus = link.status;
             } catch (err) {
                 logError("[comms/send] Failed to create collections payment link", err);
             }
         }
 
-        const bodyWithPaymentLink = paymentLinkUrl
+        const bodyWithPaymentLink = paymentLinkUrl && !draftBody.includes(paymentLinkUrl)
             ? `${draftBody}\n\n💳 Pay now: ${paymentLinkUrl}`
             : draftBody;
 
@@ -148,6 +152,10 @@ export async function POST(
                 sent_via: "email",
                 recipient_email: recipient.email,
                 recipient_name: recipient.full_name ?? null,
+                payment_link_url: paymentLinkUrl,
+                payment_link_token: paymentLinkToken,
+                payment_link_id: paymentLinkId,
+                payment_link_status: paymentLinkStatus,
             },
         });
         if (!updatedSequence) return apiError("Failed to update sent sequence", 500);

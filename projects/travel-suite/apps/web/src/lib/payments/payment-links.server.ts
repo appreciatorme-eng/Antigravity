@@ -318,6 +318,70 @@ export async function createPaymentLinkRecord(
   };
 }
 
+export async function ensureCollectionsPaymentLink(
+  admin: AdminDbClient,
+  args: {
+    organizationId: string;
+    createdBy: string;
+    amountInr: number;
+    description: string;
+    clientId?: string;
+    clientName?: string;
+    clientPhone?: string;
+    clientEmail?: string;
+    proposalId?: string;
+    bookingId?: string;
+    baseUrl?: string;
+    expiresInHours?: number;
+    maxReuseAgeHours?: number;
+  },
+): Promise<PaymentLinkData> {
+  const amountPaise = Math.round(Math.max(0, Number(args.amountInr) || 0) * 100);
+  if (amountPaise <= 0) {
+    throw new Error("Collections payment link amount must be positive");
+  }
+
+  const maxReuseAgeHours = Math.min(24 * 14, Math.max(6, Math.round(args.maxReuseAgeHours ?? 24 * 7)));
+  const reuseWindowStart = new Date(Date.now() - maxReuseAgeHours * 3_600_000).toISOString();
+
+  const { data: existingRows } = await admin
+    .from("payment_links")
+    .select("token, status, expires_at, created_at")
+    .eq("organization_id", args.organizationId)
+    .eq("amount_paise", amountPaise)
+    .eq("currency", "INR")
+    .in("status", ["pending", "viewed"])
+    .gte("created_at", reuseWindowStart)
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  for (const row of existingRows ?? []) {
+    const link = await getPaymentLinkByToken(admin, row.token, args.baseUrl);
+    if (!link) continue;
+    if (link.status !== "pending" && link.status !== "viewed") continue;
+    if (link.expiresAt && new Date(link.expiresAt).getTime() < Date.now()) continue;
+    return link;
+  }
+
+  const { link } = await createPaymentLinkRecord(admin, {
+    organizationId: args.organizationId,
+    createdBy: args.createdBy,
+    amount: amountPaise,
+    currency: "INR",
+    description: args.description,
+    clientId: args.clientId,
+    clientName: args.clientName,
+    clientPhone: args.clientPhone,
+    clientEmail: args.clientEmail,
+    proposalId: args.proposalId,
+    bookingId: args.bookingId,
+    expiresInHours: args.expiresInHours ?? 72,
+    baseUrl: args.baseUrl,
+  });
+
+  return link;
+}
+
 export async function recordPaymentLinkEvent(
   admin: AdminDbClient,
   args: {
