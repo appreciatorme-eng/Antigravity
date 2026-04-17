@@ -11,6 +11,7 @@ import {
     type AccountLifecycleStage,
     upsertGodAccountState,
 } from "@/lib/platform/god-accounts";
+import { runBusinessOsEventAutomation } from "@/lib/platform/business-os";
 import { recordOrgActivityEvent } from "@/lib/platform/org-memory";
 import { getClientIpFromRequest, logPlatformActionWithTarget } from "@/lib/platform/audit";
 import { logError } from "@/lib/observability/logger";
@@ -150,9 +151,15 @@ export async function PATCH(
             source: "business_os",
             metadata: { patch },
         });
+        const automation = await runBusinessOsEventAutomation(auth.adminClient as never, {
+            orgId,
+            currentUserId: auth.userId,
+            trigger: "account_state_updated",
+        });
         return NextResponse.json({
             account_state: state,
             business_impact: detail ? buildBusinessImpact(detail.account_state, detail.snapshot) : null,
+            automation,
         });
     } catch (error) {
         logError("[superadmin/accounts/:orgId PATCH]", error);

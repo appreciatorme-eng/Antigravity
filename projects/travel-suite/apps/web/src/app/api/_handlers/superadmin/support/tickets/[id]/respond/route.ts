@@ -7,6 +7,7 @@ import { logPlatformAction, getClientIpFromRequest } from "@/lib/platform/audit"
 import { logError } from "@/lib/observability/logger";
 import { saveWorkItemMeta } from "@/lib/platform/god-mode";
 import { recordOrgActivityEvent } from "@/lib/platform/org-memory";
+import { runBusinessOsEventAutomation } from "@/lib/platform/business-os";
 
 async function lookupTicketOrgId(adminClient: { from: (table: string) => any }, ticketId: string): Promise<string | null> {
     const result = await adminClient
@@ -101,10 +102,17 @@ export async function POST(
             },
         });
 
+        const automation = orgId ? await runBusinessOsEventAutomation(adminClient as never, {
+            orgId,
+            currentUserId: userId,
+            trigger: "support_ticket_responded",
+        }) : null;
+
         return NextResponse.json({
             id: result.data.id,
             status: result.data.status,
             responded_at: result.data.responded_at,
+            automation,
         });
     } catch (err) {
         logError(`[superadmin/support/tickets/${id}/respond]`, err);

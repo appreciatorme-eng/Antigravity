@@ -17,6 +17,7 @@ import {
     loadGodWorkItems,
     updateGodWorkItem,
 } from "@/lib/platform/god-accounts";
+import { runBusinessOsEventAutomation } from "@/lib/platform/business-os";
 
 type OrganizationRow = {
     id: string;
@@ -279,6 +280,7 @@ export async function PATCH(request: NextRequest) {
         return apiError("type, id, and action are required", 400);
     }
 
+    let affectedOrgId: string | null = null;
     try {
         if (body.type === "invoice") {
             const table = "invoices";
@@ -304,6 +306,7 @@ export async function PATCH(request: NextRequest) {
 
             const existing = await db.from(table).select("organization_id, invoice_number").eq("id", body.id).maybeSingle();
             orgId = existing.data?.organization_id ?? null;
+            affectedOrgId = orgId;
             const { error } = await db.from(table).update(update).eq("id", body.id);
             if (error) {
                 logError("[superadmin/collections PATCH invoice]", error);
@@ -364,6 +367,7 @@ export async function PATCH(request: NextRequest) {
 
             const existing = await db.from(table).select("organization_id, title").eq("id", body.id).maybeSingle();
             orgId = existing.data?.organization_id ?? null;
+            affectedOrgId = orgId;
             const { error } = await db.from(table).update(update).eq("id", body.id);
             if (error) {
                 logError("[superadmin/collections PATCH proposal]", error);
@@ -406,7 +410,12 @@ export async function PATCH(request: NextRequest) {
             return apiError("type must be 'invoice' or 'proposal'", 400);
         }
 
-        return NextResponse.json({ ok: true, action: body.action });
+        const automation = affectedOrgId ? await runBusinessOsEventAutomation(db, {
+            orgId: affectedOrgId,
+            currentUserId: auth.userId,
+            trigger: "collections_updated",
+        }) : null;
+        return NextResponse.json({ ok: true, action: body.action, automation });
     } catch (err) {
         logError("[superadmin/collections PATCH]", err);
         return apiError("Failed to update collection item", 500);
@@ -457,7 +466,12 @@ export async function POST(request: NextRequest) {
             getClientIpFromRequest(request),
         );
 
-        return NextResponse.json({ ok: true, action: "remind", message: "Payment reminder logged" });
+        const automation = body.org_id ? await runBusinessOsEventAutomation(auth.adminClient as never, {
+            orgId: body.org_id,
+            currentUserId: auth.userId,
+            trigger: "collections_updated",
+        }) : null;
+        return NextResponse.json({ ok: true, action: "remind", message: "Payment reminder logged", automation });
     }
 
     return apiError("Unknown action", 400);

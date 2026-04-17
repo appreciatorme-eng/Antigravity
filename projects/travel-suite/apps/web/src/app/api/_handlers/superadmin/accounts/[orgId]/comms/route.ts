@@ -10,6 +10,7 @@ import {
     type CommsSequenceStatus,
     type CommsSequenceType,
 } from "@/lib/platform/business-comms";
+import { runBusinessOsEventAutomation } from "@/lib/platform/business-os";
 import { getClientIpFromRequest, logPlatformAction } from "@/lib/platform/audit";
 import { recordOrgActivityEvent } from "@/lib/platform/org-memory";
 
@@ -122,7 +123,12 @@ export async function POST(
             metadata: { status: sequence.status, channel: sequence.channel },
         });
 
-        return NextResponse.json({ sequence }, { status: 201 });
+        const automation = await runBusinessOsEventAutomation(auth.adminClient as never, {
+            orgId,
+            currentUserId: auth.userId,
+            trigger: "comms_updated",
+        });
+        return NextResponse.json({ sequence, automation }, { status: 201 });
     } catch (error) {
         logError("[superadmin/accounts/:orgId/comms POST]", error);
         return apiError("Failed to create communication sequence", 500);
@@ -185,7 +191,12 @@ export async function PATCH(
             metadata: { step_index: sequence.step_index, channel: sequence.channel },
         });
 
-        return NextResponse.json({ sequence });
+        const automation = await runBusinessOsEventAutomation(auth.adminClient as never, {
+            orgId,
+            currentUserId: auth.userId,
+            trigger: "comms_updated",
+        });
+        return NextResponse.json({ sequence, automation });
     } catch (error) {
         logError("[superadmin/accounts/:orgId/comms PATCH]", error);
         return apiError("Failed to update communication sequence", 500);

@@ -5,6 +5,7 @@ import {
     getAccountDetail,
     listAccounts,
     loadGodWorkItems,
+    upsertGodAccountState,
     updateGodWorkItem,
     type AccountActivationStage,
     type AccountDetail,
@@ -29,6 +30,8 @@ import {
     loadCommitments,
     updateCommitment,
     updateCommsSequence,
+    type CommsChannel,
+    type CommsSequenceType,
     type GodCommitment,
     type GodCommsSequence,
 } from "@/lib/platform/business-comms";
@@ -91,14 +94,32 @@ export type BusinessOsAiRecommendation = {
     what_changed: string;
     recommended_next_step: string;
     rationale: string;
+    confidence_score: number;
+    confidence_label: "low" | "medium" | "high";
+    automation_posture: "monitor" | "draft_and_queue" | "approval_required";
+    evidence: string[];
     playbook_draft: string;
     customer_save_outreach: string;
     collections_sequence: string;
     renewal_strategy: string;
     growth_experiment: string;
     growth_opportunities: string[];
+    communication_drafts: BusinessOsCommunicationDraft[];
     safe_actions: BusinessOsAiAction[];
     guarded_actions: BusinessOsAiAction[];
+};
+
+export type BusinessOsCommunicationDraft = {
+    id: string;
+    org_id: string;
+    account_name: string;
+    priority_score: number;
+    sequence_type: CommsSequenceType;
+    channel: CommsChannel;
+    title: string;
+    reason: string;
+    draft: string;
+    requires_approval: boolean;
 };
 
 export type AutopilotApprovalStatus = "pending" | "approved" | "rejected";
@@ -208,10 +229,15 @@ export type BusinessOsPayload = {
         open_commitments: number;
         breached_commitments: number;
         pending_approvals: number;
+        communication_drafts: number;
+        renewal_candidates: number;
+        expansion_candidates: number;
     };
     ai_daily_brief: BusinessOsDailyBrief;
+    founder_mode: FounderModeSnapshot;
     playbook_learning: WorkItemOutcomeLearning[];
     policy_violations: BusinessOsPolicyViolation[];
+    communication_drafts: BusinessOsCommunicationDraft[];
     margin_watch: Array<{
         org_id: string;
         name: string;
@@ -312,13 +338,20 @@ export type AutopilotSnapshot = {
         autopilot_work_items: number;
         promise_watchdog_accounts: number;
         recent_runs: number;
+        communication_drafts: number;
+        renewal_candidates: number;
+        expansion_candidates: number;
     };
+    founder_mode: FounderModeSnapshot;
     loops: AutopilotLoopSummary[];
     recent_runs: AutopilotRun[];
     approvals: AutopilotApproval[];
     policy_violations: BusinessOsPolicyViolation[];
     playbook_learning: WorkItemOutcomeLearning[];
     autopilot_work_items: GodWorkItem[];
+    communication_drafts: BusinessOsCommunicationDraft[];
+    renewal_candidates: FounderModeAction[];
+    expansion_candidates: FounderModeAction[];
     promise_watchdog: Array<{
         org_id: string;
         account_name: string;
@@ -328,6 +361,50 @@ export type AutopilotSnapshot = {
         reasons: string[];
     }>;
     ops_loop_preview: BusinessOsPayload["ops_loop_preview"];
+};
+
+export type FounderModeAction = {
+    id: string;
+    org_id: string;
+    account_name: string;
+    title: string;
+    detail: string;
+    priority_score: number;
+    href: string;
+};
+
+export type FounderModeSnapshot = {
+    headline: string;
+    summary: string;
+    approvals: AutopilotApproval[];
+    highest_risk_accounts: Array<{
+        org_id: string;
+        account_name: string;
+        priority_score: number;
+        reasons: string[];
+    }>;
+    revenue_moves: FounderModeAction[];
+    churn_risks: FounderModeAction[];
+};
+
+export type BusinessOsEventAutomationResult = {
+    generated_at: string;
+    org_id: string;
+    trigger:
+        | "account_state_updated"
+        | "work_item_updated"
+        | "collections_updated"
+        | "comms_updated"
+        | "commitment_updated"
+        | "support_ticket_responded"
+        | "work_item_outcome_recorded";
+    state_updated: boolean;
+    work_items_created: number;
+    work_items_closed: number;
+    sequences_created: number;
+    sequences_completed: number;
+    commitments_met: number;
+    notes: string[];
 };
 
 type SupportContextRow = {
@@ -937,18 +1014,222 @@ function buildGrowthOpportunities(account: AccountRow, effectiveActivationStage:
     return opportunities.slice(0, 3);
 }
 
-function buildAiRecommendation(account: AccountRow, effectiveActivationStage: AccountActivationStage, activationRiskReasons: string[]): BusinessOsAiRecommendation {
+function daysUntilDate(value: string | null | undefined): number | null {
+    if (!value) return null;
+    const diffMs = new Date(value).getTime() - Date.now();
+    if (!Number.isFinite(diffMs)) return null;
+    return Math.floor(diffMs / 86_400_000);
+}
+
+function buildDraftMessage(account: AccountRow, sequenceType: CommsSequenceType): string {
+    switch (sequenceType) {
+        case "collections":
+            return `Subject: Quick payment alignment for ${account.name}\n\nHi team,\n\nWe still have ${account.snapshot.overdue_invoice_count || 1} overdue invoice${account.snapshot.overdue_invoice_count === 1 ? "" : "s"} totaling ${account.snapshot.overdue_balance_label}. Please confirm the billing owner and expected payment date today so we can keep planning and delivery moving smoothly.\n\nTrip Built Ops`;
+        case "viewed_not_approved":
+            return `Subject: Quick decision follow-up on your Trip Built proposal\n\nHi team,\n\nI noticed the proposal was viewed but we have not captured approval yet. If there is a blocker on pricing, itinerary, or traveler fit, reply with the concern and we will tighten the proposal today.\n\nTrip Built Ops`;
+        case "renewal_prep":
+            return `Subject: Renewal planning for ${account.name}\n\nHi team,\n\nWe are preparing your next Trip Built operating plan and want to align around proposal throughput, trip volume, and workflow goals before renewal. Reply with your decision owner and preferred review window this week.\n\nTrip Built Ops`;
+        case "incident_recovery":
+            return `Subject: Recovery update for your Trip Built workspace\n\nHi team,\n\nWe are actively working the issue affecting your workspace and have assigned an internal recovery owner. We will send the next status update today with current progress and the short-term workaround if one is needed.\n\nTrip Built Ops`;
+        default:
+            return `Subject: Let’s get your first Trip Built proposal out\n\nHi team,\n\nYour account is close to activation but has not crossed the first proposal sent milestone yet. We can help turn the current trip draft into a client-ready proposal and tighten the workflow so the team can send it today.\n\nTrip Built Ops`;
+    }
+}
+
+function buildCommunicationDrafts(account: BusinessOsAccountRow, effectiveActivationStage: AccountActivationStage): BusinessOsCommunicationDraft[] {
+    const drafts: BusinessOsCommunicationDraft[] = [];
+    const addDraft = (
+        sequenceType: CommsSequenceType,
+        config: { title: string; reason: string; channel?: CommsChannel },
+    ) => {
+        drafts.push({
+            id: `${account.org_id}:${sequenceType}`,
+            org_id: account.org_id,
+            account_name: account.name,
+            priority_score: account.priority_score,
+            sequence_type: sequenceType,
+            channel: config.channel ?? "mixed",
+            title: config.title,
+            reason: config.reason,
+            draft: buildDraftMessage(account, sequenceType),
+            requires_approval: true,
+        });
+    };
+
+    if (account.snapshot.overdue_balance > 0) {
+        addDraft("collections", {
+            title: "Collections follow-up draft",
+            reason: `${account.snapshot.overdue_invoice_count || 1} overdue invoice${account.snapshot.overdue_invoice_count === 1 ? "" : "s"} and ${account.snapshot.overdue_balance_label} still open`,
+            channel: "email",
+        });
+    }
+    if (account.snapshot.proposal_viewed_count > 0 && account.snapshot.proposal_approved_count === 0) {
+        addDraft("viewed_not_approved", {
+            title: "Viewed-not-approved follow-up draft",
+            reason: `${account.snapshot.proposal_viewed_count} proposals were viewed without approval`,
+            channel: "mixed",
+        });
+    }
+    if (account.activation_risk && account.snapshot.proposal_sent_count === 0) {
+        addDraft("activation_rescue", {
+            title: "Activation rescue outreach draft",
+            reason: account.activation_risk_reasons[0] ?? "First proposal milestone is stalled",
+            channel: account.snapshot.active_whatsapp_session_count > 0 ? "whatsapp" : "mixed",
+        });
+    }
+    const renewalDays = daysUntilDate(account.account_state.renewal_at);
+    if (renewalDays !== null && renewalDays <= 30) {
+        addDraft("renewal_prep", {
+            title: "Renewal prep outreach draft",
+            reason: renewalDays < 0 ? "Renewal date is overdue" : `Renewal is due in ${renewalDays} day${renewalDays === 1 ? "" : "s"}`,
+            channel: "email",
+        });
+    }
+    if (account.snapshot.fatal_error_count > 0 || account.snapshot.urgent_support_count > 0) {
+        addDraft("incident_recovery", {
+            title: "Recovery status update draft",
+            reason: account.snapshot.fatal_error_count > 0
+                ? `${account.snapshot.fatal_error_count} fatal incidents are open`
+                : `${account.snapshot.urgent_support_count} urgent support tickets are open`,
+            channel: "mixed",
+        });
+    }
+
+    return drafts.slice(0, 3);
+}
+
+function buildAiExplainability(account: BusinessOsAccountRow, activationRiskReasons: string[]): {
+    confidence_score: number;
+    confidence_label: BusinessOsAiRecommendation["confidence_label"];
+    automation_posture: BusinessOsAiRecommendation["automation_posture"];
+    evidence: string[];
+} {
+    let confidence = 35;
+    if (account.snapshot.fatal_error_count > 0) confidence += 30;
+    if (account.snapshot.overdue_balance > 0) confidence += 20;
+    if (activationRiskReasons.length > 0) confidence += 12;
+    if (account.snapshot.proposal_viewed_count > 0 && account.snapshot.proposal_approved_count === 0) confidence += 8;
+    if (account.snapshot.urgent_support_count > 0) confidence += 12;
+    if (!account.account_state.owner_id && account.priority_score >= 60) confidence += 8;
+    confidence = Math.max(25, Math.min(96, confidence));
+
+    const evidence = [
+        ...account.priority_reasons,
+        account.account_state.next_action ? `Current next action: ${account.account_state.next_action}` : "No next action is recorded",
+        account.account_state.renewal_at ? `Renewal date: ${new Date(account.account_state.renewal_at).toLocaleDateString()}` : null,
+    ].filter(Boolean).slice(0, 5) as string[];
+
+    return {
+        confidence_score: confidence,
+        confidence_label: confidence >= 80 ? "high" : confidence >= 55 ? "medium" : "low",
+        automation_posture: account.snapshot.fatal_error_count > 0 || account.snapshot.overdue_balance > 0
+            ? "approval_required"
+            : account.activation_risk || account.snapshot.proposal_viewed_count > 0
+                ? "draft_and_queue"
+                : "monitor",
+        evidence,
+    };
+}
+
+function buildFounderMode(accounts: BusinessOsAccountRow[], approvals: AutopilotApproval[]): FounderModeSnapshot {
+    const highestRisk = accounts.slice(0, 5).map((account) => ({
+        org_id: account.org_id,
+        account_name: account.name,
+        priority_score: account.priority_score,
+        reasons: account.priority_reasons.slice(0, 3),
+    }));
+
+    const revenueMoves = accounts
+        .filter((account) =>
+            account.snapshot.overdue_balance > 0
+            || account.snapshot.expiring_proposal_count > 0
+            || (daysUntilDate(account.account_state.renewal_at) ?? 99) <= 30
+            || account.margin_watch,
+        )
+        .sort((left, right) =>
+            right.snapshot.overdue_balance - left.snapshot.overdue_balance
+            || right.snapshot.expiring_proposal_value - left.snapshot.expiring_proposal_value
+            || right.priority_score - left.priority_score,
+        )
+        .slice(0, 5)
+        .map((account) => ({
+            id: `revenue:${account.org_id}`,
+            org_id: account.org_id,
+            account_name: account.name,
+            title: account.snapshot.overdue_balance > 0
+                ? "Recover overdue cash"
+                : (daysUntilDate(account.account_state.renewal_at) ?? 99) <= 30
+                    ? "Prepare renewal motion"
+                    : "Review expansion leverage",
+            detail: account.snapshot.overdue_balance > 0
+                ? `${account.snapshot.overdue_balance_label} overdue across ${account.snapshot.overdue_invoice_count || 1} invoices`
+                : (daysUntilDate(account.account_state.renewal_at) ?? 99) <= 30
+                    ? `Renewal due ${new Date(account.account_state.renewal_at ?? "").toLocaleDateString()}`
+                    : account.margin_watch_reasons[0] ?? "Usage signals suggest expansion or pricing review",
+            priority_score: account.priority_score,
+            href: account.snapshot.overdue_balance > 0 || account.snapshot.expiring_proposal_count > 0
+                ? "/god/collections"
+                : "/god/business-os",
+        }));
+
+    const churnRisks = accounts
+        .filter((account) =>
+            account.snapshot.fatal_error_count > 0
+            || account.snapshot.urgent_support_count > 0
+            || account.activation_risk
+            || account.account_state.health_band === "at_risk",
+        )
+        .sort((left, right) => right.priority_score - left.priority_score)
+        .slice(0, 5)
+        .map((account) => ({
+            id: `churn:${account.org_id}`,
+            org_id: account.org_id,
+            account_name: account.name,
+            title: account.snapshot.fatal_error_count > 0
+                ? "Protect trust after incident"
+                : account.snapshot.urgent_support_count > 0
+                    ? "Own support recovery"
+                    : account.activation_risk
+                        ? "Recover activation"
+                        : "Review at-risk posture",
+            detail: account.priority_reasons.slice(0, 2).join(" • ") || "Account needs direct founder review",
+            priority_score: account.priority_score,
+            href: "/god/business-os",
+        }));
+
+    const pendingApprovals = approvals.filter((approval) => approval.status === "pending").slice(0, 5);
+    return {
+        headline: pendingApprovals.length > 0
+            ? `${pendingApprovals.length} approval${pendingApprovals.length === 1 ? "" : "s"} need founder attention.`
+            : highestRisk[0]
+                ? `${highestRisk[0].account_name} is the top account exception right now.`
+                : "No founder-only exceptions are urgent right now.",
+        summary: `Focus on ${revenueMoves.length} revenue move${revenueMoves.length === 1 ? "" : "s"}, ${churnRisks.length} churn risk${churnRisks.length === 1 ? "" : "s"}, and only the approvals that unblock customer-impacting actions.`,
+        approvals: pendingApprovals,
+        highest_risk_accounts: highestRisk,
+        revenue_moves: revenueMoves,
+        churn_risks: churnRisks,
+    };
+}
+
+function buildAiRecommendation(account: BusinessOsAccountRow, effectiveActivationStage: AccountActivationStage, activationRiskReasons: string[]): BusinessOsAiRecommendation {
     const { nextStep, rationale, playbook } = buildRecommendedNextStep(account, activationRiskReasons, effectiveActivationStage);
+    const explainability = buildAiExplainability(account, activationRiskReasons);
     return {
         what_changed: buildWhatChanged(account, activationRiskReasons, effectiveActivationStage),
         recommended_next_step: nextStep,
         rationale,
+        confidence_score: explainability.confidence_score,
+        confidence_label: explainability.confidence_label,
+        automation_posture: explainability.automation_posture,
+        evidence: explainability.evidence,
         playbook_draft: `Recommended playbook: ${playbook.replaceAll("_", " ")}.\n\nOwner: ${account.account_state.owner_id ? "existing owner" : "assign operator"}\nDue: ${account.account_state.next_action_due_at ? "use current due date" : "set due date within 24 hours"}\n\nExecution focus: ${nextStep}`,
         customer_save_outreach: buildCustomerSaveOutreach(account),
         collections_sequence: buildCollectionsSequence(account),
         renewal_strategy: buildRenewalStrategy(account, effectiveActivationStage),
         growth_experiment: buildGrowthExperiment(account),
         growth_opportunities: buildGrowthOpportunities(account, effectiveActivationStage),
+        communication_drafts: buildCommunicationDrafts(account, effectiveActivationStage),
         safe_actions: [
             {
                 id: "draft-next-action",
@@ -1770,6 +2051,13 @@ export async function buildBusinessOsPayload(
         ...account,
         pending_approval_count: pendingApprovalsByOrg.get(account.org_id)?.length ?? 0,
     }));
+    const communicationDrafts = enriched
+        .flatMap((account) => buildCommunicationDrafts(account, account.effective_activation_stage))
+        .sort((left, right) => right.priority_score - left.priority_score)
+        .slice(0, 12);
+    const founderMode = buildFounderMode(enriched, pendingApprovals);
+    const renewalCandidates = enriched.filter((account) => (daysUntilDate(account.account_state.renewal_at) ?? 99) <= 30).length;
+    const expansionCandidates = enriched.filter((account) => account.effective_activation_stage === "expansion" || account.margin_watch).length;
     const marginWatchAccounts = enriched
         .filter((account) => account.margin_watch)
         .slice(0, 8)
@@ -1872,10 +2160,15 @@ export async function buildBusinessOsPayload(
             open_commitments: Array.from(commitmentCounts.values()).reduce((sum, value) => sum + value.open, 0),
             breached_commitments: Array.from(commitmentCounts.values()).reduce((sum, value) => sum + value.breached, 0),
             pending_approvals: pendingApprovals.length,
+            communication_drafts: communicationDrafts.length,
+            renewal_candidates: renewalCandidates,
+            expansion_candidates: expansionCandidates,
         },
         ai_daily_brief: buildDailyBrief(enriched, currentUserId),
+        founder_mode: founderMode,
         playbook_learning: playbookLearning,
         policy_violations: policyViolations,
+        communication_drafts: communicationDrafts,
         margin_watch: marginWatchAccounts,
         ops_loop_preview: {
             candidate_count: opsLoopSuggestions.length,
@@ -2600,7 +2893,11 @@ export async function buildAutopilotSnapshot(
             autopilot_work_items: autopilotWorkItems.length,
             promise_watchdog_accounts: promiseWatchdog.length,
             recent_runs: recentRuns.length,
+            communication_drafts: payload.communication_drafts.length,
+            renewal_candidates: payload.founder_mode.revenue_moves.filter((item) => item.title === "Prepare renewal motion").length,
+            expansion_candidates: payload.founder_mode.revenue_moves.filter((item) => item.title === "Review expansion leverage").length,
         },
+        founder_mode: payload.founder_mode,
         loops: [
             {
                 id: "ai_coo",
@@ -2641,8 +2938,359 @@ export async function buildAutopilotSnapshot(
         policy_violations: payload.policy_violations,
         playbook_learning: payload.playbook_learning,
         autopilot_work_items: autopilotWorkItems,
+        communication_drafts: payload.communication_drafts,
+        renewal_candidates: payload.founder_mode.revenue_moves.filter((item) => item.title === "Prepare renewal motion"),
+        expansion_candidates: payload.founder_mode.revenue_moves.filter((item) => item.title === "Review expansion leverage"),
         promise_watchdog: promiseWatchdog,
         ops_loop_preview: payload.ops_loop_preview,
+    };
+}
+
+function buildSuggestedAccountStatePatch(account: BusinessOsAccountRow): Partial<GodAccountState> {
+    const desiredActivationStage = resolveActivationStage(account.account_state, account.snapshot, account.created_at);
+    let desiredLifecycleStage: AccountLifecycleStage = "active";
+    if (desiredActivationStage === "signed_up" || desiredActivationStage === "onboarding") desiredLifecycleStage = "onboarding";
+    else if (desiredActivationStage === "at_risk" || account.snapshot.fatal_error_count > 0 || account.snapshot.overdue_balance > 0) desiredLifecycleStage = "at_risk";
+    else if (account.snapshot.urgent_support_count > 0 || account.snapshot.expiring_proposal_count > 0) desiredLifecycleStage = "watch";
+
+    const desiredHealthBand: AccountHealthBand = account.snapshot.fatal_error_count > 0
+        || account.snapshot.overdue_balance > 0
+        || account.snapshot.urgent_support_count > 0
+        || desiredActivationStage === "at_risk"
+        ? "at_risk"
+        : account.snapshot.open_support_count > 0 || account.snapshot.expiring_proposal_count > 0
+            ? "watch"
+            : "healthy";
+
+    const healthScore = Math.max(
+        5,
+        Math.min(
+            95,
+            88
+                - account.snapshot.fatal_error_count * 20
+                - account.snapshot.urgent_support_count * 8
+                - Math.min(25, Math.round(account.snapshot.overdue_balance / 20_000) * 5)
+                - (account.activation_risk ? 12 : 0)
+                + (account.effective_activation_stage === "expansion" ? 6 : 0),
+        ),
+    );
+
+    const patch: Partial<GodAccountState> = {};
+    if (account.account_state.activation_stage !== desiredActivationStage) patch.activation_stage = desiredActivationStage;
+    if (account.account_state.lifecycle_stage !== desiredLifecycleStage) patch.lifecycle_stage = desiredLifecycleStage;
+    if (account.account_state.health_band !== desiredHealthBand) patch.health_band = desiredHealthBand;
+    if (account.account_state.health_score !== healthScore) patch.health_score = healthScore;
+    if (account.account_state.first_proposal_sent_at !== account.snapshot.first_proposal_sent_at) {
+        patch.first_proposal_sent_at = account.snapshot.first_proposal_sent_at;
+    }
+    if (account.account_state.last_proposal_sent_at !== account.snapshot.last_proposal_sent_at) {
+        patch.last_proposal_sent_at = account.snapshot.last_proposal_sent_at;
+    }
+    return patch;
+}
+
+function hasActiveSequence(sequences: GodCommsSequence[], sequenceType: CommsSequenceType): boolean {
+    return sequences.some((sequence) => sequence.sequence_type === sequenceType && sequence.status !== "completed");
+}
+
+function buildEventSequenceCandidates(account: BusinessOsAccountRow): Array<{
+    sequence_type: CommsSequenceType;
+    channel: CommsChannel;
+    promise: string;
+}> {
+    const candidates: Array<{ sequence_type: CommsSequenceType; channel: CommsChannel; promise: string }> = [];
+    if (account.activation_risk && account.snapshot.proposal_sent_count === 0) {
+        candidates.push({
+            sequence_type: "activation_rescue",
+            channel: account.snapshot.active_whatsapp_session_count > 0 ? "whatsapp" : "mixed",
+            promise: "Send first proposal and confirm follow-up owner/date.",
+        });
+    }
+    if (account.snapshot.proposal_viewed_count > 0 && account.snapshot.proposal_approved_count === 0) {
+        candidates.push({
+            sequence_type: "viewed_not_approved",
+            channel: "mixed",
+            promise: "Follow up on viewed proposal and capture blocker or decision date.",
+        });
+    }
+    if (account.snapshot.overdue_balance > 0) {
+        candidates.push({
+            sequence_type: "collections",
+            channel: "email",
+            promise: `Recover ${account.snapshot.overdue_balance_label} overdue balance and confirm payment date.`,
+        });
+    }
+    const renewalDays = daysUntilDate(account.account_state.renewal_at);
+    if (renewalDays !== null && renewalDays <= 30) {
+        candidates.push({
+            sequence_type: "renewal_prep",
+            channel: "email",
+            promise: "Confirm renewal owner and commercial review date.",
+        });
+    }
+    if (account.snapshot.fatal_error_count > 0 || account.snapshot.urgent_support_count > 0) {
+        candidates.push({
+            sequence_type: "incident_recovery",
+            channel: "mixed",
+            promise: "Share a direct recovery update and next ETA with the account.",
+        });
+    }
+    return candidates;
+}
+
+export async function runBusinessOsEventAutomation(
+    db: AdminClient,
+    options: {
+        orgId: string;
+        currentUserId: string | null;
+        trigger: BusinessOsEventAutomationResult["trigger"];
+        maxWorkItems?: number;
+    },
+): Promise<BusinessOsEventAutomationResult | null> {
+    const detail = await getAccountDetail(db, options.orgId);
+    if (!detail) return null;
+
+    let account = enrichAccountRow({
+        org_id: detail.organization.id,
+        name: detail.organization.name,
+        slug: detail.organization.slug,
+        tier: detail.organization.tier,
+        created_at: detail.organization.created_at,
+        account_state: detail.account_state,
+        snapshot: detail.snapshot,
+        open_work_item_count: detail.work_items.length,
+        risk: "healthy",
+    });
+
+    const notes: string[] = [];
+    const statePatch = options.trigger === "account_state_updated"
+        ? {
+            ...(account.account_state.first_proposal_sent_at !== account.snapshot.first_proposal_sent_at
+                ? { first_proposal_sent_at: account.snapshot.first_proposal_sent_at }
+                : {}),
+            ...(account.account_state.last_proposal_sent_at !== account.snapshot.last_proposal_sent_at
+                ? { last_proposal_sent_at: account.snapshot.last_proposal_sent_at }
+                : {}),
+        }
+        : buildSuggestedAccountStatePatch(account);
+    let stateUpdated = false;
+    if (Object.keys(statePatch).length > 0) {
+        const nextState = await upsertGodAccountState(db, options.orgId, statePatch);
+        stateUpdated = true;
+        notes.push("Account state synced from live account signals.");
+        await recordOrgActivityEvent(db, {
+            org_id: options.orgId,
+            actor_id: options.currentUserId,
+            event_type: "autopilot_state_synced",
+            title: "Autopilot synced account state",
+            detail: "Lifecycle, activation, or health state changed based on current account signals.",
+            entity_type: "organization",
+            entity_id: options.orgId,
+            source: "business_os_autopilot",
+            metadata: { patch: statePatch, trigger: options.trigger },
+        });
+        account = enrichAccountRow({
+            org_id: detail.organization.id,
+            name: detail.organization.name,
+            slug: detail.organization.slug,
+            tier: detail.organization.tier,
+            created_at: detail.organization.created_at,
+            account_state: nextState,
+            snapshot: detail.snapshot,
+            open_work_item_count: detail.work_items.length,
+            risk: "healthy",
+        });
+    }
+
+    const [sequences, commitments, activeWorkItems, commitmentCounts, commsCounts] = await Promise.all([
+        loadCommsSequences(db, options.orgId, "all"),
+        loadCommitments(db, options.orgId, "all"),
+        loadGodWorkItems(db, { orgIds: [options.orgId], status: "active", limit: 50 }),
+        buildCommitmentCounts(db, [options.orgId]),
+        buildCommsFollowupCounts(db, [options.orgId]),
+    ]);
+
+    let sequencesCreated = 0;
+    let sequencesCompleted = 0;
+    let commitmentsMet = 0;
+    let workItemsCreated = 0;
+    let workItemsClosed = 0;
+
+    for (const candidate of buildEventSequenceCandidates(account)) {
+        if (hasActiveSequence(sequences, candidate.sequence_type)) continue;
+        const sequence = await createCommsSequence(db, {
+            org_id: options.orgId,
+            owner_id: account.account_state.owner_id,
+            sequence_type: candidate.sequence_type,
+            channel: candidate.channel,
+            status: "active",
+            next_follow_up_at: account.account_state.next_action_due_at ?? new Date(Date.now() + 86_400_000).toISOString(),
+            promise: candidate.promise,
+            metadata: {
+                source: "business_os_event_autopilot",
+                trigger: options.trigger,
+            },
+        });
+        sequences.push(sequence);
+        sequencesCreated += 1;
+        notes.push(`Opened ${candidate.sequence_type.replaceAll("_", " ")} sequence.`);
+        await recordOrgActivityEvent(db, {
+            org_id: options.orgId,
+            actor_id: null,
+            event_type: "autopilot_event_sequence_created",
+            title: `Autopilot opened ${candidate.sequence_type.replaceAll("_", " ")} sequence`,
+            detail: candidate.promise,
+            entity_type: "comms_sequence",
+            entity_id: sequence.id,
+            source: "business_os_autopilot",
+            metadata: { trigger: options.trigger, sequence_type: candidate.sequence_type },
+        });
+    }
+
+    for (const sequence of sequences) {
+        const shouldComplete = (
+            (sequence.sequence_type === "activation_rescue" && account.snapshot.proposal_sent_count > 0)
+            || (sequence.sequence_type === "viewed_not_approved" && account.snapshot.proposal_approved_count > 0)
+            || (sequence.sequence_type === "collections" && account.snapshot.overdue_balance <= 0)
+            || (sequence.sequence_type === "incident_recovery" && account.snapshot.fatal_error_count === 0 && account.snapshot.urgent_support_count === 0)
+        );
+        if (!shouldComplete || sequence.status === "completed") continue;
+        const updated = await updateCommsSequence(db, sequence.id, {
+            status: "completed",
+            next_follow_up_at: null,
+        });
+        if (!updated) continue;
+        sequencesCompleted += 1;
+        await recordOrgActivityEvent(db, {
+            org_id: options.orgId,
+            actor_id: null,
+            event_type: "autopilot_event_sequence_completed",
+            title: `Autopilot completed ${sequence.sequence_type.replaceAll("_", " ")} sequence`,
+            detail: "The monitored condition resolved and the sequence was closed automatically.",
+            entity_type: "comms_sequence",
+            entity_id: sequence.id,
+            source: "business_os_autopilot",
+            metadata: { trigger: options.trigger, sequence_type: sequence.sequence_type },
+        });
+    }
+
+    for (const commitment of commitments) {
+        const metadata = normalizeMetadata(commitment.metadata);
+        const autopilotKind = typeof metadata?.autopilot_kind === "string" ? metadata.autopilot_kind : "";
+        if (autopilotKind !== "first_proposal_activation" || commitment.status !== "open" || account.snapshot.proposal_sent_count === 0) continue;
+        const updated = await updateCommitment(db, commitment.id, {
+            status: "met",
+            metadata: {
+                ...(metadata ?? {}),
+                source: "business_os_event_autopilot",
+                trigger: options.trigger,
+            },
+        });
+        if (!updated) continue;
+        commitmentsMet += 1;
+        await recordOrgActivityEvent(db, {
+            org_id: options.orgId,
+            actor_id: null,
+            event_type: "autopilot_event_commitment_met",
+            title: "Autopilot marked commitment met",
+            detail: updated.title,
+            entity_type: "commitment",
+            entity_id: updated.id,
+            source: "business_os_autopilot",
+            metadata: { trigger: options.trigger },
+        });
+    }
+
+    const existingAutomationKeys = new Set(
+        activeWorkItems
+            .map((item) => {
+                const metadata = normalizeMetadata(item.metadata);
+                return typeof metadata?.automation_key === "string" ? metadata.automation_key : null;
+            })
+            .filter(Boolean) as string[],
+    );
+    const suggestions = buildOpsLoopSuggestions(
+        account,
+        existingAutomationKeys,
+        commitmentCounts.get(options.orgId)?.breached ?? 0,
+        commsCounts.get(options.orgId)?.overdue ?? 0,
+    ).slice(0, Math.max(1, options.maxWorkItems ?? 4));
+
+    for (const suggestion of suggestions) {
+        const workItem = await createGodWorkItem(db, {
+            kind: suggestion.kind,
+            target_type: "organization",
+            target_id: suggestion.target_id,
+            org_id: suggestion.org_id,
+            owner_id: account.account_state.owner_id,
+            status: "open",
+            severity: suggestion.severity,
+            title: suggestion.title,
+            summary: suggestion.summary,
+            due_at: suggestion.due_at,
+            metadata: {
+                automation_key: suggestion.automation_key,
+                automation_reason: suggestion.reason,
+                source: "business_os_event_autopilot",
+                trigger: options.trigger,
+            },
+        });
+        workItemsCreated += 1;
+        notes.push(`Opened ${suggestion.kind.replaceAll("_", " ")} work item.`);
+        await recordOrgActivityEvent(db, {
+            org_id: options.orgId,
+            actor_id: null,
+            event_type: "autopilot_event_work_item_created",
+            title: suggestion.title,
+            detail: suggestion.summary,
+            entity_type: "work_item",
+            entity_id: workItem.id,
+            source: "business_os_autopilot",
+            metadata: { trigger: options.trigger, automation_key: suggestion.automation_key },
+        });
+    }
+
+    for (const workItem of activeWorkItems) {
+        const metadata = normalizeMetadata(workItem.metadata);
+        const source = typeof metadata?.source === "string" ? metadata.source : "";
+        const isAutopilotManaged = source === "business_os_event_autopilot"
+            || source === "business_os_daily_autopilot"
+            || source === "business_os_ops_loop"
+            || source === "business_os_autopilot_approval";
+        if (!isAutopilotManaged) continue;
+        const shouldClose = (
+            (workItem.kind === "collections" && account.snapshot.overdue_balance <= 0)
+            || (workItem.kind === "incident_followup" && account.snapshot.fatal_error_count === 0)
+            || (workItem.kind === "support_escalation" && account.snapshot.urgent_support_count === 0)
+        );
+        if (!shouldClose) continue;
+        const updated = await updateGodWorkItem(db, workItem.id, { status: "done" });
+        if (!updated) continue;
+        workItemsClosed += 1;
+        await recordOrgActivityEvent(db, {
+            org_id: options.orgId,
+            actor_id: null,
+            event_type: "autopilot_event_work_item_closed",
+            title: `Autopilot closed ${workItem.kind.replaceAll("_", " ")} work item`,
+            detail: updated.title,
+            entity_type: "work_item",
+            entity_id: updated.id,
+            source: "business_os_autopilot",
+            metadata: { trigger: options.trigger, work_item_kind: workItem.kind },
+        });
+    }
+
+    return {
+        generated_at: new Date().toISOString(),
+        org_id: options.orgId,
+        trigger: options.trigger,
+        state_updated: stateUpdated,
+        work_items_created: workItemsCreated,
+        work_items_closed: workItemsClosed,
+        sequences_created: sequencesCreated,
+        sequences_completed: sequencesCompleted,
+        commitments_met: commitmentsMet,
+        notes,
     };
 }
 

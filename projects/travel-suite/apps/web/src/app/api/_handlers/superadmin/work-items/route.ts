@@ -12,6 +12,7 @@ import {
     type GodWorkItemTargetType,
     updateGodWorkItem,
 } from "@/lib/platform/god-accounts";
+import { runBusinessOsEventAutomation } from "@/lib/platform/business-os";
 import { recordOrgActivityEvent } from "@/lib/platform/org-memory";
 import { getClientIpFromRequest, logPlatformAction } from "@/lib/platform/audit";
 import { logError } from "@/lib/observability/logger";
@@ -118,7 +119,12 @@ export async function POST(request: NextRequest) {
                 target_id: workItem.target_id,
             },
         });
-        return NextResponse.json({ work_item: workItem }, { status: 201 });
+        const automation = workItem.org_id ? await runBusinessOsEventAutomation(auth.adminClient as never, {
+            orgId: workItem.org_id,
+            currentUserId: auth.userId,
+            trigger: "work_item_updated",
+        }) : null;
+        return NextResponse.json({ work_item: workItem, automation }, { status: 201 });
     } catch (error) {
         logError("[superadmin/work-items POST]", error);
         return apiError("Failed to create work item", 500);
@@ -174,7 +180,12 @@ export async function PATCH(request: NextRequest) {
                 owner_id: workItem.owner_id,
             },
         });
-        return NextResponse.json({ work_item: workItem });
+        const automation = workItem.org_id ? await runBusinessOsEventAutomation(auth.adminClient as never, {
+            orgId: workItem.org_id,
+            currentUserId: auth.userId,
+            trigger: "work_item_updated",
+        }) : null;
+        return NextResponse.json({ work_item: workItem, automation });
     } catch (error) {
         logError("[superadmin/work-items PATCH]", error);
         return apiError("Failed to update work item", 500);

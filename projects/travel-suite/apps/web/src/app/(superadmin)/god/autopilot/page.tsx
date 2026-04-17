@@ -178,6 +178,72 @@ export default function GodAutopilotPage() {
                     <div className="text-xs uppercase tracking-wide text-gray-500">Recent runs</div>
                     <div className="mt-2 text-2xl font-semibold text-white">{data?.summary.recent_runs ?? "—"}</div>
                 </div>
+                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-4">
+                    <div className="text-xs uppercase tracking-wide text-gray-500">Comms drafts</div>
+                    <div className="mt-2 text-2xl font-semibold text-white">{data?.summary.communication_drafts ?? "—"}</div>
+                </div>
+                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-4">
+                    <div className="text-xs uppercase tracking-wide text-gray-500">Renewal candidates</div>
+                    <div className="mt-2 text-2xl font-semibold text-white">{data?.summary.renewal_candidates ?? "—"}</div>
+                </div>
+                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-4">
+                    <div className="text-xs uppercase tracking-wide text-gray-500">Expansion candidates</div>
+                    <div className="mt-2 text-2xl font-semibold text-white">{data?.summary.expansion_candidates ?? "—"}</div>
+                </div>
+            </section>
+
+            <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+                <div className="rounded-2xl border border-red-900/50 bg-red-950/10 p-5">
+                    <div className="text-sm font-medium text-red-100">Founder mode</div>
+                    <div className="mt-2 text-sm text-red-200/80">{data?.founder_mode.headline ?? "Loading founder mode..."}</div>
+                    <div className="mt-4 grid gap-3 md:grid-cols-3">
+                        <div className="rounded-xl border border-red-900/40 bg-black/20 p-4">
+                            <div className="text-xs uppercase tracking-wide text-red-200/70">Approvals</div>
+                            <div className="mt-2 text-2xl font-semibold text-white">{data?.founder_mode.approvals.length ?? "—"}</div>
+                        </div>
+                        <div className="rounded-xl border border-red-900/40 bg-black/20 p-4">
+                            <div className="text-xs uppercase tracking-wide text-red-200/70">Revenue</div>
+                            <div className="mt-2 text-2xl font-semibold text-white">{data?.founder_mode.revenue_moves.length ?? "—"}</div>
+                        </div>
+                        <div className="rounded-xl border border-red-900/40 bg-black/20 p-4">
+                            <div className="text-xs uppercase tracking-wide text-red-200/70">Churn</div>
+                            <div className="mt-2 text-2xl font-semibold text-white">{data?.founder_mode.churn_risks.length ?? "—"}</div>
+                        </div>
+                    </div>
+                </div>
+                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
+                    <div className="text-sm font-medium text-gray-200">Only you today</div>
+                    <div className="mt-2 text-sm text-gray-400">{data?.founder_mode.summary ?? "Loading founder summary..."}</div>
+                    <div className="mt-4 grid gap-3 md:grid-cols-3">
+                        <div className="space-y-2">
+                            <div className="text-xs uppercase tracking-wide text-gray-500">Highest risk</div>
+                            {(data?.founder_mode.highest_risk_accounts ?? []).slice(0, 3).map((account) => (
+                                <Link key={account.org_id} href="/god/business-os" className="block rounded-lg border border-gray-800 bg-black/30 px-3 py-2 hover:border-gray-700">
+                                    <div className="text-sm text-white">{account.account_name}</div>
+                                    <div className="mt-1 text-xs text-gray-400">priority {account.priority_score}</div>
+                                </Link>
+                            ))}
+                        </div>
+                        <div className="space-y-2">
+                            <div className="text-xs uppercase tracking-wide text-gray-500">Revenue</div>
+                            {(data?.founder_mode.revenue_moves ?? []).slice(0, 3).map((item) => (
+                                <Link key={item.id} href={item.href} className="block rounded-lg border border-gray-800 bg-black/30 px-3 py-2 hover:border-gray-700">
+                                    <div className="text-sm text-white">{item.account_name}</div>
+                                    <div className="mt-1 text-xs text-gray-400">{item.detail}</div>
+                                </Link>
+                            ))}
+                        </div>
+                        <div className="space-y-2">
+                            <div className="text-xs uppercase tracking-wide text-gray-500">Churn</div>
+                            {(data?.founder_mode.churn_risks ?? []).slice(0, 3).map((item) => (
+                                <Link key={item.id} href={item.href} className="block rounded-lg border border-gray-800 bg-black/30 px-3 py-2 hover:border-gray-700">
+                                    <div className="text-sm text-white">{item.account_name}</div>
+                                    <div className="mt-1 text-xs text-gray-400">{item.detail}</div>
+                                </Link>
+                            ))}
+                        </div>
+                    </div>
+                </div>
             </section>
 
             <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
@@ -244,7 +310,7 @@ export default function GodAutopilotPage() {
                 <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
                     <div className="flex items-center justify-between gap-3">
                         <div>
-                            <div className="text-sm font-medium text-gray-200">Approval queue</div>
+                            <div className="text-sm font-medium text-gray-200">Approval inbox</div>
                             <div className="mt-1 text-sm text-gray-400">Risky actions stay human-in-the-loop. Approve only when you want the follow-through work opened.</div>
                         </div>
                         <div className="rounded-lg border border-red-900/50 bg-red-950/20 px-3 py-2 text-sm text-red-200">
@@ -382,6 +448,30 @@ export default function GodAutopilotPage() {
 
                 <div className="space-y-4">
                     <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
+                        <div className="text-sm font-medium text-gray-200">Customer comms drafts</div>
+                        <div className="mt-4 space-y-3">
+                            {(data?.communication_drafts ?? []).length > 0 ? data?.communication_drafts.map((draft) => (
+                                <div key={draft.id} className="rounded-xl border border-gray-800 bg-black/30 p-4">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <div className="text-sm font-medium text-white">{draft.account_name}</div>
+                                            <div className="mt-1 text-xs text-gray-500">{draft.sequence_type.replaceAll("_", " ")} • {draft.channel}</div>
+                                        </div>
+                                        <div className="text-xs text-amber-200">priority {draft.priority_score}</div>
+                                    </div>
+                                    <div className="mt-2 text-xs text-gray-400">{draft.reason}</div>
+                                    <pre className="mt-3 overflow-x-auto whitespace-pre-wrap rounded-lg border border-gray-800 bg-black/20 p-3 text-xs text-gray-300">
+                                        {draft.draft}
+                                    </pre>
+                                </div>
+                            )) : (
+                                <div className="rounded-xl border border-gray-800 bg-black/30 p-4 text-sm text-gray-400">
+                                    No customer comms drafts are queued right now.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
                         <div className="text-sm font-medium text-gray-200">Autopilot-created work</div>
                         <div className="mt-4 space-y-3">
                             {(data?.autopilot_work_items ?? []).length > 0 ? data?.autopilot_work_items.map((item) => (
@@ -431,6 +521,37 @@ export default function GodAutopilotPage() {
                                     No playbook outcomes are recorded yet.
                                 </div>
                             )}
+                        </div>
+                    </div>
+                    <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
+                        <div className="text-sm font-medium text-gray-200">Renewal and expansion queue</div>
+                        <div className="mt-4 grid gap-3 md:grid-cols-2">
+                            <div>
+                                <div className="mb-2 text-xs uppercase tracking-wide text-gray-500">Renewal</div>
+                                <div className="space-y-2">
+                                    {(data?.renewal_candidates ?? []).length > 0 ? data?.renewal_candidates.map((item) => (
+                                        <Link key={item.id} href={item.href} className="block rounded-lg border border-gray-800 bg-black/30 px-3 py-2 hover:border-gray-700">
+                                            <div className="text-sm text-white">{item.account_name}</div>
+                                            <div className="mt-1 text-xs text-gray-400">{item.detail}</div>
+                                        </Link>
+                                    )) : (
+                                        <div className="rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-sm text-gray-400">No renewal candidates yet.</div>
+                                    )}
+                                </div>
+                            </div>
+                            <div>
+                                <div className="mb-2 text-xs uppercase tracking-wide text-gray-500">Expansion</div>
+                                <div className="space-y-2">
+                                    {(data?.expansion_candidates ?? []).length > 0 ? data?.expansion_candidates.map((item) => (
+                                        <Link key={item.id} href={item.href} className="block rounded-lg border border-gray-800 bg-black/30 px-3 py-2 hover:border-gray-700">
+                                            <div className="text-sm text-white">{item.account_name}</div>
+                                            <div className="mt-1 text-xs text-gray-400">{item.detail}</div>
+                                        </Link>
+                                    )) : (
+                                        <div className="rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-sm text-gray-400">No expansion candidates yet.</div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

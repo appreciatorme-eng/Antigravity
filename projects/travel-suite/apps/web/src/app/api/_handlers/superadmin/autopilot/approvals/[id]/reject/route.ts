@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
-import { applyAutopilotApprovalDecision } from "@/lib/platform/business-os";
+import { applyAutopilotApprovalDecision, runBusinessOsEventAutomation } from "@/lib/platform/business-os";
 import { getClientIpFromRequest, logPlatformActionWithTarget } from "@/lib/platform/audit";
 import { logError } from "@/lib/observability/logger";
 
@@ -34,7 +34,13 @@ export async function POST(
             getClientIpFromRequest(request),
         );
 
-        return NextResponse.json(result, { status: 201 });
+        const automation = await runBusinessOsEventAutomation(auth.adminClient as never, {
+            orgId: result.approval.org_id,
+            currentUserId: auth.userId,
+            trigger: "work_item_updated",
+        });
+
+        return NextResponse.json({ ...result, automation }, { status: 201 });
     } catch (error) {
         logError("[superadmin/autopilot/approvals/:id/reject POST]", error);
         return apiError("Failed to reject autopilot action", 500);

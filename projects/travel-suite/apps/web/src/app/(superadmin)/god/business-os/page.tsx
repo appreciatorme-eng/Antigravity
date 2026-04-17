@@ -800,6 +800,75 @@ export default function BusinessOsPage() {
                 </div>
             </section>
 
+            <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+                <div className="rounded-2xl border border-red-900/40 bg-red-950/10 p-5">
+                    <div className="flex items-center justify-between gap-3">
+                        <div>
+                            <div className="text-sm font-medium text-red-100">Founder mode</div>
+                            <div className="mt-1 text-sm text-red-200/80">{data?.founder_mode.headline ?? "Loading founder exceptions..."}</div>
+                        </div>
+                        <Link href="/god/autopilot" className="text-xs text-red-200/80 hover:text-red-100">
+                            Open Autopilot
+                        </Link>
+                    </div>
+                    <div className="mt-4 grid gap-3 md:grid-cols-3">
+                        <div className="rounded-xl border border-red-900/40 bg-black/20 p-4">
+                            <div className="text-xs uppercase tracking-wide text-red-200/70">Approvals</div>
+                            <div className="mt-2 text-2xl font-semibold text-white">{data?.founder_mode.approvals.length ?? "—"}</div>
+                        </div>
+                        <div className="rounded-xl border border-red-900/40 bg-black/20 p-4">
+                            <div className="text-xs uppercase tracking-wide text-red-200/70">Revenue moves</div>
+                            <div className="mt-2 text-2xl font-semibold text-white">{data?.founder_mode.revenue_moves.length ?? "—"}</div>
+                        </div>
+                        <div className="rounded-xl border border-red-900/40 bg-black/20 p-4">
+                            <div className="text-xs uppercase tracking-wide text-red-200/70">Churn risks</div>
+                            <div className="mt-2 text-2xl font-semibold text-white">{data?.founder_mode.churn_risks.length ?? "—"}</div>
+                        </div>
+                    </div>
+                </div>
+                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
+                    <div className="text-sm font-medium text-gray-200">Only you today</div>
+                    <div className="mt-2 text-sm text-gray-400">{data?.founder_mode.summary ?? "Loading founder summary..."}</div>
+                    <div className="mt-4 grid gap-3 md:grid-cols-3">
+                        <div className="space-y-2">
+                            <div className="text-xs uppercase tracking-wide text-gray-500">Highest risk</div>
+                            {(data?.founder_mode.highest_risk_accounts ?? []).slice(0, 3).map((account) => (
+                                <button
+                                    key={account.org_id}
+                                    onClick={() => setSelectedOrgId(account.org_id)}
+                                    className="w-full rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-left hover:border-gray-700"
+                                >
+                                    <div className="text-sm text-white">{account.account_name}</div>
+                                    <div className="mt-1 text-xs text-gray-400">priority {account.priority_score}</div>
+                                </button>
+                            ))}
+                        </div>
+                        <div className="space-y-2">
+                            <div className="text-xs uppercase tracking-wide text-gray-500">Revenue</div>
+                            {(data?.founder_mode.revenue_moves ?? []).slice(0, 3).map((item) => (
+                                <a key={item.id} href={item.href} className="block rounded-lg border border-gray-800 bg-black/30 px-3 py-2 hover:border-gray-700">
+                                    <div className="text-sm text-white">{item.account_name}</div>
+                                    <div className="mt-1 text-xs text-gray-400">{item.detail}</div>
+                                </a>
+                            ))}
+                        </div>
+                        <div className="space-y-2">
+                            <div className="text-xs uppercase tracking-wide text-gray-500">Churn</div>
+                            {(data?.founder_mode.churn_risks ?? []).slice(0, 3).map((item) => (
+                                <button
+                                    key={item.id}
+                                    onClick={() => setSelectedOrgId(item.org_id)}
+                                    className="w-full rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-left hover:border-gray-700"
+                                >
+                                    <div className="text-sm text-white">{item.account_name}</div>
+                                    <div className="mt-1 text-xs text-gray-400">{item.detail}</div>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
                 <aside className="space-y-4 rounded-2xl border border-gray-800 bg-gray-950/70 p-4">
                     <div className="flex items-center gap-2 text-sm font-medium text-gray-200">
@@ -1470,9 +1539,66 @@ export default function BusinessOsPage() {
                                         {rightTab === "operate" ? (
                                             <div className="mt-4 space-y-4">
                                                 <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
-                                                    <div className="text-sm font-medium text-white">AI recommended next step</div>
+                                                    <div className="flex items-center justify-between gap-3">
+                                                        <div className="text-sm font-medium text-white">AI recommended next step</div>
+                                                        <div className={cn(
+                                                            "rounded-full border px-2.5 py-1 text-[11px] uppercase tracking-wide",
+                                                            selected.ai.confidence_label === "high"
+                                                                ? "border-emerald-800/60 bg-emerald-950/20 text-emerald-200"
+                                                                : selected.ai.confidence_label === "medium"
+                                                                    ? "border-amber-800/60 bg-amber-950/20 text-amber-200"
+                                                                    : "border-gray-800 bg-gray-950/40 text-gray-300",
+                                                        )}>
+                                                            {selected.ai.automation_posture.replaceAll("_", " ")} • {selected.ai.confidence_score}%
+                                                        </div>
+                                                    </div>
                                                     <div className="mt-2 text-sm text-gray-300">{selected.ai.recommended_next_step}</div>
                                                     <div className="mt-2 text-xs text-gray-400">{selected.ai.rationale}</div>
+                                                    <div className="mt-3 flex flex-wrap gap-2">
+                                                        {selected.ai.evidence.map((evidence) => (
+                                                            <div key={evidence} className="rounded-lg border border-gray-800 bg-gray-950/50 px-2.5 py-1.5 text-xs text-gray-300">
+                                                                {evidence}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                                <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
+                                                    <div className="flex items-center justify-between gap-3">
+                                                        <div className="text-sm font-medium text-white">Draft customer communication</div>
+                                                        <div className="text-xs text-gray-500">Approve before sending</div>
+                                                    </div>
+                                                    <div className="mt-3 space-y-3">
+                                                        {selected.ai.communication_drafts.length > 0 ? selected.ai.communication_drafts.map((draft) => (
+                                                            <div key={draft.id} className="rounded-lg border border-gray-800 bg-gray-950/50 px-3 py-3">
+                                                                <div className="flex items-start justify-between gap-3">
+                                                                    <div>
+                                                                        <div className="text-sm text-white">{draft.title}</div>
+                                                                        <div className="mt-1 text-xs text-gray-400">{draft.sequence_type.replaceAll("_", " ")} • {draft.channel}</div>
+                                                                    </div>
+                                                                    <button
+                                                                        onClick={() => setCommsDraft((current) => ({
+                                                                            ...current,
+                                                                            sequence_type: draft.sequence_type,
+                                                                            channel: draft.channel,
+                                                                            promise: draft.reason,
+                                                                            next_follow_up_at: toDateInput(data?.selected_account?.account_state.next_action_due_at ?? new Date(Date.now() + 86_400_000).toISOString()),
+                                                                        }))}
+                                                                        className="rounded-lg border border-gray-800 px-3 py-1.5 text-xs text-gray-300 hover:border-gray-700 hover:text-white"
+                                                                    >
+                                                                        Queue draft
+                                                                    </button>
+                                                                </div>
+                                                                <div className="mt-2 text-xs text-gray-400">{draft.reason}</div>
+                                                                <pre className="mt-3 overflow-x-auto whitespace-pre-wrap rounded-lg border border-gray-800 bg-black/20 p-3 text-xs text-gray-300">
+                                                                    {draft.draft}
+                                                                </pre>
+                                                            </div>
+                                                        )) : (
+                                                            <div className="rounded-lg border border-gray-800 bg-gray-950/50 px-3 py-2 text-sm text-gray-400">
+                                                                No customer comms draft is urgent for this account right now.
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                                 <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
                                                     <div className="text-sm font-medium text-white">Safe draft actions</div>
@@ -1501,7 +1627,7 @@ export default function BusinessOsPage() {
                                                 </div>
                                                 <div className="rounded-xl border border-red-900/50 bg-red-950/10 p-4">
                                                     <div className="flex items-center justify-between gap-3">
-                                                        <div className="text-sm font-medium text-red-200">Approvals</div>
+                                                        <div className="text-sm font-medium text-red-200">Approval inbox</div>
                                                         <Link href="/god/autopilot" className="text-xs text-red-200/80 hover:text-red-100">
                                                             Open Autopilot
                                                         </Link>

@@ -10,6 +10,7 @@ import {
     type CommitmentSource,
     type CommitmentStatus,
 } from "@/lib/platform/business-comms";
+import { runBusinessOsEventAutomation } from "@/lib/platform/business-os";
 import { getClientIpFromRequest, logPlatformAction } from "@/lib/platform/audit";
 import { recordOrgActivityEvent } from "@/lib/platform/org-memory";
 
@@ -133,7 +134,12 @@ export async function POST(
             metadata: { severity: commitment.severity, source: commitment.source },
         });
 
-        return NextResponse.json({ commitment }, { status: 201 });
+        const automation = await runBusinessOsEventAutomation(auth.adminClient as never, {
+            orgId,
+            currentUserId: auth.userId,
+            trigger: "commitment_updated",
+        });
+        return NextResponse.json({ commitment, automation }, { status: 201 });
     } catch (error) {
         logError("[superadmin/accounts/:orgId/commitments POST]", error);
         return apiError("Failed to create commitment", 500);
@@ -197,7 +203,12 @@ export async function PATCH(
             metadata: { severity: commitment.severity, status: commitment.status },
         });
 
-        return NextResponse.json({ commitment });
+        const automation = await runBusinessOsEventAutomation(auth.adminClient as never, {
+            orgId,
+            currentUserId: auth.userId,
+            trigger: "commitment_updated",
+        });
+        return NextResponse.json({ commitment, automation });
     } catch (error) {
         logError("[superadmin/accounts/:orgId/commitments PATCH]", error);
         return apiError("Failed to update commitment", 500);

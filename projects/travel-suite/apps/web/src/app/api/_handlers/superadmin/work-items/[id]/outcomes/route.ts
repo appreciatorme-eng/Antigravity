@@ -3,6 +3,7 @@ import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { getClientIpFromRequest, logPlatformAction } from "@/lib/platform/audit";
 import { updateGodWorkItem } from "@/lib/platform/god-accounts";
+import { runBusinessOsEventAutomation } from "@/lib/platform/business-os";
 import { logError } from "@/lib/observability/logger";
 import { recordOrgActivityEvent } from "@/lib/platform/org-memory";
 import { loadWorkItemOutcomes, recordWorkItemOutcome, type WorkItemOutcomeType } from "@/lib/platform/work-item-outcomes";
@@ -141,9 +142,16 @@ export async function POST(
             },
         });
 
+        const automation = await runBusinessOsEventAutomation(auth.adminClient as never, {
+            orgId: item.org_id,
+            currentUserId: auth.userId,
+            trigger: "work_item_outcome_recorded",
+        });
+
         return NextResponse.json({
             outcome,
             work_item: updatedWorkItem,
+            automation,
         }, { status: 201 });
     } catch (error) {
         logError("[superadmin/work-items/:id/outcomes POST]", error);
