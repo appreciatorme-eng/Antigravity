@@ -18,6 +18,8 @@ import {
     updateGodWorkItem,
 } from "@/lib/platform/god-accounts";
 import { runBusinessOsEventAutomation } from "@/lib/platform/business-os";
+import { recordOrgActivityEvent } from "@/lib/platform/org-memory";
+import { recordWorkItemOutcome, type WorkItemOutcomeType } from "@/lib/platform/work-item-outcomes";
 
 type OrganizationRow = {
     id: string;
@@ -69,6 +71,23 @@ function hoursUntil(iso: string | null): number | null {
     if (!iso) return null;
     const diffMs = new Date(iso).getTime() - Date.now();
     return Math.floor(diffMs / 3_600_000);
+}
+
+function normalizeMetadata(value: unknown): Record<string, unknown> | null {
+    return value && typeof value === "object" && !Array.isArray(value)
+        ? value as Record<string, unknown>
+        : null;
+}
+
+function outcomeForProposalAction(action: string): WorkItemOutcomeType {
+    switch (action) {
+        case "convert":
+            return "trip_converted";
+        case "cancel":
+            return "worse";
+        default:
+            return "no_change";
+    }
 }
 
 export async function GET(request: NextRequest) {
@@ -374,6 +393,15 @@ export async function PATCH(request: NextRequest) {
                 return apiError("Failed to update proposal", 500);
             }
 
+            const activeWorkItems = orgId
+                ? await loadGodWorkItems(db, { orgIds: [orgId], status: "active", limit: 80 })
+                : [];
+            const directlyLinkedWorkItems = activeWorkItems.filter((item) => {
+                if (item.target_type === "proposal" && item.target_id === body.id) return true;
+                const metadata = normalizeMetadata(item.metadata);
+                return typeof metadata?.automation_key === "string" && metadata.automation_key === `proposal-expiry:${orgId}`;
+            });
+
             if (body.work_item_update?.id) {
                 await updateGodWorkItem(db, body.work_item_update.id, {
                     status: body.work_item_update.status ?? (["convert", "cancel"].includes(body.action) ? "done" : undefined),
@@ -394,6 +422,78 @@ export async function PATCH(request: NextRequest) {
                     summary: body.work_item_update?.summary ?? `Proposal action recorded for ${body.id}`,
                     due_at: body.work_item_update?.due_at ?? null,
                     metadata: { action: body.action },
+                });
+            }
+
+            if (orgId) {
+                if (body.action === "extend") {
+                    for (const item of directlyLinkedWorkItems) {
+                        await updateGodWorkItem(db, item.id, {
+                            status: "in_progress",
+                            due_at: body.expires_at ?? item.due_at,
+                            metadata: {
+                                ...(normalizeMetadata(item.metadata) ?? {}),
+                                action: body.action,
+                                expires_at: body.expires_at ?? null,
+                            },
+                        });
+                    }
+                }
+
+                if (body.action === "convert" || body.action === "cancel") {
+                    for (const item of directlyLinkedWorkItems) {
+                        await updateGodWorkItem(db, item.id, { status: "done" });
+                        await recordWorkItemOutcome(db, {
+                            work_item_id: item.id,
+                            org_id: orgId,
+                            outcome_type: outcomeForProposalAction(body.action),
+                            note: `Proposal ${body.action.replace("_", " ")} was recorded from Revenue Ops.`,
+                            metadata: {
+                                source: "collections_patch",
+                                proposal_id: body.id,
+                                action: body.action,
+                            },
+                            recorded_by: auth.userId,
+                        });
+                    }
+                }
+
+                if (body.action === "cancel") {
+                    const hasChurnRisk = activeWorkItems.some((item) => item.kind === "churn_risk" && item.status !== "done");
+                    if (!hasChurnRisk) {
+                        await createGodWorkItem(db, {
+                            kind: "churn_risk",
+                            target_type: "proposal",
+                            target_id: body.id,
+                            org_id: orgId,
+                            owner_id: auth.userId,
+                            status: "open",
+                            severity: "high",
+                            title: `Recover cancelled proposal: ${existing.data?.title ?? body.id}`,
+                            summary: "Proposal was cancelled and needs a save review, blocker capture, or next-step decision.",
+                            due_at: new Date().toISOString(),
+                            metadata: {
+                                action: body.action,
+                                source: "collections_patch",
+                            },
+                        });
+                    }
+                }
+
+                await recordOrgActivityEvent(db, {
+                    org_id: orgId,
+                    actor_id: auth.userId,
+                    event_type: `proposal_${body.action}`,
+                    title: `Proposal ${body.action.replace("_", " ")}`,
+                    detail: existing.data?.title?.trim() || body.id,
+                    entity_type: "proposal",
+                    entity_id: body.id,
+                    source: "business_os",
+                    metadata: {
+                        action: body.action,
+                        expires_at: body.expires_at ?? null,
+                        linked_work_items_closed: ["convert", "cancel"].includes(body.action) ? directlyLinkedWorkItems.length : 0,
+                    },
                 });
             }
 

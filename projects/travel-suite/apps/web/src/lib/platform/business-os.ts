@@ -4257,11 +4257,12 @@ export async function runBusinessOsEventAutomation(
         const autopilotKind = typeof metadata?.autopilot_kind === "string" ? metadata.autopilot_kind : "";
         const shouldComplete = (
             (sequence.sequence_type === "activation_rescue" && account.snapshot.proposal_sent_count > 0)
-            || (sequence.sequence_type === "viewed_not_approved" && account.snapshot.proposal_approved_count > 0)
+            || (sequence.sequence_type === "viewed_not_approved" && (account.snapshot.proposal_approved_count > 0 || account.snapshot.proposal_won_count > 0))
             || (sequence.sequence_type === "collections" && account.snapshot.overdue_balance <= 0)
             || (sequence.sequence_type === "renewal_prep" && autopilotKind === "proposal_expiry_rescue" && (
                 account.snapshot.expiring_proposal_count === 0
                 || account.snapshot.proposal_approved_count > 0
+                || account.snapshot.proposal_won_count > 0
                 || account.snapshot.trip_count > 0
             ))
             || (sequence.sequence_type === "incident_recovery" && account.snapshot.fatal_error_count === 0 && account.snapshot.urgent_support_count === 0)
