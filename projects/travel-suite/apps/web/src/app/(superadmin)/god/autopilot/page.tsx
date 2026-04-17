@@ -17,6 +17,11 @@ import { authedFetch } from "@/lib/api/authed-fetch";
 import { cn } from "@/lib/utils";
 import type { AutopilotSnapshot } from "@/lib/platform/business-os";
 
+type SlackStatus = {
+    configured: boolean;
+    source: "SLACK_OPS_WEBHOOK_URL" | "SLACK_WEBHOOK_URL" | null;
+};
+
 function formatDateTime(value: string | null | undefined): string {
     if (!value) return "—";
     return new Date(value).toLocaleString(undefined, {
@@ -47,10 +52,18 @@ function workItemHref(kind: string): string {
     return "/god/business-os";
 }
 
+function formatSlackSource(source: SlackStatus["source"]): string {
+    if (source === "SLACK_OPS_WEBHOOK_URL") return "ops webhook";
+    if (source === "SLACK_WEBHOOK_URL") return "default webhook";
+    return "not configured";
+}
+
 export default function GodAutopilotPage() {
     const [data, setData] = useState<AutopilotSnapshot | null>(null);
+    const [slackStatus, setSlackStatus] = useState<SlackStatus | null>(null);
     const [loading, setLoading] = useState(true);
     const [running, setRunning] = useState(false);
+    const [testingSlack, setTestingSlack] = useState(false);
     const [busyApprovalId, setBusyApprovalId] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [message, setMessage] = useState<string | null>(null);
@@ -59,9 +72,15 @@ export default function GodAutopilotPage() {
         setLoading(true);
         setError(null);
         try {
-            const response = await authedFetch("/api/superadmin/autopilot");
+            const [response, slackResponse] = await Promise.all([
+                authedFetch("/api/superadmin/autopilot"),
+                authedFetch("/api/superadmin/settings/slack"),
+            ]);
             if (!response.ok) throw new Error("Failed to load Autopilot");
             setData(await response.json() as AutopilotSnapshot);
+            if (slackResponse.ok) {
+                setSlackStatus(await slackResponse.json() as SlackStatus);
+            }
         } catch (loadError) {
             setError(loadError instanceof Error ? loadError.message : "Failed to load Autopilot");
         } finally {
@@ -75,13 +94,40 @@ export default function GodAutopilotPage() {
         try {
             const response = await authedFetch("/api/superadmin/autopilot/run", { method: "POST" });
             if (!response.ok) throw new Error("Failed to run Autopilot");
-            const payload = await response.json() as { result: { ops_loop: { created_count: number; candidate_count: number } } };
-            setMessage(`Autopilot run completed. Created ${payload.result.ops_loop.created_count} of ${payload.result.ops_loop.candidate_count} candidate work items.`);
+            const payload = await response.json() as {
+                result: { ops_loop: { created_count: number; candidate_count: number } };
+                slack?: { configured: boolean; posted: boolean; source: SlackStatus["source"] };
+            };
+            const workSummary = `Autopilot run completed. Created ${payload.result.ops_loop.created_count} of ${payload.result.ops_loop.candidate_count} candidate work items.`;
+            const slackSummary = payload.slack?.posted
+                ? `Slack digest sent (${formatSlackSource(payload.slack.source)}).`
+                : payload.slack?.configured
+                    ? "Slack digest failed to send."
+                    : "Slack is not configured.";
+            setMessage(`${workSummary} ${slackSummary}`);
             await loadData();
         } catch (runError) {
             setError(runError instanceof Error ? runError.message : "Failed to run Autopilot");
         } finally {
             setRunning(false);
+        }
+    }
+
+    async function sendSlackTest() {
+        setTestingSlack(true);
+        setError(null);
+        try {
+            const response = await authedFetch("/api/superadmin/settings/slack", { method: "POST" });
+            const payload = await response.json() as { error?: string; source?: SlackStatus["source"] };
+            if (!response.ok) {
+                throw new Error(payload.error ?? "Failed to send Slack test");
+            }
+            setMessage(`Slack test alert sent (${formatSlackSource(payload.source ?? null)}).`);
+            await loadData();
+        } catch (slackError) {
+            setError(slackError instanceof Error ? slackError.message : "Failed to send Slack test");
+        } finally {
+            setTestingSlack(false);
         }
     }
 
@@ -118,6 +164,15 @@ export default function GodAutopilotPage() {
                     <p className="mt-1 max-w-3xl text-sm text-gray-400">
                         Monitor what AI is prioritizing, what was auto-created or auto-closed, what needs approval, and which loops are actually working.
                     </p>
+                    <div className={cn(
+                        "mt-3 inline-flex items-center gap-2 rounded-lg border px-2.5 py-1 text-xs",
+                        slackStatus?.configured
+                            ? "border-emerald-900/60 bg-emerald-950/20 text-emerald-200"
+                            : "border-amber-900/60 bg-amber-950/20 text-amber-200",
+                    )}>
+                        {slackStatus?.configured ? "Slack connected" : "Slack disconnected"}
+                        <span className="text-[11px] text-gray-300">({formatSlackSource(slackStatus?.source ?? null)})</span>
+                    </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
                     <Link
@@ -141,6 +196,14 @@ export default function GodAutopilotPage() {
                     >
                         <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
                         Refresh
+                    </button>
+                    <button
+                        onClick={() => void sendSlackTest()}
+                        disabled={testingSlack}
+                        className="inline-flex items-center gap-2 rounded-lg border border-gray-800 bg-gray-950 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white disabled:opacity-60"
+                    >
+                        {testingSlack ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                        {testingSlack ? "Sending..." : "Send Slack test"}
                     </button>
                     <button
                         onClick={() => void runNow()}

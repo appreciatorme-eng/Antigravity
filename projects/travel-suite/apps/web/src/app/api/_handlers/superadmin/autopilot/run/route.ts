@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
+import { resolveSlackWebhookConfig, sendOpsAlert } from "@/lib/god-slack";
 import { buildAutopilotAuditDetails, buildAutopilotSnapshot, generateDailyOpsBrief, runBusinessDailyAutopilot } from "@/lib/platform/business-os";
 import { getClientIpFromRequest, logPlatformAction } from "@/lib/platform/audit";
 import { logError } from "@/lib/observability/logger";
@@ -53,12 +54,23 @@ export async function POST(request: NextRequest) {
         );
 
         const snapshot = await buildAutopilotSnapshot(auth.adminClient as never, auth.userId);
+        const slack = resolveSlackWebhookConfig();
+        const slackPosted = await sendOpsAlert([
+            "Manual Business OS run completed",
+            `Triggered by: ${auth.userId}`,
+            snapshot.founder_digest.slack_text,
+        ].join("\n\n"));
         return NextResponse.json({
             generated_at: new Date().toISOString(),
             run_key: runKey,
             result: autopilot,
             brief,
             snapshot,
+            slack: {
+                configured: slack.configured,
+                source: slack.source,
+                posted: slackPosted,
+            },
         }, { status: 201 });
     } catch (error) {
         logError("[superadmin/autopilot/run POST]", error);

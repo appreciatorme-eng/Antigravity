@@ -6,23 +6,56 @@ export interface SlackBlock {
     fields?: unknown[];
 }
 
+export type SlackWebhookSource = "SLACK_OPS_WEBHOOK_URL" | "SLACK_WEBHOOK_URL";
+
+export interface SlackWebhookConfig {
+    readonly configured: boolean;
+    readonly source: SlackWebhookSource | null;
+    readonly url: string | null;
+}
+
+export function resolveSlackWebhookConfig(): SlackWebhookConfig {
+    const opsWebhook = process.env.SLACK_OPS_WEBHOOK_URL?.trim();
+    if (opsWebhook) {
+        return {
+            configured: true,
+            source: "SLACK_OPS_WEBHOOK_URL",
+            url: opsWebhook,
+        };
+    }
+
+    const defaultWebhook = process.env.SLACK_WEBHOOK_URL?.trim();
+    if (defaultWebhook) {
+        return {
+            configured: true,
+            source: "SLACK_WEBHOOK_URL",
+            url: defaultWebhook,
+        };
+    }
+
+    return {
+        configured: false,
+        source: null,
+        url: null,
+    };
+}
+
 /**
  * Sends a rich message to the operations Slack channel using Block Kit.
  * Best for Human-in-the-Loop workflows (propose action, wait for approval).
  */
 export async function sendOpsAlert(text: string, blocks?: SlackBlock[]) {
-    // If no webhook URL is defined, just log to console (graceful fallback)
-    const webhookUrl = process.env.SLACK_OPS_WEBHOOK_URL;
-    
-    if (!webhookUrl) {
-        console.warn("[god-slack] Missing SLACK_OPS_WEBHOOK_URL. Alert would have been:", text);
+    const webhook = resolveSlackWebhookConfig();
+
+    if (!webhook.url) {
+        console.warn("[god-slack] Missing Slack webhook (SLACK_OPS_WEBHOOK_URL/SLACK_WEBHOOK_URL). Alert would have been:", text);
         return false;
     }
 
     try {
         const payload = blocks ? { text, blocks } : { text };
         
-        const response = await fetch(webhookUrl, {
+        const response = await fetch(webhook.url, {
             method: "POST", // eslint-disable-line no-restricted-syntax -- server-side Slack webhook, not a mutation endpoint
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),

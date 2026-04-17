@@ -59,6 +59,7 @@ const routes = createCatchAllHandlers([
   ["support/tickets", () => import("@/app/api/_handlers/superadmin/support/tickets/route")],
   ["settings/kill-switch", () => import("@/app/api/_handlers/superadmin/settings/kill-switch/route")],
   ["settings/org-suspend", () => import("@/app/api/_handlers/superadmin/settings/org-suspend/route")],
+  ["settings/slack", () => import("@/app/api/_handlers/superadmin/settings/slack/route")],
   ["settings", () => import("@/app/api/_handlers/superadmin/settings/route")],
   ["monitoring/health", () => import("@/app/api/_handlers/superadmin/monitoring/health/route")],
   ["monitoring/queues", () => import("@/app/api/_handlers/superadmin/monitoring/queues/route")],

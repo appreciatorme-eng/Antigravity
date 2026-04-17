@@ -16,13 +16,14 @@
  *
  * Setup:
  *  - SENTRY_WEBHOOK_SECRET  — random hex token (in the webhook URL as ?token=<value>)
- *  - SLACK_WEBHOOK_URL      — Slack Incoming Webhook URL from Slack App settings
+ *  - SLACK_OPS_WEBHOOK_URL or SLACK_WEBHOOK_URL — Slack Incoming Webhook URL
  *  Webhook URL in Sentry: https://tripbuilt.com/api/webhooks/sentry?token=<SENTRY_WEBHOOK_SECRET>
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { waitUntil } from "@vercel/functions";
 import { timingSafeEqual } from "crypto";
+import { resolveSlackWebhookConfig } from "@/lib/god-slack";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logError, logEvent, getRequestId, getRequestContext } from "@/lib/observability/logger";
 import type { LogContext } from "@/lib/observability/logger";
@@ -83,7 +84,7 @@ const LEVEL_EMOJI: Record<string, string> = {
 };
 
 async function postToSlack(issue: SentryIssue, isRegression: boolean): Promise<void> {
-    const webhookUrl = process.env.SLACK_WEBHOOK_URL;
+    const webhookUrl = resolveSlackWebhookConfig().url;
     if (!webhookUrl) return; // Slack not configured — silently skip
 
     const emoji = isRegression ? "🔁" : (LEVEL_EMOJI[issue.level] ?? "🔴");
