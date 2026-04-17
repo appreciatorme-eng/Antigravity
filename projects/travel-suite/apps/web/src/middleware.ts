@@ -22,6 +22,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import createMiddleware from "next-intl/middleware";
 import { updateSession } from "@/lib/supabase/middleware";
 import { locales, defaultLocale } from "@/i18n";
+import { LEGAL_VERSIONS } from "@/lib/legal/versions";
 
 const PROTECTED_PREFIXES = [
     "/admin",
@@ -94,6 +95,48 @@ function isProtectedPath(pathname: string): boolean {
 function isOnboardingPath(pathname: string): boolean {
     const withoutLocale = stripLocalePrefix(pathname);
     return withoutLocale === "/onboarding" || withoutLocale.startsWith("/onboarding/");
+}
+
+/**
+ * Paths that must remain accessible even when the user has a stale
+ * legal-document acceptance. The interstitial itself, sign-out, and the
+ * legal docs they are being asked to review must never redirect-loop.
+ */
+const TERMS_GATE_ALLOWLIST = [
+    "/auth",
+    "/auth/accept-terms",
+    "/auth/callback",
+    "/auth/signout",
+    "/terms",
+    "/privacy",
+    "/refund-policy",
+    "/cancellation-policy",
+    "/acceptable-use",
+    "/dpa",
+    "/grievance",
+];
+
+function isTermsGateAllowlisted(pathname: string): boolean {
+    const withoutLocale = stripLocalePrefix(pathname);
+    return TERMS_GATE_ALLOWLIST.some(
+        (prefix) => withoutLocale === prefix || withoutLocale.startsWith(`${prefix}/`),
+    );
+}
+
+function hasStaleLegalAcceptance(profile: {
+    terms_version_accepted: string | null;
+    privacy_version_accepted: string | null;
+    role: string | null;
+} | null): boolean {
+    if (!profile) return false;
+    // Super-admins and client/driver users (created by admins) are not
+    // forced through the terms interstitial — their acceptance is handled
+    // at the org level. Only self-signup operators ("admin" role) are gated.
+    if (profile.role !== "admin") return false;
+    return (
+        profile.terms_version_accepted !== LEGAL_VERSIONS.terms ||
+        profile.privacy_version_accepted !== LEGAL_VERSIONS.privacy
+    );
 }
 
 function isMarketingPath(pathname: string): boolean {
@@ -171,7 +214,9 @@ export async function middleware(request: NextRequest) {
 
     const { data: profile, error: profileError } = await supabase
         .from("profiles")
-        .select("organization_id, role, onboarding_step")
+        .select(
+            "organization_id, role, onboarding_step, terms_version_accepted, privacy_version_accepted",
+        )
         .eq("id", user.id)
         .maybeSingle();
 
@@ -180,6 +225,19 @@ export async function middleware(request: NextRequest) {
     if (profileError) {
         const requested = `${pathname}${request.nextUrl.search}`;
         return NextResponse.redirect(buildAuthRedirect(request, requested));
+    }
+
+    // Legal-acceptance gate — applies to every authenticated request except
+    // the allowlist (the interstitial itself + the legal docs being reviewed).
+    // Redirects BEFORE the onboarding check because a user must accept terms
+    // before any other in-app workflow runs.
+    if (
+        hasStaleLegalAcceptance(profile) &&
+        !isTermsGateAllowlisted(pathname)
+    ) {
+        const destination = new URL(`/${locale}/auth/accept-terms`, request.url);
+        destination.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
+        return NextResponse.redirect(destination);
     }
 
     const onboardingComplete = isOnboardingComplete(profile);

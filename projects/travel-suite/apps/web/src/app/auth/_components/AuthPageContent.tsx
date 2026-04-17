@@ -18,6 +18,8 @@ import {
     EyeOff,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { LEGAL_VERSIONS } from "@/lib/legal/versions";
 
 type AuthMode = "login" | "signup";
 
@@ -47,7 +49,8 @@ function AuthPageInner() {
     const [error, setError] = useState("");
     const [message, setMessage] = useState("");
     const [showPassword, setShowPassword] = useState(false);
-    const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
+    const [termsAccepted, setTermsAccepted] = useState(false);
+    const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string; terms?: string }>({});
 
     const validateEmail = (value: string): string | undefined => {
         if (!value) return "Please enter a valid email";
@@ -66,10 +69,18 @@ function AuthPageInner() {
 
         const emailError = validateEmail(email);
         const passwordError = !password ? "Password is required" : undefined;
-        const newFieldErrors = { email: emailError, password: passwordError };
+        const termsError =
+            mode === "signup" && !termsAccepted
+                ? "You must accept the Terms to create an account"
+                : undefined;
+        const newFieldErrors = {
+            email: emailError,
+            password: passwordError,
+            terms: termsError,
+        };
         setFieldErrors(newFieldErrors);
 
-        if (emailError || passwordError) return;
+        if (emailError || passwordError || termsError) return;
 
         setLoading(true);
         setError("");
@@ -77,12 +88,28 @@ function AuthPageInner() {
 
         try {
             if (mode === "signup") {
-                const { error } = await supabase.auth.signUp({
-                    email,
-                    password,
-                    options: { data: { full_name: fullName } },
+                // Server-side signup records the click-wrap acceptance
+                // transactionally with the auth.users row. Do NOT call
+                // supabase.auth.signUp() directly from the client here.
+                const response = await fetch("/api/auth/signup", {
+                    // eslint-disable-next-line no-restricted-syntax -- pre-auth route, no Bearer token available
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        email,
+                        password,
+                        full_name: fullName,
+                        terms_version: LEGAL_VERSIONS.terms,
+                        privacy_version: LEGAL_VERSIONS.privacy,
+                        terms_accepted: true,
+                        privacy_accepted: true,
+                        age_confirmed: true,
+                    }),
                 });
-                if (error) throw error;
+                const payload = await response.json();
+                if (!response.ok) {
+                    throw new Error(payload.error || "Failed to create account");
+                }
                 setMessage("Check your email for a confirmation link.");
             } else {
                 const response = await fetch("/api/auth/password-login", {
@@ -387,9 +414,86 @@ function AuthPageInner() {
                             </div>
                         )}
 
+                        {mode === "signup" && (
+                            <div className="pt-1">
+                                <label
+                                    htmlFor="auth-terms"
+                                    className="flex items-start gap-3 cursor-pointer select-none py-2"
+                                >
+                                    <Checkbox
+                                        id="auth-terms"
+                                        checked={termsAccepted}
+                                        onCheckedChange={(v) => {
+                                            setTermsAccepted(v === true);
+                                            if (fieldErrors.terms) {
+                                                setFieldErrors((prev) => ({ ...prev, terms: undefined }));
+                                            }
+                                        }}
+                                        className="mt-0.5"
+                                        aria-describedby={fieldErrors.terms ? "auth-terms-error" : undefined}
+                                        aria-invalid={!!fieldErrors.terms}
+                                    />
+                                    <span className="text-[11px] leading-relaxed text-white/55">
+                                        I confirm I am 18 years or older, I have read and
+                                        agree to TripBuilt&apos;s{" "}
+                                        <a
+                                            href="/terms"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-emerald-400/90 underline underline-offset-2 hover:text-emerald-300"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            Terms of Service
+                                        </a>
+                                        ,{" "}
+                                        <a
+                                            href="/privacy"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-emerald-400/90 underline underline-offset-2 hover:text-emerald-300"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            Privacy Policy
+                                        </a>
+                                        ,{" "}
+                                        <a
+                                            href="/refund-policy"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-emerald-400/90 underline underline-offset-2 hover:text-emerald-300"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            Refund Policy
+                                        </a>
+                                        , and{" "}
+                                        <a
+                                            href="/acceptable-use"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-emerald-400/90 underline underline-offset-2 hover:text-emerald-300"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            Acceptable Use Policy
+                                        </a>
+                                        . These are governed by the laws of India with
+                                        exclusive jurisdiction in Hyderabad.
+                                    </span>
+                                </label>
+                                {fieldErrors.terms && (
+                                    <p
+                                        id="auth-terms-error"
+                                        className="text-red-400 text-xs mt-1 flex items-center gap-1"
+                                    >
+                                        <AlertCircle className="w-3 h-3" />
+                                        {fieldErrors.terms}
+                                    </p>
+                                )}
+                            </div>
+                        )}
+
                         <button
                             type="submit"
-                            disabled={loading}
+                            disabled={loading || (mode === "signup" && !termsAccepted)}
                             className="w-full h-12 mt-1 rounded-xl font-semibold text-[#040d09] text-sm flex items-center justify-center gap-2 transition-all duration-200 hover:brightness-110 active:scale-[0.98] disabled:opacity-55 disabled:cursor-not-allowed"
                             style={{
                                 background: "linear-gradient(135deg, #00d084 0%, #00b872 100%)",

@@ -30,9 +30,13 @@ export function Footer() {
     {
       title: 'Legal',
       links: [
-        { label: 'Privacy Policy', href: '/privacy' },
         { label: 'Terms of Service', href: '/terms' },
-        { label: 'Cookie Policy' },
+        { label: 'Privacy Policy', href: '/privacy' },
+        { label: 'Refund Policy', href: '/refund-policy' },
+        { label: 'Cancellation Policy', href: '/cancellation-policy' },
+        { label: 'Acceptable Use', href: '/acceptable-use' },
+        { label: 'Data Processing', href: '/dpa' },
+        { label: 'Grievance', href: '/grievance' },
       ]
     }
   ];
