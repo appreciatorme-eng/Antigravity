@@ -20,7 +20,7 @@ import {
     type GodWorkItem,
 } from "@/lib/platform/god-accounts";
 import { listOrgActivityEvents, listOrgMemoryNotes, recordOrgActivityEvent, type OrgActivityEvent, type OrgMemoryNote } from "@/lib/platform/org-memory";
-import { buildWorkItemOutcomeLearning, recordWorkItemOutcome, type WorkItemOutcomeLearning } from "@/lib/platform/work-item-outcomes";
+import { buildWorkItemOutcomeLearning, recordWorkItemOutcome, type WorkItemOutcomeLearning, type WorkItemOutcomeType } from "@/lib/platform/work-item-outcomes";
 import {
     createCommsSequence,
     createCommitment,
@@ -303,6 +303,7 @@ export type BusinessOsDailyAutopilotResult = {
     collections_sequences_created: number;
     collections_sequences_completed: number;
     send_queue_escalated: number;
+    no_response_escalated: number;
     commitments_breached: number;
     promise_escalations: number;
     commitments_created: number;
@@ -427,6 +428,8 @@ export type BusinessOsEventAutomationResult = {
     commitments_met: number;
     commitments_breached: number;
     promise_escalations: number;
+    no_response_escalated: number;
+    outcomes_recorded: number;
     notes: string[];
 };
 
@@ -1178,6 +1181,30 @@ function parseCommsChannel(value: unknown): CommsChannel {
     }
 }
 
+function outcomeTypeForSequenceCompletion(sequenceType: CommsSequenceType): WorkItemOutcomeType {
+    switch (sequenceType) {
+        case "collections":
+            return "payment_collected";
+        case "viewed_not_approved":
+            return "proposal_approved";
+        case "activation_rescue":
+            return "proposal_sent";
+        default:
+            return "recovered";
+    }
+}
+
+function outcomeTypeForWorkItemClosure(kind: GodWorkItemKind): WorkItemOutcomeType {
+    switch (kind) {
+        case "collections":
+            return "payment_collected";
+        case "growth_followup":
+            return "proposal_sent";
+        default:
+            return "recovered";
+    }
+}
+
 function selectAutoOwnerId(
     account: BusinessOsAccountRow,
     operatorIds: string[],
@@ -1766,9 +1793,9 @@ export function buildAutopilotAuditDetails(
             `Activation seq +${autopilot.activation_sequences_created} / closed ${autopilot.activation_sequences_completed}.`,
             `Activation commitments +${autopilot.commitments_created} / met ${autopilot.activation_commitments_met}.`,
             `Collections seq +${autopilot.collections_sequences_created} / closed ${autopilot.collections_sequences_completed}.`,
-            `Send queue escalations ${autopilot.send_queue_escalated}.`,
+            `Send queue escalations ${autopilot.send_queue_escalated}; no-response escalations ${autopilot.no_response_escalated}.`,
             `Breached commitments ${autopilot.commitments_breached} / promise escalations ${autopilot.promise_escalations}.`,
-            `Collections work auto-closed ${autopilot.collections_auto_closed}.`,
+            `Collections work auto-closed ${autopilot.collections_auto_closed}; outcomes recorded ${autopilot.outcomes_recorded}.`,
         ].join(" "),
         brief_headline: brief.headline,
         brief_summary: brief.summary,
@@ -1784,6 +1811,7 @@ export function buildAutopilotAuditDetails(
         collections_sequences_created: autopilot.collections_sequences_created,
         collections_sequences_completed: autopilot.collections_sequences_completed,
         send_queue_escalated: autopilot.send_queue_escalated,
+        no_response_escalated: autopilot.no_response_escalated,
         commitments_breached: autopilot.commitments_breached,
         promise_escalations: autopilot.promise_escalations,
         commitments_created: autopilot.commitments_created,
@@ -2646,6 +2674,7 @@ export async function runBusinessDailyAutopilot(
             collections_sequences_created: 0,
             collections_sequences_completed: 0,
             send_queue_escalated: 0,
+            no_response_escalated: 0,
             commitments_breached: 0,
             promise_escalations: 0,
             commitments_created: 0,
@@ -2712,11 +2741,13 @@ export async function runBusinessDailyAutopilot(
     let collectionsSequencesCreated = 0;
     let collectionsSequencesCompleted = 0;
     let sendQueueEscalated = 0;
+    let noResponseEscalated = 0;
     let commitmentsBreached = 0;
     let promiseEscalations = 0;
     let commitmentsCreated = 0;
     let collectionsAutoClosed = 0;
     let outcomesRecorded = 0;
+    const closedWorkItemIds = new Set<string>();
 
     const unownedPriorityAccounts = payload.accounts.filter((account) =>
         !account.account_state.owner_id
@@ -2881,6 +2912,29 @@ export async function runBusinessDailyAutopilot(
         });
         if (!commitment) continue;
         activationCommitmentsMet += 1;
+
+        const linkedWorkItem = activeWorkItemRows.find((item) => {
+            if (item.org_id !== row.org_id || closedWorkItemIds.has(item.id)) return false;
+            const workMetadata = normalizeMetadata(item.metadata);
+            return workMetadata?.commitment_id === row.id;
+        }) ?? null;
+        if (linkedWorkItem) {
+            await updateGodWorkItem(db, linkedWorkItem.id, { status: "done" });
+            await recordWorkItemOutcome(db, {
+                work_item_id: linkedWorkItem.id,
+                org_id: row.org_id,
+                outcome_type: "proposal_sent",
+                note: "Auto-closed by Business OS daily autopilot after first proposal milestone was reached.",
+                metadata: {
+                    source: "business_os_daily_autopilot",
+                    autopilot_kind: "activation_commitment_met",
+                    commitment_id: row.id,
+                },
+                recorded_by: null,
+            });
+            closedWorkItemIds.add(linkedWorkItem.id);
+            outcomesRecorded += 1;
+        }
         await recordOrgActivityEvent(db, {
             org_id: row.org_id,
             actor_id: null,
@@ -2907,6 +2961,30 @@ export async function runBusinessDailyAutopilot(
         });
         if (!sequence) continue;
         activationSequencesCompleted += 1;
+
+        const linkedWorkItem = activeWorkItemRows.find((item) => {
+            if (item.org_id !== row.org_id || closedWorkItemIds.has(item.id)) return false;
+            const workMetadata = normalizeMetadata(item.metadata);
+            return workMetadata?.comms_sequence_id === row.id;
+        }) ?? null;
+        if (linkedWorkItem) {
+            await updateGodWorkItem(db, linkedWorkItem.id, { status: "done" });
+            await recordWorkItemOutcome(db, {
+                work_item_id: linkedWorkItem.id,
+                org_id: row.org_id,
+                outcome_type: outcomeTypeForSequenceCompletion("activation_rescue"),
+                note: "Auto-closed by Business OS daily autopilot after the activation rescue sequence succeeded.",
+                metadata: {
+                    source: "business_os_daily_autopilot",
+                    autopilot_kind: "sequence_completed",
+                    sequence_id: row.id,
+                    sequence_type: "activation_rescue",
+                },
+                recorded_by: null,
+            });
+            closedWorkItemIds.add(linkedWorkItem.id);
+            outcomesRecorded += 1;
+        }
         await recordOrgActivityEvent(db, {
             org_id: row.org_id,
             actor_id: null,
@@ -2937,6 +3015,30 @@ export async function runBusinessDailyAutopilot(
         });
         if (!sequence) continue;
         collectionsSequencesCompleted += 1;
+
+        const linkedWorkItem = activeWorkItemRows.find((item) => {
+            if (item.org_id !== row.org_id || closedWorkItemIds.has(item.id)) return false;
+            const workMetadata = normalizeMetadata(item.metadata);
+            return workMetadata?.comms_sequence_id === row.id;
+        }) ?? null;
+        if (linkedWorkItem) {
+            await updateGodWorkItem(db, linkedWorkItem.id, { status: "done" });
+            await recordWorkItemOutcome(db, {
+                work_item_id: linkedWorkItem.id,
+                org_id: row.org_id,
+                outcome_type: outcomeTypeForSequenceCompletion("collections"),
+                note: "Auto-closed by Business OS daily autopilot after the collections sequence resolved.",
+                metadata: {
+                    source: "business_os_daily_autopilot",
+                    autopilot_kind: "sequence_completed",
+                    sequence_id: row.id,
+                    sequence_type: "collections",
+                },
+                recorded_by: null,
+            });
+            closedWorkItemIds.add(linkedWorkItem.id);
+            outcomesRecorded += 1;
+        }
         await recordOrgActivityEvent(db, {
             org_id: row.org_id,
             actor_id: null,
@@ -2948,6 +3050,99 @@ export async function runBusinessDailyAutopilot(
             source: "business_os_autopilot",
             metadata: {
                 status: sequence.status,
+            },
+        });
+    }
+
+    const sentNoResponseSequences = sequenceRows.filter((row) => {
+        if (!row.org_id || row.status !== "active" || !row.last_sent_at || !row.next_follow_up_at) return false;
+        const metadata = normalizeMetadata(row.metadata);
+        if (metadata?.send_state !== "sent") return false;
+        const nextFollowUpAt = new Date(row.next_follow_up_at).getTime();
+        if (!Number.isFinite(nextFollowUpAt) || nextFollowUpAt > now) return false;
+        const lastEscalatedAt = typeof metadata?.last_no_response_escalated_at === "string"
+            ? new Date(metadata.last_no_response_escalated_at).getTime()
+            : Number.NaN;
+        return !Number.isFinite(lastEscalatedAt) || lastEscalatedAt <= now - 86_400_000;
+    });
+
+    for (const row of sentNoResponseSequences) {
+        if (noResponseEscalated >= maxActionsPerLoop) break;
+        if (!row.org_id) continue;
+        const metadata = normalizeMetadata(row.metadata) ?? {};
+        const ownerId = accountByOrgId.get(row.org_id)?.account_state.owner_id ?? null;
+        const sequenceType = parseSequenceType(row.sequence_type);
+        const existingWorkItem = activeWorkItemRows.find((item) => {
+            if (item.org_id !== row.org_id) return false;
+            const workMetadata = normalizeMetadata(item.metadata);
+            return workMetadata?.comms_sequence_id === row.id
+                || (workMetadata?.autopilot_kind === "no_response_followup" && workMetadata?.sequence_type === sequenceType);
+        }) ?? null;
+
+        if (existingWorkItem) {
+            await updateGodWorkItem(db, existingWorkItem.id, {
+                owner_id: existingWorkItem.owner_id ?? ownerId ?? undefined,
+                status: existingWorkItem.status === "snoozed" ? "open" : undefined,
+                severity: sequenceType === "incident_recovery" ? "critical" : "high",
+                due_at: new Date().toISOString(),
+                metadata: {
+                    ...(normalizeMetadata(existingWorkItem.metadata) ?? {}),
+                    autopilot_kind: "no_response_followup",
+                    comms_sequence_id: row.id,
+                    sequence_type: sequenceType,
+                    no_response_count: Number(metadata.no_response_count ?? 0) + 1,
+                    last_no_response_escalated_at: new Date().toISOString(),
+                },
+            });
+        } else {
+            await createGodWorkItem(db, {
+                kind: workItemKindForCommunicationSequenceType(sequenceType),
+                target_type: "organization",
+                target_id: row.org_id,
+                org_id: row.org_id,
+                owner_id: ownerId,
+                status: "open",
+                severity: sequenceType === "incident_recovery" ? "critical" : "high",
+                title: `No response after ${sequenceType.replaceAll("_", " ")} follow-up`,
+                summary: typeof metadata.draft_reason === "string"
+                    ? `${metadata.draft_reason}\n\nCustomer follow-up was sent, but no response was captured by the due date.`
+                    : "Customer follow-up was sent, but no response was captured by the due date.",
+                due_at: new Date().toISOString(),
+                metadata: {
+                    source: "business_os_daily_autopilot",
+                    autopilot_kind: "no_response_followup",
+                    comms_sequence_id: row.id,
+                    sequence_type: sequenceType,
+                    no_response_count: Number(metadata.no_response_count ?? 0) + 1,
+                },
+            });
+        }
+
+        await updateCommsSequence(db, row.id, {
+            next_follow_up_at: new Date(Date.now() + 86_400_000).toISOString(),
+            metadata: {
+                ...metadata,
+                no_response_count: Number(metadata.no_response_count ?? 0) + 1,
+                no_response_detected_at: new Date().toISOString(),
+                last_no_response_escalated_at: new Date().toISOString(),
+                no_response_escalated_by: "business_os_daily_autopilot",
+            },
+        });
+        noResponseEscalated += 1;
+        await recordOrgActivityEvent(db, {
+            org_id: row.org_id,
+            actor_id: null,
+            event_type: "autopilot_no_response_escalated",
+            title: "Autopilot escalated no-response follow-up",
+            detail: typeof metadata.draft_title === "string"
+                ? `${metadata.draft_title} was sent but has no recorded response yet.`
+                : "A sent communication has not received a recorded response by the follow-up date.",
+            entity_type: "comms_sequence",
+            entity_id: row.id,
+            source: "business_os_autopilot",
+            metadata: {
+                sequence_type: sequenceType,
+                no_response_count: Number(metadata.no_response_count ?? 0) + 1,
             },
         });
     }
@@ -3104,6 +3299,7 @@ export async function runBusinessDailyAutopilot(
 
     for (const item of collectionsWorkItemRows) {
         if (collectionsAutoClosed >= maxActionsPerLoop) break;
+        if (closedWorkItemIds.has(item.id)) continue;
         if (!item.org_id || !zeroOverdueOrgIds.has(item.org_id)) continue;
         const updated = await updateGodWorkItem(db, item.id, { status: "done" });
         if (!updated) continue;
@@ -3120,6 +3316,7 @@ export async function runBusinessDailyAutopilot(
         });
         outcomesRecorded += 1;
         collectionsAutoClosed += 1;
+        closedWorkItemIds.add(item.id);
         await recordOrgActivityEvent(db, {
             org_id: item.org_id,
             actor_id: null,
@@ -3145,6 +3342,7 @@ export async function runBusinessDailyAutopilot(
             collections_sequences_created: collectionsSequencesCreated,
             collections_sequences_completed: collectionsSequencesCompleted,
             send_queue_escalated: sendQueueEscalated,
+            no_response_escalated: noResponseEscalated,
             commitments_breached: commitmentsBreached,
             promise_escalations: promiseEscalations,
             commitments_created: commitmentsCreated,
@@ -3718,6 +3916,8 @@ export async function runBusinessOsEventAutomation(
     let promiseEscalations = 0;
     let workItemsCreated = 0;
     let workItemsClosed = 0;
+    let noResponseEscalated = 0;
+    let outcomesRecorded = 0;
 
     const routedOwnerId = selectAutoOwnerId(account, operatorIds, options.currentUserId, options.trigger);
     if (routedOwnerId) {
@@ -3784,6 +3984,30 @@ export async function runBusinessOsEventAutomation(
         });
         if (!updated) continue;
         sequencesCompleted += 1;
+
+        const linkedWorkItem = activeWorkItems.find((item) => {
+            const workMetadata = normalizeMetadata(item.metadata);
+            return item.status !== "done" && workMetadata?.comms_sequence_id === sequence.id;
+        }) ?? null;
+        if (linkedWorkItem) {
+            await updateGodWorkItem(db, linkedWorkItem.id, { status: "done" });
+            await recordWorkItemOutcome(db, {
+                work_item_id: linkedWorkItem.id,
+                org_id: options.orgId,
+                outcome_type: outcomeTypeForSequenceCompletion(sequence.sequence_type),
+                note: `Auto-closed by Business OS event autopilot after ${sequence.sequence_type.replaceAll("_", " ")} sequence resolved.`,
+                metadata: {
+                    source: "business_os_event_autopilot",
+                    trigger: options.trigger,
+                    sequence_id: sequence.id,
+                    sequence_type: sequence.sequence_type,
+                },
+                recorded_by: null,
+            });
+            workItemsClosed += 1;
+            outcomesRecorded += 1;
+            linkedWorkItem.status = "done";
+        }
         await recordOrgActivityEvent(db, {
             org_id: options.orgId,
             actor_id: null,
@@ -3811,6 +4035,29 @@ export async function runBusinessOsEventAutomation(
         });
         if (!updated) continue;
         commitmentsMet += 1;
+
+        const linkedWorkItem = activeWorkItems.find((item) => {
+            const workMetadata = normalizeMetadata(item.metadata);
+            return item.status !== "done" && workMetadata?.commitment_id === commitment.id;
+        }) ?? null;
+        if (linkedWorkItem) {
+            await updateGodWorkItem(db, linkedWorkItem.id, { status: "done" });
+            await recordWorkItemOutcome(db, {
+                work_item_id: linkedWorkItem.id,
+                org_id: options.orgId,
+                outcome_type: "proposal_sent",
+                note: "Auto-closed by Business OS event autopilot after the first proposal commitment was met.",
+                metadata: {
+                    source: "business_os_event_autopilot",
+                    trigger: options.trigger,
+                    commitment_id: commitment.id,
+                },
+                recorded_by: null,
+            });
+            workItemsClosed += 1;
+            outcomesRecorded += 1;
+            linkedWorkItem.status = "done";
+        }
         await recordOrgActivityEvent(db, {
             org_id: options.orgId,
             actor_id: null,
@@ -3901,6 +4148,95 @@ export async function runBusinessOsEventAutomation(
         });
     }
 
+    const overdueSentSequences = sequences.filter((sequence) => {
+        if (sequence.status !== "active" || !sequence.last_sent_at || !sequence.next_follow_up_at) return false;
+        const metadata = normalizeMetadata(sequence.metadata);
+        if (metadata?.send_state !== "sent") return false;
+        const nextFollowUpAt = new Date(sequence.next_follow_up_at).getTime();
+        if (!Number.isFinite(nextFollowUpAt) || nextFollowUpAt > Date.now()) return false;
+        const lastEscalatedAt = typeof metadata?.last_no_response_escalated_at === "string"
+            ? new Date(metadata.last_no_response_escalated_at).getTime()
+            : Number.NaN;
+        return !Number.isFinite(lastEscalatedAt) || lastEscalatedAt <= Date.now() - 86_400_000;
+    });
+
+    for (const sequence of overdueSentSequences) {
+        const metadata = normalizeMetadata(sequence.metadata) ?? {};
+        const existingWorkItem = activeWorkItems.find((item) => {
+            const workMetadata = normalizeMetadata(item.metadata);
+            return item.status !== "done"
+                && (workMetadata?.comms_sequence_id === sequence.id
+                    || (workMetadata?.autopilot_kind === "no_response_followup" && workMetadata?.sequence_type === sequence.sequence_type));
+        }) ?? null;
+        if (existingWorkItem) {
+            await updateGodWorkItem(db, existingWorkItem.id, {
+                owner_id: existingWorkItem.owner_id ?? account.account_state.owner_id ?? undefined,
+                status: existingWorkItem.status === "snoozed" ? "open" : undefined,
+                severity: sequence.sequence_type === "incident_recovery" ? "critical" : "high",
+                due_at: new Date().toISOString(),
+                metadata: {
+                    ...(normalizeMetadata(existingWorkItem.metadata) ?? {}),
+                    autopilot_kind: "no_response_followup",
+                    comms_sequence_id: sequence.id,
+                    sequence_type: sequence.sequence_type,
+                    no_response_count: Number(metadata.no_response_count ?? 0) + 1,
+                    last_no_response_escalated_at: new Date().toISOString(),
+                },
+            });
+        } else {
+            const workItem = await createGodWorkItem(db, {
+                kind: workItemKindForCommunicationSequenceType(sequence.sequence_type),
+                target_type: "organization",
+                target_id: options.orgId,
+                org_id: options.orgId,
+                owner_id: account.account_state.owner_id,
+                status: "open",
+                severity: sequence.sequence_type === "incident_recovery" ? "critical" : "high",
+                title: `No response after ${sequence.sequence_type.replaceAll("_", " ")} follow-up`,
+                summary: typeof metadata.draft_reason === "string"
+                    ? `${metadata.draft_reason}\n\nCustomer follow-up was sent, but no response was recorded by the due date.`
+                    : "Customer follow-up was sent, but no response was recorded by the due date.",
+                due_at: new Date().toISOString(),
+                metadata: {
+                    source: "business_os_event_autopilot",
+                    trigger: options.trigger,
+                    autopilot_kind: "no_response_followup",
+                    comms_sequence_id: sequence.id,
+                    sequence_type: sequence.sequence_type,
+                    no_response_count: Number(metadata.no_response_count ?? 0) + 1,
+                },
+            });
+            activeWorkItems.push(workItem);
+            workItemsCreated += 1;
+        }
+        await updateCommsSequence(db, sequence.id, {
+            next_follow_up_at: new Date(Date.now() + 86_400_000).toISOString(),
+            metadata: {
+                ...metadata,
+                no_response_count: Number(metadata.no_response_count ?? 0) + 1,
+                no_response_detected_at: new Date().toISOString(),
+                last_no_response_escalated_at: new Date().toISOString(),
+                no_response_escalated_by: "business_os_event_autopilot",
+                trigger: options.trigger,
+            },
+        });
+        noResponseEscalated += 1;
+        notes.push(`Escalated no-response follow-up for ${sequence.sequence_type.replaceAll("_", " ")}.`);
+        await recordOrgActivityEvent(db, {
+            org_id: options.orgId,
+            actor_id: null,
+            event_type: "autopilot_event_no_response_escalated",
+            title: "Autopilot escalated no-response follow-up",
+            detail: typeof metadata.draft_title === "string"
+                ? `${metadata.draft_title} was sent but has no recorded response yet.`
+                : "A sent communication has not received a recorded response by the follow-up date.",
+            entity_type: "comms_sequence",
+            entity_id: sequence.id,
+            source: "business_os_autopilot",
+            metadata: { trigger: options.trigger, sequence_type: sequence.sequence_type },
+        });
+    }
+
     const existingAutomationKeys = new Set(
         activeWorkItems
             .map((item) => {
@@ -3967,6 +4303,20 @@ export async function runBusinessOsEventAutomation(
         const updated = await updateGodWorkItem(db, workItem.id, { status: "done" });
         if (!updated) continue;
         workItemsClosed += 1;
+        await recordWorkItemOutcome(db, {
+            work_item_id: workItem.id,
+            org_id: options.orgId,
+            outcome_type: outcomeTypeForWorkItemClosure(workItem.kind),
+            note: `Auto-closed by Business OS event autopilot after ${workItem.kind.replaceAll("_", " ")} condition resolved.`,
+            metadata: {
+                source: "business_os_event_autopilot",
+                trigger: options.trigger,
+                work_item_kind: workItem.kind,
+            },
+            recorded_by: null,
+        });
+        outcomesRecorded += 1;
+        workItem.status = "done";
         await recordOrgActivityEvent(db, {
             org_id: options.orgId,
             actor_id: null,
@@ -3993,6 +4343,8 @@ export async function runBusinessOsEventAutomation(
         commitments_met: commitmentsMet,
         commitments_breached: commitmentsBreached,
         promise_escalations: promiseEscalations,
+        no_response_escalated: noResponseEscalated,
+        outcomes_recorded: outcomesRecorded,
         notes,
     };
 }

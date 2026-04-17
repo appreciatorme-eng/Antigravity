@@ -96,6 +96,7 @@ interface BusinessOsAutopilotResult {
   readonly collectionsSequencesCreated: number;
   readonly collectionsSequencesCompleted: number;
   readonly sendQueueEscalated: number;
+  readonly noResponseEscalated: number;
   readonly commitmentsBreached: number;
   readonly promiseEscalations: number;
   readonly commitmentsCreated: number;
@@ -176,6 +177,7 @@ async function runBusinessOsAutopilot(): Promise<BusinessOsAutopilotResult> {
     collectionsSequencesCreated: autopilot.collections_sequences_created,
     collectionsSequencesCompleted: autopilot.collections_sequences_completed,
     sendQueueEscalated: autopilot.send_queue_escalated,
+    noResponseEscalated: autopilot.no_response_escalated,
     commitmentsBreached: autopilot.commitments_breached,
     promiseEscalations: autopilot.promise_escalations,
     commitmentsCreated: autopilot.commitments_created,
