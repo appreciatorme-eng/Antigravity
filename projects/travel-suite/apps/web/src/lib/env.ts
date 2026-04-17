@@ -52,6 +52,10 @@ const envSchema = z.object({
   // Maps
   NEXT_PUBLIC_MAPBOX_TOKEN: z.string().min(1).optional(),
 
+  // Slack bot (for reading ops channel — approval polling via 'close <id>' commands)
+  SLACK_BOT_TOKEN: z.string().min(1).optional(),
+  SLACK_OPS_CHANNEL_ID: z.string().min(1).optional(),
+
   // Feature flags
   SOCIAL_PUBLISH_MOCK_ENABLED: z.string().optional(),
   NEXT_PUBLIC_DEMO_MODE_ENABLED: z.string().optional(),

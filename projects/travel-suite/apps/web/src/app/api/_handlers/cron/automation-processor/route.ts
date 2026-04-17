@@ -16,6 +16,8 @@ import { sendFounderDailyAlert } from "@/lib/platform/founder-alerts";
 import { generateAndQueueDigests } from "@/lib/assistant/weekly-digest";
 import { processSocialPublishQueue } from "@/lib/social/process-publish-queue.server";
 import { syncSocialMetrics } from "@/lib/social/sync-metrics.server";
+import { runAiAutopilot, type AiAutopilotResult } from "@/lib/platform/ai-autopilot";
+import { runSlackApprovalPoller, type SlackPollResult } from "@/lib/platform/slack-approval-poller";
 
 /**
  * Automation cron processor.
@@ -124,6 +126,7 @@ type BusinessOsAutopilotResult = {
   readonly priorityCount: number;
   readonly gapCount: number;
   readonly slackPosted: boolean;
+  readonly ai_autopilot: AiAutopilotResult;
 };
 
 /**
@@ -201,6 +204,13 @@ async function runBusinessOsAutopilot(): Promise<BusinessOsAutopilotResult> {
     "automation",
     auditDetails,
   );
+
+  // Run AI brain after rule engine so it can see the updated state
+  const ai_autopilot = await runAiAutopilot(adminClient as never).catch((err: unknown) => {
+    logError("[automation-processor] AI autopilot failed", err);
+    return { ran: false as const, reason: "unexpected error" };
+  });
+
   const snapshot = await buildAutopilotSnapshot(adminClient as never, "");
   const slackPosted = await sendOpsAlert([
     "Business OS founder digest",
@@ -245,6 +255,7 @@ async function runBusinessOsAutopilot(): Promise<BusinessOsAutopilotResult> {
     priorityCount: brief.priorities.length,
     gapCount: brief.gaps.length,
     slackPosted,
+    ai_autopilot,
   };
 }
 
@@ -261,6 +272,7 @@ interface ChainedCronResults {
   readonly assistantDigest: { queued: number; skipped: number; errors: number } | { skipped: true };
   readonly socialPublishQueue: { processed: number; failed: number } | { skipped: true };
   readonly socialSyncMetrics: { fetched: number; errors: number; rate_limited: boolean; timed_out: boolean } | { skipped: true };
+  readonly slackApprovalPoll: SlackPollResult | { skipped: true };
 }
 
 async function runChainedCrons(): Promise<ChainedCronResults> {
@@ -268,7 +280,7 @@ async function runChainedCrons(): Promise<ChainedCronResults> {
   const dayOfWeek = now.getUTCDay(); // 0=Sun, 1=Mon
   const dayOfMonth = now.getUTCDate();
 
-  const [reputationResult, errorDigestResult, scorecardResult, aiSpendResult, digestResult, socialPublishResult, socialSyncResult] = await Promise.allSettled([
+  const [reputationResult, errorDigestResult, scorecardResult, aiSpendResult, digestResult, socialPublishResult, socialSyncResult, slackPollResult] = await Promise.allSettled([
     // Reputation campaigns — run every day
     runReputationCampaigns(),
 
@@ -318,6 +330,12 @@ async function runChainedCrons(): Promise<ChainedCronResults> {
       rate_limited: result.rate_limited,
       timed_out: result.timed_out,
     })),
+
+    // Slack approval poller — run every day, no-op if SLACK_BOT_TOKEN not configured
+    runSlackApprovalPoller().catch((err: unknown) => {
+      logError("[automation-processor] slack-approval-poll failed", err);
+      return { ran: false as const, reason: "unexpected error" };
+    }),
   ]);
 
   return {
@@ -328,6 +346,7 @@ async function runChainedCrons(): Promise<ChainedCronResults> {
     assistantDigest: digestResult.status === "fulfilled" ? digestResult.value : { queued: 0, skipped: 0, errors: 1 },
     socialPublishQueue: socialPublishResult.status === "fulfilled" ? socialPublishResult.value : { processed: 0, failed: 1 },
     socialSyncMetrics: socialSyncResult.status === "fulfilled" ? socialSyncResult.value : { fetched: 0, errors: 1, rate_limited: false, timed_out: false },
+    slackApprovalPoll: slackPollResult.status === "fulfilled" ? slackPollResult.value : { ran: false as const, reason: "unexpected error" },
   };
 }
 

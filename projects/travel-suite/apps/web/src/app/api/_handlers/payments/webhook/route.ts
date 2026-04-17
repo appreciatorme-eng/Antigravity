@@ -31,6 +31,7 @@ import { trackFunnelEvent } from '@/lib/funnel/track';
 import { loadCommsSequences, updateCommsSequence } from '@/lib/platform/business-comms';
 import { recordPaymentLinkEvent } from '@/lib/payments/payment-links.server';
 import { runBusinessOsEventAutomation } from '@/lib/platform/business-os';
+import { triggerEventAutopilot } from '@/lib/platform/event-autopilot';
 
 interface RazorpayPaymentEntity {
   id: string;
@@ -520,6 +521,9 @@ async function handlePaymentFailed(payload: RazorpayWebhookPayload, requestConte
     payment.error_description || 'Payment failed',
     { context: 'admin' }
   );
+
+  // Immediately trigger collections loop — don't wait for the daily cron
+  triggerEventAutopilot(organizationId, 'payment_failed');
 
   revalidateTag('nav-counts', 'max');
 }
