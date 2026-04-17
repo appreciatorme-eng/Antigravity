@@ -301,6 +301,7 @@ export type BusinessOsDailyAutopilotResult = {
     activation_commitments_met: number;
     collections_sequences_created: number;
     collections_sequences_completed: number;
+    send_queue_escalated: number;
     commitments_created: number;
     collections_auto_closed: number;
     outcomes_recorded: number;
@@ -497,6 +498,9 @@ type CommsSequenceAutopilotRow = {
     org_id: string | null;
     sequence_type: string | null;
     status: string | null;
+    metadata: unknown;
+    last_sent_at: string | null;
+    next_follow_up_at: string | null;
 };
 
 type CommitmentAutopilotRow = {
@@ -510,6 +514,12 @@ type CollectionsWorkItemAutopilotRow = {
     id: string;
     org_id: string | null;
     title: string | null;
+};
+
+type ActiveWorkItemAutopilotRow = {
+    id: string;
+    org_id: string | null;
+    metadata: unknown;
 };
 
 type ApprovalDecisionRow = {
@@ -1275,6 +1285,8 @@ function buildFounderDigest(input: {
     communicationDrafts: BusinessOsCommunicationDraft[];
     promiseWatchdog: AutopilotSnapshot["promise_watchdog"];
     recentRuns: AutopilotRun[];
+    sendQueueReady: number;
+    sendQueueStale: number;
 }): FounderDigest {
     const pendingApprovals = input.approvals.filter((approval) => approval.status === "pending");
     const pendingCommsApprovals = pendingApprovals.filter((approval) => approval.action_kind === "guarded_customer_communication");
@@ -1289,6 +1301,12 @@ function buildFounderDigest(input: {
         .map((item) => `${item.account_name}: ${item.detail}`);
 
     const automationSection: string[] = [];
+    if (input.sendQueueReady > 0) {
+        automationSection.push(`${input.sendQueueReady} approved communication${input.sendQueueReady === 1 ? "" : "s"} ready to send`);
+    }
+    if (input.sendQueueStale > 0) {
+        automationSection.push(`${input.sendQueueStale} approved communication${input.sendQueueStale === 1 ? "" : "s"} stalled for more than 24 hours`);
+    }
     if (pendingCommsApprovals.length > 0) {
         automationSection.push(`${pendingCommsApprovals.length} approved-send communication${pendingCommsApprovals.length === 1 ? "" : "s"} still need founder approval`);
     }
@@ -1625,6 +1643,7 @@ export function buildAutopilotAuditDetails(
             `Activation seq +${autopilot.activation_sequences_created} / closed ${autopilot.activation_sequences_completed}.`,
             `Activation commitments +${autopilot.commitments_created} / met ${autopilot.activation_commitments_met}.`,
             `Collections seq +${autopilot.collections_sequences_created} / closed ${autopilot.collections_sequences_completed}.`,
+            `Send queue escalations ${autopilot.send_queue_escalated}.`,
             `Collections work auto-closed ${autopilot.collections_auto_closed}.`,
         ].join(" "),
         brief_headline: brief.headline,
@@ -1639,6 +1658,7 @@ export function buildAutopilotAuditDetails(
         activation_commitments_met: autopilot.activation_commitments_met,
         collections_sequences_created: autopilot.collections_sequences_created,
         collections_sequences_completed: autopilot.collections_sequences_completed,
+        send_queue_escalated: autopilot.send_queue_escalated,
         commitments_created: autopilot.commitments_created,
         collections_auto_closed: autopilot.collections_auto_closed,
         outcomes_recorded: autopilot.outcomes_recorded,
@@ -2497,16 +2517,17 @@ export async function runBusinessDailyAutopilot(
             activation_commitments_met: 0,
             collections_sequences_created: 0,
             collections_sequences_completed: 0,
+            send_queue_escalated: 0,
             commitments_created: 0,
             collections_auto_closed: 0,
             outcomes_recorded: 0,
         };
     }
 
-    const [sequencesResult, commitmentsResult, collectionsWorkItemsResult] = await Promise.all([
+    const [sequencesResult, commitmentsResult, collectionsWorkItemsResult, activeWorkItemsResult] = await Promise.all([
         db
             .from("god_comms_sequences")
-            .select("id, org_id, sequence_type, status")
+            .select("id, org_id, sequence_type, status, metadata, last_sent_at, next_follow_up_at")
             .in("org_id", orgIds)
             .in("status", ["active", "paused"]),
         db
@@ -2520,11 +2541,17 @@ export async function runBusinessDailyAutopilot(
             .in("org_id", orgIds)
             .eq("kind", "collections")
             .in("status", ["open", "in_progress", "blocked", "snoozed"]),
+        db
+            .from("god_work_items")
+            .select("id, org_id, metadata")
+            .in("org_id", orgIds)
+            .in("status", ["open", "in_progress", "blocked", "snoozed"]),
     ]);
 
     const sequenceRows = (sequencesResult.data ?? []) as CommsSequenceAutopilotRow[];
     const commitmentRows = (commitmentsResult.data ?? []) as CommitmentAutopilotRow[];
     const collectionsWorkItemRows = (collectionsWorkItemsResult.data ?? []) as CollectionsWorkItemAutopilotRow[];
+    const activeWorkItemRows = (activeWorkItemsResult.data ?? []) as ActiveWorkItemAutopilotRow[];
 
     const sequenceKeys = new Set<string>();
     for (const row of sequenceRows) {
@@ -2550,6 +2577,7 @@ export async function runBusinessDailyAutopilot(
     let activationCommitmentsMet = 0;
     let collectionsSequencesCreated = 0;
     let collectionsSequencesCompleted = 0;
+    let sendQueueEscalated = 0;
     let commitmentsCreated = 0;
     let collectionsAutoClosed = 0;
     let outcomesRecorded = 0;
@@ -2758,6 +2786,77 @@ export async function runBusinessDailyAutopilot(
         });
     }
 
+    const now = Date.now();
+    const staleSendReadySequences = sequenceRows.filter((row) => {
+        if (!row.org_id || row.status !== "active" || row.last_sent_at) return false;
+        const metadata = normalizeMetadata(row.metadata);
+        if (metadata?.send_state !== "approved_pending_send") return false;
+        const approvedAt = typeof metadata?.approved_at === "string" ? new Date(metadata.approved_at).getTime() : Number.NaN;
+        if (!Number.isFinite(approvedAt)) return false;
+        return approvedAt <= now - 86_400_000;
+    });
+
+    for (const row of staleSendReadySequences) {
+        if (sendQueueEscalated >= maxActionsPerLoop) break;
+        if (!row.org_id) continue;
+        const metadata = normalizeMetadata(row.metadata) ?? {};
+        const hasTrackedWorkItem = activeWorkItemRows.some((item) => {
+            if (item.org_id !== row.org_id) return false;
+            const workMetadata = normalizeMetadata(item.metadata);
+            return workMetadata?.comms_sequence_id === row.id
+                || (typeof metadata.approval_id === "string" && workMetadata?.approval_id === metadata.approval_id);
+        });
+
+        if (!hasTrackedWorkItem) {
+            await createGodWorkItem(db, {
+                kind: workItemKindForCommunicationSequenceType(parseSequenceType(row.sequence_type)),
+                target_type: "organization",
+                target_id: row.org_id,
+                org_id: row.org_id,
+                owner_id: null,
+                status: "open",
+                severity: parseSequenceType(row.sequence_type) === "incident_recovery" ? "critical" : "high",
+                title: "Send approved customer communication",
+                summary: typeof metadata.draft_reason === "string"
+                    ? `${metadata.draft_reason}\n\nApproved communication has been waiting to send for over 24 hours.`
+                    : "Approved communication has been waiting to send for over 24 hours.",
+                due_at: new Date().toISOString(),
+                metadata: {
+                    source: "business_os_daily_autopilot",
+                    autopilot_kind: "stale_send_queue",
+                    comms_sequence_id: row.id,
+                    approval_id: typeof metadata.approval_id === "string" ? metadata.approval_id : null,
+                },
+            });
+        }
+
+        await updateCommsSequence(db, row.id, {
+            next_follow_up_at: new Date().toISOString(),
+            metadata: {
+                ...metadata,
+                stale_detected_at: new Date().toISOString(),
+                stale_detected_by: "business_os_daily_autopilot",
+            },
+        });
+        sendQueueEscalated += 1;
+        await recordOrgActivityEvent(db, {
+            org_id: row.org_id,
+            actor_id: null,
+            event_type: "autopilot_send_queue_escalated",
+            title: "Autopilot resurfaced send-ready communication",
+            detail: typeof metadata.draft_title === "string"
+                ? `${metadata.draft_title} has been approved but not sent for over 24 hours.`
+                : "Approved customer communication has not been sent within 24 hours.",
+            entity_type: "comms_sequence",
+            entity_id: row.id,
+            source: "business_os_autopilot",
+            metadata: {
+                approval_id: typeof metadata.approval_id === "string" ? metadata.approval_id : null,
+                send_state: metadata.send_state,
+            },
+        });
+    }
+
     for (const item of collectionsWorkItemRows) {
         if (collectionsAutoClosed >= maxActionsPerLoop) break;
         if (!item.org_id || !zeroOverdueOrgIds.has(item.org_id)) continue;
@@ -2799,6 +2898,7 @@ export async function runBusinessDailyAutopilot(
         activation_commitments_met: activationCommitmentsMet,
         collections_sequences_created: collectionsSequencesCreated,
         collections_sequences_completed: collectionsSequencesCompleted,
+        send_queue_escalated: sendQueueEscalated,
         commitments_created: commitmentsCreated,
         collections_auto_closed: collectionsAutoClosed,
         outcomes_recorded: outcomesRecorded,
@@ -3013,7 +3113,7 @@ export async function buildAutopilotSnapshot(
     currentUserId: string,
 ): Promise<AutopilotSnapshot> {
     const payload = await buildBusinessOsPayload(db, currentUserId, { limit: 120 });
-    const [approvals, activeWorkItems, commitmentCounts, commsFollowupCounts, runsResult] = await Promise.all([
+    const [approvals, activeWorkItems, commitmentCounts, commsFollowupCounts, sendQueueResult, runsResult] = await Promise.all([
         listAutopilotApprovalsInternal(db, payload.accounts, { includeResolved: true }),
         loadGodWorkItems(db, {
             orgIds: payload.accounts.map((account) => account.org_id),
@@ -3023,12 +3123,29 @@ export async function buildAutopilotSnapshot(
         buildCommitmentCounts(db, payload.accounts.map((account) => account.org_id)),
         buildCommsFollowupCounts(db, payload.accounts.map((account) => account.org_id)),
         db
+            .from("god_comms_sequences")
+            .select("org_id, metadata, last_sent_at")
+            .in("org_id", payload.accounts.map((account) => account.org_id))
+            .eq("status", "active"),
+        db
             .from("platform_audit_log")
             .select("id, actor_id, action, details, created_at, profiles!platform_audit_log_actor_id_fkey(full_name, email)")
             .ilike("action", "Autopilot:%")
             .order("created_at", { ascending: false })
             .limit(12),
     ]);
+
+    const sendQueueRows = (sendQueueResult.data ?? []) as Array<{ org_id: string | null; metadata: unknown; last_sent_at: string | null }>;
+    const sendQueueReady = sendQueueRows.filter((row) => {
+        const metadata = normalizeMetadata(row.metadata);
+        return metadata?.send_state === "approved_pending_send" && !row.last_sent_at;
+    }).length;
+    const sendQueueStale = sendQueueRows.filter((row) => {
+        const metadata = normalizeMetadata(row.metadata);
+        if (metadata?.send_state !== "approved_pending_send" || row.last_sent_at) return false;
+        const approvedAt = typeof metadata?.approved_at === "string" ? new Date(metadata.approved_at).getTime() : Number.NaN;
+        return Number.isFinite(approvedAt) && approvedAt <= Date.now() - 86_400_000;
+    }).length;
 
     const autopilotWorkItems = activeWorkItems
         .filter((item) => {
@@ -3111,6 +3228,8 @@ export async function buildAutopilotSnapshot(
         communicationDrafts: payload.communication_drafts,
         promiseWatchdog,
         recentRuns,
+        sendQueueReady,
+        sendQueueStale,
     });
 
     return {

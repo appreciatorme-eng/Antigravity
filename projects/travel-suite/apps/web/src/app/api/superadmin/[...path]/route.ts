@@ -25,6 +25,7 @@ const routes = createCatchAllHandlers([
   ["ai/daily-brief", () => import("@/app/api/_handlers/superadmin/ai/daily-brief/route")],
   ["ai/account-playbook", () => import("@/app/api/_handlers/superadmin/ai/account-playbook/route")],
   ["ai/propose-account-action", () => import("@/app/api/_handlers/superadmin/ai/propose-account-action/route")],
+  ["accounts/:orgId/comms/:id/send", () => import("@/app/api/_handlers/superadmin/accounts/[orgId]/comms/[id]/send/route")],
   ["accounts/:orgId/comms", () => import("@/app/api/_handlers/superadmin/accounts/[orgId]/comms/route")],
   ["accounts/:orgId/commitments", () => import("@/app/api/_handlers/superadmin/accounts/[orgId]/commitments/route")],
   ["accounts/:orgId/memory", () => import("@/app/api/_handlers/superadmin/accounts/[orgId]/memory/route")],

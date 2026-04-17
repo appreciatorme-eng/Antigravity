@@ -620,6 +620,32 @@ export default function BusinessOsPage() {
         }
     }
 
+    async function sendCommsSequence(id: string) {
+        const selectedAccount = data?.selected_account;
+        if (!selectedAccount) return;
+        setSavingComms(true);
+        setError(null);
+        try {
+            const response = await authedFetch(`/api/superadmin/accounts/${selectedAccount.organization.id}/comms/${encodeURIComponent(id)}/send`, {
+                method: "POST",
+            });
+            const payload = response.headers.get("content-type")?.includes("application/json")
+                ? await response.json() as { recipient_email?: string }
+                : null;
+            if (!response.ok) {
+                throw new Error((payload as { error?: string } | null)?.error ?? "Failed to send communication sequence");
+            }
+            setMessage(payload?.recipient_email
+                ? `Communication sent to ${payload.recipient_email}.`
+                : "Communication sent.");
+            await loadData();
+        } catch (saveError) {
+            setError(saveError instanceof Error ? saveError.message : "Failed to send communication sequence");
+        } finally {
+            setSavingComms(false);
+        }
+    }
+
     async function createCommitment() {
         const selectedAccount = data?.selected_account;
         if (!selectedAccount || !commitmentDraft.title.trim() || !commitmentDraft.due_at) return;
@@ -1727,7 +1753,25 @@ export default function BusinessOsPage() {
                                                                     <div className="mt-1 text-xs text-gray-400">
                                                                         {sequence.channel} • next {formatDate(sequence.next_follow_up_at)}
                                                                     </div>
+                                                                    {sequence.metadata && typeof sequence.metadata === "object" && (sequence.metadata as { send_state?: string }).send_state === "approved_pending_send" ? (
+                                                                        <div className="mt-2 rounded-lg border border-amber-900/50 bg-amber-950/20 px-2.5 py-2 text-xs text-amber-200">
+                                                                            Approved and queued for send.
+                                                                        </div>
+                                                                    ) : null}
                                                                     <div className="mt-2 flex flex-wrap gap-2">
+                                                                        {((sequence.channel === "email" || sequence.channel === "mixed")
+                                                                            && sequence.metadata
+                                                                            && typeof sequence.metadata === "object"
+                                                                            && (sequence.metadata as { send_state?: string }).send_state === "approved_pending_send"
+                                                                            && !sequence.last_sent_at) ? (
+                                                                            <button
+                                                                                onClick={() => void sendCommsSequence(sequence.id)}
+                                                                                disabled={savingComms}
+                                                                                className="rounded-lg border border-amber-800/60 bg-amber-950/20 px-2 py-1 text-xs text-amber-200 hover:border-amber-700/60 disabled:opacity-60"
+                                                                            >
+                                                                                Send now
+                                                                            </button>
+                                                                        ) : null}
                                                                         <button
                                                                             onClick={() => void updateCommsSequence(sequence.id, {
                                                                                 status: "active",
