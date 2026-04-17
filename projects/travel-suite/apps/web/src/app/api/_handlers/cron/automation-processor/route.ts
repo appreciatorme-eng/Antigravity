@@ -13,6 +13,9 @@ import { runErrorDigest } from "@/lib/platform/error-digest";
 import { deliverMonthlyOperatorScorecards } from "@/lib/admin/operator-scorecard-delivery";
 import { triggerCampaignSendsForOrg } from "@/lib/reputation/campaign-trigger";
 import { sendFounderDailyAlert } from "@/lib/platform/founder-alerts";
+import { generateAndQueueDigests } from "@/lib/assistant/weekly-digest";
+import { processSocialPublishQueue } from "@/lib/social/process-publish-queue.server";
+import { syncSocialMetrics } from "@/lib/social/sync-metrics.server";
 
 /**
  * Automation cron processor.
@@ -223,6 +226,9 @@ interface ChainedCronResults {
   readonly errorDigest: { posted: boolean; count: number } | { skipped: true };
   readonly operatorScorecards: { delivered: boolean } | { skipped: true };
   readonly aiSpendAlert: { alerted: boolean; spend_usd: number } | { skipped: true };
+  readonly assistantDigest: { queued: number; skipped: number; errors: number } | { skipped: true };
+  readonly socialPublishQueue: { processed: number; failed: number } | { skipped: true };
+  readonly socialSyncMetrics: { fetched: number; errors: number; rate_limited: boolean; timed_out: boolean } | { skipped: true };
 }
 
 async function runChainedCrons(): Promise<ChainedCronResults> {
@@ -230,7 +236,7 @@ async function runChainedCrons(): Promise<ChainedCronResults> {
   const dayOfWeek = now.getUTCDay(); // 0=Sun, 1=Mon
   const dayOfMonth = now.getUTCDate();
 
-  const [reputationResult, errorDigestResult, scorecardResult, aiSpendResult] = await Promise.allSettled([
+  const [reputationResult, errorDigestResult, scorecardResult, aiSpendResult, digestResult, socialPublishResult, socialSyncResult] = await Promise.allSettled([
     // Reputation campaigns — run every day
     runReputationCampaigns(),
 
@@ -251,6 +257,35 @@ async function runChainedCrons(): Promise<ChainedCronResults> {
 
     // OpenAI daily spend alert — run every day
     runAiSpendAlert(),
+
+    // Weekly digest — run on Mondays only
+    dayOfWeek === 1
+      ? generateAndQueueDigests()
+      : Promise.resolve({ skipped: true as const }),
+
+    // Social queue publish — run every day (best-effort under 2-cron-slot setup)
+    processSocialPublishQueue()
+      .then((result) => ({
+        processed: result.processed,
+        failed: result.results.filter((item) => item.status !== "success" && item.status !== "already_sent").length,
+      }))
+      .catch((err: unknown) => {
+        logError("[automation-processor] social-publish-queue failed", err);
+        return { processed: 0, failed: 1 };
+      }),
+
+    // Social metrics sync — run every day with a tighter timeout budget
+    syncSocialMetrics({
+      maxDurationMs: 20_000,
+      lookbackDays: 30,
+      limit: 80,
+      loggerPrefix: "[automation-processor/social-sync-metrics]",
+    }).then((result) => ({
+      fetched: result.fetched,
+      errors: result.errors,
+      rate_limited: result.rate_limited,
+      timed_out: result.timed_out,
+    })),
   ]);
 
   return {
@@ -258,6 +293,9 @@ async function runChainedCrons(): Promise<ChainedCronResults> {
     errorDigest: errorDigestResult.status === "fulfilled" ? errorDigestResult.value : { posted: false, count: 0 },
     operatorScorecards: scorecardResult.status === "fulfilled" ? scorecardResult.value : { delivered: false },
     aiSpendAlert: aiSpendResult.status === "fulfilled" ? aiSpendResult.value : { alerted: false, spend_usd: 0 },
+    assistantDigest: digestResult.status === "fulfilled" ? digestResult.value : { queued: 0, skipped: 0, errors: 1 },
+    socialPublishQueue: socialPublishResult.status === "fulfilled" ? socialPublishResult.value : { processed: 0, failed: 1 },
+    socialSyncMetrics: socialSyncResult.status === "fulfilled" ? socialSyncResult.value : { fetched: 0, errors: 1, rate_limited: false, timed_out: false },
   };
 }
 

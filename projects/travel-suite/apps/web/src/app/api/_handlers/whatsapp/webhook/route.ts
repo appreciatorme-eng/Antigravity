@@ -22,10 +22,26 @@ import { parseWhatsAppLocationMessages, parseWhatsAppImageMessages, parseWhatsAp
 import { handleWhatsAppMessage } from "@/lib/assistant/channel-adapters/whatsapp";
 import { getRequestContext, getRequestId, logError, logEvent } from "@/lib/observability/logger";
 import { isUnsignedWebhookAllowed } from "@/lib/security/whatsapp-webhook-config";
+import { loadCommsSequences, updateCommsSequence } from "@/lib/platform/business-comms";
+import { runBusinessOsEventAutomation } from "@/lib/platform/business-os";
+import { recordOrgActivityEvent } from "@/lib/platform/org-memory";
+import type { Json } from "@/lib/supabase/database.types";
 
 const supabaseAdmin = createAdminClient();
 const verifyToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || process.env.WHATSAPP_VERIFY_TOKEN || null;
 const appSecret = process.env.WHATSAPP_APP_SECRET || null;
+
+type InboundOrgResolution = {
+    orgId: string | null;
+    isInternalOperator: boolean;
+};
+
+type WhatsAppCommsLinkResult = {
+    linked: boolean;
+    orgId: string | null;
+    commsSequenceId: string | null;
+    automationTriggered: boolean;
+};
 
 function toIsoFromUnixSeconds(value: string): string {
     const parsed = Number(value);
@@ -90,6 +106,227 @@ function verifySignature(rawBody: string, signatureHeader: string | null): boole
 
     if (providedBuffer.length !== expectedBuffer.length) return false;
     return timingSafeEqual(providedBuffer, expectedBuffer);
+}
+
+function normalizeMetadata(value: unknown): Record<string, unknown> | null {
+    return value && typeof value === "object" && !Array.isArray(value)
+        ? value as Record<string, unknown>
+        : null;
+}
+
+function normalizeDigits(value: unknown): string | null {
+    if (typeof value !== "string") return null;
+    const digits = value.replace(/\D/g, "");
+    return digits.length > 6 ? digits : null;
+}
+
+function isoToMs(value: string | null): number {
+    if (!value) return 0;
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function inferReplyDisposition(message: string): "positive" | "blocked" | "needs_follow_up" | "not_interested" {
+    const text = message.trim().toLowerCase();
+    if (!text) return "needs_follow_up";
+    if (/\b(not interested|stop|unsubscribe|no thanks|don't contact|do not contact)\b/.test(text)) {
+        return "not_interested";
+    }
+    if (/\b(can't|cannot|busy|later|next week|blocked|issue|problem|budget|expensive)\b/.test(text)) {
+        return "blocked";
+    }
+    if (/\b(yes|ok|okay|sure|done|paid|great|works|approved|confirm)\b/.test(text)) {
+        return "positive";
+    }
+    return "needs_follow_up";
+}
+
+async function resolveInboundOrganization(waId: string): Promise<InboundOrgResolution> {
+    const lookupProfile = async (column: "phone_normalized" | "phone_whatsapp" | "phone", values: string[]) => {
+        if (!values.length) return null;
+        const uniqueValues = [...new Set(values.filter(Boolean))];
+        if (!uniqueValues.length) return null;
+        const query = supabaseAdmin
+            .from("profiles")
+            .select("organization_id, role, updated_at")
+            .not("organization_id", "is", null)
+            .in(column, uniqueValues)
+            .order("updated_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+        const { data } = await query;
+        return data ?? null;
+    };
+
+    const withPlus = `+${waId}`;
+    const byNormalized = await lookupProfile("phone_normalized", [waId]);
+    if (byNormalized?.organization_id) {
+        return {
+            orgId: byNormalized.organization_id,
+            isInternalOperator: byNormalized.role === "admin" || byNormalized.role === "super_admin",
+        };
+    }
+
+    const byWhatsApp = await lookupProfile("phone_whatsapp", [waId, withPlus]);
+    if (byWhatsApp?.organization_id) {
+        return {
+            orgId: byWhatsApp.organization_id,
+            isInternalOperator: byWhatsApp.role === "admin" || byWhatsApp.role === "super_admin",
+        };
+    }
+
+    const byPhone = await lookupProfile("phone", [waId, withPlus]);
+    if (byPhone?.organization_id) {
+        return {
+            orgId: byPhone.organization_id,
+            isInternalOperator: byPhone.role === "admin" || byPhone.role === "super_admin",
+        };
+    }
+
+    const { data: contactName } = await supabaseAdmin
+        .from("whatsapp_contact_names")
+        .select("org_id, updated_at")
+        .eq("wa_id", waId)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    return {
+        orgId: contactName?.org_id ?? null,
+        isInternalOperator: false,
+    };
+}
+
+async function linkInboundReplyToCommsSequence(
+    waId: string,
+    messageId: string,
+    body: string,
+): Promise<WhatsAppCommsLinkResult> {
+    const inbound = await resolveInboundOrganization(waId);
+    if (!inbound.orgId || inbound.isInternalOperator) {
+        return {
+            linked: false,
+            orgId: inbound.orgId,
+            commsSequenceId: null,
+            automationTriggered: false,
+        };
+    }
+
+    const sequences = await loadCommsSequences(supabaseAdmin as never, inbound.orgId, "all");
+    const candidates = sequences
+        .filter((sequence) => sequence.status !== "completed")
+        .map((sequence) => {
+            const metadata = normalizeMetadata(sequence.metadata) ?? {};
+            if (metadata.send_state !== "sent" && metadata.send_state !== "approved_pending_send") {
+                return null;
+            }
+            if (typeof metadata.customer_replied_at === "string") return null;
+
+            const recipientPhone = normalizeDigits(metadata.recipient_phone);
+            const recipientWaId = normalizeDigits(metadata.wa_id);
+            const replyTargetPhone = normalizeDigits(metadata.reply_to_phone);
+            const sentVia = typeof metadata.sent_via === "string" ? metadata.sent_via : null;
+
+            let score = 0;
+            if (sequence.channel === "whatsapp") score += 70;
+            else if (sequence.channel === "mixed") score += 35;
+
+            if (sentVia === "whatsapp") score += 60;
+            if (recipientPhone && recipientPhone === waId) score += 90;
+            if (recipientWaId && recipientWaId === waId) score += 90;
+            if (replyTargetPhone && replyTargetPhone === waId) score += 80;
+            if (sequence.last_sent_at) score += 10;
+
+            return {
+                sequence,
+                metadata,
+                score,
+                lastSentAtMs: isoToMs(sequence.last_sent_at),
+            };
+        })
+        .filter((item): item is {
+            sequence: Awaited<ReturnType<typeof loadCommsSequences>>[number];
+            metadata: Record<string, unknown>;
+            score: number;
+            lastSentAtMs: number;
+        } => Boolean(item))
+        .sort((a, b) => b.score - a.score || b.lastSentAtMs - a.lastSentAtMs);
+
+    const candidate = candidates[0] ?? null;
+    if (!candidate) {
+        return {
+            linked: false,
+            orgId: inbound.orgId,
+            commsSequenceId: null,
+            automationTriggered: false,
+        };
+    }
+
+    // Guard against ambiguous low-confidence matches across multiple sequences.
+    const second = candidates[1] ?? null;
+    if (candidate.score < 35 || (second && candidate.score <= 45 && second.score >= candidate.score - 5)) {
+        return {
+            linked: false,
+            orgId: inbound.orgId,
+            commsSequenceId: null,
+            automationTriggered: false,
+        };
+    }
+
+    const replyAt = new Date().toISOString();
+    const updated = await updateCommsSequence(supabaseAdmin as never, candidate.sequence.id, {
+        channel: candidate.sequence.channel === "email" ? "mixed" : candidate.sequence.channel,
+        metadata: {
+            ...candidate.metadata,
+            send_state: "replied",
+            customer_replied_at: replyAt,
+            customer_replied_by: "whatsapp_webhook",
+            reply_summary: body.slice(0, 500),
+            reply_disposition: inferReplyDisposition(body),
+            reply_channel: "whatsapp",
+            reply_source_message_id: messageId,
+            reply_source_wa_id: waId,
+        },
+    });
+
+    if (!updated) {
+        return {
+            linked: false,
+            orgId: inbound.orgId,
+            commsSequenceId: null,
+            automationTriggered: false,
+        };
+    }
+
+    await recordOrgActivityEvent(supabaseAdmin as never, {
+        org_id: inbound.orgId,
+        actor_id: null,
+        event_type: "comms_sequence_reply_recorded",
+        title: "Captured WhatsApp customer reply",
+        detail: body.slice(0, 500),
+        entity_type: "comms_sequence",
+        entity_id: candidate.sequence.id,
+        source: "whatsapp_webhook",
+        metadata: {
+            channel: "whatsapp",
+            source_message_id: messageId,
+            wa_id: waId,
+            disposition: inferReplyDisposition(body),
+        },
+    });
+
+    await runBusinessOsEventAutomation(supabaseAdmin as never, {
+        orgId: inbound.orgId,
+        currentUserId: null,
+        trigger: "comms_updated",
+    });
+
+    return {
+        linked: true,
+        orgId: inbound.orgId,
+        commsSequenceId: candidate.sequence.id,
+        automationTriggered: true,
+    };
 }
 
 export async function GET(request: NextRequest) {
@@ -311,6 +548,11 @@ async function processWhatsAppTextMessages(
 
     for (const textMsg of textMessages) {
         const pushName = pushNameMap.get(textMsg.waId) ?? undefined;
+        const eventMetadata: Record<string, unknown> = {
+            body_preview: textMsg.body.slice(0, 100),
+            signature_verified: signatureValid,
+            push_name: pushName,
+        };
 
         // 1. Log event for deduplication
         const { error: eventError } = await supabaseAdmin
@@ -321,11 +563,7 @@ async function processWhatsAppTextMessages(
                 event_type: "text",
                 payload_hash: payloadHash(rawBody),
                 processing_status: "received",
-                metadata: {
-                    body_preview: textMsg.body.slice(0, 100),
-                    signature_verified: signatureValid,
-                    push_name: pushName,
-                },
+                metadata: eventMetadata as Json,
             });
 
         if (eventError?.code === "23505") continue; // duplicate
@@ -337,6 +575,14 @@ async function processWhatsAppTextMessages(
         // 2. Process through assistant
         try {
             const result = await handleWhatsAppMessage(textMsg.waId, textMsg.body, textMsg.waId);
+            eventMetadata.reply_sent = result.replySent;
+
+            const commsLink = await linkInboundReplyToCommsSequence(textMsg.waId, textMsg.messageId, textMsg.body);
+            if (commsLink.orgId) eventMetadata.org_id = commsLink.orgId;
+            if (commsLink.linked) {
+                eventMetadata.comms_sequence_id = commsLink.commsSequenceId;
+                eventMetadata.business_os_automation_triggered = commsLink.automationTriggered;
+            }
 
             await updateWebhookEvent(
                 textMsg.messageId,
@@ -344,21 +590,32 @@ async function processWhatsAppTextMessages(
                     processing_status: result.success ? "processed" : "rejected",
                     reject_reason: result.error || null,
                     processed_at: new Date().toISOString(),
-                    metadata: {
-                        body_preview: textMsg.body.slice(0, 100),
-                        signature_verified: signatureValid,
-                        reply_sent: result.replySent,
-                        push_name: pushName,
-                    },
+                    metadata: eventMetadata,
                 },
                 requestContext,
             );
         } catch (error) {
+            eventMetadata.reply_sent = false;
+            try {
+                const commsLink = await linkInboundReplyToCommsSequence(textMsg.waId, textMsg.messageId, textMsg.body);
+                if (commsLink.orgId) eventMetadata.org_id = commsLink.orgId;
+                if (commsLink.linked) {
+                    eventMetadata.comms_sequence_id = commsLink.commsSequenceId;
+                    eventMetadata.business_os_automation_triggered = commsLink.automationTriggered;
+                }
+            } catch (linkError) {
+                logError("Failed to link inbound WhatsApp reply to Business OS", linkError, {
+                    ...requestContext,
+                    wa_id: textMsg.waId,
+                    provider_message_id: textMsg.messageId,
+                });
+            }
             await updateWebhookEvent(
                 textMsg.messageId,
                 {
                     processing_status: "rejected",
                     reject_reason: safeErrorMessage(error, "text_processing_failed"),
+                    metadata: eventMetadata,
                 },
                 requestContext,
             );
@@ -384,16 +641,12 @@ async function processWhatsAppTextMessages(
                     );
                     const classification = result.response.text().trim().toUpperCase();
                     const isPersonal = classification.includes("PERSONAL");
+                    eventMetadata.ai_classification = isPersonal ? "personal" : "business";
 
                     await updateWebhookEvent(
                         textMsg.messageId,
                         {
-                            metadata: {
-                                body_preview: textMsg.body.slice(0, 100),
-                                signature_verified: signatureValid,
-                                push_name: pushName,
-                                ai_classification: isPersonal ? "personal" : "business",
-                            },
+                            metadata: eventMetadata,
                         },
                         requestContext,
                     );
