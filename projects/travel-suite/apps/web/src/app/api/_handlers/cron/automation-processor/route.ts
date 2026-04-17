@@ -6,7 +6,8 @@ import { scheduleAutomation } from "@/lib/automation/qstash-scheduler";
 import { sendOpsAlert } from "@/lib/god-slack";
 import { authorizeCronRequest } from "@/lib/security/cron-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { generateDailyOpsBrief, runBusinessDailyAutopilot } from "@/lib/platform/business-os";
+import { buildAutopilotAuditDetails, generateDailyOpsBrief, runBusinessDailyAutopilot } from "@/lib/platform/business-os";
+import { logPlatformAction } from "@/lib/platform/audit";
 import { logError, logEvent } from "@/lib/observability/logger";
 
 /**
@@ -140,18 +141,21 @@ async function runBusinessOsAutopilot(): Promise<BusinessOsAutopilotResult> {
     runBusinessDailyAutopilot(adminClient as never),
     generateDailyOpsBrief(adminClient as never, ""),
   ]);
+  const auditDetails = buildAutopilotAuditDetails(autopilot, brief, "scheduled");
 
   const summary = [
     "Business OS daily autopilot completed.",
-    `Created ${autopilot.ops_loop.created_count}/${autopilot.ops_loop.candidate_count} queue items (${autopilot.ops_loop.deduped_count} already covered).`,
-    `Activation seq +${autopilot.activation_sequences_created} / closed ${autopilot.activation_sequences_completed}`,
-    `Activation commitments +${autopilot.commitments_created} / met ${autopilot.activation_commitments_met}`,
-    `Collections seq +${autopilot.collections_sequences_created} / closed ${autopilot.collections_sequences_completed}`,
-    `Collections work auto-closed: ${autopilot.collections_auto_closed}`,
+    String(auditDetails.summary ?? ""),
     `Top focus: ${brief.headline}`,
     ...(brief.gaps.slice(0, 3).map((gap) => `Gap: ${gap}`)),
   ].join("\n");
 
+  await logPlatformAction(
+    null,
+    "Autopilot: Scheduled Business OS run",
+    "automation",
+    auditDetails,
+  );
   const slackPosted = await sendOpsAlert(summary);
 
   return {

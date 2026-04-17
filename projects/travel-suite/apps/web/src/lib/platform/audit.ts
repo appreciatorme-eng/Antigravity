@@ -11,10 +11,11 @@ export type AuditCategory =
   | "announcement"
   | "settings"
   | "support"
-  | "cost_override";
+  | "cost_override"
+  | "automation";
 
 export async function logPlatformAction(
-  actorId: string,
+  actorId: string | null,
   action: string,
   category: AuditCategory,
   details: Record<string, unknown> = {},
@@ -22,20 +23,21 @@ export async function logPlatformAction(
 ): Promise<void> {
   try {
     const adminClient = createAdminClient();
-    await adminClient.from("platform_audit_log").insert({
+    const payload = {
       actor_id: actorId,
       action,
       category,
       details: details as Json,
       ip_address: ipAddress ?? null,
-    });
+    };
+    await adminClient.from("platform_audit_log").insert(payload as never);
   } catch (err) {
     logError("[platform-audit] Failed to write audit log", err);
   }
 }
 
 export async function logPlatformActionWithTarget(
-  actorId: string,
+  actorId: string | null,
   action: string,
   category: AuditCategory,
   targetType: string,
@@ -45,7 +47,7 @@ export async function logPlatformActionWithTarget(
 ): Promise<void> {
   try {
     const adminClient = createAdminClient();
-    await adminClient.from("platform_audit_log").insert({
+    const payload = {
       actor_id: actorId,
       action,
       category,
@@ -53,7 +55,8 @@ export async function logPlatformActionWithTarget(
       target_id: targetId,
       details: details as Json,
       ip_address: ipAddress ?? null,
-    });
+    };
+    await adminClient.from("platform_audit_log").insert(payload as never);
   } catch (err) {
     logError("[platform-audit] Failed to write audit log", err);
   }

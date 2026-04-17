@@ -11,15 +11,10 @@ import {
     Bookmark,
     BriefcaseBusiness,
     Building2,
-    ExternalLink,
-    LifeBuoy,
     Megaphone,
     Power,
     RefreshCw,
     ShieldAlert,
-    TriangleAlert,
-    ReceiptText,
-    Wallet,
     Zap,
     TrendingDown,
     TrendingUp,
@@ -28,7 +23,6 @@ import {
     LogIn,
     Search,
     Users,
-    Settings,
     Loader2,
     X,
 } from "lucide-react";
@@ -40,7 +34,6 @@ import type { HealthStatus } from "@/components/god-mode/StatusDot";
 import { cn } from "@/lib/utils";
 import { authedFetch } from "@/lib/api/authed-fetch";
 import ConfirmDangerModal from "@/components/god-mode/ConfirmDangerModal";
-import ActionToast, { useActionToast } from "@/components/god-mode/ActionToast";
 
 type Severity = "critical" | "high" | "medium";
 type Tone = "neutral" | "warning" | "danger";
@@ -192,12 +185,6 @@ interface OverviewData {
     }>;
 }
 
-type ActionItem = {
-    label: string;
-    href: string;
-    tone?: "danger";
-};
-
 const SAVED_VIEWS: Array<{ id: SavedView; label: string }> = [
     { id: "all", label: "All" },
     { id: "my-queue", label: "My Queue" },
@@ -347,66 +334,6 @@ function DeltaCard({ item, range }: { item: OverviewData["delta_strip"][number];
     return <Link href={withRangeQuery(item.href, range)}>{content}</Link>;
 }
 
-function iconForActionLabel(label: string) {
-    if (label === "Open incident") return TriangleAlert;
-    if (label === "Respond to ticket") return LifeBuoy;
-    if (label === "Open collections item") return ReceiptText;
-    if (label === "Open revenue item") return ReceiptText;
-    if (label === "Open account") return Building2;
-    if (label === "Review spend") return Wallet;
-    if (label === "Open queues") return Activity;
-    if (label === "Collections") return ReceiptText;
-    if (label === "Revenue Ops") return ReceiptText;
-    if (label === "Accounts") return Building2;
-    if (label === "Error events") return TriangleAlert;
-    if (label === "Support queue") return LifeBuoy;
-    if (label === "Health monitor") return Activity;
-    if (label === "Cost dashboard") return Wallet;
-    if (label === "Send announcement") return Megaphone;
-    return Power;
-}
-
-function buildContextActions(item: OverviewData["priority_inbox"][number] | null, range: OverviewRange): ActionItem[] {
-    if (!item) return [];
-    if (item.kind === "incident" || item.kind === "incident_followup") {
-        return [
-            { label: "Open incident", href: withRangeQuery(item.href, range) },
-            { label: "Error events", href: withRangeQuery("/god/errors?status=open", range) },
-        ];
-    }
-    if (item.kind === "support" || item.kind === "support_escalation") {
-        return [
-            { label: "Respond to ticket", href: withRangeQuery(item.href, range) },
-            { label: "Support queue", href: withRangeQuery("/god/support?status=open", range) },
-        ];
-    }
-    if (item.kind === "collection_invoice" || item.kind === "collection_proposal" || item.kind === "collections" || item.kind === "renewal") {
-        return [
-            { label: "Open revenue item", href: withRangeQuery(item.href, range) },
-            { label: "Revenue Ops", href: withRangeQuery("/god/collections?tab=invoices", range) },
-        ];
-    }
-    if (item.kind === "queue") {
-        return [
-            { label: "Open queues", href: withRangeQuery("/god/monitoring?focus=queues", range) },
-            { label: "Health monitor", href: withRangeQuery("/god/monitoring", range) },
-        ];
-    }
-    if (item.kind === "cost") {
-        return [
-            { label: "Review spend", href: withRangeQuery(item.href, range) },
-            { label: "Cost dashboard", href: withRangeQuery("/god/costs", range) },
-        ];
-    }
-    if (item.kind === "churn_risk" || item.kind === "growth_followup" || item.kind === "account") {
-        return [
-            { label: "Open account", href: withRangeQuery(item.href, range) },
-            { label: "Accounts", href: withRangeQuery("/god/directory", range) },
-        ];
-    }
-    return [];
-}
-
 function filterPriorityInbox(items: OverviewData["priority_inbox"], view: SavedView) {
     if (view === "all") return items;
     return items.filter((item) => item.buckets.includes(view));
@@ -483,16 +410,11 @@ export default function GodCommandCenter() {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
-    const { toast, showSuccess, showError, dismiss } = useActionToast();
-    const [suspendTargetId, setSuspendTargetId] = useState<string | null>(null);
-    const [suspendReason, setSuspendReason] = useState("");
-    const [suspending, setSuspending] = useState(false);
     const [data, setData] = useState<OverviewData | null>(null);
     const [loading, setLoading] = useState(true);
     const [customViews, setCustomViews] = useState<SavedPreset[]>([]);
     const [presetsLoaded, setPresetsLoaded] = useState(false);
     const [savingPreset, setSavingPreset] = useState(false);
-    const [focusedInboxId, setFocusedInboxId] = useState<string | null>(null);
     const currentView = normalizeView(searchParams.get("view"));
     const currentRange = normalizeRange(searchParams.get("range"));
 
@@ -532,12 +454,12 @@ export default function GodCommandCenter() {
                 const d = await res.json();
                 if (d.data?.magic_link) { window.location.href = d.data.magic_link; return; }
                 if (d.magic_link) { window.location.href = d.magic_link; return; }
-                showError("Invalid impersonation response");
+                window.alert("Invalid impersonation response");
             } else {
                 const json = await res.json();
-                showError(json.error ?? "Failed to impersonate");
+                window.alert(json.error ?? "Failed to impersonate");
             }
-        } catch { showError("Network error"); }
+        } catch { window.alert("Network error"); }
         finally { setImpersonating(false); setShowImpConfirm(false); setImpTarget(null); setImpSearch(""); setImpResults([]); }
     }
 
@@ -626,35 +548,6 @@ export default function GodCommandCenter() {
         }
     }, [currentRange]);
 
-    async function handleSuspendOrg() {
-        if (!suspendTargetId) return;
-        if (!suspendReason.trim()) {
-            showError("A reason is required to suspend an organization");
-            return;
-        }
-        setSuspending(true);
-        try {
-            const res = await authedFetch("/api/superadmin/settings/org-suspend", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ org_id: suspendTargetId, action: "suspend", reason: suspendReason.trim() }),
-            });
-            if (res.ok) {
-                showSuccess("Organization suspended instantly.");
-                await fetchOverview(true);
-            } else {
-                const json = await res.json();
-                showError(json.error ?? "Failed to suspend org");
-            }
-        } catch {
-            showError("Network error suspending org");
-        } finally {
-            setSuspending(false);
-            setSuspendTargetId(null);
-            setSuspendReason("");
-        }
-    }
-
     useEffect(() => {
         fetchOverview();
     }, [fetchOverview]);
@@ -732,42 +625,10 @@ export default function GodCommandCenter() {
     const showCustomerRisk = currentView === "all" || currentView === "churn-risk";
     const showIncidents = currentView === "all" || currentView === "due-today";
 
-    useEffect(() => {
-        const visibleItems = filterPriorityInbox(data?.priority_inbox ?? [], currentView);
-        if (!visibleItems.length) {
-            setFocusedInboxId(null);
-            return;
-        }
-        if (!focusedInboxId || !visibleItems.some((item) => item.id === focusedInboxId)) {
-            setFocusedInboxId(visibleItems[0].id);
-        }
-    }, [currentView, data?.priority_inbox, focusedInboxId]);
-
     const visiblePriorityInbox = useMemo(
         () => filterPriorityInbox(data?.priority_inbox ?? [], currentView),
         [currentView, data?.priority_inbox],
     );
-
-    const focusedInboxItem = useMemo(
-        () => visiblePriorityInbox.find((item) => item.id === focusedInboxId) ?? null,
-        [focusedInboxId, visiblePriorityInbox],
-    );
-    const contextActions = useMemo(() => buildContextActions(focusedInboxItem, currentRange), [currentRange, focusedInboxItem]);
-
-    async function mutateFocusedWorkItem(patch: Record<string, unknown>, successMessage: string) {
-        if (!focusedInboxItem?.work_item_id) return;
-        const response = await authedFetch("/api/superadmin/work-items", {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: focusedInboxItem.work_item_id, ...patch }),
-        });
-        if (!response.ok) {
-            showError("Failed to update work item");
-            return;
-        }
-        showSuccess(successMessage);
-        await fetchOverview(true);
-    }
 
     if (!data && loading) {
         return (
@@ -850,6 +711,9 @@ export default function GodCommandCenter() {
                 <Link href="/god/business-os" className="inline-flex items-center gap-1.5 rounded-md border border-amber-700/50 bg-amber-950/20 px-3 py-1.5 text-sm text-amber-200 transition-colors hover:border-amber-600/60 hover:text-amber-100">
                     <BriefcaseBusiness className="h-3.5 w-3.5" /> Business OS
                 </Link>
+                <Link href="/god/autopilot" className="inline-flex items-center gap-1.5 rounded-md border border-gray-700 bg-gray-900 px-3 py-1.5 text-sm text-gray-300 transition-colors hover:border-gray-600 hover:text-white">
+                    <Activity className="h-3.5 w-3.5" /> Autopilot
+                </Link>
                 <Link href="/god/announcements" className="inline-flex items-center gap-1.5 rounded-md border border-gray-700 bg-gray-900 px-3 py-1.5 text-sm text-gray-300 transition-colors hover:border-gray-600 hover:text-white">
                     <Megaphone className="h-3.5 w-3.5" /> Announcement
                 </Link>
@@ -922,6 +786,12 @@ export default function GodCommandCenter() {
                             Business OS
                         </Link>
                         <Link
+                            href={withRangeQuery("/god/autopilot", currentRange)}
+                            className="rounded-md border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white"
+                        >
+                            Autopilot
+                        </Link>
+                        <Link
                             href={withRangeQuery("/god/support?status=open", currentRange)}
                             className="rounded-md border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white"
                         >
@@ -957,6 +827,45 @@ export default function GodCommandCenter() {
                 </div>
             </div>
 
+            <section className="rounded-lg border border-gray-800 bg-gray-900">
+                <div className="border-b border-gray-800 px-4 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                        <div>
+                            <h2 className="text-sm font-medium text-white">Attention now</h2>
+                            <p className="mt-1 text-xs text-gray-500">The shortest route from posture to the page where the issue should be handled.</p>
+                        </div>
+                        <Link href={withRangeQuery("/god/business-os", currentRange)} className="text-xs text-amber-300 transition-colors hover:text-amber-200">
+                            Open Business OS
+                        </Link>
+                    </div>
+                </div>
+                <div className="grid gap-3 p-3 md:grid-cols-2 xl:grid-cols-4">
+                    {visiblePriorityInbox.slice(0, 4).map((item) => (
+                        <Link
+                            key={item.id}
+                            href={withRangeQuery(item.href, currentRange)}
+                            className={cn("rounded-lg border px-3 py-3 transition-colors hover:border-gray-700", severityStyles(item.severity))}
+                        >
+                            <div className="flex items-start justify-between gap-3">
+                                <div>
+                                    <div className="text-sm font-medium text-white">{item.title}</div>
+                                    <div className="mt-1 text-xs text-gray-400">{item.detail}</div>
+                                </div>
+                                <ArrowRight className="h-4 w-4 text-gray-500" />
+                            </div>
+                            <div className="mt-3 text-[11px] uppercase tracking-wide text-gray-500">
+                                {item.action_label}
+                            </div>
+                        </Link>
+                    ))}
+                    {visiblePriorityInbox.length === 0 ? (
+                        <div className="rounded-lg border border-emerald-900/60 bg-emerald-950/20 px-3 py-4 text-sm text-emerald-200 md:col-span-2 xl:col-span-4">
+                            No executive routing items are urgent in this view right now.
+                        </div>
+                    ) : null}
+                </div>
+            </section>
+
             <div className="grid min-w-0 gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
                 <div className="min-w-0 space-y-4">
                     <CurrentPosturePanel
@@ -967,65 +876,6 @@ export default function GodCommandCenter() {
                         showGrowth={showGrowth}
                         selectedRange={currentRange}
                     />
-                    <section className="overflow-hidden rounded-lg border border-gray-800 bg-gray-900">
-                        <div className="border-b border-gray-800 px-4 py-3">
-                            <h2 className="text-sm font-medium text-white">Priority inbox</h2>
-                            <p className="mt-1 text-xs text-gray-500">What needs action next.</p>
-                        </div>
-                        <div className="p-3">
-                            {visiblePriorityInbox.length === 0 ? (
-                                <div className="rounded-md border border-emerald-900/50 bg-emerald-950/20 px-3 py-4 text-sm text-emerald-200">
-                                    No work items match this view right now.
-                                </div>
-                            ) : (
-                                <div className="space-y-2">
-                                    {visiblePriorityInbox.map((item) => (
-                                        <div
-                                            key={item.id}
-                                            className={cn(
-                                                "rounded-md border px-3 py-3 transition-colors",
-                                                severityStyles(item.severity),
-                                                focusedInboxItem?.id === item.id && "ring-1 ring-amber-400/70",
-                                            )}
-                                        >
-                                            <div className="flex items-start justify-between gap-3">
-                                                <div className="min-w-0">
-                                                    <p className="text-sm font-medium text-white">{item.title}</p>
-                                                    <p className="mt-1 text-xs text-gray-400">{item.detail}</p>
-                                                    <div className="mt-2 flex flex-wrap gap-1">
-                                                        {item.buckets.filter((bucket) => bucket !== "all").slice(0, 3).map((bucket) => (
-                                                            <span key={bucket} className="rounded bg-gray-900/70 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-gray-400">
-                                                                {bucket.replace("-", " ")}
-                                                            </span>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                                <span className="text-[11px] text-gray-500">{item.age_label}</span>
-                                            </div>
-                                            <div className="mt-3 flex items-center justify-between gap-3">
-                                                <button
-                                                    onClick={() => setFocusedInboxId(item.id)}
-                                                    className={cn(
-                                                        "rounded border px-2 py-1 text-xs transition-colors",
-                                                        focusedInboxItem?.id === item.id
-                                                            ? "border-amber-500/50 bg-amber-500/10 text-amber-200"
-                                                            : "border-gray-700 bg-gray-900/70 text-gray-300 hover:border-gray-600",
-                                                    )}
-                                                >
-                                                    {focusedInboxItem?.id === item.id ? "Focused" : "Focus"}
-                                                </button>
-                                                <Link href={withRangeQuery(item.href, currentRange)} className="inline-flex items-center gap-1 text-xs text-gray-300 transition-colors hover:text-white">
-                                                    {item.action_label}
-                                                    <ArrowRight className="w-3 h-3" />
-                                                </Link>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </section>
-
                     <section className="overflow-hidden rounded-lg border border-gray-800 bg-gray-900">
                         <div className="border-b border-gray-800 px-4 py-3">
                             <h2 className="text-sm font-medium text-white">Newest orgs</h2>
@@ -1221,12 +1071,7 @@ export default function GodCommandCenter() {
                                                         </div>
                                                         <div className="flex flex-col items-end gap-2">
                                                             <span className="text-xs text-gray-500">{org.urgent_tickets} urgent</span>
-                                                            <button 
-                                                                onClick={(e) => { e.preventDefault(); setSuspendTargetId(org.org_id); }}
-                                                                className="rounded bg-red-950/50 border border-red-900/50 px-2 py-1 text-xs text-red-300 hover:bg-red-900/50 transition-colors"
-                                                            >
-                                                                Suspend
-                                                            </button>
+                                                            <ArrowRight className="w-4 h-4 text-gray-600" />
                                                         </div>
                                                     </div>
                                                     <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -1278,12 +1123,7 @@ export default function GodCommandCenter() {
                                                                 <span className="text-sm text-white">${org.spend_usd.toFixed(2)}</span>
                                                             </div>
                                                             <div className="flex justify-end">
-                                                                <button 
-                                                                    onClick={(e) => { e.preventDefault(); setSuspendTargetId(org.org_id); }}
-                                                                    className="rounded bg-red-950/50 border border-red-900/50 px-2 py-1 text-xs text-red-300 hover:bg-red-900/50 transition-colors"
-                                                                >
-                                                                    Suspend
-                                                                </button>
+                                                                <ArrowRight className="h-4 w-4 text-gray-600" />
                                                             </div>
                                                         </div>
                                                     ))
@@ -1377,114 +1217,6 @@ export default function GodCommandCenter() {
 
                             <section className="overflow-hidden rounded-lg border border-gray-800 bg-gray-900">
                                 <div className="border-b border-gray-800 px-4 py-3">
-                                    <h2 className="text-sm font-medium text-white">Quick actions</h2>
-                                </div>
-                                <div className="grid gap-2 p-3">
-                                    {contextActions.length > 0 && (
-                                        <div className="rounded-md border border-amber-900/40 bg-amber-950/10 p-2">
-                                            <p className="px-1 pb-2 text-[11px] uppercase tracking-wide text-amber-300/80">
-                                                Focused: {focusedInboxItem?.title ?? "priority item"}
-                                            </p>
-                                            <div className="grid gap-2">
-                                                {contextActions.map((action) => {
-                                                    const Icon = iconForActionLabel(action.label);
-                                                    return (
-                                                        <Link
-                                                            key={`context-${action.label}-${action.href}`}
-                                                            href={action.href}
-                                                            className="inline-flex items-center justify-between rounded-md border border-amber-900/50 bg-amber-950/20 px-3 py-2.5 text-sm text-amber-100 transition-colors hover:border-amber-700"
-                                                        >
-                                                            <span className="inline-flex items-center gap-2">
-                                                                <Icon className="h-4 w-4" />
-                                                                {action.label}
-                                                            </span>
-                                                            <ArrowRight className="h-4 w-4" />
-                                                        </Link>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    )}
-                                    {focusedInboxItem?.work_item_id && (
-                                        <div className="rounded-md border border-blue-900/40 bg-blue-950/10 p-2">
-                                            <p className="px-1 pb-2 text-[11px] uppercase tracking-wide text-blue-300/80">
-                                                Queue controls
-                                            </p>
-                                            <div className="grid gap-2">
-                                                {focusedInboxItem.owner_id !== data.current_user_id && (
-                                                    <button
-                                                        onClick={() => mutateFocusedWorkItem({ owner_id: data.current_user_id, status: "in_progress" }, "Work item claimed")}
-                                                        className="inline-flex items-center justify-between rounded-md border border-blue-900/50 bg-blue-950/20 px-3 py-2.5 text-sm text-blue-100 transition-colors hover:border-blue-700"
-                                                    >
-                                                        <span className="inline-flex items-center gap-2">
-                                                            <LogIn className="h-4 w-4" />
-                                                            Claim work item
-                                                        </span>
-                                                        <ArrowRight className="h-4 w-4" />
-                                                    </button>
-                                                )}
-                                                <button
-                                                    onClick={() => mutateFocusedWorkItem({ status: "done" }, "Work item completed")}
-                                                    className="inline-flex items-center justify-between rounded-md border border-emerald-900/50 bg-emerald-950/20 px-3 py-2.5 text-sm text-emerald-100 transition-colors hover:border-emerald-700"
-                                                >
-                                                    <span className="inline-flex items-center gap-2">
-                                                        <LogIn className="h-4 w-4" />
-                                                        Mark done
-                                                    </span>
-                                                    <ArrowRight className="h-4 w-4" />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-                                    {data.quick_actions.map((action) => {
-                                        const Icon = iconForActionLabel(action.label);
-                                        return (
-                                            <Link
-                                                key={action.href}
-                                                href={withRangeQuery(action.href, currentRange)}
-                                                className={cn(
-                                                    "inline-flex items-center justify-between rounded-md border px-3 py-3 text-sm transition-colors",
-                                                    action.tone === "danger"
-                                                        ? "border-red-900/70 bg-red-950/20 text-red-200 hover:border-red-800"
-                                                        : "border-gray-800 bg-gray-950/50 text-gray-300 hover:border-gray-700 hover:text-white",
-                                                )}
-                                            >
-                                                <span className="inline-flex items-center gap-2">
-                                                    <Icon className="w-4 h-4" />
-                                                    {action.label}
-                                                </span>
-                                                <ArrowRight className="w-4 h-4" />
-                                            </Link>
-                                        );
-                                    })}
-                                    <Link
-                                        href="/god/directory"
-                                        className="inline-flex items-center justify-between rounded-md border border-indigo-900/50 bg-indigo-950/20 px-3 py-3 text-sm text-indigo-200 transition-colors hover:border-indigo-800"
-                                    >
-                                        <span className="inline-flex items-center gap-2">
-                                            <Users className="w-4 h-4" />
-                                            Accounts
-                                        </span>
-                                        <ArrowRight className="w-4 h-4" />
-                                    </Link>
-
-                                    <a
-                                        href="https://us.posthog.com"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center justify-between rounded-md border border-gray-800 bg-gray-950/50 px-3 py-3 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white"
-                                    >
-                                        <span className="inline-flex items-center gap-2">
-                                            <ExternalLink className="w-4 h-4" />
-                                            PostHog
-                                        </span>
-                                        <ArrowRight className="w-4 h-4" />
-                                    </a>
-                                </div>
-                            </section>
-
-                            <section className="overflow-hidden rounded-lg border border-gray-800 bg-gray-900">
-                                <div className="border-b border-gray-800 px-4 py-3">
                                     <div className="flex items-center justify-between gap-3">
                                         <div>
                                             <h2 className="text-sm font-medium text-white">Decision log</h2>
@@ -1535,32 +1267,6 @@ export default function GodCommandCenter() {
                     loading={impersonating}
                 />
             )}
-
-            {/* Suspend org confirmation */}
-            {suspendTargetId && (
-                <ConfirmDangerModal
-                    open={true}
-                    title="Suspend organization?"
-                    message="This will immediately disable all access for this organization. They will not be able to log in until unsuspended."
-                    onConfirm={handleSuspendOrg}
-                    onCancel={() => { setSuspendTargetId(null); setSuspendReason(""); }}
-                    loading={suspending}
-                >
-                    <div className="space-y-2">
-                        <label className="text-xs font-semibold text-gray-400 uppercase">Reason for suspension <span className="text-red-400">*</span></label>
-                        <input
-                            type="text"
-                            value={suspendReason}
-                            onChange={(e) => setSuspendReason(e.target.value)}
-                            placeholder="e.g. Overdue invoices, TOS Violation..."
-                            className="w-full px-3 py-2 bg-gray-950 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-red-500/50"
-                            autoFocus
-                        />
-                    </div>
-                </ConfirmDangerModal>
-            )}
-
-            <ActionToast {...toast} onDismiss={dismiss} />
         </div>
     );
 }

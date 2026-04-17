@@ -24,78 +24,10 @@ import type {
     BusinessOsAccountRow,
     BusinessOsAiRecommendation,
     BusinessOsDailyBrief,
+    BusinessOsWorkspace,
 } from "@/lib/platform/business-os";
-
-type Payload = {
-    generated_at: string;
-    current_user_id: string;
-    operators: Array<{ id: string; name: string; email: string | null }>;
-    filters: {
-        owner: string | "unowned" | "all";
-        health_band: "healthy" | "watch" | "at_risk" | "all";
-        lifecycle_stage: "new" | "onboarding" | "active" | "watch" | "at_risk" | "churned" | "all";
-        risk: "all" | "revenue" | "churn" | "support" | "incident";
-        search: string;
-        activation_risk: boolean;
-    };
-    summary: {
-        total_accounts: number;
-        my_accounts: number;
-        unowned_high_risk: number;
-        activation_risk_accounts: number;
-        revenue_risk_accounts: number;
-        urgent_support_accounts: number;
-        margin_watch_accounts: number;
-        ops_loop_candidates: number;
-        policy_violations: number;
-        open_commitments: number;
-        breached_commitments: number;
-    };
-    ai_daily_brief: BusinessOsDailyBrief;
-    playbook_learning: Array<{
-        kind: string;
-        total: number;
-        success: number;
-        neutral: number;
-        fail: number;
-        success_rate: number;
-    }>;
-    policy_violations: Array<{
-        id: string;
-        org_id: string;
-        account_name: string;
-        severity: "medium" | "high" | "critical";
-        rule: string;
-        detail: string;
-    }>;
-    margin_watch: Array<{
-        org_id: string;
-        name: string;
-        reasons: string[];
-        ai_spend_mtd_usd: number;
-        proposal_sent_count: number;
-        proposal_approved_count: number;
-        trip_count: number;
-    }>;
-    ops_loop_preview: {
-        candidate_count: number;
-        by_kind: Record<string, number>;
-        suggestions: Array<{
-            automation_key: string;
-            org_id: string;
-            account_name: string;
-            kind: string;
-            severity: "low" | "medium" | "high" | "critical";
-            title: string;
-            summary: string;
-            due_at: string | null;
-            reason: string;
-        }>;
-    };
-    accounts: BusinessOsAccountRow[];
-    selected_org_id: string | null;
-    selected_account: BusinessOsAccountDetail | null;
-};
+type Payload = BusinessOsWorkspace;
+type QueueMode = "all" | "my_focus" | "unowned" | "due_today" | "approval_needed";
 
 type AccountDraft = {
     owner_id: string;
@@ -138,7 +70,7 @@ type MemoryNoteDraft = {
     pinned: boolean;
 };
 
-type ActivitySourceFilter = "all" | "business_os" | "business_os_ops_loop" | "support_queue" | "support_response" | "system";
+type ActivitySourceFilter = "all" | "business_os" | "business_os_ops_loop" | "business_os_autopilot" | "business_os_autopilot_approval" | "support_queue" | "support_response" | "system";
 
 type ActivityFeedResponse = {
     events: BusinessOsAccountDetail["org_memory"]["recent_events"];
@@ -171,6 +103,23 @@ function duplicateAi(ai: BusinessOsAiRecommendation): BusinessOsAiRecommendation
     return JSON.parse(JSON.stringify(ai)) as BusinessOsAiRecommendation;
 }
 
+function isDueToday(value: string | null | undefined): boolean {
+    if (!value) return false;
+    const date = new Date(value);
+    const now = new Date();
+    return date.getFullYear() === now.getFullYear()
+        && date.getMonth() === now.getMonth()
+        && date.getDate() === now.getDate();
+}
+
+function matchesQueueMode(account: BusinessOsAccountRow, mode: QueueMode, currentUserId: string): boolean {
+    if (mode === "my_focus") return account.account_state.owner_id === currentUserId;
+    if (mode === "unowned") return !account.account_state.owner_id;
+    if (mode === "due_today") return isDueToday(account.account_state.next_action_due_at);
+    if (mode === "approval_needed") return account.pending_approval_count > 0;
+    return true;
+}
+
 export default function BusinessOsPage() {
     const [data, setData] = useState<Payload | null>(null);
     const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
@@ -179,10 +128,10 @@ export default function BusinessOsPage() {
     const [refreshingDrafts, setRefreshingDrafts] = useState(false);
     const [savingAccount, setSavingAccount] = useState(false);
     const [savingWorkItem, setSavingWorkItem] = useState(false);
-    const [runningOpsLoop, setRunningOpsLoop] = useState(false);
     const [recordingOutcomeId, setRecordingOutcomeId] = useState<string | null>(null);
     const [savingComms, setSavingComms] = useState(false);
     const [savingCommitment, setSavingCommitment] = useState(false);
+    const [busyApprovalId, setBusyApprovalId] = useState<string | null>(null);
     const [activitySource, setActivitySource] = useState<ActivitySourceFilter>("all");
     const [activityFeed, setActivityFeed] = useState<BusinessOsAccountDetail["org_memory"]["recent_events"]>([]);
     const [activityCursor, setActivityCursor] = useState<string | null>(null);
@@ -191,6 +140,7 @@ export default function BusinessOsPage() {
     const [error, setError] = useState<string | null>(null);
     const [message, setMessage] = useState<string | null>(null);
     const [rightTab, setRightTab] = useState<"operate" | "growth">("operate");
+    const [queueMode, setQueueMode] = useState<QueueMode>("all");
     const [filters, setFilters] = useState({
         owner: "all",
         health_band: "all",
@@ -500,25 +450,20 @@ export default function BusinessOsPage() {
         }
     }
 
-    async function runOpsLoop() {
-        setRunningOpsLoop(true);
+    async function decideApproval(id: string, decision: "approve" | "reject") {
+        setBusyApprovalId(id);
         setError(null);
         try {
-            const response = await authedFetch("/api/superadmin/business-os/ops-loop", {
+            const response = await authedFetch(`/api/superadmin/autopilot/approvals/${encodeURIComponent(id)}/${decision}`, {
                 method: "POST",
             });
-            if (!response.ok) throw new Error("Failed to run AI ops loop");
-            const payload = await response.json() as {
-                created_count: number;
-                candidate_count: number;
-                deduped_count: number;
-            };
-            setMessage(`AI ops loop created ${payload.created_count} work items from ${payload.candidate_count} candidates (${payload.deduped_count} already covered).`);
+            if (!response.ok) throw new Error(`Failed to ${decision} approval`);
+            setMessage(decision === "approve" ? "Approval accepted and follow-up work opened." : "Approval rejected.");
             await loadData();
-        } catch (opsError) {
-            setError(opsError instanceof Error ? opsError.message : "Failed to run AI ops loop");
+        } catch (approvalError) {
+            setError(approvalError instanceof Error ? approvalError.message : `Failed to ${decision} approval`);
         } finally {
-            setRunningOpsLoop(false);
+            setBusyApprovalId(null);
         }
     }
 
@@ -731,6 +676,14 @@ export default function BusinessOsPage() {
     }
 
     const selected = data?.selected_account ?? null;
+    const displayedAccounts = (data?.accounts ?? []).filter((account) => matchesQueueMode(account, queueMode, data?.current_user_id ?? ""));
+
+    useEffect(() => {
+        if (displayedAccounts.length === 0) return;
+        if (!selectedOrgId || !displayedAccounts.some((account) => account.org_id === selectedOrgId)) {
+            setSelectedOrgId(displayedAccounts[0].org_id);
+        }
+    }, [displayedAccounts, selectedOrgId]);
 
     return (
         <div className="space-y-6">
@@ -772,11 +725,11 @@ export default function BusinessOsPage() {
             ) : null}
 
             <section className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="space-y-2">
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="space-y-3">
                         <div className="inline-flex items-center gap-2 text-sm font-medium text-amber-300">
                             <Bot className="h-4 w-4" />
-                            AI Daily Brief
+                            Today&apos;s operating brief
                         </div>
                         <div className="text-lg font-semibold text-white">
                             {data?.ai_daily_brief.headline ?? "Loading operating brief..."}
@@ -784,232 +737,65 @@ export default function BusinessOsPage() {
                         <p className="max-w-4xl text-sm text-gray-300">
                             {data?.ai_daily_brief.summary ?? "Reviewing account posture, ownership gaps, and next operating moves."}
                         </p>
-                    </div>
-                    <button
-                        onClick={() => void refreshBrief()}
-                        disabled={refreshingBrief}
-                        className="inline-flex items-center gap-2 rounded-lg border border-gray-800 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white disabled:opacity-60"
-                    >
-                        <RefreshCw className={cn("h-4 w-4", refreshingBrief && "animate-spin")} />
-                        Refresh AI brief
-                    </button>
-                </div>
-
-                <div className="mt-4 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-                    <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
-                        <div className="mb-2 text-sm font-medium text-gray-200">Priority queue</div>
-                        <div className="space-y-2 text-sm text-gray-300">
-                            {(data?.ai_daily_brief.priorities ?? []).length > 0 ? (
-                                data?.ai_daily_brief.priorities.map((item) => (
-                                    <div key={item} className="rounded-lg border border-gray-800 bg-gray-950/50 px-3 py-2">
-                                        {item}
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="rounded-lg border border-gray-800 bg-gray-950/50 px-3 py-2 text-gray-400">
-                                    No urgent AI priorities in the current filter set.
-                                </div>
-                            )}
+                        <div className="rounded-xl border border-gray-800 bg-black/30 px-4 py-3 text-sm text-gray-300">
+                            {data?.ai_daily_brief.queue_focus ?? "Loading queue focus..."}
                         </div>
                     </div>
+                    <div className="flex flex-wrap gap-2">
+                        <Link
+                            href="/god/autopilot"
+                            className="inline-flex items-center gap-2 rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white"
+                        >
+                            Autopilot
+                            <ArrowRight className="h-4 w-4" />
+                        </Link>
+                        <button
+                            onClick={() => void refreshBrief()}
+                            disabled={refreshingBrief}
+                            className="inline-flex items-center gap-2 rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-sm text-gray-300 transition-colors hover:border-gray-700 hover:text-white disabled:opacity-60"
+                        >
+                            <RefreshCw className={cn("h-4 w-4", refreshingBrief && "animate-spin")} />
+                            Refresh brief
+                        </button>
+                    </div>
+                </div>
+
+                <div className="mt-4 grid gap-3 lg:grid-cols-[1.2fr_0.8fr]">
                     <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
-                        <div className="mb-2 text-sm font-medium text-gray-200">Gaps and queue focus</div>
-                        <div className="space-y-2 text-sm text-gray-300">
-                            <div className="rounded-lg border border-gray-800 bg-gray-950/50 px-3 py-2">
-                                {data?.ai_daily_brief.queue_focus ?? "Loading queue focus..."}
-                            </div>
-                            {(data?.ai_daily_brief.gaps ?? []).map((gap) => (
-                                <div key={gap} className="rounded-lg border border-amber-900/60 bg-amber-950/20 px-3 py-2 text-amber-200">
+                        <div className="text-xs uppercase tracking-wide text-gray-500">What needs attention</div>
+                        <div className="mt-3 space-y-2">
+                            {(data?.ai_daily_brief.priorities ?? []).slice(0, 4).map((item) => (
+                                <div key={item} className="rounded-lg border border-gray-800 bg-gray-950/50 px-3 py-2 text-sm text-gray-300">
+                                    {item}
+                                </div>
+                            ))}
+                            {(data?.ai_daily_brief.gaps ?? []).slice(0, 2).map((gap) => (
+                                <div key={gap} className="rounded-lg border border-amber-900/60 bg-amber-950/20 px-3 py-2 text-sm text-amber-200">
                                     {gap}
                                 </div>
                             ))}
                         </div>
                     </div>
-                </div>
-            </section>
-
-            <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                        <div>
-                            <div className="text-sm font-medium text-gray-200">AI ops loop</div>
-                            <div className="mt-1 text-sm text-gray-400">
-                                Generate missing work items for activation rescue, collections, support recovery, review enforcement, and margin watch.
+                    <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
+                        <div className="text-xs uppercase tracking-wide text-gray-500">Queue posture</div>
+                        <div className="mt-3 grid grid-cols-2 gap-3">
+                            <div className="rounded-lg border border-gray-800 bg-gray-950/50 px-3 py-3">
+                                <div className="text-xs text-gray-500">Accounts</div>
+                                <div className="mt-1 text-xl font-semibold text-white">{data?.summary.total_accounts ?? "—"}</div>
+                            </div>
+                            <div className="rounded-lg border border-gray-800 bg-gray-950/50 px-3 py-3">
+                                <div className="text-xs text-gray-500">My queue</div>
+                                <div className="mt-1 text-xl font-semibold text-white">{data?.summary.my_accounts ?? "—"}</div>
+                            </div>
+                            <div className="rounded-lg border border-gray-800 bg-gray-950/50 px-3 py-3">
+                                <div className="text-xs text-gray-500">Due today</div>
+                                <div className="mt-1 text-xl font-semibold text-white">{data ? data.accounts.filter((account) => isDueToday(account.account_state.next_action_due_at)).length : "—"}</div>
+                            </div>
+                            <div className="rounded-lg border border-gray-800 bg-gray-950/50 px-3 py-3">
+                                <div className="text-xs text-gray-500">Approval needed</div>
+                                <div className="mt-1 text-xl font-semibold text-white">{data?.summary.pending_approvals ?? "—"}</div>
                             </div>
                         </div>
-                        <button
-                            onClick={() => void runOpsLoop()}
-                            disabled={runningOpsLoop || (data?.ops_loop_preview.candidate_count ?? 0) === 0}
-                            className="inline-flex items-center gap-2 rounded-lg border border-amber-800/60 bg-amber-950/20 px-3 py-2 text-sm text-amber-200 transition-colors hover:border-amber-700/60 disabled:opacity-60"
-                        >
-                            {runningOpsLoop ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                            {runningOpsLoop ? "Running AI ops loop..." : "Run AI ops loop"}
-                        </button>
-                    </div>
-                    <div className="mt-4 grid gap-3 md:grid-cols-4">
-                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
-                            <div className="text-xs uppercase tracking-wide text-gray-400">Candidates</div>
-                            <div className="mt-2 text-xl font-semibold text-white">{data?.summary.ops_loop_candidates ?? "—"}</div>
-                        </div>
-                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
-                            <div className="text-xs uppercase tracking-wide text-gray-400">Collections</div>
-                            <div className="mt-2 text-xl font-semibold text-white">{data?.ops_loop_preview.by_kind.collections ?? 0}</div>
-                        </div>
-                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
-                            <div className="text-xs uppercase tracking-wide text-gray-400">Activation</div>
-                            <div className="mt-2 text-xl font-semibold text-white">{data?.ops_loop_preview.by_kind.growth_followup ?? 0}</div>
-                        </div>
-                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
-                            <div className="text-xs uppercase tracking-wide text-gray-400">Review + margin</div>
-                            <div className="mt-2 text-xl font-semibold text-white">
-                                {(data?.ops_loop_preview.by_kind.churn_risk ?? 0) + (data?.ops_loop_preview.by_kind.renewal ?? 0)}
-                            </div>
-                        </div>
-                    </div>
-                    <div className="mt-4 space-y-2">
-                        {(data?.ops_loop_preview.suggestions ?? []).slice(0, 6).map((suggestion) => (
-                            <div key={suggestion.automation_key} className="rounded-xl border border-gray-800 bg-black/30 p-4">
-                                <div className="flex items-start justify-between gap-3">
-                                    <div>
-                                        <div className="text-sm font-medium text-white">{suggestion.account_name}</div>
-                                        <div className="mt-1 text-sm text-gray-300">{suggestion.title}</div>
-                                        <div className="mt-1 text-xs text-gray-500">{suggestion.reason}</div>
-                                    </div>
-                                    <div className={cn("rounded-md border px-2 py-1 text-xs font-medium", priorityTone(suggestion.severity === "critical" ? 100 : suggestion.severity === "high" ? 70 : 40))}>
-                                        {suggestion.kind.replaceAll("_", " ")}
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                        {(data?.ops_loop_preview.candidate_count ?? 0) === 0 ? (
-                            <div className="rounded-xl border border-gray-800 bg-black/30 p-4 text-sm text-gray-400">
-                                AI ops loop is clear right now. No missing work items were detected.
-                            </div>
-                        ) : null}
-                    </div>
-                </div>
-
-                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
-                    <div className="text-sm font-medium text-gray-200">Margin watch</div>
-                    <div className="mt-1 text-sm text-gray-400">
-                        Accounts where AI cost, proposal effort, and monetization are drifting out of balance.
-                    </div>
-                    <div className="mt-4 grid grid-cols-2 gap-3">
-                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
-                            <div className="text-xs uppercase tracking-wide text-gray-400">Accounts flagged</div>
-                            <div className="mt-2 text-xl font-semibold text-white">{data?.summary.margin_watch_accounts ?? "—"}</div>
-                        </div>
-                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
-                            <div className="text-xs uppercase tracking-wide text-gray-400">Revenue risk</div>
-                            <div className="mt-2 text-xl font-semibold text-white">{data?.summary.revenue_risk_accounts ?? "—"}</div>
-                        </div>
-                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
-                            <div className="text-xs uppercase tracking-wide text-gray-400">Open commitments</div>
-                            <div className="mt-2 text-xl font-semibold text-white">{data?.summary.open_commitments ?? "—"}</div>
-                        </div>
-                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
-                            <div className="text-xs uppercase tracking-wide text-gray-400">Breached commitments</div>
-                            <div className="mt-2 text-xl font-semibold text-red-300">{data?.summary.breached_commitments ?? "—"}</div>
-                        </div>
-                    </div>
-                    <div className="mt-4 space-y-2">
-                        {(data?.margin_watch ?? []).slice(0, 5).map((account) => (
-                            <button
-                                key={account.org_id}
-                                onClick={() => setSelectedOrgId(account.org_id)}
-                                className="w-full rounded-xl border border-gray-800 bg-black/30 p-4 text-left transition-colors hover:border-gray-700 hover:bg-black/40"
-                            >
-                                <div className="flex items-start justify-between gap-3">
-                                    <div>
-                                        <div className="text-sm font-medium text-white">{account.name}</div>
-                                        <div className="mt-1 text-xs text-gray-500">${account.ai_spend_mtd_usd.toFixed(2)} AI spend • {account.proposal_sent_count} sent • {account.proposal_approved_count} approved • {account.trip_count} trips</div>
-                                    </div>
-                                </div>
-                                <div className="mt-3 space-y-2">
-                                    {account.reasons.map((reason) => (
-                                        <div key={reason} className="rounded-lg border border-amber-900/60 bg-amber-950/20 px-3 py-2 text-sm text-amber-200">
-                                            {reason}
-                                        </div>
-                                    ))}
-                                </div>
-                            </button>
-                        ))}
-                        {(data?.margin_watch?.length ?? 0) === 0 ? (
-                            <div className="rounded-xl border border-gray-800 bg-black/30 p-4 text-sm text-gray-400">
-                                No accounts are currently failing the margin-watch heuristics.
-                            </div>
-                        ) : null}
-                    </div>
-                </div>
-            </section>
-
-            <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
-                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <div className="text-sm font-medium text-gray-200">Policy enforcement</div>
-                            <div className="mt-1 text-sm text-gray-400">
-                                Accounts violating operating rules that should always trigger explicit action.
-                            </div>
-                        </div>
-                        <div className="rounded-lg border border-amber-900/60 bg-amber-950/20 px-3 py-2 text-sm text-amber-200">
-                            {data?.summary.policy_violations ?? 0} violations
-                        </div>
-                    </div>
-                    <div className="mt-4 space-y-2">
-                        {(data?.policy_violations ?? []).slice(0, 8).map((violation) => (
-                            <button
-                                key={violation.id}
-                                onClick={() => setSelectedOrgId(violation.org_id)}
-                                className="w-full rounded-xl border border-gray-800 bg-black/30 p-4 text-left transition-colors hover:border-gray-700 hover:bg-black/40"
-                            >
-                                <div className="flex items-start justify-between gap-3">
-                                    <div>
-                                        <div className="text-sm font-medium text-white">{violation.account_name}</div>
-                                        <div className="mt-1 text-xs text-gray-500">{violation.rule}</div>
-                                    </div>
-                                    <div className={cn("rounded-md border px-2 py-1 text-xs font-medium", priorityTone(violation.severity === "critical" ? 100 : violation.severity === "high" ? 70 : 40))}>
-                                        {violation.severity}
-                                    </div>
-                                </div>
-                                <div className="mt-3 rounded-lg border border-amber-900/50 bg-amber-950/20 px-3 py-2 text-sm text-amber-200">
-                                    {violation.detail}
-                                </div>
-                            </button>
-                        ))}
-                        {(data?.policy_violations?.length ?? 0) === 0 ? (
-                            <div className="rounded-xl border border-gray-800 bg-black/30 p-4 text-sm text-gray-400">
-                                No enforcement violations are active in the current account set.
-                            </div>
-                        ) : null}
-                    </div>
-                </div>
-
-                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
-                    <div className="text-sm font-medium text-gray-200">Playbook learning (30d)</div>
-                    <div className="mt-1 text-sm text-gray-400">
-                        Outcome feedback from completed interventions, used to improve next recommendations.
-                    </div>
-                    <div className="mt-4 space-y-2">
-                        {(data?.playbook_learning ?? []).map((row) => (
-                            <div key={row.kind} className="rounded-xl border border-gray-800 bg-black/30 p-4">
-                                <div className="flex items-center justify-between gap-3">
-                                    <div className="text-sm font-medium text-white">{row.kind.replaceAll("_", " ")}</div>
-                                    <div className="text-sm text-emerald-300">{Math.round(row.success_rate * 100)}% success</div>
-                                </div>
-                                <div className="mt-2 grid grid-cols-4 gap-2 text-xs text-gray-400">
-                                    <div>Total: {row.total}</div>
-                                    <div>Success: {row.success}</div>
-                                    <div>Neutral: {row.neutral}</div>
-                                    <div>Fail: {row.fail}</div>
-                                </div>
-                            </div>
-                        ))}
-                        {(data?.playbook_learning?.length ?? 0) === 0 ? (
-                            <div className="rounded-xl border border-gray-800 bg-black/30 p-4 text-sm text-gray-400">
-                                No outcome data yet. Record outcomes on work items to train playbook quality.
-                            </div>
-                        ) : null}
                     </div>
                 </div>
             </section>
@@ -1019,6 +805,30 @@ export default function BusinessOsPage() {
                     <div className="flex items-center gap-2 text-sm font-medium text-gray-200">
                         <Filter className="h-4 w-4" />
                         Account queue
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                        {[
+                            { id: "all", label: "All" },
+                            { id: "my_focus", label: "My focus" },
+                            { id: "unowned", label: "Unowned" },
+                            { id: "due_today", label: "Due today" },
+                            { id: "approval_needed", label: "Approval needed" },
+                        ].map((mode) => (
+                            <button
+                                key={mode.id}
+                                onClick={() => setQueueMode(mode.id as QueueMode)}
+                                className={cn(
+                                    "rounded-lg border px-3 py-2 text-sm transition-colors",
+                                    queueMode === mode.id
+                                        ? "border-amber-700/60 bg-amber-950/30 text-amber-200"
+                                        : "border-gray-800 bg-black/30 text-gray-300 hover:border-gray-700 hover:text-white",
+                                    mode.id === "approval_needed" && "col-span-2",
+                                )}
+                            >
+                                {mode.label}
+                            </button>
+                        ))}
                     </div>
 
                     <div className="space-y-3">
@@ -1113,14 +923,14 @@ export default function BusinessOsPage() {
                             <div className="mt-1 text-xl font-semibold text-white">{data?.summary.activation_risk_accounts ?? "—"}</div>
                         </div>
                         <div className="rounded-xl border border-gray-800 bg-black/30 p-3">
-                            <div className="text-gray-400">Unowned risk</div>
-                            <div className="mt-1 text-xl font-semibold text-white">{data?.summary.unowned_high_risk ?? "—"}</div>
+                            <div className="text-gray-400">Approvals</div>
+                            <div className="mt-1 text-xl font-semibold text-white">{data?.summary.pending_approvals ?? "—"}</div>
                         </div>
                     </div>
 
                     <div className="space-y-2">
-                        {(data?.accounts ?? []).length > 0 ? (
-                            data?.accounts.map((account) => (
+                        {displayedAccounts.length > 0 ? (
+                            displayedAccounts.map((account) => (
                                 <button
                                     key={account.org_id}
                                     onClick={() => setSelectedOrgId(account.org_id)}
@@ -1148,6 +958,11 @@ export default function BusinessOsPage() {
                                                 {reason}
                                             </span>
                                         ))}
+                                        {account.pending_approval_count > 0 ? (
+                                            <span className="rounded border border-red-900/60 bg-red-950/20 px-2 py-1 text-red-200">
+                                                {account.pending_approval_count} approvals
+                                            </span>
+                                        ) : null}
                                     </div>
                                     <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-gray-400">
                                         <div>Overdue: {account.snapshot.overdue_balance_label}</div>
@@ -1159,7 +974,7 @@ export default function BusinessOsPage() {
                             ))
                         ) : (
                             <div className="rounded-xl border border-gray-800 bg-black/30 p-4 text-sm text-gray-400">
-                                No accounts match the current filters.
+                                No accounts match the current queue mode and filters.
                             </div>
                         )}
                     </div>
@@ -1685,14 +1500,53 @@ export default function BusinessOsPage() {
                                                     </div>
                                                 </div>
                                                 <div className="rounded-xl border border-red-900/50 bg-red-950/10 p-4">
-                                                    <div className="text-sm font-medium text-red-200">Guarded actions</div>
+                                                    <div className="flex items-center justify-between gap-3">
+                                                        <div className="text-sm font-medium text-red-200">Approvals</div>
+                                                        <Link href="/god/autopilot" className="text-xs text-red-200/80 hover:text-red-100">
+                                                            Open Autopilot
+                                                        </Link>
+                                                    </div>
                                                     <div className="mt-3 space-y-2">
-                                                        {selected.ai.guarded_actions.map((action) => (
-                                                            <div key={action.id} className="rounded-lg border border-red-900/50 bg-black/20 px-3 py-2">
-                                                                <div className="text-sm text-red-100">{action.label}</div>
-                                                                <div className="mt-1 text-xs text-red-200/80">{action.description}</div>
+                                                        {selected.pending_approvals.length > 0 ? selected.pending_approvals.map((approval) => (
+                                                            <div key={approval.id} className="rounded-lg border border-red-900/50 bg-black/20 px-3 py-3">
+                                                                <div className="flex items-start justify-between gap-3">
+                                                                    <div>
+                                                                        <div className="text-sm text-red-100">{approval.title}</div>
+                                                                        <div className="mt-1 text-xs text-red-200/80">{approval.description}</div>
+                                                                    </div>
+                                                                    <div className="text-[11px] uppercase tracking-wide text-red-200/70">
+                                                                        {approval.status}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="mt-2 text-xs text-gray-400">{approval.rationale}</div>
+                                                                {approval.status === "pending" ? (
+                                                                    <div className="mt-3 flex flex-wrap gap-2">
+                                                                        <button
+                                                                            onClick={() => void decideApproval(approval.id, "approve")}
+                                                                            disabled={busyApprovalId === approval.id}
+                                                                            className="rounded-lg border border-emerald-800/60 bg-emerald-950/20 px-3 py-1.5 text-xs text-emerald-200 hover:border-emerald-700/60 disabled:opacity-60"
+                                                                        >
+                                                                            {busyApprovalId === approval.id ? "Working..." : "Approve"}
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => void decideApproval(approval.id, "reject")}
+                                                                            disabled={busyApprovalId === approval.id}
+                                                                            className="rounded-lg border border-red-800/60 bg-red-950/20 px-3 py-1.5 text-xs text-red-200 hover:border-red-700/60 disabled:opacity-60"
+                                                                        >
+                                                                            Reject
+                                                                        </button>
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="mt-3 text-xs text-gray-500">
+                                                                        {approval.decided_by ? `${approval.status} by ${approval.decided_by}` : approval.status}
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                        ))}
+                                                        )) : (
+                                                            <div className="rounded-lg border border-gray-800 bg-gray-950/50 px-3 py-2 text-sm text-gray-400">
+                                                                No approval-gated actions are pending for this account.
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -1972,6 +1826,8 @@ export default function BusinessOsPage() {
                                                                     <option value="all">All sources</option>
                                                                     <option value="business_os">Business OS</option>
                                                                     <option value="business_os_ops_loop">AI ops loop</option>
+                                                                    <option value="business_os_autopilot">Autopilot</option>
+                                                                    <option value="business_os_autopilot_approval">Approvals</option>
                                                                     <option value="support_queue">Support queue</option>
                                                                     <option value="support_response">Support response</option>
                                                                     <option value="system">System</option>

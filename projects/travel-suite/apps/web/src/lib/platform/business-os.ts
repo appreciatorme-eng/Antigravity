@@ -101,6 +101,25 @@ export type BusinessOsAiRecommendation = {
     guarded_actions: BusinessOsAiAction[];
 };
 
+export type AutopilotApprovalStatus = "pending" | "approved" | "rejected";
+
+export type AutopilotApproval = {
+    id: string;
+    org_id: string;
+    account_name: string;
+    priority_score: number;
+    severity: "medium" | "high" | "critical";
+    action_kind: Extract<BusinessOsAiAction["action_kind"], "guarded_support_escalation" | "guarded_feature_flag_change" | "guarded_collections_writeoff">;
+    title: string;
+    description: string;
+    rationale: string;
+    suggested_work_item_kind: GodWorkItemKind;
+    status: AutopilotApprovalStatus;
+    decided_at: string | null;
+    decided_by: string | null;
+    payload: Record<string, unknown>;
+};
+
 export type BusinessOsAccountRow = AccountRow & {
     account_state: GodAccountState;
     priority_score: number;
@@ -110,6 +129,7 @@ export type BusinessOsAccountRow = AccountRow & {
     margin_watch: boolean;
     margin_watch_reasons: string[];
     effective_activation_stage: AccountActivationStage;
+    pending_approval_count: number;
 };
 
 export type BusinessOsAccountDetail = AccountDetail & {
@@ -144,6 +164,7 @@ export type BusinessOsAccountDetail = AccountDetail & {
     comms_sequences: GodCommsSequence[];
     commitments: GodCommitment[];
     breached_commitments: GodCommitment[];
+    pending_approvals: AutopilotApproval[];
     org_memory: {
         support_ready_summary: string;
         pending_items: string[];
@@ -186,6 +207,7 @@ export type BusinessOsPayload = {
         policy_violations: number;
         open_commitments: number;
         breached_commitments: number;
+        pending_approvals: number;
     };
     ai_daily_brief: BusinessOsDailyBrief;
     playbook_learning: WorkItemOutcomeLearning[];
@@ -208,6 +230,8 @@ export type BusinessOsPayload = {
     selected_org_id: string | null;
     selected_account: BusinessOsAccountDetail | null;
 };
+
+export type BusinessOsWorkspace = BusinessOsPayload;
 
 export type BusinessOsOpsSuggestion = {
     automation_key: string;
@@ -253,6 +277,57 @@ export type BusinessOsDailyAutopilotResult = {
     commitments_created: number;
     collections_auto_closed: number;
     outcomes_recorded: number;
+};
+
+export type AutopilotRun = {
+    id: string;
+    action: string;
+    summary: string;
+    trigger: "manual" | "scheduled" | "unknown";
+    actor_name: string | null;
+    created_at: string | null;
+    details: Record<string, unknown> | null;
+};
+
+export type AutopilotLoopSummary = {
+    id: "ai_coo" | "ai_customer_success" | "ai_revenue_ops" | "ai_promise_watchdog" | "ai_production_operator";
+    label: string;
+    count: number;
+    detail: string;
+};
+
+export type AutopilotSnapshot = {
+    generated_at: string;
+    daily_brief: BusinessOsDailyBrief;
+    daily_brief_history: Array<{
+        id: string;
+        headline: string;
+        summary: string;
+        generated_at: string | null;
+        trigger: "manual" | "scheduled" | "unknown";
+    }>;
+    summary: {
+        pending_approvals: number;
+        policy_violations: number;
+        autopilot_work_items: number;
+        promise_watchdog_accounts: number;
+        recent_runs: number;
+    };
+    loops: AutopilotLoopSummary[];
+    recent_runs: AutopilotRun[];
+    approvals: AutopilotApproval[];
+    policy_violations: BusinessOsPolicyViolation[];
+    playbook_learning: WorkItemOutcomeLearning[];
+    autopilot_work_items: GodWorkItem[];
+    promise_watchdog: Array<{
+        org_id: string;
+        account_name: string;
+        priority_score: number;
+        breached_commitments: number;
+        overdue_followups: number;
+        reasons: string[];
+    }>;
+    ops_loop_preview: BusinessOsPayload["ops_loop_preview"];
 };
 
 type SupportContextRow = {
@@ -344,6 +419,29 @@ type CollectionsWorkItemAutopilotRow = {
     title: string | null;
 };
 
+type ApprovalDecisionRow = {
+    org_id: string;
+    actor_id: string | null;
+    event_type: string;
+    metadata: unknown;
+    occurred_at: string | null;
+};
+
+type PlatformAuditAutopilotRow = {
+    id: string;
+    actor_id: string | null;
+    action: string | null;
+    details: unknown;
+    created_at: string | null;
+    profiles?: {
+        full_name: string | null;
+        email: string | null;
+    } | {
+        full_name: string | null;
+        email: string | null;
+    }[] | null;
+};
+
 function normalizeText(value: string | null | undefined, fallback = "Unknown"): string {
     const trimmed = value?.trim();
     return trimmed ? trimmed : fallback;
@@ -357,6 +455,30 @@ function normalizeMetadata(value: unknown): Record<string, unknown> | null {
 
 function normalizeKey(value: string | null | undefined): string {
     return (value || "").trim().toLowerCase();
+}
+
+function autopilotApprovalId(orgId: string, actionKind: AutopilotApproval["action_kind"]): string {
+    return `${orgId}__${actionKind}`;
+}
+
+function parseAutopilotApprovalId(id: string): { orgId: string; actionKind: AutopilotApproval["action_kind"] } | null {
+    const separator = "__";
+    const index = id.indexOf(separator);
+    if (index <= 0) return null;
+    const orgId = id.slice(0, index).trim();
+    const actionKind = id.slice(index + separator.length).trim();
+    if (
+        !orgId
+        || (actionKind !== "guarded_support_escalation"
+            && actionKind !== "guarded_feature_flag_change"
+            && actionKind !== "guarded_collections_writeoff")
+    ) {
+        return null;
+    }
+    return {
+        orgId,
+        actionKind,
+    };
 }
 
 function diffDays(fromIso: string | null | undefined, toIso: string | null | undefined = new Date().toISOString()): number | null {
@@ -918,6 +1040,174 @@ function buildAiRecommendation(account: AccountRow, effectiveActivationStage: Ac
     };
 }
 
+function buildApprovalCandidates(account: BusinessOsAccountRow): AutopilotApproval[] {
+    const ai = buildAiRecommendation(account, account.effective_activation_stage, account.activation_risk_reasons);
+    const approvals: AutopilotApproval[] = [];
+
+    const addApproval = (
+        actionKind: AutopilotApproval["action_kind"],
+        config: {
+            title: string;
+            description: string;
+            severity: AutopilotApproval["severity"];
+            suggestedWorkItemKind: GodWorkItemKind;
+        },
+    ) => {
+        const action = ai.guarded_actions.find((candidate) => candidate.action_kind === actionKind);
+        if (!action) return;
+        approvals.push({
+            id: autopilotApprovalId(account.org_id, actionKind),
+            org_id: account.org_id,
+            account_name: account.name,
+            priority_score: account.priority_score,
+            severity: config.severity,
+            action_kind: actionKind,
+            title: config.title,
+            description: config.description,
+            rationale: ai.rationale,
+            suggested_work_item_kind: config.suggestedWorkItemKind,
+            status: "pending",
+            decided_at: null,
+            decided_by: null,
+            payload: action.payload,
+        });
+    };
+
+    if (account.snapshot.urgent_support_count > 0 || account.snapshot.fatal_error_count > 0) {
+        addApproval("guarded_support_escalation", {
+            title: "Approve support escalation plan",
+            description: "Escalate the account into an explicit recovery lane before customer trust degrades further.",
+            severity: account.snapshot.fatal_error_count > 0 ? "critical" : "high",
+            suggestedWorkItemKind: "support_escalation",
+        });
+    }
+
+    if (account.snapshot.overdue_balance > 0) {
+        addApproval("guarded_collections_writeoff", {
+            title: "Approve collections exception review",
+            description: "Review whether the overdue balance needs a customer-impacting finance exception or senior intervention.",
+            severity: account.snapshot.overdue_balance >= 100000 ? "critical" : "high",
+            suggestedWorkItemKind: "collections",
+        });
+    }
+
+    if (account.snapshot.fatal_error_count > 0) {
+        addApproval("guarded_feature_flag_change", {
+            title: "Approve mitigation change review",
+            description: "Review whether an incident mitigation or feature-flag change should be pushed for this account.",
+            severity: "critical",
+            suggestedWorkItemKind: "incident_followup",
+        });
+    }
+
+    return approvals;
+}
+
+async function loadApprovalDecisionMap(
+    db: AdminClient,
+    orgIds: string[],
+): Promise<Map<string, { status: Exclude<AutopilotApprovalStatus, "pending">; decided_at: string | null; decided_by: string | null }>> {
+    const uniqueOrgIds = Array.from(new Set(orgIds.filter(Boolean)));
+    if (uniqueOrgIds.length === 0) return new Map();
+
+    const result = await db
+        .from("org_activity_events")
+        .select("org_id, actor_id, event_type, metadata, occurred_at")
+        .in("org_id", uniqueOrgIds)
+        .eq("source", "business_os_autopilot_approval")
+        .in("event_type", ["autopilot_approval_approved", "autopilot_approval_rejected"])
+        .order("occurred_at", { ascending: false })
+        .limit(500);
+
+    const rows = (result.data ?? []) as ApprovalDecisionRow[];
+    const actorIds = Array.from(new Set(rows.map((row) => row.actor_id ?? "").filter(Boolean)));
+    const actorLookup = new Map<string, string>();
+
+    if (actorIds.length > 0) {
+        const actorResult = await db.from("profiles").select("id, full_name, email").in("id", actorIds);
+        for (const actor of (actorResult.data ?? []) as Array<{ id: string; full_name: string | null; email: string | null }>) {
+            actorLookup.set(actor.id, actor.full_name?.trim() || actor.email?.trim() || "Unknown operator");
+        }
+    }
+
+    const decisions = new Map<string, { status: Exclude<AutopilotApprovalStatus, "pending">; decided_at: string | null; decided_by: string | null }>();
+    for (const row of rows) {
+        const metadata = normalizeMetadata(row.metadata);
+        const approvalId = typeof metadata?.approval_id === "string" ? metadata.approval_id : null;
+        if (!approvalId || decisions.has(approvalId)) continue;
+        const status = row.event_type === "autopilot_approval_approved" ? "approved" : "rejected";
+        decisions.set(approvalId, {
+            status,
+            decided_at: row.occurred_at,
+            decided_by: row.actor_id ? actorLookup.get(row.actor_id) ?? null : null,
+        });
+    }
+
+    return decisions;
+}
+
+async function listAutopilotApprovalsInternal(
+    db: AdminClient,
+    accounts: BusinessOsAccountRow[],
+    options: { includeResolved?: boolean } = {},
+): Promise<AutopilotApproval[]> {
+    const decisionMap = await loadApprovalDecisionMap(db, accounts.map((account) => account.org_id));
+    const approvals = accounts.flatMap((account) => buildApprovalCandidates(account)).map((approval) => {
+        const decision = decisionMap.get(approval.id);
+        return decision
+            ? {
+                ...approval,
+                status: decision.status,
+                decided_at: decision.decided_at,
+                decided_by: decision.decided_by,
+            }
+            : approval;
+    });
+
+    return approvals
+        .filter((approval) => options.includeResolved || approval.status === "pending")
+        .sort((left, right) => {
+            const statusWeight = (value: AutopilotApprovalStatus) => (value === "pending" ? 3 : value === "approved" ? 2 : 1);
+            const severityWeight = (value: AutopilotApproval["severity"]) => (value === "critical" ? 3 : value === "high" ? 2 : 1);
+            return statusWeight(right.status) - statusWeight(left.status)
+                || severityWeight(right.severity) - severityWeight(left.severity)
+                || right.priority_score - left.priority_score
+                || left.account_name.localeCompare(right.account_name);
+        });
+}
+
+export function buildAutopilotAuditDetails(
+    autopilot: BusinessOsDailyAutopilotResult,
+    brief: BusinessOsDailyBrief,
+    trigger: "manual" | "scheduled",
+): Record<string, unknown> {
+    return {
+        trigger,
+        summary: [
+            `Created ${autopilot.ops_loop.created_count}/${autopilot.ops_loop.candidate_count} queue items (${autopilot.ops_loop.deduped_count} already covered).`,
+            `Activation seq +${autopilot.activation_sequences_created} / closed ${autopilot.activation_sequences_completed}.`,
+            `Activation commitments +${autopilot.commitments_created} / met ${autopilot.activation_commitments_met}.`,
+            `Collections seq +${autopilot.collections_sequences_created} / closed ${autopilot.collections_sequences_completed}.`,
+            `Collections work auto-closed ${autopilot.collections_auto_closed}.`,
+        ].join(" "),
+        brief_headline: brief.headline,
+        brief_summary: brief.summary,
+        priorities: brief.priorities,
+        gaps: brief.gaps,
+        created_work_items: autopilot.ops_loop.created_count,
+        candidate_work_items: autopilot.ops_loop.candidate_count,
+        deduped_work_items: autopilot.ops_loop.deduped_count,
+        activation_sequences_created: autopilot.activation_sequences_created,
+        activation_sequences_completed: autopilot.activation_sequences_completed,
+        activation_commitments_met: autopilot.activation_commitments_met,
+        collections_sequences_created: autopilot.collections_sequences_created,
+        collections_sequences_completed: autopilot.collections_sequences_completed,
+        commitments_created: autopilot.commitments_created,
+        collections_auto_closed: autopilot.collections_auto_closed,
+        outcomes_recorded: autopilot.outcomes_recorded,
+    };
+}
+
 function buildOpsLoopSuggestions(
     account: BusinessOsAccountRow,
     existingKeys: Set<string>,
@@ -1344,6 +1634,7 @@ function enrichAccountRow(account: AccountRow): BusinessOsAccountRow {
         margin_watch: false,
         margin_watch_reasons: [],
         effective_activation_stage: effectiveActivationStage,
+        pending_approval_count: 0,
     } satisfies BusinessOsAccountRow;
     const marginWatchReasons = getMarginWatchReasons(provisional);
     return {
@@ -1468,6 +1759,17 @@ export async function buildBusinessOsPayload(
         orgIds: enriched.map((account) => account.org_id),
         sinceDays: 30,
     });
+    const pendingApprovals = await listAutopilotApprovalsInternal(db, enriched, { includeResolved: false });
+    const pendingApprovalsByOrg = pendingApprovals.reduce<Map<string, AutopilotApproval[]>>((map, approval) => {
+        const current = map.get(approval.org_id) ?? [];
+        current.push(approval);
+        map.set(approval.org_id, current);
+        return map;
+    }, new Map<string, AutopilotApproval[]>());
+    enriched = enriched.map((account) => ({
+        ...account,
+        pending_approval_count: pendingApprovalsByOrg.get(account.org_id)?.length ?? 0,
+    }));
     const marginWatchAccounts = enriched
         .filter((account) => account.margin_watch)
         .slice(0, 8)
@@ -1534,6 +1836,7 @@ export async function buildBusinessOsPayload(
                 comms_sequences: commsSequences,
                 commitments,
                 breached_commitments: breachedCommitments,
+                pending_approvals: pendingApprovalsByOrg.get(detail.organization.id) ?? [],
                 org_memory: orgMemory,
                 ai: buildAiRecommendation(matchingRow, matchingRow.effective_activation_stage, matchingRow.activation_risk_reasons),
             };
@@ -1568,6 +1871,7 @@ export async function buildBusinessOsPayload(
             policy_violations: policyViolations.length,
             open_commitments: Array.from(commitmentCounts.values()).reduce((sum, value) => sum + value.open, 0),
             breached_commitments: Array.from(commitmentCounts.values()).reduce((sum, value) => sum + value.breached, 0),
+            pending_approvals: pendingApprovals.length,
         },
         ai_daily_brief: buildDailyBrief(enriched, currentUserId),
         playbook_learning: playbookLearning,
@@ -2090,6 +2394,256 @@ export async function draftGrowthExperiment(db: AdminClient, orgId: string): Pro
 export async function generateDailyOpsBrief(db: AdminClient, currentUserId: string): Promise<BusinessOsDailyBrief> {
     const payload = await buildBusinessOsPayload(db, currentUserId, { limit: 80 });
     return payload.ai_daily_brief;
+}
+
+export async function getAutopilotApprovals(
+    db: AdminClient,
+    currentUserId: string,
+    options: { status?: AutopilotApprovalStatus | "all"; limit?: number } = {},
+): Promise<AutopilotApproval[]> {
+    const payload = await buildBusinessOsPayload(db, currentUserId, { limit: Math.max(60, options.limit ?? 120) });
+    const approvals = await listAutopilotApprovalsInternal(db, payload.accounts, { includeResolved: true });
+    const filtered = options.status && options.status !== "all"
+        ? approvals.filter((approval) => approval.status === options.status)
+        : approvals;
+    return filtered.slice(0, Math.max(10, options.limit ?? 60));
+}
+
+export async function getAutopilotApprovalById(
+    db: AdminClient,
+    currentUserId: string,
+    approvalId: string,
+): Promise<AutopilotApproval | null> {
+    const parsed = parseAutopilotApprovalId(approvalId);
+    if (!parsed) return null;
+    const approvals = await getAutopilotApprovals(db, currentUserId, { status: "all", limit: 180 });
+    return approvals.find((approval) => approval.id === approvalId) ?? null;
+}
+
+export async function applyAutopilotApprovalDecision(
+    db: AdminClient,
+    options: {
+        currentUserId: string;
+        approvalId: string;
+        decision: "approved" | "rejected";
+    },
+): Promise<{ approval: AutopilotApproval; work_item: GodWorkItem | null }> {
+    const approval = await getAutopilotApprovalById(db, options.currentUserId, options.approvalId);
+    if (!approval) throw new Error("Approval not found");
+    if (approval.status !== "pending") {
+        return { approval, work_item: null };
+    }
+
+    let workItem: GodWorkItem | null = null;
+    if (options.decision === "approved") {
+        const existing = await loadGodWorkItems(db, {
+            orgIds: [approval.org_id],
+            status: "active",
+            limit: 50,
+        });
+        workItem = existing.find((item) => {
+            const metadata = normalizeMetadata(item.metadata);
+            return typeof metadata?.approval_id === "string" && metadata.approval_id === approval.id;
+        }) ?? null;
+
+        if (!workItem) {
+            workItem = await createGodWorkItem(db, {
+                kind: approval.suggested_work_item_kind,
+                target_type: "organization",
+                target_id: approval.org_id,
+                org_id: approval.org_id,
+                owner_id: null,
+                status: "open",
+                severity: approval.severity,
+                title: approval.title,
+                summary: `${approval.description}\n\nRationale: ${approval.rationale}`,
+                due_at: new Date(Date.now() + 86_400_000).toISOString(),
+                metadata: {
+                    source: "business_os_autopilot_approval",
+                    approval_id: approval.id,
+                    action_kind: approval.action_kind,
+                    decision: "approved",
+                },
+            });
+        }
+    }
+
+    await recordOrgActivityEvent(db, {
+        org_id: approval.org_id,
+        actor_id: options.currentUserId,
+        event_type: options.decision === "approved" ? "autopilot_approval_approved" : "autopilot_approval_rejected",
+        title: `${options.decision === "approved" ? "Approved" : "Rejected"} autopilot action`,
+        detail: approval.title,
+        entity_type: "organization",
+        entity_id: approval.org_id,
+        source: "business_os_autopilot_approval",
+        metadata: {
+            approval_id: approval.id,
+            action_kind: approval.action_kind,
+            work_item_id: workItem?.id ?? null,
+        },
+    });
+
+    return {
+        approval: {
+            ...approval,
+            status: options.decision,
+            decided_at: new Date().toISOString(),
+            decided_by: null,
+        },
+        work_item: workItem,
+    };
+}
+
+export async function buildAutopilotSnapshot(
+    db: AdminClient,
+    currentUserId: string,
+): Promise<AutopilotSnapshot> {
+    const payload = await buildBusinessOsPayload(db, currentUserId, { limit: 120 });
+    const [approvals, activeWorkItems, commitmentCounts, commsFollowupCounts, runsResult] = await Promise.all([
+        listAutopilotApprovalsInternal(db, payload.accounts, { includeResolved: true }),
+        loadGodWorkItems(db, {
+            orgIds: payload.accounts.map((account) => account.org_id),
+            status: "active",
+            limit: 300,
+        }),
+        buildCommitmentCounts(db, payload.accounts.map((account) => account.org_id)),
+        buildCommsFollowupCounts(db, payload.accounts.map((account) => account.org_id)),
+        db
+            .from("platform_audit_log")
+            .select("id, actor_id, action, details, created_at, profiles!platform_audit_log_actor_id_fkey(full_name, email)")
+            .ilike("action", "Autopilot:%")
+            .order("created_at", { ascending: false })
+            .limit(12),
+    ]);
+
+    const autopilotWorkItems = activeWorkItems
+        .filter((item) => {
+            const metadata = normalizeMetadata(item.metadata);
+            const source = typeof metadata?.source === "string" ? metadata.source : "";
+            return source === "business_os_ops_loop"
+                || source === "business_os_daily_autopilot"
+                || source === "business_os_autopilot_approval"
+                || typeof metadata?.autopilot_kind === "string";
+        })
+        .slice(0, 20);
+
+    const promiseWatchdog = payload.accounts
+        .map((account) => {
+            const counts = commitmentCounts.get(account.org_id);
+            const followups = commsFollowupCounts.get(account.org_id);
+            const breachedCommitments = counts?.breached ?? 0;
+            const overdueFollowups = followups?.overdue ?? 0;
+            const reasons: string[] = [];
+            if (breachedCommitments > 0) reasons.push(`${breachedCommitments} commitments breached or overdue`);
+            if (overdueFollowups > 0) reasons.push(`${overdueFollowups} communication follow-ups overdue`);
+            if (reasons.length === 0) return null;
+            return {
+                org_id: account.org_id,
+                account_name: account.name,
+                priority_score: account.priority_score,
+                breached_commitments: breachedCommitments,
+                overdue_followups: overdueFollowups,
+                reasons,
+            };
+        })
+        .filter(Boolean)
+        .sort((left, right) =>
+            (right?.breached_commitments ?? 0) - (left?.breached_commitments ?? 0)
+            || (right?.overdue_followups ?? 0) - (left?.overdue_followups ?? 0)
+            || (right?.priority_score ?? 0) - (left?.priority_score ?? 0),
+        )
+        .slice(0, 12) as AutopilotSnapshot["promise_watchdog"];
+
+    const recentRuns = ((runsResult.data ?? []) as PlatformAuditAutopilotRow[]).map((row) => {
+        const details = normalizeMetadata(row.details);
+        const actor = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+        return {
+            id: row.id,
+            action: row.action?.trim() || "Autopilot run",
+            summary: typeof details?.summary === "string" ? details.summary : "Autopilot run completed.",
+            trigger: details?.trigger === "manual" || details?.trigger === "scheduled" ? details.trigger : "unknown",
+            actor_name: actor?.full_name?.trim() || actor?.email?.trim() || null,
+            created_at: row.created_at,
+            details,
+        } satisfies AutopilotRun;
+    });
+
+    const dailyBriefHistory = recentRuns
+        .filter((run) => typeof run.details?.brief_headline === "string")
+        .map((run) => ({
+            id: `brief:${run.id}`,
+            headline: String(run.details?.brief_headline),
+            summary: typeof run.details?.brief_summary === "string" ? run.details.brief_summary : run.summary,
+            generated_at: run.created_at,
+            trigger: run.trigger,
+        }))
+        .slice(0, 6);
+
+    if (dailyBriefHistory.length === 0) {
+        dailyBriefHistory.push({
+            id: "brief:current",
+            headline: payload.ai_daily_brief.headline,
+            summary: payload.ai_daily_brief.summary,
+            generated_at: payload.ai_daily_brief.generated_at,
+            trigger: "unknown",
+        });
+    }
+
+    return {
+        generated_at: new Date().toISOString(),
+        daily_brief: payload.ai_daily_brief,
+        daily_brief_history: dailyBriefHistory,
+        summary: {
+            pending_approvals: approvals.filter((approval) => approval.status === "pending").length,
+            policy_violations: payload.policy_violations.length,
+            autopilot_work_items: autopilotWorkItems.length,
+            promise_watchdog_accounts: promiseWatchdog.length,
+            recent_runs: recentRuns.length,
+        },
+        loops: [
+            {
+                id: "ai_coo",
+                label: "AI COO",
+                count: payload.accounts.filter((account) => account.priority_score >= 60).length,
+                detail: "Ranks business risk, ownership gaps, and stale review posture.",
+            },
+            {
+                id: "ai_customer_success",
+                label: "AI Customer Success",
+                count: payload.accounts.filter((account) => account.activation_risk).length,
+                detail: "Tracks activation stalls, low adoption, and churn-save follow-up.",
+            },
+            {
+                id: "ai_revenue_ops",
+                label: "AI Revenue Ops",
+                count: payload.accounts.filter((account) => account.snapshot.overdue_balance > 0 || account.snapshot.expiring_proposal_count > 0).length,
+                detail: "Covers overdue invoices, expiring proposals, renewals, and expansion risk.",
+            },
+            {
+                id: "ai_promise_watchdog",
+                label: "AI Promise Watchdog",
+                count: promiseWatchdog.length,
+                detail: "Detects breached commitments and overdue communication follow-ups.",
+            },
+            {
+                id: "ai_production_operator",
+                label: "AI Production Operator",
+                count: payload.accounts.filter((account) =>
+                    account.snapshot.proposal_draft_count > 0
+                    && account.snapshot.proposal_sent_count === 0,
+                ).length,
+                detail: "Flags drafted-but-unsent proposals and slow proposal throughput.",
+            },
+        ],
+        recent_runs: recentRuns,
+        approvals,
+        policy_violations: payload.policy_violations,
+        playbook_learning: payload.playbook_learning,
+        autopilot_work_items: autopilotWorkItems,
+        promise_watchdog: promiseWatchdog,
+        ops_loop_preview: payload.ops_loop_preview,
+    };
 }
 
 export async function proposeAccountStateUpdate(db: AdminClient, orgId: string): Promise<{ title: string; reasoning: string; actionPayload: string; riskLevel: "medium" | "high" | "critical" }> {

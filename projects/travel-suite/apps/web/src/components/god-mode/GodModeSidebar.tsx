@@ -8,6 +8,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import {
     LayoutDashboard,
     BriefcaseBusiness,
+    Bot,
     UserPlus,
     Users,
     BarChart3,
@@ -44,12 +45,13 @@ const NAV_GROUPS: NavGroup[] = [
         title: "EXECUTIVE",
         items: [
             { icon: LayoutDashboard, label: "Command Center", href: "/god" },
-            { icon: BriefcaseBusiness, label: "Business OS", href: "/god/business-os" },
+            { icon: Bot, label: "Autopilot", href: "/god/autopilot" },
         ],
     },
     {
         title: "ACCOUNTS",
         items: [
+            { icon: BriefcaseBusiness, label: "Business OS", href: "/god/business-os" },
             { icon: UserPlus, label: "Signups", href: "/god/signups" },
             { icon: Users, label: "Accounts", href: "/god/directory" },
         ],
@@ -70,7 +72,7 @@ const NAV_GROUPS: NavGroup[] = [
         ],
     },
     {
-        title: "CUSTOMER SAVE",
+        title: "CUSTOMER",
         items: [
             { icon: LifeBuoy, label: "Support Tickets", href: "/god/support" },
             { icon: Megaphone, label: "Announcements", href: "/god/announcements" },
