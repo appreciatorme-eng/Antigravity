@@ -89,12 +89,15 @@ interface BusinessOsAutopilotResult {
   readonly createdWorkItems: number;
   readonly candidateWorkItems: number;
   readonly dedupedWorkItems: number;
+  readonly ownerRoutesApplied: number;
   readonly activationSequencesCreated: number;
   readonly activationSequencesCompleted: number;
   readonly activationCommitmentsMet: number;
   readonly collectionsSequencesCreated: number;
   readonly collectionsSequencesCompleted: number;
   readonly sendQueueEscalated: number;
+  readonly commitmentsBreached: number;
+  readonly promiseEscalations: number;
   readonly commitmentsCreated: number;
   readonly collectionsAutoClosed: number;
   readonly outcomesRecorded: number;
@@ -166,12 +169,15 @@ async function runBusinessOsAutopilot(): Promise<BusinessOsAutopilotResult> {
     createdWorkItems: autopilot.ops_loop.created_count,
     candidateWorkItems: autopilot.ops_loop.candidate_count,
     dedupedWorkItems: autopilot.ops_loop.deduped_count,
+    ownerRoutesApplied: autopilot.owner_routes_applied,
     activationSequencesCreated: autopilot.activation_sequences_created,
     activationSequencesCompleted: autopilot.activation_sequences_completed,
     activationCommitmentsMet: autopilot.activation_commitments_met,
     collectionsSequencesCreated: autopilot.collections_sequences_created,
     collectionsSequencesCompleted: autopilot.collections_sequences_completed,
     sendQueueEscalated: autopilot.send_queue_escalated,
+    commitmentsBreached: autopilot.commitments_breached,
+    promiseEscalations: autopilot.promise_escalations,
     commitmentsCreated: autopilot.commitments_created,
     collectionsAutoClosed: autopilot.collections_auto_closed,
     outcomesRecorded: autopilot.outcomes_recorded,

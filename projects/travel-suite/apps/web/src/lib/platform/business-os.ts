@@ -296,12 +296,15 @@ export type BusinessOsOpsLoopResult = {
 export type BusinessOsDailyAutopilotResult = {
     generated_at: string;
     ops_loop: BusinessOsOpsLoopResult;
+    owner_routes_applied: number;
     activation_sequences_created: number;
     activation_sequences_completed: number;
     activation_commitments_met: number;
     collections_sequences_created: number;
     collections_sequences_completed: number;
     send_queue_escalated: number;
+    commitments_breached: number;
+    promise_escalations: number;
     commitments_created: number;
     collections_auto_closed: number;
     outcomes_recorded: number;
@@ -416,11 +419,14 @@ export type BusinessOsEventAutomationResult = {
         | "support_ticket_responded"
         | "work_item_outcome_recorded";
     state_updated: boolean;
+    owner_routed: boolean;
     work_items_created: number;
     work_items_closed: number;
     sequences_created: number;
     sequences_completed: number;
     commitments_met: number;
+    commitments_breached: number;
+    promise_escalations: number;
     notes: string[];
 };
 
@@ -507,6 +513,10 @@ type CommitmentAutopilotRow = {
     id: string;
     org_id: string | null;
     status: string | null;
+    title: string | null;
+    severity: string | null;
+    due_at: string | null;
+    owner_id: string | null;
     metadata: unknown;
 };
 
@@ -519,6 +529,11 @@ type CollectionsWorkItemAutopilotRow = {
 type ActiveWorkItemAutopilotRow = {
     id: string;
     org_id: string | null;
+    owner_id: string | null;
+    kind: string | null;
+    status: string | null;
+    severity: string | null;
+    due_at: string | null;
     metadata: unknown;
 };
 
@@ -1163,6 +1178,113 @@ function parseCommsChannel(value: unknown): CommsChannel {
     }
 }
 
+function selectAutoOwnerId(
+    account: BusinessOsAccountRow,
+    operatorIds: string[],
+    currentUserId: string | null | undefined,
+    trigger: BusinessOsEventAutomationResult["trigger"] | "daily_autopilot",
+): string | null {
+    if (account.account_state.owner_id) return account.account_state.owner_id;
+    const current = currentUserId?.trim() || null;
+    const fallback = operatorIds[0] ?? null;
+
+    if (trigger === "support_ticket_responded" || account.snapshot.fatal_error_count > 0 || account.snapshot.urgent_support_count > 0) {
+        return current ?? fallback;
+    }
+    if (account.snapshot.overdue_balance > 0) {
+        return fallback ?? current;
+    }
+    if (account.activation_risk || account.priority_score >= 60 || account.open_work_item_count > 0) {
+        return current ?? fallback;
+    }
+    return null;
+}
+
+async function applyAutoOwnerRouting(
+    db: AdminClient,
+    options: {
+        account: BusinessOsAccountRow;
+        ownerId: string;
+        actorId: string | null;
+        trigger: BusinessOsEventAutomationResult["trigger"] | "daily_autopilot";
+    },
+): Promise<boolean> {
+    let changed = false;
+
+    if (!options.account.account_state.owner_id) {
+        await upsertGodAccountState(db, options.account.org_id, { owner_id: options.ownerId });
+        changed = true;
+    }
+
+    const [workItemsResult, sequencesResult, commitmentsResult] = await Promise.all([
+        db
+            .from("god_work_items")
+            .update({ owner_id: options.ownerId })
+            .eq("org_id", options.account.org_id)
+            .is("owner_id", null)
+            .in("status", ["open", "in_progress", "blocked", "snoozed"])
+            .select("id"),
+        db
+            .from("god_comms_sequences")
+            .update({ owner_id: options.ownerId })
+            .eq("org_id", options.account.org_id)
+            .is("owner_id", null)
+            .in("status", ["active", "paused"])
+            .select("id"),
+        db
+            .from("god_commitments")
+            .update({ owner_id: options.ownerId })
+            .eq("org_id", options.account.org_id)
+            .is("owner_id", null)
+            .in("status", ["open", "breached"])
+            .select("id"),
+    ]);
+
+    changed = changed
+        || ((workItemsResult.data?.length ?? 0) > 0)
+        || ((sequencesResult.data?.length ?? 0) > 0)
+        || ((commitmentsResult.data?.length ?? 0) > 0);
+
+    if (changed) {
+        await recordOrgActivityEvent(db, {
+            org_id: options.account.org_id,
+            actor_id: options.actorId,
+            event_type: "autopilot_owner_routed",
+            title: "Autopilot assigned account owner",
+            detail: "Owner routing was applied to the account and any unowned active work.",
+            entity_type: "organization",
+            entity_id: options.account.org_id,
+            source: "business_os_autopilot",
+            metadata: {
+                owner_id: options.ownerId,
+                trigger: options.trigger,
+            },
+        });
+    }
+
+    return changed;
+}
+
+function escalationSeverityForCommitment(
+    account: BusinessOsAccountRow | undefined,
+    commitment: Pick<CommitmentAutopilotRow, "due_at" | "severity">,
+): GodWorkItemSeverity {
+    const overdueDays = diffDays(commitment.due_at);
+    const currentSeverity = commitment.severity === "critical" || commitment.severity === "high"
+        ? commitment.severity
+        : "medium";
+    if (account?.snapshot.fatal_error_count || account?.snapshot.urgent_support_count) return "critical";
+    if ((overdueDays ?? 0) >= 2 || currentSeverity === "critical") return "critical";
+    return "high";
+}
+
+function workItemKindForCommitmentEscalation(metadata: Record<string, unknown> | null): GodWorkItemKind {
+    const autopilotKind = typeof metadata?.autopilot_kind === "string" ? metadata.autopilot_kind : "";
+    if (autopilotKind === "first_proposal_activation") return "growth_followup";
+    if (autopilotKind.includes("collections")) return "collections";
+    return "churn_risk";
+}
+
 function buildAiExplainability(account: BusinessOsAccountRow, activationRiskReasons: string[]): {
     confidence_score: number;
     confidence_label: BusinessOsAiRecommendation["confidence_label"];
@@ -1640,10 +1762,12 @@ export function buildAutopilotAuditDetails(
         trigger,
         summary: [
             `Created ${autopilot.ops_loop.created_count}/${autopilot.ops_loop.candidate_count} queue items (${autopilot.ops_loop.deduped_count} already covered).`,
+            `Owner routes applied ${autopilot.owner_routes_applied}.`,
             `Activation seq +${autopilot.activation_sequences_created} / closed ${autopilot.activation_sequences_completed}.`,
             `Activation commitments +${autopilot.commitments_created} / met ${autopilot.activation_commitments_met}.`,
             `Collections seq +${autopilot.collections_sequences_created} / closed ${autopilot.collections_sequences_completed}.`,
             `Send queue escalations ${autopilot.send_queue_escalated}.`,
+            `Breached commitments ${autopilot.commitments_breached} / promise escalations ${autopilot.promise_escalations}.`,
             `Collections work auto-closed ${autopilot.collections_auto_closed}.`,
         ].join(" "),
         brief_headline: brief.headline,
@@ -1653,12 +1777,15 @@ export function buildAutopilotAuditDetails(
         created_work_items: autopilot.ops_loop.created_count,
         candidate_work_items: autopilot.ops_loop.candidate_count,
         deduped_work_items: autopilot.ops_loop.deduped_count,
+        owner_routes_applied: autopilot.owner_routes_applied,
         activation_sequences_created: autopilot.activation_sequences_created,
         activation_sequences_completed: autopilot.activation_sequences_completed,
         activation_commitments_met: autopilot.activation_commitments_met,
         collections_sequences_created: autopilot.collections_sequences_created,
         collections_sequences_completed: autopilot.collections_sequences_completed,
         send_queue_escalated: autopilot.send_queue_escalated,
+        commitments_breached: autopilot.commitments_breached,
+        promise_escalations: autopilot.promise_escalations,
         commitments_created: autopilot.commitments_created,
         collections_auto_closed: autopilot.collections_auto_closed,
         outcomes_recorded: autopilot.outcomes_recorded,
@@ -2512,19 +2639,23 @@ export async function runBusinessDailyAutopilot(
         return {
             generated_at: new Date().toISOString(),
             ops_loop: opsLoop,
+            owner_routes_applied: 0,
             activation_sequences_created: 0,
             activation_sequences_completed: 0,
             activation_commitments_met: 0,
             collections_sequences_created: 0,
             collections_sequences_completed: 0,
             send_queue_escalated: 0,
+            commitments_breached: 0,
+            promise_escalations: 0,
             commitments_created: 0,
             collections_auto_closed: 0,
             outcomes_recorded: 0,
         };
     }
 
-    const [sequencesResult, commitmentsResult, collectionsWorkItemsResult, activeWorkItemsResult] = await Promise.all([
+    const [operatorsResult, sequencesResult, commitmentsResult, collectionsWorkItemsResult, activeWorkItemsResult] = await Promise.all([
+        db.from("profiles").select("id").eq("role", "super_admin").order("full_name", { ascending: true }).limit(10),
         db
             .from("god_comms_sequences")
             .select("id, org_id, sequence_type, status, metadata, last_sent_at, next_follow_up_at")
@@ -2532,7 +2663,7 @@ export async function runBusinessDailyAutopilot(
             .in("status", ["active", "paused"]),
         db
             .from("god_commitments")
-            .select("id, org_id, status, metadata")
+            .select("id, org_id, status, title, severity, due_at, owner_id, metadata")
             .in("org_id", orgIds)
             .eq("status", "open"),
         db
@@ -2543,15 +2674,17 @@ export async function runBusinessDailyAutopilot(
             .in("status", ["open", "in_progress", "blocked", "snoozed"]),
         db
             .from("god_work_items")
-            .select("id, org_id, metadata")
+            .select("id, org_id, owner_id, kind, status, severity, due_at, metadata")
             .in("org_id", orgIds)
             .in("status", ["open", "in_progress", "blocked", "snoozed"]),
     ]);
 
+    const operatorIds = ((operatorsResult.data ?? []) as Array<{ id: string }>).map((row) => row.id);
     const sequenceRows = (sequencesResult.data ?? []) as CommsSequenceAutopilotRow[];
     const commitmentRows = (commitmentsResult.data ?? []) as CommitmentAutopilotRow[];
     const collectionsWorkItemRows = (collectionsWorkItemsResult.data ?? []) as CollectionsWorkItemAutopilotRow[];
     const activeWorkItemRows = (activeWorkItemsResult.data ?? []) as ActiveWorkItemAutopilotRow[];
+    const accountByOrgId = new Map(payload.accounts.map((account) => [account.org_id, account]));
 
     const sequenceKeys = new Set<string>();
     for (const row of sequenceRows) {
@@ -2572,15 +2705,48 @@ export async function runBusinessDailyAutopilot(
         }
     }
 
+    let ownerRoutesApplied = 0;
     let activationSequencesCreated = 0;
     let activationSequencesCompleted = 0;
     let activationCommitmentsMet = 0;
     let collectionsSequencesCreated = 0;
     let collectionsSequencesCompleted = 0;
     let sendQueueEscalated = 0;
+    let commitmentsBreached = 0;
+    let promiseEscalations = 0;
     let commitmentsCreated = 0;
     let collectionsAutoClosed = 0;
     let outcomesRecorded = 0;
+
+    const unownedPriorityAccounts = payload.accounts.filter((account) =>
+        !account.account_state.owner_id
+        && (account.priority_score >= 60
+            || account.snapshot.overdue_balance > 0
+            || account.activation_risk
+            || account.snapshot.urgent_support_count > 0
+            || account.snapshot.fatal_error_count > 0),
+    );
+    for (const account of unownedPriorityAccounts) {
+        if (ownerRoutesApplied >= maxActionsPerLoop) break;
+        const ownerId = selectAutoOwnerId(account, operatorIds, null, "daily_autopilot");
+        if (!ownerId) continue;
+        const changed = await applyAutoOwnerRouting(db, {
+            account,
+            ownerId,
+            actorId: null,
+            trigger: "daily_autopilot",
+        });
+        if (changed) {
+            ownerRoutesApplied += 1;
+            accountByOrgId.set(account.org_id, {
+                ...account,
+                account_state: {
+                    ...account.account_state,
+                    owner_id: ownerId,
+                },
+            });
+        }
+    }
 
     const activationAccounts = payload.accounts.filter((account) =>
         account.activation_risk
@@ -2786,6 +2952,85 @@ export async function runBusinessDailyAutopilot(
         });
     }
 
+    for (const row of commitmentRows) {
+        if (commitmentsBreached >= maxActionsPerLoop) break;
+        if (!row.org_id || row.status !== "open" || !row.due_at) continue;
+        const overdueDays = diffDays(row.due_at);
+        if (overdueDays === null || overdueDays < 0) continue;
+        const metadata = normalizeMetadata(row.metadata);
+        const account = accountByOrgId.get(row.org_id);
+        const ownerId = account?.account_state.owner_id ?? operatorIds[0] ?? null;
+        const escalatedSeverity = escalationSeverityForCommitment(account, row);
+        const nextMetadata = {
+            ...(metadata ?? {}),
+            breach_count: Number(metadata?.breach_count ?? 0) + 1,
+            breached_at: new Date().toISOString(),
+            breached_by: "business_os_daily_autopilot",
+        };
+        const updatedCommitment = await updateCommitment(db, row.id, {
+            status: "breached",
+            severity: escalatedSeverity,
+            owner_id: row.owner_id ?? ownerId ?? undefined,
+            metadata: nextMetadata,
+        });
+        if (!updatedCommitment) continue;
+        commitmentsBreached += 1;
+
+        const existingWorkItem = activeWorkItemRows.find((item) => {
+            if (item.org_id !== row.org_id) return false;
+            const workMetadata = normalizeMetadata(item.metadata);
+            return workMetadata?.commitment_id === row.id;
+        }) ?? null;
+
+        if (existingWorkItem) {
+            await updateGodWorkItem(db, existingWorkItem.id, {
+                owner_id: existingWorkItem.owner_id ?? ownerId ?? undefined,
+                status: existingWorkItem.status === "snoozed" ? "open" : undefined,
+                severity: escalatedSeverity,
+                due_at: new Date().toISOString(),
+                metadata: {
+                    ...(normalizeMetadata(existingWorkItem.metadata) ?? {}),
+                    escalation_count: Number((normalizeMetadata(existingWorkItem.metadata) ?? {}).escalation_count ?? 0) + 1,
+                    last_escalated_at: new Date().toISOString(),
+                },
+            });
+        } else {
+            await createGodWorkItem(db, {
+                kind: workItemKindForCommitmentEscalation(metadata),
+                target_type: "organization",
+                target_id: row.org_id,
+                org_id: row.org_id,
+                owner_id: ownerId,
+                status: "open",
+                severity: escalatedSeverity,
+                title: row.title?.trim() ? `Escalate: ${row.title}` : "Escalate overdue commitment",
+                summary: "A promised follow-up or commitment has been missed and needs immediate owner action.",
+                due_at: new Date().toISOString(),
+                metadata: {
+                    source: "business_os_daily_autopilot",
+                    autopilot_kind: "promise_watchdog_commitment",
+                    commitment_id: row.id,
+                },
+            });
+        }
+        promiseEscalations += 1;
+        await recordOrgActivityEvent(db, {
+            org_id: row.org_id,
+            actor_id: null,
+            event_type: "autopilot_promise_escalated",
+            title: "Autopilot escalated overdue commitment",
+            detail: row.title?.trim() || "A commitment passed its due date and was escalated.",
+            entity_type: "commitment",
+            entity_id: row.id,
+            source: "business_os_autopilot",
+            metadata: {
+                severity: escalatedSeverity,
+                owner_id: ownerId,
+                breach_count: nextMetadata.breach_count,
+            },
+        });
+    }
+
     const now = Date.now();
     const staleSendReadySequences = sequenceRows.filter((row) => {
         if (!row.org_id || row.status !== "active" || row.last_sent_at) return false;
@@ -2890,19 +3135,22 @@ export async function runBusinessDailyAutopilot(
         });
     }
 
-    return {
-        generated_at: new Date().toISOString(),
-        ops_loop: opsLoop,
-        activation_sequences_created: activationSequencesCreated,
-        activation_sequences_completed: activationSequencesCompleted,
-        activation_commitments_met: activationCommitmentsMet,
-        collections_sequences_created: collectionsSequencesCreated,
-        collections_sequences_completed: collectionsSequencesCompleted,
-        send_queue_escalated: sendQueueEscalated,
-        commitments_created: commitmentsCreated,
-        collections_auto_closed: collectionsAutoClosed,
-        outcomes_recorded: outcomesRecorded,
-    };
+        return {
+            generated_at: new Date().toISOString(),
+            ops_loop: opsLoop,
+            owner_routes_applied: ownerRoutesApplied,
+            activation_sequences_created: activationSequencesCreated,
+            activation_sequences_completed: activationSequencesCompleted,
+            activation_commitments_met: activationCommitmentsMet,
+            collections_sequences_created: collectionsSequencesCreated,
+            collections_sequences_completed: collectionsSequencesCompleted,
+            send_queue_escalated: sendQueueEscalated,
+            commitments_breached: commitmentsBreached,
+            promise_escalations: promiseEscalations,
+            commitments_created: commitmentsCreated,
+            collections_auto_closed: collectionsAutoClosed,
+            outcomes_recorded: outcomesRecorded,
+        };
 }
 
 export async function getBusinessOsAccountDetail(db: AdminClient, orgId: string): Promise<BusinessOsAccountDetail | null> {
@@ -3452,19 +3700,44 @@ export async function runBusinessOsEventAutomation(
         });
     }
 
-    const [sequences, commitments, activeWorkItems, commitmentCounts, commsCounts] = await Promise.all([
+    const [operatorsResult, sequences, commitments, activeWorkItems, commitmentCounts, commsCounts] = await Promise.all([
+        db.from("profiles").select("id").eq("role", "super_admin").order("full_name", { ascending: true }).limit(10),
         loadCommsSequences(db, options.orgId, "all"),
         loadCommitments(db, options.orgId, "all"),
         loadGodWorkItems(db, { orgIds: [options.orgId], status: "active", limit: 50 }),
         buildCommitmentCounts(db, [options.orgId]),
         buildCommsFollowupCounts(db, [options.orgId]),
     ]);
+    const operatorIds = ((operatorsResult.data ?? []) as Array<{ id: string }>).map((row) => row.id);
 
+    let ownerRouted = false;
     let sequencesCreated = 0;
     let sequencesCompleted = 0;
     let commitmentsMet = 0;
+    let commitmentsBreached = 0;
+    let promiseEscalations = 0;
     let workItemsCreated = 0;
     let workItemsClosed = 0;
+
+    const routedOwnerId = selectAutoOwnerId(account, operatorIds, options.currentUserId, options.trigger);
+    if (routedOwnerId) {
+        ownerRouted = await applyAutoOwnerRouting(db, {
+            account,
+            ownerId: routedOwnerId,
+            actorId: options.currentUserId,
+            trigger: options.trigger,
+        });
+        if (ownerRouted) {
+            account = {
+                ...account,
+                account_state: {
+                    ...account.account_state,
+                    owner_id: routedOwnerId,
+                },
+            };
+            notes.push("Auto owner routing applied.");
+        }
+    }
 
     for (const candidate of buildEventSequenceCandidates(account)) {
         if (hasActiveSequence(sequences, candidate.sequence_type)) continue;
@@ -3548,6 +3821,83 @@ export async function runBusinessOsEventAutomation(
             entity_id: updated.id,
             source: "business_os_autopilot",
             metadata: { trigger: options.trigger },
+        });
+    }
+
+    for (const commitment of commitments) {
+        if (commitment.status !== "open" || !commitment.due_at) continue;
+        const overdueDays = diffDays(commitment.due_at);
+        if (overdueDays === null || overdueDays < 0) continue;
+        const metadata = normalizeMetadata(commitment.metadata);
+        const escalatedSeverity = escalationSeverityForCommitment(account, {
+            due_at: commitment.due_at,
+            severity: commitment.severity,
+        });
+        const updated = await updateCommitment(db, commitment.id, {
+            status: "breached",
+            severity: escalatedSeverity,
+            owner_id: commitment.owner_id ?? account.account_state.owner_id ?? undefined,
+            metadata: {
+                ...(metadata ?? {}),
+                breach_count: Number(metadata?.breach_count ?? 0) + 1,
+                breached_at: new Date().toISOString(),
+                breached_by: "business_os_event_autopilot",
+                trigger: options.trigger,
+            },
+        });
+        if (!updated) continue;
+        commitmentsBreached += 1;
+
+        const existingPromiseItem = activeWorkItems.find((item) => {
+            const workMetadata = normalizeMetadata(item.metadata);
+            return workMetadata?.commitment_id === commitment.id;
+        }) ?? null;
+        if (existingPromiseItem) {
+            await updateGodWorkItem(db, existingPromiseItem.id, {
+                owner_id: existingPromiseItem.owner_id ?? account.account_state.owner_id ?? undefined,
+                status: existingPromiseItem.status === "snoozed" ? "open" : undefined,
+                severity: escalatedSeverity,
+                due_at: new Date().toISOString(),
+                metadata: {
+                    ...(normalizeMetadata(existingPromiseItem.metadata) ?? {}),
+                    escalation_count: Number((normalizeMetadata(existingPromiseItem.metadata) ?? {}).escalation_count ?? 0) + 1,
+                    last_escalated_at: new Date().toISOString(),
+                },
+            });
+        } else {
+            const workItem = await createGodWorkItem(db, {
+                kind: workItemKindForCommitmentEscalation(metadata),
+                target_type: "organization",
+                target_id: options.orgId,
+                org_id: options.orgId,
+                owner_id: account.account_state.owner_id,
+                status: "open",
+                severity: escalatedSeverity,
+                title: updated.title?.trim() ? `Escalate: ${updated.title}` : "Escalate overdue commitment",
+                summary: "A promise or due commitment is overdue and has been escalated by Business OS.",
+                due_at: new Date().toISOString(),
+                metadata: {
+                    source: "business_os_event_autopilot",
+                    trigger: options.trigger,
+                    autopilot_kind: "promise_watchdog_commitment",
+                    commitment_id: updated.id,
+                },
+            });
+            activeWorkItems.push(workItem);
+            workItemsCreated += 1;
+        }
+        promiseEscalations += 1;
+        notes.push(`Escalated overdue commitment: ${updated.title}.`);
+        await recordOrgActivityEvent(db, {
+            org_id: options.orgId,
+            actor_id: null,
+            event_type: "autopilot_event_promise_escalated",
+            title: "Autopilot escalated overdue commitment",
+            detail: updated.title,
+            entity_type: "commitment",
+            entity_id: updated.id,
+            source: "business_os_autopilot",
+            metadata: { trigger: options.trigger, severity: escalatedSeverity },
         });
     }
 
@@ -3635,11 +3985,14 @@ export async function runBusinessOsEventAutomation(
         org_id: options.orgId,
         trigger: options.trigger,
         state_updated: stateUpdated,
+        owner_routed: ownerRouted,
         work_items_created: workItemsCreated,
         work_items_closed: workItemsClosed,
         sequences_created: sequencesCreated,
         sequences_completed: sequencesCompleted,
         commitments_met: commitmentsMet,
+        commitments_breached: commitmentsBreached,
+        promise_escalations: promiseEscalations,
         notes,
     };
 }
