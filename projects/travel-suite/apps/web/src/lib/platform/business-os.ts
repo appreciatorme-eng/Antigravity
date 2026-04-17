@@ -966,6 +966,13 @@ function buildRecommendedNextStep(account: AccountRow, activationRiskReasons: st
             playbook: "collections",
         };
     }
+    if (account.snapshot.expiring_proposal_count > 0) {
+        return {
+            nextStep: "Rescue the expiring proposal now: confirm the decision owner, tighten the offer if needed, and lock a reply date before the proposal window closes.",
+            rationale: "Proposal expiry is near-term revenue leakage; saving the live deal has higher leverage than starting new pipeline motion.",
+            playbook: "renewal_prep",
+        };
+    }
     if (account.snapshot.whatsapp_proposal_draft_count > 0 && account.snapshot.proposal_sent_count === 0) {
         return {
             nextStep: "Convert the WhatsApp proposal draft into a client-ready proposal, assign an owner, and send it within 24 hours.",
@@ -994,6 +1001,20 @@ function buildRecommendedNextStep(account: AccountRow, activationRiskReasons: st
             playbook: "upsell_candidate",
         };
     }
+    if (
+        account.snapshot.urgent_support_count > 0
+        && (
+            account.snapshot.overdue_balance > 0
+            || account.snapshot.expiring_proposal_count > 0
+            || (account.snapshot.days_since_last_proposal_sent ?? 0) >= 14
+        )
+    ) {
+        return {
+            nextStep: "Run a customer-save motion: respond on the support issue, stabilize the blocker, and pair it with a same-day commercial follow-up.",
+            rationale: "Support pressure plus stalled or at-risk revenue is a churn pattern and should be handled as an integrated save motion.",
+            playbook: "support_escalation",
+        };
+    }
     if (account.snapshot.urgent_support_count > 0 || account.snapshot.open_support_count > 0) {
         return {
             nextStep: "Own the support thread, define a recovery note, and set a next action due today.",
@@ -1012,6 +1033,9 @@ function buildRecommendedNextStep(account: AccountRow, activationRiskReasons: st
 function buildCustomerSaveOutreach(account: AccountRow): string {
     if (account.snapshot.overdue_balance > 0) {
         return `Subject: Let's get ${account.name} back on track\n\nHi team,\n\nI noticed there is an overdue balance of ${account.snapshot.overdue_balance_label} and I want to help get the account back into a steady operating rhythm. If there is an issue with billing, approval, or travel planning workflow, reply with the blocker and we will help resolve it today.\n\nNext step we recommend: confirm the outstanding invoice owner, review current proposal status, and align on a payment date.\n\nTrip Built Ops`;
+    }
+    if (account.snapshot.expiring_proposal_count > 0) {
+        return `Subject: Quick decision needed on your Trip Built proposal\n\nHi team,\n\nI noticed ${account.snapshot.expiring_proposal_count} proposal${account.snapshot.expiring_proposal_count === 1 ? "" : "s"} is close to expiry. If pricing, itinerary, or traveler fit is blocking approval, reply with the issue and we will tighten the proposal today before the window closes.\n\nTrip Built Ops`;
     }
     if (account.snapshot.urgent_support_count > 0 || account.snapshot.fatal_error_count > 0) {
         return `Subject: We are actively working on your Trip Built issue\n\nHi team,\n\nWe are prioritizing the issues affecting your workspace and have assigned an internal owner to drive resolution. We will send a direct status update today with the current ETA and any workaround that keeps proposals moving.\n\nTrip Built Ops`;
@@ -1125,6 +1149,13 @@ function buildCommunicationDrafts(account: BusinessOsAccountRow, effectiveActiva
             title: "Viewed-not-approved follow-up draft",
             reason: `${account.snapshot.proposal_viewed_count} proposals were viewed without approval`,
             channel: "mixed",
+        });
+    }
+    if (account.snapshot.expiring_proposal_count > 0) {
+        addDraft("renewal_prep", {
+            title: "Proposal rescue outreach draft",
+            reason: `${account.snapshot.expiring_proposal_count} proposals are expiring within 72 hours`,
+            channel: "email",
         });
     }
     if (account.activation_risk && account.snapshot.proposal_sent_count === 0) {
@@ -1945,6 +1976,18 @@ function buildOpsLoopSuggestions(
         });
     }
 
+    if (account.snapshot.expiring_proposal_count > 0) {
+        addSuggestion({
+            automation_key: `proposal-expiry:${account.org_id}`,
+            kind: "growth_followup",
+            severity: account.snapshot.expiring_proposal_count >= 2 ? "high" : "medium",
+            title: "Rescue expiring proposal pipeline",
+            summary: `${account.snapshot.expiring_proposal_count} proposals are expiring soon and need an explicit decision-oriented follow-up.`,
+            due_at: new Date().toISOString(),
+            reason: `${account.snapshot.expiring_proposal_count} proposals are expiring within 72 hours`,
+        });
+    }
+
     if (account.snapshot.fatal_error_count > 0) {
         addSuggestion({
             automation_key: `incident:${account.org_id}`,
@@ -1966,6 +2009,25 @@ function buildOpsLoopSuggestions(
             summary: `Urgent support pressure needs an explicit owner and same-day recovery note.`,
             due_at: new Date().toISOString(),
             reason: `${account.snapshot.urgent_support_count} urgent support tickets are open`,
+        });
+    }
+
+    if (
+        account.snapshot.urgent_support_count > 0
+        && (
+            account.snapshot.overdue_balance > 0
+            || account.snapshot.expiring_proposal_count > 0
+            || (account.snapshot.days_since_last_proposal_sent ?? 0) >= 14
+        )
+    ) {
+        addSuggestion({
+            automation_key: `customer-save:${account.org_id}`,
+            kind: "churn_risk",
+            severity: account.snapshot.overdue_balance > 0 || account.snapshot.expiring_proposal_count > 0 ? "critical" : "high",
+            title: "Run integrated customer-save motion",
+            summary: "Support pressure is combining with commercial risk and needs a named save owner plus same-day follow-up.",
+            due_at: new Date().toISOString(),
+            reason: "Support pressure overlaps with stalled or at-risk revenue",
         });
     }
 
@@ -2089,6 +2151,32 @@ function buildPolicyViolations(
             severity: "medium",
             rule: "Viewed proposals need explicit follow-up",
             detail: "Client viewed proposals but no approval-focused follow-up work item is active.",
+        });
+    }
+
+    if (account.snapshot.expiring_proposal_count > 0 && !activeKinds.has("growth_followup") && !activeKinds.has("renewal")) {
+        violations.push({
+            id: `${account.org_id}:proposal-expiry`,
+            org_id: account.org_id,
+            account_name: account.name,
+            severity: account.snapshot.expiring_proposal_count >= 2 ? "high" : "medium",
+            rule: "Expiring proposals require explicit rescue work",
+            detail: `${account.snapshot.expiring_proposal_count} proposals are expiring soon without active rescue or renewal work.`,
+        });
+    }
+
+    if (
+        account.snapshot.urgent_support_count > 0
+        && (account.snapshot.overdue_balance > 0 || account.snapshot.expiring_proposal_count > 0)
+        && !activeKinds.has("churn_risk")
+    ) {
+        violations.push({
+            id: `${account.org_id}:customer-save`,
+            org_id: account.org_id,
+            account_name: account.name,
+            severity: "critical",
+            rule: "Support pressure plus commercial risk requires a customer-save motion",
+            detail: "Urgent support is open while revenue is also at risk, but no churn-save work item is active.",
         });
     }
 
@@ -3967,13 +4055,15 @@ function buildEventSequenceCandidates(account: BusinessOsAccountRow): Array<{
     sequence_type: CommsSequenceType;
     channel: CommsChannel;
     promise: string;
+    autopilot_kind: string;
 }> {
-    const candidates: Array<{ sequence_type: CommsSequenceType; channel: CommsChannel; promise: string }> = [];
+    const candidates: Array<{ sequence_type: CommsSequenceType; channel: CommsChannel; promise: string; autopilot_kind: string }> = [];
     if (account.activation_risk && account.snapshot.proposal_sent_count === 0) {
         candidates.push({
             sequence_type: "activation_rescue",
             channel: account.snapshot.active_whatsapp_session_count > 0 ? "whatsapp" : "mixed",
             promise: "Send first proposal and confirm follow-up owner/date.",
+            autopilot_kind: "activation_rescue",
         });
     }
     if (account.snapshot.proposal_viewed_count > 0 && account.snapshot.proposal_approved_count === 0) {
@@ -3981,6 +4071,7 @@ function buildEventSequenceCandidates(account: BusinessOsAccountRow): Array<{
             sequence_type: "viewed_not_approved",
             channel: "mixed",
             promise: "Follow up on viewed proposal and capture blocker or decision date.",
+            autopilot_kind: "viewed_not_approved",
         });
     }
     if (account.snapshot.overdue_balance > 0) {
@@ -3988,6 +4079,15 @@ function buildEventSequenceCandidates(account: BusinessOsAccountRow): Array<{
             sequence_type: "collections",
             channel: "email",
             promise: `Recover ${account.snapshot.overdue_balance_label} overdue balance and confirm payment date.`,
+            autopilot_kind: "collections_dunning",
+        });
+    }
+    if (account.snapshot.expiring_proposal_count > 0) {
+        candidates.push({
+            sequence_type: "renewal_prep",
+            channel: "email",
+            promise: "Rescue the expiring proposal, confirm the decision owner, and lock a reply window before expiry.",
+            autopilot_kind: "proposal_expiry_rescue",
         });
     }
     const renewalDays = daysUntilDate(account.account_state.renewal_at);
@@ -3996,13 +4096,19 @@ function buildEventSequenceCandidates(account: BusinessOsAccountRow): Array<{
             sequence_type: "renewal_prep",
             channel: "email",
             promise: "Confirm renewal owner and commercial review date.",
+            autopilot_kind: "renewal_owner_alignment",
         });
     }
     if (account.snapshot.fatal_error_count > 0 || account.snapshot.urgent_support_count > 0) {
         candidates.push({
             sequence_type: "incident_recovery",
             channel: "mixed",
-            promise: "Share a direct recovery update and next ETA with the account.",
+            promise: account.snapshot.overdue_balance > 0 || account.snapshot.expiring_proposal_count > 0
+                ? "Share a recovery update and pair it with a same-day commercial save follow-up."
+                : "Share a direct recovery update and next ETA with the account.",
+            autopilot_kind: account.snapshot.overdue_balance > 0 || account.snapshot.expiring_proposal_count > 0
+                ? "customer_save_motion"
+                : "incident_recovery",
         });
     }
     return candidates;
@@ -4127,6 +4233,7 @@ export async function runBusinessOsEventAutomation(
             metadata: {
                 source: "business_os_event_autopilot",
                 trigger: options.trigger,
+                autopilot_kind: candidate.autopilot_kind,
             },
         });
         sequences.push(sequence);
@@ -4141,15 +4248,22 @@ export async function runBusinessOsEventAutomation(
             entity_type: "comms_sequence",
             entity_id: sequence.id,
             source: "business_os_autopilot",
-            metadata: { trigger: options.trigger, sequence_type: candidate.sequence_type },
+            metadata: { trigger: options.trigger, sequence_type: candidate.sequence_type, autopilot_kind: candidate.autopilot_kind },
         });
     }
 
     for (const sequence of sequences) {
+        const metadata = normalizeMetadata(sequence.metadata);
+        const autopilotKind = typeof metadata?.autopilot_kind === "string" ? metadata.autopilot_kind : "";
         const shouldComplete = (
             (sequence.sequence_type === "activation_rescue" && account.snapshot.proposal_sent_count > 0)
             || (sequence.sequence_type === "viewed_not_approved" && account.snapshot.proposal_approved_count > 0)
             || (sequence.sequence_type === "collections" && account.snapshot.overdue_balance <= 0)
+            || (sequence.sequence_type === "renewal_prep" && autopilotKind === "proposal_expiry_rescue" && (
+                account.snapshot.expiring_proposal_count === 0
+                || account.snapshot.proposal_approved_count > 0
+                || account.snapshot.trip_count > 0
+            ))
             || (sequence.sequence_type === "incident_recovery" && account.snapshot.fatal_error_count === 0 && account.snapshot.urgent_support_count === 0)
         );
         if (!shouldComplete || sequence.status === "completed") continue;
