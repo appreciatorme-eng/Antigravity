@@ -123,7 +123,7 @@ export type BusinessOsCommunicationDraft = {
     requires_approval: boolean;
 };
 
-export type AutopilotApprovalStatus = "pending" | "approved" | "rejected";
+export type AutopilotApprovalStatus = "pending" | "approved" | "rejected" | "expired";
 
 export type AutopilotApproval = {
     id: string;
@@ -304,6 +304,8 @@ export type BusinessOsDailyAutopilotResult = {
     collections_sequences_completed: number;
     send_queue_escalated: number;
     no_response_escalated: number;
+    approvals_surfaced: number;
+    approvals_expired: number;
     commitments_breached: number;
     promise_escalations: number;
     commitments_created: number;
@@ -429,6 +431,7 @@ export type BusinessOsEventAutomationResult = {
     commitments_breached: number;
     promise_escalations: number;
     no_response_escalated: number;
+    replies_processed: number;
     outcomes_recorded: number;
     notes: string[];
 };
@@ -546,6 +549,13 @@ type ApprovalDecisionRow = {
     event_type: string;
     metadata: unknown;
     occurred_at: string | null;
+};
+
+type ApprovalLifecycle = {
+    first_seen_at: string | null;
+    status: Exclude<AutopilotApprovalStatus, "pending"> | null;
+    decided_at: string | null;
+    decided_by: string | null;
 };
 
 type PlatformAuditAutopilotRow = {
@@ -1205,6 +1215,64 @@ function outcomeTypeForWorkItemClosure(kind: GodWorkItemKind): WorkItemOutcomeTy
     }
 }
 
+function parseReplyDisposition(value: unknown): "positive" | "blocked" | "needs_follow_up" | "not_interested" {
+    switch (value) {
+        case "positive":
+        case "blocked":
+        case "not_interested":
+            return value;
+        default:
+            return "needs_follow_up";
+    }
+}
+
+function outcomeTypeForReplyDisposition(
+    disposition: ReturnType<typeof parseReplyDisposition>,
+): WorkItemOutcomeType {
+    switch (disposition) {
+        case "positive":
+            return "recovered";
+        case "not_interested":
+            return "churned";
+        case "blocked":
+            return "worse";
+        default:
+            return "no_change";
+    }
+}
+
+function followupWorkItemForReply(
+    sequenceType: CommsSequenceType,
+    disposition: ReturnType<typeof parseReplyDisposition>,
+): { kind: GodWorkItemKind; severity: GodWorkItemSeverity; title: string } | null {
+    if (disposition === "positive") return null;
+    if (disposition === "not_interested") {
+        return {
+            kind: "churn_risk",
+            severity: "high",
+            title: `Customer pushback after ${sequenceType.replaceAll("_", " ")} follow-up`,
+        };
+    }
+    if (disposition === "blocked") {
+        return sequenceType === "incident_recovery"
+            ? {
+                kind: "incident_followup",
+                severity: "critical",
+                title: "Customer reported blocker after recovery update",
+            }
+            : {
+                kind: "support_escalation",
+                severity: "high",
+                title: `Customer blocker after ${sequenceType.replaceAll("_", " ")} follow-up`,
+            };
+    }
+    return {
+        kind: workItemKindForCommunicationSequenceType(sequenceType),
+        severity: sequenceType === "incident_recovery" ? "critical" : "medium",
+        title: `Customer replied to ${sequenceType.replaceAll("_", " ")} follow-up`,
+    };
+}
+
 function selectAutoOwnerId(
     account: BusinessOsAccountRow,
     operatorIds: string[],
@@ -1707,10 +1775,10 @@ function buildApprovalCandidates(account: BusinessOsAccountRow): AutopilotApprov
     return approvals;
 }
 
-async function loadApprovalDecisionMap(
+async function loadApprovalLifecycleMap(
     db: AdminClient,
     orgIds: string[],
-): Promise<Map<string, { status: Exclude<AutopilotApprovalStatus, "pending">; decided_at: string | null; decided_by: string | null }>> {
+): Promise<Map<string, ApprovalLifecycle>> {
     const uniqueOrgIds = Array.from(new Set(orgIds.filter(Boolean)));
     if (uniqueOrgIds.length === 0) return new Map();
 
@@ -1719,9 +1787,14 @@ async function loadApprovalDecisionMap(
         .select("org_id, actor_id, event_type, metadata, occurred_at")
         .in("org_id", uniqueOrgIds)
         .eq("source", "business_os_autopilot_approval")
-        .in("event_type", ["autopilot_approval_approved", "autopilot_approval_rejected"])
-        .order("occurred_at", { ascending: false })
-        .limit(500);
+        .in("event_type", [
+            "autopilot_approval_surfaced",
+            "autopilot_approval_approved",
+            "autopilot_approval_rejected",
+            "autopilot_approval_expired",
+        ])
+        .order("occurred_at", { ascending: true })
+        .limit(1000);
 
     const rows = (result.data ?? []) as ApprovalDecisionRow[];
     const actorIds = Array.from(new Set(rows.map((row) => row.actor_id ?? "").filter(Boolean)));
@@ -1734,13 +1807,31 @@ async function loadApprovalDecisionMap(
         }
     }
 
-    const decisions = new Map<string, { status: Exclude<AutopilotApprovalStatus, "pending">; decided_at: string | null; decided_by: string | null }>();
+    const decisions = new Map<string, ApprovalLifecycle>();
     for (const row of rows) {
         const metadata = normalizeMetadata(row.metadata);
         const approvalId = typeof metadata?.approval_id === "string" ? metadata.approval_id : null;
-        if (!approvalId || decisions.has(approvalId)) continue;
-        const status = row.event_type === "autopilot_approval_approved" ? "approved" : "rejected";
+        if (!approvalId) continue;
+        const current = decisions.get(approvalId) ?? {
+            first_seen_at: null,
+            status: null,
+            decided_at: null,
+            decided_by: null,
+        };
+        if (row.event_type === "autopilot_approval_surfaced") {
+            decisions.set(approvalId, {
+                ...current,
+                first_seen_at: current.first_seen_at ?? row.occurred_at,
+            });
+            continue;
+        }
+        const status = row.event_type === "autopilot_approval_approved"
+            ? "approved"
+            : row.event_type === "autopilot_approval_rejected"
+                ? "rejected"
+                : "expired";
         decisions.set(approvalId, {
+            ...current,
             status,
             decided_at: row.occurred_at,
             decided_by: row.actor_id ? actorLookup.get(row.actor_id) ?? null : null,
@@ -1755,10 +1846,10 @@ async function listAutopilotApprovalsInternal(
     accounts: BusinessOsAccountRow[],
     options: { includeResolved?: boolean } = {},
 ): Promise<AutopilotApproval[]> {
-    const decisionMap = await loadApprovalDecisionMap(db, accounts.map((account) => account.org_id));
+    const decisionMap = await loadApprovalLifecycleMap(db, accounts.map((account) => account.org_id));
     const approvals = accounts.flatMap((account) => buildApprovalCandidates(account)).map((approval) => {
         const decision = decisionMap.get(approval.id);
-        return decision
+        return decision?.status
             ? {
                 ...approval,
                 status: decision.status,
@@ -1771,7 +1862,7 @@ async function listAutopilotApprovalsInternal(
     return approvals
         .filter((approval) => options.includeResolved || approval.status === "pending")
         .sort((left, right) => {
-            const statusWeight = (value: AutopilotApprovalStatus) => (value === "pending" ? 3 : value === "approved" ? 2 : 1);
+            const statusWeight = (value: AutopilotApprovalStatus) => (value === "pending" ? 4 : value === "approved" ? 3 : value === "rejected" ? 2 : 1);
             const severityWeight = (value: AutopilotApproval["severity"]) => (value === "critical" ? 3 : value === "high" ? 2 : 1);
             return statusWeight(right.status) - statusWeight(left.status)
                 || severityWeight(right.severity) - severityWeight(left.severity)
@@ -1794,6 +1885,7 @@ export function buildAutopilotAuditDetails(
             `Activation commitments +${autopilot.commitments_created} / met ${autopilot.activation_commitments_met}.`,
             `Collections seq +${autopilot.collections_sequences_created} / closed ${autopilot.collections_sequences_completed}.`,
             `Send queue escalations ${autopilot.send_queue_escalated}; no-response escalations ${autopilot.no_response_escalated}.`,
+            `Approvals surfaced ${autopilot.approvals_surfaced}; expired ${autopilot.approvals_expired}.`,
             `Breached commitments ${autopilot.commitments_breached} / promise escalations ${autopilot.promise_escalations}.`,
             `Collections work auto-closed ${autopilot.collections_auto_closed}; outcomes recorded ${autopilot.outcomes_recorded}.`,
         ].join(" "),
@@ -1812,6 +1904,8 @@ export function buildAutopilotAuditDetails(
         collections_sequences_completed: autopilot.collections_sequences_completed,
         send_queue_escalated: autopilot.send_queue_escalated,
         no_response_escalated: autopilot.no_response_escalated,
+        approvals_surfaced: autopilot.approvals_surfaced,
+        approvals_expired: autopilot.approvals_expired,
         commitments_breached: autopilot.commitments_breached,
         promise_escalations: autopilot.promise_escalations,
         commitments_created: autopilot.commitments_created,
@@ -2675,6 +2769,8 @@ export async function runBusinessDailyAutopilot(
             collections_sequences_completed: 0,
             send_queue_escalated: 0,
             no_response_escalated: 0,
+            approvals_surfaced: 0,
+            approvals_expired: 0,
             commitments_breached: 0,
             promise_escalations: 0,
             commitments_created: 0,
@@ -2742,6 +2838,8 @@ export async function runBusinessDailyAutopilot(
     let collectionsSequencesCompleted = 0;
     let sendQueueEscalated = 0;
     let noResponseEscalated = 0;
+    let approvalsSurfaced = 0;
+    let approvalsExpired = 0;
     let commitmentsBreached = 0;
     let promiseEscalations = 0;
     let commitmentsCreated = 0;
@@ -2777,6 +2875,80 @@ export async function runBusinessDailyAutopilot(
                 },
             });
         }
+    }
+
+    const approvalLifecycle = await loadApprovalLifecycleMap(db, payload.accounts.map((account) => account.org_id));
+    const pendingApprovals = payload.accounts.flatMap((account) => buildApprovalCandidates(account)).filter((approval) => {
+        const lifecycle = approvalLifecycle.get(approval.id);
+        return !lifecycle?.status;
+    });
+
+    for (const approval of pendingApprovals) {
+        const lifecycle = approvalLifecycle.get(approval.id);
+        if (!lifecycle?.first_seen_at) {
+            approvalsSurfaced += 1;
+            await recordOrgActivityEvent(db, {
+                org_id: approval.org_id,
+                actor_id: null,
+                event_type: "autopilot_approval_surfaced",
+                title: "Autopilot surfaced approval",
+                detail: approval.title,
+                entity_type: "organization",
+                entity_id: approval.org_id,
+                source: "business_os_autopilot_approval",
+                metadata: {
+                    approval_id: approval.id,
+                    action_kind: approval.action_kind,
+                    severity: approval.severity,
+                },
+            });
+            continue;
+        }
+
+        const ageDays = diffDays(lifecycle.first_seen_at);
+        if (ageDays === null || ageDays < 2) continue;
+
+        const hasApprovalWork = activeWorkItemRows.some((item) => {
+            if (item.org_id !== approval.org_id) return false;
+            const metadata = normalizeMetadata(item.metadata);
+            return metadata?.approval_id === approval.id;
+        });
+        if (!hasApprovalWork) {
+            await createGodWorkItem(db, {
+                kind: approval.suggested_work_item_kind,
+                target_type: "organization",
+                target_id: approval.org_id,
+                org_id: approval.org_id,
+                owner_id: accountByOrgId.get(approval.org_id)?.account_state.owner_id ?? operatorIds[0] ?? null,
+                status: "open",
+                severity: approval.severity,
+                title: `Review expired approval: ${approval.title}`,
+                summary: `${approval.description}\n\nAutopilot approval sat unresolved for more than 48 hours and was converted into an internal follow-up.`,
+                due_at: new Date().toISOString(),
+                metadata: {
+                    source: "business_os_daily_autopilot",
+                    autopilot_kind: "approval_expired_followup",
+                    approval_id: approval.id,
+                    action_kind: approval.action_kind,
+                },
+            });
+        }
+        approvalsExpired += 1;
+        await recordOrgActivityEvent(db, {
+            org_id: approval.org_id,
+            actor_id: null,
+            event_type: "autopilot_approval_expired",
+            title: "Autopilot expired approval",
+            detail: approval.title,
+            entity_type: "organization",
+            entity_id: approval.org_id,
+            source: "business_os_autopilot_approval",
+            metadata: {
+                approval_id: approval.id,
+                action_kind: approval.action_kind,
+                first_seen_at: lifecycle.first_seen_at,
+            },
+        });
     }
 
     const activationAccounts = payload.accounts.filter((account) =>
@@ -3343,6 +3515,8 @@ export async function runBusinessDailyAutopilot(
             collections_sequences_completed: collectionsSequencesCompleted,
             send_queue_escalated: sendQueueEscalated,
             no_response_escalated: noResponseEscalated,
+            approvals_surfaced: approvalsSurfaced,
+            approvals_expired: approvalsExpired,
             commitments_breached: commitmentsBreached,
             promise_escalations: promiseEscalations,
             commitments_created: commitmentsCreated,
@@ -3917,6 +4091,7 @@ export async function runBusinessOsEventAutomation(
     let workItemsCreated = 0;
     let workItemsClosed = 0;
     let noResponseEscalated = 0;
+    let repliesProcessed = 0;
     let outcomesRecorded = 0;
 
     const routedOwnerId = selectAutoOwnerId(account, operatorIds, options.currentUserId, options.trigger);
@@ -4018,6 +4193,99 @@ export async function runBusinessOsEventAutomation(
             entity_id: sequence.id,
             source: "business_os_autopilot",
             metadata: { trigger: options.trigger, sequence_type: sequence.sequence_type },
+        });
+    }
+
+    const repliedSequences = sequences.filter((sequence) => {
+        if (sequence.status === "completed") return false;
+        const metadata = normalizeMetadata(sequence.metadata);
+        return metadata?.send_state === "replied" && typeof metadata?.reply_processed_at !== "string";
+    });
+
+    for (const sequence of repliedSequences) {
+        const metadata = normalizeMetadata(sequence.metadata) ?? {};
+        const disposition = parseReplyDisposition(metadata.reply_disposition);
+        const updated = await updateCommsSequence(db, sequence.id, {
+            status: "completed",
+            next_follow_up_at: null,
+            metadata: {
+                ...metadata,
+                reply_processed_at: new Date().toISOString(),
+                reply_processed_by: "business_os_event_autopilot",
+                trigger: options.trigger,
+            },
+        });
+        if (!updated) continue;
+        repliesProcessed += 1;
+
+        const linkedWorkItem = activeWorkItems.find((item) => {
+            const workMetadata = normalizeMetadata(item.metadata);
+            return item.status !== "done"
+                && (workMetadata?.comms_sequence_id === sequence.id
+                    || (typeof metadata.approval_id === "string" && workMetadata?.approval_id === metadata.approval_id));
+        }) ?? null;
+        if (linkedWorkItem) {
+            await updateGodWorkItem(db, linkedWorkItem.id, { status: "done" });
+            await recordWorkItemOutcome(db, {
+                work_item_id: linkedWorkItem.id,
+                org_id: options.orgId,
+                outcome_type: outcomeTypeForReplyDisposition(disposition),
+                note: "Auto-recorded from customer reply captured on the communication sequence.",
+                metadata: {
+                    source: "business_os_event_autopilot",
+                    trigger: options.trigger,
+                    sequence_id: sequence.id,
+                    sequence_type: sequence.sequence_type,
+                    reply_disposition: disposition,
+                },
+                recorded_by: null,
+            });
+            workItemsClosed += 1;
+            outcomesRecorded += 1;
+            linkedWorkItem.status = "done";
+        }
+
+        const followup = followupWorkItemForReply(sequence.sequence_type, disposition);
+        if (followup) {
+            const replySummary = typeof metadata.reply_summary === "string" ? metadata.reply_summary : "Customer replied and needs follow-up.";
+            const workItem = await createGodWorkItem(db, {
+                kind: followup.kind,
+                target_type: "organization",
+                target_id: options.orgId,
+                org_id: options.orgId,
+                owner_id: account.account_state.owner_id,
+                status: "open",
+                severity: followup.severity,
+                title: followup.title,
+                summary: `${replySummary}\n\nDisposition: ${disposition.replaceAll("_", " ")}.`,
+                due_at: new Date().toISOString(),
+                metadata: {
+                    source: "business_os_event_autopilot",
+                    trigger: options.trigger,
+                    autopilot_kind: "customer_reply_followup",
+                    comms_sequence_id: sequence.id,
+                    reply_disposition: disposition,
+                },
+            });
+            activeWorkItems.push(workItem);
+            workItemsCreated += 1;
+        }
+
+        notes.push(`Processed customer reply for ${sequence.sequence_type.replaceAll("_", " ")}.`);
+        await recordOrgActivityEvent(db, {
+            org_id: options.orgId,
+            actor_id: null,
+            event_type: "autopilot_event_reply_processed",
+            title: "Autopilot processed customer reply",
+            detail: typeof metadata.reply_summary === "string" ? metadata.reply_summary : updated.promise ?? "Customer reply captured.",
+            entity_type: "comms_sequence",
+            entity_id: updated.id,
+            source: "business_os_autopilot",
+            metadata: {
+                trigger: options.trigger,
+                sequence_type: updated.sequence_type,
+                reply_disposition: disposition,
+            },
         });
     }
 
@@ -4344,6 +4612,7 @@ export async function runBusinessOsEventAutomation(
         commitments_breached: commitmentsBreached,
         promise_escalations: promiseEscalations,
         no_response_escalated: noResponseEscalated,
+        replies_processed: repliesProcessed,
         outcomes_recorded: outcomesRecorded,
         notes,
     };
