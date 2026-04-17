@@ -1,8 +1,3 @@
-/**
- * TODO (LEGAL REVIEW REQUIRED): Have a licensed Indian advocate review this
- * document before go-live. The DPDP Act 2023 Rules were pending finalization
- * at time of drafting — verify current requirements before launch.
- */
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -64,9 +59,7 @@ export default function PrivacyPolicyPage() {
           <p className="text-gray-400 mb-2">
             Effective date: {EFFECTIVE_DATE} &nbsp;·&nbsp; Version: {VERSION}
           </p>
-          <p className="text-amber-400/80 text-sm mb-12 border border-amber-400/30 bg-amber-400/10 rounded-lg p-3">
-            DRAFT — to be reviewed by a licensed Indian advocate before go-live.
-          </p>
+
 
           <div className="space-y-10 text-gray-300 leading-relaxed">
 
