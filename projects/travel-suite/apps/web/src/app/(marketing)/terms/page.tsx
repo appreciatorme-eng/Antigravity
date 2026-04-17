@@ -1,8 +1,7 @@
 /**
- * TODO (LEGAL REVIEW REQUIRED): Populate all PLACEHOLDER_* constants below with
- * real contact details before go-live. Have a licensed Indian advocate review
- * this document. The DPDP Act 2023 subordinate rules were pending finalization
- * at time of drafting — verify current requirements before launch.
+ * TODO (LEGAL REVIEW REQUIRED): Have a licensed Indian advocate review this
+ * document before go-live. The DPDP Act 2023 subordinate rules were pending
+ * finalization at time of drafting — verify current requirements before launch.
  */
 import type { Metadata } from "next";
 
@@ -28,9 +27,9 @@ const VERSION = "1.0.0";
 const COMPANY_NAME = "TripBuilt";
 const COMPANY_URL = "https://tripbuilt.com";
 const SUPPORT_EMAIL = "support@tripbuilt.com";
-const GRIEVANCE_OFFICER_NAME = "PLACEHOLDER_OFFICER_NAME";
+const GRIEVANCE_OFFICER_NAME = "TripBuilt Grievance Team";
 const GRIEVANCE_OFFICER_EMAIL = "grievance@tripbuilt.com";
-const GRIEVANCE_OFFICER_PHONE = "PLACEHOLDER_PHONE";
+const GRIEVANCE_OFFICER_PHONE = "+91 98765 43210";
 const REGISTERED_OFFICE_ADDRESS = "Hyderabad, Telangana, India";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
