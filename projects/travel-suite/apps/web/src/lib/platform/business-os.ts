@@ -257,6 +257,12 @@ export type BusinessOsPayload = {
         by_kind: Record<string, number>;
         suggestions: BusinessOsOpsSuggestion[];
     };
+    automation_watchdog: {
+        generated_at: string;
+        level: "healthy" | "warning" | "critical";
+        last_run_at: string | null;
+        alerts: string[];
+    };
     accounts: BusinessOsAccountRow[];
     selected_org_id: string | null;
     selected_account: BusinessOsAccountDetail | null;
@@ -2311,6 +2317,84 @@ function buildAutopilotRunHealth(input: {
     };
 }
 
+function mapAutopilotRuns(rows: PlatformAuditAutopilotRow[]): AutopilotRun[] {
+    return rows.map((row) => {
+        const details = normalizeMetadata(row.details);
+        const actor = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+        return {
+            id: row.id,
+            action: row.action?.trim() || "Autopilot run",
+            summary: typeof details?.summary === "string" ? details.summary : "Autopilot run completed.",
+            trigger: details?.trigger === "manual" || details?.trigger === "scheduled" ? details.trigger : "unknown",
+            actor_name: actor?.full_name?.trim() || actor?.email?.trim() || null,
+            created_at: row.created_at,
+            run_key: typeof details?.run_key === "string" ? details.run_key : null,
+            idempotency_key: typeof details?.idempotency_key === "string" ? details.idempotency_key : null,
+            details,
+        } satisfies AutopilotRun;
+    });
+}
+
+function buildBusinessOsAutomationWatchdog(input: {
+    runs: AutopilotRun[];
+    staleApprovals48h: number;
+    blockedAccounts: number;
+    sendQueueStale: number;
+    automationStatusRows: PlatformAuditAutopilotRow[];
+}): BusinessOsPayload["automation_watchdog"] {
+    const latestRun = input.runs[0] ?? null;
+    const runAgeHours = diffHours(latestRun?.created_at);
+    const alerts: string[] = [];
+
+    if (!latestRun) {
+        alerts.push("No autopilot runs have been recorded yet.");
+    } else if (runAgeHours === null || runAgeHours > 30) {
+        alerts.push(`Autopilot last run is stale (${runAgeHours ?? "unknown"}h ago).`);
+    }
+
+    if (input.staleApprovals48h > 0) {
+        alerts.push(`${input.staleApprovals48h} approvals are stale for over 48 hours.`);
+    }
+    if (input.sendQueueStale > 0) {
+        alerts.push(`${input.sendQueueStale} approved customer communications are stalled in the send queue.`);
+    }
+    if (input.blockedAccounts >= 3) {
+        alerts.push(`${input.blockedAccounts} accounts are blocked by approvals right now.`);
+    }
+
+    const recentAutomationFailures = input.automationStatusRows.filter((row) => {
+        const details = normalizeMetadata(row.details);
+        if (!details || details.success !== false) return false;
+        const createdAtMs = row.created_at ? new Date(row.created_at).getTime() : Number.NaN;
+        return Number.isFinite(createdAtMs) && createdAtMs >= Date.now() - 24 * 86_400_000;
+    });
+    const slackPollFailures24h = recentAutomationFailures.filter((row) => row.action === "Autopilot: Slack approval poll").length;
+    const eventTriggerFailures24h = recentAutomationFailures.filter((row) => row.action === "Autopilot: Event trigger run").length;
+    if (slackPollFailures24h >= 2) {
+        alerts.push(`Slack approval poll failed ${slackPollFailures24h} times in the last 24 hours.`);
+    }
+    if (eventTriggerFailures24h >= 3) {
+        alerts.push(`Event-trigger autopilot failed ${eventTriggerFailures24h} times in the last 24 hours.`);
+    }
+
+    const level: BusinessOsPayload["automation_watchdog"]["level"] = alerts.some((alert) =>
+        alert.includes("No autopilot runs")
+        || alert.includes("stale (")
+        || alert.includes("failed"),
+    )
+        ? "critical"
+        : alerts.length > 0
+            ? "warning"
+            : "healthy";
+
+    return {
+        generated_at: new Date().toISOString(),
+        level,
+        last_run_at: latestRun?.created_at ?? null,
+        alerts,
+    };
+}
+
 function buildAutopilotTruthLock(payload: {
     accounts: BusinessOsAccountRow[];
     approvals: AutopilotApproval[];
@@ -3019,6 +3103,44 @@ export async function buildBusinessOsPayload(
         .flatMap((account) => buildCommunicationDrafts(account))
         .sort((left, right) => right.priority_score - left.priority_score)
         .slice(0, 12);
+    const staleApprovals48h = pendingApprovals.filter((approval) =>
+        approval.status === "pending" && (diffHours(approval.first_seen_at) ?? 0) >= 48,
+    ).length;
+    const [businessOsRunRowsResult, businessOsAutomationStatusResult, businessOsSendQueueResult] = await Promise.all([
+        db
+            .from("platform_audit_log")
+            .select("id, actor_id, action, details, created_at, profiles!platform_audit_log_actor_id_fkey(full_name, email)")
+            .in("action", ["Autopilot: Scheduled Business OS run", "Autopilot: Manual Business OS run"])
+            .order("created_at", { ascending: false })
+            .limit(12),
+        db
+            .from("platform_audit_log")
+            .select("id, actor_id, action, details, created_at")
+            .in("action", ["Autopilot: Slack approval poll", "Autopilot: Event trigger run"])
+            .order("created_at", { ascending: false })
+            .limit(40),
+        enriched.length > 0
+            ? db
+                .from("god_comms_sequences")
+                .select("metadata, last_sent_at")
+                .in("org_id", enriched.map((account) => account.org_id))
+                .eq("status", "active")
+            : Promise.resolve({ data: [] }),
+    ]);
+    const businessOsSendQueueRows = (businessOsSendQueueResult.data ?? []) as Array<{ metadata: unknown; last_sent_at: string | null }>;
+    const businessOsSendQueueStale = businessOsSendQueueRows.filter((row) => {
+        const metadata = normalizeMetadata(row.metadata);
+        if (metadata?.send_state !== "approved_pending_send" || row.last_sent_at) return false;
+        const approvedAt = typeof metadata?.approved_at === "string" ? new Date(metadata.approved_at).getTime() : Number.NaN;
+        return Number.isFinite(approvedAt) && approvedAt <= Date.now() - 86_400_000;
+    }).length;
+    const automationWatchdog = buildBusinessOsAutomationWatchdog({
+        runs: mapAutopilotRuns((businessOsRunRowsResult.data ?? []) as PlatformAuditAutopilotRow[]),
+        staleApprovals48h,
+        blockedAccounts: enriched.filter((account) => account.pending_approval_count > 0).length,
+        sendQueueStale: businessOsSendQueueStale,
+        automationStatusRows: (businessOsAutomationStatusResult.data ?? []) as PlatformAuditAutopilotRow[],
+    });
     const founderMode = buildFounderMode(enriched, pendingApprovals);
     const renewalCandidates = enriched.filter((account) => (daysUntilDate(account.account_state.renewal_at) ?? 99) <= 30).length;
     const expansionCandidates = enriched.filter((account) => account.effective_activation_stage === "expansion" || account.margin_watch).length;
@@ -3140,6 +3262,7 @@ export async function buildBusinessOsPayload(
             by_kind: opsLoopByKind,
             suggestions: opsLoopSuggestions,
         },
+        automation_watchdog: automationWatchdog,
         accounts: enriched,
         selected_org_id: selectedOrgId,
         selected_account: selectedAccount,
@@ -4480,21 +4603,7 @@ export async function buildAutopilotSnapshot(
         )
         .slice(0, 12) as AutopilotSnapshot["promise_watchdog"];
 
-    const recentRuns = ((runsResult.data ?? []) as PlatformAuditAutopilotRow[]).map((row) => {
-        const details = normalizeMetadata(row.details);
-        const actor = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
-        return {
-            id: row.id,
-            action: row.action?.trim() || "Autopilot run",
-            summary: typeof details?.summary === "string" ? details.summary : "Autopilot run completed.",
-            trigger: details?.trigger === "manual" || details?.trigger === "scheduled" ? details.trigger : "unknown",
-            actor_name: actor?.full_name?.trim() || actor?.email?.trim() || null,
-            created_at: row.created_at,
-            run_key: typeof details?.run_key === "string" ? details.run_key : null,
-            idempotency_key: typeof details?.idempotency_key === "string" ? details.idempotency_key : null,
-            details,
-        } satisfies AutopilotRun;
-    });
+    const recentRuns = mapAutopilotRuns((runsResult.data ?? []) as PlatformAuditAutopilotRow[]);
 
     const dailyBriefHistory = recentRuns
         .filter((run) => typeof run.details?.brief_headline === "string")

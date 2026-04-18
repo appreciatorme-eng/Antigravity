@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
     ArrowRight,
     Bot,
@@ -186,8 +186,9 @@ export default function BusinessOsPage() {
         severity: "medium",
         due_at: "",
     });
+    const selectedAccount = data?.selected_account ?? null;
 
-    async function loadData(signal?: AbortSignal) {
+    const loadData = useCallback(async (signal?: AbortSignal) => {
         setLoading(true);
         setError(null);
         try {
@@ -213,10 +214,9 @@ export default function BusinessOsPage() {
         } finally {
             setLoading(false);
         }
-    }
+    }, [filters, selectedOrgId]);
 
-    async function loadActivityFeed(options?: { append?: boolean; source?: ActivitySourceFilter }) {
-        const selectedAccount = data?.selected_account;
+    const loadActivityFeed = useCallback(async (options?: { append?: boolean; source?: ActivitySourceFilter }) => {
         if (!selectedAccount) return;
 
         const append = Boolean(options?.append);
@@ -242,7 +242,7 @@ export default function BusinessOsPage() {
             if (append) setLoadingMoreActivity(false);
             else setLoadingActivity(false);
         }
-    }
+    }, [activityCursor, activitySource, selectedAccount]);
 
     useEffect(() => {
         const controller = new AbortController();
@@ -253,10 +253,10 @@ export default function BusinessOsPage() {
             controller.abort();
             window.clearTimeout(timer);
         };
-    }, [filters, selectedOrgId]);
+    }, [filters.search, loadData]);
 
     useEffect(() => {
-        const selected = data?.selected_account;
+        const selected = selectedAccount;
         if (!selected) return;
         setAccountDraft({
             owner_id: selected.account_state.owner_id ?? "",
@@ -288,10 +288,10 @@ export default function BusinessOsPage() {
             ...current,
             due_at: current.due_at || toDateInput(selected.account_state.next_action_due_at),
         }));
-    }, [data?.selected_account?.organization.id]);
+    }, [selectedAccount]);
 
     useEffect(() => {
-        const selected = data?.selected_account;
+        const selected = selectedAccount;
         if (!selected) {
             setActivityFeed([]);
             setActivityCursor(null);
@@ -300,7 +300,7 @@ export default function BusinessOsPage() {
         setActivityFeed(selected.org_memory.recent_events);
         setActivityCursor(null);
         void loadActivityFeed({ append: false, source: activitySource });
-    }, [data?.selected_account?.organization.id, activitySource]);
+    }, [activitySource, loadActivityFeed, selectedAccount]);
 
     function applyAiSuggestion(kind: "next" | "playbook" | "note" | "work-item" | "outreach") {
         const ai = data?.selected_account?.ai;
@@ -801,6 +801,36 @@ export default function BusinessOsPage() {
                         ))}
                     </div>
                 </div>
+
+                {data?.automation_watchdog.alerts.length ? (
+                    <div className={cn(
+                        "mt-4 rounded-xl border px-4 py-3",
+                        data.automation_watchdog.level === "critical"
+                            ? "border-red-900/70 bg-red-950/20"
+                            : "border-amber-900/70 bg-amber-950/20",
+                    )}>
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                                <div className="flex items-center gap-2 text-sm font-medium text-white">
+                                    <CircleAlert className="h-4 w-4 text-amber-300" />
+                                    Automation watchdog
+                                </div>
+                                <div className="mt-2 space-y-1 text-sm text-gray-200">
+                                    {data.automation_watchdog.alerts.slice(0, 2).map((alert) => (
+                                        <div key={alert}>{alert}</div>
+                                    ))}
+                                </div>
+                            </div>
+                            <Link
+                                href="/god/autopilot"
+                                className="inline-flex items-center gap-2 rounded-lg border border-gray-700 bg-black/30 px-3 py-2 text-sm text-gray-200 transition-colors hover:border-gray-600 hover:text-white"
+                            >
+                                Open Autopilot
+                                <ArrowRight className="h-4 w-4" />
+                            </Link>
+                        </div>
+                    </div>
+                ) : null}
             </section>
 
             <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">

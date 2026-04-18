@@ -22,8 +22,9 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprot
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendHitlProposal, sendOpsAlert } from "@/lib/god-slack";
 import { Redis } from "@upstash/redis";
-import { getAccountDetail, listAccounts } from "@/lib/platform/god-accounts";
+import { listAccounts } from "@/lib/platform/god-accounts";
 import {
+    buildBusinessOsPayload,
     draftAccountPlaybook,
     draftCollectionsSequence,
     draftCustomerSaveOutreach,
@@ -583,12 +584,18 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request: any) => {
         case "get_org_details": {
             const orgId = String(args.org_id ?? "");
             if (!orgId) throw new Error("org_id is required");
-            const detail = await getAccountDetail(db, orgId);
-            if (!detail) return { content: [{ type: "text", text: `Org ${orgId} not found.` }] };
+            const workspace = await buildBusinessOsPayload(db, "", {
+                selected_org_id: orgId,
+                limit: 120,
+            });
+            const detail = workspace.selected_account;
+            const accountRow = workspace.accounts.find((account) => account.org_id === orgId) ?? null;
+            if (!detail || !accountRow) return { content: [{ type: "text", text: `Org ${orgId} not found.` }] };
 
             return { content: [{ type: "text", text: [
                 `## Org: ${detail.organization.name}`,
                 `- **Tier:** ${detail.organization.tier} | **Health:** ${detail.account_state.health_band} | **Lifecycle:** ${detail.account_state.lifecycle_stage}`,
+                `- **Priority:** ${accountRow.priority_score} | **Activation stage:** ${accountRow.effective_activation_stage.replaceAll("_", " ")}`,
                 `- **Created:** ${detail.organization.created_at?.slice(0, 10) ?? "unknown"}`,
                 `- **Members:** ${detail.snapshot.member_count}`,
                 `- **AI Usage MTD:** ${detail.snapshot.ai_requests_mtd} requests | $${detail.snapshot.ai_spend_mtd_usd.toFixed(2)}`,
@@ -596,6 +603,12 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request: any) => {
                 `- **Open Errors:** ${detail.snapshot.open_error_count} (${detail.snapshot.fatal_error_count} fatal)`,
                 `- **Overdue Invoices:** ${detail.snapshot.overdue_balance_label}`,
                 `- **Open Work Items:** ${detail.work_items.length}`,
+                `- **Pending approvals:** ${detail.pending_approvals.length} | **Next action:** ${detail.account_state.next_action ?? "none"}`,
+                "",
+                `### Why this account is ranked here`,
+                ...(accountRow.priority_reasons.length > 0
+                    ? accountRow.priority_reasons.slice(0, 4).map((reason) => `- ${reason}`)
+                    : ["- No major priority reasons surfaced in the shared account model."]),
             ].join("\n") }] };
         }
 
