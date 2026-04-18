@@ -1,10 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
     ArrowRight,
-    Bot,
     CheckCircle2,
     ClipboardList,
     Loader2,
@@ -15,11 +14,24 @@ import {
 } from "lucide-react";
 import { authedFetch } from "@/lib/api/authed-fetch";
 import { cn } from "@/lib/utils";
-import type { AutopilotSnapshot } from "@/lib/platform/business-os";
+import type { AutopilotApproval, AutopilotSnapshot } from "@/lib/platform/business-os";
 
 type SlackStatus = {
     configured: boolean;
     source: "SLACK_OPS_WEBHOOK_URL" | "SLACK_WEBHOOK_URL" | null;
+};
+
+type ApprovalGroup = {
+    org_id: string;
+    account_name: string;
+    highest_priority: number;
+    highest_severity: AutopilotApproval["severity"];
+    oldest_first_seen_at: string | null;
+    pending_count: number;
+    revenue_count: number;
+    customer_count: number;
+    policy_count: number;
+    approvals: AutopilotApproval[];
 };
 
 function formatDateTime(value: string | null | undefined): string {
@@ -39,16 +51,39 @@ function formatHoursSince(value: string | null | undefined): string {
     return `${hours}h`;
 }
 
-function severityClasses(value: "medium" | "high" | "critical"): string {
-    if (value === "critical") return "border-red-900/70 bg-red-950/20 text-red-200";
-    if (value === "high") return "border-amber-900/70 bg-amber-950/20 text-amber-200";
-    return "border-gray-800 bg-gray-950/50 text-gray-300";
+function formatCountLabel(value: number, noun: string): string {
+    return `${value} ${noun}${value === 1 ? "" : "s"}`;
 }
 
-function loopHealthClasses(value: "healthy" | "degraded" | "stalled"): string {
-    if (value === "healthy") return "border-emerald-900/60 bg-emerald-950/20 text-emerald-200";
-    if (value === "degraded") return "border-amber-900/60 bg-amber-950/20 text-amber-200";
-    return "border-red-900/60 bg-red-950/20 text-red-200";
+function formatSlackSource(source: SlackStatus["source"]): string {
+    if (source === "SLACK_OPS_WEBHOOK_URL") return "ops webhook";
+    if (source === "SLACK_WEBHOOK_URL") return "default webhook";
+    return "not configured";
+}
+
+function severityWeight(value: AutopilotApproval["severity"]): number {
+    if (value === "critical") return 3;
+    if (value === "high") return 2;
+    return 1;
+}
+
+function severityClasses(value: AutopilotApproval["severity"]): string {
+    if (value === "critical") return "border-red-900/70 bg-red-950/20 text-red-100";
+    if (value === "high") return "border-amber-900/70 bg-amber-950/20 text-amber-100";
+    return "border-gray-800 bg-gray-950/50 text-gray-200";
+}
+
+function actionKindLabel(approval: AutopilotApproval): string {
+    if (approval.action_kind === "guarded_collections_writeoff" || approval.suggested_work_item_kind === "collections") {
+        return "Revenue";
+    }
+    if (approval.action_kind === "guarded_customer_communication") {
+        return "Customer";
+    }
+    if (approval.action_kind === "guarded_support_escalation") {
+        return "Support";
+    }
+    return "Policy";
 }
 
 function workItemHref(kind: string): string {
@@ -58,10 +93,63 @@ function workItemHref(kind: string): string {
     return "/god/business-os";
 }
 
-function formatSlackSource(source: SlackStatus["source"]): string {
-    if (source === "SLACK_OPS_WEBHOOK_URL") return "ops webhook";
-    if (source === "SLACK_WEBHOOK_URL") return "default webhook";
-    return "not configured";
+function businessOsHref(orgId: string): string {
+    return `/god/business-os?selected_org_id=${encodeURIComponent(orgId)}`;
+}
+
+function buildApprovalGroups(approvals: AutopilotApproval[]): ApprovalGroup[] {
+    const groups = new Map<string, ApprovalGroup>();
+    for (const approval of approvals.filter((item) => item.status === "pending")) {
+        const current = groups.get(approval.org_id);
+        const isRevenue = approval.action_kind === "guarded_collections_writeoff" || approval.suggested_work_item_kind === "collections";
+        const isCustomer = approval.action_kind === "guarded_customer_communication";
+        const isPolicy = approval.action_kind === "guarded_feature_flag_change";
+        const nextGroup: ApprovalGroup = current ?? {
+            org_id: approval.org_id,
+            account_name: approval.account_name,
+            highest_priority: approval.priority_score,
+            highest_severity: approval.severity,
+            oldest_first_seen_at: approval.first_seen_at,
+            pending_count: 0,
+            revenue_count: 0,
+            customer_count: 0,
+            policy_count: 0,
+            approvals: [],
+        };
+        nextGroup.pending_count += 1;
+        nextGroup.highest_priority = Math.max(nextGroup.highest_priority, approval.priority_score);
+        nextGroup.highest_severity = severityWeight(approval.severity) > severityWeight(nextGroup.highest_severity)
+            ? approval.severity
+            : nextGroup.highest_severity;
+        nextGroup.oldest_first_seen_at = !nextGroup.oldest_first_seen_at
+            ? approval.first_seen_at
+            : !approval.first_seen_at
+                ? nextGroup.oldest_first_seen_at
+                : new Date(approval.first_seen_at).getTime() < new Date(nextGroup.oldest_first_seen_at).getTime()
+                    ? approval.first_seen_at
+                    : nextGroup.oldest_first_seen_at;
+        if (isRevenue) nextGroup.revenue_count += 1;
+        if (isCustomer) nextGroup.customer_count += 1;
+        if (isPolicy) nextGroup.policy_count += 1;
+        nextGroup.approvals.push(approval);
+        groups.set(approval.org_id, nextGroup);
+    }
+
+    return Array.from(groups.values())
+        .map((group) => ({
+            ...group,
+            approvals: [...group.approvals].sort((left, right) =>
+                severityWeight(right.severity) - severityWeight(left.severity)
+                || right.priority_score - left.priority_score
+                || left.title.localeCompare(right.title),
+            ),
+        }))
+        .sort((left, right) =>
+            severityWeight(right.highest_severity) - severityWeight(left.highest_severity)
+            || right.highest_priority - left.highest_priority
+            || (right.pending_count - left.pending_count)
+            || left.account_name.localeCompare(right.account_name),
+        );
 }
 
 export default function GodAutopilotPage() {
@@ -74,7 +162,7 @@ export default function GodAutopilotPage() {
     const [error, setError] = useState<string | null>(null);
     const [message, setMessage] = useState<string | null>(null);
 
-    async function loadData() {
+    const loadData = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
@@ -92,7 +180,7 @@ export default function GodAutopilotPage() {
         } finally {
             setLoading(false);
         }
-    }
+    }, []);
 
     async function runNow() {
         setRunning(true);
@@ -156,28 +244,61 @@ export default function GodAutopilotPage() {
 
     useEffect(() => {
         void loadData();
-    }, []);
+    }, [loadData]);
+
+    const groupedApprovals = buildApprovalGroups(data?.approvals ?? []);
+    const latestRun = data?.recent_runs[0] ?? null;
+    const communicationDrafts = data?.communication_drafts ?? [];
+    const autopilotWorkItems = data?.autopilot_work_items ?? [];
+    const renewalCandidates = data?.renewal_candidates ?? [];
+    const expansionCandidates = data?.expansion_candidates ?? [];
+    const playbookLearning = data?.playbook_learning ?? [];
+    const recentRunLabel = latestRun ? formatHoursSince(latestRun.created_at) : "none";
+    const runAlerts = data?.run_health.alerts ?? [];
+    const runAlertLevel = runAlerts.length > 0
+        ? runAlerts.some((alert) => alert.includes("stale") || alert.includes("failed") || alert.includes("No autopilot runs"))
+            ? "danger"
+            : "warning"
+        : "ok";
+    const summaryTiles = [
+        {
+            label: "Approvals waiting",
+            value: data?.summary.pending_approvals ?? 0,
+            detail: formatCountLabel(groupedApprovals.length, "account"),
+        },
+        {
+            label: "Blocked accounts",
+            value: data?.summary.blocked_by_approval_accounts ?? 0,
+            detail: `${data?.approval_watchdog.stale_48h ?? 0} stale >48h`,
+        },
+        {
+            label: "Latest run",
+            value: recentRunLabel,
+            detail: latestRun ? latestRun.trigger : "not recorded",
+        },
+        {
+            label: "Auto-handled work",
+            value: data?.summary.autopilot_work_items ?? 0,
+            detail: `${data?.summary.communication_drafts ?? 0} drafts queued`,
+        },
+    ];
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                    <div className="inline-flex items-center gap-2 text-sm font-medium text-amber-300">
-                        <Bot className="h-4 w-4" />
-                        Autopilot
-                    </div>
-                    <h1 className="mt-2 text-2xl font-semibold text-white">Automation control room</h1>
-                    <p className="mt-1 max-w-3xl text-sm text-gray-400">
-                        Monitor what AI is prioritizing, what was auto-created or auto-closed, what needs approval, and which loops are actually working.
+                <div className="space-y-2">
+                    <h1 className="text-2xl font-semibold text-white">Autopilot</h1>
+                    <p className="max-w-3xl text-sm text-gray-400">
+                        Review exceptions, approve risky actions, and check whether automation is actually keeping the business moving.
                     </p>
                     <div className={cn(
-                        "mt-3 inline-flex items-center gap-2 rounded-lg border px-2.5 py-1 text-xs",
+                        "inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm",
                         slackStatus?.configured
                             ? "border-emerald-900/60 bg-emerald-950/20 text-emerald-200"
                             : "border-amber-900/60 bg-amber-950/20 text-amber-200",
                     )}>
-                        {slackStatus?.configured ? "Slack connected" : "Slack disconnected"}
-                        <span className="text-[11px] text-gray-300">({formatSlackSource(slackStatus?.source ?? null)})</span>
+                        <span>{slackStatus?.configured ? "Slack connected" : "Slack disconnected"}</span>
+                        <span className="text-gray-300">· {formatSlackSource(slackStatus?.source ?? null)}</span>
                     </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -223,309 +344,166 @@ export default function GodAutopilotPage() {
             </div>
 
             {error ? (
-                <div className="rounded-xl border border-red-900/70 bg-red-950/20 px-4 py-3 text-sm text-red-200">
+                <div className="rounded-lg border border-red-900/70 bg-red-950/20 px-4 py-3 text-sm text-red-200">
                     {error}
                 </div>
             ) : null}
             {message ? (
-                <div className="rounded-xl border border-emerald-900/60 bg-emerald-950/20 px-4 py-3 text-sm text-emerald-200">
+                <div className="rounded-lg border border-emerald-900/60 bg-emerald-950/20 px-4 py-3 text-sm text-emerald-200">
                     {message}
                 </div>
             ) : null}
 
-            <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-4">
-                    <div className="text-xs uppercase tracking-wide text-gray-500">Pending approvals</div>
-                    <div className="mt-2 text-2xl font-semibold text-white">{data?.summary.pending_approvals ?? "—"}</div>
-                </div>
-                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-4">
-                    <div className="text-xs uppercase tracking-wide text-gray-500">Stale approvals</div>
-                    <div className="mt-2 text-2xl font-semibold text-white">{data?.summary.stale_approvals ?? "—"}</div>
-                </div>
-                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-4">
-                    <div className="text-xs uppercase tracking-wide text-gray-500">Blocked accounts</div>
-                    <div className="mt-2 text-2xl font-semibold text-white">{data?.summary.blocked_by_approval_accounts ?? "—"}</div>
-                </div>
-                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-4">
-                    <div className="text-xs uppercase tracking-wide text-gray-500">Policy violations</div>
-                    <div className="mt-2 text-2xl font-semibold text-white">{data?.summary.policy_violations ?? "—"}</div>
-                </div>
-                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-4">
-                    <div className="text-xs uppercase tracking-wide text-gray-500">Autopilot work</div>
-                    <div className="mt-2 text-2xl font-semibold text-white">{data?.summary.autopilot_work_items ?? "—"}</div>
-                </div>
-                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-4">
-                    <div className="text-xs uppercase tracking-wide text-gray-500">Promise watchdog</div>
-                    <div className="mt-2 text-2xl font-semibold text-white">{data?.summary.promise_watchdog_accounts ?? "—"}</div>
-                </div>
-                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-4">
-                    <div className="text-xs uppercase tracking-wide text-gray-500">Recent runs</div>
-                    <div className="mt-2 text-2xl font-semibold text-white">{data?.summary.recent_runs ?? "—"}</div>
-                </div>
-                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-4">
-                    <div className="text-xs uppercase tracking-wide text-gray-500">Comms drafts</div>
-                    <div className="mt-2 text-2xl font-semibold text-white">{data?.summary.communication_drafts ?? "—"}</div>
-                </div>
-                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-4">
-                    <div className="text-xs uppercase tracking-wide text-gray-500">Renewal candidates</div>
-                    <div className="mt-2 text-2xl font-semibold text-white">{data?.summary.renewal_candidates ?? "—"}</div>
-                </div>
-                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-4">
-                    <div className="text-xs uppercase tracking-wide text-gray-500">Expansion candidates</div>
-                    <div className="mt-2 text-2xl font-semibold text-white">{data?.summary.expansion_candidates ?? "—"}</div>
-                </div>
-            </section>
-
-            <section className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
-                <div className="flex items-center justify-between gap-3">
-                    <div>
-                        <div className="text-sm font-medium text-gray-200">Run health</div>
-                        <div className="mt-1 text-sm text-gray-400">
-                            Per-loop health from the latest autopilot run and live backlog signals.
-                        </div>
-                    </div>
-                    <div className="text-xs text-gray-500">
-                        Last run age: {data?.run_health.run_age_hours === null ? "unknown" : `${data?.run_health.run_age_hours}h`}
-                    </div>
-                </div>
-                <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-                    {(data?.run_health.loops ?? []).map((loop) => (
-                        <div key={loop.id} className={cn("rounded-xl border p-4", loopHealthClasses(loop.status))}>
-                            <div className="flex items-center justify-between gap-2">
-                                <div className="text-sm font-medium text-white">{loop.label}</div>
-                                <div className="text-[11px] uppercase tracking-wide">{loop.status}</div>
+            <section className="rounded-xl border border-gray-800 bg-gray-950/70 p-5">
+                <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+                    <div className="space-y-4">
+                        <div className="space-y-1">
+                            <div className="text-sm font-medium text-white">
+                                {data?.founder_digest.headline ?? "Loading founder brief..."}
                             </div>
-                            <div className="mt-2 text-xl font-semibold text-white">{loop.processed_count}</div>
-                            <div className="mt-1 text-xs text-gray-300">
-                                {loop.last_run_duration_ms === null ? "No duration" : `${Math.round(loop.last_run_duration_ms / 1000)}s`} · {loop.last_run_trigger}
+                            <p className="text-sm text-gray-400">
+                                {data?.founder_digest.summary ?? "Building the current founder summary from approvals, runs, and automation posture."}
+                            </p>
+                        </div>
+                        <div className="grid gap-2 md:grid-cols-2">
+                            {(data?.daily_brief.priorities ?? []).slice(0, 2).map((item) => (
+                                <div key={item} className="rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-sm text-gray-200">
+                                    {item}
+                                </div>
+                            ))}
+                            {(data?.daily_brief.gaps ?? []).slice(0, 2).map((item) => (
+                                <div key={item} className="rounded-lg border border-amber-900/60 bg-amber-950/20 px-3 py-2 text-sm text-amber-200">
+                                    {item}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                        {summaryTiles.map((tile) => (
+                            <div key={tile.label} className="rounded-lg border border-gray-800 bg-black/30 p-4">
+                                <div className="text-sm text-gray-400">{tile.label}</div>
+                                <div className="mt-2 text-2xl font-semibold text-white">{tile.value}</div>
+                                <div className="mt-1 text-xs text-gray-500">{tile.detail}</div>
                             </div>
-                            <div className="mt-2 text-xs text-gray-300">{loop.detail}</div>
-                        </div>
-                    ))}
-                </div>
-                <div className="mt-3 space-y-2">
-                    {(data?.run_health.alerts ?? []).length > 0 ? data?.run_health.alerts.map((alert) => (
-                        <div key={alert} className="rounded-lg border border-amber-900/60 bg-amber-950/20 px-3 py-2 text-sm text-amber-200">
-                            {alert}
-                        </div>
-                    )) : (
-                        <div className="rounded-lg border border-emerald-900/60 bg-emerald-950/20 px-3 py-2 text-sm text-emerald-200">
-                            No run-health alerts are active.
-                        </div>
-                    )}
-                </div>
-            </section>
-
-            <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
-                <div className="rounded-2xl border border-red-900/50 bg-red-950/10 p-5">
-                    <div className="text-sm font-medium text-red-100">Founder mode</div>
-                    <div className="mt-2 text-sm text-red-200/80">{data?.founder_mode.headline ?? "Loading founder mode..."}</div>
-                    <div className="mt-4 grid gap-3 md:grid-cols-3">
-                        <div className="rounded-xl border border-red-900/40 bg-black/20 p-4">
-                            <div className="text-xs uppercase tracking-wide text-red-200/70">Approvals</div>
-                            <div className="mt-2 text-2xl font-semibold text-white">{data?.founder_mode.approvals.length ?? "—"}</div>
-                        </div>
-                        <div className="rounded-xl border border-red-900/40 bg-black/20 p-4">
-                            <div className="text-xs uppercase tracking-wide text-red-200/70">Revenue</div>
-                            <div className="mt-2 text-2xl font-semibold text-white">{data?.founder_mode.revenue_moves.length ?? "—"}</div>
-                        </div>
-                        <div className="rounded-xl border border-red-900/40 bg-black/20 p-4">
-                            <div className="text-xs uppercase tracking-wide text-red-200/70">Churn</div>
-                            <div className="mt-2 text-2xl font-semibold text-white">{data?.founder_mode.churn_risks.length ?? "—"}</div>
-                        </div>
-                    </div>
-                </div>
-                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
-                    <div className="text-sm font-medium text-gray-200">Only you today</div>
-                    <div className="mt-2 text-sm text-gray-400">{data?.founder_mode.summary ?? "Loading founder summary..."}</div>
-                    <div className="mt-4 grid gap-3 md:grid-cols-3">
-                        <div className="space-y-2">
-                            <div className="text-xs uppercase tracking-wide text-gray-500">Highest risk</div>
-                            {(data?.founder_mode.highest_risk_accounts ?? []).slice(0, 3).map((account) => (
-                                <Link key={account.org_id} href="/god/business-os" className="block rounded-lg border border-gray-800 bg-black/30 px-3 py-2 hover:border-gray-700">
-                                    <div className="text-sm text-white">{account.account_name}</div>
-                                    <div className="mt-1 text-xs text-gray-400">priority {account.priority_score}</div>
-                                </Link>
-                            ))}
-                        </div>
-                        <div className="space-y-2">
-                            <div className="text-xs uppercase tracking-wide text-gray-500">Revenue</div>
-                            {(data?.founder_mode.revenue_moves ?? []).slice(0, 3).map((item) => (
-                                <Link key={item.id} href={item.href} className="block rounded-lg border border-gray-800 bg-black/30 px-3 py-2 hover:border-gray-700">
-                                    <div className="text-sm text-white">{item.account_name}</div>
-                                    <div className="mt-1 text-xs text-gray-400">{item.detail}</div>
-                                </Link>
-                            ))}
-                        </div>
-                        <div className="space-y-2">
-                            <div className="text-xs uppercase tracking-wide text-gray-500">Churn</div>
-                            {(data?.founder_mode.churn_risks ?? []).slice(0, 3).map((item) => (
-                                <Link key={item.id} href={item.href} className="block rounded-lg border border-gray-800 bg-black/30 px-3 py-2 hover:border-gray-700">
-                                    <div className="text-sm text-white">{item.account_name}</div>
-                                    <div className="mt-1 text-xs text-gray-400">{item.detail}</div>
-                                </Link>
-                            ))}
-                        </div>
+                        ))}
                     </div>
                 </div>
             </section>
 
-            <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
-                <div className="rounded-2xl border border-amber-900/40 bg-amber-950/10 p-5">
-                    <div className="flex items-center gap-2 text-sm font-medium text-amber-100">
-                        <Sparkles className="h-4 w-4" />
-                        Founder digest
+            <section className="grid gap-4 xl:grid-cols-[1.35fr_0.65fr]">
+                <div className="rounded-xl border border-gray-800 bg-gray-950/70 p-5">
+                    <div className="flex items-center justify-between gap-3">
+                        <div>
+                            <div className="text-sm font-medium text-white">Approval queue</div>
+                            <div className="mt-1 text-sm text-gray-400">
+                                Grouped by account so you can approve the highest-impact work without reading duplicate cards.
+                            </div>
+                        </div>
+                        <div className="rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-sm text-gray-200">
+                            {formatCountLabel(data?.summary.pending_approvals ?? 0, "approval")}
+                        </div>
                     </div>
-                    <div className="mt-3 text-lg font-semibold text-white">{data?.founder_digest.headline ?? "Loading founder digest..."}</div>
-                    <p className="mt-2 text-sm text-amber-100/80">{data?.founder_digest.summary ?? "Building the current founder exception digest..."}</p>
-                    <div className="mt-4 grid gap-3 md:grid-cols-2">
-                        {(data?.founder_digest.sections ?? []).map((section) => (
-                            <div key={section.id} className="rounded-xl border border-amber-900/30 bg-black/20 p-4">
-                                <div className="text-xs uppercase tracking-wide text-amber-200/70">{section.title}</div>
-                                <div className="mt-3 space-y-2">
-                                    {section.items.map((item) => (
-                                        <div key={item} className="rounded-lg border border-amber-900/20 bg-amber-950/10 px-3 py-2 text-sm text-amber-50/90">
-                                            {item}
+
+                    <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                        <div className="rounded-lg border border-gray-800 bg-black/20 px-3 py-2 text-sm text-gray-300">
+                            {formatCountLabel(data?.approval_watchdog.pending ?? 0, "pending")}
+                        </div>
+                        <div className="rounded-lg border border-amber-900/60 bg-amber-950/20 px-3 py-2 text-sm text-amber-200">
+                            {formatCountLabel(data?.approval_watchdog.stale_24h ?? 0, "stale >24h")}
+                        </div>
+                        <div className="rounded-lg border border-red-900/60 bg-red-950/20 px-3 py-2 text-sm text-red-200">
+                            {formatCountLabel(data?.approval_watchdog.stale_48h ?? 0, "stale >48h")}
+                        </div>
+                    </div>
+
+                    <div className="mt-4 space-y-3">
+                        {groupedApprovals.length > 0 ? groupedApprovals.map((group) => (
+                            <div key={group.org_id} className={cn("rounded-xl border p-4", severityClasses(group.highest_severity))}>
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                    <div className="space-y-2">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <div className="text-base font-medium text-white">{group.account_name}</div>
+                                            <div className="rounded-md border border-gray-800 bg-black/30 px-2 py-1 text-xs text-gray-300">
+                                                priority {group.highest_priority}
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2 text-xs text-gray-300">
+                                            <span className="rounded-md border border-gray-800 bg-black/30 px-2 py-1">
+                                                {formatCountLabel(group.pending_count, "approval")}
+                                            </span>
+                                            {group.revenue_count > 0 ? (
+                                                <span className="rounded-md border border-amber-900/60 bg-amber-950/20 px-2 py-1 text-amber-200">
+                                                    {formatCountLabel(group.revenue_count, "revenue action")}
+                                                </span>
+                                            ) : null}
+                                            {group.customer_count > 0 ? (
+                                                <span className="rounded-md border border-gray-800 bg-black/30 px-2 py-1">
+                                                    {formatCountLabel(group.customer_count, "customer send")}
+                                                </span>
+                                            ) : null}
+                                            {group.policy_count > 0 ? (
+                                                <span className="rounded-md border border-red-900/60 bg-red-950/20 px-2 py-1 text-red-200">
+                                                    {formatCountLabel(group.policy_count, "policy change")}
+                                                </span>
+                                            ) : null}
+                                        </div>
+                                    </div>
+                                    <div className="text-right text-xs text-gray-400">
+                                        <div>oldest {formatHoursSince(group.oldest_first_seen_at)}</div>
+                                        <div className="mt-1">{group.highest_severity}</div>
+                                    </div>
+                                </div>
+
+                                <div className="mt-4 space-y-2">
+                                    {group.approvals.map((approval) => (
+                                        <div key={approval.id} className="rounded-lg border border-gray-800 bg-black/25 p-3">
+                                            <div className="flex flex-wrap items-start justify-between gap-3">
+                                                <div className="space-y-1">
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <div className="text-sm font-medium text-white">{approval.title}</div>
+                                                        <div className="rounded-md border border-gray-800 bg-black/30 px-2 py-0.5 text-[11px] text-gray-300">
+                                                            {actionKindLabel(approval)}
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-sm text-gray-300">{approval.description}</div>
+                                                    <div className="text-xs text-gray-500">{approval.rationale}</div>
+                                                </div>
+                                                <div className="text-right text-xs text-gray-400">
+                                                    <div>{formatHoursSince(approval.first_seen_at)}</div>
+                                                    <div className="mt-1">priority {approval.priority_score}</div>
+                                                </div>
+                                            </div>
+                                            <div className="mt-3 flex flex-wrap items-center gap-2">
+                                                <Link
+                                                    href={businessOsHref(group.org_id)}
+                                                    className="inline-flex items-center gap-1 rounded-lg border border-gray-800 px-3 py-1.5 text-xs text-gray-300 hover:border-gray-700 hover:text-white"
+                                                >
+                                                    Open in Business OS
+                                                    <ArrowRight className="h-3.5 w-3.5" />
+                                                </Link>
+                                                <button
+                                                    onClick={() => void decideApproval(approval.id, "approve")}
+                                                    disabled={busyApprovalId === approval.id}
+                                                    className="inline-flex items-center gap-1 rounded-lg border border-emerald-800/60 bg-emerald-950/20 px-3 py-1.5 text-xs text-emerald-200 hover:border-emerald-700/60 disabled:opacity-60"
+                                                >
+                                                    {busyApprovalId === approval.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                                                    Approve
+                                                </button>
+                                                <button
+                                                    onClick={() => void decideApproval(approval.id, "reject")}
+                                                    disabled={busyApprovalId === approval.id}
+                                                    className="inline-flex items-center gap-1 rounded-lg border border-red-800/60 bg-red-950/20 px-3 py-1.5 text-xs text-red-200 hover:border-red-700/60 disabled:opacity-60"
+                                                >
+                                                    <XCircle className="h-3.5 w-3.5" />
+                                                    Reject
+                                                </button>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
                             </div>
-                        ))}
-                    </div>
-                </div>
-                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
-                    <div className="flex items-center gap-2 text-sm font-medium text-gray-200">
-                        <Sparkles className="h-4 w-4 text-amber-300" />
-                        AI daily brief
-                    </div>
-                    <div className="mt-3 text-lg font-semibold text-white">{data?.daily_brief.headline ?? "Loading brief..."}</div>
-                    <p className="mt-2 text-sm text-gray-300">{data?.daily_brief.summary ?? "Reviewing current automation posture..."}</p>
-                    <div className="mt-4 rounded-xl border border-gray-800 bg-black/30 p-4">
-                        <div className="text-sm font-medium text-white">Queue focus</div>
-                        <div className="mt-2 text-sm text-gray-300">{data?.daily_brief.queue_focus ?? "Loading queue focus..."}</div>
-                    </div>
-                    <div className="mt-4 grid gap-3 md:grid-cols-2">
-                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
-                            <div className="text-xs uppercase tracking-wide text-gray-500">Priorities</div>
-                            <div className="mt-2 space-y-2">
-                                {(data?.daily_brief.priorities ?? []).length > 0 ? data?.daily_brief.priorities.map((item) => (
-                                    <div key={item} className="rounded-lg border border-gray-800 bg-gray-950/50 px-3 py-2 text-sm text-gray-300">
-                                        {item}
-                                    </div>
-                                )) : (
-                                    <div className="rounded-lg border border-gray-800 bg-gray-950/50 px-3 py-2 text-sm text-gray-400">
-                                        No urgent priorities right now.
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
-                            <div className="text-xs uppercase tracking-wide text-gray-500">Gaps</div>
-                            <div className="mt-2 space-y-2">
-                                {(data?.daily_brief.gaps ?? []).length > 0 ? data?.daily_brief.gaps.map((item) => (
-                                    <div key={item} className="rounded-lg border border-amber-900/60 bg-amber-950/20 px-3 py-2 text-sm text-amber-200">
-                                        {item}
-                                    </div>
-                                )) : (
-                                    <div className="rounded-lg border border-gray-800 bg-gray-950/50 px-3 py-2 text-sm text-gray-400">
-                                        No major automation gaps surfaced.
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
-                    <div className="text-sm font-medium text-gray-200">Autopilot loops</div>
-                    <div className="mt-4 space-y-3">
-                        {(data?.loops ?? []).map((loop) => (
-                            <div key={loop.id} className="rounded-xl border border-gray-800 bg-black/30 p-4">
-                                <div className="flex items-center justify-between gap-3">
-                                    <div className="text-sm font-medium text-white">{loop.label}</div>
-                                    <div className="text-sm text-amber-200">{loop.count}</div>
-                                </div>
-                                <div className="mt-2 text-sm text-gray-400">{loop.detail}</div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
-                    <div className="flex items-center justify-between gap-3">
-                        <div>
-                            <div className="text-sm font-medium text-gray-200">Approval inbox</div>
-                            <div className="mt-1 text-sm text-gray-400">Risky actions stay human-in-the-loop. Approve only when you want the follow-through work opened.</div>
-                        </div>
-                        <div className="rounded-lg border border-red-900/50 bg-red-950/20 px-3 py-2 text-sm text-red-200">
-                            {(data?.approvals ?? []).filter((approval) => approval.status === "pending").length} pending
-                        </div>
-                    </div>
-                    <div className="mt-4 space-y-3">
-                        <div className="grid gap-2 md:grid-cols-3">
-                            <div className="rounded-lg border border-gray-800 bg-black/20 px-3 py-2 text-xs text-gray-300">
-                                Pending: <span className="text-white">{data?.approval_watchdog.pending ?? 0}</span>
-                            </div>
-                            <div className="rounded-lg border border-amber-900/60 bg-amber-950/20 px-3 py-2 text-xs text-amber-200">
-                                Stale &gt;24h: <span className="text-amber-100">{data?.approval_watchdog.stale_24h ?? 0}</span>
-                            </div>
-                            <div className="rounded-lg border border-red-900/60 bg-red-950/20 px-3 py-2 text-xs text-red-200">
-                                Stale &gt;48h: <span className="text-red-100">{data?.approval_watchdog.stale_48h ?? 0}</span>
-                            </div>
-                        </div>
-                        {(data?.approvals ?? []).length > 0 ? data?.approvals.map((approval) => (
-                            <div key={approval.id} className={cn("rounded-xl border p-4", severityClasses(approval.severity))}>
-                                <div className="flex items-start justify-between gap-3">
-                                    <div>
-                                        <div className="text-sm font-medium text-white">{approval.account_name}</div>
-                                        <div className="mt-1 text-sm text-white/90">{approval.title}</div>
-                                        <div className="mt-2 text-xs text-gray-300">{approval.description}</div>
-                                        <div className="mt-2 text-xs text-gray-400">{approval.rationale}</div>
-                                    </div>
-                                    <div className="text-right text-xs text-gray-400">
-                                        <div>{approval.status}</div>
-                                        <div className="mt-1">age {formatHoursSince(approval.first_seen_at)}</div>
-                                        <div className="mt-1">priority {approval.priority_score}</div>
-                                    </div>
-                                </div>
-                                <div className="mt-3 flex flex-wrap items-center gap-2">
-                                    <Link
-                                        href="/god/business-os"
-                                        className="inline-flex items-center gap-1 rounded-lg border border-gray-800 px-3 py-1.5 text-xs text-gray-300 hover:border-gray-700 hover:text-white"
-                                    >
-                                        Open in Business OS
-                                        <ArrowRight className="h-3.5 w-3.5" />
-                                    </Link>
-                                    {approval.status === "pending" ? (
-                                        <>
-                                            <button
-                                                onClick={() => void decideApproval(approval.id, "approve")}
-                                                disabled={busyApprovalId === approval.id}
-                                                className="inline-flex items-center gap-1 rounded-lg border border-emerald-800/60 bg-emerald-950/20 px-3 py-1.5 text-xs text-emerald-200 hover:border-emerald-700/60 disabled:opacity-60"
-                                            >
-                                                {busyApprovalId === approval.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-                                                Approve
-                                            </button>
-                                            <button
-                                                onClick={() => void decideApproval(approval.id, "reject")}
-                                                disabled={busyApprovalId === approval.id}
-                                                className="inline-flex items-center gap-1 rounded-lg border border-red-800/60 bg-red-950/20 px-3 py-1.5 text-xs text-red-200 hover:border-red-700/60 disabled:opacity-60"
-                                            >
-                                                <XCircle className="h-3.5 w-3.5" />
-                                                Reject
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <div className="text-xs text-gray-400">
-                                            {approval.decided_by ? `${approval.status} by ${approval.decided_by}` : approval.status} · {formatDateTime(approval.decided_at)}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
                         )) : (
-                            <div className="rounded-xl border border-gray-800 bg-black/30 p-4 text-sm text-gray-400">
+                            <div className="rounded-lg border border-gray-800 bg-black/30 p-4 text-sm text-gray-400">
                                 No approval-gated actions are pending right now.
                             </div>
                         )}
@@ -533,141 +511,272 @@ export default function GodAutopilotPage() {
                 </div>
 
                 <div className="space-y-4">
-                    <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
-                        <div className="text-sm font-medium text-gray-200">Recent runs</div>
-                        <div className="mt-4 space-y-3">
-                            {(data?.recent_runs ?? []).length > 0 ? data?.recent_runs.map((run) => (
-                                <div key={run.id} className="rounded-xl border border-gray-800 bg-black/30 p-4">
-                                    <div className="flex items-center justify-between gap-3">
-                                        <div className="text-sm font-medium text-white">{run.action}</div>
-                                        <div className="text-xs text-gray-500">{formatDateTime(run.created_at)}</div>
-                                    </div>
-                                    <div className="mt-2 text-sm text-gray-300">{run.summary}</div>
-                                    <div className="mt-2 text-xs text-gray-500">
-                                        {run.trigger} • {run.actor_name ?? "System"}
-                                    </div>
-                                    {run.run_key ? (
-                                        <div className="mt-1 text-xs text-gray-600">run {run.run_key}</div>
-                                    ) : null}
+                    <div className="rounded-xl border border-gray-800 bg-gray-950/70 p-5">
+                        <div className="text-sm font-medium text-white">Exceptions and run status</div>
+                        <div className="mt-3 space-y-2">
+                            <div className={cn(
+                                "rounded-lg border px-3 py-3 text-sm",
+                                runAlertLevel === "danger"
+                                    ? "border-red-900/70 bg-red-950/20 text-red-200"
+                                    : runAlertLevel === "warning"
+                                        ? "border-amber-900/70 bg-amber-950/20 text-amber-200"
+                                        : "border-emerald-900/60 bg-emerald-950/20 text-emerald-200",
+                            )}>
+                                {latestRun
+                                    ? `Last run ${formatDateTime(latestRun.created_at)} via ${latestRun.trigger}.`
+                                    : "No autopilot runs are recorded yet."}
+                            </div>
+                            {runAlerts.length > 0 ? runAlerts.slice(0, 3).map((alert) => (
+                                <div key={alert} className="rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-sm text-gray-300">
+                                    {alert}
                                 </div>
                             )) : (
-                                <div className="rounded-xl border border-gray-800 bg-black/30 p-4 text-sm text-gray-400">
-                                    No autopilot runs are recorded yet.
+                                <div className="rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-sm text-gray-300">
+                                    No active run-health alerts.
                                 </div>
                             )}
                         </div>
-                    </div>
-
-                    <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
-                        <div className="text-sm font-medium text-gray-200">Brief history</div>
-                        <div className="mt-4 space-y-3">
-                            {(data?.daily_brief_history ?? []).map((brief) => (
-                                <div key={brief.id} className="rounded-xl border border-gray-800 bg-black/30 p-4">
-                                    <div className="flex items-center justify-between gap-3">
-                                        <div className="text-sm font-medium text-white">{brief.headline}</div>
-                                        <div className="text-xs text-gray-500">{formatDateTime(brief.generated_at)}</div>
+                        <div className="mt-4 space-y-2">
+                            {(data?.run_health.loops ?? []).map((loop) => (
+                                <div key={loop.id} className="flex items-start justify-between gap-3 rounded-lg border border-gray-800 bg-black/30 px-3 py-2">
+                                    <div>
+                                        <div className="text-sm text-white">{loop.label}</div>
+                                        <div className="mt-1 text-xs text-gray-500">{loop.detail}</div>
                                     </div>
-                                    <div className="mt-2 text-sm text-gray-300">{brief.summary}</div>
+                                    <div className="text-right text-xs text-gray-400">
+                                        <div>{loop.status}</div>
+                                        <div className="mt-1">{loop.processed_count} handled</div>
+                                    </div>
                                 </div>
                             ))}
+                        </div>
+                    </div>
+
+                    <div className="rounded-xl border border-gray-800 bg-gray-950/70 p-5">
+                        <div className="text-sm font-medium text-white">Recent runs</div>
+                        <div className="mt-3 space-y-2">
+                            {(data?.recent_runs ?? []).length > 0 ? data?.recent_runs.slice(0, 5).map((run) => (
+                                <div key={run.id} className="rounded-lg border border-gray-800 bg-black/30 px-3 py-3">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <div className="text-sm text-white">{run.action}</div>
+                                        <div className="text-xs text-gray-500">{formatDateTime(run.created_at)}</div>
+                                    </div>
+                                    <div className="mt-1 text-sm text-gray-300">{run.summary}</div>
+                                    <div className="mt-1 text-xs text-gray-500">
+                                        {run.trigger} · {run.actor_name ?? "System"}
+                                    </div>
+                                </div>
+                            )) : (
+                                <div className="rounded-lg border border-gray-800 bg-black/30 px-3 py-3 text-sm text-gray-400">
+                                    Start with a manual run to seed the first baseline, then check whether the scheduled run stays current.
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
             </section>
 
             <section className="grid gap-4 xl:grid-cols-[1fr_1fr]">
-                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
-                    <div className="flex items-center gap-2 text-sm font-medium text-gray-200">
-                        <ShieldAlert className="h-4 w-4 text-amber-300" />
-                        Policy violations + promise watchdog
-                    </div>
-                    <div className="mt-4 space-y-3">
-                        {(data?.policy_violations ?? []).slice(0, 6).map((violation) => (
-                            <div key={violation.id} className={cn("rounded-xl border p-4", severityClasses(violation.severity))}>
-                                <div className="text-sm font-medium text-white">{violation.account_name}</div>
-                                <div className="mt-1 text-xs text-gray-400">{violation.rule}</div>
-                                <div className="mt-2 text-sm text-white/90">{violation.detail}</div>
-                            </div>
-                        ))}
-                        {(data?.promise_watchdog ?? []).slice(0, 4).map((item) => (
-                            <div key={item.org_id} className="rounded-xl border border-gray-800 bg-black/30 p-4">
-                                <div className="flex items-center justify-between gap-3">
-                                    <div className="text-sm font-medium text-white">{item.account_name}</div>
-                                    <div className="text-xs text-amber-200">priority {item.priority_score}</div>
+                <div className="rounded-xl border border-gray-800 bg-gray-950/70 p-5">
+                    <div className="text-sm font-medium text-white">Auto-handled activity</div>
+                    <div className="mt-1 text-sm text-gray-400">What AI created, escalated, or closed most recently.</div>
+                    <div className="mt-4 space-y-2">
+                        {(data?.run_traces ?? []).length > 0 ? data?.run_traces.slice(0, 12).map((trace) => (
+                            <Link key={trace.id} href={trace.href} className="block rounded-lg border border-gray-800 bg-black/30 px-3 py-3 transition-colors hover:border-gray-700">
+                                <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                                    <span>{formatDateTime(trace.occurred_at)}</span>
+                                    <span>·</span>
+                                    <span>{trace.account_name ?? trace.org_id}</span>
+                                    {trace.run_key ? (
+                                        <>
+                                            <span>·</span>
+                                            <span>{trace.run_key}</span>
+                                        </>
+                                    ) : null}
                                 </div>
-                                <div className="mt-2 space-y-2">
-                                    {item.reasons.map((reason) => (
-                                        <div key={reason} className="rounded-lg border border-amber-900/60 bg-amber-950/20 px-3 py-2 text-sm text-amber-200">
-                                            {reason}
-                                        </div>
-                                    ))}
-                                </div>
+                                <div className="mt-1 text-sm font-medium text-white">{trace.title}</div>
+                                <div className="mt-1 text-xs text-gray-400">{trace.reason ?? trace.detail ?? "No reason recorded."}</div>
+                            </Link>
+                        )) : (
+                            <div className="rounded-lg border border-gray-800 bg-black/30 px-3 py-3 text-sm text-gray-400">
+                                No autopilot trace events are recorded yet.
                             </div>
-                        ))}
+                        )}
                     </div>
                 </div>
 
                 <div className="space-y-4">
-                    <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
-                        <div className="text-sm font-medium text-gray-200">Customer comms drafts</div>
+                    <div className="rounded-xl border border-gray-800 bg-gray-950/70 p-5">
+                        <div className="text-sm font-medium text-white">Queued outputs</div>
                         <div className="mt-4 space-y-3">
-                            {(data?.communication_drafts ?? []).length > 0 ? data?.communication_drafts.map((draft) => (
-                                <div key={draft.id} className="rounded-xl border border-gray-800 bg-black/30 p-4">
+                            {communicationDrafts.length > 0 ? communicationDrafts.slice(0, 4).map((draft) => (
+                                <div key={draft.id} className="rounded-lg border border-gray-800 bg-black/30 p-4">
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
-                                            <div className="text-sm font-medium text-white">{draft.account_name}</div>
-                                            <div className="mt-1 text-xs text-gray-500">{draft.sequence_type.replaceAll("_", " ")} • {draft.channel}</div>
+                                            <div className="text-sm text-white">{draft.account_name}</div>
+                                            <div className="mt-1 text-xs text-gray-500">
+                                                {draft.sequence_type.replaceAll("_", " ")} · {draft.channel}
+                                            </div>
                                         </div>
                                         <div className="text-xs text-amber-200">priority {draft.priority_score}</div>
                                     </div>
                                     <div className="mt-2 text-xs text-gray-400">{draft.reason}</div>
-                                    <pre className="mt-3 overflow-x-auto whitespace-pre-wrap rounded-lg border border-gray-800 bg-black/20 p-3 text-xs text-gray-300">
-                                        {draft.draft}
-                                    </pre>
                                 </div>
                             )) : (
-                                <div className="rounded-xl border border-gray-800 bg-black/30 p-4 text-sm text-gray-400">
-                                    No customer comms drafts are queued right now.
+                                <div className="rounded-lg border border-gray-800 bg-black/30 p-4 text-sm text-gray-400">
+                                    No customer drafts are queued right now.
                                 </div>
                             )}
                         </div>
                     </div>
-                    <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
-                        <div className="text-sm font-medium text-gray-200">Autopilot-created work</div>
-                        <div className="mt-4 space-y-3">
-                            {(data?.autopilot_work_items ?? []).length > 0 ? data?.autopilot_work_items.map((item) => (
+
+                    <div className="rounded-xl border border-gray-800 bg-gray-950/70 p-5">
+                        <div className="text-sm font-medium text-white">Autopilot-created work</div>
+                        <div className="mt-4 space-y-2">
+                            {autopilotWorkItems.length > 0 ? autopilotWorkItems.slice(0, 6).map((item) => (
                                 <Link
                                     key={item.id}
                                     href={workItemHref(item.kind)}
-                                    className="block rounded-xl border border-gray-800 bg-black/30 p-4 transition-colors hover:border-gray-700"
+                                    className="block rounded-lg border border-gray-800 bg-black/30 px-3 py-3 transition-colors hover:border-gray-700"
                                 >
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div>
-                                            <div className="text-sm font-medium text-white">{item.title}</div>
-                                            <div className="mt-1 text-xs text-gray-500">{item.kind.replaceAll("_", " ")} • {item.status}</div>
-                                            <div className="mt-2 text-sm text-gray-300">{item.summary ?? "No summary recorded."}</div>
-                                        </div>
-                                        <ArrowRight className="h-4 w-4 text-gray-500" />
+                                    <div className="flex items-center justify-between gap-3">
+                                        <div className="text-sm text-white">{item.title}</div>
+                                        <div className="text-xs text-gray-500">{item.kind.replaceAll("_", " ")}</div>
                                     </div>
+                                    <div className="mt-1 text-xs text-gray-400">{item.summary ?? "No summary recorded."}</div>
                                 </Link>
                             )) : (
-                                <div className="rounded-xl border border-gray-800 bg-black/30 p-4 text-sm text-gray-400">
+                                <div className="rounded-lg border border-gray-800 bg-black/30 p-4 text-sm text-gray-400">
                                     No active autopilot work items are open.
                                 </div>
                             )}
                         </div>
                     </div>
+                </div>
+            </section>
 
-                    <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
-                        <div className="flex items-center gap-2 text-sm font-medium text-gray-200">
+            <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+                <div className="space-y-4">
+                    <div className="rounded-xl border border-gray-800 bg-gray-950/70 p-5">
+                        <div className="flex items-center gap-2 text-sm font-medium text-white">
+                            <ShieldAlert className="h-4 w-4 text-amber-300" />
+                            Policy and promise watch
+                        </div>
+                        <div className="mt-4 space-y-2">
+                            {(data?.policy_violations ?? []).slice(0, 4).map((violation) => (
+                                <div key={violation.id} className={cn("rounded-lg border px-3 py-3", severityClasses(violation.severity))}>
+                                    <div className="text-sm font-medium text-white">{violation.account_name}</div>
+                                    <div className="mt-1 text-xs text-gray-400">{violation.rule}</div>
+                                    <div className="mt-2 text-sm text-gray-300">{violation.detail}</div>
+                                </div>
+                            ))}
+                            {(data?.promise_watchdog ?? []).slice(0, 3).map((item) => (
+                                <div key={item.org_id} className="rounded-lg border border-gray-800 bg-black/30 px-3 py-3">
+                                    <div className="flex items-center justify-between gap-3">
+                                        <div className="text-sm text-white">{item.account_name}</div>
+                                        <div className="text-xs text-amber-200">priority {item.priority_score}</div>
+                                    </div>
+                                    <div className="mt-2 space-y-1">
+                                        {item.reasons.map((reason) => (
+                                            <div key={reason} className="text-sm text-gray-300">{reason}</div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="rounded-xl border border-gray-800 bg-gray-950/70 p-5">
+                        <div className="text-sm font-medium text-white">Renewal and expansion</div>
+                        <div className="mt-4 grid gap-4 md:grid-cols-2">
+                            <div className="space-y-2">
+                                <div className="text-sm text-gray-400">Renewal</div>
+                                {renewalCandidates.length > 0 ? renewalCandidates.slice(0, 3).map((item) => (
+                                    <Link key={item.id} href={item.href} className="block rounded-lg border border-gray-800 bg-black/30 px-3 py-2 hover:border-gray-700">
+                                        <div className="text-sm text-white">{item.account_name}</div>
+                                        <div className="mt-1 text-xs text-gray-400">{item.detail}</div>
+                                    </Link>
+                                )) : (
+                                    <div className="rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-sm text-gray-400">No renewal candidates yet.</div>
+                                )}
+                            </div>
+                            <div className="space-y-2">
+                                <div className="text-sm text-gray-400">Expansion</div>
+                                {expansionCandidates.length > 0 ? expansionCandidates.slice(0, 3).map((item) => (
+                                    <Link key={item.id} href={item.href} className="block rounded-lg border border-gray-800 bg-black/30 px-3 py-2 hover:border-gray-700">
+                                        <div className="text-sm text-white">{item.account_name}</div>
+                                        <div className="mt-1 text-xs text-gray-400">{item.detail}</div>
+                                    </Link>
+                                )) : (
+                                    <div className="rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-sm text-gray-400">No expansion candidates yet.</div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="space-y-4">
+                    <div className="rounded-xl border border-gray-800 bg-gray-950/70 p-5">
+                        <div className="text-sm font-medium text-white">ROI and trust</div>
+                        <div className="mt-4 grid gap-3 md:grid-cols-2">
+                            <div className="rounded-lg border border-gray-800 bg-black/30 p-4">
+                                <div className="text-sm text-gray-400">Runs</div>
+                                <div className="mt-2 text-xl font-semibold text-white">{data?.roi_scorecard.run_count ?? "—"}</div>
+                            </div>
+                            <div className="rounded-lg border border-gray-800 bg-black/30 p-4">
+                                <div className="text-sm text-gray-400">Work items created</div>
+                                <div className="mt-2 text-xl font-semibold text-white">{data?.roi_scorecard.work_items_created ?? "—"}</div>
+                            </div>
+                            <div className="rounded-lg border border-gray-800 bg-black/30 p-4">
+                                <div className="text-sm text-gray-400">Auto-closed work</div>
+                                <div className="mt-2 text-xl font-semibold text-white">{data?.roi_scorecard.work_items_auto_closed ?? "—"}</div>
+                            </div>
+                            <div className="rounded-lg border border-gray-800 bg-black/30 p-4">
+                                <div className="text-sm text-gray-400">Estimated hours saved</div>
+                                <div className="mt-2 text-xl font-semibold text-white">{data?.roi_scorecard.estimated_hours_saved ?? "—"}h</div>
+                                <div className="mt-1 text-xs text-gray-500">
+                                    {data?.roi_scorecard.estimated_hours_saved_provenance === "estimated" ? "Estimated" : "Unknown provenance"}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="mt-3 rounded-lg border border-emerald-900/60 bg-emerald-950/20 p-4">
+                            <div className="text-sm text-emerald-200">Cash recovered</div>
+                            <div className="mt-2 text-xl font-semibold text-emerald-100">
+                                {data?.roi_scorecard.cash_recovered_inr === null
+                                    ? "Unknown"
+                                    : `₹${data?.roi_scorecard.cash_recovered_inr?.toLocaleString("en-IN") ?? "0"}`}
+                            </div>
+                            <div className="mt-1 text-xs text-emerald-200/80">
+                                {data?.roi_scorecard.cash_recovered_provenance === "exact"
+                                    ? "Payment-linked exact recovery only."
+                                    : "Hidden until payment-linked recovery is recorded directly."}
+                            </div>
+                        </div>
+                        <div className="mt-3 space-y-2">
+                            {(data?.truth_lock.checks ?? []).slice(0, 4).map((check) => (
+                                <div key={check.id} className={cn(
+                                    "rounded-lg border px-3 py-2 text-sm",
+                                    check.status === "pass"
+                                        ? "border-emerald-900/60 bg-emerald-950/20 text-emerald-200"
+                                        : "border-amber-900/60 bg-amber-950/20 text-amber-200",
+                                )}>
+                                    <div className="font-medium">{check.label}</div>
+                                    <div className="mt-1 text-xs">{check.detail}</div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="rounded-xl border border-gray-800 bg-gray-950/70 p-5">
+                        <div className="flex items-center gap-2 text-sm font-medium text-white">
                             <ClipboardList className="h-4 w-4" />
                             Playbook learning
                         </div>
-                        <div className="mt-4 space-y-3">
-                            {(data?.playbook_learning ?? []).length > 0 ? data?.playbook_learning.map((row) => (
-                                <div key={row.kind} className="rounded-xl border border-gray-800 bg-black/30 p-4">
+                        <div className="mt-4 space-y-2">
+                            {playbookLearning.length > 0 ? playbookLearning.slice(0, 6).map((row) => (
+                                <div key={row.kind} className="rounded-lg border border-gray-800 bg-black/30 p-4">
                                     <div className="flex items-center justify-between gap-3">
-                                        <div className="text-sm font-medium text-white">{row.kind.replaceAll("_", " ")}</div>
+                                        <div className="text-sm text-white">{row.kind.replaceAll("_", " ")}</div>
                                         <div className="text-sm text-emerald-300">{Math.round(row.success_rate * 100)}% success</div>
                                     </div>
                                     <div className="mt-2 grid grid-cols-4 gap-2 text-xs text-gray-500">
@@ -678,146 +787,12 @@ export default function GodAutopilotPage() {
                                     </div>
                                 </div>
                             )) : (
-                                <div className="rounded-xl border border-gray-800 bg-black/30 p-4 text-sm text-gray-400">
+                                <div className="rounded-lg border border-gray-800 bg-black/30 p-4 text-sm text-gray-400">
                                     No playbook outcomes are recorded yet.
                                 </div>
                             )}
                         </div>
                     </div>
-                    <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
-                        <div className="text-sm font-medium text-gray-200">Renewal and expansion queue</div>
-                        <div className="mt-4 grid gap-3 md:grid-cols-2">
-                            <div>
-                                <div className="mb-2 text-xs uppercase tracking-wide text-gray-500">Renewal</div>
-                                <div className="space-y-2">
-                                    {(data?.renewal_candidates ?? []).length > 0 ? data?.renewal_candidates.map((item) => (
-                                        <Link key={item.id} href={item.href} className="block rounded-lg border border-gray-800 bg-black/30 px-3 py-2 hover:border-gray-700">
-                                            <div className="text-sm text-white">{item.account_name}</div>
-                                            <div className="mt-1 text-xs text-gray-400">{item.detail}</div>
-                                        </Link>
-                                    )) : (
-                                        <div className="rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-sm text-gray-400">No renewal candidates yet.</div>
-                                    )}
-                                </div>
-                            </div>
-                            <div>
-                                <div className="mb-2 text-xs uppercase tracking-wide text-gray-500">Expansion</div>
-                                <div className="space-y-2">
-                                    {(data?.expansion_candidates ?? []).length > 0 ? data?.expansion_candidates.map((item) => (
-                                        <Link key={item.id} href={item.href} className="block rounded-lg border border-gray-800 bg-black/30 px-3 py-2 hover:border-gray-700">
-                                            <div className="text-sm text-white">{item.account_name}</div>
-                                            <div className="mt-1 text-xs text-gray-400">{item.detail}</div>
-                                        </Link>
-                                    )) : (
-                                        <div className="rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-sm text-gray-400">No expansion candidates yet.</div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section className="grid gap-4 xl:grid-cols-[1fr_1fr]">
-                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
-                    <div className="text-sm font-medium text-gray-200">Automation ROI (7d)</div>
-                    <div className="mt-3 grid gap-3 md:grid-cols-2">
-                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
-                            <div className="text-xs uppercase tracking-wide text-gray-500">Runs</div>
-                            <div className="mt-2 text-xl font-semibold text-white">{data?.roi_scorecard.run_count ?? "—"}</div>
-                        </div>
-                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
-                            <div className="text-xs uppercase tracking-wide text-gray-500">Work items created</div>
-                            <div className="mt-2 text-xl font-semibold text-white">{data?.roi_scorecard.work_items_created ?? "—"}</div>
-                        </div>
-                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
-                            <div className="text-xs uppercase tracking-wide text-gray-500">Auto-closed items</div>
-                            <div className="mt-2 text-xl font-semibold text-white">{data?.roi_scorecard.work_items_auto_closed ?? "—"}</div>
-                        </div>
-                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
-                            <div className="text-xs uppercase tracking-wide text-gray-500">Estimated hours saved</div>
-                            <div className="mt-2 text-xl font-semibold text-white">{data?.roi_scorecard.estimated_hours_saved ?? "—"}h</div>
-                            <div className="mt-1 text-xs text-gray-500">
-                                {data?.roi_scorecard.estimated_hours_saved_provenance === "estimated" ? "Estimated" : "Unknown provenance"}
-                            </div>
-                        </div>
-                    </div>
-                    <div className="mt-3 rounded-xl border border-emerald-900/60 bg-emerald-950/20 p-4">
-                        <div className="text-xs uppercase tracking-wide text-emerald-300">Cash recovered</div>
-                        <div className="mt-2 text-xl font-semibold text-emerald-100">
-                            {data?.roi_scorecard.cash_recovered_inr === null
-                                ? "Unknown"
-                                : `₹${data?.roi_scorecard.cash_recovered_inr?.toLocaleString("en-IN") ?? "0"}`}
-                        </div>
-                        <div className="mt-1 text-xs text-emerald-200/80">
-                            {data?.roi_scorecard.cash_recovered_provenance === "exact"
-                                ? "Payment-linked exact recovery only."
-                                : "Hidden until payment-linked recovery is recorded directly."}
-                        </div>
-                    </div>
-                    <div className="mt-3 space-y-2">
-                        {(data?.roi_scorecard.notes ?? []).map((note) => (
-                            <div key={note} className="rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-sm text-gray-300">
-                                {note}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
-                    <div className="text-sm font-medium text-gray-200">Truth lock</div>
-                    <div className="mt-2 text-sm text-gray-400">KPI and approval snapshots must stay source-backed with deterministic identifiers.</div>
-                    <div className="mt-4 grid gap-3 md:grid-cols-2">
-                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
-                            <div className="text-xs uppercase tracking-wide text-gray-500">Coverage</div>
-                            <div className="mt-2 text-xl font-semibold text-white">{data?.truth_lock.coverage_pct ?? "—"}%</div>
-                        </div>
-                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
-                            <div className="text-xs uppercase tracking-wide text-gray-500">Unresolved checks</div>
-                            <div className="mt-2 text-xl font-semibold text-white">{data?.truth_lock.unresolved_checks ?? "—"}</div>
-                        </div>
-                    </div>
-                    <div className="mt-3 space-y-2">
-                        {(data?.truth_lock.checks ?? []).map((check) => (
-                            <div key={check.id} className={cn(
-                                "rounded-lg border px-3 py-2 text-sm",
-                                check.status === "pass"
-                                    ? "border-emerald-900/60 bg-emerald-950/20 text-emerald-200"
-                                    : "border-amber-900/60 bg-amber-950/20 text-amber-200",
-                            )}>
-                                <div className="font-medium">{check.label}</div>
-                                <div className="mt-1 text-xs">{check.detail}</div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </section>
-
-            <section className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
-                <div className="text-sm font-medium text-gray-200">Autopilot trace log</div>
-                <div className="mt-1 text-sm text-gray-400">Why AI created, escalated, or closed work across recent runs.</div>
-                <div className="mt-4 space-y-2">
-                    {(data?.run_traces ?? []).length > 0 ? data?.run_traces.map((trace) => (
-                        <Link key={trace.id} href={trace.href} className="block rounded-xl border border-gray-800 bg-black/30 px-4 py-3 transition-colors hover:border-gray-700">
-                            <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                                <span>{formatDateTime(trace.occurred_at)}</span>
-                                <span>•</span>
-                                <span>{trace.account_name ?? trace.org_id}</span>
-                                {trace.run_key ? (
-                                    <>
-                                        <span>•</span>
-                                        <span>{trace.run_key}</span>
-                                    </>
-                                ) : null}
-                            </div>
-                            <div className="mt-1 text-sm font-medium text-white">{trace.title}</div>
-                            <div className="mt-1 text-xs text-gray-400">{trace.reason ?? trace.detail ?? "No reason recorded."}</div>
-                        </Link>
-                    )) : (
-                        <div className="rounded-xl border border-gray-800 bg-black/30 p-4 text-sm text-gray-400">
-                            No autopilot trace events are recorded yet.
-                        </div>
-                    )}
                 </div>
             </section>
         </div>
