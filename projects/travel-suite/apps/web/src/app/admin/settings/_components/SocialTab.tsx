@@ -4,28 +4,7 @@ import { Instagram, Linkedin } from "lucide-react";
 import { GlassButton } from "@/components/glass/GlassButton";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
-
-async function checkOAuthAndRedirect(
-    provider: string,
-    url: string,
-    toast: ReturnType<typeof useToast>["toast"],
-) {
-    try {
-        const res = await fetch(`/api/social/oauth/status?provider=${provider}`);
-        const data = await res.json();
-        if (!data.configured) {
-            toast({
-                title: "Not configured yet",
-                description: `${provider.charAt(0).toUpperCase() + provider.slice(1)} integration hasn't been set up. Please configure OAuth credentials first.`,
-                variant: "error",
-            });
-            return;
-        }
-        window.location.href = url;
-    } catch {
-        toast({ title: "Connection check failed", variant: "error" });
-    }
-}
+import { checkOAuthAndRedirect } from "@/lib/social/oauth-client";
 
 interface SocialTabProps {
     isInstagramConnected: boolean;
@@ -58,7 +37,7 @@ export function SocialTab({
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={() => { if (!isInstagramConnected) checkOAuthAndRedirect("facebook", "/api/social/oauth/facebook", toast); }}
+                        onClick={() => { if (!isInstagramConnected) checkOAuthAndRedirect({ provider: "facebook", label: "Instagram", url: "/api/social/oauth/facebook" }, toast); }}
                         className={cn("text-xs w-full mt-auto", isInstagramConnected ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10" : "")}
                     >
                         {isInstagramConnected ? "Connected \u2713" : "Connect"}
@@ -81,7 +60,7 @@ export function SocialTab({
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={() => { if (!isLinkedInConnected) checkOAuthAndRedirect("linkedin", "/api/social/oauth/linkedin", toast); }}
+                        onClick={() => { if (!isLinkedInConnected) checkOAuthAndRedirect({ provider: "linkedin", label: "LinkedIn", url: "/api/social/oauth/linkedin" }, toast); }}
                         className={cn("text-xs w-full mt-auto", isLinkedInConnected ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10" : "")}
                     >
                         {isLinkedInConnected ? "Connected \u2713" : "Connect"}

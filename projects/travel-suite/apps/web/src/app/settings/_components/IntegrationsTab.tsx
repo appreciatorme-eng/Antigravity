@@ -10,28 +10,7 @@ import { useToast } from '@/components/ui/toast';
 import { IntegrationCard } from './IntegrationCard';
 import { MessagingSection, type WhatsAppProfile } from './MessagingSection';
 import { MapsDataSection } from './MapsDataSection';
-
-async function checkOAuthAndRedirect(
-    provider: string,
-    url: string,
-    toast: ReturnType<typeof useToast>["toast"],
-) {
-    try {
-        const res = await fetch(`/api/social/oauth/status?provider=${provider}`);
-        const data = await res.json();
-        if (!data.configured) {
-            toast({
-                title: "Not configured yet",
-                description: `${provider.charAt(0).toUpperCase() + provider.slice(1)} integration hasn't been set up. Please configure OAuth credentials first.`,
-                variant: "error",
-            });
-            return;
-        }
-        window.location.href = url;
-    } catch {
-        toast({ title: "Connection check failed", variant: "error" });
-    }
-}
+import { checkOAuthAndRedirect } from '@/lib/social/oauth-client';
 
 export interface IntegrationsTabProps {
     readonly isWhatsAppConnected: boolean;
@@ -248,7 +227,7 @@ export function IntegrationsTab({
                         description="Respond to reviews and manage your listing from the dashboard."
                         isConnected={false}
                         buttonLabel="Connect"
-                        onConnect={() => { checkOAuthAndRedirect('google', '/api/social/oauth/google', toast); }}
+                        onConnect={() => { checkOAuthAndRedirect({ provider: 'google', label: 'Google', url: '/api/social/oauth/google' }, toast); }}
                     />
                     <div className="p-4 border border-gray-100 rounded-2xl hover:border-primary/30 transition-colors bg-gray-50/50 flex flex-col gap-3">
                         <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center">
@@ -311,7 +290,7 @@ export function IntegrationsTab({
                         isConnected={isInstagramConnected}
                         connectedLabel="Connected"
                         buttonLabel={isInstagramConnected ? 'Connected' : 'Connect'}
-                        onConnect={() => { if (!isInstagramConnected) checkOAuthAndRedirect('facebook', '/api/social/oauth/facebook', toast); }}
+                        onConnect={() => { if (!isInstagramConnected) checkOAuthAndRedirect({ provider: 'facebook', label: 'Instagram', url: '/api/social/oauth/facebook' }, toast); }}
                     />
                     <IntegrationCard
                         icon={<Linkedin className="w-4 h-4 text-blue-700" />}
@@ -321,7 +300,7 @@ export function IntegrationsTab({
                         isConnected={isLinkedInConnected}
                         connectedLabel="Connected"
                         buttonLabel={isLinkedInConnected ? 'Connected' : 'Connect'}
-                        onConnect={() => { if (!isLinkedInConnected) checkOAuthAndRedirect('linkedin', '/api/social/oauth/linkedin', toast); }}
+                        onConnect={() => { if (!isLinkedInConnected) checkOAuthAndRedirect({ provider: 'linkedin', label: 'LinkedIn', url: '/api/social/oauth/linkedin' }, toast); }}
                     />
                 </div>
             </div>

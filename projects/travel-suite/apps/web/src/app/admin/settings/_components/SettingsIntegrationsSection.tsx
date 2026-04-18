@@ -16,28 +16,7 @@ import { GlassCard } from "@/components/glass/GlassCard";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/toast";
 import type { WhatsAppProfile } from "../shared";
-
-async function checkOAuthAndRedirect(
-    provider: string,
-    url: string,
-    toast: ReturnType<typeof useToast>["toast"],
-) {
-    try {
-        const res = await fetch(`/api/social/oauth/status?provider=${provider}`);
-        const data = await res.json();
-        if (!data.configured) {
-            toast({
-                title: "Not configured yet",
-                description: `${provider.charAt(0).toUpperCase() + provider.slice(1)} integration hasn't been set up. Please configure OAuth credentials first.`,
-                variant: "error",
-            });
-            return;
-        }
-        window.location.href = url;
-    } catch {
-        toast({ title: "Connection check failed", variant: "error" });
-    }
-}
+import { checkOAuthAndRedirect } from "@/lib/social/oauth-client";
 
 interface SettingsIntegrationsSectionProps {
     handleActivatePlaces: () => Promise<void>;
@@ -172,7 +151,7 @@ export function SettingsIntegrationsSection({
                                 type="button"
                                 variant={isGmailConnected ? "outline" : "secondary"}
                                 size="sm"
-                                onClick={() => { if (!isGmailConnected) checkOAuthAndRedirect("google", "/api/social/oauth/google", toast); }}
+                                onClick={() => { if (!isGmailConnected) checkOAuthAndRedirect({ provider: "google", label: "Google", url: "/api/social/oauth/google" }, toast); }}
                                 className={cn("text-xs shrink-0", isGmailConnected ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10" : "")}
                             >
                                 {isGmailConnected ? "Connected ✓" : "Connect Google"}
@@ -235,7 +214,7 @@ export function SettingsIntegrationsSection({
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                onClick={() => { checkOAuthAndRedirect("google", "/api/social/oauth/google", toast); }}
+                                onClick={() => { checkOAuthAndRedirect({ provider: "google", label: "Google", url: "/api/social/oauth/google" }, toast); }}
                                 className="text-xs w-full mt-auto"
                             >
                                 Connect
@@ -311,7 +290,7 @@ export function SettingsIntegrationsSection({
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                onClick={() => { if (!isInstagramConnected) checkOAuthAndRedirect("facebook", "/api/social/oauth/facebook", toast); }}
+                                onClick={() => { if (!isInstagramConnected) checkOAuthAndRedirect({ provider: "facebook", label: "Instagram", url: "/api/social/oauth/facebook" }, toast); }}
                                 className={cn("text-xs w-full mt-auto", isInstagramConnected ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10" : "")}
                             >
                                 {isInstagramConnected ? "Connected ✓" : "Connect"}
@@ -334,7 +313,7 @@ export function SettingsIntegrationsSection({
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                onClick={() => { if (!isLinkedInConnected) checkOAuthAndRedirect("linkedin", "/api/social/oauth/linkedin", toast); }}
+                                onClick={() => { if (!isLinkedInConnected) checkOAuthAndRedirect({ provider: "linkedin", label: "LinkedIn", url: "/api/social/oauth/linkedin" }, toast); }}
                                 className={cn("text-xs w-full mt-auto", isLinkedInConnected ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10" : "")}
                             >
                                 {isLinkedInConnected ? "Connected ✓" : "Connect"}
