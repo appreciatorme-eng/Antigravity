@@ -91,7 +91,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                                 }}
                                 className={cn(
                                     "w-full",
-                                    isFullBleedPage ? "flex-1 flex flex-col min-h-0" : !isGodPage && "max-w-7xl mx-auto",
+                                    isFullBleedPage ? "h-full" : !isGodPage && "max-w-7xl mx-auto",
                                 )}
                             >
                                 {!isGodPage && !isFullBleedPage && <Breadcrumbs />}

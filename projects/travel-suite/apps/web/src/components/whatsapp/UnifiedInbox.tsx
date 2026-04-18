@@ -94,7 +94,7 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
   }
 
   return (
-    <div className="relative flex flex-1 min-h-0 overflow-hidden">
+    <div className="relative flex h-full min-h-0 overflow-hidden">
       {/* Global WhatsApp disconnected banner */}
       {isDisconnected && (
         <div className="absolute inset-x-2 md:inset-x-4 top-2 md:top-4 z-20 flex items-center justify-between gap-2 md:gap-4 rounded-2xl border border-amber-300/25 bg-amber-500/10 px-3 md:px-4 py-2 md:py-3 backdrop-blur">
