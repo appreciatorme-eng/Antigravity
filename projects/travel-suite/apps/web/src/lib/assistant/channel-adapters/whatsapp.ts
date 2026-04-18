@@ -25,6 +25,7 @@ import {
 import { findAction } from "../actions/registry";
 import { logAuditEvent } from "../audit";
 import { guardedSendText } from "@/lib/whatsapp-evolution.server";
+import { sendWhatsAppText } from "@/lib/whatsapp.server";
 import { env } from "@/lib/config/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
@@ -81,7 +82,7 @@ async function sendReply(senderPhone: string, text: string): Promise<void> {
     const waId = senderPhone.replace(/^\+/, "");
     await guardedSendText(sessionName, waId, text);
   } else {
-    await sendReply(senderPhone, text);
+    await sendWhatsAppText(senderPhone, text);
   }
 }
 
