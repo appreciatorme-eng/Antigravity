@@ -37,11 +37,28 @@ interface TrendDay {
     estimated_usd: number;
 }
 
+interface DataQualityMeta {
+    completeness: "complete" | "partial";
+    sampled: boolean;
+    estimated: boolean;
+    notes: string[];
+}
+
 interface CostData {
     today: { total_usd: number } & Record<string, number>;
     month_to_date: { total_usd: number };
     by_category: CategoryRow[];
     by_org: OrgRow[];
+    meta?: {
+        data_quality?: DataQualityMeta;
+    };
+}
+
+interface TrendResponse {
+    daily: TrendDay[];
+    meta?: {
+        data_quality?: DataQualityMeta;
+    };
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -90,6 +107,7 @@ export default function CostsPage() {
     const [range, setRange] = useState<"7d" | "30d" | "90d">((searchParams.get("range") as "7d" | "30d" | "90d") ?? "30d");
     const [costData, setCostData] = useState<CostData | null>(null);
     const [trendData, setTrendData] = useState<TrendDay[]>([]);
+    const [trendMeta, setTrendMeta] = useState<DataQualityMeta | null>(null);
     const [loading, setLoading] = useState(true);
     const orgId = searchParams.get("orgId");
     const { toast, showSuccess, showError, dismiss } = useActionToast();
@@ -120,10 +138,11 @@ export default function CostsPage() {
                 fetch("/api/superadmin/cost/aggregate"),
                 fetch(`/api/superadmin/cost/trends?range=${range}`),
             ]);
-            if (aggRes.ok) setCostData(await aggRes.json());
+            if (aggRes.ok) setCostData(await aggRes.json() as CostData);
             if (trendRes.ok) {
-                const t = await trendRes.json();
+                const t = await trendRes.json() as TrendResponse;
                 setTrendData(t.daily ?? []);
+                setTrendMeta(t.meta?.data_quality ?? null);
             }
         } finally {
             setLoading(false);
@@ -245,6 +264,11 @@ export default function CostsPage() {
                 <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
                     Daily Cost Trend
                 </h2>
+                {trendMeta && (trendMeta.completeness !== "complete" || trendMeta.sampled || trendMeta.estimated) ? (
+                    <div className="mb-4 rounded-lg border border-amber-900/60 bg-amber-950/20 px-3 py-2 text-sm text-amber-200">
+                        {trendMeta.notes[0] ?? "Daily cost trend includes estimated values when exact cost-metering data is missing."}
+                    </div>
+                ) : null}
                 {chartData.length > 0 ? (
                     <StackedCostChart data={chartData} />
                 ) : (

@@ -1071,7 +1071,14 @@ export async function GET(request: NextRequest) {
                     "invoices",
                     "proposals",
                     "organization_ai_usage",
-                ], { completeness: "partial", sampled: true }),
+                ], {
+                    completeness: "partial",
+                    sampled: true,
+                    notes: [
+                        "Executive watchlists are sampled to keep Command Center responsive.",
+                        "Use Business OS or specialist pages before taking account-level action.",
+                    ],
+                }),
                 kpi_contracts: pickGodKpiContracts(["total_users", "notification_pending"]),
             },
         });

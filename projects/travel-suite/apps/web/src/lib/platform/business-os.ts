@@ -360,7 +360,9 @@ export type AutopilotRoiScorecard = {
     promise_escalations: number;
     collections_auto_closed: number;
     estimated_hours_saved: number;
-    estimated_cash_recovered_inr: number;
+    estimated_hours_saved_provenance: "estimated";
+    cash_recovered_inr: number | null;
+    cash_recovered_provenance: "exact" | "unknown";
     notes: string[];
 };
 
@@ -2064,7 +2066,6 @@ export function buildAutopilotAuditDetails(
         commitments_created: autopilot.commitments_created,
         collections_auto_closed: autopilot.collections_auto_closed,
         outcomes_recorded: autopilot.outcomes_recorded,
-        estimated_cash_recovered_inr: autopilot.collections_auto_closed * 10000,
     };
 }
 
@@ -2127,15 +2128,10 @@ async function annotateAutopilotEventsWithRunKey(
     }
 }
 
-function estimateCashRecoveredInrFromRunDetails(details: Record<string, unknown> | null): number {
-    const explicit = Number(details?.estimated_cash_recovered_inr ?? 0);
-    if (Number.isFinite(explicit) && explicit > 0) return explicit;
-    const collectionsAutoClosed = Number(details?.collections_auto_closed ?? 0);
-    const collectionsSequencesCompleted = Number(details?.collections_sequences_completed ?? 0);
-    if (!Number.isFinite(collectionsAutoClosed) && !Number.isFinite(collectionsSequencesCompleted)) return 0;
-    // Conservative placeholder until payment-level mapping is added.
-    return Math.max(0, (Number.isFinite(collectionsAutoClosed) ? collectionsAutoClosed : 0) * 10000
-        + (Number.isFinite(collectionsSequencesCompleted) ? collectionsSequencesCompleted : 0) * 5000);
+function exactCashRecoveredInrFromRunDetails(details: Record<string, unknown> | null): number | null {
+    const explicit = Number(details?.cash_recovered_inr ?? Number.NaN);
+    if (Number.isFinite(explicit) && explicit > 0) return Math.round(explicit);
+    return null;
 }
 
 function buildAutopilotRoiScorecard(runs: AutopilotRun[]): AutopilotRoiScorecard {
@@ -2152,9 +2148,15 @@ function buildAutopilotRoiScorecard(runs: AutopilotRun[]): AutopilotRoiScorecard
     const promiseEscalations = sum("promise_escalations");
     const collectionsAutoClosed = sum("collections_auto_closed");
     const estimatedHoursSaved = Number(((workItemsCreated * 0.3) + (workItemsAutoClosed * 0.2) + (outcomesRecorded * 0.08)).toFixed(1));
-    const estimatedCashRecoveredInr = scoped.reduce((total, run) => total + estimateCashRecoveredInrFromRunDetails(run.details), 0);
+    const exactCashRecovered = scoped
+        .map((run) => exactCashRecoveredInrFromRunDetails(run.details))
+        .filter((value): value is number => value !== null);
+    const cashRecoveredInr = exactCashRecovered.length > 0
+        ? exactCashRecovered.reduce((total, value) => total + value, 0)
+        : null;
 
     const notes: string[] = [];
+    notes.push("Hours saved is estimated from work created, auto-closed work, and recorded outcomes.");
     if (approvalsExpired > 0) {
         notes.push(`${approvalsExpired} approval items went stale and were auto-escalated.`);
     }
@@ -2164,10 +2166,9 @@ function buildAutopilotRoiScorecard(runs: AutopilotRun[]): AutopilotRoiScorecard
     if (collectionsAutoClosed > 0) {
         notes.push(`${collectionsAutoClosed} collections work items were auto-closed from resolved balances.`);
     }
-    if (notes.length === 0) {
-        notes.push("Autopilot stayed quiet this week; no major exception loops triggered.");
+    if (cashRecoveredInr === null) {
+        notes.push("Cash recovered stays unknown until payment-linked recovery is recorded directly.");
     }
-
     return {
         window: "7d",
         generated_at: new Date().toISOString(),
@@ -2180,7 +2181,9 @@ function buildAutopilotRoiScorecard(runs: AutopilotRun[]): AutopilotRoiScorecard
         promise_escalations: promiseEscalations,
         collections_auto_closed: collectionsAutoClosed,
         estimated_hours_saved: estimatedHoursSaved,
-        estimated_cash_recovered_inr: Math.round(estimatedCashRecoveredInr),
+        estimated_hours_saved_provenance: "estimated",
+        cash_recovered_inr: cashRecoveredInr,
+        cash_recovered_provenance: cashRecoveredInr === null ? "unknown" : "exact",
         notes,
     };
 }
@@ -2196,6 +2199,8 @@ function buildAutopilotRunHealth(input: {
     promiseWatchdogCount: number;
     staleApprovals48h: number;
     sendQueueStale: number;
+    blockedAccounts: number;
+    automationStatusRows: PlatformAuditAutopilotRow[];
 }): AutopilotRunHealth {
     const latestRun = input.runs[0] ?? null;
     const runAgeHours = diffHours(latestRun?.created_at);
@@ -2276,6 +2281,23 @@ function buildAutopilotRunHealth(input: {
     if (input.sendQueueStale > 0) {
         alerts.push(`${input.sendQueueStale} approved customer communications are stalled in the send queue.`);
     }
+    if (input.blockedAccounts >= 3) {
+        alerts.push(`${input.blockedAccounts} accounts are blocked by approvals right now.`);
+    }
+    const recentAutomationFailures = input.automationStatusRows.filter((row) => {
+        const details = normalizeMetadata(row.details);
+        if (!details || details.success !== false) return false;
+        const createdAtMs = row.created_at ? new Date(row.created_at).getTime() : Number.NaN;
+        return Number.isFinite(createdAtMs) && createdAtMs >= Date.now() - 24 * 86_400_000;
+    });
+    const slackPollFailures24h = recentAutomationFailures.filter((row) => row.action === "Autopilot: Slack approval poll").length;
+    const eventTriggerFailures24h = recentAutomationFailures.filter((row) => row.action === "Autopilot: Event trigger run").length;
+    if (slackPollFailures24h >= 2) {
+        alerts.push(`Slack approval poll failed ${slackPollFailures24h} times in the last 24 hours.`);
+    }
+    if (eventTriggerFailures24h >= 3) {
+        alerts.push(`Event-trigger autopilot failed ${eventTriggerFailures24h} times in the last 24 hours.`);
+    }
     const degradedLoops = loops.filter((loop) => loop.status === "degraded").map((loop) => loop.label);
     if (degradedLoops.length > 0) {
         alerts.push(`Degraded loops: ${degradedLoops.join(", ")}.`);
@@ -2295,6 +2317,7 @@ function buildAutopilotTruthLock(payload: {
     runs: AutopilotRun[];
     policyViolations: BusinessOsPolicyViolation[];
     promiseWatchdog: AutopilotSnapshot["promise_watchdog"];
+    roiScorecard: AutopilotRoiScorecard;
 }): AutopilotTruthLock {
     const checks: AutopilotTruthLock["checks"] = [];
     const invalidPriority = payload.accounts.filter((account) => !Number.isFinite(account.priority_score)).length;
@@ -2329,6 +2352,14 @@ function buildAutopilotTruthLock(payload: {
         label: "Promise watchdog uses commitments and comms followups",
         status: "pass",
         detail: `${payload.promiseWatchdog.length} accounts in watchdog using commitment + follow-up counters.`,
+    });
+    checks.push({
+        id: "roi_cash_recovered_truth",
+        label: "Cash recovered only shows payment-linked exact values",
+        status: payload.roiScorecard.cash_recovered_provenance === "exact" ? "pass" : "warn",
+        detail: payload.roiScorecard.cash_recovered_provenance === "exact"
+            ? `Autopilot ROI includes ₹${payload.roiScorecard.cash_recovered_inr?.toLocaleString("en-IN") ?? 0} of exact recovery.`
+            : "Autopilot is withholding cash recovered until payment-linked values are recorded directly.",
     });
 
     const unresolved = checks.filter((check) => check.status === "warn").length;
@@ -4364,7 +4395,7 @@ export async function buildAutopilotSnapshot(
     currentUserId: string,
 ): Promise<AutopilotSnapshot> {
     const payload = await buildBusinessOsPayload(db, currentUserId, { limit: 120 });
-    const [approvals, activeWorkItems, commitmentCounts, commsFollowupCounts, sendQueueResult, runsResult, traceRowsResult] = await Promise.all([
+    const [approvals, activeWorkItems, commitmentCounts, commsFollowupCounts, sendQueueResult, runsResult, automationStatusResult, traceRowsResult] = await Promise.all([
         listAutopilotApprovalsInternal(db, payload.accounts, { includeResolved: true }),
         loadGodWorkItems(db, {
             orgIds: payload.accounts.map((account) => account.org_id),
@@ -4381,9 +4412,15 @@ export async function buildAutopilotSnapshot(
         db
             .from("platform_audit_log")
             .select("id, actor_id, action, details, created_at, profiles!platform_audit_log_actor_id_fkey(full_name, email)")
-            .ilike("action", "Autopilot:%")
+            .in("action", ["Autopilot: Scheduled Business OS run", "Autopilot: Manual Business OS run"])
             .order("created_at", { ascending: false })
             .limit(12),
+        db
+            .from("platform_audit_log")
+            .select("id, actor_id, action, details, created_at")
+            .in("action", ["Autopilot: Slack approval poll", "Autopilot: Event trigger run"])
+            .order("created_at", { ascending: false })
+            .limit(40),
         db
             .from("org_activity_events")
             .select("id, org_id, event_type, title, detail, entity_type, entity_id, source, metadata, occurred_at")
@@ -4526,8 +4563,10 @@ export async function buildAutopilotSnapshot(
         runs: recentRuns,
         accounts: payload.accounts,
         promiseWatchdogCount: promiseWatchdog.length,
+        blockedAccounts: approvalWatchdog.blocked_accounts,
         staleApprovals48h: approvalWatchdog.stale_48h,
         sendQueueStale,
+        automationStatusRows: (automationStatusResult.data ?? []) as PlatformAuditAutopilotRow[],
     });
     const truthLock = buildAutopilotTruthLock({
         accounts: payload.accounts,
@@ -4535,6 +4574,7 @@ export async function buildAutopilotSnapshot(
         runs: recentRuns,
         policyViolations: payload.policy_violations,
         promiseWatchdog,
+        roiScorecard,
     });
 
     const founderDigest = buildFounderDigest({

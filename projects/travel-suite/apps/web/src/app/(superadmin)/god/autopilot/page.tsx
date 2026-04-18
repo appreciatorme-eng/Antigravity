@@ -737,12 +737,22 @@ export default function GodAutopilotPage() {
                         <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
                             <div className="text-xs uppercase tracking-wide text-gray-500">Estimated hours saved</div>
                             <div className="mt-2 text-xl font-semibold text-white">{data?.roi_scorecard.estimated_hours_saved ?? "—"}h</div>
+                            <div className="mt-1 text-xs text-gray-500">
+                                {data?.roi_scorecard.estimated_hours_saved_provenance === "estimated" ? "Estimated" : "Unknown provenance"}
+                            </div>
                         </div>
                     </div>
                     <div className="mt-3 rounded-xl border border-emerald-900/60 bg-emerald-950/20 p-4">
-                        <div className="text-xs uppercase tracking-wide text-emerald-300">Estimated cash recovered</div>
+                        <div className="text-xs uppercase tracking-wide text-emerald-300">Cash recovered</div>
                         <div className="mt-2 text-xl font-semibold text-emerald-100">
-                            ₹{(data?.roi_scorecard.estimated_cash_recovered_inr ?? 0).toLocaleString("en-IN")}
+                            {data?.roi_scorecard.cash_recovered_inr === null
+                                ? "Unknown"
+                                : `₹${data?.roi_scorecard.cash_recovered_inr?.toLocaleString("en-IN") ?? "0"}`}
+                        </div>
+                        <div className="mt-1 text-xs text-emerald-200/80">
+                            {data?.roi_scorecard.cash_recovered_provenance === "exact"
+                                ? "Payment-linked exact recovery only."
+                                : "Hidden until payment-linked recovery is recorded directly."}
                         </div>
                     </div>
                     <div className="mt-3 space-y-2">

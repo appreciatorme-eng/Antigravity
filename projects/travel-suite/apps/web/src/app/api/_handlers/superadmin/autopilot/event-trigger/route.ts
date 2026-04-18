@@ -3,6 +3,7 @@ import { apiError } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { authorizeCronRequest } from "@/lib/security/cron-auth";
 import { runBusinessOsEventAutomation } from "@/lib/platform/business-os";
+import { logPlatformAction } from "@/lib/platform/audit";
 import { logError } from "@/lib/observability/logger";
 
 const VALID_TRIGGERS = [
@@ -48,9 +49,19 @@ export async function POST(request: NextRequest) {
             currentUserId: null,
             trigger,
         });
+        await logPlatformAction(null, "Autopilot: Event trigger run", "automation", {
+            org_id: org_id.trim(),
+            trigger,
+            success: true,
+            state_updated: result?.state_updated ?? false,
+            work_items_created: result?.work_items_created ?? 0,
+        });
 
         return NextResponse.json({ success: true, result }, { status: 200 });
     } catch (error) {
+        await logPlatformAction(null, "Autopilot: Event trigger run", "automation", {
+            success: false,
+        });
         logError("[autopilot/event-trigger POST]", error);
         return apiError("Event trigger failed", 500);
     }

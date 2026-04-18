@@ -13,8 +13,10 @@ export type GodDataQualityMeta = {
   as_of: string;
   completeness: "complete" | "partial";
   sampled: boolean;
+  estimated: boolean;
   mode: "exact_live";
   source: string[];
+  notes: string[];
 };
 
 export type GodIntegrityWarning = {
@@ -92,14 +94,21 @@ export function pickGodKpiContracts(ids: string[]): GodKpiContract[] {
 
 export function buildGodDataQuality(
   source: string[],
-  options?: { completeness?: "complete" | "partial"; sampled?: boolean },
+  options?: {
+    completeness?: "complete" | "partial";
+    sampled?: boolean;
+    estimated?: boolean;
+    notes?: string[];
+  },
 ): GodDataQualityMeta {
   return {
     as_of: new Date().toISOString(),
     completeness: options?.completeness ?? "complete",
     sampled: options?.sampled ?? false,
+    estimated: options?.estimated ?? false,
     mode: "exact_live",
     source,
+    notes: options?.notes ?? [],
   };
 }
 

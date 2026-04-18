@@ -21,12 +21,12 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { waitUntil } from "@vercel/functions";
 import { timingSafeEqual } from "crypto";
 import { resolveSlackWebhookConfig } from "@/lib/god-slack";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logError, logEvent, getRequestId, getRequestContext } from "@/lib/observability/logger";
 import type { LogContext } from "@/lib/observability/logger";
+import { scheduleBackgroundTask } from "@/lib/server/background";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -343,7 +343,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         });
 
         // waitUntil keeps the Vercel function alive after the response is sent
-        waitUntil(
+        scheduleBackgroundTask(
             persistErrorEvent(issue, ctx)
                 .then((isRegression) =>
                     postToSlack(issue, isRegression).catch((err) =>

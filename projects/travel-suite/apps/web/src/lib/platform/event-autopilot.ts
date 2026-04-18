@@ -1,10 +1,11 @@
 // Event-driven autopilot trigger — fires immediately on business events instead of waiting for the daily cron.
 // Use triggerEventAutopilot() as fire-and-forget from webhook handlers.
 
-import { waitUntil } from "@vercel/functions";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { runBusinessOsEventAutomation } from "@/lib/platform/business-os";
+import { logPlatformAction } from "@/lib/platform/audit";
 import { logError, logEvent } from "@/lib/observability/logger";
+import { scheduleBackgroundTask } from "@/lib/server/background";
 
 // Maps external event names to the trigger types runBusinessOsEventAutomation accepts
 const TRIGGER_MAP = {
@@ -18,13 +19,20 @@ const TRIGGER_MAP = {
 export type EventAutopilotTrigger = keyof typeof TRIGGER_MAP;
 
 export function triggerEventAutopilot(orgId: string, trigger: EventAutopilotTrigger): void {
-    waitUntil(
+    scheduleBackgroundTask(
         runBusinessOsEventAutomation(createAdminClient() as never, {
             orgId,
             currentUserId: null,
             trigger: TRIGGER_MAP[trigger],
         })
             .then((result) => {
+                void logPlatformAction(null, "Autopilot: Event trigger run", "automation", {
+                    org_id: orgId,
+                    trigger,
+                    success: true,
+                    state_updated: result?.state_updated ?? false,
+                    work_items_created: result?.work_items_created ?? 0,
+                });
                 logEvent("info", "[event-autopilot] Completed", {
                     orgId,
                     trigger,
@@ -33,6 +41,11 @@ export function triggerEventAutopilot(orgId: string, trigger: EventAutopilotTrig
                 });
             })
             .catch((err: unknown) => {
+                void logPlatformAction(null, "Autopilot: Event trigger run", "automation", {
+                    org_id: orgId,
+                    trigger,
+                    success: false,
+                });
                 logError("[event-autopilot] Failed", err, { orgId, trigger });
             }),
     );

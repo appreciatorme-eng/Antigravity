@@ -436,8 +436,10 @@ mcpServer.setRequestHandler(ListToolsRequestSchema, async () => ({
 }));
 
 // ── Tool handlers ─────────────────────────────────────────────────────────────
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- MCP SDK request params are dynamically typed at runtime
 mcpServer.setRequestHandler(CallToolRequestSchema, async (request: any) => {
     const args = request.params.arguments ?? {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase admin client is used with dynamic MCP query composition
     const db = createAdminClient() as any;
 
     switch (request.params.name) {
@@ -451,7 +453,9 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request: any) => {
                 db.from("organization_ai_usage").select("estimated_cost_usd").eq("month_start", monthStartISO()),
             ]);
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- lightweight MCP text formatter over dynamic rows
             const mrr = (subs.data ?? []).reduce((s: number, r: any) => s + Number(r.amount ?? 0), 0);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- lightweight MCP text formatter over dynamic rows
             const aiMtd = (aiUsage.data ?? []).reduce((s: number, r: any) => s + Number(r.estimated_cost_usd ?? 0), 0);
 
             let queueInfo = "Redis not configured";
@@ -485,6 +489,7 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request: any) => {
 
             if (!errors?.length) return { content: [{ type: "text", text: "✅ No open error events." }] };
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- error digest rows come from dynamic MCP query output
             const lines = errors.map((e: any, i: number) =>
                 `**${i + 1}. [${(e.level ?? "unknown").toUpperCase()}]** ${e.title ?? "Untitled"}\n` +
                 `   Events: ${e.event_count ?? 0} | Affected users: ${e.user_count ?? 0} | First seen: ${e.first_seen_at ?? "unknown"}`
@@ -494,18 +499,17 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request: any) => {
 
         // ── get_revenue_summary ───────────────────────────────────────────────
         case "get_revenue_summary": {
-            const [subs, orgs, overdueInvoices, aiCost] = await Promise.all([
+            const [subs, accountPortfolio] = await Promise.all([
                 db.from("subscriptions").select("amount, status, plan_id").eq("status", "active"),
-                db.from("organizations").select("subscription_tier"),
-                db.from("invoices").select("balance_amount, total_amount").in("status", ["issued", "overdue", "partially_paid"]).gt("balance_amount", 0),
-                db.from("organization_ai_usage").select("estimated_cost_usd").eq("month_start", monthStartISO()),
+                listAccounts(db, { limit: 5000, page: 0 }),
             ]);
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- subscription rows are dynamic in MCP mode
             const mrr = (subs.data ?? []).reduce((s: number, r: any) => s + Number(r.amount ?? 0), 0);
-            const overdue = (overdueInvoices.data ?? []).reduce((s: number, r: any) => s + Number(r.balance_amount ?? r.total_amount ?? 0), 0);
-            const aiMtd = (aiCost.data ?? []).reduce((s: number, r: any) => s + Number(r.estimated_cost_usd ?? 0), 0);
-            const tierCounts = (orgs.data ?? []).reduce((acc: Record<string, number>, o: any) => {
-                const t = o.subscription_tier ?? "free";
+            const overdue = accountPortfolio.accounts.reduce((sum, account) => sum + account.snapshot.overdue_balance, 0);
+            const aiMtd = accountPortfolio.accounts.reduce((sum, account) => sum + account.snapshot.ai_spend_mtd_usd, 0);
+            const tierCounts = accountPortfolio.accounts.reduce((acc: Record<string, number>, account) => {
+                const t = account.tier ?? "free";
                 acc[t] = (acc[t] ?? 0) + 1;
                 return acc;
             }, {});
@@ -517,6 +521,7 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request: any) => {
                 `- **Tier Distribution:** ${Object.entries(tierCounts).map(([k, v]) => `${k}: ${v}`).join(" | ")}`,
                 `- **Overdue Invoices Total:** ₹${Math.round(overdue).toLocaleString("en-IN")}`,
                 `- **AI API Cost MTD:** $${aiMtd.toFixed(2)}`,
+                `- **Source:** shared account snapshot + live subscription ledger`,
             ].join("\n") }] };
         }
 
@@ -534,6 +539,7 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request: any) => {
 
             if (!invoices?.length) return { content: [{ type: "text", text: "✅ No overdue invoices." }] };
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- invoice rows come from a dynamic MCP query
             const lines = invoices.map((inv: any) => {
                 const days = Math.floor((Date.now() - new Date(inv.due_date).getTime()) / 86_400_000);
                 const orgName = inv.organizations?.name ?? inv.organization_id ?? "Unknown";
@@ -546,19 +552,19 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request: any) => {
         // ── get_top_spending_orgs ─────────────────────────────────────────────
         case "get_top_spending_orgs": {
             const limit = Number(args.limit ?? 10);
-            const { data: usage } = await db
-                .from("organization_ai_usage")
-                .select("organization_id, estimated_cost_usd, ai_requests, organizations(name, subscription_tier)")
-                .eq("month_start", monthStartISO())
-                .order("estimated_cost_usd", { ascending: false })
-                .limit(limit);
+            const { accounts } = await listAccounts(db, { limit: 5000, page: 0 });
+            const usage = accounts
+                .filter((account) => account.snapshot.ai_spend_mtd_usd > 0 || account.snapshot.ai_requests_mtd > 0)
+                .sort((left, right) =>
+                    right.snapshot.ai_spend_mtd_usd - left.snapshot.ai_spend_mtd_usd
+                    || right.snapshot.ai_requests_mtd - left.snapshot.ai_requests_mtd,
+                )
+                .slice(0, limit);
 
-            if (!usage?.length) return { content: [{ type: "text", text: "No AI usage data this month." }] };
+            if (!usage.length) return { content: [{ type: "text", text: "No AI usage data this month." }] };
 
-            const lines = usage.map((r: any, i: number) => {
-                const name = r.organizations?.name ?? r.organization_id;
-                const tier = r.organizations?.subscription_tier ?? "free";
-                return `${i + 1}. **${name}** [${tier}] — $${Number(r.estimated_cost_usd).toFixed(2)} | ${Number(r.ai_requests).toLocaleString()} requests`;
+            const lines = usage.map((account, i) => {
+                return `${i + 1}. **${account.name}** [${account.tier}] — $${account.snapshot.ai_spend_mtd_usd.toFixed(2)} | ${account.snapshot.ai_requests_mtd.toLocaleString()} requests`;
             });
             return { content: [{ type: "text", text: `## Top AI Spending Orgs (MTD)\n\n${lines.join("\n")}` }] };
         }
@@ -602,6 +608,7 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request: any) => {
                 db.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", since),
             ]);
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- signup rows come from a dynamic MCP query
             const lines = (newOrgs.data ?? []).map((o: any) =>
                 `- **${o.name ?? o.id}** [${o.subscription_tier ?? "free"}] — joined ${o.created_at?.slice(0, 10)}`
             );
@@ -924,6 +931,7 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request: any) => {
 export async function GET(req: NextRequest) {
     const auth = await requireSuperAdmin(req);
     if (!auth.ok) return auth.response;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- SSE transport expects a response constructor-like object
     const transport = new SSEServerTransport("/api/superadmin/mcp/messages", NextResponse as any);
     await mcpServer.connect(transport);
     return NextResponse.json({ status: "streaming_ready", endpoint: "/api/superadmin/mcp/messages", tool_count: 26 });

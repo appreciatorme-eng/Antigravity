@@ -6,8 +6,10 @@ describe("god-kpi helpers", () => {
     const meta = buildGodDataQuality(["profiles", "organizations"]);
     expect(meta.mode).toBe("exact_live");
     expect(meta.sampled).toBe(false);
+    expect(meta.estimated).toBe(false);
     expect(meta.completeness).toBe("complete");
     expect(meta.source).toEqual(["profiles", "organizations"]);
+    expect(meta.notes).toEqual([]);
     expect(typeof meta.as_of).toBe("string");
   });
 

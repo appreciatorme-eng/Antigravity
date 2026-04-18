@@ -338,7 +338,7 @@ async function runChainedCrons(): Promise<ChainedCronResults> {
     }),
   ]);
 
-  return {
+  const results = {
     reputationCampaigns: reputationResult.status === "fulfilled" ? reputationResult.value : { sent: 0, orgs: 0, errors: 1 },
     errorDigest: errorDigestResult.status === "fulfilled" ? errorDigestResult.value : { posted: false, count: 0 },
     operatorScorecards: scorecardResult.status === "fulfilled" ? scorecardResult.value : { delivered: false },
@@ -348,6 +348,13 @@ async function runChainedCrons(): Promise<ChainedCronResults> {
     socialSyncMetrics: socialSyncResult.status === "fulfilled" ? socialSyncResult.value : { fetched: 0, errors: 1, rate_limited: false, timed_out: false },
     slackApprovalPoll: slackPollResult.status === "fulfilled" ? slackPollResult.value : { ran: false as const, reason: "unexpected error" },
   };
+
+  await logPlatformAction(null, "Autopilot: Slack approval poll", "automation", {
+    success: results.slackApprovalPoll.ran !== false || results.slackApprovalPoll.reason === undefined,
+    ...results.slackApprovalPoll,
+  });
+
+  return results;
 }
 
 async function runAiSpendAlert(): Promise<{ alerted: boolean; spend_usd: number }> {

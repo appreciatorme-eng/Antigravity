@@ -183,6 +183,14 @@ interface OverviewData {
         href: string;
         tone?: "danger";
     }>;
+    meta?: {
+        data_quality?: {
+            completeness: "complete" | "partial";
+            sampled: boolean;
+            estimated: boolean;
+            notes: string[];
+        };
+    };
 }
 
 const SAVED_VIEWS: Array<{ id: SavedView; label: string }> = [
@@ -721,6 +729,14 @@ export default function GodCommandCenter() {
                     <Power className="h-3.5 w-3.5" /> Kill Switch
                 </Link>
             </div>
+            {data.meta?.data_quality && (data.meta.data_quality.completeness !== "complete" || data.meta.data_quality.sampled || data.meta.data_quality.estimated) ? (
+                <div className="rounded-lg border border-amber-900/60 bg-amber-950/20 px-4 py-3 text-sm text-amber-200">
+                    <div className="font-medium">Command Center is posture-first, not decision-complete.</div>
+                    <div className="mt-1 text-amber-100/90">
+                        {data.meta.data_quality.notes[0] ?? "Some executive cards are partial, sampled, or estimated."}
+                    </div>
+                </div>
+            ) : null}
             <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-start 2xl:justify-between">
                 <div>
                     <h1 className="text-2xl font-semibold text-white">{data.header.title}</h1>

@@ -103,7 +103,13 @@ export async function GET(request: NextRequest) {
             range,
             daily: finalDaily,
             meta: {
-                data_quality: buildGodDataQuality(["organization_ai_usage", "notification_logs"]),
+                data_quality: buildGodDataQuality(["organization_ai_usage", "notification_logs"], {
+                    completeness: "partial",
+                    estimated: true,
+                    notes: [
+                        "Daily values fall back to monthly AI usage spread when daily cost-metering logs are missing.",
+                    ],
+                }),
             },
         });
     } catch (err) {

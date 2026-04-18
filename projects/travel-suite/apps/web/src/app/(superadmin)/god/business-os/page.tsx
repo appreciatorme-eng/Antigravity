@@ -786,111 +786,19 @@ export default function BusinessOsPage() {
                     </div>
                 </div>
 
-                <div className="mt-4 grid gap-3 lg:grid-cols-[1.2fr_0.8fr]">
-                    <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
-                        <div className="text-xs uppercase tracking-wide text-gray-500">What needs attention</div>
-                        <div className="mt-3 space-y-2">
-                            {(data?.ai_daily_brief.priorities ?? []).slice(0, 4).map((item) => (
-                                <div key={item} className="rounded-lg border border-gray-800 bg-gray-950/50 px-3 py-2 text-sm text-gray-300">
-                                    {item}
-                                </div>
-                            ))}
-                            {(data?.ai_daily_brief.gaps ?? []).slice(0, 2).map((gap) => (
-                                <div key={gap} className="rounded-lg border border-amber-900/60 bg-amber-950/20 px-3 py-2 text-sm text-amber-200">
-                                    {gap}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="rounded-xl border border-gray-800 bg-black/30 p-4">
-                        <div className="text-xs uppercase tracking-wide text-gray-500">Queue posture</div>
-                        <div className="mt-3 grid grid-cols-2 gap-3">
-                            <div className="rounded-lg border border-gray-800 bg-gray-950/50 px-3 py-3">
-                                <div className="text-xs text-gray-500">Accounts</div>
-                                <div className="mt-1 text-xl font-semibold text-white">{data?.summary.total_accounts ?? "—"}</div>
+                <div className="mt-4 rounded-xl border border-gray-800 bg-black/30 p-4">
+                    <div className="text-xs uppercase tracking-wide text-gray-500">What needs attention</div>
+                    <div className="mt-3 grid gap-2 lg:grid-cols-2">
+                        {(data?.ai_daily_brief.priorities ?? []).slice(0, 4).map((item) => (
+                            <div key={item} className="rounded-lg border border-gray-800 bg-gray-950/50 px-3 py-2 text-sm text-gray-300">
+                                {item}
                             </div>
-                            <div className="rounded-lg border border-gray-800 bg-gray-950/50 px-3 py-3">
-                                <div className="text-xs text-gray-500">My queue</div>
-                                <div className="mt-1 text-xl font-semibold text-white">{data?.summary.my_accounts ?? "—"}</div>
+                        ))}
+                        {(data?.ai_daily_brief.gaps ?? []).slice(0, 2).map((gap) => (
+                            <div key={gap} className="rounded-lg border border-amber-900/60 bg-amber-950/20 px-3 py-2 text-sm text-amber-200">
+                                {gap}
                             </div>
-                            <div className="rounded-lg border border-gray-800 bg-gray-950/50 px-3 py-3">
-                                <div className="text-xs text-gray-500">Due today</div>
-                                <div className="mt-1 text-xl font-semibold text-white">{data ? data.accounts.filter((account) => isDueToday(account.account_state.next_action_due_at)).length : "—"}</div>
-                            </div>
-                            <div className="rounded-lg border border-gray-800 bg-gray-950/50 px-3 py-3">
-                                <div className="text-xs text-gray-500">Approval needed</div>
-                                <div className="mt-1 text-xl font-semibold text-white">{data?.summary.pending_approvals ?? "—"}</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
-                <div className="rounded-2xl border border-red-900/40 bg-red-950/10 p-5">
-                    <div className="flex items-center justify-between gap-3">
-                        <div>
-                            <div className="text-sm font-medium text-red-100">Founder mode</div>
-                            <div className="mt-1 text-sm text-red-200/80">{data?.founder_mode.headline ?? "Loading founder exceptions..."}</div>
-                        </div>
-                        <Link href="/god/autopilot" className="text-xs text-red-200/80 hover:text-red-100">
-                            Open Autopilot
-                        </Link>
-                    </div>
-                    <div className="mt-4 grid gap-3 md:grid-cols-3">
-                        <div className="rounded-xl border border-red-900/40 bg-black/20 p-4">
-                            <div className="text-xs uppercase tracking-wide text-red-200/70">Approvals</div>
-                            <div className="mt-2 text-2xl font-semibold text-white">{data?.founder_mode.approvals.length ?? "—"}</div>
-                        </div>
-                        <div className="rounded-xl border border-red-900/40 bg-black/20 p-4">
-                            <div className="text-xs uppercase tracking-wide text-red-200/70">Revenue moves</div>
-                            <div className="mt-2 text-2xl font-semibold text-white">{data?.founder_mode.revenue_moves.length ?? "—"}</div>
-                        </div>
-                        <div className="rounded-xl border border-red-900/40 bg-black/20 p-4">
-                            <div className="text-xs uppercase tracking-wide text-red-200/70">Churn risks</div>
-                            <div className="mt-2 text-2xl font-semibold text-white">{data?.founder_mode.churn_risks.length ?? "—"}</div>
-                        </div>
-                    </div>
-                </div>
-                <div className="rounded-2xl border border-gray-800 bg-gray-950/70 p-5">
-                    <div className="text-sm font-medium text-gray-200">Only you today</div>
-                    <div className="mt-2 text-sm text-gray-400">{data?.founder_mode.summary ?? "Loading founder summary..."}</div>
-                    <div className="mt-4 grid gap-3 md:grid-cols-3">
-                        <div className="space-y-2">
-                            <div className="text-xs uppercase tracking-wide text-gray-500">Highest risk</div>
-                            {(data?.founder_mode.highest_risk_accounts ?? []).slice(0, 3).map((account) => (
-                                <button
-                                    key={account.org_id}
-                                    onClick={() => setSelectedOrgId(account.org_id)}
-                                    className="w-full rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-left hover:border-gray-700"
-                                >
-                                    <div className="text-sm text-white">{account.account_name}</div>
-                                    <div className="mt-1 text-xs text-gray-400">priority {account.priority_score}</div>
-                                </button>
-                            ))}
-                        </div>
-                        <div className="space-y-2">
-                            <div className="text-xs uppercase tracking-wide text-gray-500">Revenue</div>
-                            {(data?.founder_mode.revenue_moves ?? []).slice(0, 3).map((item) => (
-                                <a key={item.id} href={item.href} className="block rounded-lg border border-gray-800 bg-black/30 px-3 py-2 hover:border-gray-700">
-                                    <div className="text-sm text-white">{item.account_name}</div>
-                                    <div className="mt-1 text-xs text-gray-400">{item.detail}</div>
-                                </a>
-                            ))}
-                        </div>
-                        <div className="space-y-2">
-                            <div className="text-xs uppercase tracking-wide text-gray-500">Churn</div>
-                            {(data?.founder_mode.churn_risks ?? []).slice(0, 3).map((item) => (
-                                <button
-                                    key={item.id}
-                                    onClick={() => setSelectedOrgId(item.org_id)}
-                                    className="w-full rounded-lg border border-gray-800 bg-black/30 px-3 py-2 text-left hover:border-gray-700"
-                                >
-                                    <div className="text-sm text-white">{item.account_name}</div>
-                                    <div className="mt-1 text-xs text-gray-400">{item.detail}</div>
-                                </button>
-                            ))}
-                        </div>
+                        ))}
                     </div>
                 </div>
             </section>
