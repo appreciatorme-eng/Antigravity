@@ -544,7 +544,7 @@ export function MessageThread({
   const initials = getInitials(contact.name);
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+    <div className="flex h-full flex-1 min-h-0 flex-col overflow-hidden">
       {/* Chat Header */}
       <div
         className="shrink-0 h-14 md:h-16 flex items-center justify-between px-2 md:px-4 border-b border-white/10"

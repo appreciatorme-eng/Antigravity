@@ -94,7 +94,7 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
   }
 
   return (
-    <div className="relative flex h-full min-h-0 overflow-hidden">
+    <div className="relative flex h-full min-h-0 w-full overflow-hidden">
       {/* Global WhatsApp disconnected banner */}
       {isDisconnected && (
         <div className="absolute inset-x-2 md:inset-x-4 top-2 md:top-4 z-20 flex items-center justify-between gap-2 md:gap-4 rounded-2xl border border-amber-300/25 bg-amber-500/10 px-3 md:px-4 py-2 md:py-3 backdrop-blur">
@@ -120,7 +120,7 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
       )}
 
       {/* LEFT: Conversation List — full-width on mobile, fixed-width on desktop */}
-      <div className={`${mobileView === 'list' ? 'flex' : 'hidden'} md:flex w-full md:w-[280px] shrink-0 flex-col`}>
+      <div className={`${mobileView === 'list' ? 'flex' : 'hidden'} md:flex min-h-0 w-full md:w-[280px] shrink-0 flex-col overflow-hidden`}>
         <ConversationListPanel
           conversations={inbox.conversations}
           selectedId={inbox.selectedId}
@@ -144,7 +144,7 @@ export function UnifiedInbox({ onSendMessage, pendingTemplate, onClearPendingTem
       </div>
 
       {/* MIDDLE: Message Thread — full-width on mobile, flex on desktop */}
-      <div className={`${mobileView === 'thread' ? 'flex' : 'hidden'} md:flex flex-1 flex-col min-w-0`}>
+      <div className={`${mobileView === 'thread' ? 'flex' : 'hidden'} md:flex flex-1 min-h-0 min-w-0 flex-col overflow-hidden`}>
         <ThreadPane
           selectedConversation={inbox.selectedConversation}
           selectedChannel={inbox.selectedChannel}
