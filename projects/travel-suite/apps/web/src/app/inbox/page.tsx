@@ -47,7 +47,7 @@ export default function InboxPage() {
 
   return (
     <div
-      className="flex flex-col h-[100dvh] overflow-hidden"
+      className="flex flex-col h-full overflow-hidden"
       style={{ background: 'linear-gradient(160deg, #0a1628 0%, #0d1f38 100%)' }}
     >
       <GuidedTour />

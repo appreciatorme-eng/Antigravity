@@ -35,6 +35,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     // Avoid double shelling for admin routes because /admin has its own layout shell.
     const isAdminPage = pathname?.startsWith("/admin");
     const isGodPage = pathname?.startsWith("/god");
+    const isFullBleedPage =
+        pathname?.startsWith("/inbox") ||
+        pathname?.startsWith("/planner") ||
+        pathname?.startsWith("/calendar");
     // Marketing, auth, and welcome pages bypass the SaaS shell entirely.
     const MARKETING_PATHS = ["/", "/pricing", "/about", "/blog", "/demo", "/solutions", "/bones"];
     const isMarketingPage = MARKETING_PATHS.some(
@@ -66,7 +70,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                     {/* Subtle background decorative bloom */}
                     <div className="pointer-events-none absolute -top-40 -right-40 w-96 h-96 bg-primary/5 dark:bg-primary/10 rounded-full blur-[100px]" />
                     <TopBar />
-                    <main id="main-content" className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar pb-24 md:pb-8 relative z-10">
+                    <main
+                        id="main-content"
+                        className={cn(
+                            "flex-1 relative z-10",
+                            isFullBleedPage
+                                ? "overflow-hidden flex flex-col"
+                                : "overflow-y-auto p-4 md:p-8 custom-scrollbar pb-24 md:pb-8",
+                        )}
+                    >
                         <AnimatePresence mode="wait">
                             <motion.div
                                 key={pathname}
@@ -77,9 +89,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                                     duration: 0.4,
                                     ease: [0.175, 0.885, 0.32, 1.05],
                                 }}
-                                className={cn("w-full", !isGodPage && "max-w-7xl mx-auto")}
+                                className={cn(
+                                    "w-full",
+                                    isFullBleedPage ? "flex-1 flex flex-col min-h-0" : !isGodPage && "max-w-7xl mx-auto",
+                                )}
                             >
-                                {!isGodPage && <Breadcrumbs />}
+                                {!isGodPage && !isFullBleedPage && <Breadcrumbs />}
                                 {children}
                             </motion.div>
                         </AnimatePresence>

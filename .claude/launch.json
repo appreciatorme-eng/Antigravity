@@ -3,9 +3,9 @@
   "configurations": [
     {
       "name": "web-dev",
-      "runtimeExecutable": "/opt/homebrew/Cellar/node@22/22.22.0/bin/node",
-      "runtimeArgs": ["/Users/justforfun/Desktop/Antigravity/projects/travel-suite/apps/web/node_modules/.bin/next", "dev"],
-      "cwd": "/Users/justforfun/Desktop/Antigravity/projects/travel-suite/apps/web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "projects/travel-suite/apps/web",
       "port": 3000
     }
   ]
