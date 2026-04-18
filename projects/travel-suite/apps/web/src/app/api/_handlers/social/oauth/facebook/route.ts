@@ -23,7 +23,7 @@ export async function GET(req: Request) {
         const state = createSocialOAuthState(user.id);
 
         // Redirect URL for Facebook OAuth
-        const scope = 'instagram_basic,instagram_content_publish,pages_manage_posts';
+        const scope = 'instagram_basic,instagram_content_publish,pages_manage_posts,pages_show_list';
         const oauthUrl = `https://www.facebook.com/v20.0/dialog/oauth?client_id=${META_APP_ID}&redirect_uri=${encodeURIComponent(META_REDIRECT_URI)}&state=${state}&scope=${scope}`;
 
         return NextResponse.redirect(oauthUrl);
