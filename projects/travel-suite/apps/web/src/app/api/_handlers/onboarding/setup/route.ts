@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
+import { after } from 'next/server';
 import { apiError } from "@/lib/api/response";
 import { createClient as createServerClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sanitizeEmail, sanitizePhone, sanitizeText } from '@/lib/security/sanitize';
 import { safeErrorMessage } from '@/lib/security/safe-error';
 import { enforceRateLimit } from '@/lib/security/rate-limit';
+import { sendWelcomeEmail } from '@/lib/email';
 
 const supabaseAdmin = createAdminClient();
 
@@ -492,6 +494,19 @@ export async function POST(request: Request) {
 
     if (marketplaceError) {
       return apiError(safeErrorMessage(marketplaceError, 'Failed to update marketplace profile'), 400);
+    }
+
+    const isNewOrg = !profile.organization_id;
+    if (isNewOrg) {
+      const toEmail = safeUserEmail || profile.email;
+      if (toEmail) {
+        after(async () => {
+          await sendWelcomeEmail({
+            toEmail: toEmail!,
+            fullName: operatorName || profile.full_name,
+          });
+        });
+      }
     }
 
     return NextResponse.json({
