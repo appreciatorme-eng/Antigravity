@@ -47,7 +47,7 @@ export default function InboxPage() {
 
   return (
     <div
-      className="flex flex-col h-full overflow-hidden"
+      className="flex-1 flex flex-col overflow-hidden min-h-0"
       style={{ background: 'linear-gradient(160deg, #0a1628 0%, #0d1f38 100%)' }}
     >
       <GuidedTour />
@@ -136,7 +136,7 @@ export default function InboxPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
-              className="flex-1 overflow-hidden min-h-0"
+              className="flex-1 overflow-hidden min-h-0 flex flex-col"
               data-tour="inbox-messages"
             >
               <UnifiedInbox
