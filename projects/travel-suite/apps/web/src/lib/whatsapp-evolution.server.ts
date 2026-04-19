@@ -611,6 +611,38 @@ export async function updateEvolutionGroupDescription(
     });
 }
 
+/**
+ * Best-effort probe to verify a WhatsApp group still exists and is writable
+ * for the connected session. Evolution does not have a dedicated wrapper here,
+ * so we reuse the description update endpoint and check the raw response.
+ */
+export async function verifyEvolutionGroupAccess(
+    instanceName: string,
+    groupJid: string,
+): Promise<boolean> {
+    try {
+        const res = await evolutionFetch(`/group/updateGroupDescription/${instanceName}`, {
+            method: "POST",
+            body: JSON.stringify({
+                groupJid,
+                description:
+                    "Your private TripBuilt notification channel. Daily briefings, new leads, payments, and driver updates — all here.",
+            }),
+        });
+
+        if (res.ok) {
+            return true;
+        }
+
+        const body = await res.text().catch(() => "(no body)");
+        throw new Error(
+            `Evolution POST /group/updateGroupDescription/${instanceName} -> ${res.status}: ${body}`,
+        );
+    } catch {
+        return false;
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Guarded send wrappers — rate-limited via send-guard
 // ---------------------------------------------------------------------------

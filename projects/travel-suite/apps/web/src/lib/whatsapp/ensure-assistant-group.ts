@@ -3,6 +3,7 @@ import {
   createEvolutionGroup,
   guardedSendText,
   updateEvolutionGroupDescription,
+  verifyEvolutionGroupAccess,
 } from "@/lib/whatsapp-evolution.server";
 import { logError, logEvent } from "@/lib/observability/logger";
 import { sendPoll, WELCOME_POLL } from "./assistant-polls";
@@ -35,13 +36,36 @@ export async function ensureAssistantGroup(
     phone_number?: string;
   } | null;
 
+  const orgId = conn?.organization_id ?? null;
+
+  const clearStaleAssistantGroup = async (groupJid: string): Promise<void> => {
+    if (!orgId) return;
+
+    await admin
+      .from("whatsapp_connections")
+      .update({ assistant_group_jid: null } as Record<string, unknown>)
+      .eq("organization_id", orgId)
+      .eq("assistant_group_jid", groupJid);
+
+    logEvent("info", `[ensure-assistant-group] Cleared stale group ${groupJid} for org ${orgId}`);
+  };
+
   // Already has a group on this session
-  if (conn?.assistant_group_jid) return conn.assistant_group_jid;
+  if (conn?.assistant_group_jid) {
+    const isAccessible = await verifyEvolutionGroupAccess(
+      sessionName,
+      conn.assistant_group_jid,
+    );
+
+    if (isAccessible) {
+      return conn.assistant_group_jid;
+    }
+
+    await clearStaleAssistantGroup(conn.assistant_group_jid);
+  }
 
   // No phone number — can't create group
   if (!conn?.phone_number) return null;
-
-  const orgId = conn.organization_id;
   if (!orgId) return null;
 
   // 2. Check if any row for this org has an existing group JID
@@ -58,6 +82,10 @@ export async function ensureAssistantGroup(
     ?.assistant_group_jid;
 
   if (existingJid) {
+    const isAccessible = await verifyEvolutionGroupAccess(sessionName, existingJid);
+    if (!isAccessible) {
+      await clearStaleAssistantGroup(existingJid);
+    } else {
     // Carry the existing group JID forward to the new session row
     await admin
       .from("whatsapp_connections")
@@ -66,6 +94,7 @@ export async function ensureAssistantGroup(
 
     logEvent("info", `[ensure-assistant-group] Reused existing group ${existingJid} for ${sessionName}`);
     return existingJid;
+    }
   }
 
   // 3. No existing group anywhere — create a new one
