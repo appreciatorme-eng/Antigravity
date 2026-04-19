@@ -14,9 +14,9 @@ import "server-only";
  * Errors are caught at every boundary and never thrown to callers.
  * ------------------------------------------------------------------ */
 
-import type { ContextSnapshot } from "./types";
-import { buildContextSnapshot } from "./context-engine";
+import type { ContextSnapshot, ActionContext } from "./types";
 import { formatCurrency } from "./prompts/system";
+import { buildOwnerAgenda, formatOwnerAgenda } from "./owner-agenda";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { notifyOperator } from "@/lib/whatsapp/assistant-notifications";
 
@@ -221,26 +221,16 @@ export async function generateAndQueueBriefings(): Promise<BriefingResult> {
   let skipped = 0;
   let errors = 0;
 
-  // Cache snapshots per org to avoid redundant queries when multiple
-  // operators belong to the same organisation.
-  const snapshotCache = new Map<string, ContextSnapshot>();
-
   for (const entry of eligible) {
     try {
-      // Build or reuse the context snapshot for this org.
-      let snapshot = snapshotCache.get(entry.organizationId);
-
-      if (!snapshot) {
-        snapshot = await buildContextSnapshot({
-          organizationId: entry.organizationId,
-          userId: entry.userId,
-          channel: "whatsapp",
-          supabase,
-        });
-        snapshotCache.set(entry.organizationId, snapshot);
-      }
-
-      const message = formatBriefingMessage(snapshot, entry.orgName);
+      const agendaContext: ActionContext = {
+        organizationId: entry.organizationId,
+        userId: entry.userId,
+        channel: "whatsapp_group",
+        supabase,
+      };
+      const agenda = await buildOwnerAgenda(agendaContext);
+      const message = formatOwnerAgenda(agenda);
       const idempotencyKey = `${entry.organizationId}:${entry.userId}:briefing:${dateKey}`;
 
       const { error: insertError } = await supabase

@@ -4,7 +4,8 @@
  * Pure functions only -- no side effects, no mutations.
  * ------------------------------------------------------------------ */
 
-import type { ContextSnapshot } from "../types";
+import type { ContextSnapshot, OwnerAgenda } from "../types";
+import { buildOwnerAgendaPromptBlock } from "../owner-agenda";
 
 // ---------------------------------------------------------------------------
 // Formatting helpers
@@ -108,10 +109,15 @@ export function buildSystemPrompt(
   orgName: string,
   snapshot: ContextSnapshot | null,
   language?: string,
+  ownerAgenda?: OwnerAgenda | null,
 ): string {
   const today = formatDate(new Date().toISOString());
   const contextBlock =
     snapshot !== null ? `\n${buildContextBlock(snapshot)}\n` : "";
+  const agendaBlock =
+    ownerAgenda !== undefined && ownerAgenda !== null
+      ? `\n${buildOwnerAgendaPromptBlock(ownerAgenda)}\n`
+      : "";
 
   const languageBlock = language && language !== "en"
     ? `\n\n## Language\nRespond in ${language === "hi" ? "Hindi (Devanagari script)" : language}. Use natural, fluent ${language === "hi" ? "Hindi" : language} — not machine-translated text. Keep technical terms, numbers, and proper nouns in English.`
@@ -128,6 +134,8 @@ You have direct access to the business database and can look up real-time inform
 - Use the provided functions to fetch real data from the database. NEVER make up numbers or information.
 - Keep answers short, clear, and practical -- 1 to 3 sentences for simple queries.
 - For detailed data (lists of trips, invoices), present them in a clean, scannable format.
+- When an owner agenda is provided, use it to prioritize what matters now before drifting into generic analysis.
+- Default to operational guidance: what happened, why it matters, and what to do next.
 - When referencing specific records, include identifying info (invoice number, client name, trip dates).
 - If a user asks to update/change something, use the appropriate function to do so.
 - For updates and deletions, always describe what will change and ask for confirmation before acting.
@@ -139,7 +147,7 @@ You can query and report on: trips, clients, invoices, proposals, drivers, and n
 Use the provided functions to fetch real data. Answer from the function results, not from assumptions.`;
 
   // Dynamic section: per-org, changes per snapshot
-  const dynamicSection = `## Session Context\nOrganization: ${orgName}\nDate: ${today}\n${contextBlock}${languageBlock}`;
+  const dynamicSection = `## Session Context\nOrganization: ${orgName}\nDate: ${today}\n${contextBlock}${agendaBlock}${languageBlock}`;
 
   return `${staticSection}\n\n---\n${dynamicSection}`;
 }

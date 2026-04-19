@@ -45,6 +45,7 @@ const ACTION_CATEGORY_MAP: Readonly<Record<string, Category>> = {
   search_trips: "trip",
   get_trip_details: "trip",
   get_trip_itinerary: "trip",
+  create_trip: "trip",
   update_trip_status: "trip",
   assign_driver_to_trip: "trip",
 
@@ -52,6 +53,7 @@ const ACTION_CATEGORY_MAP: Readonly<Record<string, Category>> = {
   search_clients: "client",
   get_client_details: "client",
   get_client_history: "client",
+  create_client: "client",
   update_client_stage: "client",
   add_client_note: "client",
   update_client_tags: "client",
@@ -60,6 +62,7 @@ const ACTION_CATEGORY_MAP: Readonly<Record<string, Category>> = {
   search_invoices: "invoice",
   get_invoice_details: "invoice",
   get_overdue_invoices: "invoice",
+  create_invoice: "invoice",
   mark_invoice_paid: "invoice",
   send_invoice_reminder: "invoice",
 

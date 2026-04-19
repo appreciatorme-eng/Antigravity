@@ -41,6 +41,7 @@ import { getSuggestedActions } from "./suggested-actions";
 import { getRecentMemory } from "./conversation-memory";
 import { getActiveWorkflow, startWorkflow, processWorkflowStep } from "./workflows/engine";
 import { findWorkflow, ALL_WORKFLOWS } from "./workflows/definitions";
+import { buildOwnerAgenda, formatOwnerAgenda } from "./owner-agenda";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 // ---------------------------------------------------------------------------
@@ -429,6 +430,7 @@ export async function handleMessage(
 
   // 2. Verify OpenAI API key is available
   const openaiKey = process.env.OPENAI_API_KEY;
+  const allowSharedResponseCache = request.channel !== "whatsapp_group";
   if (!openaiKey) {
     return { reply: "AI service is not configured. Please contact support." };
   }
@@ -461,6 +463,17 @@ export async function handleMessage(
   const specificCategories = getSpecificCategoryCount(trimmedMessage);
   const wordCount = trimmedMessage.split(/\s+/).filter(Boolean).length;
   if (specificCategories === 0 && wordCount <= 5) {
+    if (request.channel === "whatsapp_group") {
+      const ownerAgenda = await buildOwnerAgenda(ctx).catch(() => null);
+
+      if (ownerAgenda !== null) {
+        return {
+          reply: formatOwnerAgenda(ownerAgenda),
+          suggestedActions: ownerAgenda.recommendedNextActions,
+        };
+      }
+    }
+
     return {
       reply:
         "I can help with trips, clients, invoices, drivers, and proposals. What would you like to work on?",
@@ -492,35 +505,47 @@ export async function handleMessage(
   }
 
   // 7. Response cache: check for cached response before OpenAI
-  const cachedResponse = await getCachedResponse(ctx.organizationId, trimmedMessage);
-  if (cachedResponse !== null) {
-    void incrementUsage(ctx, { isCacheHit: true });
-    return cachedResponse;
+  if (allowSharedResponseCache) {
+    const cachedResponse = await getCachedResponse(ctx.organizationId, trimmedMessage);
+    if (cachedResponse !== null) {
+      void incrementUsage(ctx, { isCacheHit: true });
+      return cachedResponse;
+    }
   }
 
   // 7.5. Semantic cache: fuzzy match for near-identical queries
-  const semanticCached = await getSemanticCachedResponse(ctx.organizationId, trimmedMessage);
-  if (semanticCached !== null) {
-    void incrementUsage(ctx, { isCacheHit: true });
-    return semanticCached;
+  if (allowSharedResponseCache) {
+    const semanticCached = await getSemanticCachedResponse(ctx.organizationId, trimmedMessage);
+    if (semanticCached !== null) {
+      void incrementUsage(ctx, { isCacheHit: true });
+      return semanticCached;
+    }
   }
 
   // 7.6 Select model based on query complexity and org tier
   const model = selectModel(trimmedMessage, usageStatus.tier);
 
   // 8. Gather enrichment data in parallel
-  const [snapshot, orgName, prefsBlock, languagePref, memory] = await Promise.all([
+  const [snapshot, orgName, prefsBlock, languagePref, memory, ownerAgenda] = await Promise.all([
     getCachedContextSnapshot(ctx),
     getOrganizationName(ctx),
     buildPreferencesBlock(ctx),
     getPreference(ctx, "preferred_language"),
     getRecentMemory(ctx),
+    request.channel === "whatsapp_group"
+      ? buildOwnerAgenda(ctx).catch(() => null)
+      : Promise.resolve(null),
   ]);
 
   const language = typeof languagePref === "string" ? languagePref : undefined;
 
   // 9. Build system prompt with business context + user preferences
-  const baseSystemPrompt = buildSystemPrompt(orgName, snapshot, language) + prefsBlock;
+  const baseSystemPrompt = buildSystemPrompt(
+    orgName,
+    snapshot,
+    language,
+    ownerAgenda,
+  ) + prefsBlock;
 
   // 10. Build initial message array with smart schema routing
   const tools = getRelevantSchemas(trimmedMessage);
@@ -574,8 +599,10 @@ export async function handleMessage(
         ...(lastActionResult ? { actionResult: lastActionResult } : {}),
         ...(suggestions.length > 0 ? { suggestedActions: suggestions } : {}),
       };
-      void setCachedResponse(ctx.organizationId, trimmedMessage, textResponse);
-      void setSemanticCachedResponse(ctx.organizationId, trimmedMessage, textResponse);
+      if (allowSharedResponseCache) {
+        void setCachedResponse(ctx.organizationId, trimmedMessage, textResponse);
+        void setSemanticCachedResponse(ctx.organizationId, trimmedMessage, textResponse);
+      }
       void incrementUsage(ctx);
       return textResponse;
     }
@@ -622,8 +649,10 @@ export async function handleMessage(
         reply: extractReplyText(confirmResponse),
         actionProposal: pendingProposal,
       };
-      void setCachedResponse(ctx.organizationId, trimmedMessage, proposalResponse);
-      void setSemanticCachedResponse(ctx.organizationId, trimmedMessage, proposalResponse);
+      if (allowSharedResponseCache) {
+        void setCachedResponse(ctx.organizationId, trimmedMessage, proposalResponse);
+        void setSemanticCachedResponse(ctx.organizationId, trimmedMessage, proposalResponse);
+      }
       void incrementUsage(ctx);
       return proposalResponse;
     }
@@ -641,8 +670,10 @@ export async function handleMessage(
     ...(lastActionResult ? { actionResult: lastActionResult } : {}),
     ...(suggestions.length > 0 ? { suggestedActions: suggestions } : {}),
   };
-  void setCachedResponse(ctx.organizationId, trimmedMessage, exhaustedResponse);
-  void setSemanticCachedResponse(ctx.organizationId, trimmedMessage, exhaustedResponse);
+  if (allowSharedResponseCache) {
+    void setCachedResponse(ctx.organizationId, trimmedMessage, exhaustedResponse);
+    void setSemanticCachedResponse(ctx.organizationId, trimmedMessage, exhaustedResponse);
+  }
   void incrementUsage(ctx);
   return exhaustedResponse;
 }

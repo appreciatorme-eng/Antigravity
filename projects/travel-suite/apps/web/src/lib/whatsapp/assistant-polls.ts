@@ -1,17 +1,16 @@
 /**
- * TripBuilt WhatsApp Assistant — Poll Definitions & Follow-up Logic
+ * TripBuilt WhatsApp Assistant — Follow-up menu prompts
  *
- * Polls are the primary interactive primitive since Baileys buttons are
- * deprecated by Meta. Each command response can trigger a contextual
- * follow-up poll so the operator stays in flow without typing.
- *
- * Poll vote responses arrive as regular messages in `messages.upsert`
- * with the option text as the message body. The POLL_OPTION_TO_COMMAND
- * map resolves these back to command keywords.
+ * The operator assistant originally used WhatsApp polls for quick actions,
+ * but Evolution/Baileys webhooks deliver poll votes as encrypted
+ * `pollUpdateMessage` payloads instead of the tapped option text. This app
+ * does not currently decrypt those votes, so assistant polls become dead-end
+ * UI. To keep the assistant reliable, we send plain-text command menus that
+ * prompt the operator to reply with explicit keywords.
  */
 import "server-only";
 
-import { guardedSendPoll } from "@/lib/whatsapp-evolution.server";
+import { guardedSendText } from "@/lib/whatsapp-evolution.server";
 import { logError } from "@/lib/observability/logger";
 
 // ---------------------------------------------------------------------------
@@ -75,7 +74,7 @@ const FOLLOW_UP_POLLS: Readonly<Record<string, PollDefinition>> = {
     },
 };
 
-/** The welcome poll sent when assistant group is first created. */
+/** The welcome menu sent when assistant group is first created. */
 export const WELCOME_POLL: PollDefinition = {
     question: "📋 Try it now — pick one:",
     options: ["📊 Dashboard overview", "📋 Today's trips", "💰 Pending payments", "🆕 Recent leads"],
@@ -97,13 +96,31 @@ export const PAYMENT_NOTIFICATION_POLL: PollDefinition = {
 // Follow-up poll sender
 // ---------------------------------------------------------------------------
 
-/** Delay in ms between text response and follow-up poll. */
+/** Delay in ms between text response and follow-up prompt. */
 const FOLLOW_UP_DELAY_MS = 1200;
 
+function optionToKeyword(option: string): string {
+    return (
+        POLL_OPTION_TO_COMMAND[option] ??
+        option
+            .replace(/^[^\p{Letter}\p{Number}]+/u, "")
+            .trim()
+            .toLowerCase()
+    );
+}
+
+function formatPrompt(question: string, options: readonly string[]): string {
+    return [
+        question,
+        "",
+        ...options.map((option) => `• ${option}  → reply \`${optionToKeyword(option)}\``),
+    ].join("\n");
+}
+
 /**
- * Send a contextual follow-up poll after a command response.
+ * Send a contextual follow-up prompt after a command response.
  * Runs in the background (fire-and-forget) so it doesn't block the response.
- * Returns immediately — the poll is sent after a short delay.
+ * Returns immediately — the prompt is sent after a short delay.
  */
 export function sendFollowUpPoll(
     instanceName: string,
@@ -117,21 +134,19 @@ export function sendFollowUpPoll(
     void (async () => {
         try {
             await new Promise((r) => setTimeout(r, FOLLOW_UP_DELAY_MS));
-            await guardedSendPoll(
+            await guardedSendText(
                 instanceName,
                 groupJid,
-                poll.question,
-                poll.options,
-                1,
+                formatPrompt(poll.question, poll.options),
             );
         } catch (err) {
-            logError("[assistant-polls] Failed to send follow-up poll", err);
+            logError("[assistant-polls] Failed to send follow-up prompt", err);
         }
     })();
 }
 
 /**
- * Send a specific poll (welcome, notification follow-up, etc.).
+ * Send a specific menu prompt (welcome, notification follow-up, etc.).
  * Returns a promise — caller decides whether to await or fire-and-forget.
  */
 export async function sendPoll(
@@ -143,11 +158,9 @@ export async function sendPoll(
     if (delayMs > 0) {
         await new Promise((r) => setTimeout(r, delayMs));
     }
-    await guardedSendPoll(
+    await guardedSendText(
         instanceName,
         groupJid,
-        poll.question,
-        poll.options,
-        1,
+        formatPrompt(poll.question, poll.options),
     );
 }

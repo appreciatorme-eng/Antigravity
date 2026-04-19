@@ -17,7 +17,13 @@ import type { Database } from "@/lib/database.types";
 export type ActionCategory = "read" | "write";
 
 /** The channel through which the user is interacting. */
-export type ActionChannel = "web" | "whatsapp";
+export type ActionChannel = "web" | "whatsapp" | "whatsapp_group";
+
+/** A lightweight quick action suggestion for the user. */
+export interface SuggestedAction {
+  readonly label: string;
+  readonly prefilledMessage: string;
+}
 
 // ---------------------------------------------------------------------------
 // Action execution types
@@ -170,6 +176,21 @@ export interface ContextSnapshot {
   readonly generatedAt: string;
 }
 
+/** A concise owner-facing operating agenda, optimized for WhatsApp. */
+export interface OwnerAgenda {
+  readonly headline: string;
+  readonly summary: string;
+  readonly queueFocus: string;
+  readonly topPriorities: readonly string[];
+  readonly gaps: readonly string[];
+  readonly needsResponse: readonly string[];
+  readonly collectionsActions: readonly string[];
+  readonly tripRisks: readonly string[];
+  readonly recommendedNextActions: readonly SuggestedAction[];
+  readonly generatedAt: string;
+  readonly source: "business_os" | "fallback";
+}
+
 // ---------------------------------------------------------------------------
 // Conversation types
 // ---------------------------------------------------------------------------
@@ -208,8 +229,5 @@ export interface OrchestratorResponse {
     readonly confirmationMessage: string;
   };
   readonly actionResult?: ActionResult;
-  readonly suggestedActions?: ReadonlyArray<{
-    readonly label: string;
-    readonly prefilledMessage: string;
-  }>;
+  readonly suggestedActions?: readonly SuggestedAction[];
 }
