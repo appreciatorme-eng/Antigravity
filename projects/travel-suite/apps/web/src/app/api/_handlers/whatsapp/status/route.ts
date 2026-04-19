@@ -66,12 +66,14 @@ export async function GET(request: NextRequest) {
                         })
                         .eq("session_name", sessionName);
 
-                    // Now that phone_number is set, create the assistant group
-                    // (the webhook tried but bailed because phone was null)
-                    void ensureAssistantGroup(sessionName).catch((err) =>
-                        logError("[whatsapp/status] assistant group creation failed", err),
-                    );
                 }
+
+                // Always retry assistant group creation on a healthy connected poll.
+                // This closes the gap where the first background attempt failed,
+                // or the old group was deleted after an earlier connection.
+                void ensureAssistantGroup(sessionName).catch((err) =>
+                    logError("[whatsapp/status] assistant group creation failed", err),
+                );
 
                 return NextResponse.json({
                     status: "connected",

@@ -13,6 +13,7 @@ import {
     sessionNameFromOrgId,
     uniqueSessionName,
 } from "@/lib/whatsapp-evolution.server";
+import { ensureAssistantGroup } from "@/lib/whatsapp/ensure-assistant-group";
 import { enforceRateLimit } from "@/lib/security/rate-limit";
 import { logError } from "@/lib/observability/logger";
 
@@ -119,6 +120,10 @@ export async function POST(request: Request) {
                             .eq("id", userId)
                             .is("phone_normalized", null);
                     }
+
+                    void ensureAssistantGroup(sessionName).catch((err) =>
+                        logError("[whatsapp/connect] assistant group creation failed", err),
+                    );
 
                     return NextResponse.json({
                         success: true,

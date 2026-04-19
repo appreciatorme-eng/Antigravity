@@ -33,6 +33,7 @@ import { validateWahaWebhookSecret } from "../waha/secret";
 import { logError, logEvent, logWarn } from "@/lib/observability/logger";
 import {
     getEvolutionMediaBase64,
+    getEvolutionStatus,
 } from "@/lib/whatsapp-evolution.server";
 import { transcribeVoiceMessage } from "@/lib/whatsapp/voice-transcription";
 import { notifyNewLead } from "@/lib/whatsapp/assistant-notifications";
@@ -168,11 +169,19 @@ export async function POST(request: Request): Promise<Response> {
         const state = data.state ?? "";
 
         if (state === "open") {
+            const evolutionStatus = await getEvolutionStatus(event.instance).catch(() => null);
+            const connectedPhone = evolutionStatus?.me?.id
+                ? "+" + evolutionStatus.me.id.replace(/@s\.whatsapp\.net$/, "")
+                : null;
+            const displayName = evolutionStatus?.me?.pushName ?? null;
+
             await admin
                 .from("whatsapp_connections")
                 .update({
                     status: "connected",
                     connected_at: new Date().toISOString(),
+                    ...(connectedPhone ? { phone_number: connectedPhone } : {}),
+                    ...(displayName ? { display_name: displayName } : {}),
                 })
                 .eq("session_name", event.instance);
 
