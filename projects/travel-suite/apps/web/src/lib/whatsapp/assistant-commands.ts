@@ -39,6 +39,7 @@ import {
 } from "./assistant-formatters";
 import { logError } from "@/lib/observability/logger";
 import { POLL_OPTION_TO_COMMAND, sendFollowUpPoll } from "./assistant-polls";
+import { handleTripIntakeMessage } from "./trip-intake.server";
 
 type AdminClient = SupabaseClient<Database>;
 
@@ -495,11 +496,17 @@ export async function routeAssistantCommand(
 
     if (command) {
       reply = await handleKeywordCommand(ctx, command);
-    } else if (shouldTriggerAI(normalized)) {
-      resolvedCommand = undefined;
-      reply = await handleSharedAssistant(ctx, trimmed);
     } else {
-      return true;
+      const tripIntakeReply = await handleTripIntakeMessage(ctx.actionCtx, trimmed);
+      if (tripIntakeReply) {
+        resolvedCommand = undefined;
+        reply = tripIntakeReply;
+      } else if (shouldTriggerAI(normalized)) {
+        resolvedCommand = undefined;
+        reply = await handleSharedAssistant(ctx, trimmed);
+      } else {
+        return true;
+      }
     }
 
     await persistTurn(ctx, trimmed, reply);

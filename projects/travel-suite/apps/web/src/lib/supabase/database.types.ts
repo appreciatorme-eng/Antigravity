@@ -299,6 +299,132 @@ export type Database = {
           },
         ]
       }
+      assistant_trip_requests: {
+        Row: {
+          budget: string | null
+          client_id: string | null
+          client_name: string | null
+          client_phone: string | null
+          collected_fields: Json
+          created_at: string
+          created_itinerary_id: string | null
+          created_share_url: string | null
+          created_trip_id: string | null
+          current_step: string | null
+          destination: string | null
+          duration_days: number | null
+          end_date: string | null
+          hotel_preference: string | null
+          id: string
+          interests: string[] | null
+          missing_required_fields: Json
+          operator_user_id: string
+          organization_id: string
+          origin_city: string | null
+          request_summary: string | null
+          source_channel: string
+          start_date: string | null
+          status: string
+          travel_window: string | null
+          traveler_count: number | null
+          updated_at: string
+        }
+        Insert: {
+          budget?: string | null
+          client_id?: string | null
+          client_name?: string | null
+          client_phone?: string | null
+          collected_fields?: Json
+          created_at?: string
+          created_itinerary_id?: string | null
+          created_share_url?: string | null
+          created_trip_id?: string | null
+          current_step?: string | null
+          destination?: string | null
+          duration_days?: number | null
+          end_date?: string | null
+          hotel_preference?: string | null
+          id?: string
+          interests?: string[] | null
+          missing_required_fields?: Json
+          operator_user_id: string
+          organization_id: string
+          origin_city?: string | null
+          request_summary?: string | null
+          source_channel?: string
+          start_date?: string | null
+          status?: string
+          travel_window?: string | null
+          traveler_count?: number | null
+          updated_at?: string
+        }
+        Update: {
+          budget?: string | null
+          client_id?: string | null
+          client_name?: string | null
+          client_phone?: string | null
+          collected_fields?: Json
+          created_at?: string
+          created_itinerary_id?: string | null
+          created_share_url?: string | null
+          created_trip_id?: string | null
+          current_step?: string | null
+          destination?: string | null
+          duration_days?: number | null
+          end_date?: string | null
+          hotel_preference?: string | null
+          id?: string
+          interests?: string[] | null
+          missing_required_fields?: Json
+          operator_user_id?: string
+          organization_id?: string
+          origin_city?: string | null
+          request_summary?: string | null
+          source_channel?: string
+          start_date?: string | null
+          status?: string
+          travel_window?: string | null
+          traveler_count?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assistant_trip_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assistant_trip_requests_created_itinerary_id_fkey"
+            columns: ["created_itinerary_id"]
+            isOneToOne: false
+            referencedRelation: "itineraries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assistant_trip_requests_created_trip_id_fkey"
+            columns: ["created_trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assistant_trip_requests_operator_user_id_fkey"
+            columns: ["operator_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assistant_trip_requests_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       automation_contact_overrides: {
         Row: {
           contact_phone: string
