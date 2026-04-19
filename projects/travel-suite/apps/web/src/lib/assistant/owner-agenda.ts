@@ -128,15 +128,20 @@ function buildRecommendedActions(agenda: {
   const actions: SuggestedAction[] = [];
 
   if (agenda.needsResponse.length > 0) {
+    actions.push({ label: "Clear follow-ups", prefilledMessage: "followups" });
     actions.push({ label: "Review leads", prefilledMessage: "leads" });
   }
   if (agenda.collectionsActions.length > 0) {
+    actions.push({ label: "Review collections", prefilledMessage: "collections" });
     actions.push({ label: "Review payments", prefilledMessage: "payments" });
   }
   if (agenda.tripRisks.length > 0) {
+    actions.push({ label: "Trip check", prefilledMessage: "trip check today" });
     actions.push({ label: "Review trips", prefilledMessage: "today" });
   }
 
+  actions.push({ label: "Open work", prefilledMessage: "work" });
+  actions.push({ label: "Review approvals", prefilledMessage: "approvals" });
   actions.push({ label: "Daily brief", prefilledMessage: "brief" });
   return takeMax(actions, 4);
 }

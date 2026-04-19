@@ -11,6 +11,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 import type {
   ActionContext,
+  ActionResult,
   ContextSnapshot,
   ConversationMessage,
 } from "@/lib/assistant/types";
@@ -22,11 +23,14 @@ import { handleMessage } from "@/lib/assistant/orchestrator";
 import { buildOwnerAgenda, formatOwnerAgenda } from "@/lib/assistant/owner-agenda";
 import {
   clearPendingAction,
+  getSessionContextSnapshot,
   getOrCreateSession,
   getPendingAction,
   setPendingAction,
+  updateSessionContextSnapshot,
   updateSessionHistory,
   type PendingAction,
+  type SessionReferenceItem,
 } from "@/lib/assistant/session";
 import { findAction } from "@/lib/assistant/actions/registry";
 import { logAuditEvent } from "@/lib/assistant/audit";
@@ -52,6 +56,14 @@ interface CommandContext {
   readonly actionCtx: ActionContext;
   readonly sessionId: string;
   readonly conversationHistory: readonly ConversationMessage[];
+}
+
+interface CommandReply {
+  readonly reply: string;
+  readonly references?: {
+    readonly kind: string;
+    readonly items: readonly SessionReferenceItem[];
+  };
 }
 
 const MONTH_NAMES = [
@@ -100,6 +112,21 @@ const KEYWORD_ALIASES: Record<string, string> = {
   "summary": "brief",
   "morning": "brief",
   "daily briefing": "brief",
+  "followups": "followups",
+  "followup": "followups",
+  "next": "followups",
+  "collections": "collections",
+  "collection": "collections",
+  "cash": "collections",
+  "work": "work",
+  "tasks": "work",
+  "task": "work",
+  "promises": "promises",
+  "promise": "promises",
+  "approvals": "approvals",
+  "approval": "approvals",
+  "trip check": "trip_check",
+  "trip check today": "trip_check",
 };
 
 function normalizePhoneDigits(value: string | null | undefined): string | null {
@@ -126,6 +153,129 @@ function formatForWhatsApp(text: string): string {
     .replace(/\*\*(.+?)\*\*/g, "*$1*")
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1: $2")
     .slice(0, MAX_REPLY_LENGTH);
+}
+
+async function saveLoopReferences(
+  ctx: CommandContext,
+  references?: CommandReply["references"],
+): Promise<void> {
+  await updateSessionContextSnapshot(
+    ctx.actionCtx,
+    ctx.sessionId,
+    references
+      ? {
+          operatorLoop: {
+            kind: references.kind,
+            items: [...references.items],
+            updatedAt: new Date().toISOString(),
+          },
+        }
+      : null,
+  ).catch((error) => {
+    logError("[assistant-commands] failed to persist operator loop references", error, {
+      sessionId: ctx.sessionId,
+      organizationId: ctx.orgId,
+    });
+  });
+}
+
+async function getLoopItem(
+  ctx: CommandContext,
+  expectedKind: string,
+  index: number | null,
+): Promise<SessionReferenceItem | null> {
+  const snapshot = await getSessionContextSnapshot(ctx.actionCtx, ctx.sessionId);
+  const operatorLoop = snapshot?.operatorLoop;
+  if (!operatorLoop || operatorLoop.kind !== expectedKind || operatorLoop.items.length === 0) {
+    return null;
+  }
+
+  const resolvedIndex = index ?? 1;
+  if (resolvedIndex < 1 || resolvedIndex > operatorLoop.items.length) {
+    return null;
+  }
+
+  return operatorLoop.items[resolvedIndex - 1] ?? null;
+}
+
+async function executeRegisteredAction(
+  ctx: CommandContext,
+  actionName: string,
+  params: Record<string, unknown>,
+): Promise<ActionResult> {
+  const action = findAction(actionName);
+  if (!action) {
+    return {
+      success: false,
+      message: `Action "${actionName}" is not available.`,
+    };
+  }
+
+  return action.execute(ctx.actionCtx, params);
+}
+
+function parseIndexCommand(
+  input: string,
+  keyword: string,
+): number | null {
+  const match = new RegExp(`^${keyword}\\s+(\\d+)$`, "i").exec(input.trim());
+  if (!match) return null;
+  const parsed = Number.parseInt(match[1], 10);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseSnoozeCommand(input: string): { readonly index: number | null; readonly days: number | null; readonly dueText: string | null } | null {
+  const trimmed = input.trim();
+  if (!/^snooze\b/i.test(trimmed)) return null;
+  const tokens = trimmed.split(/\s+/).slice(1);
+  if (tokens.length === 0) return null;
+
+  if (
+    tokens.length >= 3 &&
+    /^\d+$/.test(tokens[0]) &&
+    !/^(day|days|week|weeks)$/i.test(tokens[1])
+  ) {
+    const index = Number.parseInt(tokens[0], 10);
+    const rest = tokens.slice(1).join(" ");
+    const dayMatch = /^(\d+)\s+days?$/i.exec(rest);
+    return {
+      index,
+      days: dayMatch ? Number.parseInt(dayMatch[1], 10) : null,
+      dueText: dayMatch ? null : rest,
+    };
+  }
+
+  const rest = tokens.join(" ");
+  const dayMatch = /^(\d+)\s+days?$/i.exec(rest);
+  return {
+    index: null,
+    days: dayMatch ? Number.parseInt(dayMatch[1], 10) : null,
+    dueText: dayMatch ? null : rest,
+  };
+}
+
+function parsePromiseCommand(input: string): { readonly index: number | null; readonly dueText: string } | null {
+  const trimmed = input.trim();
+  if (!/^payment promised\b/i.test(trimmed)) return null;
+  const tokens = trimmed.split(/\s+/).slice(2);
+  if (tokens.length === 0) return null;
+
+  if (tokens.length >= 2 && /^\d+$/.test(tokens[0]) && !/^(day|days|week|weeks)$/i.test(tokens[1])) {
+    return {
+      index: Number.parseInt(tokens[0], 10),
+      dueText: tokens.slice(1).join(" "),
+    };
+  }
+
+  return {
+    index: null,
+    dueText: tokens.join(" "),
+  };
+}
+
+function parseCreateTaskCommand(input: string): string | null {
+  const match = /^create task\s+(.+)$/i.exec(input.trim());
+  return match?.[1]?.trim() ?? null;
 }
 
 async function resolveOwnerUserId(
@@ -347,7 +497,7 @@ async function getMonthlyRevenue(
 
 async function handleAgendaCommand(ctx: CommandContext): Promise<string> {
   const agenda = await buildOwnerAgenda(ctx.actionCtx);
-  return `${formatOwnerAgenda(agenda)}\n\nReply *today*, *payments*, *leads*, *stats*, or tell me what you want to change.`;
+  return `${formatOwnerAgenda(agenda)}\n\nReply *followups*, *collections*, *work*, *promises*, *approvals*, *trip check today*, *today*, *payments*, *leads*, or tell me what you want to change.`;
 }
 
 async function handleTodayCommand(ctx: CommandContext): Promise<string> {
@@ -358,6 +508,40 @@ async function handleTodayCommand(ctx: CommandContext): Promise<string> {
 async function handlePaymentsCommand(ctx: CommandContext): Promise<string> {
   const snapshot = await getSnapshot(ctx);
   return formatPendingPayments(snapshot.pendingInvoices);
+}
+
+async function handleOperatorListCommand(
+  ctx: CommandContext,
+  actionName:
+    | "list_due_followups"
+    | "review_overdue_accounts"
+    | "list_open_work_items"
+    | "list_breached_commitments"
+    | "list_pending_approvals"
+    | "check_trip_readiness",
+  params: Record<string, unknown>,
+  kind: string,
+): Promise<CommandReply> {
+  const result = await executeRegisteredAction(ctx, actionName, params);
+  const items =
+    result.success &&
+    result.data &&
+    typeof result.data === "object" &&
+    Array.isArray((result.data as { items?: unknown }).items)
+      ? (((result.data as { items: Array<{ id: string; label: string; metadata?: Record<string, unknown> }> }).items) ?? [])
+      : [];
+
+  return {
+    reply: result.message,
+    references: {
+      kind,
+      items: items.map((item) => ({
+        id: item.id,
+        label: item.label,
+        metadata: item.metadata,
+      })),
+    },
+  };
 }
 
 async function handleLeadsCommand(ctx: CommandContext): Promise<string> {
@@ -416,24 +600,301 @@ async function handleStatsCommand(ctx: CommandContext): Promise<string> {
 async function handleKeywordCommand(
   ctx: CommandContext,
   command: string,
-): Promise<string> {
+): Promise<CommandReply> {
   switch (command) {
     case "help":
     case "brief":
-      return handleAgendaCommand(ctx);
+      return { reply: await handleAgendaCommand(ctx) };
     case "today":
-      return handleTodayCommand(ctx);
+      return { reply: await handleTodayCommand(ctx) };
     case "leads":
-      return handleLeadsCommand(ctx);
+      return { reply: await handleLeadsCommand(ctx) };
     case "payments":
-      return handlePaymentsCommand(ctx);
+      return { reply: await handlePaymentsCommand(ctx) };
     case "revenue":
-      return handleRevenueCommand(ctx);
+      return { reply: await handleRevenueCommand(ctx) };
     case "stats":
-      return handleStatsCommand(ctx);
+      return { reply: await handleStatsCommand(ctx) };
+    case "followups":
+      return handleOperatorListCommand(ctx, "list_due_followups", { limit: 5 }, "followups");
+    case "collections":
+      return handleOperatorListCommand(ctx, "review_overdue_accounts", { limit: 5 }, "collections");
+    case "work":
+      return handleOperatorListCommand(ctx, "list_open_work_items", { limit: 5 }, "work");
+    case "promises":
+      return handleOperatorListCommand(ctx, "list_breached_commitments", { limit: 5 }, "promises");
+    case "approvals":
+      return handleOperatorListCommand(ctx, "list_pending_approvals", { limit: 5 }, "approvals");
+    case "trip_check":
+      return handleOperatorListCommand(ctx, "check_trip_readiness", { scope: "today", limit: 5 }, "trip_check");
     default:
-      return handleAgendaCommand(ctx);
+      return { reply: await handleAgendaCommand(ctx) };
   }
+}
+
+async function proposeAction(
+  ctx: CommandContext,
+  actionName: string,
+  params: Record<string, unknown>,
+  confirmationMessage: string,
+): Promise<CommandReply> {
+  await setPendingAction(ctx.actionCtx, ctx.sessionId, {
+    actionName,
+    params,
+    confirmationMessage,
+    proposedAt: new Date().toISOString(),
+  });
+
+  return {
+    reply: `${confirmationMessage}\n\n_Reply *YES* to confirm or *NO* to cancel._`,
+  };
+}
+
+async function handleIndexedOperatorCommand(
+  ctx: CommandContext,
+  input: string,
+): Promise<CommandReply | null> {
+  const doneIndex = parseIndexCommand(input, "done");
+  if (doneIndex !== null) {
+    const item = await getLoopItem(ctx, "work", doneIndex);
+    if (!item) {
+      return { reply: "I don't have that work item in the current queue. Reply *work* to reload it." };
+    }
+
+    return proposeAction(
+      ctx,
+      "complete_work_item",
+      { work_item_id: item.id },
+      `Mark *${item.label}* as done?`,
+    );
+  }
+
+  const resolveIndex = parseIndexCommand(input, "resolve");
+  if (resolveIndex !== null) {
+    const item = await getLoopItem(ctx, "promises", resolveIndex);
+    if (!item) {
+      return { reply: "I don't have that promise in the current queue. Reply *promises* to reload it." };
+    }
+
+    return proposeAction(
+      ctx,
+      "resolve_commitment",
+      { commitment_id: item.id },
+      `Mark *${item.label}* as resolved?`,
+    );
+  }
+
+  const approveIndex = parseIndexCommand(input, "approve");
+  if (approveIndex !== null) {
+    const item = await getLoopItem(ctx, "approvals", approveIndex);
+    if (!item) {
+      return { reply: "I don't have that approval in the current queue. Reply *approvals* to reload it." };
+    }
+
+    return proposeAction(
+      ctx,
+      "approve_draft",
+      { approval_id: item.id },
+      `Approve *${item.label}*?`,
+    );
+  }
+
+  const rejectIndex = parseIndexCommand(input, "reject");
+  if (rejectIndex !== null) {
+    const item = await getLoopItem(ctx, "approvals", rejectIndex);
+    if (!item) {
+      return { reply: "I don't have that approval in the current queue. Reply *approvals* to reload it." };
+    }
+
+    return proposeAction(
+      ctx,
+      "reject_draft",
+      { approval_id: item.id },
+      `Reject *${item.label}*?`,
+    );
+  }
+
+  const sendPaymentLinkMatch = /^send payment link(?:\s+(\d+))?$/i.exec(input.trim());
+  if (sendPaymentLinkMatch) {
+    const index = sendPaymentLinkMatch[1] ? Number.parseInt(sendPaymentLinkMatch[1], 10) : null;
+    const item = await getLoopItem(ctx, "collections", index);
+    if (!item?.metadata?.invoice_id) {
+      return { reply: "I don't have an overdue invoice selected. Reply *collections* to reload the queue." };
+    }
+
+    return proposeAction(
+      ctx,
+      "send_payment_link",
+      { invoice_id: item.metadata.invoice_id },
+      `Send a payment link for *${item.label}*?`,
+    );
+  }
+
+  const paymentPromise = parsePromiseCommand(input);
+  if (paymentPromise) {
+    const item = await getLoopItem(ctx, "collections", paymentPromise.index);
+    if (!item?.metadata?.client_id || !item.metadata.amount_inr) {
+      return { reply: "I don't have a collections item selected. Reply *collections* to reload the queue." };
+    }
+
+    return proposeAction(
+      ctx,
+      "record_payment_promise",
+      {
+        client_id: item.metadata.client_id,
+        amount_inr: item.metadata.amount_inr,
+        due_date: paymentPromise.dueText,
+        note: `Recorded from WhatsApp assistant for ${item.label}`,
+      },
+      `Record a payment promise for *${item.label}* due *${paymentPromise.dueText}*?`,
+    );
+  }
+
+  const snoozeCommand = parseSnoozeCommand(input);
+  if (snoozeCommand) {
+    const item = await getLoopItem(ctx, "followups", snoozeCommand.index);
+    if (!item) {
+      return { reply: "I don't have that follow-up in the current queue. Reply *followups* to reload it." };
+    }
+
+    const clientId =
+      typeof item.metadata?.client_id === "string" ? item.metadata.client_id : null;
+    if (!clientId) {
+      return { reply: "That follow-up cannot be snoozed yet because it is missing a client reference." };
+    }
+
+    return proposeAction(
+      ctx,
+      "snooze_followup",
+      {
+        followup_id:
+          typeof item.metadata?.source === "string" && item.metadata.source === "comms_sequence"
+            ? item.id
+            : undefined,
+        client_id: clientId,
+        days: snoozeCommand.days ?? undefined,
+        follow_up_at: snoozeCommand.dueText ?? undefined,
+      },
+      `Snooze *${item.label}*?`,
+    );
+  }
+
+  const sentMatch = /^sent(?:\s+(\d+))?$/i.exec(input.trim());
+  if (sentMatch) {
+    const index = sentMatch[1] ? Number.parseInt(sentMatch[1], 10) : null;
+    const item = await getLoopItem(ctx, "followups", index);
+    if (!item?.metadata?.client_id) {
+      return { reply: "I don't have a follow-up selected. Reply *followups* to reload the queue." };
+    }
+
+    return proposeAction(
+      ctx,
+      "send_followup_message",
+      {
+        client_id: item.metadata.client_id,
+        message: `Hi ${typeof item.metadata.client_name === "string" ? item.metadata.client_name : "there"}, just following up from TripBuilt. Let me know if you want me to tighten anything for you.`,
+      },
+      `Send a follow-up to *${item.label}*?`,
+    );
+  }
+
+  const clientRepliedMatch = /^client replied(?:\s+(\d+))?$/i.exec(input.trim());
+  if (clientRepliedMatch) {
+    const index = clientRepliedMatch[1] ? Number.parseInt(clientRepliedMatch[1], 10) : null;
+    const item = await getLoopItem(ctx, "followups", index);
+    if (!item?.metadata?.client_id) {
+      return { reply: "I don't have a follow-up selected. Reply *followups* to reload the queue." };
+    }
+
+    return proposeAction(
+      ctx,
+      "mark_followup_outcome",
+      {
+        client_id: item.metadata.client_id,
+        followup_id: typeof item.metadata?.source === "string" && item.metadata.source === "comms_sequence" ? item.id : undefined,
+        outcome: "replied",
+      },
+      `Mark *${item.label}* as replied?`,
+    );
+  }
+
+  const notInterestedMatch = /^not interested(?:\s+(\d+))?$/i.exec(input.trim());
+  if (notInterestedMatch) {
+    const index = notInterestedMatch[1] ? Number.parseInt(notInterestedMatch[1], 10) : null;
+    const item = await getLoopItem(ctx, "followups", index);
+    if (!item?.metadata?.client_id) {
+      return { reply: "I don't have a follow-up selected. Reply *followups* to reload the queue." };
+    }
+
+    return proposeAction(
+      ctx,
+      "mark_followup_outcome",
+      {
+        client_id: item.metadata.client_id,
+        followup_id: typeof item.metadata?.source === "string" && item.metadata.source === "comms_sequence" ? item.id : undefined,
+        outcome: "not_interested",
+      },
+      `Mark *${item.label}* as not interested?`,
+    );
+  }
+
+  const createTaskText = parseCreateTaskCommand(input);
+  if (createTaskText) {
+    const dueMatch = /(tomorrow|today|next\s+\w+|\d{4}-\d{2}-\d{2})$/i.exec(createTaskText);
+    const dueDate = dueMatch?.[1] ?? "tomorrow";
+    const title = dueMatch ? createTaskText.slice(0, dueMatch.index).trim() : createTaskText;
+    return proposeAction(
+      ctx,
+      "create_work_item",
+      { title, due_date: dueDate },
+      `Create task *${title}* due *${dueDate}*?`,
+    );
+  }
+
+  const shareLinkMatch = /^share link(?:\s+for)?\s+(.+)$/i.exec(input.trim());
+  if (shareLinkMatch) {
+    const query = shareLinkMatch[1].trim();
+    const readiness = await executeRegisteredAction(ctx, "check_trip_readiness", {
+      scope: "upcoming",
+      query,
+      limit: 1,
+    });
+    const items =
+      readiness.success &&
+      readiness.data &&
+      typeof readiness.data === "object" &&
+      Array.isArray((readiness.data as { items?: unknown }).items)
+        ? ((readiness.data as { items: Array<{ id: string }> }).items ?? [])
+        : [];
+
+    const tripId = items[0]?.id;
+    if (!tripId) {
+      return { reply: `I couldn't find a trip matching *${query}*.` };
+    }
+
+    const result = await executeRegisteredAction(ctx, "resend_trip_share_link", {
+      trip_id: tripId,
+    });
+    return { reply: result.message };
+  }
+
+  const pickupMatch = /^send pickup details(?:\s+(\d+))?$/i.exec(input.trim());
+  if (pickupMatch) {
+    const index = pickupMatch[1] ? Number.parseInt(pickupMatch[1], 10) : null;
+    const item = await getLoopItem(ctx, "trip_check", index);
+    if (!item) {
+      return { reply: "I don't have a trip selected. Reply *trip check today* to reload the trip queue." };
+    }
+
+    return proposeAction(
+      ctx,
+      "send_pickup_details",
+      { trip_id: item.id },
+      `Send pickup details for *${item.label}*?`,
+    );
+  }
+
+  return null;
 }
 
 async function handleSharedAssistant(
@@ -491,26 +952,33 @@ export async function routeAssistantCommand(
     const pollCommand = POLL_OPTION_TO_COMMAND[trimmed];
     const command = pollCommand ?? KEYWORD_ALIASES[normalized];
 
-    let reply = "";
+    let commandReply: CommandReply = { reply: "" };
     let resolvedCommand: string | undefined = command;
 
     if (command) {
-      reply = await handleKeywordCommand(ctx, command);
+      commandReply = await handleKeywordCommand(ctx, command);
     } else {
+      const indexedReply = await handleIndexedOperatorCommand(ctx, trimmed);
+      if (indexedReply) {
+        resolvedCommand = undefined;
+        commandReply = indexedReply;
+      } else {
       const tripIntakeReply = await handleTripIntakeMessage(ctx.actionCtx, trimmed);
       if (tripIntakeReply) {
         resolvedCommand = undefined;
-        reply = tripIntakeReply;
+        commandReply = { reply: tripIntakeReply };
       } else if (shouldTriggerAI(normalized)) {
         resolvedCommand = undefined;
-        reply = await handleSharedAssistant(ctx, trimmed);
+        commandReply = { reply: await handleSharedAssistant(ctx, trimmed) };
       } else {
         return true;
       }
+      }
     }
 
-    await persistTurn(ctx, trimmed, reply);
-    await sendReply(ctx, reply);
+    await saveLoopReferences(ctx, commandReply.references);
+    await persistTurn(ctx, trimmed, commandReply.reply);
+    await sendReply(ctx, commandReply.reply);
 
     if (resolvedCommand) {
       sendFollowUpPoll(instanceName, groupJid, resolvedCommand);

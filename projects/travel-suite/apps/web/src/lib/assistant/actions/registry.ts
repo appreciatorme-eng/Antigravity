@@ -22,6 +22,7 @@ import { notificationWriteActions } from "./writes/notifications";
 import { preferenceReadActions } from "./reads/preferences";
 import { preferenceWriteActions } from "./writes/preferences";
 import { reportActions } from "./reads/reports";
+import { operatorOpsActions } from "./ops";
 
 // ---------------------------------------------------------------------------
 // Combined action list
@@ -42,6 +43,7 @@ const allActions: readonly ActionDefinition[] = [
   ...preferenceReadActions,
   ...preferenceWriteActions,
   ...reportActions,
+  ...operatorOpsActions,
 ];
 
 // ---------------------------------------------------------------------------

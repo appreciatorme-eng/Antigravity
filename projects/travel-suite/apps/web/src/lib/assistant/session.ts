@@ -32,6 +32,22 @@ export interface PendingAction {
   readonly proposedAt: string; // ISO timestamp
 }
 
+export interface SessionReferenceItem {
+  readonly id: string;
+  readonly label: string;
+  readonly actionName?: string;
+  readonly params?: Record<string, unknown>;
+  readonly metadata?: Record<string, unknown>;
+}
+
+export interface SessionContextSnapshot {
+  readonly operatorLoop?: {
+    readonly kind: string;
+    readonly items: readonly SessionReferenceItem[];
+    readonly updatedAt: string;
+  };
+}
+
 /** The shape returned to callers after loading or creating a session. */
 export interface SessionData {
   readonly id: string;
@@ -206,4 +222,39 @@ export async function getPendingAction(
   }
 
   return (data.pending_action as unknown as PendingAction) ?? null;
+}
+
+export async function getSessionContextSnapshot(
+  ctx: ActionContext,
+  sessionId: string,
+): Promise<SessionContextSnapshot | null> {
+  const { data, error } = await sessionsTable(ctx)
+    .select("context_snapshot")
+    .eq("id", sessionId)
+    .eq("organization_id", ctx.organizationId)
+    .single();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return (data.context_snapshot as unknown as SessionContextSnapshot) ?? null;
+}
+
+export async function updateSessionContextSnapshot(
+  ctx: ActionContext,
+  sessionId: string,
+  snapshot: SessionContextSnapshot | null,
+): Promise<void> {
+  const { error } = await sessionsTable(ctx)
+    .update({ context_snapshot: snapshot as unknown as Json })
+    .eq("id", sessionId)
+    .eq("organization_id", ctx.organizationId);
+
+  if (error) {
+    logError("[assistant/session] updateSessionContextSnapshot error", error);
+    throw new Error(
+      `Failed to update session context snapshot: ${safeErrorMessage(error, "database error")}`,
+    );
+  }
 }

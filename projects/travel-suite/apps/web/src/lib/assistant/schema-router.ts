@@ -33,7 +33,8 @@ type Category =
   | "proposal"
   | "notification"
   | "preference"
-  | "report";
+  | "report"
+  | "ops";
 
 const ACTION_CATEGORY_MAP: Readonly<Record<string, Category>> = {
   // dashboard
@@ -79,6 +80,27 @@ const ACTION_CATEGORY_MAP: Readonly<Record<string, Category>> = {
   // notification
   send_whatsapp_message: "notification",
   schedule_followup: "notification",
+  list_due_followups: "ops",
+  send_followup_message: "ops",
+  snooze_followup: "ops",
+  set_next_action: "ops",
+  mark_followup_outcome: "ops",
+  create_payment_link: "ops",
+  send_payment_link: "ops",
+  record_payment_promise: "ops",
+  review_overdue_accounts: "ops",
+  list_open_work_items: "ops",
+  complete_work_item: "ops",
+  create_work_item: "ops",
+  list_breached_commitments: "ops",
+  resolve_commitment: "ops",
+  check_trip_readiness: "ops",
+  resend_trip_share_link: "ops",
+  send_trip_update: "ops",
+  send_pickup_details: "ops",
+  list_pending_approvals: "ops",
+  approve_draft: "ops",
+  reject_draft: "ops",
 
   // preference
   get_my_preferences: "preference",
@@ -123,6 +145,10 @@ const KEYWORD_RULES: readonly KeywordRule[] = [
   {
     pattern: /summary|today|dashboard|kpi|stat|report|weekly|monthly/i,
     categories: ["dashboard", "report"],
+  },
+  {
+    pattern: /follow.?up|collections|payment link|promise|approval|approve|reject|work item|task|trip check|pickup details/i,
+    categories: ["ops", "dashboard"],
   },
 ];
 
