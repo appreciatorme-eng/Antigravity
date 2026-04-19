@@ -19,6 +19,7 @@ import {
   upsertGodAccountState,
 } from "@/lib/platform/god-accounts";
 import { ensureCollectionsPaymentLink } from "@/lib/payments/payment-links.server";
+import { guardedSendMedia, guardedSendText } from "@/lib/whatsapp-evolution.server";
 import { parseNaturalDate } from "../date-parser";
 import type { ActionContext, ActionDefinition, ActionResult } from "../types";
 
@@ -30,7 +31,7 @@ type FollowupOutcome =
   | "paid"
   | "trip_confirmed";
 
-type OperatorListItem = {
+export type OperatorListItem = {
   readonly id: string;
   readonly label: string;
   readonly metadata?: Record<string, unknown>;
@@ -67,6 +68,11 @@ function cleanText(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizePhoneDigits(value: string | null | undefined): string | null {
+  const digits = value?.replace(/\D/g, "") ?? "";
+  return digits.length >= 10 ? digits : null;
 }
 
 function normalizeMetadata(value: unknown): Record<string, unknown> {
@@ -179,6 +185,288 @@ async function queueWhatsappMessage(
     clientName: client.fullName,
     phone: recipientPhone,
   };
+}
+
+function getAppBaseUrl(): string {
+  return (process.env.NEXT_PUBLIC_APP_URL ?? "https://tripbuilt.com").replace(/\/$/, "");
+}
+
+async function resolveConnectedWhatsappSessionName(
+  ctx: ActionContext,
+): Promise<string | null> {
+  const { data } = await ctx.supabase
+    .from("whatsapp_connections")
+    .select("session_name")
+    .eq("organization_id", ctx.organizationId)
+    .eq("status", "connected")
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return data?.session_name ?? null;
+}
+
+async function updateLastContacted(
+  ctx: ActionContext,
+  clientId: string,
+): Promise<void> {
+  await ctx.supabase
+    .from("profiles")
+    .update({ last_contacted_at: new Date().toISOString() })
+    .eq("id", clientId)
+    .eq("organization_id", ctx.organizationId);
+}
+
+async function insertNotificationLog(
+  ctx: ActionContext,
+  params: {
+    readonly notificationType: string;
+    readonly recipientId: string;
+    readonly recipientPhone: string | null;
+    readonly title: string;
+    readonly body: string;
+    readonly tripId?: string | null;
+    readonly externalId?: string | null;
+    readonly status?: string;
+  },
+): Promise<void> {
+  await ctx.supabase.from("notification_logs").insert({
+    organization_id: ctx.organizationId,
+    recipient_id: params.recipientId,
+    recipient_type: "client",
+    recipient_phone: params.recipientPhone,
+    notification_type: params.notificationType,
+    title: params.title,
+    body: params.body,
+    trip_id: params.tripId ?? null,
+    external_id: params.externalId ?? null,
+    status: params.status ?? "sent",
+    sent_at: new Date().toISOString(),
+  });
+}
+
+async function sendClientTextNow(
+  ctx: ActionContext,
+  clientId: string,
+  message: string,
+): Promise<{
+  readonly clientId: string;
+  readonly clientName: string;
+  readonly phone: string;
+} | { readonly error: string }> {
+  const client = await getClientContact(ctx, clientId);
+  if (!client) {
+    return { error: "Client not found or access denied." };
+  }
+
+  const recipientPhone = normalizePhoneDigits(client.phoneWhatsapp ?? client.phone);
+  if (!recipientPhone) {
+    return { error: `No WhatsApp phone number found for ${client.fullName}.` };
+  }
+
+  const sessionName = await resolveConnectedWhatsappSessionName(ctx);
+  if (!sessionName) {
+    return { error: "WhatsApp is not connected for this organization." };
+  }
+
+  await guardedSendText(sessionName, recipientPhone, message, false);
+  await updateLastContacted(ctx, clientId);
+
+  return {
+    clientId,
+    clientName: client.fullName,
+    phone: recipientPhone,
+  };
+}
+
+async function sendClientDocumentNow(
+  ctx: ActionContext,
+  clientId: string,
+  mediaUrl: string,
+  fileName: string,
+  caption?: string,
+): Promise<{
+  readonly clientId: string;
+  readonly clientName: string;
+  readonly phone: string;
+} | { readonly error: string }> {
+  const client = await getClientContact(ctx, clientId);
+  if (!client) {
+    return { error: "Client not found or access denied." };
+  }
+
+  const recipientPhone = normalizePhoneDigits(client.phoneWhatsapp ?? client.phone);
+  if (!recipientPhone) {
+    return { error: `No WhatsApp phone number found for ${client.fullName}.` };
+  }
+
+  const sessionName = await resolveConnectedWhatsappSessionName(ctx);
+  if (!sessionName) {
+    return { error: "WhatsApp is not connected for this organization." };
+  }
+
+  await guardedSendMedia(
+    sessionName,
+    recipientPhone,
+    mediaUrl,
+    "document",
+    {
+      caption,
+      fileName,
+      mimetype: "application/pdf",
+    },
+    false,
+  );
+  await updateLastContacted(ctx, clientId);
+
+  return {
+    clientId,
+    clientName: client.fullName,
+    phone: recipientPhone,
+  };
+}
+
+async function ensureProposalShareToken(
+  ctx: ActionContext,
+  proposalId: string,
+  currentShareToken: string | null,
+): Promise<string | null> {
+  if (currentShareToken) {
+    return currentShareToken;
+  }
+
+  const { data: token, error: tokenError } = await ctx.supabase.rpc("generate_share_token");
+  if (tokenError || !token) {
+    return null;
+  }
+
+  const { error: updateError } = await ctx.supabase
+    .from("proposals")
+    .update({ share_token: token })
+    .eq("id", proposalId)
+    .eq("organization_id", ctx.organizationId);
+
+  if (updateError) {
+    return null;
+  }
+
+  return token;
+}
+
+function buildProposalFileName(title: string): string {
+  const safeTitle = title.replace(/[^a-zA-Z0-9-_]+/g, "_").replace(/_+/g, "_").slice(0, 80);
+  return `${safeTitle || "TripBuilt_Proposal"}_Proposal.pdf`;
+}
+
+async function appendClientProfileNote(
+  ctx: ActionContext,
+  clientId: string,
+  note: string,
+): Promise<void> {
+  const { data: profile } = await ctx.supabase
+    .from("profiles")
+    .select("notes")
+    .eq("id", clientId)
+    .eq("organization_id", ctx.organizationId)
+    .maybeSingle();
+
+  const existingNotes = typeof profile?.notes === "string" ? profile.notes.trim() : "";
+  const stampedNote = `[${todayISO()}] ${note}`;
+  const nextNotes = existingNotes ? `${existingNotes}\n${stampedNote}` : stampedNote;
+
+  await ctx.supabase
+    .from("profiles")
+    .update({ notes: nextNotes })
+    .eq("id", clientId)
+    .eq("organization_id", ctx.organizationId);
+}
+
+async function appendTripNote(
+  ctx: ActionContext,
+  tripId: string,
+  note: string,
+): Promise<void> {
+  const { data: trip } = await ctx.supabase
+    .from("trips")
+    .select("notes")
+    .eq("id", tripId)
+    .eq("organization_id", ctx.organizationId)
+    .maybeSingle();
+
+  const existingNotes = typeof trip?.notes === "string" ? trip.notes.trim() : "";
+  const stampedNote = `[${todayISO()}] ${note}`;
+  const nextNotes = existingNotes ? `${existingNotes}\n${stampedNote}` : stampedNote;
+
+  await ctx.supabase
+    .from("trips")
+    .update({ notes: nextNotes })
+    .eq("id", tripId)
+    .eq("organization_id", ctx.organizationId);
+}
+
+async function upsertRevisionWorkItem(
+  ctx: ActionContext,
+  params: {
+    readonly title: string;
+    readonly summary: string;
+    readonly clientId?: string | null;
+    readonly proposalId?: string | null;
+    readonly tripId?: string | null;
+  },
+): Promise<string> {
+  const workItems = await loadGodWorkItems(ctx.supabase as never, {
+    orgIds: [ctx.organizationId],
+    status: "active",
+    limit: 25,
+  });
+
+  const existing = workItems.find((item) => {
+    const metadata = normalizeMetadata(item.metadata);
+    return (
+      readString(metadata, "proposal_id") === (params.proposalId ?? null)
+      || readString(metadata, "trip_id") === (params.tripId ?? null)
+      || readString(metadata, "client_id") === (params.clientId ?? null)
+    );
+  });
+
+  if (existing) {
+    const updated = await updateGodWorkItem(ctx.supabase as never, existing.id, {
+      status: "open",
+      title: params.title,
+      summary: params.summary,
+      due_at: buildFutureIso(1),
+      metadata: {
+        ...normalizeMetadata(existing.metadata),
+        client_id: params.clientId ?? undefined,
+        proposal_id: params.proposalId ?? undefined,
+        trip_id: params.tripId ?? undefined,
+        source: "whatsapp_client_handoff",
+      },
+    });
+
+    return updated?.id ?? existing.id;
+  }
+
+  const workItem = await createGodWorkItem(ctx.supabase as never, {
+    kind: "growth_followup",
+    target_type: params.proposalId ? "proposal" : "organization",
+    target_id: params.proposalId ?? ctx.organizationId,
+    org_id: ctx.organizationId,
+    owner_id: ctx.userId,
+    status: "open",
+    severity: "high",
+    title: params.title,
+    summary: params.summary,
+    due_at: buildFutureIso(1),
+    metadata: {
+      client_id: params.clientId ?? undefined,
+      proposal_id: params.proposalId ?? undefined,
+      trip_id: params.tripId ?? undefined,
+      source: "whatsapp_client_handoff",
+    },
+  });
+
+  return workItem.id;
 }
 
 async function ensureTripShareUrl(
@@ -531,6 +819,301 @@ async function loadTripReadinessItems(
       },
     };
   });
+}
+
+type ProposalHandoffContext = {
+  readonly proposalId: string;
+  readonly proposalTitle: string;
+  readonly proposalStatus: string | null;
+  readonly proposalViewedAt: string | null;
+  readonly proposalApprovedAt: string | null;
+  readonly shareToken: string | null;
+  readonly shareUrl: string | null;
+  readonly pdfUrl: string | null;
+  readonly tripId: string | null;
+  readonly clientId: string;
+  readonly clientName: string;
+  readonly clientPhone: string | null;
+};
+
+type TripHandoffContext = {
+  readonly tripId: string;
+  readonly tripName: string;
+  readonly destination: string | null;
+  readonly tripStatus: string | null;
+  readonly itineraryId: string;
+  readonly shareUrl: string | null;
+  readonly viewedAt: string | null;
+  readonly approvedAt: string | null;
+  readonly clientId: string;
+  readonly clientName: string;
+  readonly clientPhone: string | null;
+};
+
+async function getProposalHandoffContext(
+  ctx: ActionContext,
+  proposalId: string,
+): Promise<ProposalHandoffContext | null> {
+  const { data, error } = await ctx.supabase
+    .from("proposals")
+    .select(
+      "id, title, status, share_token, viewed_at, approved_at, trip_id, client_id, clients!proposals_client_id_fkey(id, profiles!clients_id_fkey(full_name, phone, phone_whatsapp))",
+    )
+    .eq("id", proposalId)
+    .eq("organization_id", ctx.organizationId)
+    .maybeSingle();
+
+  if (error || !data?.client_id) {
+    return null;
+  }
+
+  const clientRelation = data.clients as
+    | {
+        id: string;
+        profiles: {
+          full_name: string | null;
+          phone: string | null;
+          phone_whatsapp: string | null;
+        } | null;
+      }
+    | null;
+
+  const shareToken = await ensureProposalShareToken(ctx, data.id, data.share_token ?? null);
+  const baseUrl = getAppBaseUrl();
+
+  return {
+    proposalId: data.id,
+    proposalTitle: data.title ?? "Travel proposal",
+    proposalStatus: data.status ?? null,
+    proposalViewedAt: data.viewed_at ?? null,
+    proposalApprovedAt: data.approved_at ?? null,
+    shareToken,
+    shareUrl: shareToken ? `${baseUrl}/p/${shareToken}` : null,
+    pdfUrl: shareToken ? `${baseUrl}/api/proposals/${data.id}/pdf?token=${shareToken}` : null,
+    tripId: data.trip_id ?? null,
+    clientId: data.client_id,
+    clientName: clientRelation?.profiles?.full_name ?? "Unknown client",
+    clientPhone: normalizePhoneDigits(
+      clientRelation?.profiles?.phone_whatsapp ?? clientRelation?.profiles?.phone ?? null,
+    ),
+  };
+}
+
+async function getTripHandoffContext(
+  ctx: ActionContext,
+  tripId: string,
+): Promise<TripHandoffContext | null> {
+  const { data, error } = await ctx.supabase
+    .from("trips")
+    .select(
+      "id, name, destination, status, itinerary_id, client_id, profiles!trips_client_id_fkey(full_name, phone, phone_whatsapp)",
+    )
+    .eq("id", tripId)
+    .eq("organization_id", ctx.organizationId)
+    .maybeSingle();
+
+  if (error || !data?.itinerary_id || !data.client_id) {
+    return null;
+  }
+
+  const clientRelation = data.profiles as
+    | {
+        full_name: string | null;
+        phone: string | null;
+        phone_whatsapp: string | null;
+      }
+    | null;
+
+  const shareUrl = await ensureTripShareUrl(ctx, data.itinerary_id);
+  const { data: sharedRow } = await ctx.supabase
+    .from("shared_itineraries")
+    .select("viewed_at, approved_at")
+    .eq("itinerary_id", data.itinerary_id)
+    .maybeSingle();
+
+  return {
+    tripId: data.id,
+    tripName: data.name ?? data.destination ?? "Trip",
+    destination: data.destination ?? null,
+    tripStatus: data.status ?? null,
+    itineraryId: data.itinerary_id,
+    shareUrl,
+    viewedAt: sharedRow?.viewed_at ?? null,
+    approvedAt: sharedRow?.approved_at ?? null,
+    clientId: data.client_id,
+    clientName: clientRelation?.full_name ?? "Unknown client",
+    clientPhone: normalizePhoneDigits(clientRelation?.phone_whatsapp ?? clientRelation?.phone ?? null),
+  };
+}
+
+export async function loadHandoffQueueItems(
+  ctx: ActionContext,
+  limit: number,
+): Promise<readonly OperatorListItem[]> {
+  const [proposalRows, tripRows] = await Promise.all([
+    ctx.supabase
+      .from("proposals")
+      .select(
+        "id, title, status, share_token, viewed_at, approved_at, created_at, trip_id, client_id, clients!proposals_client_id_fkey(id, profiles!clients_id_fkey(full_name, phone, phone_whatsapp))",
+      )
+      .eq("organization_id", ctx.organizationId)
+      .order("updated_at", { ascending: false })
+      .limit(limit * 4),
+    ctx.supabase
+      .from("trips")
+      .select(
+        "id, name, destination, status, start_date, itinerary_id, client_id, profiles!trips_client_id_fkey(full_name, phone, phone_whatsapp)",
+      )
+      .eq("organization_id", ctx.organizationId)
+      .not("itinerary_id", "is", null)
+      .order("updated_at", { ascending: false })
+      .limit(limit * 4),
+  ]);
+
+  const items: Array<{ priority: number; item: OperatorListItem }> = [];
+  const proposalTripIds = new Set<string>();
+
+  for (const row of (proposalRows.data ?? []) as Array<{
+    id: string;
+    title: string | null;
+    status: string | null;
+    share_token: string | null;
+    viewed_at: string | null;
+    approved_at: string | null;
+    trip_id: string | null;
+    client_id: string | null;
+    clients:
+      | {
+          id: string;
+          profiles:
+            | { full_name: string | null; phone: string | null; phone_whatsapp: string | null }
+            | null;
+        }
+      | null;
+  }>) {
+    if (row.trip_id) {
+      proposalTripIds.add(row.trip_id);
+    }
+
+    const clientName = row.clients?.profiles?.full_name ?? "Unknown client";
+    if (!row.client_id) continue;
+
+    if (row.status === "draft") {
+      items.push({
+        priority: 1,
+        item: {
+          id: row.id,
+          label: `${clientName} — proposal "${row.title ?? "Untitled proposal"}" ready to send`,
+          metadata: {
+            artifact_type: "proposal",
+            handoff_stage: "draft_ready",
+            proposal_id: row.id,
+            trip_id: row.trip_id,
+            client_id: row.client_id,
+            client_name: clientName,
+          },
+        },
+      });
+      continue;
+    }
+
+    if ((row.status === "sent" || row.status === "viewed") && !row.viewed_at) {
+      items.push({
+        priority: 2,
+        item: {
+          id: row.id,
+          label: `${clientName} — proposal "${row.title ?? "Untitled proposal"}" sent, not viewed`,
+          metadata: {
+            artifact_type: "proposal",
+            handoff_stage: "sent_not_viewed",
+            proposal_id: row.id,
+            trip_id: row.trip_id,
+            client_id: row.client_id,
+            client_name: clientName,
+          },
+        },
+      });
+      continue;
+    }
+
+    if (row.viewed_at && !row.approved_at) {
+      items.push({
+        priority: 3,
+        item: {
+          id: row.id,
+          label: `${clientName} — proposal "${row.title ?? "Untitled proposal"}" viewed, waiting on approval`,
+          metadata: {
+            artifact_type: "proposal",
+            handoff_stage: "viewed_not_approved",
+            proposal_id: row.id,
+            trip_id: row.trip_id,
+            client_id: row.client_id,
+            client_name: clientName,
+          },
+        },
+      });
+    }
+  }
+
+  const itineraryIds = (tripRows.data ?? [])
+    .map((row) => row.itinerary_id)
+    .filter((value): value is string => typeof value === "string" && value.length > 0);
+  const { data: sharedRows } = itineraryIds.length > 0
+    ? await ctx.supabase
+        .from("shared_itineraries")
+        .select("itinerary_id, share_code, viewed_at, approved_at")
+        .in("itinerary_id", itineraryIds)
+    : { data: [] as Array<{ itinerary_id: string; share_code: string; viewed_at: string | null; approved_at: string | null }> };
+
+  const sharedByItineraryId = new Map(
+    (sharedRows ?? []).map((row) => [row.itinerary_id, row]),
+  );
+
+  for (const row of (tripRows.data ?? []) as Array<{
+    id: string;
+    name: string | null;
+    destination: string | null;
+    status: string | null;
+    itinerary_id: string | null;
+    client_id: string | null;
+    profiles:
+      | { full_name: string | null; phone: string | null; phone_whatsapp: string | null }
+      | null;
+  }>) {
+    if (!row.itinerary_id || !row.client_id || proposalTripIds.has(row.id)) {
+      continue;
+    }
+
+    const shared = sharedByItineraryId.get(row.itinerary_id);
+    if (!shared?.share_code || shared.approved_at) {
+      continue;
+    }
+
+    const clientName = row.profiles?.full_name ?? "Unknown client";
+    const handoffStage = shared.viewed_at ? "itinerary_viewed_waiting" : "itinerary_sent_waiting";
+    items.push({
+      priority: shared.viewed_at ? 4 : 5,
+      item: {
+        id: row.id,
+        label: shared.viewed_at
+          ? `${clientName} — itinerary viewed, waiting on response`
+          : `${clientName} — itinerary shared, waiting on view`,
+        metadata: {
+          artifact_type: "itinerary",
+          handoff_stage: handoffStage,
+          trip_id: row.id,
+          itinerary_id: row.itinerary_id,
+          client_id: row.client_id,
+          client_name: clientName,
+        },
+      },
+    });
+  }
+
+  return items
+    .sort((left, right) => left.priority - right.priority)
+    .slice(0, limit)
+    .map((entry) => entry.item);
 }
 
 function buildListMessage(
@@ -1417,6 +2000,359 @@ const sendPickupDetails: ActionDefinition = {
   },
 };
 
+const listHandoffQueue: ActionDefinition = {
+  name: "list_handoff_queue",
+  description: "List the top proposal and itinerary handoff items that need operator action",
+  category: "read",
+  requiresConfirmation: false,
+  parameters: {
+    type: "object",
+    properties: {
+      limit: { type: "number", description: "Maximum handoff items to return" },
+    },
+  },
+  async execute(ctx, params): Promise<ActionResult> {
+    const items = await loadHandoffQueueItems(ctx, clampLimit(params.limit));
+    return {
+      success: true,
+      data: { items },
+      message: buildListMessage(
+        "*Client handoff queue*",
+        items,
+        "No commercial handoff items need attention right now.",
+        "Reply *send proposal 1*, *send itinerary 1*, *resend proposal 1*, or *client wants changes 1 cheaper option*.",
+      ),
+    };
+  },
+};
+
+const sendTripShareLink: ActionDefinition = {
+  name: "send_trip_share_link",
+  description: "Send the trip itinerary share link to the client on WhatsApp",
+  category: "write",
+  requiresConfirmation: true,
+  parameters: {
+    type: "object",
+    properties: {
+      trip_id: { type: "string", description: "Trip UUID" },
+      message: { type: "string", description: "Optional override message" },
+    },
+    required: ["trip_id"],
+  },
+  async execute(ctx, params): Promise<ActionResult> {
+    const tripId = cleanText(params.trip_id);
+    const customMessage = cleanText(params.message);
+    if (!tripId) {
+      return { success: false, message: "trip_id is required." };
+    }
+
+    const trip = await getTripHandoffContext(ctx, tripId);
+    if (!trip || !trip.shareUrl) {
+      return { success: false, message: "Trip not found or share link could not be prepared." };
+    }
+
+    const message = customMessage ?? [
+      `Hi ${trip.clientName},`,
+      `Your ${trip.destination ?? trip.tripName} trip plan is ready: ${trip.shareUrl}`,
+      "Reply here if you want any changes before we confirm it.",
+    ].join("\n");
+
+    const sendResult = await sendClientTextNow(ctx, trip.clientId, message);
+    if ("error" in sendResult) {
+      return { success: false, message: `Failed to send itinerary: ${sendResult.error}` };
+    }
+
+    await ctx.supabase
+      .from("shared_itineraries")
+      .update({ recipient_phone: sendResult.phone })
+      .eq("itinerary_id", trip.itineraryId);
+
+    await insertNotificationLog(ctx, {
+      notificationType: "trip_share_whatsapp_handoff",
+      recipientId: trip.clientId,
+      recipientPhone: sendResult.phone,
+      title: "Trip share link sent",
+      body: trip.shareUrl,
+      tripId: trip.tripId,
+      externalId: trip.shareUrl,
+    });
+
+    return {
+      success: true,
+      data: {
+        artifactType: "itinerary",
+        client: trip.clientName,
+        tripId: trip.tripId,
+        shareUrl: trip.shareUrl,
+        sentAt: new Date().toISOString(),
+        suggestedNextAction: "Check handoff in 1-2 days if the client does not respond.",
+      },
+      message: `Itinerary link sent to ${trip.clientName}. Next: check *handoff* if they do not respond.`,
+      affectedEntities: [{ type: "trip", id: trip.tripId }],
+    };
+  },
+};
+
+const sendProposalArtifact: ActionDefinition = {
+  name: "send_proposal_artifact",
+  description: "Send the latest proposal share link and PDF to the client on WhatsApp",
+  category: "write",
+  requiresConfirmation: true,
+  parameters: {
+    type: "object",
+    properties: {
+      proposal_id: { type: "string", description: "Proposal UUID" },
+      message: { type: "string", description: "Optional override message" },
+      include_pdf: { type: "boolean", description: "Whether to include the proposal PDF document" },
+    },
+    required: ["proposal_id"],
+  },
+  async execute(ctx, params): Promise<ActionResult> {
+    const proposalId = cleanText(params.proposal_id);
+    const customMessage = cleanText(params.message);
+    const includePdf = params.include_pdf !== false;
+    if (!proposalId) {
+      return { success: false, message: "proposal_id is required." };
+    }
+
+    const proposal = await getProposalHandoffContext(ctx, proposalId);
+    if (!proposal || !proposal.shareUrl) {
+      return { success: false, message: "Proposal not found or share link could not be prepared." };
+    }
+
+    const message = customMessage ?? [
+      `Hi ${proposal.clientName},`,
+      `Your proposal "${proposal.proposalTitle}" is ready: ${proposal.shareUrl}`,
+      "I have also attached the PDF for easy review.",
+    ].join("\n");
+
+    const textResult = await sendClientTextNow(ctx, proposal.clientId, message);
+    if ("error" in textResult) {
+      return { success: false, message: `Failed to send proposal link: ${textResult.error}` };
+    }
+
+    if (includePdf && proposal.pdfUrl) {
+      const documentResult = await sendClientDocumentNow(
+        ctx,
+        proposal.clientId,
+        proposal.pdfUrl,
+        buildProposalFileName(proposal.proposalTitle),
+        `Proposal PDF: ${proposal.proposalTitle}`,
+      );
+      if ("error" in documentResult) {
+        return { success: false, message: `Proposal link sent, but PDF failed: ${documentResult.error}` };
+      }
+    }
+
+    const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+    await ctx.supabase
+      .from("proposals")
+      .update({
+        status:
+          proposal.proposalStatus === "approved" || proposal.proposalStatus === "rejected"
+            ? proposal.proposalStatus
+            : "sent",
+        expires_at: expiresAt,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", proposal.proposalId)
+      .eq("organization_id", ctx.organizationId);
+
+    await insertNotificationLog(ctx, {
+      notificationType: "proposal_whatsapp_handoff",
+      recipientId: proposal.clientId,
+      recipientPhone: textResult.phone,
+      title: "Proposal sent on WhatsApp",
+      body: `${proposal.proposalTitle}\n${proposal.shareUrl}`,
+      tripId: proposal.tripId,
+      externalId: proposal.shareUrl,
+    });
+
+    return {
+      success: true,
+      data: {
+        artifactType: "proposal",
+        client: proposal.clientName,
+        proposalId: proposal.proposalId,
+        tripId: proposal.tripId,
+        shareUrl: proposal.shareUrl,
+        pdfUrl: includePdf ? proposal.pdfUrl : null,
+        sentAt: new Date().toISOString(),
+        suggestedNextAction: "Review the handoff queue for viewed-not-approved proposals.",
+      },
+      message: `Proposal sent to ${proposal.clientName}. Next: reply *handoff* to track view and approval status.`,
+      affectedEntities: [{ type: "proposal", id: proposal.proposalId }],
+    };
+  },
+};
+
+const recordRevisionRequest: ActionDefinition = {
+  name: "record_revision_request",
+  description: "Record a client revision request, attach the note, and create or update the follow-up work item",
+  category: "write",
+  requiresConfirmation: true,
+  parameters: {
+    type: "object",
+    properties: {
+      revision_note: { type: "string", description: "What the client wants changed" },
+      client_id: { type: "string", description: "Client UUID" },
+      trip_id: { type: "string", description: "Trip UUID" },
+      proposal_id: { type: "string", description: "Proposal UUID" },
+    },
+    required: ["revision_note"],
+  },
+  async execute(ctx, params): Promise<ActionResult> {
+    const revisionNote = cleanText(params.revision_note);
+    const clientId = cleanText(params.client_id);
+    const tripId = cleanText(params.trip_id);
+    const proposalId = cleanText(params.proposal_id);
+
+    if (!revisionNote) {
+      return { success: false, message: "revision_note is required." };
+    }
+
+    let resolvedClientId = clientId;
+    let resolvedTripId = tripId;
+    let clientName = "client";
+    let proposalTitle: string | null = null;
+
+    if (proposalId) {
+      const proposal = await getProposalHandoffContext(ctx, proposalId);
+      if (!proposal) {
+        return { success: false, message: "Proposal not found." };
+      }
+      resolvedClientId = proposal.clientId;
+      resolvedTripId = proposal.tripId;
+      clientName = proposal.clientName;
+      proposalTitle = proposal.proposalTitle;
+    } else if (tripId) {
+      const trip = await getTripHandoffContext(ctx, tripId);
+      if (!trip) {
+        return { success: false, message: "Trip not found." };
+      }
+      resolvedClientId = trip.clientId;
+      clientName = trip.clientName;
+    } else if (clientId) {
+      const client = await getClientContact(ctx, clientId);
+      if (!client) {
+        return { success: false, message: "Client not found." };
+      }
+      clientName = client.fullName;
+    } else {
+      return { success: false, message: "Provide proposal_id, trip_id, or client_id." };
+    }
+
+    const note = proposalTitle
+      ? `Revision requested for "${proposalTitle}": ${revisionNote}`
+      : `Revision requested: ${revisionNote}`;
+
+    if (resolvedClientId) {
+      await appendClientProfileNote(ctx, resolvedClientId, note);
+    }
+    if (resolvedTripId) {
+      await appendTripNote(ctx, resolvedTripId, note);
+    }
+
+    const workItemId = await upsertRevisionWorkItem(ctx, {
+      title: `${clientName} requested itinerary/proposal changes`,
+      summary: note,
+      clientId: resolvedClientId,
+      proposalId,
+      tripId: resolvedTripId,
+    });
+
+    return {
+      success: true,
+      data: {
+        clientId: resolvedClientId,
+        tripId: resolvedTripId,
+        proposalId,
+        workItemId,
+        revisionNote,
+        suggestedNextAction: "Revise the proposal or itinerary, then resend it from WhatsApp.",
+      },
+      message: `Revision request recorded for ${clientName}. I updated the notes and opened the follow-up work item.`,
+      affectedEntities: [
+        ...(resolvedClientId ? [{ type: "client", id: resolvedClientId }] : []),
+        ...(resolvedTripId ? [{ type: "trip", id: resolvedTripId }] : []),
+      ],
+    };
+  },
+};
+
+const resendLastArtifact: ActionDefinition = {
+  name: "resend_last_artifact",
+  description: "Resend the latest proposal or itinerary artifact to the client on WhatsApp",
+  category: "write",
+  requiresConfirmation: true,
+  parameters: {
+    type: "object",
+    properties: {
+      client_id: { type: "string", description: "Client UUID" },
+      proposal_id: { type: "string", description: "Proposal UUID" },
+      trip_id: { type: "string", description: "Trip UUID" },
+      artifact_type: {
+        type: "string",
+        enum: ["proposal", "itinerary"],
+        description: "Which artifact should be resent",
+      },
+    },
+  },
+  async execute(ctx, params): Promise<ActionResult> {
+    const proposalId = cleanText(params.proposal_id);
+    const tripId = cleanText(params.trip_id);
+    const clientId = cleanText(params.client_id);
+    const artifactType = cleanText(params.artifact_type);
+
+    if (proposalId || artifactType === "proposal") {
+      const resolvedProposalId = proposalId ?? null;
+      if (!resolvedProposalId && clientId) {
+        const { data } = await ctx.supabase
+          .from("proposals")
+          .select("id")
+          .eq("organization_id", ctx.organizationId)
+          .eq("client_id", clientId)
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (!data?.id) {
+          return { success: false, message: "No proposal found to resend for that client." };
+        }
+        return sendProposalArtifact.execute(ctx, { proposal_id: data.id, include_pdf: true });
+      }
+      if (!resolvedProposalId) {
+        return { success: false, message: "proposal_id or client_id is required to resend a proposal." };
+      }
+      return sendProposalArtifact.execute(ctx, { proposal_id: resolvedProposalId, include_pdf: true });
+    }
+
+    if (tripId || artifactType === "itinerary") {
+      const resolvedTripId = tripId ?? null;
+      if (!resolvedTripId && clientId) {
+        const { data } = await ctx.supabase
+          .from("trips")
+          .select("id")
+          .eq("organization_id", ctx.organizationId)
+          .eq("client_id", clientId)
+          .not("itinerary_id", "is", null)
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (!data?.id) {
+          return { success: false, message: "No itinerary found to resend for that client." };
+        }
+        return sendTripShareLink.execute(ctx, { trip_id: data.id });
+      }
+      if (!resolvedTripId) {
+        return { success: false, message: "trip_id or client_id is required to resend an itinerary." };
+      }
+      return sendTripShareLink.execute(ctx, { trip_id: resolvedTripId });
+    }
+
+    return { success: false, message: "Provide artifact_type together with proposal_id, trip_id, or client_id." };
+  },
+};
+
 const listPendingApprovals: ActionDefinition = {
   name: "list_pending_approvals",
   description: "List guarded Business OS drafts that still need explicit approval",
@@ -1528,6 +2464,11 @@ export const operatorOpsActions: readonly ActionDefinition[] = [
   resendTripShareLink,
   sendTripUpdate,
   sendPickupDetails,
+  listHandoffQueue,
+  sendTripShareLink,
+  sendProposalArtifact,
+  recordRevisionRequest,
+  resendLastArtifact,
   listPendingApprovals,
   approveDraft,
   rejectDraft,

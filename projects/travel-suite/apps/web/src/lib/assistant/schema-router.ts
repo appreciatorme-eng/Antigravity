@@ -98,6 +98,11 @@ const ACTION_CATEGORY_MAP: Readonly<Record<string, Category>> = {
   resend_trip_share_link: "ops",
   send_trip_update: "ops",
   send_pickup_details: "ops",
+  list_handoff_queue: "ops",
+  send_trip_share_link: "ops",
+  send_proposal_artifact: "ops",
+  record_revision_request: "ops",
+  resend_last_artifact: "ops",
   list_pending_approvals: "ops",
   approve_draft: "ops",
   reject_draft: "ops",
@@ -136,7 +141,7 @@ const KEYWORD_RULES: readonly KeywordRule[] = [
   },
   {
     pattern: /proposal|quote|quotation|convert/i,
-    categories: ["proposal"],
+    categories: ["proposal", "ops"],
   },
   {
     pattern: /preference|setting/i,
@@ -147,7 +152,7 @@ const KEYWORD_RULES: readonly KeywordRule[] = [
     categories: ["dashboard", "report"],
   },
   {
-    pattern: /follow.?up|collections|payment link|promise|approval|approve|reject|work item|task|trip check|pickup details/i,
+    pattern: /follow.?up|collections|payment link|promise|approval|approve|reject|work item|task|trip check|pickup details|handoff|commercial|send itinerary|send proposal|resend proposal|revise|client wants changes/i,
     categories: ["ops", "dashboard"],
   },
 ];

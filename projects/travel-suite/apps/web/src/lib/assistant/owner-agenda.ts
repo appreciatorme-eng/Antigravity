@@ -3,6 +3,7 @@ import "server-only";
 import type { ActionContext, OwnerAgenda, SuggestedAction } from "./types";
 import { getCachedContextSnapshot } from "./context-engine";
 import { generateDailyOpsBrief } from "@/lib/platform/business-os";
+import { loadHandoffQueueItems } from "./actions/ops";
 
 const AGENDA_CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -124,12 +125,16 @@ function buildRecommendedActions(agenda: {
   readonly tripRisks: readonly string[];
   readonly collectionsActions: readonly string[];
   readonly needsResponse: readonly string[];
+  readonly handoffItems: readonly string[];
 }): readonly SuggestedAction[] {
   const actions: SuggestedAction[] = [];
 
   if (agenda.needsResponse.length > 0) {
     actions.push({ label: "Clear follow-ups", prefilledMessage: "followups" });
     actions.push({ label: "Review leads", prefilledMessage: "leads" });
+  }
+  if (agenda.handoffItems.length > 0) {
+    actions.push({ label: "Clear handoff", prefilledMessage: "handoff" });
   }
   if (agenda.collectionsActions.length > 0) {
     actions.push({ label: "Review collections", prefilledMessage: "collections" });
@@ -155,14 +160,17 @@ export async function buildOwnerAgenda(ctx: ActionContext): Promise<OwnerAgenda>
 
   const snapshot = await getCachedContextSnapshot(ctx);
   const sessionName = await getActiveWhatsappSessionName(ctx).catch(() => null);
-  const [brief, needsResponse, tripRisks] = await Promise.all([
+  const [brief, needsResponse, tripRisks, handoffQueue] = await Promise.all([
     generateDailyOpsBrief(ctx.supabase as never, ctx.userId).catch(() => null),
     loadNeedsResponse(ctx, sessionName).catch(() => [] as const),
     loadTripRisks(ctx).catch(() => [] as const),
+    loadHandoffQueueItems(ctx, 3).catch(() => [] as const),
   ]);
 
   const collectionsActions = buildCollectionsActions(snapshot);
+  const handoffItems = handoffQueue.map((item) => item.label);
   const fallbackPriorities = [
+    ...handoffItems,
     ...tripRisks,
     ...collectionsActions,
     ...needsResponse.map((item) => `Customer follow-up needed — ${item}`),
@@ -175,9 +183,10 @@ export async function buildOwnerAgenda(ctx: ActionContext): Promise<OwnerAgenda>
     topPriorities: takeMax(brief?.priorities ?? fallbackPriorities, 4),
     gaps: takeMax(brief?.gaps ?? [], 3),
     needsResponse,
+    handoffItems,
     collectionsActions,
     tripRisks,
-    recommendedNextActions: buildRecommendedActions({ tripRisks, collectionsActions, needsResponse }),
+    recommendedNextActions: buildRecommendedActions({ tripRisks, collectionsActions, needsResponse, handoffItems }),
     generatedAt: new Date().toISOString(),
     source: brief ? "business_os" : "fallback",
   };
@@ -211,6 +220,11 @@ export function buildOwnerAgendaPromptBlock(agenda: OwnerAgenda): string {
   if (agenda.needsResponse.length > 0) {
     sections.push("\n### Needs response");
     sections.push(agenda.needsResponse.map((item) => `- ${item}`).join("\n"));
+  }
+
+  if (agenda.handoffItems.length > 0) {
+    sections.push("\n### Client handoff");
+    sections.push(agenda.handoffItems.map((item) => `- ${item}`).join("\n"));
   }
 
   if (agenda.collectionsActions.length > 0) {
@@ -247,6 +261,11 @@ export function formatOwnerAgenda(agenda: OwnerAgenda): string {
   if (agenda.needsResponse.length > 0) {
     lines.push("", "*Needs response:*");
     lines.push(...takeMax(agenda.needsResponse, 3).map((item) => `• ${item}`));
+  }
+
+  if (agenda.handoffItems.length > 0) {
+    lines.push("", "*Client handoff:*");
+    lines.push(...takeMax(agenda.handoffItems, 3).map((item) => `• ${item}`));
   }
 
   if (agenda.collectionsActions.length > 0) {

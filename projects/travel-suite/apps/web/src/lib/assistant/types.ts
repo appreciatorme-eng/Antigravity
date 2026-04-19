@@ -184,6 +184,7 @@ export interface OwnerAgenda {
   readonly topPriorities: readonly string[];
   readonly gaps: readonly string[];
   readonly needsResponse: readonly string[];
+  readonly handoffItems: readonly string[];
   readonly collectionsActions: readonly string[];
   readonly tripRisks: readonly string[];
   readonly recommendedNextActions: readonly SuggestedAction[];

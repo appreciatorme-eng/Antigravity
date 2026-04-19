@@ -123,6 +123,8 @@ const KEYWORD_ALIASES: Record<string, string> = {
   "task": "work",
   "promises": "promises",
   "promise": "promises",
+  "handoff": "handoff",
+  "commercial": "handoff",
   "approvals": "approvals",
   "approval": "approvals",
   "trip check": "trip_check",
@@ -276,6 +278,113 @@ function parsePromiseCommand(input: string): { readonly index: number | null; re
 function parseCreateTaskCommand(input: string): string | null {
   const match = /^create task\s+(.+)$/i.exec(input.trim());
   return match?.[1]?.trim() ?? null;
+}
+
+function parseArtifactCommand(
+  input: string,
+  prefix: string,
+): { readonly index: number | null; readonly query: string | null } | null {
+  const trimmed = input.trim();
+  const exactPrefix = new RegExp(`^${prefix}$`, "i");
+  if (exactPrefix.test(trimmed)) {
+    return { index: null, query: null };
+  }
+
+  const indexMatch = new RegExp(`^${prefix}\\s+(\\d+)$`, "i").exec(trimmed);
+  if (indexMatch) {
+    return {
+      index: Number.parseInt(indexMatch[1], 10),
+      query: null,
+    };
+  }
+
+  const forMatch = new RegExp(`^${prefix}\\s+for\\s+(.+)$`, "i").exec(trimmed);
+  if (forMatch) {
+    return { index: null, query: forMatch[1].trim() };
+  }
+
+  const freeMatch = new RegExp(`^${prefix}\\s+(.+)$`, "i").exec(trimmed);
+  if (freeMatch) {
+    return { index: null, query: freeMatch[1].trim() };
+  }
+
+  return null;
+}
+
+async function resolveProposalIdFromQuery(
+  ctx: CommandContext,
+  query: string,
+): Promise<string | null> {
+  const lowered = query.trim().toLowerCase();
+  if (!lowered) return null;
+
+  const { data } = await ctx.admin
+    .from("proposals")
+    .select(
+      "id, title, clients!proposals_client_id_fkey(profiles!clients_id_fkey(full_name)), tour_templates(destination)",
+    )
+    .eq("organization_id", ctx.orgId)
+    .order("updated_at", { ascending: false })
+    .limit(25);
+
+  const rows = (data ?? []) as Array<{
+    id: string;
+    title: string | null;
+    clients:
+      | { profiles: { full_name: string | null } | null }
+      | null;
+    tour_templates:
+      | { destination: string | null }
+      | { destination: string | null }[]
+      | null;
+  }>;
+
+  const match = rows.find((row) => {
+    const destination = Array.isArray(row.tour_templates)
+      ? row.tour_templates[0]?.destination ?? null
+      : row.tour_templates?.destination ?? null;
+    const haystack = [
+      row.title ?? "",
+      row.clients?.profiles?.full_name ?? "",
+      destination ?? "",
+    ].join(" ").toLowerCase();
+    return haystack.includes(lowered);
+  });
+
+  return match?.id ?? null;
+}
+
+async function resolveTripIdFromQuery(
+  ctx: CommandContext,
+  query: string,
+): Promise<string | null> {
+  const lowered = query.trim().toLowerCase();
+  if (!lowered) return null;
+
+  const { data } = await ctx.admin
+    .from("trips")
+    .select("id, name, destination, profiles!trips_client_id_fkey(full_name)")
+    .eq("organization_id", ctx.orgId)
+    .order("updated_at", { ascending: false })
+    .limit(25);
+
+  const rows = (data ?? []) as Array<{
+    id: string;
+    name: string | null;
+    destination: string | null;
+    profiles: { full_name: string | null } | null;
+  }>;
+
+  const match = rows.find((row) => {
+    const haystack = [
+      row.name ?? "",
+      row.destination ?? "",
+      row.profiles?.full_name ?? "",
+    ].join(" ").toLowerCase();
+    return haystack.includes(lowered);
+  });
+
+  return match?.id ?? null;
 }
 
 async function resolveOwnerUserId(
@@ -497,7 +606,7 @@ async function getMonthlyRevenue(
 
 async function handleAgendaCommand(ctx: CommandContext): Promise<string> {
   const agenda = await buildOwnerAgenda(ctx.actionCtx);
-  return `${formatOwnerAgenda(agenda)}\n\nReply *followups*, *collections*, *work*, *promises*, *approvals*, *trip check today*, *today*, *payments*, *leads*, or tell me what you want to change.`;
+  return `${formatOwnerAgenda(agenda)}\n\nReply *handoff*, *followups*, *collections*, *work*, *promises*, *approvals*, *trip check today*, *today*, *payments*, *leads*, or tell me what you want to change.`;
 }
 
 async function handleTodayCommand(ctx: CommandContext): Promise<string> {
@@ -517,6 +626,7 @@ async function handleOperatorListCommand(
     | "review_overdue_accounts"
     | "list_open_work_items"
     | "list_breached_commitments"
+    | "list_handoff_queue"
     | "list_pending_approvals"
     | "check_trip_readiness",
   params: Record<string, unknown>,
@@ -623,6 +733,8 @@ async function handleKeywordCommand(
       return handleOperatorListCommand(ctx, "list_open_work_items", { limit: 5 }, "work");
     case "promises":
       return handleOperatorListCommand(ctx, "list_breached_commitments", { limit: 5 }, "promises");
+    case "handoff":
+      return handleOperatorListCommand(ctx, "list_handoff_queue", { limit: 5 }, "handoff");
     case "approvals":
       return handleOperatorListCommand(ctx, "list_pending_approvals", { limit: 5 }, "approvals");
     case "trip_check":
@@ -848,6 +960,139 @@ async function handleIndexedOperatorCommand(
       "create_work_item",
       { title, due_date: dueDate },
       `Create task *${title}* due *${dueDate}*?`,
+    );
+  }
+
+  const handoffCommand = KEYWORD_ALIASES[input.trim().toLowerCase()];
+  if (handoffCommand === "handoff") {
+    return handleOperatorListCommand(ctx, "list_handoff_queue", { limit: 5 }, "handoff");
+  }
+
+  const sendProposalCommand = parseArtifactCommand(input, "send proposal");
+  if (sendProposalCommand) {
+    let proposalId: string | null = null;
+
+    if (sendProposalCommand.query) {
+      proposalId = await resolveProposalIdFromQuery(ctx, sendProposalCommand.query);
+    } else {
+      const item = await getLoopItem(ctx, "handoff", sendProposalCommand.index);
+      if (item?.metadata?.artifact_type === "proposal" && typeof item.metadata.proposal_id === "string") {
+        proposalId = item.metadata.proposal_id;
+      }
+    }
+
+    if (!proposalId) {
+      return { reply: "I couldn't find that proposal. Reply *handoff* first, or say *send proposal for Rahul*." };
+    }
+
+    return proposeAction(
+      ctx,
+      "send_proposal_artifact",
+      { proposal_id: proposalId, include_pdf: true },
+      `Send the proposal package on WhatsApp now?`,
+    );
+  }
+
+  const resendProposalCommand = parseArtifactCommand(input, "resend proposal");
+  if (resendProposalCommand) {
+    let proposalId: string | null = null;
+    let clientId: string | null = null;
+
+    if (resendProposalCommand.query) {
+      proposalId = await resolveProposalIdFromQuery(ctx, resendProposalCommand.query);
+    } else {
+      const item = await getLoopItem(ctx, "handoff", resendProposalCommand.index);
+      if (item?.metadata?.artifact_type === "proposal") {
+        proposalId = typeof item.metadata.proposal_id === "string" ? item.metadata.proposal_id : null;
+        clientId = typeof item.metadata.client_id === "string" ? item.metadata.client_id : null;
+      }
+    }
+
+    if (!proposalId && !clientId) {
+      return { reply: "I couldn't find that proposal to resend. Reply *handoff* first, or say *resend proposal for Rahul*." };
+    }
+
+    return proposeAction(
+      ctx,
+      "resend_last_artifact",
+      proposalId
+        ? { proposal_id: proposalId, artifact_type: "proposal" }
+        : { client_id: clientId, artifact_type: "proposal" },
+      "Resend the latest proposal package on WhatsApp?",
+    );
+  }
+
+  const sendItineraryCommand = parseArtifactCommand(input, "send itinerary");
+  if (sendItineraryCommand) {
+    let tripId: string | null = null;
+
+    if (sendItineraryCommand.query) {
+      tripId = await resolveTripIdFromQuery(ctx, sendItineraryCommand.query);
+    } else {
+      const handoffItem = await getLoopItem(ctx, "handoff", sendItineraryCommand.index);
+      if (handoffItem?.metadata?.artifact_type === "itinerary" && typeof handoffItem.metadata.trip_id === "string") {
+        tripId = handoffItem.metadata.trip_id;
+      } else {
+        const tripItem = await getLoopItem(ctx, "trip_check", sendItineraryCommand.index);
+        if (tripItem?.id) {
+          tripId = tripItem.id;
+        }
+      }
+    }
+
+    if (!tripId) {
+      return { reply: "I couldn't find that itinerary. Reply *handoff* or *trip check today* first, or say *send itinerary for Bali trip*." };
+    }
+
+    return proposeAction(
+      ctx,
+      "send_trip_share_link",
+      { trip_id: tripId },
+      "Send the itinerary share link on WhatsApp now?",
+    );
+  }
+
+  const clientWantsChangesMatch = /^client wants changes(?:\s+(\d+))?(?:\s+(.+))?$/i.exec(input.trim());
+  if (clientWantsChangesMatch) {
+    const index = clientWantsChangesMatch[1] ? Number.parseInt(clientWantsChangesMatch[1], 10) : null;
+    const revisionNote = clientWantsChangesMatch[2]?.trim() || "Client requested changes";
+    const item = await getLoopItem(ctx, "handoff", index);
+    if (!item) {
+      return { reply: "I don't have that handoff item selected. Reply *handoff* to reload the queue." };
+    }
+
+    return proposeAction(
+      ctx,
+      "record_revision_request",
+      {
+        client_id: typeof item.metadata?.client_id === "string" ? item.metadata.client_id : undefined,
+        trip_id: typeof item.metadata?.trip_id === "string" ? item.metadata.trip_id : undefined,
+        proposal_id: typeof item.metadata?.proposal_id === "string" ? item.metadata.proposal_id : undefined,
+        revision_note: revisionNote,
+      },
+      `Record revision request for *${item.label}*?`,
+    );
+  }
+
+  const reviseMatch = /^revise\s+(.+)$/i.exec(input.trim());
+  if (reviseMatch) {
+    const query = reviseMatch[1].trim();
+    const proposalId = await resolveProposalIdFromQuery(ctx, query);
+    const tripId = proposalId ? null : await resolveTripIdFromQuery(ctx, query);
+
+    if (!proposalId && !tripId) {
+      return { reply: `I couldn't find a proposal or trip matching *${query}*.` };
+    }
+
+    return proposeAction(
+      ctx,
+      "record_revision_request",
+      {
+        proposal_id: proposalId ?? undefined,
+        trip_id: tripId ?? undefined,
+        revision_note: `Revision requested from WhatsApp: ${query}`,
+      },
+      `Record a revision request for *${query}*?`,
     );
   }
 
