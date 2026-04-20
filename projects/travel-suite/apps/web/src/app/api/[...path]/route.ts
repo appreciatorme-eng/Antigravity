@@ -116,6 +116,8 @@ const routes = createCatchAllHandlers([
   ["subscriptions/limits", () => import("@/app/api/_handlers/subscriptions/limits/route")],
   ["subscriptions", () => import("@/app/api/_handlers/subscriptions/route")],
   ["support", () => import("@/app/api/_handlers/support/route")],
+  ["trip-request-form/:token/pdf", () => import("@/app/api/_handlers/trip-request-form/[token]/pdf/route")],
+  ["trip-request-form/:token", () => import("@/app/api/_handlers/trip-request-form/[token]/route")],
   ...(process.env.NODE_ENV !== "production" ? [["test-geocoding", () => import("@/app/api/_handlers/test-geocoding/route")] satisfies [string, () => Promise<unknown>]] : []),
   ["trips/:id/add-ons", () => import("@/app/api/_handlers/trips/[id]/add-ons/route")],
   ["trips/:id/clone", () => import("@/app/api/_handlers/trips/[id]/clone/route")],

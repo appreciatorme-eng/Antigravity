@@ -303,6 +303,7 @@ export type Database = {
         Row: {
           budget: string | null
           client_id: string | null
+          client_email: string | null
           client_name: string | null
           client_phone: string | null
           collected_fields: Json
@@ -314,6 +315,7 @@ export type Database = {
           destination: string | null
           duration_days: number | null
           end_date: string | null
+          form_token: string
           hotel_preference: string | null
           id: string
           interests: string[] | null
@@ -332,6 +334,7 @@ export type Database = {
         Insert: {
           budget?: string | null
           client_id?: string | null
+          client_email?: string | null
           client_name?: string | null
           client_phone?: string | null
           collected_fields?: Json
@@ -343,6 +346,7 @@ export type Database = {
           destination?: string | null
           duration_days?: number | null
           end_date?: string | null
+          form_token?: string
           hotel_preference?: string | null
           id?: string
           interests?: string[] | null
@@ -361,6 +365,7 @@ export type Database = {
         Update: {
           budget?: string | null
           client_id?: string | null
+          client_email?: string | null
           client_name?: string | null
           client_phone?: string | null
           collected_fields?: Json
@@ -372,6 +377,7 @@ export type Database = {
           destination?: string | null
           duration_days?: number | null
           end_date?: string | null
+          form_token?: string
           hotel_preference?: string | null
           id?: string
           interests?: string[] | null
