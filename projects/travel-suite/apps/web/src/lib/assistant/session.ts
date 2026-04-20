@@ -46,6 +46,15 @@ export interface SessionContextSnapshot {
     readonly items: readonly SessionReferenceItem[];
     readonly updatedAt: string;
   };
+  readonly clientCapture?: {
+    readonly step: "email" | "phone" | "notes";
+    readonly clientName: string;
+    readonly tripParams: Record<string, unknown>;
+    readonly email?: string | null;
+    readonly phone?: string | null;
+    readonly notes?: string | null;
+    readonly updatedAt: string;
+  };
 }
 
 /** The shape returned to callers after loading or creating a session. */

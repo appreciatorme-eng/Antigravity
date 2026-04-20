@@ -30,6 +30,7 @@ import {
   updateSessionContextSnapshot,
   updateSessionHistory,
   type PendingAction,
+  type SessionContextSnapshot,
   type SessionReferenceItem,
 } from "@/lib/assistant/session";
 import { findAction } from "@/lib/assistant/actions/registry";
@@ -167,24 +168,167 @@ async function saveLoopReferences(
   ctx: CommandContext,
   references?: CommandReply["references"],
 ): Promise<void> {
+  const existingSnapshot = await getSessionContextSnapshot(ctx.actionCtx, ctx.sessionId).catch(() => null);
   await updateSessionContextSnapshot(
     ctx.actionCtx,
     ctx.sessionId,
     references
       ? {
+          ...existingSnapshot,
           operatorLoop: {
             kind: references.kind,
             items: [...references.items],
             updatedAt: new Date().toISOString(),
           },
         }
-      : null,
+      : existingSnapshot
+        ? {
+            ...existingSnapshot,
+            operatorLoop: undefined,
+          }
+        : null,
   ).catch((error) => {
     logError("[assistant-commands] failed to persist operator loop references", error, {
       sessionId: ctx.sessionId,
       organizationId: ctx.orgId,
     });
   });
+}
+
+function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function normalizeOptionalPhone(value: string): string | null {
+  const digits = value.replace(/\D/g, "");
+  if (digits.length < 7) return null;
+  return value.trim();
+}
+
+async function setClientCaptureFlow(
+  ctx: CommandContext,
+  flow: SessionContextSnapshot["clientCapture"] | null,
+): Promise<void> {
+  const existingSnapshot = await getSessionContextSnapshot(ctx.actionCtx, ctx.sessionId).catch(() => null);
+  await updateSessionContextSnapshot(
+    ctx.actionCtx,
+    ctx.sessionId,
+    flow
+      ? {
+          ...existingSnapshot,
+          clientCapture: flow,
+        }
+      : existingSnapshot
+        ? {
+            ...existingSnapshot,
+            clientCapture: undefined,
+          }
+        : null,
+  );
+}
+
+async function startMissingClientCapture(
+  ctx: CommandContext,
+  clientName: string,
+  tripParams: Record<string, unknown>,
+): Promise<string> {
+  await setClientCaptureFlow(ctx, {
+    step: "email",
+    clientName,
+    tripParams,
+    updatedAt: new Date().toISOString(),
+  });
+
+  return [
+    `Action failed: No client found matching "${clientName}".`,
+    "",
+    `I couldn't find an existing client record for *${clientName}*.`,
+    "Let's create the client now and then continue the trip.",
+    "",
+    "Send the client email address.",
+    "",
+    "_You can reply *cancel* to stop this flow._",
+  ].join("\n");
+}
+
+async function maybeHandleClientCaptureFollowUp(
+  ctx: CommandContext,
+  userText: string,
+): Promise<string | null> {
+  const snapshot = await getSessionContextSnapshot(ctx.actionCtx, ctx.sessionId);
+  const flow = snapshot?.clientCapture;
+  if (!flow) return null;
+
+  const trimmed = userText.trim();
+  const normalized = trimmed.toLowerCase();
+
+  if (CANCEL_PHRASES.has(normalized)) {
+    await setClientCaptureFlow(ctx, null);
+    return "Cancelled client creation for this trip. Tell me what you want to do next.";
+  }
+
+  if (flow.step === "email") {
+    const email = trimmed.toLowerCase();
+    if (!isValidEmail(email)) {
+      return "Please send a valid client email address.";
+    }
+
+    await setClientCaptureFlow(ctx, {
+      ...flow,
+      step: "phone",
+      email,
+      updatedAt: new Date().toISOString(),
+    });
+
+    return [
+      `Saved email for *${flow.clientName}*: *${email}*`,
+      "",
+      "Now send the client phone number, or reply *skip* if you want to leave it blank.",
+    ].join("\n");
+  }
+
+  if (flow.step === "phone") {
+    const skipped = normalized === "skip";
+    if (!skipped && !normalizeOptionalPhone(trimmed)) {
+      return 'Please send a valid phone number, or reply *skip*.';
+    }
+
+    await setClientCaptureFlow(ctx, {
+      ...flow,
+      step: "notes",
+      phone: skipped ? "" : trimmed,
+      updatedAt: new Date().toISOString(),
+    });
+
+    return "Any notes about this client? Reply with the note, or reply *skip*.";
+  }
+
+  const notes = normalized === "skip" ? "" : trimmed;
+  const createClientResult = await executeRegisteredAction(ctx, "create_client", {
+    full_name: flow.clientName,
+    email: flow.email,
+    phone: flow.phone ?? "",
+    notes,
+  });
+
+  if (!createClientResult.success) {
+    return `I couldn't create the client yet: ${createClientResult.message}`;
+  }
+
+  const createTripResult = await executeRegisteredAction(ctx, "create_trip", flow.tripParams);
+  await setClientCaptureFlow(ctx, null);
+
+  if (!createTripResult.success) {
+    return [
+      `Client created for *${flow.clientName}*.`,
+      `Trip creation still failed: ${createTripResult.message}`,
+    ].join("\n");
+  }
+
+  return [
+    `Created client for *${flow.clientName}*.`,
+    createTripResult.message,
+  ].join("\n");
 }
 
 async function getLoopItem(
@@ -608,6 +752,17 @@ async function handlePendingAction(
       });
 
       await clearPendingAction(ctx.actionCtx, ctx.sessionId);
+      if (!result.success && pending.actionName === "create_trip") {
+        const clientName =
+          typeof pending.params.client_name === "string" && pending.params.client_name.trim().length > 0
+            ? pending.params.client_name.trim()
+            : /^No client found matching "(.+)"\./.exec(result.message)?.[1]?.trim();
+
+        if (clientName) {
+          return startMissingClientCapture(ctx, clientName, pending.params);
+        }
+      }
+
       return result.success
         ? `Done. ${result.message}`
         : `Action failed: ${result.message}`;
@@ -1252,6 +1407,13 @@ export async function routeAssistantCommand(
         await sendReply(ctx, pendingReply);
         return true;
       }
+    }
+
+    const clientCaptureReply = await maybeHandleClientCaptureFollowUp(ctx, trimmed);
+    if (clientCaptureReply) {
+      await persistTurn(ctx, trimmed, clientCaptureReply);
+      await sendReply(ctx, clientCaptureReply);
+      return true;
     }
 
     const pollCommand = POLL_OPTION_TO_COMMAND[trimmed];
