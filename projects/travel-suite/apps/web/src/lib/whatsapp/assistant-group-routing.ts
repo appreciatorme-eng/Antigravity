@@ -86,6 +86,16 @@ const COMMAND_PATTERNS: readonly RegExp[] = [
   /^.+\b\d+\s+nights?\b.*\btrip\b.*$/i,
 ];
 
+const ASSISTANT_AUTHORED_PATTERNS: readonly RegExp[] = [
+  /^🧭/u,
+  /^📋/u,
+  /^new lead\b/i,
+  /^quick commands you can type:?$/im,
+  /^what do you want to do\?$/im,
+  /^reply\s+\*/im,
+  /\breply\s+(stats|leads|today|payments|handoff|followups|collections|work|promises|approvals|trip check today)\b/i,
+];
+
 function asRecord(value: unknown): UnknownRecord | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null;
@@ -197,9 +207,17 @@ export function shouldAttemptAssistantGroupRouting(messageText: string): boolean
   const normalized = messageText.trim().toLowerCase();
   if (!normalized) return false;
 
+  if (ASSISTANT_AUTHORED_PATTERNS.some((pattern) => pattern.test(messageText))) {
+    return false;
+  }
+
   if (EXACT_COMMANDS.has(normalized)) {
     return true;
   }
 
-  return COMMAND_PATTERNS.some((pattern) => pattern.test(messageText));
+  if (COMMAND_PATTERNS.some((pattern) => pattern.test(messageText))) {
+    return true;
+  }
+
+  return normalized.length <= 240;
 }

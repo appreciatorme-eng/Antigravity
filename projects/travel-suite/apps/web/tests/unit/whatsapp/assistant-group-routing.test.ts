@@ -65,8 +65,16 @@ describe("assistant-group-routing", () => {
     expect(shouldAttemptAssistantGroupRouting("Create a 5 day Delhi trip")).toBe(true);
   });
 
+  it("routes normal free-form operator replies in the assistant group", () => {
+    expect(shouldAttemptAssistantGroupRouting("Rahul")).toBe(true);
+    expect(shouldAttemptAssistantGroupRouting("2")).toBe(true);
+    expect(shouldAttemptAssistantGroupRouting("next month")).toBe(true);
+    expect(shouldAttemptAssistantGroupRouting("can you make a Delhi trip for next month")).toBe(true);
+  });
+
   it("returns false for non-command group chatter", () => {
-    expect(shouldAttemptAssistantGroupRouting("see you later")).toBe(false);
+    expect(shouldAttemptAssistantGroupRouting("Reply handoff, followups, collections")).toBe(false);
+    expect(shouldAttemptAssistantGroupRouting("What do you want to do?\n\n• View leads → reply leads")).toBe(false);
   });
 
   it("describes nested message shape keys", () => {
