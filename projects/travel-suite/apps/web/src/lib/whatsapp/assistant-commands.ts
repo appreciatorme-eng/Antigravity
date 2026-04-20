@@ -136,6 +136,12 @@ function normalizePhoneDigits(value: string | null | undefined): string | null {
   return digits.length > 0 ? digits : null;
 }
 
+function normalizeGroupJid(value: string | null | undefined): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim().toLowerCase();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 function shouldTriggerAI(normalized: string): boolean {
   if (normalized.length < MIN_AI_MESSAGE_LENGTH) return false;
   if (EMOJI_ONLY_RE.test(normalized)) return false;
@@ -449,7 +455,10 @@ async function resolveCommandContext(
     .eq("session_name", instanceName)
     .maybeSingle();
 
-  if (!conn?.organization_id || !conn.assistant_group_jid || conn.assistant_group_jid !== groupJid) {
+  const storedAssistantGroupJid = normalizeGroupJid(conn?.assistant_group_jid);
+  const incomingGroupJid = normalizeGroupJid(groupJid);
+
+  if (!conn?.organization_id || !storedAssistantGroupJid || !incomingGroupJid || storedAssistantGroupJid !== incomingGroupJid) {
     return null;
   }
 

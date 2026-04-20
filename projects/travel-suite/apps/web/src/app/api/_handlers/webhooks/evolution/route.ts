@@ -212,10 +212,13 @@ export async function POST(request: Request): Promise<Response> {
     else if (event.event === "messages.upsert") {
         const payload = event.data as EvolutionMessageData;
         const remoteJid = payload.key?.remoteJid ?? "";
+        const cmdText = extractMessageText(payload).trim();
 
-        // Handle assistant group commands (operator replies in the TripBuilt group)
-        if (isGroupJid(remoteJid) && payload.key?.fromMe) {
-            const cmdText = extractMessageText(payload).trim();
+        // Some operator-authored group messages arrive here as non-fromMe,
+        // while manual self-sent messages can arrive on send.message.
+        // Only route non-fromMe group posts here to avoid looping on the
+        // assistant's own outbound replies.
+        if (isGroupJid(remoteJid) && !payload.key?.fromMe) {
             if (cmdText) {
                 const handled = await routeAssistantCommand(
                     event.instance,
