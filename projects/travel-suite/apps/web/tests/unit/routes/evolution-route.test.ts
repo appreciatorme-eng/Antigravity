@@ -111,7 +111,7 @@ describe("evolution route assistant group routing", () => {
     expect(routeAssistantCommandMock).toHaveBeenCalledWith("org_1234", "120363abc@g.us", "stats");
   });
 
-  it("routes nested view-once assistant commands from send.message", async () => {
+  it("does not route assistant group commands from send.message", async () => {
     const { POST } = await loadRoute();
     const response = await POST(new Request("http://localhost/api/webhooks/evolution", {
       method: "POST",
@@ -136,7 +136,7 @@ describe("evolution route assistant group routing", () => {
     }));
 
     expect(response.status).toBe(200);
-    expect(routeAssistantCommandMock).toHaveBeenCalledWith("org_1234", "120363abc@g.us", "leads");
+    expect(routeAssistantCommandMock).not.toHaveBeenCalled();
   });
 
   it("routes edited assistant commands from messages.update", async () => {

@@ -616,7 +616,6 @@ export async function POST(request: Request): Promise<Response> {
         const remoteJid = payload.key?.remoteJid ?? "";
 
         if (isGroupJid(remoteJid)) {
-            await maybeRouteAssistantGroupCommand("send.message", event.instance, payload);
             return NextResponse.json({ ok: true });
         }
 

@@ -29,6 +29,24 @@ function sanitizeFileName(value: string): string {
   return value.replace(/[^a-zA-Z0-9-_]+/g, "_");
 }
 
+function readErrorText(error: unknown): string {
+  if (!error || typeof error !== "object") return "";
+  const candidate = error as { message?: unknown; details?: unknown; hint?: unknown };
+  return [candidate.message, candidate.details, candidate.hint]
+    .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    .join(" ")
+    .toLowerCase();
+}
+
+function isMissingFormTokenColumnError(error: unknown): boolean {
+  const text = readErrorText(error);
+  return text.includes("form_token") && (text.includes("column") || text.includes("schema cache"));
+}
+
+function isUuidLike(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
 function normalizeItinerary(record: {
   raw_data: unknown;
   trip_title: string | null;
@@ -75,14 +93,27 @@ export async function GET(
     .eq("form_token", token)
     .maybeSingle();
 
-  if (draftError || !draft || draft.status !== "completed" || !draft.created_itinerary_id) {
+  let resolvedDraft = draft;
+  if ((!resolvedDraft || draftError) && (isMissingFormTokenColumnError(draftError) || isUuidLike(token))) {
+    const { data: fallbackDraft, error: fallbackError } = await admin
+      .from("assistant_trip_requests")
+      .select("organization_id, client_name, created_itinerary_id, status")
+      .eq("id", token)
+      .maybeSingle();
+
+    if (!fallbackError && fallbackDraft) {
+      resolvedDraft = fallbackDraft;
+    }
+  }
+
+  if (!resolvedDraft || resolvedDraft.status !== "completed" || !resolvedDraft.created_itinerary_id) {
     return apiError("Trip request PDF not found", 404);
   }
 
   const { data: itinerary, error: itineraryError } = await admin
     .from("itineraries")
     .select("raw_data, trip_title, destination, duration_days, summary")
-    .eq("id", draft.created_itinerary_id)
+    .eq("id", resolvedDraft.created_itinerary_id)
     .maybeSingle();
 
   if (itineraryError || !itinerary) {
@@ -92,7 +123,7 @@ export async function GET(
   const { data: organization } = await admin
     .from("organizations")
     .select("name, logo_url, primary_color")
-    .eq("id", draft.organization_id)
+    .eq("id", resolvedDraft.organization_id)
     .maybeSingle();
 
   try {
@@ -114,7 +145,7 @@ export async function GET(
         companyName: organization?.name || DEFAULT_ITINERARY_BRANDING.companyName,
         logoUrl: organization?.logo_url || null,
         primaryColor: organization?.primary_color || DEFAULT_ITINERARY_BRANDING.primaryColor,
-        clientName: draft.client_name || null,
+        clientName: resolvedDraft.client_name || null,
       },
     }) as React.ReactElement<DocumentProps>;
 

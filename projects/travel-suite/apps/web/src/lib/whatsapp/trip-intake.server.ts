@@ -3,7 +3,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { Json } from "@/lib/database.types";
+import type { Database, Json } from "@/lib/database.types";
 import { deleteCachedByPrefix, getCachedJson, setCachedJson } from "@/lib/cache/upstash";
 import { logError } from "@/lib/observability/logger";
 import type { ActionContext } from "@/lib/assistant/types";
@@ -51,9 +51,16 @@ type TripRequestRow = {
   created_trip_id: string | null;
   created_itinerary_id: string | null;
   created_share_url: string | null;
-  form_token: string;
+  form_token: string | null;
   created_at: string;
   updated_at: string;
+};
+
+type TripRequestInsert = Database["public"]["Tables"]["assistant_trip_requests"]["Insert"];
+type InsertedDraftRow = Record<string, unknown> & {
+  id: string;
+  form_token?: string | null;
+  client_name?: string | null;
 };
 
 type TripRequestDraft = {
@@ -314,7 +321,7 @@ function mapDraft(row: TripRequestRow): TripRequestDraft {
     createdTripId: row.created_trip_id,
     createdItineraryId: row.created_itinerary_id,
     createdShareUrl: row.created_share_url,
-    formToken: row.form_token,
+    formToken: row.form_token ?? row.id,
     updatedAt: row.updated_at,
   };
 }
@@ -351,6 +358,82 @@ function toTripRequestFormState(draft: TripRequestDraft): TripRequestFormState {
 function normalizeEmail(value: string | null | undefined): string | null {
   const normalized = trimOrNull(value, 200)?.toLowerCase() ?? null;
   return normalized && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized) ? normalized : null;
+}
+
+function readErrorText(error: unknown): string {
+  if (!error || typeof error !== "object") return "";
+  const candidate = error as { message?: unknown; details?: unknown; hint?: unknown };
+  return [candidate.message, candidate.details, candidate.hint]
+    .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    .join(" ")
+    .toLowerCase();
+}
+
+function isMissingFormTokenColumnError(error: unknown): boolean {
+  const text = readErrorText(error);
+  return text.includes("form_token") && (text.includes("column") || text.includes("schema cache"));
+}
+
+function isUuidLike(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function resolvePublicTripRequestToken(row: { id: string; form_token?: string | null }): string {
+  return trimOrNull(row.form_token, 200) ?? row.id;
+}
+
+async function insertDraftWithPublicToken(
+  admin: ReturnType<typeof createAdminClient>,
+  payload: TripRequestInsert,
+  selectClause: string,
+  logMessage: string,
+  logContext: Record<string, unknown>,
+): Promise<InsertedDraftRow | null> {
+  const { data, error } = await admin
+    .from("assistant_trip_requests")
+    .insert(payload)
+    .select(selectClause)
+    .single();
+
+  if (!error && data && typeof (data as { id?: unknown }).id === "string") {
+    return data as unknown as InsertedDraftRow;
+  }
+
+  if (!isMissingFormTokenColumnError(error)) {
+    logError(logMessage, error, logContext);
+    return null;
+  }
+
+  const legacyPayload = { ...payload };
+  delete legacyPayload.form_token;
+  const legacySelectClause = selectClause
+    .split(",")
+    .map((segment) => segment.trim())
+    .filter((segment) => segment !== "form_token")
+    .join(", ");
+
+  const { data: legacyData, error: legacyError } = await admin
+    .from("assistant_trip_requests")
+    .insert(legacyPayload as TripRequestInsert)
+    .select(legacySelectClause)
+    .single();
+
+  if (
+    legacyError
+    || !legacyData
+    || typeof (legacyData as { id?: unknown }).id !== "string"
+  ) {
+    logError(logMessage, legacyError ?? error, {
+      ...logContext,
+      legacyFormTokenFallback: true,
+    });
+    return null;
+  }
+
+  return {
+    ...(legacyData as unknown as Record<string, unknown>),
+    form_token: null,
+  } as InsertedDraftRow;
 }
 
 function computeMissingRequiredFields(input: {
@@ -713,11 +796,25 @@ async function getDraftByFormToken(
     .eq("form_token", formToken)
     .maybeSingle();
 
-  if (error || !data) {
+  if (!error && data) {
+    return data as TripRequestRow;
+  }
+
+  if (!isMissingFormTokenColumnError(error) && !isUuidLike(formToken)) {
     return null;
   }
 
-  return data as TripRequestRow;
+  const { data: fallbackData, error: fallbackError } = await admin
+    .from("assistant_trip_requests")
+    .select("*")
+    .eq("id", formToken)
+    .maybeSingle();
+
+  if (fallbackError || !fallbackData) {
+    return null;
+  }
+
+  return fallbackData as TripRequestRow;
 }
 
 export async function ensureFirstContactTripRequestDraft(args: {
@@ -734,7 +831,7 @@ export async function ensureFirstContactTripRequestDraft(args: {
     return null;
   }
 
-  const { data: existing } = await admin
+  const { data: existing, error: existingError } = await admin
     .from("assistant_trip_requests")
     .select("id, form_token")
     .eq("organization_id", args.organizationId)
@@ -744,12 +841,21 @@ export async function ensureFirstContactTripRequestDraft(args: {
     .limit(1)
     .maybeSingle();
 
-  if (existing?.id && existing.form_token) {
+  if (existing?.id) {
+    const publicToken = resolvePublicTripRequestToken(existing as { id: string; form_token?: string | null });
     return {
       id: existing.id,
-      formToken: existing.form_token,
-      formUrl: buildTripRequestFormUrl(existing.form_token),
+      formToken: publicToken,
+      formUrl: buildTripRequestFormUrl(publicToken),
     };
+  }
+
+  if (existingError && !isMissingFormTokenColumnError(existingError)) {
+    logError("[trip-intake] failed to load existing first-contact draft", existingError, {
+      organizationId: args.organizationId,
+      operatorUserId: args.operatorUserId,
+      clientPhone,
+    });
   }
 
   const initialClientName = trimOrNull(args.clientName, 160);
@@ -761,9 +867,9 @@ export async function ensureFirstContactTripRequestDraft(args: {
     travelWindow: null,
   });
   const formToken = randomUUID().replace(/-/g, "");
-  const { data: created, error } = await admin
-    .from("assistant_trip_requests")
-    .insert({
+  const created = await insertDraftWithPublicToken(
+    admin,
+    {
       organization_id: args.organizationId,
       operator_user_id: args.operatorUserId,
       source_channel: args.sourceChannel,
@@ -779,23 +885,26 @@ export async function ensureFirstContactTripRequestDraft(args: {
         initial_message: trimOrNull(args.initialMessage, 500) ?? "",
       } as unknown as Json,
       missing_required_fields: missingRequiredFields as unknown as Json,
-    })
-    .select("id, form_token")
-    .single();
-
-  if (error || !created?.id || !created.form_token) {
-    logError("[trip-intake] failed to create first-contact draft", error, {
+    },
+    "id, form_token",
+    "[trip-intake] failed to create first-contact draft",
+    {
       organizationId: args.organizationId,
       operatorUserId: args.operatorUserId,
       clientPhone,
-    });
+    },
+  );
+
+  if (!created?.id) {
     return null;
   }
 
+  const publicToken = resolvePublicTripRequestToken(created);
+
   return {
     id: created.id,
-    formToken: created.form_token,
-    formUrl: buildTripRequestFormUrl(created.form_token),
+    formToken: publicToken,
+    formUrl: buildTripRequestFormUrl(publicToken),
   };
 }
 
@@ -817,9 +926,9 @@ export async function createOperatorShareableTripRequestDraft(args: {
   });
   const formToken = randomUUID().replace(/-/g, "");
 
-  const { data: created, error } = await admin
-    .from("assistant_trip_requests")
-    .insert({
+  const created = await insertDraftWithPublicToken(
+    admin,
+    {
       organization_id: args.organizationId,
       operator_user_id: args.operatorUserId,
       source_channel: "whatsapp_operator_shared_link",
@@ -834,22 +943,25 @@ export async function createOperatorShareableTripRequestDraft(args: {
         created_from: "whatsapp_operator_shared_link",
       } as unknown as Json,
       missing_required_fields: missingRequiredFields as unknown as Json,
-    })
-    .select("id, form_token, client_name")
-    .single();
-
-  if (error || !created?.id || !created.form_token) {
-    logError("[trip-intake] failed to create operator shareable draft", error, {
+    },
+    "id, form_token, client_name",
+    "[trip-intake] failed to create operator shareable draft",
+    {
       organizationId: args.organizationId,
       operatorUserId: args.operatorUserId,
-    });
+    },
+  );
+
+  if (!created?.id) {
     return null;
   }
 
+  const publicToken = resolvePublicTripRequestToken(created);
+
   return {
     id: created.id,
-    formToken: created.form_token,
-    formUrl: buildTripRequestFormUrl(created.form_token),
+    formToken: publicToken,
+    formUrl: buildTripRequestFormUrl(publicToken),
     clientName: typeof created.client_name === "string" ? created.client_name : null,
   };
 }
@@ -866,9 +978,9 @@ async function createDraft(
     travelWindow: null,
   });
 
-  const { data, error } = await ctx.supabase
-    .from("assistant_trip_requests")
-    .insert({
+  const data = await insertDraftWithPublicToken(
+    ctx.supabase,
+    {
       organization_id: ctx.organizationId,
       operator_user_id: ctx.userId,
       source_channel: ctx.channel,
@@ -886,15 +998,16 @@ async function createDraft(
         duration_days: seed.durationDays,
       } as unknown as Json,
       missing_required_fields: missingRequiredFields as unknown as Json,
-    })
-    .select("*")
-    .single();
-
-  if (error || !data) {
-    logError("[trip-intake] failed to create draft", error, {
+    },
+    "*",
+    "[trip-intake] failed to create draft",
+    {
       organizationId: ctx.organizationId,
       userId: ctx.userId,
-    });
+    },
+  );
+
+  if (!data) {
     return null;
   }
 
