@@ -26,6 +26,10 @@ function takeMax<T>(items: readonly T[], max: number): readonly T[] {
   return items.slice(0, max);
 }
 
+function shouldUseBusinessOsAgenda(ctx: ActionContext): boolean {
+  return ctx.channel === "web";
+}
+
 function buildFallbackSummary(snapshot: Awaited<ReturnType<typeof getCachedContextSnapshot>>): string {
   const parts: string[] = [];
   if (snapshot.todayTrips.length > 0) parts.push(`${snapshot.todayTrips.length} trip${snapshot.todayTrips.length === 1 ? "" : "s"} active today`);
@@ -152,7 +156,7 @@ function buildRecommendedActions(agenda: {
 }
 
 export async function buildOwnerAgenda(ctx: ActionContext): Promise<OwnerAgenda> {
-  const key = `${ctx.organizationId}:${ctx.userId}`;
+  const key = `${ctx.organizationId}:${ctx.userId}:${ctx.channel}`;
   const cached = agendaCache.get(key);
   if (cached && cached.expiresAt > Date.now()) {
     return cached.agenda;
@@ -160,8 +164,11 @@ export async function buildOwnerAgenda(ctx: ActionContext): Promise<OwnerAgenda>
 
   const snapshot = await getCachedContextSnapshot(ctx);
   const sessionName = await getActiveWhatsappSessionName(ctx).catch(() => null);
+  const useBusinessOsAgenda = shouldUseBusinessOsAgenda(ctx);
   const [brief, needsResponse, tripRisks, handoffQueue] = await Promise.all([
-    generateDailyOpsBrief(ctx.supabase as never, ctx.userId).catch(() => null),
+    useBusinessOsAgenda
+      ? generateDailyOpsBrief(ctx.supabase as never, ctx.userId).catch(() => null)
+      : Promise.resolve(null),
     loadNeedsResponse(ctx, sessionName).catch(() => [] as const),
     loadTripRisks(ctx).catch(() => [] as const),
     loadHandoffQueueItems(ctx, 3).catch(() => [] as const),
@@ -177,7 +184,7 @@ export async function buildOwnerAgenda(ctx: ActionContext): Promise<OwnerAgenda>
   ];
 
   const agenda: OwnerAgenda = {
-    headline: brief?.headline ?? "Your WhatsApp operations agenda is ready.",
+    headline: brief?.headline ?? "Your operations agenda is ready.",
     summary: brief?.summary ?? buildFallbackSummary(snapshot),
     queueFocus: brief?.queue_focus ?? "Clear the most urgent customer, payment, and trip issues first.",
     topPriorities: takeMax(brief?.priorities ?? fallbackPriorities, 4),
