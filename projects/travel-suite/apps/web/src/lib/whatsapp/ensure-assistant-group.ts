@@ -8,6 +8,67 @@ import {
 import { logError, logEvent } from "@/lib/observability/logger";
 import { sendPoll, WELCOME_POLL } from "./assistant-polls";
 
+async function resolveOwnerUserIdForOrg(
+  organizationId: string,
+  connectedPhone: string | null | undefined,
+): Promise<string | null> {
+  const admin = createAdminClient();
+
+  const { data: org } = await admin
+    .from("organizations")
+    .select("owner_id")
+    .eq("id", organizationId)
+    .maybeSingle();
+
+  if (typeof org?.owner_id === "string" && org.owner_id.length > 0) {
+    return org.owner_id;
+  }
+
+  const digits = connectedPhone?.replace(/\D/g, "") ?? "";
+  if (digits) {
+    const { data: ownerFromPhone } = await admin
+      .from("profiles")
+      .select("id")
+      .eq("organization_id", organizationId)
+      .eq("phone_normalized", digits)
+      .maybeSingle();
+
+    if (ownerFromPhone?.id) {
+      return ownerFromPhone.id;
+    }
+  }
+
+  const { data: adminProfiles } = await admin
+    .from("profiles")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .in("role", ["super_admin", "admin"])
+    .order("created_at", { ascending: true })
+    .limit(1);
+
+  return adminProfiles?.[0]?.id ?? null;
+}
+
+async function enableMorningBriefingByDefault(
+  organizationId: string,
+  ownerUserId: string | null,
+): Promise<void> {
+  if (!ownerUserId) return;
+
+  const admin = createAdminClient();
+  await admin
+    .from("assistant_preferences")
+    .upsert(
+      {
+        organization_id: organizationId,
+        user_id: ownerUserId,
+        preference_key: "morning_briefing_enabled",
+        preference_value: true,
+      },
+      { onConflict: "organization_id,user_id,preference_key" },
+    );
+}
+
 /**
  * Ensure the TripBuilt Assistant WhatsApp group exists for an instance.
  * Idempotent — skips if the group already exists in the DB.
@@ -67,6 +128,11 @@ export async function ensureAssistantGroup(
   // No phone number — can't create group
   if (!conn?.phone_number) return null;
   if (!orgId) return null;
+
+  const ownerUserId = await resolveOwnerUserIdForOrg(orgId, conn.phone_number ?? null).catch(() => null);
+  await enableMorningBriefingByDefault(orgId, ownerUserId).catch((err) => {
+    logError("[ensure-assistant-group] Failed to enable morning briefing preference", err);
+  });
 
   // 2. Check if any row for this org has an existing group JID
   //    (from a previous session before disconnect/reconnect)

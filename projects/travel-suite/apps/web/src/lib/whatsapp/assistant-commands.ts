@@ -449,16 +449,35 @@ async function resolveCommandContext(
   groupJid: string,
 ): Promise<CommandContext | null> {
   const admin = createAdminClient();
-  const { data: conn } = await admin
+  const { data: sessionConn } = await admin
     .from("whatsapp_connections")
     .select("organization_id, assistant_group_jid, phone_number")
     .eq("session_name", instanceName)
     .maybeSingle();
 
-  const storedAssistantGroupJid = normalizeGroupJid(conn?.assistant_group_jid);
   const incomingGroupJid = normalizeGroupJid(groupJid);
+  const sessionStoredGroupJid = normalizeGroupJid(sessionConn?.assistant_group_jid);
 
-  if (!conn?.organization_id || !storedAssistantGroupJid || !incomingGroupJid || storedAssistantGroupJid !== incomingGroupJid) {
+  let conn = sessionConn;
+  if (
+    !conn?.organization_id
+    || !sessionStoredGroupJid
+    || !incomingGroupJid
+    || sessionStoredGroupJid !== incomingGroupJid
+  ) {
+    const { data: candidateRows } = await admin
+      .from("whatsapp_connections")
+      .select("organization_id, assistant_group_jid, phone_number, updated_at")
+      .not("assistant_group_jid", "is", null)
+      .order("updated_at", { ascending: false })
+      .limit(10);
+
+    conn = (candidateRows ?? []).find((row) => (
+      normalizeGroupJid(row.assistant_group_jid) === incomingGroupJid
+    )) ?? null;
+  }
+
+  if (!conn?.organization_id || !incomingGroupJid) {
     return null;
   }
 
