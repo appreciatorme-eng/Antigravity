@@ -736,6 +736,28 @@ export async function POST(request: Request): Promise<Response> {
     // messages.update -- delivery/read status changes
     // -----------------------------------------------------------------------
     else if (event.event === "messages.update") {
+        const messageLikeUpdate = !Array.isArray(event.data)
+            ? event.data as EvolutionMessageData
+            : null;
+
+        const updateRemoteJid = messageLikeUpdate?.key?.remoteJid ?? "";
+        const updateMessageText = messageLikeUpdate
+            ? extractMessageText(messageLikeUpdate).trim()
+            : "";
+
+        if (isGroupJid(updateRemoteJid)) {
+            if (updateMessageText && shouldAttemptAssistantGroupRouting(updateMessageText)) {
+                const handled = await routeAssistantCommand(
+                    event.instance,
+                    updateRemoteJid,
+                    updateMessageText,
+                );
+                if (handled) return NextResponse.json({ ok: true });
+            }
+
+            return NextResponse.json({ ok: true });
+        }
+
         const updates = Array.isArray(event.data)
             ? event.data as ReadonlyArray<{
                 readonly key?: { readonly id?: string; readonly remoteJid?: string };
