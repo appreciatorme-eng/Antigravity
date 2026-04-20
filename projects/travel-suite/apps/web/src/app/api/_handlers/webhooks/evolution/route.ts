@@ -41,6 +41,12 @@ import { ensureAssistantGroup } from "@/lib/whatsapp/ensure-assistant-group";
 import { routeAssistantCommand } from "@/lib/whatsapp/assistant-commands";
 import { getGeminiModel } from "@/lib/ai/gemini.server";
 import { linkInboundReplyToCommsSequence } from "@/lib/platform/business-os-comms-linking";
+import {
+    describeAssistantMessageShape,
+    extractAssistantMessageText,
+    hasAudioMessageContent,
+    shouldAttemptAssistantGroupRouting,
+} from "@/lib/whatsapp/assistant-group-routing";
 
 // ---------------------------------------------------------------------------
 // In-memory lock: prevent duplicate assistant group creation during reconnect
@@ -64,21 +70,15 @@ interface EvolutionMessageKey {
     readonly remoteJid: string;
     readonly id: string;
     readonly fromMe?: boolean;
+    readonly participant?: string;
 }
 
 interface EvolutionMessageData {
     readonly key: EvolutionMessageKey;
-    readonly message?: {
-        readonly conversation?: string;
-        readonly extendedTextMessage?: { readonly text?: string };
-        readonly audioMessage?: {
-            readonly mimetype?: string;
-            readonly seconds?: number;
-            readonly ptt?: boolean;
-        };
-    };
+    readonly message?: Record<string, unknown>;
     readonly pushName?: string;
     readonly messageTimestamp?: number | string;
+    readonly participant?: string;
 }
 
 interface EvolutionConnectionData {
@@ -96,11 +96,7 @@ interface EvolutionEvent {
 // ---------------------------------------------------------------------------
 
 function extractMessageText(msg: EvolutionMessageData): string {
-    return (
-        msg.message?.conversation ??
-        msg.message?.extendedTextMessage?.text ??
-        ""
-    );
+    return extractAssistantMessageText(msg.message);
 }
 
 function isGroupJid(jid: string): boolean {
@@ -108,103 +104,52 @@ function isGroupJid(jid: string): boolean {
 }
 
 function isVoiceMessage(msg: EvolutionMessageData): boolean {
-    return !!msg.message?.audioMessage;
-}
-
-function shouldAttemptAssistantGroupRouting(messageText: string): boolean {
-    const normalized = messageText.trim().toLowerCase();
-    if (!normalized) return false;
-
-    const exactCommands = new Set([
-        "help",
-        "?",
-        "menu",
-        "commands",
-        "hi",
-        "hello",
-        "hey",
-        "start",
-        "today",
-        "trips",
-        "pickups",
-        "pickup",
-        "trips today",
-        "leads",
-        "lead",
-        "new",
-        "inbox",
-        "payments",
-        "payment",
-        "pending",
-        "due",
-        "revenue",
-        "money",
-        "earnings",
-        "income",
-        "stats",
-        "dashboard",
-        "overview",
-        "dashboard overview",
-        "brief",
-        "briefing",
-        "summary",
-        "morning",
-        "daily briefing",
-        "followups",
-        "followup",
-        "next",
-        "collections",
-        "collection",
-        "cash",
-        "work",
-        "tasks",
-        "task",
-        "promises",
-        "promise",
-        "handoff",
-        "commercial",
-        "approvals",
-        "approval",
-        "trip check",
-        "trip check today",
-        "resume",
-    ]);
-
-    if (exactCommands.has(normalized)) {
-        return true;
-    }
-
-    const commandPatterns: readonly RegExp[] = [
-        /^done\s+\d+$/i,
-        /^resolve\s+\d+$/i,
-        /^approve\s+\d+$/i,
-        /^reject\s+\d+$/i,
-        /^send payment link(?:\s+\d+)?$/i,
-        /^payment promised(?:\s+.+)?$/i,
-        /^snooze(?:\s+.+)?$/i,
-        /^sent(?:\s+\d+)?$/i,
-        /^client replied(?:\s+\d+)?$/i,
-        /^not interested(?:\s+\d+)?$/i,
-        /^create task\s+.+$/i,
-        /^share link(?:\s+for)?\s+.+$/i,
-        /^send pickup details(?:\s+\d+)?$/i,
-        /^send proposal(?:\s+.+)?$/i,
-        /^resend proposal(?:\s+.+)?$/i,
-        /^send itinerary(?:\s+.+)?$/i,
-        /^client wants changes(?:\s+.+)?$/i,
-        /^revise\s+.+$/i,
-        /^payment link for\s+.+$/i,
-        /^.+\btrip to\b.+$/i,
-        /^\d+\s+day\b.+$/i,
-    ];
-
-    return commandPatterns.some((pattern) => pattern.test(messageText));
+    return hasAudioMessageContent(msg.message);
 }
 
 function formatDuration(seconds: number): string {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, "0")}`;
+}
+
+async function maybeRouteAssistantGroupCommand(
+    eventName: string,
+    instanceName: string,
+    payload: EvolutionMessageData,
+): Promise<boolean> {
+    const remoteJid = payload.key?.remoteJid ?? "";
+    if (!isGroupJid(remoteJid)) {
+        return false;
+    }
+
+    const extractedText = extractAssistantMessageText(payload.message).trim();
+    const routingCandidate = extractedText.length > 0 && shouldAttemptAssistantGroupRouting(extractedText);
+
+    logEvent("info", "[webhooks/evolution] assistant group message observed", {
+        event: eventName,
+        instance: instanceName,
+        remoteJid,
+        fromMe: payload.key?.fromMe ?? null,
+        participant: payload.key?.participant ?? payload.participant ?? null,
+        messageShapeKeys: describeAssistantMessageShape(payload.message),
+        extractedText: extractedText.slice(0, 160),
+        routingCandidate,
+    });
+
+    if (!routingCandidate) {
+        return false;
+    }
+
+    const handled = await routeAssistantCommand(instanceName, remoteJid, extractedText);
+    logEvent(handled ? "info" : "warn", "[webhooks/evolution] assistant group routing result", {
+        event: eventName,
+        instance: instanceName,
+        remoteJid,
+        extractedText: extractedText.slice(0, 160),
+        handled,
+    });
+    return handled;
 }
 
 // Assistant group commands are handled by routeAssistantCommand()
@@ -302,17 +247,9 @@ export async function POST(request: Request): Promise<Response> {
     else if (event.event === "messages.upsert") {
         const payload = event.data as EvolutionMessageData;
         const remoteJid = payload.key?.remoteJid ?? "";
-        const cmdText = extractMessageText(payload).trim();
 
-        if (isGroupJid(remoteJid)) {
-            if (cmdText && shouldAttemptAssistantGroupRouting(cmdText)) {
-                const handled = await routeAssistantCommand(
-                    event.instance,
-                    remoteJid,
-                    cmdText,
-                );
-                if (handled) return NextResponse.json({ ok: true });
-            }
+        if (await maybeRouteAssistantGroupCommand("messages.upsert", event.instance, payload)) {
+            return NextResponse.json({ ok: true });
         }
 
         // Skip all other group messages
@@ -349,8 +286,11 @@ export async function POST(request: Request): Promise<Response> {
 
         // Voice message: transcribe via Whisper, then store with transcript
         if (isVoice) {
-            const audioInfo = payload.message?.audioMessage;
-            const duration = audioInfo?.seconds ?? 0;
+            const audioInfo = (payload.message?.audioMessage ?? {}) as {
+                readonly mimetype?: string;
+                readonly seconds?: number;
+            };
+            const duration = audioInfo.seconds ?? 0;
             let transcript = "";
             let intentData = null;
 
@@ -358,10 +298,10 @@ export async function POST(request: Request): Promise<Response> {
             try {
                 const base64Audio = await getEvolutionMediaBase64(event.instance, payload.key.id);
                 if (base64Audio) {
-                    const result = await transcribeVoiceMessage(
-                        base64Audio,
-                        audioInfo?.mimetype ?? "audio/ogg",
-                    );
+                        const result = await transcribeVoiceMessage(
+                            base64Audio,
+                            audioInfo.mimetype ?? "audio/ogg",
+                        );
                     if (result) {
                         transcript = result.text;
                         intentData = result.intent;
@@ -655,21 +595,13 @@ export async function POST(request: Request): Promise<Response> {
     else if (event.event === "send.message") {
         const payload = event.data as EvolutionMessageData;
         const remoteJid = payload.key?.remoteJid ?? "";
-        const messageText = extractMessageText(payload).trim();
 
         if (isGroupJid(remoteJid)) {
-            if (messageText && shouldAttemptAssistantGroupRouting(messageText)) {
-                const handled = await routeAssistantCommand(
-                    event.instance,
-                    remoteJid,
-                    messageText,
-                );
-                if (handled) return NextResponse.json({ ok: true });
-            }
-
+            await maybeRouteAssistantGroupCommand("send.message", event.instance, payload);
             return NextResponse.json({ ok: true });
         }
 
+        const messageText = extractMessageText(payload).trim();
         if (!remoteJid.includes("@s.whatsapp.net")) {
             return NextResponse.json({ ok: true });
         }
@@ -741,20 +673,11 @@ export async function POST(request: Request): Promise<Response> {
             : null;
 
         const updateRemoteJid = messageLikeUpdate?.key?.remoteJid ?? "";
-        const updateMessageText = messageLikeUpdate
-            ? extractMessageText(messageLikeUpdate).trim()
-            : "";
 
         if (isGroupJid(updateRemoteJid)) {
-            if (updateMessageText && shouldAttemptAssistantGroupRouting(updateMessageText)) {
-                const handled = await routeAssistantCommand(
-                    event.instance,
-                    updateRemoteJid,
-                    updateMessageText,
-                );
-                if (handled) return NextResponse.json({ ok: true });
+            if (messageLikeUpdate) {
+                await maybeRouteAssistantGroupCommand("messages.update", event.instance, messageLikeUpdate);
             }
-
             return NextResponse.json({ ok: true });
         }
 

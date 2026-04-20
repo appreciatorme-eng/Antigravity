@@ -41,9 +41,14 @@ import {
   formatRevenue,
   formatTripsToday,
 } from "./assistant-formatters";
-import { logError } from "@/lib/observability/logger";
+import { logError, logWarn, logEvent } from "@/lib/observability/logger";
 import { POLL_OPTION_TO_COMMAND, sendFollowUpPoll } from "./assistant-polls";
 import { handleTripIntakeMessage } from "./trip-intake.server";
+import {
+  normalizeAssistantGroupJid,
+  resolveAssistantGroupConnection,
+  type AssistantGroupConnectionCandidate,
+} from "./assistant-group-context";
 
 type AdminClient = SupabaseClient<Database>;
 
@@ -134,12 +139,6 @@ const KEYWORD_ALIASES: Record<string, string> = {
 function normalizePhoneDigits(value: string | null | undefined): string | null {
   const digits = value?.replace(/\D/g, "") ?? "";
   return digits.length > 0 ? digits : null;
-}
-
-function normalizeGroupJid(value: string | null | undefined): string | null {
-  if (typeof value !== "string") return null;
-  const trimmed = value.trim().toLowerCase();
-  return trimmed.length > 0 ? trimmed : null;
 }
 
 function shouldTriggerAI(normalized: string): boolean {
@@ -451,52 +450,80 @@ async function resolveCommandContext(
   const admin = createAdminClient();
   const { data: sessionConn } = await admin
     .from("whatsapp_connections")
-    .select("organization_id, assistant_group_jid, phone_number")
+    .select("organization_id, assistant_group_jid, phone_number, session_name, session_token, updated_at")
     .eq("session_name", instanceName)
     .maybeSingle();
 
-  const incomingGroupJid = normalizeGroupJid(groupJid);
-  const sessionStoredGroupJid = normalizeGroupJid(sessionConn?.assistant_group_jid);
-
-  let conn = sessionConn;
-  if (
-    !conn?.organization_id
-    || !sessionStoredGroupJid
-    || !incomingGroupJid
-    || sessionStoredGroupJid !== incomingGroupJid
-  ) {
-    const { data: candidateRows } = await admin
+  const directConn = sessionConn ?? (
+    await admin
       .from("whatsapp_connections")
-      .select("organization_id, assistant_group_jid, phone_number, updated_at")
-      .not("assistant_group_jid", "is", null)
-      .order("updated_at", { ascending: false })
-      .limit(10);
+      .select("organization_id, assistant_group_jid, phone_number, session_name, session_token, updated_at")
+      .eq("session_token", instanceName)
+      .maybeSingle()
+  ).data ?? null;
 
-    conn = (candidateRows ?? []).find((row) => (
-      normalizeGroupJid(row.assistant_group_jid) === incomingGroupJid
-    )) ?? null;
+  const { data: candidateRows } = await admin
+    .from("whatsapp_connections")
+    .select("organization_id, assistant_group_jid, phone_number, session_name, session_token, updated_at")
+    .not("assistant_group_jid", "is", null)
+    .order("updated_at", { ascending: false })
+    .limit(20);
+
+  const incomingGroupJid = normalizeAssistantGroupJid(groupJid);
+  const resolution = resolveAssistantGroupConnection({
+    instanceName,
+    incomingGroupJid,
+    sessionConnection: (directConn as AssistantGroupConnectionCandidate | null) ?? null,
+    candidateRows: (candidateRows as AssistantGroupConnectionCandidate[] | null) ?? [],
+  });
+
+  if (!resolution.connection?.organization_id || !incomingGroupJid) {
+    logWarn("[assistant-commands] failed to resolve assistant group context", {
+      instanceName,
+      incomingGroupJid,
+      failureReason: resolution.failureReason,
+      sessionConnectionFound: Boolean(directConn),
+      candidateCount: candidateRows?.length ?? 0,
+    });
+    return null;
   }
 
-  if (!conn?.organization_id || !incomingGroupJid) {
+  const conn = resolution.connection;
+  const organizationId = conn.organization_id;
+  if (typeof organizationId !== "string" || organizationId.length === 0) {
+    logWarn("[assistant-commands] resolved assistant group row is missing organization id", {
+      instanceName,
+      incomingGroupJid,
+      matchedBy: resolution.matchedBy,
+    });
     return null;
+  }
+
+  if (resolution.matchedBy && resolution.matchedBy !== "session_row") {
+    logEvent("info", "[assistant-commands] resolved assistant group via fallback match", {
+      instanceName,
+      incomingGroupJid,
+      matchedBy: resolution.matchedBy,
+      organizationId,
+    });
   }
 
   const ownerUserId = await resolveOwnerUserId(
     admin,
-    conn.organization_id,
+    organizationId,
     conn.phone_number ?? null,
   );
 
   if (!ownerUserId) {
     logError("[assistant-commands] could not resolve owner user for assistant group", null, {
-      organizationId: conn.organization_id,
+      organizationId,
       instanceName,
     });
     return null;
   }
 
   const actionCtx: ActionContext = {
-    organizationId: conn.organization_id,
+    organizationId,
     userId: ownerUserId,
     channel: "whatsapp_group",
     supabase: admin,
@@ -506,7 +533,7 @@ async function resolveCommandContext(
 
   return {
     admin,
-    orgId: conn.organization_id,
+    orgId: organizationId,
     ownerUserId,
     instanceName,
     groupJid,
