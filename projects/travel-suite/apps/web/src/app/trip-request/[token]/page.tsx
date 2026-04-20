@@ -37,7 +37,7 @@ export default async function TripRequestFormPage({
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">TripBuilt Assistant Form</p>
           <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">Complete the trip request</h1>
           <p className="mt-2 text-sm leading-6 text-slate-600">
-            Fill the missing trip details here. When you submit, TripBuilt will create the trip in Planner and Trips, then send the share link and PDF back to your WhatsApp assistant group.
+            Fill the missing trip details here. When you submit, TripBuilt will create the trip in Planner and Trips, then return the final share link and PDF here and in WhatsApp.
           </p>
         </div>
 
@@ -50,7 +50,7 @@ export default async function TripRequestFormPage({
         {submitted || isCompleted ? (
           <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-800">
             {isCompleted
-              ? "Trip created. The assistant has sent the share link and PDF back to WhatsApp."
+              ? "Trip created. The operator assistant has been notified, and the client package is available here."
               : "Trip form saved."}
           </div>
         ) : null}
@@ -83,7 +83,30 @@ export default async function TripRequestFormPage({
             </div>
           </section>
         ) : (
-          <form action={`/api/trip-request-form/${token}`} method="post" className="space-y-6">
+          <form action={`/api/trip-request/${token}`} method="post" className="space-y-6">
+            <section className="grid gap-4 sm:grid-cols-2">
+              <label className="space-y-2">
+                <span className="text-sm font-medium text-slate-700">I am filling this as</span>
+                <select
+                  name="submitter_role"
+                  defaultValue="operator"
+                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-sky-400"
+                >
+                  <option value="operator">Tour operator</option>
+                  <option value="client">Client / traveler</option>
+                  <option value="other">Other</option>
+                </select>
+              </label>
+              <label className="space-y-2">
+                <span className="text-sm font-medium text-slate-700">Your name</span>
+                <input
+                  name="submitted_by"
+                  placeholder="Optional"
+                  className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-sky-400"
+                />
+              </label>
+            </section>
+
             <section className="grid gap-4 sm:grid-cols-2">
               <label className="space-y-2">
                 <span className="text-sm font-medium text-slate-700">Destination</span>
@@ -146,7 +169,7 @@ export default async function TripRequestFormPage({
 
             <div className="flex flex-col gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs leading-5 text-slate-500">
-                Submit creates the trip in Planner and Trips, then sends the share link and PDF back to WhatsApp.
+                Submit creates the trip in Planner and Trips, then returns the trip link and PDF here and notifies the operator in WhatsApp.
               </p>
               <button
                 type="submit"

@@ -1,0 +1,4 @@
+ALTER TABLE assistant_trip_requests
+ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS submitted_by TEXT,
+ADD COLUMN IF NOT EXISTS submitter_role TEXT;

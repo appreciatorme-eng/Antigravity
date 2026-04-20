@@ -29,6 +29,9 @@ type TripRequestRow = {
   source_channel: string;
   status: TripRequestStatus;
   request_summary: string | null;
+  submitted_at: string | null;
+  submitted_by: string | null;
+  submitter_role: string | null;
   destination: string | null;
   duration_days: number | null;
   client_name: string | null;
@@ -98,6 +101,8 @@ export type TripRequestFormState = {
   readonly shareUrl: string | null;
   readonly pdfUrl: string | null;
 };
+
+export type TripRequestSubmitterRole = "operator" | "client" | "other";
 
 type ActiveTripIntakeState = {
   selectedDraftId: string;
@@ -306,7 +311,7 @@ export function buildTripRequestFormUrl(formToken: string): string {
 }
 
 export function buildTripRequestPdfUrl(formToken: string): string {
-  return `${APP_BASE_URL}/api/trip-request-form/${formToken}/pdf`;
+  return `${APP_BASE_URL}/api/trip-request/${formToken}/pdf`;
 }
 
 function toTripRequestFormState(draft: TripRequestDraft): TripRequestFormState {
@@ -1071,14 +1076,13 @@ async function notifyAssistantGroupAboutCompletedDraft(
   organizationId: string,
   formToken: string,
   message: string,
-): Promise<void> {
+): Promise<{ sessionName: string | null; groupJid: string | null }> {
   const admin = createAdminClient();
   const { data: connection } = await admin
     .from("whatsapp_connections")
     .select("session_name, assistant_group_jid, status")
     .eq("organization_id", organizationId)
     .eq("status", "connected")
-    .not("assistant_group_jid", "is", null)
     .order("connected_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -1087,7 +1091,7 @@ async function notifyAssistantGroupAboutCompletedDraft(
   const groupJid = (connection as { assistant_group_jid?: string | null } | null)?.assistant_group_jid ?? null;
 
   if (!sessionName || !groupJid) {
-    return;
+    return { sessionName, groupJid };
   }
 
   await guardedSendText(sessionName, groupJid, message).catch((error) => {
@@ -1111,6 +1115,53 @@ async function notifyAssistantGroupAboutCompletedDraft(
     logError("[trip-intake] failed to send trip form completion PDF", error, {
       organizationId,
       formToken,
+    });
+  });
+
+  return { sessionName, groupJid };
+}
+
+async function notifyClientAboutCompletedDraft(
+  organizationId: string,
+  sessionName: string | null,
+  draft: TripRequestDraft,
+): Promise<void> {
+  const phone = formatPhoneForStorage(draft.clientPhone ?? "");
+  if (!sessionName || !phone) {
+    return;
+  }
+
+  const lines = [
+    `Your TripBuilt trip for *${draft.destination ?? "your destination"}* is ready.`,
+    draft.durationDays ? `Duration: *${draft.durationDays} days*` : null,
+    draft.travelWindow ? `Travel window: *${draft.travelWindow}*` : null,
+    draft.createdShareUrl ? `Trip link: ${draft.createdShareUrl}` : "Trip link is being prepared.",
+    `PDF: ${buildTripRequestPdfUrl(draft.formToken)}`,
+  ].filter((value): value is string => Boolean(value));
+
+  await guardedSendText(sessionName, phone, lines.join("\n")).catch((error) => {
+    logError("[trip-intake] failed to send trip form completion text to client", error, {
+      organizationId,
+      draftId: draft.id,
+      clientPhone: phone,
+    });
+  });
+
+  await guardedSendMedia(
+    sessionName,
+    phone,
+    buildTripRequestPdfUrl(draft.formToken),
+    "document",
+    {
+      fileName: `trip-itinerary-${draft.formToken.slice(0, 8)}.pdf`,
+      mimetype: "application/pdf",
+      caption: "Your trip itinerary PDF",
+    },
+  ).catch((error) => {
+    logError("[trip-intake] failed to send trip form completion PDF to client", error, {
+      organizationId,
+      draftId: draft.id,
+      clientPhone: phone,
     });
   });
 }
@@ -1224,6 +1275,8 @@ type TripRequestFormSubmitInput = {
   hotelPreference: string | null;
   interests: readonly string[];
   originCity: string | null;
+  submittedBy: string | null;
+  submitterRole: TripRequestSubmitterRole | null;
 };
 
 export async function loadTripRequestFormState(
@@ -1278,6 +1331,8 @@ export async function submitTripRequestForm(
     durationDays: input.durationDays,
     clientName,
   });
+  const submittedBy = trimOrNull(input.submittedBy, 160);
+  const submitterRole = input.submitterRole ?? "other";
 
   const collectedFields = {
     destination,
@@ -1293,6 +1348,8 @@ export async function submitTripRequestForm(
     hotel_preference: input.hotelPreference ?? "",
     interests: [...input.interests],
     origin_city: input.originCity ?? "",
+    submitted_by: submittedBy ?? "",
+    submitter_role: submitterRole,
   };
 
   const updatedDraft = await updateDraft(ctx, row.id, {
@@ -1310,6 +1367,9 @@ export async function submitTripRequestForm(
     hotel_preference: input.hotelPreference ?? "",
     interests: [...input.interests],
     origin_city: input.originCity ?? "",
+    submitted_at: new Date().toISOString(),
+    submitted_by: submittedBy,
+    submitter_role: submitterRole,
     current_step: null,
     request_summary: requestSummary,
     collected_fields: collectedFields as unknown as Json,
@@ -1339,7 +1399,12 @@ export async function submitTripRequestForm(
     `PDF: ${buildTripRequestPdfUrl(formToken)}`,
   ].join("\n");
 
-  await notifyAssistantGroupAboutCompletedDraft(row.organization_id, formToken, whatsappMessage);
+  const deliveryConnection = await notifyAssistantGroupAboutCompletedDraft(
+    row.organization_id,
+    formToken,
+    whatsappMessage,
+  );
+  await notifyClientAboutCompletedDraft(row.organization_id, deliveryConnection.sessionName, finalDraft);
 
   return {
     success: true,
@@ -1561,6 +1626,9 @@ async function applyStepAnswer(
     source_channel: ctx.channel,
     status: "draft",
     request_summary: patch.request_summary as string | null,
+    submitted_at: null,
+    submitted_by: null,
+    submitter_role: null,
     destination: draft.destination,
     duration_days: draft.durationDays,
     client_name: (patch.client_name as string | null | undefined) ?? draft.clientName,

@@ -324,6 +324,9 @@ export type Database = {
           organization_id: string
           origin_city: string | null
           request_summary: string | null
+          submitted_at: string | null
+          submitted_by: string | null
+          submitter_role: string | null
           source_channel: string
           start_date: string | null
           status: string
@@ -355,6 +358,9 @@ export type Database = {
           organization_id: string
           origin_city?: string | null
           request_summary?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          submitter_role?: string | null
           source_channel?: string
           start_date?: string | null
           status?: string
@@ -386,6 +392,9 @@ export type Database = {
           organization_id?: string
           origin_city?: string | null
           request_summary?: string | null
+          submitted_at?: string | null
+          submitted_by?: string | null
+          submitter_role?: string | null
           source_channel?: string
           start_date?: string | null
           status?: string
