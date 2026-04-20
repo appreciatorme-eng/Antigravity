@@ -44,7 +44,10 @@ import {
 } from "./assistant-formatters";
 import { logError, logWarn, logEvent } from "@/lib/observability/logger";
 import { POLL_OPTION_TO_COMMAND, sendFollowUpPoll } from "./assistant-polls";
-import { handleTripIntakeMessage } from "./trip-intake.server";
+import {
+  createOperatorShareableTripRequestDraft,
+  handleTripIntakeMessage,
+} from "./trip-intake.server";
 import {
   normalizeAssistantGroupJid,
   resolveAssistantGroupConnection,
@@ -456,6 +459,26 @@ function parseArtifactCommand(
   const freeMatch = new RegExp(`^${prefix}\\s+(.+)$`, "i").exec(trimmed);
   if (freeMatch) {
     return { index: null, query: freeMatch[1].trim() };
+  }
+
+  return null;
+}
+
+function parseTripFormLinkCommand(input: string): { readonly query: string | null } | null {
+  const trimmed = input.trim();
+  const patterns: readonly RegExp[] = [
+    /^trip form(?:\s+link)?(?:\s+for\s+(.+))?$/i,
+    /^intake link(?:\s+for\s+(.+))?$/i,
+    /^trip request link(?:\s+for\s+(.+))?$/i,
+    /^create (?:a )?(?:trip form|intake) link(?:\s+for\s+(.+))?$/i,
+    /^shareable trip form(?:\s+for\s+(.+))?$/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = pattern.exec(trimmed);
+    if (match) {
+      return { query: match[1]?.trim() || null };
+    }
   }
 
   return null;
@@ -1352,6 +1375,34 @@ async function handleIndexedOperatorCommand(
       { trip_id: item.id },
       `Send pickup details for *${item.label}*?`,
     );
+  }
+
+  const tripFormLinkCommand = parseTripFormLinkCommand(input);
+  if (tripFormLinkCommand) {
+    const draft = await createOperatorShareableTripRequestDraft({
+      organizationId: ctx.orgId,
+      operatorUserId: ctx.ownerUserId,
+      requestSummary: tripFormLinkCommand.query
+        ? `Shared intake link requested for ${tripFormLinkCommand.query}`
+        : "Shared intake link requested from WhatsApp assistant",
+      clientName: tripFormLinkCommand.query,
+    });
+
+    if (!draft) {
+      return { reply: "I couldn't create the trip request link right now. Please try again." };
+    }
+
+    return {
+      reply: [
+        draft.clientName
+          ? `Share this trip request form with *${draft.clientName}* to collect the details.`
+          : "Share this trip request form with the client to collect their details.",
+        "",
+        `Form link: ${draft.formUrl}`,
+        "",
+        "Once they fill it, I’ll send the completed details, trip share link, and PDF back here, and I’ll also send the final package to the client when a valid phone number is included.",
+      ].join("\n"),
+    };
   }
 
   return null;

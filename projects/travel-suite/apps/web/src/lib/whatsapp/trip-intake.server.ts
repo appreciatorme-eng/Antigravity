@@ -110,6 +110,13 @@ export type FirstContactTripRequestDraft = {
   readonly formUrl: string;
 };
 
+export type OperatorShareableTripRequestDraft = {
+  readonly id: string;
+  readonly formToken: string;
+  readonly formUrl: string;
+  readonly clientName: string | null;
+};
+
 type ActiveTripIntakeState = {
   selectedDraftId: string;
 };
@@ -789,6 +796,61 @@ export async function ensureFirstContactTripRequestDraft(args: {
     id: created.id,
     formToken: created.form_token,
     formUrl: buildTripRequestFormUrl(created.form_token),
+  };
+}
+
+export async function createOperatorShareableTripRequestDraft(args: {
+  organizationId: string;
+  operatorUserId: string;
+  requestSummary?: string | null;
+  clientName?: string | null;
+}): Promise<OperatorShareableTripRequestDraft | null> {
+  const admin = createAdminClient();
+  const requestSummary = trimOrNull(args.requestSummary, 240);
+  const clientName = trimOrNull(args.clientName, 160);
+  const missingRequiredFields = computeMissingRequiredFields({
+    destination: null,
+    durationDays: null,
+    clientName,
+    travelerCount: null,
+    travelWindow: null,
+  });
+  const formToken = randomUUID().replace(/-/g, "");
+
+  const { data: created, error } = await admin
+    .from("assistant_trip_requests")
+    .insert({
+      organization_id: args.organizationId,
+      operator_user_id: args.operatorUserId,
+      source_channel: "whatsapp_operator_shared_link",
+      status: "draft",
+      form_token: formToken,
+      request_summary: requestSummary,
+      client_name: clientName,
+      current_step: null,
+      collected_fields: {
+        client_name: clientName ?? "",
+        request_summary: requestSummary ?? "",
+        created_from: "whatsapp_operator_shared_link",
+      } as unknown as Json,
+      missing_required_fields: missingRequiredFields as unknown as Json,
+    })
+    .select("id, form_token, client_name")
+    .single();
+
+  if (error || !created?.id || !created.form_token) {
+    logError("[trip-intake] failed to create operator shareable draft", error, {
+      organizationId: args.organizationId,
+      operatorUserId: args.operatorUserId,
+    });
+    return null;
+  }
+
+  return {
+    id: created.id,
+    formToken: created.form_token,
+    formUrl: buildTripRequestFormUrl(created.form_token),
+    clientName: typeof created.client_name === "string" ? created.client_name : null,
   };
 }
 

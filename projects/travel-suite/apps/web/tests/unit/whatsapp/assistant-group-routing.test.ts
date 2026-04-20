@@ -63,6 +63,8 @@ describe("assistant-group-routing", () => {
     expect(shouldAttemptAssistantGroupRouting("done 2")).toBe(true);
     expect(shouldAttemptAssistantGroupRouting("5 day trip to Bali")).toBe(true);
     expect(shouldAttemptAssistantGroupRouting("Create a 5 day Delhi trip")).toBe(true);
+    expect(shouldAttemptAssistantGroupRouting("trip form link")).toBe(true);
+    expect(shouldAttemptAssistantGroupRouting("intake link for Rahul")).toBe(true);
   });
 
   it("routes normal free-form operator replies in the assistant group", () => {
