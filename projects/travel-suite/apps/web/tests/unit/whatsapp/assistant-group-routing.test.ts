@@ -62,6 +62,7 @@ describe("assistant-group-routing", () => {
   it("detects assistant workflow commands", () => {
     expect(shouldAttemptAssistantGroupRouting("done 2")).toBe(true);
     expect(shouldAttemptAssistantGroupRouting("5 day trip to Bali")).toBe(true);
+    expect(shouldAttemptAssistantGroupRouting("Create a 5 day Delhi trip")).toBe(true);
   });
 
   it("returns false for non-command group chatter", () => {

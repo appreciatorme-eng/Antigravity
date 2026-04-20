@@ -82,6 +82,8 @@ const COMMAND_PATTERNS: readonly RegExp[] = [
   /^payment link for\s+.+$/i,
   /^.+\btrip to\b.+$/i,
   /^\d+\s+day\b.+$/i,
+  /^.+\b\d+\s+day\b.*\btrip\b.*$/i,
+  /^.+\b\d+\s+nights?\b.*\btrip\b.*$/i,
 ];
 
 function asRecord(value: unknown): UnknownRecord | null {
