@@ -566,12 +566,28 @@ export async function POST(request: Request): Promise<Response> {
     else if (event.event === "send.message") {
         const payload = event.data as EvolutionMessageData;
         const remoteJid = payload.key?.remoteJid ?? "";
+        const messageText = extractMessageText(payload).trim();
 
-        if (isGroupJid(remoteJid) || !remoteJid.includes("@s.whatsapp.net")) {
+        // Manual operator messages typed inside the TripBuilt Assistant group
+        // can arrive on send.message instead of messages.upsert. Route them
+        // before the generic group skip so commands like "stats" are handled.
+        if (isGroupJid(remoteJid)) {
+            if (messageText) {
+                const handled = await routeAssistantCommand(
+                    event.instance,
+                    remoteJid,
+                    messageText,
+                );
+                if (handled) return NextResponse.json({ ok: true });
+            }
+
             return NextResponse.json({ ok: true });
         }
 
-        const messageText = extractMessageText(payload);
+        if (!remoteJid.includes("@s.whatsapp.net")) {
+            return NextResponse.json({ ok: true });
+        }
+
         if (!messageText) {
             return NextResponse.json({ ok: true });
         }
