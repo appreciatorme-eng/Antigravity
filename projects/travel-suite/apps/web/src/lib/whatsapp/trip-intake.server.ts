@@ -399,13 +399,27 @@ function isMissingFormTokenColumnError(error: unknown): boolean {
 
 function isMissingTripRequestSchemaError(error: unknown): boolean {
   const text = readErrorText(error);
-  return (
-    (text.includes("assistant_trip_requests") && (text.includes("relation") || text.includes("does not exist")))
-    || text.includes("form_token")
-    || text.includes("submitted_by")
-    || text.includes("submitter_role")
-    || text.includes("submitted_at")
-  ) && (text.includes("column") || text.includes("relation") || text.includes("schema cache") || text.includes("does not exist"));
+  const hasSchemaShapeError =
+    text.includes("column")
+    || text.includes("relation")
+    || text.includes("schema cache")
+    || text.includes("does not exist");
+
+  const referencesTripRequestTable = text.includes("assistant_trip_requests");
+  const referencesKnownTripRequestColumns = [
+    "form_token",
+    "submitted_by",
+    "submitter_role",
+    "submitted_at",
+    "current_step",
+    "collected_fields",
+    "missing_required_fields",
+    "client_email",
+    "created_share_url",
+    "created_itinerary_id",
+  ].some((column) => text.includes(column));
+
+  return hasSchemaShapeError && (referencesTripRequestTable || referencesKnownTripRequestColumns);
 }
 
 function isInvalidOperatorUserError(error: unknown): boolean {
