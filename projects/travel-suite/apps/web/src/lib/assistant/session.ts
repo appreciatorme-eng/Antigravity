@@ -71,6 +71,10 @@ function sessionsTable(ctx: ActionContext) {
   return ctx.supabase.from("assistant_sessions");
 }
 
+function normalizeSessionChannel(channel: ActionContext["channel"]): "web" | "whatsapp" {
+  return channel === "web" ? "web" : "whatsapp";
+}
+
 // ---------------------------------------------------------------------------
 // Session CRUD
 // ---------------------------------------------------------------------------
@@ -83,13 +87,14 @@ export async function getOrCreateSession(
   ctx: ActionContext,
 ): Promise<SessionData> {
   const now = new Date().toISOString();
+  const sessionChannel = normalizeSessionChannel(ctx.channel);
 
   // Look for an unexpired session for this user + channel
   const { data: existing, error: selectError } = await sessionsTable(ctx)
     .select("id, conversation_history, pending_action")
     .eq("organization_id", ctx.organizationId)
     .eq("user_id", ctx.userId)
-    .eq("channel", ctx.channel)
+    .eq("channel", sessionChannel)
     .gt("expires_at", now)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -108,7 +113,7 @@ export async function getOrCreateSession(
     .insert({
       organization_id: ctx.organizationId,
       user_id: ctx.userId,
-      channel: ctx.channel,
+      channel: sessionChannel,
       conversation_history: [],
       pending_action: null,
       context_snapshot: null,
