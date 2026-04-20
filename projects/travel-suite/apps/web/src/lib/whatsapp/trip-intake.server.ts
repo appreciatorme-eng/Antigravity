@@ -63,6 +63,12 @@ type InsertedDraftRow = Record<string, unknown> & {
   client_name?: string | null;
 };
 
+type DraftInsertResult = {
+  readonly row: InsertedDraftRow | null;
+  readonly error: unknown | null;
+  readonly legacyFormTokenFallback: boolean;
+};
+
 type TripRequestDraft = {
   id: string;
   status: TripRequestStatus;
@@ -123,6 +129,23 @@ export type OperatorShareableTripRequestDraft = {
   readonly formUrl: string;
   readonly clientName: string | null;
 };
+
+export type OperatorShareableTripRequestDraftFailureCode =
+  | "schema_missing"
+  | "invalid_operator_user"
+  | "database_unavailable"
+  | "unknown";
+
+export type OperatorShareableTripRequestDraftResult =
+  | {
+      readonly ok: true;
+      readonly draft: OperatorShareableTripRequestDraft;
+    }
+  | {
+      readonly ok: false;
+      readonly code: OperatorShareableTripRequestDraftFailureCode;
+      readonly operatorMessage: string;
+    };
 
 type ActiveTripIntakeState = {
   selectedDraftId: string;
@@ -374,6 +397,37 @@ function isMissingFormTokenColumnError(error: unknown): boolean {
   return text.includes("form_token") && (text.includes("column") || text.includes("schema cache"));
 }
 
+function isMissingTripRequestSchemaError(error: unknown): boolean {
+  const text = readErrorText(error);
+  return (
+    (text.includes("assistant_trip_requests") && (text.includes("relation") || text.includes("does not exist")))
+    || text.includes("form_token")
+    || text.includes("submitted_by")
+    || text.includes("submitter_role")
+    || text.includes("submitted_at")
+  ) && (text.includes("column") || text.includes("relation") || text.includes("schema cache") || text.includes("does not exist"));
+}
+
+function isInvalidOperatorUserError(error: unknown): boolean {
+  const text = readErrorText(error);
+  return (
+    text.includes("operator_user_id")
+    && (text.includes("foreign key") || text.includes("violates"))
+  );
+}
+
+function isDatabaseUnavailableError(error: unknown): boolean {
+  const text = readErrorText(error);
+  return (
+    text.includes("timeout")
+    || text.includes("connection")
+    || text.includes("temporarily unavailable")
+    || text.includes("could not connect")
+    || text.includes("fetch failed")
+    || text.includes("network")
+  );
+}
+
 function isUuidLike(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
@@ -388,7 +442,7 @@ async function insertDraftWithPublicToken(
   selectClause: string,
   logMessage: string,
   logContext: Record<string, unknown>,
-): Promise<InsertedDraftRow | null> {
+): Promise<DraftInsertResult> {
   const { data, error } = await admin
     .from("assistant_trip_requests")
     .insert(payload)
@@ -396,12 +450,20 @@ async function insertDraftWithPublicToken(
     .single();
 
   if (!error && data && typeof (data as { id?: unknown }).id === "string") {
-    return data as unknown as InsertedDraftRow;
+    return {
+      row: data as unknown as InsertedDraftRow,
+      error: null,
+      legacyFormTokenFallback: false,
+    };
   }
 
   if (!isMissingFormTokenColumnError(error)) {
     logError(logMessage, error, logContext);
-    return null;
+    return {
+      row: null,
+      error,
+      legacyFormTokenFallback: false,
+    };
   }
 
   const legacyPayload = { ...payload };
@@ -427,13 +489,55 @@ async function insertDraftWithPublicToken(
       ...logContext,
       legacyFormTokenFallback: true,
     });
-    return null;
+    return {
+      row: null,
+      error: legacyError ?? error,
+      legacyFormTokenFallback: true,
+    };
   }
 
   return {
-    ...(legacyData as unknown as Record<string, unknown>),
-    form_token: null,
-  } as InsertedDraftRow;
+    row: {
+      ...(legacyData as unknown as Record<string, unknown>),
+      form_token: null,
+    } as InsertedDraftRow,
+    error,
+    legacyFormTokenFallback: true,
+  };
+}
+
+function classifyOperatorShareableDraftFailure(
+  error: unknown,
+): OperatorShareableTripRequestDraftResult {
+  if (isMissingTripRequestSchemaError(error)) {
+    return {
+      ok: false,
+      code: "schema_missing",
+      operatorMessage: "I couldn't create the trip request link because the trip intake form setup is incomplete. Apply the latest trip-intake database migrations, then try again.",
+    };
+  }
+
+  if (isInvalidOperatorUserError(error)) {
+    return {
+      ok: false,
+      code: "invalid_operator_user",
+      operatorMessage: "I couldn't create the trip request link because this WhatsApp assistant is not linked to a valid TripBuilt operator yet. Reconnect WhatsApp or fix the owner user mapping, then try again.",
+    };
+  }
+
+  if (isDatabaseUnavailableError(error)) {
+    return {
+      ok: false,
+      code: "database_unavailable",
+      operatorMessage: "I couldn't create the trip request link because TripBuilt couldn't reach the database right now. Try again in a minute.",
+    };
+  }
+
+  return {
+    ok: false,
+    code: "unknown",
+    operatorMessage: "I couldn't create the trip request link because the intake draft could not be saved. Check the TripBuilt logs for the exact database error, then try again.",
+  };
 }
 
 function computeMissingRequiredFields(input: {
@@ -895,14 +999,14 @@ export async function ensureFirstContactTripRequestDraft(args: {
     },
   );
 
-  if (!created?.id) {
+  if (!created.row?.id) {
     return null;
   }
 
-  const publicToken = resolvePublicTripRequestToken(created);
+  const publicToken = resolvePublicTripRequestToken(created.row);
 
   return {
-    id: created.id,
+    id: created.row.id,
     formToken: publicToken,
     formUrl: buildTripRequestFormUrl(publicToken),
   };
@@ -913,7 +1017,7 @@ export async function createOperatorShareableTripRequestDraft(args: {
   operatorUserId: string;
   requestSummary?: string | null;
   clientName?: string | null;
-}): Promise<OperatorShareableTripRequestDraft | null> {
+}): Promise<OperatorShareableTripRequestDraftResult> {
   const admin = createAdminClient();
   const requestSummary = trimOrNull(args.requestSummary, 240);
   const clientName = trimOrNull(args.clientName, 160);
@@ -952,17 +1056,20 @@ export async function createOperatorShareableTripRequestDraft(args: {
     },
   );
 
-  if (!created?.id) {
-    return null;
+  if (!created.row?.id) {
+    return classifyOperatorShareableDraftFailure(created.error);
   }
 
-  const publicToken = resolvePublicTripRequestToken(created);
+  const publicToken = resolvePublicTripRequestToken(created.row);
 
   return {
-    id: created.id,
-    formToken: publicToken,
-    formUrl: buildTripRequestFormUrl(publicToken),
-    clientName: typeof created.client_name === "string" ? created.client_name : null,
+    ok: true,
+    draft: {
+      id: created.row.id,
+      formToken: publicToken,
+      formUrl: buildTripRequestFormUrl(publicToken),
+      clientName: typeof created.row.client_name === "string" ? created.row.client_name : null,
+    },
   };
 }
 
@@ -1007,11 +1114,11 @@ async function createDraft(
     },
   );
 
-  if (!data) {
+  if (!data.row) {
     return null;
   }
 
-  return mapDraft(data as TripRequestRow);
+  return mapDraft(data.row as unknown as TripRequestRow);
 }
 
 async function updateDraft(

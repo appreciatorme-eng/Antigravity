@@ -1379,7 +1379,7 @@ async function handleIndexedOperatorCommand(
 
   const tripFormLinkCommand = parseTripFormLinkCommand(input);
   if (tripFormLinkCommand) {
-    const draft = await createOperatorShareableTripRequestDraft({
+    const draftResult = await createOperatorShareableTripRequestDraft({
       organizationId: ctx.orgId,
       operatorUserId: ctx.ownerUserId,
       requestSummary: tripFormLinkCommand.query
@@ -1388,9 +1388,11 @@ async function handleIndexedOperatorCommand(
       clientName: tripFormLinkCommand.query,
     });
 
-    if (!draft) {
-      return { reply: "I couldn't create the trip request link right now. Please try again." };
+    if (!draftResult.ok) {
+      return { reply: draftResult.operatorMessage };
     }
+
+    const draft = draftResult.draft;
 
     return {
       reply: [
