@@ -113,6 +113,14 @@ async function evolutionFetch(
     return res;
 }
 
+function normalizeEvolutionTarget(target: string): string {
+    const trimmed = target.trim();
+    if (trimmed.includes("@g.us") || trimmed.includes("@s.whatsapp.net")) {
+        return trimmed;
+    }
+    return trimmed.replace(/\D/g, "");
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -265,11 +273,11 @@ export async function sendEvolutionText(
     phoneDigits: string,
     text: string,
 ): Promise<void> {
-    const digits = phoneDigits.replace(/\D/g, "");
+    const target = normalizeEvolutionTarget(phoneDigits);
 
     const res = await evolutionFetch(`/message/sendText/${instanceName}`, {
         method: "POST",
-        body: JSON.stringify({ number: digits, text }),
+        body: JSON.stringify({ number: target, text }),
     });
 
     if (!res.ok) {
@@ -352,12 +360,12 @@ export async function sendEvolutionMedia(
     mediaType: "image" | "document" | "audio" | "video",
     options?: { caption?: string; fileName?: string; mimetype?: string },
 ): Promise<void> {
-    const digits = phoneDigits.replace(/\D/g, "");
+    const target = normalizeEvolutionTarget(phoneDigits);
 
     const res = await evolutionFetch(`/message/sendMedia/${instanceName}`, {
         method: "POST",
         body: JSON.stringify({
-            number: digits,
+            number: target,
             mediatype: mediaType === "image" ? "image" : mediaType === "video" ? "video" : "document",
             media,
             caption: options?.caption ?? "",
@@ -385,12 +393,12 @@ export async function sendEvolutionLocation(
     name?: string,
     address?: string,
 ): Promise<void> {
-    const digits = phoneDigits.replace(/\D/g, "");
+    const target = normalizeEvolutionTarget(phoneDigits);
 
     const res = await evolutionFetch(`/message/sendLocation/${instanceName}`, {
         method: "POST",
         body: JSON.stringify({
-            number: digits,
+            number: target,
             latitude,
             longitude,
             name: name ?? "Location",
@@ -417,12 +425,12 @@ export async function sendEvolutionPoll(
     options: readonly string[],
     selectableCount: number = 1,
 ): Promise<void> {
-    const digits = phoneDigits.replace(/\D/g, "");
+    const target = normalizeEvolutionTarget(phoneDigits);
 
     const res = await evolutionFetch(`/message/sendPoll/${instanceName}`, {
         method: "POST",
         body: JSON.stringify({
-            number: digits,
+            number: target,
             name: question,
             selectableCount,
             values: options,
