@@ -1,6 +1,7 @@
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
 import { logError } from "@/lib/observability/logger";
+import { WhatsAppWelcomeConfigSchema } from "@/lib/whatsapp/first-contact-welcome.server";
 import { z } from "zod";
 
 const ORGANIZATION_SELECT = [
@@ -20,6 +21,7 @@ const ORGANIZATION_SELECT = [
   "primary_color",
   "slug",
   "subscription_tier",
+  "whatsapp_welcome_config",
 ].join(", ");
 
 const LEGACY_ORGANIZATION_SELECT = [
@@ -64,6 +66,7 @@ const OrganizationUpdateSchema = z.object({
   billing_state: z.string().trim().max(120).optional().nullable(),
   billing_address: BillingAddressSchema.optional().nullable(),
   branch_offices: z.array(BranchOfficeSchema).optional(),
+  whatsapp_welcome_config: WhatsAppWelcomeConfigSchema.optional().nullable(),
 });
 
 type AdminClient = Extract<Awaited<ReturnType<typeof requireAdmin>>, { ok: true }>["adminClient"];
@@ -90,7 +93,8 @@ function isOptionalOrganizationColumnError(error: unknown): boolean {
     isMissingColumnError(error, "billing_address_line1") ||
     isMissingColumnError(error, "billing_address_line2") ||
     isMissingColumnError(error, "billing_city") ||
-    isMissingColumnError(error, "billing_pincode")
+    isMissingColumnError(error, "billing_pincode") ||
+    isMissingColumnError(error, "whatsapp_welcome_config")
   );
 }
 
@@ -214,6 +218,10 @@ export async function PATCH(request: Request): Promise<Response> {
       billing_city: address.city || null,
       billing_pincode: address.postal_code || null,
       branch_offices: parsed.data.branch_offices ?? currentBranchOffices,
+      whatsapp_welcome_config:
+        parsed.data.whatsapp_welcome_config !== undefined
+          ? parsed.data.whatsapp_welcome_config ?? null
+          : currentRecord.whatsapp_welcome_config ?? null,
     };
     const updatePayload = {
       ...basePayload,

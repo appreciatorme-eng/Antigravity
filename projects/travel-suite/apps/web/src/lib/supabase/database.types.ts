@@ -27,6 +27,7 @@ export type Database = {
           organization_id: string
           price: number
           updated_at: string | null
+          whatsapp_welcome_config: Json | null
         }
         Insert: {
           category: string
@@ -40,6 +41,7 @@ export type Database = {
           organization_id: string
           price: number
           updated_at?: string | null
+          whatsapp_welcome_config?: Json | null
         }
         Update: {
           category?: string
@@ -53,6 +55,7 @@ export type Database = {
           organization_id?: string
           price?: number
           updated_at?: string | null
+          whatsapp_welcome_config?: Json | null
         }
         Relationships: [
           {

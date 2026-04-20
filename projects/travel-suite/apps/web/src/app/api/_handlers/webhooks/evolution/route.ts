@@ -41,6 +41,7 @@ import { ensureAssistantGroup } from "@/lib/whatsapp/ensure-assistant-group";
 import { routeAssistantCommand } from "@/lib/whatsapp/assistant-commands";
 import { getGeminiModel } from "@/lib/ai/gemini.server";
 import { linkInboundReplyToCommsSequence } from "@/lib/platform/business-os-comms-linking";
+import { maybeSendFirstContactWelcome } from "@/lib/whatsapp/first-contact-welcome.server";
 import {
     describeAssistantMessageShape,
     extractAssistantMessageText,
@@ -425,44 +426,62 @@ export async function POST(request: Request): Promise<Response> {
             }
         }
 
-        // Skip chatbot for personal contacts — only auto-reply to business contacts.
-        // A personal contact has imported message history but is NOT in the CRM.
         if (!internalProfile) {
-            const { count: historyCount } = await admin
-                .from("whatsapp_webhook_events")
-                .select("id", { count: "exact", head: true })
-                .eq("wa_id", waId)
-                .filter("metadata->>session", "eq", event.instance)
-                .filter("metadata->>imported", "eq", "true");
+            const [{ count: historyCount }, { count: inboundCount }] = await Promise.all([
+                admin
+                    .from("whatsapp_webhook_events")
+                    .select("id", { count: "exact", head: true })
+                    .eq("wa_id", waId)
+                    .filter("metadata->>session", "eq", event.instance)
+                    .filter("metadata->>imported", "eq", "true"),
+                admin
+                    .from("whatsapp_webhook_events")
+                    .select("id", { count: "exact", head: true })
+                    .eq("wa_id", waId)
+                    .filter("metadata->>session", "eq", event.instance)
+                    .filter("metadata->>direction", "eq", "in"),
+            ]);
 
             if ((historyCount ?? 0) > 0) {
-                // Has chat history but not in CRM — likely a friend/family member
                 return NextResponse.json({ ok: true });
             }
-        }
 
-        // AI-classify first message from unknown contacts.
-        // Only activate chatbot for business/travel enquiries — skip personal messages.
-        if (!internalProfile) {
-            const { count: inboundCount } = await admin
-                .from("whatsapp_webhook_events")
-                .select("id", { count: "exact", head: true })
-                .eq("wa_id", waId)
-                .filter("metadata->>direction", "eq", "in");
+            const isFirstInboundFromNewContact = (inboundCount ?? 0) <= 1;
 
-            if ((inboundCount ?? 0) <= 1 && messageText.length >= 3) {
+            if (isFirstInboundFromNewContact && messageText.trim().length > 0) {
                 try {
                     const model = getGeminiModel();
                     const classifyResult = await model.generateContent(
-                        `Is this WhatsApp message from a potential travel/tourism customer or a personal contact? Message: "${messageText.slice(0, 300)}". Reply with ONLY one word: BUSINESS or PERSONAL`,
+                        `A tour operator just received a first WhatsApp message from an unknown number. Classify this message as BUSINESS unless it is clearly personal, friend/family, or unrelated to travel services. Message: "${messageText.slice(0, 300)}". Reply with ONLY one word: BUSINESS or PERSONAL`,
                     );
                     const classification = classifyResult.response.text().trim().toUpperCase();
                     if (classification === "PERSONAL") {
-                        logEvent("info", "[webhooks/evolution] skipped chatbot — personal message", { waId });
+                        logEvent("info", "[webhooks/evolution] skipped first-contact welcome — personal message", {
+                            waId,
+                            organizationId,
+                        });
                         return NextResponse.json({ ok: true });
                     }
                 } catch {
-                    logWarn("[webhooks/evolution] AI classification failed, proceeding with chatbot");
+                    logWarn("[webhooks/evolution] first-contact classification failed, proceeding without personal block");
+                }
+
+                const welcomeSent = await maybeSendFirstContactWelcome({
+                    organizationId,
+                    sessionName: event.instance,
+                    phone: senderPhone,
+                    pushName: payload.pushName ?? null,
+                    initialMessage: messageText,
+                }).catch((error) => {
+                    logError("[webhooks/evolution] failed to send first-contact welcome", error, {
+                        organizationId,
+                        waId,
+                    });
+                    return false;
+                });
+
+                if (welcomeSent) {
+                    return NextResponse.json({ ok: true });
                 }
             }
         }

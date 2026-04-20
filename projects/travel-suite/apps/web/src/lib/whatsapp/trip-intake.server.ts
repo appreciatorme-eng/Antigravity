@@ -104,6 +104,12 @@ export type TripRequestFormState = {
 
 export type TripRequestSubmitterRole = "operator" | "client" | "other";
 
+export type FirstContactTripRequestDraft = {
+  readonly id: string;
+  readonly formToken: string;
+  readonly formUrl: string;
+};
+
 type ActiveTripIntakeState = {
   selectedDraftId: string;
 };
@@ -705,6 +711,85 @@ async function getDraftByFormToken(
   }
 
   return data as TripRequestRow;
+}
+
+export async function ensureFirstContactTripRequestDraft(args: {
+  organizationId: string;
+  operatorUserId: string;
+  clientPhone: string;
+  clientName?: string | null;
+  initialMessage: string;
+  sourceChannel: string;
+}): Promise<FirstContactTripRequestDraft | null> {
+  const admin = createAdminClient();
+  const clientPhone = formatPhoneForStorage(args.clientPhone);
+  if (!clientPhone) {
+    return null;
+  }
+
+  const { data: existing } = await admin
+    .from("assistant_trip_requests")
+    .select("id, form_token")
+    .eq("organization_id", args.organizationId)
+    .eq("client_phone", clientPhone)
+    .neq("status", "cancelled")
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existing?.id && existing.form_token) {
+    return {
+      id: existing.id,
+      formToken: existing.form_token,
+      formUrl: buildTripRequestFormUrl(existing.form_token),
+    };
+  }
+
+  const initialClientName = trimOrNull(args.clientName, 160);
+  const missingRequiredFields = computeMissingRequiredFields({
+    destination: null,
+    durationDays: null,
+    clientName: initialClientName,
+    travelerCount: null,
+    travelWindow: null,
+  });
+  const formToken = randomUUID().replace(/-/g, "");
+  const { data: created, error } = await admin
+    .from("assistant_trip_requests")
+    .insert({
+      organization_id: args.organizationId,
+      operator_user_id: args.operatorUserId,
+      source_channel: args.sourceChannel,
+      status: "draft",
+      form_token: formToken,
+      request_summary: trimOrNull(args.initialMessage, 240),
+      client_name: initialClientName,
+      client_phone: clientPhone,
+      current_step: null,
+      collected_fields: {
+        client_name: initialClientName ?? "",
+        client_phone: clientPhone,
+        initial_message: trimOrNull(args.initialMessage, 500) ?? "",
+      } as unknown as Json,
+      missing_required_fields: missingRequiredFields as unknown as Json,
+    })
+    .select("id, form_token")
+    .single();
+
+  if (error || !created?.id || !created.form_token) {
+    logError("[trip-intake] failed to create first-contact draft", error, {
+      organizationId: args.organizationId,
+      operatorUserId: args.operatorUserId,
+      clientPhone,
+    });
+    return null;
+  }
+
+  return {
+    id: created.id,
+    formToken: created.form_token,
+    formUrl: buildTripRequestFormUrl(created.form_token),
+  };
 }
 
 async function createDraft(
