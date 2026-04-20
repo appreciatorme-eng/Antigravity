@@ -57,6 +57,7 @@ interface CommandContext {
   readonly orgId: string;
   readonly ownerUserId: string;
   readonly instanceName: string;
+  readonly replyInstanceName: string;
   readonly groupJid: string;
   readonly actionCtx: ActionContext;
   readonly sessionId: string;
@@ -505,6 +506,7 @@ async function resolveCommandContext(
       incomingGroupJid,
       matchedBy: resolution.matchedBy,
       organizationId,
+      replyInstanceName: conn.session_name ?? instanceName,
     });
   }
 
@@ -536,6 +538,7 @@ async function resolveCommandContext(
     orgId: organizationId,
     ownerUserId,
     instanceName,
+    replyInstanceName: conn.session_name ?? instanceName,
     groupJid,
     actionCtx,
     sessionId: session.id,
@@ -564,13 +567,15 @@ async function persistTurn(
 
 async function sendReply(ctx: CommandContext, text: string): Promise<void> {
   await guardedSendText(
-    ctx.instanceName,
+    ctx.replyInstanceName,
     ctx.groupJid,
     formatForWhatsApp(text),
   ).catch((error) => {
     logError("[assistant-commands] failed to send assistant group reply", error, {
       organizationId: ctx.orgId,
       sessionId: ctx.sessionId,
+      webhookInstanceName: ctx.instanceName,
+      replyInstanceName: ctx.replyInstanceName,
     });
   });
 }
@@ -1281,7 +1286,7 @@ export async function routeAssistantCommand(
     await sendReply(ctx, commandReply.reply);
 
     if (resolvedCommand) {
-      sendFollowUpPoll(instanceName, groupJid, resolvedCommand);
+      sendFollowUpPoll(ctx.replyInstanceName, groupJid, resolvedCommand);
     }
 
     return true;
