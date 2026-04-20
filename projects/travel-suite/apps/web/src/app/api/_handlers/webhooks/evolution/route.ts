@@ -111,6 +111,96 @@ function isVoiceMessage(msg: EvolutionMessageData): boolean {
     return !!msg.message?.audioMessage;
 }
 
+function shouldAttemptAssistantGroupRouting(messageText: string): boolean {
+    const normalized = messageText.trim().toLowerCase();
+    if (!normalized) return false;
+
+    const exactCommands = new Set([
+        "help",
+        "?",
+        "menu",
+        "commands",
+        "hi",
+        "hello",
+        "hey",
+        "start",
+        "today",
+        "trips",
+        "pickups",
+        "pickup",
+        "trips today",
+        "leads",
+        "lead",
+        "new",
+        "inbox",
+        "payments",
+        "payment",
+        "pending",
+        "due",
+        "revenue",
+        "money",
+        "earnings",
+        "income",
+        "stats",
+        "dashboard",
+        "overview",
+        "dashboard overview",
+        "brief",
+        "briefing",
+        "summary",
+        "morning",
+        "daily briefing",
+        "followups",
+        "followup",
+        "next",
+        "collections",
+        "collection",
+        "cash",
+        "work",
+        "tasks",
+        "task",
+        "promises",
+        "promise",
+        "handoff",
+        "commercial",
+        "approvals",
+        "approval",
+        "trip check",
+        "trip check today",
+        "resume",
+    ]);
+
+    if (exactCommands.has(normalized)) {
+        return true;
+    }
+
+    const commandPatterns: readonly RegExp[] = [
+        /^done\s+\d+$/i,
+        /^resolve\s+\d+$/i,
+        /^approve\s+\d+$/i,
+        /^reject\s+\d+$/i,
+        /^send payment link(?:\s+\d+)?$/i,
+        /^payment promised(?:\s+.+)?$/i,
+        /^snooze(?:\s+.+)?$/i,
+        /^sent(?:\s+\d+)?$/i,
+        /^client replied(?:\s+\d+)?$/i,
+        /^not interested(?:\s+\d+)?$/i,
+        /^create task\s+.+$/i,
+        /^share link(?:\s+for)?\s+.+$/i,
+        /^send pickup details(?:\s+\d+)?$/i,
+        /^send proposal(?:\s+.+)?$/i,
+        /^resend proposal(?:\s+.+)?$/i,
+        /^send itinerary(?:\s+.+)?$/i,
+        /^client wants changes(?:\s+.+)?$/i,
+        /^revise\s+.+$/i,
+        /^payment link for\s+.+$/i,
+        /^.+\btrip to\b.+$/i,
+        /^\d+\s+day\b.+$/i,
+    ];
+
+    return commandPatterns.some((pattern) => pattern.test(messageText));
+}
+
 function formatDuration(seconds: number): string {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -214,12 +304,8 @@ export async function POST(request: Request): Promise<Response> {
         const remoteJid = payload.key?.remoteJid ?? "";
         const cmdText = extractMessageText(payload).trim();
 
-        // Some operator-authored group messages arrive here as non-fromMe,
-        // while manual self-sent messages can arrive on send.message.
-        // Only route non-fromMe group posts here to avoid looping on the
-        // assistant's own outbound replies.
-        if (isGroupJid(remoteJid) && !payload.key?.fromMe) {
-            if (cmdText) {
+        if (isGroupJid(remoteJid)) {
+            if (cmdText && shouldAttemptAssistantGroupRouting(cmdText)) {
                 const handled = await routeAssistantCommand(
                     event.instance,
                     remoteJid,
@@ -571,11 +657,8 @@ export async function POST(request: Request): Promise<Response> {
         const remoteJid = payload.key?.remoteJid ?? "";
         const messageText = extractMessageText(payload).trim();
 
-        // Manual operator messages typed inside the TripBuilt Assistant group
-        // can arrive on send.message instead of messages.upsert. Route them
-        // before the generic group skip so commands like "stats" are handled.
         if (isGroupJid(remoteJid)) {
-            if (messageText) {
+            if (messageText && shouldAttemptAssistantGroupRouting(messageText)) {
                 const handled = await routeAssistantCommand(
                     event.instance,
                     remoteJid,
