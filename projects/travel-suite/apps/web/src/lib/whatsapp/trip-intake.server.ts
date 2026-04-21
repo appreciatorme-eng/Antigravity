@@ -1592,11 +1592,14 @@ async function ensureClientProfile(
 
   const { error: clientInsertError } = await ctx.supabase
     .from("clients")
-    .insert({
-      id: profileId,
-      organization_id: ctx.organizationId,
-      user_id: profileId,
-    });
+    .upsert(
+      {
+        id: profileId,
+        organization_id: ctx.organizationId,
+        user_id: profileId,
+      },
+      { onConflict: "id" },
+    );
 
   if (clientInsertError) {
     return { error: `Failed to create client record: ${clientInsertError.message}` };
