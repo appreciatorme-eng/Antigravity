@@ -15,6 +15,7 @@ import {
 import { authedFetch } from "@/lib/api/authed-fetch";
 import { useToast } from "@/components/ui/toast";
 import type { OperatorTripRequestListItem } from "@/lib/whatsapp/trip-intake.server";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -41,6 +42,13 @@ type EditFormState = {
   originCity: string;
 };
 
+type StatusChip = {
+  label: string;
+  tone: string;
+  actionLabel?: string;
+  action?: ActionType | "edit";
+};
+
 function buildEditFormState(item: OperatorTripRequestListItem): EditFormState {
   return {
     destination: item.destination ?? "",
@@ -56,6 +64,98 @@ function buildEditFormState(item: OperatorTripRequestListItem): EditFormState {
     interests: item.interests.join(", "),
     originCity: item.originCity ?? "",
   };
+}
+
+function getActionableStatusChips(item: OperatorTripRequestListItem): StatusChip[] {
+  const chips: StatusChip[] = [];
+
+  if (item.stage === "draft" || item.stage === "submitted") {
+    chips.push({
+      label: "Waiting for traveller details",
+      tone: "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+      actionLabel: "Edit brief",
+      action: "edit",
+    });
+  }
+
+  if (item.stage === "processing") {
+    chips.push({
+      label: "Generation running",
+      tone: "border-sky-500/20 bg-sky-500/10 text-sky-700 dark:text-sky-300",
+    });
+  }
+
+  if (item.generationError) {
+    chips.push({
+      label: "Generation failed",
+      tone: "border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-300",
+      actionLabel: "Retry now",
+      action: "retry_request",
+    });
+  }
+
+  if (item.operatorDeliveryError) {
+    chips.push({
+      label: "Operator send failed",
+      tone: "border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-300",
+      actionLabel: "Resend operator",
+      action: "resend_operator",
+    });
+  }
+
+  if (item.clientDeliveryError) {
+    chips.push({
+      label: "Traveller send failed",
+      tone: "border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-300",
+      actionLabel: "Resend traveller",
+      action: "resend_client",
+    });
+  }
+
+  if (item.stage === "completed" && !item.operatorNotified) {
+    chips.push({
+      label: "Operator send pending",
+      tone: "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+      actionLabel: "Send now",
+      action: "resend_operator",
+    });
+  }
+
+  if (item.stage === "completed" && item.clientPhone && !item.clientNotified) {
+    chips.push({
+      label: "Traveller send pending",
+      tone: "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+      actionLabel: "Send now",
+      action: "resend_client",
+    });
+  }
+
+  if (item.stage === "completed" && !item.clientPhone) {
+    chips.push({
+      label: "No traveller phone",
+      tone: "border-slate-500/20 bg-slate-500/10 text-slate-700 dark:text-slate-300",
+      actionLabel: "Edit brief",
+      action: "edit",
+    });
+  }
+
+  if (item.stage === "completed" && !item.pdfUrl) {
+    chips.push({
+      label: "PDF unavailable",
+      tone: "border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-300",
+      actionLabel: "Regenerate",
+      action: "regenerate_itinerary",
+    });
+  }
+
+  if (item.lastItineraryRegeneratedAt) {
+    chips.push({
+      label: "Regenerated",
+      tone: "border-fuchsia-500/20 bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-300",
+    });
+  }
+
+  return chips;
 }
 
 export function TripRequestDetailActions({
@@ -78,6 +178,7 @@ export function TripRequestDetailActions({
     () => Boolean(request.clientPhone || request.clientEmail || request.createdShareUrl || request.pdfUrl),
     [request],
   );
+  const statusChips = useMemo(() => getActionableStatusChips(request), [request]);
 
   async function runAction(action: ActionType) {
     setRunningAction(action);
@@ -228,76 +329,129 @@ export function TripRequestDetailActions({
   return (
     <>
       <section className="rounded-3xl border border-border bg-card p-5 shadow-sm">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="max-w-2xl">
-            <h2 className="text-sm font-black uppercase tracking-[0.18em] text-muted-foreground">Operator actions</h2>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Work this intake request directly from here. Update the brief, rerun generation, retry sends, or remove
-              the request without jumping back to the inbox.
-            </p>
+        <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="max-w-2xl">
+              <h2 className="text-sm font-black uppercase tracking-[0.18em] text-muted-foreground">Operator actions</h2>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                Work this intake request directly from here. Update the brief, rerun generation, retry sends, or remove
+                the request without jumping back to the inbox.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setEditOpen(true)}
+                className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+              >
+                <PencilLine className="h-4 w-4" />
+                Edit brief
+              </button>
+              <button
+                type="button"
+                onClick={() => void runAction("regenerate_itinerary")}
+                disabled={runningAction !== null}
+                className="inline-flex items-center gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-60 dark:text-amber-300"
+              >
+                {runningAction === "regenerate_itinerary" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />}
+                Regenerate itinerary
+              </button>
+              <button
+                type="button"
+                onClick={() => void runAction("retry_request")}
+                disabled={runningAction !== null}
+                className="inline-flex items-center gap-2 rounded-2xl border border-fuchsia-500/20 bg-fuchsia-500/10 px-4 py-2 text-sm font-semibold text-fuchsia-700 transition hover:bg-fuchsia-500/15 disabled:cursor-not-allowed disabled:opacity-60 dark:text-fuchsia-300"
+              >
+                {runningAction === "retry_request" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />}
+                Retry request
+              </button>
+              <button
+                type="button"
+                onClick={() => void runAction("resend_operator")}
+                disabled={runningAction !== null}
+                className="inline-flex items-center gap-2 rounded-2xl border border-sky-500/20 bg-sky-500/10 px-4 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-500/15 disabled:cursor-not-allowed disabled:opacity-60 dark:text-sky-300"
+              >
+                {runningAction === "resend_operator" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                Resend to operator
+              </button>
+              <button
+                type="button"
+                onClick={() => void runAction("resend_client")}
+                disabled={runningAction !== null || !canResendClient}
+                className="inline-flex items-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-60 dark:text-emerald-300"
+              >
+                {runningAction === "resend_client" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                Resend to traveller
+              </button>
+              <button
+                type="button"
+                onClick={() => request.formUrl && void copyValue(request.formUrl, "Form link")}
+                className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+              >
+                <Copy className="h-4 w-4" />
+                Copy form link
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeleteOpen(true)}
+                className="inline-flex items-center gap-2 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-500/15 dark:text-rose-300"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete request
+              </button>
+            </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setEditOpen(true)}
-              className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
-            >
-              <PencilLine className="h-4 w-4" />
-              Edit brief
-            </button>
-            <button
-              type="button"
-              onClick={() => void runAction("regenerate_itinerary")}
-              disabled={runningAction !== null}
-              className="inline-flex items-center gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-60 dark:text-amber-300"
-            >
-              {runningAction === "regenerate_itinerary" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />}
-              Regenerate itinerary
-            </button>
-            <button
-              type="button"
-              onClick={() => void runAction("retry_request")}
-              disabled={runningAction !== null}
-              className="inline-flex items-center gap-2 rounded-2xl border border-fuchsia-500/20 bg-fuchsia-500/10 px-4 py-2 text-sm font-semibold text-fuchsia-700 transition hover:bg-fuchsia-500/15 disabled:cursor-not-allowed disabled:opacity-60 dark:text-fuchsia-300"
-            >
-              {runningAction === "retry_request" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />}
-              Retry request
-            </button>
-            <button
-              type="button"
-              onClick={() => void runAction("resend_operator")}
-              disabled={runningAction !== null}
-              className="inline-flex items-center gap-2 rounded-2xl border border-sky-500/20 bg-sky-500/10 px-4 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-500/15 disabled:cursor-not-allowed disabled:opacity-60 dark:text-sky-300"
-            >
-              {runningAction === "resend_operator" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              Resend to operator
-            </button>
-            <button
-              type="button"
-              onClick={() => void runAction("resend_client")}
-              disabled={runningAction !== null || !canResendClient}
-              className="inline-flex items-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-60 dark:text-emerald-300"
-            >
-              {runningAction === "resend_client" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-              Resend to traveller
-            </button>
-            <button
-              type="button"
-              onClick={() => request.formUrl && void copyValue(request.formUrl, "Form link")}
-              className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
-            >
-              <Copy className="h-4 w-4" />
-              Copy form link
-            </button>
-            <button
-              type="button"
-              onClick={() => setDeleteOpen(true)}
-              className="inline-flex items-center gap-2 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-500/15 dark:text-rose-300"
-            >
-              <Trash2 className="h-4 w-4" />
-              Delete request
-            </button>
+          <div className="rounded-2xl border border-border bg-muted/20 p-4">
+            <h2 className="text-sm font-black uppercase tracking-[0.18em] text-muted-foreground">Live recovery status</h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Live issue chips show the exact blocker on this request. Use the inline action on each chip for the
+              fastest recovery path.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {statusChips.map((chip) => {
+                const isRunning = chip.action && chip.action !== "edit" && runningAction === chip.action;
+                return (
+                  <div
+                    key={`${chip.label}-${chip.actionLabel ?? "status"}`}
+                    className={cn("inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold", chip.tone)}
+                  >
+                    <span>{chip.label}</span>
+                    {chip.actionLabel ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (chip.action === "edit") {
+                            setEditOpen(true);
+                            return;
+                          }
+                          if (chip.action) {
+                            void runAction(chip.action);
+                          }
+                        }}
+                        disabled={
+                          chip.action === "resend_client"
+                            ? runningAction !== null || !canResendClient
+                            : chip.action === "edit"
+                              ? false
+                              : runningAction !== null
+                        }
+                        className="inline-flex items-center gap-1 rounded-full border border-current/20 bg-background/70 px-2 py-1 text-[11px] font-bold uppercase tracking-[0.14em] transition hover:bg-background disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isRunning ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                        {chip.actionLabel}
+                      </button>
+                    ) : null}
+                  </div>
+                );
+              })}
+              {statusChips.length === 0 ? (
+                <div className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                  No blocking issues. This request is healthy.
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
       </section>
