@@ -550,6 +550,13 @@ function normalizeEmail(value: string | null | undefined): string | null {
   return normalized && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized) ? normalized : null;
 }
 
+function buildFallbackClientEmail(ctx: ActionContext, draft: TripRequestDraft): string {
+  const phoneDigits = normalizePhoneDigits(draft.clientPhone) ?? "guest";
+  const orgFragment = ctx.organizationId.replace(/[^a-z0-9]/gi, "").slice(0, 8).toLowerCase() || "org";
+  const draftFragment = draft.id.replace(/[^a-z0-9]/gi, "").slice(0, 8).toLowerCase() || "trip";
+  return `traveler-${orgFragment}-${phoneDigits}-${draftFragment}@tripbuilt.local`;
+}
+
 function readErrorText(error: unknown): string {
   if (!error || typeof error !== "object") return "";
   const candidate = error as { message?: unknown; details?: unknown; hint?: unknown };
@@ -1419,7 +1426,7 @@ async function ensureClientProfile(
           {
             id: existingByEmail.id,
             organization_id: ctx.organizationId,
-            user_id: null,
+            user_id: existingByEmail.id,
           },
           { onConflict: "id" },
         );
@@ -1472,7 +1479,7 @@ async function ensureClientProfile(
           {
             id: existingByPhone.id,
             organization_id: ctx.organizationId,
-            user_id: null,
+            user_id: existingByPhone.id,
           },
           { onConflict: "id" },
         );
@@ -1525,7 +1532,7 @@ async function ensureClientProfile(
         {
           id: existing.id,
           organization_id: ctx.organizationId,
-          user_id: null,
+          user_id: existing.id,
         },
         { onConflict: "id" },
       );
@@ -1537,29 +1544,50 @@ async function ensureClientProfile(
     return { clientId: existing.id, clientName };
   }
 
-  const profileId = randomUUID();
+  const createEmail = normalizedEmail ?? buildFallbackClientEmail(ctx, draft);
   const formattedPhone = draft.clientPhone ? formatPhoneForStorage(draft.clientPhone) : null;
   const phoneDigits = draft.clientPhone ? normalizePhoneDigits(draft.clientPhone) : null;
 
-  const { error: profileInsertError } = await ctx.supabase
-    .from("profiles")
-    .insert({
-      id: profileId,
-      organization_id: ctx.organizationId,
-      role: "client",
+  const { data: newUser, error: createUserError } = await ctx.supabase.auth.admin.createUser({
+    email: createEmail,
+    email_confirm: true,
+    user_metadata: {
       full_name: clientName,
-      email: normalizedEmail,
-      phone: formattedPhone,
-      phone_whatsapp: formattedPhone,
-      phone_normalized: phoneDigits,
-      lifecycle_stage: "inquiry",
-      lead_status: "new",
-      source_channel: "whatsapp_group_assistant",
-      travelers_count: draft.travelerCount,
-    });
+      source: "trip_request_form",
+      organization_id: ctx.organizationId,
+    },
+  });
 
-  if (profileInsertError) {
-    return { error: `Failed to create client profile: ${profileInsertError.message}` };
+  if (createUserError || !newUser?.user?.id) {
+    return {
+      error: `Failed to create client auth record: ${createUserError?.message ?? "unknown error"}`,
+    };
+  }
+
+  const profileId = newUser.user.id;
+
+  const { error: profileUpsertError } = await ctx.supabase
+    .from("profiles")
+    .upsert(
+      {
+        id: profileId,
+        organization_id: ctx.organizationId,
+        role: "client",
+        full_name: clientName,
+        email: normalizedEmail,
+        phone: formattedPhone,
+        phone_whatsapp: formattedPhone,
+        phone_normalized: phoneDigits,
+        lifecycle_stage: "inquiry",
+        lead_status: "new",
+        source_channel: "trip_request_form",
+        travelers_count: draft.travelerCount,
+      },
+      { onConflict: "id" },
+    );
+
+  if (profileUpsertError) {
+    return { error: `Failed to create client profile: ${profileUpsertError.message}` };
   }
 
   const { error: clientInsertError } = await ctx.supabase
@@ -1567,7 +1595,7 @@ async function ensureClientProfile(
     .insert({
       id: profileId,
       organization_id: ctx.organizationId,
-      user_id: null,
+      user_id: profileId,
     });
 
   if (clientInsertError) {
