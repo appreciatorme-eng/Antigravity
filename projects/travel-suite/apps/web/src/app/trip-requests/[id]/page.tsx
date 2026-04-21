@@ -16,6 +16,7 @@ import {
   type OperatorTripRequestListItem,
 } from "@/lib/whatsapp/trip-intake.server";
 import { cn } from "@/lib/utils";
+import { TripRequestDetailActions } from "./TripRequestDetailActions";
 
 function formatDateTime(value: string | null): string {
   if (!value) return "—";
@@ -283,6 +284,8 @@ export default async function TripRequestDetailPage({
           <div className="mt-2 text-sm font-semibold capitalize text-foreground">{request.submitterRole || "—"}</div>
         </div>
       </section>
+
+      <TripRequestDetailActions request={request} />
 
       <section className="grid gap-4 lg:grid-cols-[1.2fr,0.8fr]">
         <div className="space-y-4">

@@ -1,0 +1,496 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  CheckCircle2,
+  Copy,
+  Loader2,
+  PencilLine,
+  RotateCw,
+  Send,
+  Trash2,
+  XCircle,
+} from "lucide-react";
+import { authedFetch } from "@/lib/api/authed-fetch";
+import { useToast } from "@/components/ui/toast";
+import type { OperatorTripRequestListItem } from "@/lib/whatsapp/trip-intake.server";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+type ActionType = "regenerate_itinerary" | "resend_operator" | "resend_client" | "retry_request";
+
+type EditFormState = {
+  destination: string;
+  durationDays: string;
+  clientName: string;
+  clientEmail: string;
+  clientPhone: string;
+  travelerCount: string;
+  startDate: string;
+  endDate: string;
+  budget: string;
+  hotelPreference: string;
+  interests: string;
+  originCity: string;
+};
+
+function buildEditFormState(item: OperatorTripRequestListItem): EditFormState {
+  return {
+    destination: item.destination ?? "",
+    durationDays: item.durationDays ? String(item.durationDays) : "",
+    clientName: item.clientName ?? "",
+    clientEmail: item.clientEmail ?? "",
+    clientPhone: item.clientPhone ?? "",
+    travelerCount: item.travelerCount ? String(item.travelerCount) : "",
+    startDate: item.startDate ?? "",
+    endDate: item.endDate ?? "",
+    budget: item.budget ?? "",
+    hotelPreference: item.hotelPreference ?? "",
+    interests: item.interests.join(", "),
+    originCity: item.originCity ?? "",
+  };
+}
+
+export function TripRequestDetailActions({
+  request: initialRequest,
+}: {
+  request: OperatorTripRequestListItem;
+}) {
+  const router = useRouter();
+  const { toast } = useToast();
+
+  const [request, setRequest] = useState(initialRequest);
+  const [runningAction, setRunningAction] = useState<ActionType | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [editForm, setEditForm] = useState<EditFormState>(() => buildEditFormState(initialRequest));
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const canResendClient = useMemo(
+    () => Boolean(request.clientPhone || request.clientEmail || request.createdShareUrl || request.pdfUrl),
+    [request],
+  );
+
+  async function runAction(action: ActionType) {
+    setRunningAction(action);
+    try {
+      const response = await authedFetch(`/api/trip-requests/${request.id}/actions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action }),
+      });
+
+      const payload = await response.json() as {
+        data?: { message?: string } | null;
+        error?: string | null;
+      };
+
+      if (!response.ok || payload.error) {
+        throw new Error(payload.error || "Action failed");
+      }
+
+      toast({
+        title: "Request updated",
+        description: payload.data?.message ?? "Action completed.",
+        variant: "success",
+      });
+      router.refresh();
+    } catch (error) {
+      toast({
+        title: "Action failed",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "error",
+      });
+    } finally {
+      setRunningAction(null);
+    }
+  }
+
+  async function copyValue(value: string, label: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast({
+        title: `${label} copied`,
+        variant: "success",
+      });
+    } catch {
+      toast({
+        title: `Couldn’t copy ${label.toLowerCase()}`,
+        variant: "error",
+      });
+    }
+  }
+
+  async function saveEdit() {
+    setSavingEdit(true);
+    try {
+      const response = await authedFetch(`/api/trip-requests/${request.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          destination: editForm.destination,
+          durationDays: Number(editForm.durationDays),
+          clientName: editForm.clientName,
+          clientEmail: editForm.clientEmail || null,
+          clientPhone: editForm.clientPhone || null,
+          travelerCount: Number(editForm.travelerCount),
+          startDate: editForm.startDate,
+          endDate: editForm.endDate,
+          budget: editForm.budget || null,
+          hotelPreference: editForm.hotelPreference || null,
+          interests: editForm.interests
+            .split(",")
+            .map((value) => value.trim())
+            .filter(Boolean),
+          originCity: editForm.originCity || null,
+        }),
+      });
+
+      const payload = await response.json() as {
+        data?: { request?: OperatorTripRequestListItem | null; message?: string } | null;
+        error?: string | null;
+      };
+
+      if (!response.ok || payload.error) {
+        throw new Error(payload.error || "Failed to update request");
+      }
+
+      if (payload.data?.request) {
+        setRequest(payload.data.request);
+        setEditForm(buildEditFormState(payload.data.request));
+      }
+
+      toast({
+        title: "Trip request updated",
+        description: payload.data?.message ?? "Saved the new trip brief.",
+        variant: "success",
+      });
+      setEditOpen(false);
+      router.refresh();
+    } catch (error) {
+      toast({
+        title: "Couldn’t save changes",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "error",
+      });
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
+  async function deleteRequest() {
+    setDeleting(true);
+    try {
+      const response = await authedFetch(`/api/trip-requests/${request.id}`, {
+        method: "DELETE",
+      });
+
+      const payload = await response.json() as {
+        data?: { message?: string } | null;
+        error?: string | null;
+      };
+
+      if (!response.ok || payload.error) {
+        throw new Error(payload.error || "Failed to delete request");
+      }
+
+      toast({
+        title: "Trip request removed",
+        description: payload.data?.message ?? "The request was removed from the inbox.",
+        variant: "success",
+      });
+      router.push("/trip-requests");
+      router.refresh();
+    } catch (error) {
+      toast({
+        title: "Couldn’t remove request",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "error",
+      });
+    } finally {
+      setDeleting(false);
+      setDeleteOpen(false);
+    }
+  }
+
+  return (
+    <>
+      <section className="rounded-3xl border border-border bg-card p-5 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-2xl">
+            <h2 className="text-sm font-black uppercase tracking-[0.18em] text-muted-foreground">Operator actions</h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Work this intake request directly from here. Update the brief, rerun generation, retry sends, or remove
+              the request without jumping back to the inbox.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setEditOpen(true)}
+              className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+            >
+              <PencilLine className="h-4 w-4" />
+              Edit brief
+            </button>
+            <button
+              type="button"
+              onClick={() => void runAction("regenerate_itinerary")}
+              disabled={runningAction !== null}
+              className="inline-flex items-center gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-60 dark:text-amber-300"
+            >
+              {runningAction === "regenerate_itinerary" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />}
+              Regenerate itinerary
+            </button>
+            <button
+              type="button"
+              onClick={() => void runAction("retry_request")}
+              disabled={runningAction !== null}
+              className="inline-flex items-center gap-2 rounded-2xl border border-fuchsia-500/20 bg-fuchsia-500/10 px-4 py-2 text-sm font-semibold text-fuchsia-700 transition hover:bg-fuchsia-500/15 disabled:cursor-not-allowed disabled:opacity-60 dark:text-fuchsia-300"
+            >
+              {runningAction === "retry_request" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />}
+              Retry request
+            </button>
+            <button
+              type="button"
+              onClick={() => void runAction("resend_operator")}
+              disabled={runningAction !== null}
+              className="inline-flex items-center gap-2 rounded-2xl border border-sky-500/20 bg-sky-500/10 px-4 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-500/15 disabled:cursor-not-allowed disabled:opacity-60 dark:text-sky-300"
+            >
+              {runningAction === "resend_operator" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              Resend to operator
+            </button>
+            <button
+              type="button"
+              onClick={() => void runAction("resend_client")}
+              disabled={runningAction !== null || !canResendClient}
+              className="inline-flex items-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-60 dark:text-emerald-300"
+            >
+              {runningAction === "resend_client" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+              Resend to traveller
+            </button>
+            <button
+              type="button"
+              onClick={() => request.formUrl && void copyValue(request.formUrl, "Form link")}
+              className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+            >
+              <Copy className="h-4 w-4" />
+              Copy form link
+            </button>
+            <button
+              type="button"
+              onClick={() => setDeleteOpen(true)}
+              className="inline-flex items-center gap-2 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-500/15 dark:text-rose-300"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete request
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <Dialog open={editOpen} onOpenChange={(open) => {
+        if (!savingEdit) {
+          setEditOpen(open);
+        }
+      }}>
+        <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto border border-border bg-background p-0 text-foreground shadow-2xl sm:max-w-3xl">
+          <div className="border-b border-border bg-muted/30 p-6">
+            <DialogHeader className="text-left">
+              <DialogTitle className="text-2xl font-black tracking-tight text-foreground">Edit trip request brief</DialogTitle>
+              <DialogDescription className="text-sm leading-6 text-muted-foreground">
+                Update the submitted answers, save them, then regenerate the itinerary to apply the new brief to the
+                final trip and PDF.
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+
+          <div className="grid gap-5 p-6">
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="space-y-2">
+                <span className="text-sm font-semibold text-foreground">Traveller name *</span>
+                <input
+                  value={editForm.clientName}
+                  onChange={(event) => setEditForm((current) => ({ ...current, clientName: event.target.value }))}
+                  className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground outline-none transition focus:border-emerald-500/40"
+                />
+              </label>
+              <label className="space-y-2">
+                <span className="text-sm font-semibold text-foreground">WhatsApp number</span>
+                <input
+                  value={editForm.clientPhone}
+                  onChange={(event) => setEditForm((current) => ({ ...current, clientPhone: event.target.value }))}
+                  className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground outline-none transition focus:border-emerald-500/40"
+                />
+              </label>
+              <label className="space-y-2">
+                <span className="text-sm font-semibold text-foreground">Email</span>
+                <input
+                  value={editForm.clientEmail}
+                  onChange={(event) => setEditForm((current) => ({ ...current, clientEmail: event.target.value }))}
+                  className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground outline-none transition focus:border-emerald-500/40"
+                />
+              </label>
+              <label className="space-y-2">
+                <span className="text-sm font-semibold text-foreground">Travellers *</span>
+                <input
+                  type="number"
+                  min={1}
+                  value={editForm.travelerCount}
+                  onChange={(event) => setEditForm((current) => ({ ...current, travelerCount: event.target.value }))}
+                  className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground outline-none transition focus:border-emerald-500/40"
+                />
+              </label>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="space-y-2">
+                <span className="text-sm font-semibold text-foreground">Destination *</span>
+                <input
+                  value={editForm.destination}
+                  onChange={(event) => setEditForm((current) => ({ ...current, destination: event.target.value }))}
+                  className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground outline-none transition focus:border-emerald-500/40"
+                />
+              </label>
+              <label className="space-y-2">
+                <span className="text-sm font-semibold text-foreground">Duration in days *</span>
+                <input
+                  type="number"
+                  min={1}
+                  value={editForm.durationDays}
+                  onChange={(event) => setEditForm((current) => ({ ...current, durationDays: event.target.value }))}
+                  className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground outline-none transition focus:border-emerald-500/40"
+                />
+              </label>
+              <label className="space-y-2">
+                <span className="text-sm font-semibold text-foreground">Departure date *</span>
+                <input
+                  type="date"
+                  value={editForm.startDate}
+                  onChange={(event) => setEditForm((current) => ({ ...current, startDate: event.target.value }))}
+                  className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground outline-none transition focus:border-emerald-500/40"
+                />
+              </label>
+              <label className="space-y-2">
+                <span className="text-sm font-semibold text-foreground">Return date *</span>
+                <input
+                  type="date"
+                  value={editForm.endDate}
+                  onChange={(event) => setEditForm((current) => ({ ...current, endDate: event.target.value }))}
+                  className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground outline-none transition focus:border-emerald-500/40"
+                />
+              </label>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="space-y-2">
+                <span className="text-sm font-semibold text-foreground">Budget note</span>
+                <input
+                  value={editForm.budget}
+                  onChange={(event) => setEditForm((current) => ({ ...current, budget: event.target.value }))}
+                  className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground outline-none transition focus:border-emerald-500/40"
+                />
+              </label>
+              <label className="space-y-2">
+                <span className="text-sm font-semibold text-foreground">Hotel preference</span>
+                <input
+                  value={editForm.hotelPreference}
+                  onChange={(event) => setEditForm((current) => ({ ...current, hotelPreference: event.target.value }))}
+                  className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground outline-none transition focus:border-emerald-500/40"
+                />
+              </label>
+              <label className="space-y-2">
+                <span className="text-sm font-semibold text-foreground">Origin city / airport</span>
+                <input
+                  value={editForm.originCity}
+                  onChange={(event) => setEditForm((current) => ({ ...current, originCity: event.target.value }))}
+                  className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground outline-none transition focus:border-emerald-500/40"
+                />
+              </label>
+              <label className="space-y-2 md:col-span-2">
+                <span className="text-sm font-semibold text-foreground">Interests</span>
+                <textarea
+                  rows={3}
+                  value={editForm.interests}
+                  onChange={(event) => setEditForm((current) => ({ ...current, interests: event.target.value }))}
+                  placeholder="beaches, food, family time, shopping"
+                  className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-foreground outline-none transition focus:border-emerald-500/40"
+                />
+              </label>
+            </div>
+          </div>
+
+          <DialogFooter className="border-t border-border px-6 py-4">
+            <button
+              type="button"
+              onClick={() => !savingEdit && setEditOpen(false)}
+              className="rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+              disabled={savingEdit}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => void saveEdit()}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={savingEdit}
+            >
+              {savingEdit ? <Loader2 className="h-4 w-4 animate-spin" /> : <PencilLine className="h-4 w-4" />}
+              Save changes
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteOpen} onOpenChange={(open) => !deleting && setDeleteOpen(open)}>
+        <DialogContent className="border border-border bg-background text-foreground sm:max-w-lg">
+          <DialogHeader className="text-left">
+            <DialogTitle className="flex items-center gap-2 text-xl font-black tracking-tight">
+              <XCircle className="h-5 w-5 text-rose-500" />
+              Delete trip request
+            </DialogTitle>
+            <DialogDescription className="text-sm leading-6 text-muted-foreground">
+              Remove <span className="font-semibold text-foreground">{request.clientName || "this request"}</span> from the intake inbox.
+              {request.createdTripId
+                ? " The linked trip stays available in Trips."
+                : " This only removes the request record from the operator queue."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={() => setDeleteOpen(false)}
+              className="rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+              disabled={deleting}
+            >
+              Keep request
+            </button>
+            <button
+              type="button"
+              onClick={() => void deleteRequest()}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={deleting}
+            >
+              {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              Delete request
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
