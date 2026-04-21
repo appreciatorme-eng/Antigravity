@@ -16,6 +16,7 @@ vi.mock("@/lib/whatsapp/chatbot-flow", () => ({
   findInternalWhatsAppProfile: vi.fn(),
   hasRecentHumanReply: vi.fn(),
   isWhatsAppChatbotEnabled: vi.fn(),
+  markCustomerFlowWelcomeSent: vi.fn(),
   processChatbotMessage: vi.fn(),
   sendChatbotReply: vi.fn(),
 }));
@@ -57,6 +58,10 @@ vi.mock("@/lib/ai/gemini.server", () => ({
 
 vi.mock("@/lib/platform/business-os-comms-linking", () => ({
   linkInboundReplyToCommsSequence: vi.fn(),
+}));
+
+vi.mock("@/lib/whatsapp/trip-intake.server", () => ({
+  findLatestTripRequestForPhone: vi.fn(),
 }));
 
 const originalWebhookSecret = process.env.EVOLUTION_WEBHOOK_SECRET;

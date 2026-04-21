@@ -132,3 +132,23 @@ export async function notifyAutomationSent(
         `📱 Sent to ${masked}`,
     ].join("\n"));
 }
+
+export async function notifyCustomerAssistantHandoff(
+    orgId: string,
+    phone: string,
+    preview: string,
+    intakeUrl: string | null,
+): Promise<void> {
+    const masked = phone.length > 6
+        ? phone.slice(0, -4).replace(/\d/g, "•") + phone.slice(-4)
+        : phone;
+
+    await notifyOperator(orgId, [
+        `⚠️ *Customer Needs Human Follow-up*`,
+        `📱 ${masked}`,
+        `💬 "${preview.slice(0, 140)}"`,
+        intakeUrl ? `🔗 Intake link: ${intakeUrl}` : null,
+        "",
+        "The customer message was outside the guarded auto-reply flow, so TripBuilt stopped replying automatically.",
+    ].filter((value): value is string => Boolean(value)).join("\n"));
+}

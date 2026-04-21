@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database, Json } from "@/lib/database.types";
 import { deleteCachedByPrefix, getCachedJson, setCachedJson } from "@/lib/cache/upstash";
-import { logError } from "@/lib/observability/logger";
+import { logError, logEvent } from "@/lib/observability/logger";
 import type { ActionContext } from "@/lib/assistant/types";
 import { parseLooseDateRange } from "@/lib/whatsapp/proposal-drafts.server";
 import { guardedSendMedia, guardedSendText } from "@/lib/whatsapp-evolution.server";
@@ -153,6 +153,17 @@ export type OperatorShareableTripRequestDraft = {
   readonly formUrl: string;
   readonly clientName: string | null;
 };
+
+export type TripRequestCustomerDraft = Pick<
+  TripRequestDraft,
+  | "id"
+  | "status"
+  | "clientName"
+  | "clientPhone"
+  | "createdShareUrl"
+  | "formToken"
+  | "updatedAt"
+>;
 
 export type OperatorShareableTripRequestDraftFailureCode =
   | "schema_missing"
@@ -1223,6 +1234,42 @@ async function getDraftByFormToken(
   return fallbackData as TripRequestRow;
 }
 
+export async function findLatestTripRequestForPhone(
+  organizationId: string,
+  phone: string,
+): Promise<TripRequestCustomerDraft | null> {
+  const normalizedPhone = formatPhoneForStorage(phone);
+  if (!normalizedPhone) {
+    return null;
+  }
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("assistant_trip_requests")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("client_phone", normalizedPhone)
+    .neq("status", "cancelled")
+    .order("updated_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  const draft = mapDraft(data as TripRequestRow);
+  return {
+    id: draft.id,
+    status: draft.status,
+    clientName: draft.clientName,
+    clientPhone: draft.clientPhone,
+    createdShareUrl: draft.createdShareUrl,
+    formToken: draft.formToken,
+    updatedAt: draft.updatedAt,
+  };
+}
+
 export async function ensureFirstContactTripRequestDraft(args: {
   organizationId: string;
   operatorUserId: string;
@@ -1859,6 +1906,47 @@ async function notifyClientAboutCompletedDraft(
   });
 }
 
+async function markCustomerSessionCompleted(
+  organizationId: string,
+  phone: string | null,
+  draft: TripRequestDraft,
+): Promise<void> {
+  const normalizedPhone = formatPhoneForStorage(phone ?? "");
+  if (!normalizedPhone) {
+    return;
+  }
+
+  const admin = createAdminClient();
+  const { data: session } = await admin
+    .from("whatsapp_chatbot_sessions")
+    .select("id, ai_reply_count")
+    .eq("organization_id", organizationId)
+    .eq("phone", normalizedPhone)
+    .maybeSingle();
+
+  if (!session?.id) {
+    return;
+  }
+
+  const now = new Date().toISOString();
+  await admin
+    .from("whatsapp_chatbot_sessions")
+    .update({
+      state: "form_submitted",
+      context: {
+        draftId: draft.id,
+        formToken: draft.formToken,
+        formUrl: buildTripRequestFormUrl(draft.formToken),
+        lastAutoReplyType: "completion",
+        operatorNotifiedAt: null,
+      } as Json,
+      ai_reply_count: session.ai_reply_count,
+      last_message_at: now,
+      updated_at: now,
+    })
+    .eq("id", session.id);
+}
+
 async function finalizeDraft(
   ctx: ActionContext,
   draft: TripRequestDraft,
@@ -2134,6 +2222,20 @@ export async function submitTripRequestForm(
     whatsappMessage,
   );
   await notifyClientAboutCompletedDraft(row.organization_id, deliveryConnection.sessionName, finalDraft);
+  logEvent("info", "[trip-intake] completion delivered", {
+    organizationId: row.organization_id,
+    draftId: finalDraft.id,
+    tripId: finalDraft.createdTripId,
+    itineraryId: finalDraft.createdItineraryId,
+    notifiedAssistantGroup: Boolean(deliveryConnection.groupJid),
+    notifiedClient: Boolean(finalDraft.clientPhone),
+  });
+  await markCustomerSessionCompleted(row.organization_id, finalDraft.clientPhone, finalDraft).catch((error) => {
+    logError("[trip-intake] failed to mark customer flow completed", error, {
+      organizationId: row.organization_id,
+      draftId: finalDraft.id,
+    });
+  });
 
   return {
     success: true,

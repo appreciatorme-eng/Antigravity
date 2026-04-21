@@ -7,16 +7,11 @@
  */
 import "server-only";
 
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/database.types";
 import type {
-  ActionContext,
   ActionResult,
   ContextSnapshot,
-  ConversationMessage,
 } from "@/lib/assistant/types";
 
-import { createAdminClient } from "@/lib/supabase/admin";
 import { guardedSendText } from "@/lib/whatsapp-evolution.server";
 import { getCachedContextSnapshot } from "@/lib/assistant/context-engine";
 import { handleMessage } from "@/lib/assistant/orchestrator";
@@ -24,14 +19,12 @@ import { buildOwnerAgenda, formatOwnerAgenda } from "@/lib/assistant/owner-agend
 import {
   clearPendingAction,
   getSessionContextSnapshot,
-  getOrCreateSession,
   getPendingAction,
   setPendingAction,
   updateSessionContextSnapshot,
   updateSessionHistory,
   type PendingAction,
   type SessionContextSnapshot,
-  type SessionReferenceItem,
 } from "@/lib/assistant/session";
 import { findAction } from "@/lib/assistant/actions/registry";
 import { logAuditEvent } from "@/lib/assistant/audit";
@@ -42,39 +35,23 @@ import {
   formatRevenue,
   formatTripsToday,
 } from "./assistant-formatters";
-import { logError, logWarn, logEvent } from "@/lib/observability/logger";
+import { logError } from "@/lib/observability/logger";
 import { POLL_OPTION_TO_COMMAND, sendFollowUpPoll } from "./assistant-polls";
 import {
   createOperatorShareableTripRequestDraft,
   handleTripIntakeMessage,
 } from "./trip-intake.server";
+import type { AdminClient, CommandContext, CommandReply } from "./assistant-command-types";
+import { resolveCommandContext } from "./assistant-command-context";
 import {
-  normalizeAssistantGroupJid,
-  resolveAssistantGroupConnection,
-  type AssistantGroupConnectionCandidate,
-} from "./assistant-group-context";
-
-type AdminClient = SupabaseClient<Database>;
-
-interface CommandContext {
-  readonly admin: AdminClient;
-  readonly orgId: string;
-  readonly ownerUserId: string;
-  readonly instanceName: string;
-  readonly replyInstanceName: string;
-  readonly groupJid: string;
-  readonly actionCtx: ActionContext;
-  readonly sessionId: string;
-  readonly conversationHistory: readonly ConversationMessage[];
-}
-
-interface CommandReply {
-  readonly reply: string;
-  readonly references?: {
-    readonly kind: string;
-    readonly items: readonly SessionReferenceItem[];
-  };
-}
+  KEYWORD_ALIASES,
+  parseArtifactCommand,
+  parseCreateTaskCommand,
+  parseIndexCommand,
+  parsePromiseCommand,
+  parseSnoozeCommand,
+  parseTripFormLinkCommand,
+} from "./assistant-command-parsing";
 
 const MONTH_NAMES = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -86,65 +63,6 @@ const MAX_REPLY_LENGTH = 3800;
 const EMOJI_ONLY_RE = /^[\p{Emoji_Presentation}\p{Emoji}\s]+$/u;
 const CONFIRM_PHRASES = new Set(["yes", "y", "confirm", "ok", "go ahead", "proceed"]);
 const CANCEL_PHRASES = new Set(["no", "n", "cancel", "stop", "nevermind", "never mind"]);
-
-const KEYWORD_ALIASES: Record<string, string> = {
-  "help": "help",
-  "?": "help",
-  "menu": "help",
-  "commands": "help",
-  "hi": "help",
-  "hello": "help",
-  "hey": "help",
-  "start": "help",
-  "today": "today",
-  "trips": "today",
-  "pickups": "today",
-  "pickup": "today",
-  "trips today": "today",
-  "leads": "leads",
-  "lead": "leads",
-  "new": "leads",
-  "inbox": "leads",
-  "payments": "payments",
-  "payment": "payments",
-  "pending": "payments",
-  "due": "payments",
-  "revenue": "revenue",
-  "money": "revenue",
-  "earnings": "revenue",
-  "income": "revenue",
-  "stats": "stats",
-  "dashboard": "stats",
-  "overview": "stats",
-  "dashboard overview": "stats",
-  "brief": "brief",
-  "briefing": "brief",
-  "summary": "brief",
-  "morning": "brief",
-  "daily briefing": "brief",
-  "followups": "followups",
-  "followup": "followups",
-  "next": "followups",
-  "collections": "collections",
-  "collection": "collections",
-  "cash": "collections",
-  "work": "work",
-  "tasks": "work",
-  "task": "work",
-  "promises": "promises",
-  "promise": "promises",
-  "handoff": "handoff",
-  "commercial": "handoff",
-  "approvals": "approvals",
-  "approval": "approvals",
-  "trip check": "trip_check",
-  "trip check today": "trip_check",
-};
-
-function normalizePhoneDigits(value: string | null | undefined): string | null {
-  const digits = value?.replace(/\D/g, "") ?? "";
-  return digits.length > 0 ? digits : null;
-}
 
 function shouldTriggerAI(normalized: string): boolean {
   if (normalized.length < MIN_AI_MESSAGE_LENGTH) return false;
@@ -338,7 +256,7 @@ async function getLoopItem(
   ctx: CommandContext,
   expectedKind: string,
   index: number | null,
-): Promise<SessionReferenceItem | null> {
+): Promise<NonNullable<CommandReply["references"]>["items"][number] | null> {
   const snapshot = await getSessionContextSnapshot(ctx.actionCtx, ctx.sessionId);
   const operatorLoop = snapshot?.operatorLoop;
   if (!operatorLoop || operatorLoop.kind !== expectedKind || operatorLoop.items.length === 0) {
@@ -367,121 +285,6 @@ async function executeRegisteredAction(
   }
 
   return action.execute(ctx.actionCtx, params);
-}
-
-function parseIndexCommand(
-  input: string,
-  keyword: string,
-): number | null {
-  const match = new RegExp(`^${keyword}\\s+(\\d+)$`, "i").exec(input.trim());
-  if (!match) return null;
-  const parsed = Number.parseInt(match[1], 10);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function parseSnoozeCommand(input: string): { readonly index: number | null; readonly days: number | null; readonly dueText: string | null } | null {
-  const trimmed = input.trim();
-  if (!/^snooze\b/i.test(trimmed)) return null;
-  const tokens = trimmed.split(/\s+/).slice(1);
-  if (tokens.length === 0) return null;
-
-  if (
-    tokens.length >= 3 &&
-    /^\d+$/.test(tokens[0]) &&
-    !/^(day|days|week|weeks)$/i.test(tokens[1])
-  ) {
-    const index = Number.parseInt(tokens[0], 10);
-    const rest = tokens.slice(1).join(" ");
-    const dayMatch = /^(\d+)\s+days?$/i.exec(rest);
-    return {
-      index,
-      days: dayMatch ? Number.parseInt(dayMatch[1], 10) : null,
-      dueText: dayMatch ? null : rest,
-    };
-  }
-
-  const rest = tokens.join(" ");
-  const dayMatch = /^(\d+)\s+days?$/i.exec(rest);
-  return {
-    index: null,
-    days: dayMatch ? Number.parseInt(dayMatch[1], 10) : null,
-    dueText: dayMatch ? null : rest,
-  };
-}
-
-function parsePromiseCommand(input: string): { readonly index: number | null; readonly dueText: string } | null {
-  const trimmed = input.trim();
-  if (!/^payment promised\b/i.test(trimmed)) return null;
-  const tokens = trimmed.split(/\s+/).slice(2);
-  if (tokens.length === 0) return null;
-
-  if (tokens.length >= 2 && /^\d+$/.test(tokens[0]) && !/^(day|days|week|weeks)$/i.test(tokens[1])) {
-    return {
-      index: Number.parseInt(tokens[0], 10),
-      dueText: tokens.slice(1).join(" "),
-    };
-  }
-
-  return {
-    index: null,
-    dueText: tokens.join(" "),
-  };
-}
-
-function parseCreateTaskCommand(input: string): string | null {
-  const match = /^create task\s+(.+)$/i.exec(input.trim());
-  return match?.[1]?.trim() ?? null;
-}
-
-function parseArtifactCommand(
-  input: string,
-  prefix: string,
-): { readonly index: number | null; readonly query: string | null } | null {
-  const trimmed = input.trim();
-  const exactPrefix = new RegExp(`^${prefix}$`, "i");
-  if (exactPrefix.test(trimmed)) {
-    return { index: null, query: null };
-  }
-
-  const indexMatch = new RegExp(`^${prefix}\\s+(\\d+)$`, "i").exec(trimmed);
-  if (indexMatch) {
-    return {
-      index: Number.parseInt(indexMatch[1], 10),
-      query: null,
-    };
-  }
-
-  const forMatch = new RegExp(`^${prefix}\\s+for\\s+(.+)$`, "i").exec(trimmed);
-  if (forMatch) {
-    return { index: null, query: forMatch[1].trim() };
-  }
-
-  const freeMatch = new RegExp(`^${prefix}\\s+(.+)$`, "i").exec(trimmed);
-  if (freeMatch) {
-    return { index: null, query: freeMatch[1].trim() };
-  }
-
-  return null;
-}
-
-function parseTripFormLinkCommand(input: string): { readonly query: string | null } | null {
-  const trimmed = input.trim();
-  const patterns: readonly RegExp[] = [
-    /^trip form(?:\s+link)?(?:\s+for\s+(.+))?$/i,
-    /^intake link(?:\s+for\s+(.+))?$/i,
-    /^trip request link(?:\s+for\s+(.+))?$/i,
-    /^create (?:a )?(?:trip form|intake) link(?:\s+for\s+(.+))?$/i,
-    /^shareable trip form(?:\s+for\s+(.+))?$/i,
-  ];
-
-  for (const pattern of patterns) {
-    const match = pattern.exec(trimmed);
-    if (match) {
-      return { query: match[1]?.trim() || null };
-    }
-  }
-
-  return null;
 }
 
 async function resolveProposalIdFromQuery(
@@ -560,169 +363,16 @@ async function resolveTripIdFromQuery(
   return match?.id ?? null;
 }
 
-async function resolveOwnerUserId(
-  admin: AdminClient,
-  orgId: string,
-  connectedPhone: string | null,
-): Promise<string | null> {
-  const { data: org } = await admin
-    .from("organizations")
-    .select("owner_id")
-    .eq("id", orgId)
-    .maybeSingle();
-
-  if (typeof org?.owner_id === "string" && org.owner_id.length > 0) {
-    return org.owner_id;
-  }
-
-  const phoneDigits = normalizePhoneDigits(connectedPhone);
-  if (phoneDigits) {
-    const { data: ownerFromPhone } = await admin
-      .from("profiles")
-      .select("id")
-      .eq("organization_id", orgId)
-      .eq("phone_normalized", phoneDigits)
-      .maybeSingle();
-
-    if (ownerFromPhone?.id) {
-      return ownerFromPhone.id;
-    }
-  }
-
-  const { data: adminProfiles } = await admin
-    .from("profiles")
-    .select("id")
-    .eq("organization_id", orgId)
-    .in("role", ["super_admin", "admin"])
-    .order("created_at", { ascending: true })
-    .limit(1);
-
-  if ((adminProfiles ?? []).length > 0) {
-    return adminProfiles?.[0]?.id ?? null;
-  }
-
-  const { data: anyProfile } = await admin
-    .from("profiles")
-    .select("id")
-    .eq("organization_id", orgId)
-    .order("created_at", { ascending: true })
-    .limit(1);
-
-  return anyProfile?.[0]?.id ?? null;
-}
-
-async function resolveCommandContext(
-  instanceName: string,
-  groupJid: string,
-): Promise<CommandContext | null> {
-  const admin = createAdminClient();
-  const { data: sessionConn } = await admin
-    .from("whatsapp_connections")
-    .select("organization_id, assistant_group_jid, phone_number, session_name, session_token, updated_at")
-    .eq("session_name", instanceName)
-    .maybeSingle();
-
-  const directConn = sessionConn ?? (
-    await admin
-      .from("whatsapp_connections")
-      .select("organization_id, assistant_group_jid, phone_number, session_name, session_token, updated_at")
-      .eq("session_token", instanceName)
-      .maybeSingle()
-  ).data ?? null;
-
-  const { data: candidateRows } = await admin
-    .from("whatsapp_connections")
-    .select("organization_id, assistant_group_jid, phone_number, session_name, session_token, updated_at")
-    .not("assistant_group_jid", "is", null)
-    .order("updated_at", { ascending: false })
-    .limit(20);
-
-  const incomingGroupJid = normalizeAssistantGroupJid(groupJid);
-  const resolution = resolveAssistantGroupConnection({
-    instanceName,
-    incomingGroupJid,
-    sessionConnection: (directConn as AssistantGroupConnectionCandidate | null) ?? null,
-    candidateRows: (candidateRows as AssistantGroupConnectionCandidate[] | null) ?? [],
-  });
-
-  if (!resolution.connection?.organization_id || !incomingGroupJid) {
-    logWarn("[assistant-commands] failed to resolve assistant group context", {
-      instanceName,
-      incomingGroupJid,
-      failureReason: resolution.failureReason,
-      sessionConnectionFound: Boolean(directConn),
-      candidateCount: candidateRows?.length ?? 0,
-    });
-    return null;
-  }
-
-  const conn = resolution.connection;
-  const organizationId = conn.organization_id;
-  if (typeof organizationId !== "string" || organizationId.length === 0) {
-    logWarn("[assistant-commands] resolved assistant group row is missing organization id", {
-      instanceName,
-      incomingGroupJid,
-      matchedBy: resolution.matchedBy,
-    });
-    return null;
-  }
-
-  if (resolution.matchedBy && resolution.matchedBy !== "session_row") {
-    logEvent("info", "[assistant-commands] resolved assistant group via fallback match", {
-      instanceName,
-      incomingGroupJid,
-      matchedBy: resolution.matchedBy,
-      organizationId,
-      replyInstanceName: conn.session_name ?? instanceName,
-    });
-  }
-
-  const ownerUserId = await resolveOwnerUserId(
-    admin,
-    organizationId,
-    conn.phone_number ?? null,
-  );
-
-  if (!ownerUserId) {
-    logError("[assistant-commands] could not resolve owner user for assistant group", null, {
-      organizationId,
-      instanceName,
-    });
-    return null;
-  }
-
-  const actionCtx: ActionContext = {
-    organizationId,
-    userId: ownerUserId,
-    channel: "whatsapp_group",
-    supabase: admin,
-  };
-
-  const session = await getOrCreateSession(actionCtx);
-
-  return {
-    admin,
-    orgId: organizationId,
-    ownerUserId,
-    instanceName,
-    replyInstanceName: conn.session_name ?? instanceName,
-    groupJid,
-    actionCtx,
-    sessionId: session.id,
-    conversationHistory: session.conversationHistory,
-  };
-}
-
 async function persistTurn(
   ctx: CommandContext,
   userText: string,
   replyText: string,
 ): Promise<void> {
-  const updatedHistory: readonly ConversationMessage[] = [
+  const updatedHistory = [
     ...ctx.conversationHistory,
     { role: "user", content: userText },
     { role: "assistant", content: replyText },
-  ];
+  ] as const;
 
   await updateSessionHistory(ctx.actionCtx, ctx.sessionId, updatedHistory).catch((historyError) => {
     logError("[assistant-commands] failed to persist group assistant history", historyError, {

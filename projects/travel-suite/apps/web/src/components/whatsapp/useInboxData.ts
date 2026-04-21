@@ -186,7 +186,7 @@ export function useInboxData({ onSendMessage }: UseInboxDataOptions): InboxData 
   const showChatbotBanner =
     !isDemoMode &&
     activeChatbotSession?.state !== undefined &&
-    activeChatbotSession.state !== 'handed_off' &&
+    activeChatbotSession.state !== 'operator_handoff' &&
     activeChatbotSession.aiReplyCount > 0;
 
   const {

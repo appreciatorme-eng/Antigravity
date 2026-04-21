@@ -25,6 +25,7 @@ import {
     findInternalWhatsAppProfile,
     hasRecentHumanReply,
     isWhatsAppChatbotEnabled,
+    markCustomerFlowWelcomeSent,
     processChatbotMessage,
     sendChatbotReply,
 } from "@/lib/whatsapp/chatbot-flow";
@@ -42,6 +43,7 @@ import { routeAssistantCommand } from "@/lib/whatsapp/assistant-commands";
 import { getGeminiModel } from "@/lib/ai/gemini.server";
 import { linkInboundReplyToCommsSequence } from "@/lib/platform/business-os-comms-linking";
 import { maybeSendFirstContactWelcome } from "@/lib/whatsapp/first-contact-welcome.server";
+import { findLatestTripRequestForPhone } from "@/lib/whatsapp/trip-intake.server";
 import {
     describeAssistantMessageShape,
     extractAssistantMessageText,
@@ -481,6 +483,25 @@ export async function POST(request: Request): Promise<Response> {
                 });
 
                 if (welcomeSent) {
+                    const latestDraft = await findLatestTripRequestForPhone(
+                        organizationId,
+                        senderPhone,
+                    ).catch(() => null);
+
+                    if (latestDraft) {
+                        await markCustomerFlowWelcomeSent({
+                            organizationId,
+                            phone: senderPhone,
+                            draftId: latestDraft.id,
+                            formToken: latestDraft.formToken,
+                        }).catch((error) => {
+                            logError("[webhooks/evolution] failed to persist welcome customer flow state", error, {
+                                organizationId,
+                                waId,
+                            });
+                        });
+                    }
+
                     return NextResponse.json({ ok: true });
                 }
             }

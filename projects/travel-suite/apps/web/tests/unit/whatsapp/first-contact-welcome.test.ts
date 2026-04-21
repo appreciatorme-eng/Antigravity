@@ -22,6 +22,7 @@ describe("first-contact-welcome", () => {
       office_hours: "Mon-Sat 9-8",
       cta_line: null,
       footer: null,
+      customer_reply_mode: "first_contact_link_only",
     });
   });
 

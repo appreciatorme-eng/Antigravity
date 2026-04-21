@@ -155,12 +155,14 @@ export function ThreadPane({
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-violet-100">
-                  🤖 AI is handling this conversation
+                  🤖 Guarded customer automation is active
                 </p>
                 <p className="mt-1 text-xs leading-5 text-violet-100/80">
-                  {activeChatbotSession.state === 'proposal_ready'
-                    ? `The assistant gathered trip details and is waiting for a human follow-up. ${activeChatbotSession.aiReplyCount} AI replies sent.${activeChatbotSession.proposalDraftId ? ' A proposal draft is ready to review.' : ''}`
-                    : `${activeChatbotSession.aiReplyCount} AI replies sent so far. Take over to stop further automated replies.`}
+                  {activeChatbotSession.state === 'form_submitted'
+                    ? "The traveler completed the intake flow. TripBuilt has stopped free-form replies and is waiting for the operator follow-up."
+                    : activeChatbotSession.state === 'awaiting_form_completion' || activeChatbotSession.state === 'welcome_sent'
+                      ? `The traveler is in the intake-link flow. ${activeChatbotSession.aiReplyCount} automated replies have been sent so far. Take over to stop further automated replies.`
+                      : "TripBuilt is keeping this conversation in the guarded intake flow until a human takes over."}
                 </p>
               </div>
               <div className="flex shrink-0 flex-col items-end gap-2">

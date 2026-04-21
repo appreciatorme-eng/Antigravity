@@ -3,7 +3,7 @@ import "server-only";
 import { z } from "zod";
 
 import { recordSent, hasAlreadySent } from "@/lib/automation/dedup";
-import { logError } from "@/lib/observability/logger";
+import { logError, logEvent } from "@/lib/observability/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { guardedSendText } from "@/lib/whatsapp-evolution.server";
 import {
@@ -18,6 +18,7 @@ const DEFAULT_SERVICE_BULLETS = [
 ] as const;
 
 export const FIRST_CONTACT_WELCOME_RULE_TYPE = "new_lead_welcome_link";
+export const DEFAULT_WHATSAPP_CUSTOMER_REPLY_MODE = "first_contact_link_only" as const;
 
 export const WhatsAppWelcomeConfigSchema = z.object({
   intro_headline: z.string().trim().max(160).optional().nullable(),
@@ -28,9 +29,14 @@ export const WhatsAppWelcomeConfigSchema = z.object({
   office_hours: z.string().trim().max(120).optional().nullable(),
   cta_line: z.string().trim().max(240).optional().nullable(),
   footer: z.string().trim().max(240).optional().nullable(),
+  customer_reply_mode: z.enum(["off", "first_contact_link_only", "guided_customer_intake"]).optional().nullable(),
 });
 
 export type WhatsAppWelcomeConfig = z.infer<typeof WhatsAppWelcomeConfigSchema>;
+export type WhatsAppCustomerReplyMode =
+  | "off"
+  | "first_contact_link_only"
+  | "guided_customer_intake";
 
 type OrganizationWelcomeRow = {
   id: string;
@@ -140,7 +146,29 @@ export function normalizeWhatsAppWelcomeConfig(input: unknown): WhatsAppWelcomeC
     office_hours: trimOrNull(parsed.data.office_hours, 120),
     cta_line: trimOrNull(parsed.data.cta_line, 240),
     footer: trimOrNull(parsed.data.footer, 240),
+    customer_reply_mode:
+      parsed.data.customer_reply_mode ?? DEFAULT_WHATSAPP_CUSTOMER_REPLY_MODE,
   };
+}
+
+export function getWhatsAppCustomerReplyModeFromConfig(
+  input: unknown,
+): WhatsAppCustomerReplyMode {
+  return normalizeWhatsAppWelcomeConfig(input).customer_reply_mode
+    ?? DEFAULT_WHATSAPP_CUSTOMER_REPLY_MODE;
+}
+
+export async function getWhatsAppCustomerReplyMode(
+  organizationId: string,
+): Promise<WhatsAppCustomerReplyMode> {
+  const organization = await fetchOrganizationWelcomeRow(organizationId);
+  if (!organization) {
+    return DEFAULT_WHATSAPP_CUSTOMER_REPLY_MODE;
+  }
+
+  return getWhatsAppCustomerReplyModeFromConfig(
+    organization.whatsapp_welcome_config,
+  );
 }
 
 export function buildFirstContactWelcomeMessage(
@@ -252,6 +280,11 @@ export async function maybeSendFirstContactWelcome(args: {
     return false;
   }
 
+  const customerReplyMode = await getWhatsAppCustomerReplyMode(args.organizationId);
+  if (customerReplyMode === "off") {
+    return false;
+  }
+
   if (await hasAlreadySent(args.organizationId, FIRST_CONTACT_WELCOME_RULE_TYPE, normalizedPhone)) {
     return false;
   }
@@ -300,6 +333,12 @@ export async function maybeSendFirstContactWelcome(args: {
       normalizedPhone,
       welcomeMessage,
     );
+    logEvent("info", "[first-contact-welcome] welcome sent", {
+      organizationId: args.organizationId,
+      phone: normalizedPhone,
+      draftId: draft.id,
+      mode: customerReplyMode,
+    });
     return true;
   } catch (error) {
     logError("[first-contact-welcome] failed to send welcome message", error, {

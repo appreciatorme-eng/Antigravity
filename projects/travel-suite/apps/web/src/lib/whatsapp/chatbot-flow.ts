@@ -1,16 +1,28 @@
 import "server-only";
 
-import { z } from "zod";
-
-import { getGeminiModel, parseGeminiJson } from "@/lib/ai/gemini.server";
-import type { Database, Json } from "@/lib/database.types";
 import { isFeatureEnabled } from "@/lib/platform/settings";
-import { logError } from "@/lib/observability/logger";
+import { logError, logEvent } from "@/lib/observability/logger";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { upsertWhatsAppProposalDraftFromCollected, getProposalDraftSummariesForSessions } from "@/lib/whatsapp/proposal-drafts.server";
 import { guardedSendText } from "@/lib/whatsapp-evolution.server";
+import {
+  DEFAULT_WHATSAPP_CUSTOMER_REPLY_MODE,
+  getWhatsAppCustomerReplyMode,
+  type WhatsAppCustomerReplyMode,
+} from "@/lib/whatsapp/first-contact-welcome.server";
+import {
+  buildTripRequestFormUrl,
+  findLatestTripRequestForPhone,
+  type TripRequestCustomerDraft,
+} from "@/lib/whatsapp/trip-intake.server";
+import { notifyCustomerAssistantHandoff } from "@/lib/whatsapp/assistant-notifications";
+import type { Database, Json } from "@/lib/database.types";
 
-export type ChatbotState = "new" | "qualifying" | "proposal_ready" | "handed_off";
+export type ChatbotState =
+  | "new_contact"
+  | "welcome_sent"
+  | "awaiting_form_completion"
+  | "form_submitted"
+  | "operator_handoff";
 
 export type ChatbotSessionSummary = {
   id: string;
@@ -23,22 +35,12 @@ export type ChatbotSessionSummary = {
 
 type ChatbotSessionRow = Database["public"]["Tables"]["whatsapp_chatbot_sessions"]["Row"];
 
-type ChatbotContextMessage = {
-  role: "traveler" | "assistant";
-  content: string;
-};
-
-type ChatbotCollectedFields = {
-  destination: string | null;
-  travelDates: string | null;
-  groupSize: string | null;
-  budget: string | null;
-};
-
 type ChatbotContext = {
-  collected: ChatbotCollectedFields;
-  messages: ChatbotContextMessage[];
-  lastMissing: string[];
+  draftId: string | null;
+  formToken: string | null;
+  formUrl: string | null;
+  lastAutoReplyType: "welcome" | "reminder" | "completion" | null;
+  operatorNotifiedAt: string | null;
 };
 
 type ProcessChatbotMessageArgs = {
@@ -55,13 +57,22 @@ type ProcessChatbotMessageResult = {
   shouldHandOff: boolean;
 };
 
+type CustomerFlowUpdateArgs = {
+  organizationId: string;
+  phone: string;
+  state: ChatbotState;
+  draftId?: string | null;
+  formToken?: string | null;
+  incrementReplyCount?: boolean;
+  lastAutoReplyType?: ChatbotContext["lastAutoReplyType"];
+  operatorNotifiedAt?: string | null;
+};
+
 type ProfileRoleLookup = {
   id: string;
   role: string | null;
 };
 
-const CHATBOT_STATES = ["new", "qualifying", "proposal_ready", "handed_off"] as const;
-const MAX_AI_REPLIES = 5;
 const RECENT_HUMAN_REPLY_WINDOW_MS = 10 * 60 * 1000;
 const CHATBOT_SESSION_SELECT = [
   "ai_reply_count",
@@ -74,19 +85,26 @@ const CHATBOT_SESSION_SELECT = [
   "updated_at",
 ].join(", ");
 
-const ChatbotResponseSchema = z.object({
-  reply: z.string().trim().min(1).max(400),
-  nextState: z.enum(CHATBOT_STATES),
-  collected: z
-    .object({
-      destination: z.string().trim().min(1).max(160).nullable().optional(),
-      travelDates: z.string().trim().min(1).max(160).nullable().optional(),
-      groupSize: z.string().trim().min(1).max(80).nullable().optional(),
-      budget: z.string().trim().min(1).max(80).nullable().optional(),
-    })
-    .optional(),
-  missing: z.array(z.string().trim().min(1).max(60)).max(4).optional(),
-});
+const REMINDER_PHRASES = new Set([
+  "ok",
+  "okay",
+  "thanks",
+  "thank you",
+  "sure",
+  "received",
+  "got it",
+  "will do",
+  "done",
+  "filled",
+  "submitted",
+  "submit",
+  "form",
+  "link",
+  "details",
+  "open link",
+  "share link",
+  "send link",
+]);
 
 function normalizePhone(phone: string) {
   const digits = phone.replace(/\D/g, "");
@@ -99,130 +117,106 @@ function phoneCandidates(phone: string) {
 }
 
 function parseContext(value: unknown): ChatbotContext {
-  const base: ChatbotContext = {
-    collected: {
-      destination: null,
-      travelDates: null,
-      groupSize: null,
-      budget: null,
-    },
-    messages: [],
-    lastMissing: [],
-  };
-
   if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return base;
+    return {
+      draftId: null,
+      formToken: null,
+      formUrl: null,
+      lastAutoReplyType: null,
+      operatorNotifiedAt: null,
+    };
   }
 
   const raw = value as Record<string, unknown>;
-  const collected = raw.collected;
-  const messages = raw.messages;
-  const lastMissing = raw.lastMissing;
-  const collectedRecord =
-    collected && typeof collected === "object" && !Array.isArray(collected)
-      ? (collected as Record<string, unknown>)
-      : null;
-
   return {
-    collected: {
-      destination:
-        typeof collectedRecord?.destination === "string"
-          ? collectedRecord.destination
-          : null,
-      travelDates:
-        typeof collectedRecord?.travelDates === "string"
-          ? collectedRecord.travelDates
-          : null,
-      groupSize:
-        typeof collectedRecord?.groupSize === "string"
-          ? collectedRecord.groupSize
-          : null,
-      budget:
-        typeof collectedRecord?.budget === "string"
-          ? collectedRecord.budget
-          : null,
-    },
-    messages: Array.isArray(messages)
-      ? messages
-          .filter(
-            (entry): entry is ChatbotContextMessage =>
-              Boolean(entry) &&
-              typeof entry === "object" &&
-              !Array.isArray(entry) &&
-              (entry as { role?: unknown }).role !== undefined &&
-              (entry as { content?: unknown }).content !== undefined &&
-              ((entry as { role?: unknown }).role === "traveler" ||
-                (entry as { role?: unknown }).role === "assistant") &&
-              typeof (entry as { content?: unknown }).content === "string",
-          )
-          .slice(-10)
-      : [],
-    lastMissing: Array.isArray(lastMissing)
-      ? lastMissing.filter((entry): entry is string => typeof entry === "string").slice(0, 4)
-      : [],
+    draftId: typeof raw.draftId === "string" ? raw.draftId : null,
+    formToken: typeof raw.formToken === "string" ? raw.formToken : null,
+    formUrl: typeof raw.formUrl === "string" ? raw.formUrl : null,
+    lastAutoReplyType:
+      raw.lastAutoReplyType === "welcome"
+      || raw.lastAutoReplyType === "reminder"
+      || raw.lastAutoReplyType === "completion"
+        ? raw.lastAutoReplyType
+        : null,
+    operatorNotifiedAt: typeof raw.operatorNotifiedAt === "string" ? raw.operatorNotifiedAt : null,
   };
 }
 
-function buildPrompt(args: {
-  session: ChatbotSessionRow;
-  context: ChatbotContext;
-  incomingMessage: string;
-}) {
-  const transcript = args.context.messages
-    .slice(-8)
-    .map((message) => `${message.role === "traveler" ? "Traveler" : "Assistant"}: ${message.content}`)
-    .join("\n");
-
-  return `You are a helpful travel booking assistant for a professional travel operator.
-
-Conversation state: ${args.session.state}
-Already collected:
-- destination: ${args.context.collected.destination ?? "missing"}
-- travelDates: ${args.context.collected.travelDates ?? "missing"}
-- groupSize: ${args.context.collected.groupSize ?? "missing"}
-- budget: ${args.context.collected.budget ?? "missing"}
-
-Rules:
-1. Greet warmly and gather destination, travel dates, group size, and budget.
-2. Once all four are clearly known, reply: "Perfect! I'll prepare a personalised proposal for you. Our team will be in touch shortly." and set nextState to "proposal_ready".
-3. If the traveler asks for something you cannot confidently answer, set nextState to "handed_off" and reply: "Let me connect you with our travel expert."
-4. Keep replies under 100 words and sound human, warm, and professional.
-5. Return JSON only.
-
-Recent conversation:
-${transcript || "No previous context."}
-Traveler: ${args.incomingMessage}
-
-Return exactly this JSON shape:
-{
-  "reply": "string",
-  "nextState": "new" | "qualifying" | "proposal_ready" | "handed_off",
-  "collected": {
-    "destination": "string | null",
-    "travelDates": "string | null",
-    "groupSize": "string | null",
-    "budget": "string | null"
+function buildContextPatch(
+  current: ChatbotContext,
+  draft: TripRequestCustomerDraft | null,
+  overrides?: {
+    lastAutoReplyType?: ChatbotContext["lastAutoReplyType"];
+    operatorNotifiedAt?: string | null;
   },
-  "missing": ["destination", "travelDates", "groupSize", "budget"]
-}`;
+): ChatbotContext {
+  const formToken = draft?.formToken ?? current.formToken;
+  return {
+    draftId: draft?.id ?? current.draftId,
+    formToken,
+    formUrl: formToken ? buildTripRequestFormUrl(formToken) : current.formUrl,
+    lastAutoReplyType: overrides?.lastAutoReplyType ?? current.lastAutoReplyType,
+    operatorNotifiedAt:
+      overrides?.operatorNotifiedAt !== undefined
+        ? overrides.operatorNotifiedAt
+        : current.operatorNotifiedAt,
+  } satisfies ChatbotContext;
 }
 
-function mergeCollectedFields(
-  current: ChatbotCollectedFields,
-  next?: Partial<Record<keyof ChatbotCollectedFields, string | null>>,
-): ChatbotCollectedFields {
-  return {
-    destination: next?.destination || current.destination,
-    travelDates: next?.travelDates || current.travelDates,
-    groupSize: next?.groupSize || current.groupSize,
-    budget: next?.budget || current.budget,
-  };
+function normalizeStoredState(
+  state: string | null | undefined,
+  draft: TripRequestCustomerDraft | null,
+): ChatbotState {
+  switch (state) {
+    case "new_contact":
+    case "welcome_sent":
+    case "awaiting_form_completion":
+    case "form_submitted":
+    case "operator_handoff":
+      return state;
+    case "handed_off":
+    case "proposal_ready":
+      return "operator_handoff";
+    case "qualifying":
+      return draft?.status === "completed" ? "form_submitted" : "awaiting_form_completion";
+    case "new":
+    default:
+      if (draft?.status === "completed") {
+        return "form_submitted";
+      }
+      if (draft) {
+        return "awaiting_form_completion";
+      }
+      return "new_contact";
+  }
+}
+
+function buildReminderReply(formUrl: string): string {
+  return [
+    "Please use this secure trip form to share your travel details.",
+    formUrl,
+    "",
+    "Once it is submitted, our travel team will prepare your trip and share the final link back on WhatsApp.",
+  ].join("\n");
+}
+
+function buildCompletionReply(): string {
+  return "Thanks. Your trip request is complete and our travel team will follow up shortly.";
+}
+
+function shouldSendReminder(message: string): boolean {
+  const normalized = message.trim().toLowerCase().replace(/\s+/g, " ");
+  if (!normalized) return false;
+  if (REMINDER_PHRASES.has(normalized)) return true;
+  if (normalized.length <= 24 && /^(hi|hello|hey)$/.test(normalized)) return true;
+
+  return /(form|link|submit|submitted|fill|filled|details|open|working|issue|problem|share|send)/i.test(normalized);
 }
 
 async function getOrCreateChatbotSession(
   phone: string,
   organizationId: string,
-) {
+): Promise<ChatbotSessionRow> {
   const admin = createAdminClient();
   const normalizedPhone = normalizePhone(phone);
 
@@ -242,21 +236,20 @@ async function getOrCreateChatbotSession(
     return existingSession;
   }
 
+  const now = new Date().toISOString();
   const { data: created, error: insertError } = await admin
     .from("whatsapp_chatbot_sessions")
     .insert({
       organization_id: organizationId,
       phone: normalizedPhone,
-      state: "new",
+      state: "new_contact",
+      last_message_at: now,
       context: {
-        collected: {
-          destination: null,
-          travelDates: null,
-          groupSize: null,
-          budget: null,
-        },
-        messages: [],
-        lastMissing: [],
+        draftId: null,
+        formToken: null,
+        formUrl: null,
+        lastAutoReplyType: null,
+        operatorNotifiedAt: null,
       },
     })
     .select(CHATBOT_SESSION_SELECT)
@@ -274,13 +267,113 @@ async function getOrCreateChatbotSession(
   return createdSession;
 }
 
-export async function isWhatsAppChatbotEnabled() {
-  const [whatsAppEnabled, aiEnabled] = await Promise.all([
-    isFeatureEnabled("whatsapp_enabled"),
-    isFeatureEnabled("ai_enabled"),
-  ]);
+async function updateCustomerFlowSession(
+  args: CustomerFlowUpdateArgs,
+): Promise<void> {
+  const admin = createAdminClient();
+  const normalizedPhone = normalizePhone(args.phone);
+  const session = await getOrCreateChatbotSession(normalizedPhone, args.organizationId);
+  const currentContext = parseContext(session.context);
+  const draft =
+    args.draftId
+      ? await findLatestTripRequestForPhone(args.organizationId, normalizedPhone).catch(() => null)
+      : null;
+  const now = new Date().toISOString();
+  const nextReplyCount = session.ai_reply_count + (args.incrementReplyCount ? 1 : 0);
 
-  return whatsAppEnabled && aiEnabled;
+  await admin
+    .from("whatsapp_chatbot_sessions")
+    .update({
+      state: args.state,
+      context: buildContextPatch(currentContext, draft, {
+        lastAutoReplyType: args.lastAutoReplyType,
+        operatorNotifiedAt: args.operatorNotifiedAt,
+      }),
+      ai_reply_count: nextReplyCount,
+      last_message_at: now,
+      last_ai_reply_at: args.incrementReplyCount ? now : session.last_ai_reply_at,
+      handed_off_at: args.state === "operator_handoff" ? now : session.handed_off_at,
+      updated_at: now,
+    })
+    .eq("id", session.id);
+}
+
+export async function markCustomerFlowWelcomeSent(args: {
+  organizationId: string;
+  phone: string;
+  draftId: string;
+  formToken: string;
+}): Promise<void> {
+  await updateCustomerFlowSession({
+    organizationId: args.organizationId,
+    phone: args.phone,
+    state: "welcome_sent",
+    draftId: args.draftId,
+    formToken: args.formToken,
+    incrementReplyCount: true,
+    lastAutoReplyType: "welcome",
+  });
+}
+
+export async function markCustomerFlowFormSubmitted(args: {
+  organizationId: string;
+  phone: string;
+  draftId: string;
+  formToken: string;
+}): Promise<void> {
+  await updateCustomerFlowSession({
+    organizationId: args.organizationId,
+    phone: args.phone,
+    state: "form_submitted",
+    draftId: args.draftId,
+    formToken: args.formToken,
+    lastAutoReplyType: "completion",
+  });
+}
+
+async function markOperatorHandoff(args: {
+  organizationId: string;
+  phone: string;
+  session: ChatbotSessionRow;
+  draft: TripRequestCustomerDraft | null;
+  incomingMessage: string;
+}): Promise<void> {
+  const now = new Date().toISOString();
+  const context = parseContext(args.session.context);
+  await createAdminClient()
+    .from("whatsapp_chatbot_sessions")
+    .update({
+      state: "operator_handoff",
+      context: buildContextPatch(context, args.draft, {
+        operatorNotifiedAt: now,
+      }),
+      handed_off_at: now,
+      last_message_at: now,
+      updated_at: now,
+    })
+    .eq("id", args.session.id);
+
+  await notifyCustomerAssistantHandoff(
+    args.organizationId,
+    args.phone,
+    args.incomingMessage,
+    args.draft?.formToken ? buildTripRequestFormUrl(args.draft.formToken) : null,
+  ).catch((error) => {
+    logError("[whatsapp/chatbot-flow] failed to notify operator about customer handoff", error, {
+      organizationId: args.organizationId,
+      phone: args.phone,
+    });
+  });
+
+  logEvent("info", "[whatsapp/chatbot-flow] operator handoff triggered", {
+    organizationId: args.organizationId,
+    phone: args.phone,
+    draftId: args.draft?.id ?? null,
+  });
+}
+
+export async function isWhatsAppChatbotEnabled() {
+  return isFeatureEnabled("whatsapp_enabled");
 }
 
 export async function findInternalWhatsAppProfile(
@@ -357,21 +450,16 @@ export async function getChatbotSessionsForPhones(
     throw error;
   }
 
-  const draftSummaries = await getProposalDraftSummariesForSessions(
-    organizationId,
-    (data || []).map((row) => row.id),
-  );
-
   return new Map(
     (data || []).map((row) => [
       row.phone,
       {
         id: row.id,
-        state: row.state as ChatbotState,
+        state: normalizeStoredState(row.state, null),
         aiReplyCount: row.ai_reply_count,
         updatedAt: row.updated_at,
-        proposalDraftId: draftSummaries.get(row.id)?.id ?? null,
-        proposalDraftStatus: draftSummaries.get(row.id)?.status ?? null,
+        proposalDraftId: null,
+        proposalDraftStatus: null,
       },
     ]),
   );
@@ -387,7 +475,7 @@ export async function markChatbotSessionHandedOff(args: {
   const { data, error } = await admin
     .from("whatsapp_chatbot_sessions")
     .update({
-      state: "handed_off",
+      state: "operator_handoff",
       handed_off_at: handoffTime,
       updated_at: handoffTime,
     })
@@ -403,128 +491,181 @@ export async function markChatbotSessionHandedOff(args: {
   return data
     ? {
         id: data.id,
-        state: data.state as ChatbotState,
+        state: normalizeStoredState(data.state, null),
         aiReplyCount: data.ai_reply_count,
         updatedAt: data.updated_at,
       }
     : null;
 }
 
+async function resolveReplyMode(
+  organizationId: string,
+): Promise<WhatsAppCustomerReplyMode> {
+  try {
+    return await getWhatsAppCustomerReplyMode(organizationId);
+  } catch (error) {
+    logError("[whatsapp/chatbot-flow] failed to resolve customer reply mode", error, {
+      organizationId,
+    });
+    return DEFAULT_WHATSAPP_CUSTOMER_REPLY_MODE;
+  }
+}
+
 export async function processChatbotMessage(
   args: ProcessChatbotMessageArgs,
 ): Promise<ProcessChatbotMessageResult> {
-  const admin = createAdminClient();
+  const replyMode = await resolveReplyMode(args.organizationId);
   const session = await getOrCreateChatbotSession(args.phone, args.organizationId);
   const context = parseContext(session.context);
+  const draft = await findLatestTripRequestForPhone(args.organizationId, args.phone).catch((error) => {
+    logError("[whatsapp/chatbot-flow] failed to load latest trip request draft", error, {
+      organizationId: args.organizationId,
+      phone: args.phone,
+    });
+    return null;
+  });
+  const normalizedState = normalizeStoredState(session.state, draft);
+  const now = new Date().toISOString();
 
-  if (session.state === "proposal_ready" || session.state === "handed_off") {
+  if (replyMode === "off") {
     return {
       reply: null,
       sessionId: session.id,
-      state: session.state as ChatbotState,
+      state: normalizedState,
       aiReplyCount: session.ai_reply_count,
-      shouldHandOff: true,
+      shouldHandOff: normalizedState === "operator_handoff",
     };
   }
 
-  if (session.ai_reply_count >= MAX_AI_REPLIES) {
-    const now = new Date().toISOString();
-    await admin
+  if (!draft) {
+    if (normalizedState !== "new_contact") {
+      await createAdminClient()
+        .from("whatsapp_chatbot_sessions")
+        .update({
+          state: "new_contact",
+          last_message_at: now,
+          updated_at: now,
+        })
+        .eq("id", session.id);
+    }
+
+    return {
+      reply: null,
+      sessionId: session.id,
+      state: "new_contact",
+      aiReplyCount: session.ai_reply_count,
+      shouldHandOff: false,
+    };
+  }
+
+  const nextContext = buildContextPatch(context, draft);
+
+  if (draft.status === "completed") {
+    const nextReplyCount = session.ai_reply_count + 1;
+    const nextState: ChatbotState = "form_submitted";
+    await createAdminClient()
       .from("whatsapp_chatbot_sessions")
       .update({
-        state: "handed_off",
-        handed_off_at: now,
-        updated_at: now,
+        state: nextState,
+        context: { ...nextContext, lastAutoReplyType: "completion" } as Json,
+        ai_reply_count: nextReplyCount,
         last_message_at: now,
+        last_ai_reply_at: now,
+        updated_at: now,
       })
       .eq("id", session.id);
 
+    logEvent("info", "[whatsapp/chatbot-flow] completion acknowledgement sent", {
+      organizationId: args.organizationId,
+      phone: args.phone,
+      draftId: draft.id,
+    });
+
     return {
-      reply: "I'm connecting you with our travel expert who will assist you shortly! 🙏",
+      reply: buildCompletionReply(),
       sessionId: session.id,
-      state: "handed_off",
+      state: nextState,
+      aiReplyCount: nextReplyCount,
+      shouldHandOff: false,
+    };
+  }
+
+  if (normalizedState === "operator_handoff") {
+    return {
+      reply: null,
+      sessionId: session.id,
+      state: "operator_handoff",
       aiReplyCount: session.ai_reply_count,
       shouldHandOff: true,
     };
   }
 
-  let parsed: z.infer<typeof ChatbotResponseSchema>;
-  try {
-    const model = getGeminiModel();
-    const result = await model.generateContent(buildPrompt({
+  if (!draft.formToken) {
+    await markOperatorHandoff({
+      organizationId: args.organizationId,
+      phone: args.phone,
       session,
-      context,
+      draft,
       incomingMessage: args.incomingMessage,
-    }));
-    parsed = ChatbotResponseSchema.parse(parseGeminiJson(result.response.text()));
-  } catch {
-    parsed = {
-      reply: "Let me connect you with our travel expert.",
-      nextState: "handed_off",
-      missing: [],
+    });
+
+    return {
+      reply: null,
+      sessionId: session.id,
+      state: "operator_handoff",
+      aiReplyCount: session.ai_reply_count,
+      shouldHandOff: true,
     };
   }
 
-  const nextReplyCount = session.ai_reply_count + 1;
-  const now = new Date().toISOString();
-  let nextState = parsed.nextState;
-  let reply = parsed.reply;
-  const mergedCollected = mergeCollectedFields(context.collected, parsed.collected);
-  const shouldForceHandoff =
-    nextReplyCount >= MAX_AI_REPLIES &&
-    nextState !== "proposal_ready" &&
-    nextState !== "handed_off";
+  if (!shouldSendReminder(args.incomingMessage)) {
+    await markOperatorHandoff({
+      organizationId: args.organizationId,
+      phone: args.phone,
+      session,
+      draft,
+      incomingMessage: args.incomingMessage,
+    });
 
-  if (shouldForceHandoff) {
-    nextState = "handed_off";
-    reply = "I'm connecting you with our travel expert who will assist you shortly! 🙏";
+    return {
+      reply: null,
+      sessionId: session.id,
+      state: "operator_handoff",
+      aiReplyCount: session.ai_reply_count,
+      shouldHandOff: true,
+    };
   }
 
-  const nextMessages = [
-    ...context.messages.slice(-8),
-    { role: "traveler" as const, content: args.incomingMessage },
-    { role: "assistant" as const, content: reply },
-  ].slice(-10) satisfies ChatbotContextMessage[];
+  const reply = buildReminderReply(buildTripRequestFormUrl(draft.formToken));
+  const nextReplyCount = session.ai_reply_count + 1;
+  const nextState: ChatbotState =
+    normalizedState === "welcome_sent" ? "awaiting_form_completion" : "awaiting_form_completion";
 
-  const nextContext: ChatbotContext = {
-    collected: mergedCollected,
-    messages: nextMessages,
-    lastMissing: parsed.missing ?? [],
-  };
-
-  await admin
+  await createAdminClient()
     .from("whatsapp_chatbot_sessions")
     .update({
       state: nextState,
-      context: nextContext,
+      context: { ...nextContext, lastAutoReplyType: "reminder" } as Json,
       ai_reply_count: nextReplyCount,
       last_message_at: now,
       last_ai_reply_at: now,
-      handed_off_at: nextState === "handed_off" ? now : session.handed_off_at,
       updated_at: now,
     })
     .eq("id", session.id);
 
-  if (nextState === "proposal_ready") {
-    try {
-      await upsertWhatsAppProposalDraftFromCollected({
-        organizationId: args.organizationId,
-        chatbotSessionId: session.id,
-        travelerPhone: args.phone,
-        collected: mergedCollected,
-        sourceContext: nextContext as Json,
-      });
-    } catch (proposalDraftError) {
-      logError("[whatsapp/chatbot-flow] failed to create proposal draft", proposalDraftError);
-    }
-  }
+  logEvent("info", "[whatsapp/chatbot-flow] form reminder sent", {
+    organizationId: args.organizationId,
+    phone: args.phone,
+    draftId: draft.id,
+    mode: replyMode,
+  });
 
   return {
     reply,
     sessionId: session.id,
     state: nextState,
     aiReplyCount: nextReplyCount,
-    shouldHandOff: nextState === "handed_off" || nextState === "proposal_ready",
+    shouldHandOff: false,
   };
 }
 
@@ -537,9 +678,4 @@ export async function sendChatbotReply(args: {
   reply: string;
 }) {
   await guardedSendText(args.sessionName, args.waId, args.reply);
-
-  // Don't store the reply here — the send.message / messages.upsert webhook
-  // will store it with the real WhatsApp message ID, avoiding duplicates.
-  // The chatbot metadata (source, session_id) is tracked in the
-  // whatsapp_chatbot_sessions table instead.
 }

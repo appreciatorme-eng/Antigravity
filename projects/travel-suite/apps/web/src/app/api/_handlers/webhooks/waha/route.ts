@@ -209,7 +209,7 @@ export async function POST(request: Request): Promise<Response> {
             return false;
         });
 
-        if (!chatbotEnabled || !connection.session_token) {
+        if (!chatbotEnabled) {
             return NextResponse.json({ ok: true });
         }
 
@@ -240,7 +240,7 @@ export async function POST(request: Request): Promise<Response> {
         await sendChatbotReply({
             organizationId,
             sessionName: event.session,
-            sessionToken: connection.session_token,
+            sessionToken: connection.session_token ?? "",
             waId,
             chatbotSessionId: chatbotResult.sessionId,
             reply: chatbotResult.reply,

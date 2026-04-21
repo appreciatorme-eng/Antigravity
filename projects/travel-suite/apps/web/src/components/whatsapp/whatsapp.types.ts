@@ -2,7 +2,12 @@ export type ActionMode = "itinerary" | "payment" | "driver" | "location" | "send
 
 export type ContactType = "client" | "driver" | "lead";
 
-export type ChatbotState = "new" | "qualifying" | "proposal_ready" | "handed_off";
+export type ChatbotState =
+  | "new_contact"
+  | "welcome_sent"
+  | "awaiting_form_completion"
+  | "form_submitted"
+  | "operator_handoff";
 
 export interface ChatbotSessionSummary {
   id: string;
