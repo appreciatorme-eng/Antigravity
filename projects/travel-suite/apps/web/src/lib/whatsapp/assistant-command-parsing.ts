@@ -3,6 +3,10 @@ export const KEYWORD_ALIASES: Record<string, string> = {
   "?": "help",
   "menu": "help",
   "commands": "help",
+  "agenda": "brief",
+  "refresh agenda": "brief",
+  "reload agenda": "brief",
+  "refresh": "brief",
   "hi": "help",
   "hello": "help",
   "hey": "help",
@@ -30,6 +34,9 @@ export const KEYWORD_ALIASES: Record<string, string> = {
   "dashboard overview": "stats",
   "brief": "brief",
   "briefing": "brief",
+  "brief now": "brief",
+  "run briefing": "brief",
+  "send briefing": "brief",
   "summary": "brief",
   "morning": "brief",
   "daily briefing": "brief",
@@ -111,10 +118,13 @@ export function parseTripFormLinkCommand(
   const trimmed = input.trim();
   const exactCommands = new Set([
     "link",
+    "send link",
     "form link",
+    "send form link",
     "trip form link",
     "trip request link",
     "intake link",
+    "send intake link",
     "share intake link",
     "share trip form",
   ]);
@@ -123,7 +133,7 @@ export function parseTripFormLinkCommand(
     return { query: null };
   }
 
-  const match = /^(?:link|form link|trip form link|trip request link|intake link)(?:\s+for\s+(.+))$/i.exec(trimmed);
+  const match = /^(?:link|send link|form link|send form link|trip form link|trip request link|intake link|send intake link)(?:\s+for\s+(.+))$/i.exec(trimmed);
   if (!match) return null;
   return { query: match[1]?.trim() || null };
 }

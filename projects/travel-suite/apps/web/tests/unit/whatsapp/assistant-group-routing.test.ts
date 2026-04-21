@@ -57,6 +57,9 @@ describe("assistant-group-routing", () => {
   it("detects assistant keyword commands", () => {
     expect(shouldAttemptAssistantGroupRouting("stats")).toBe(true);
     expect(shouldAttemptAssistantGroupRouting("leads")).toBe(true);
+    expect(shouldAttemptAssistantGroupRouting("brief now")).toBe(true);
+    expect(shouldAttemptAssistantGroupRouting("run briefing")).toBe(true);
+    expect(shouldAttemptAssistantGroupRouting("refresh agenda")).toBe(true);
   });
 
   it("detects assistant workflow commands", () => {
@@ -64,9 +67,12 @@ describe("assistant-group-routing", () => {
     expect(shouldAttemptAssistantGroupRouting("5 day trip to Bali")).toBe(true);
     expect(shouldAttemptAssistantGroupRouting("Create a 5 day Delhi trip")).toBe(true);
     expect(shouldAttemptAssistantGroupRouting("link")).toBe(true);
+    expect(shouldAttemptAssistantGroupRouting("send link")).toBe(true);
     expect(shouldAttemptAssistantGroupRouting("form link")).toBe(true);
+    expect(shouldAttemptAssistantGroupRouting("send form link")).toBe(true);
     expect(shouldAttemptAssistantGroupRouting("trip form link")).toBe(true);
     expect(shouldAttemptAssistantGroupRouting("intake link for Rahul")).toBe(true);
+    expect(shouldAttemptAssistantGroupRouting("send intake link")).toBe(true);
   });
 
   it("routes normal free-form operator replies in the assistant group", () => {
