@@ -145,7 +145,7 @@ export type OperatorTripRequestActionHistoryEntry = {
   readonly title: string;
   readonly description: string;
   readonly occurredAt: string;
-  readonly tone: "success" | "info";
+  readonly tone: "success" | "info" | "error";
 };
 
 export type OperatorTripRequestListItem = {
@@ -474,7 +474,11 @@ function getCompletionDeliveryMetadata(
         const occurredAt = typeof value.occurredAt === "string" && value.occurredAt.trim()
           ? value.occurredAt.trim()
           : null;
-        const tone = value.tone === "info" ? "info" : "success";
+        const tone = value.tone === "info"
+          ? "info"
+          : value.tone === "error"
+            ? "error"
+            : "success";
 
         if (!action || !title || !description || !occurredAt) {
           return null;
@@ -519,6 +523,21 @@ function appendTripRequestActionHistory(
 
   return mergeCompletionDeliveryMetadata(draft, {
     actionHistory: [nextEntry, ...metadata.actionHistory].slice(0, 8),
+  });
+}
+
+function appendTripRequestActionHistoryEntries(
+  draft: TripRequestDraft,
+  entries: ReadonlyArray<Omit<OperatorTripRequestActionHistoryEntry, "occurredAt"> & { occurredAt?: string }>,
+): Readonly<Record<string, unknown>> {
+  const metadata = getCompletionDeliveryMetadata(draft);
+  const nextEntries = entries.map((entry) => ({
+    ...entry,
+    occurredAt: entry.occurredAt ?? new Date().toISOString(),
+  })) satisfies OperatorTripRequestActionHistoryEntry[];
+
+  return mergeCompletionDeliveryMetadata(draft, {
+    actionHistory: [...nextEntries, ...metadata.actionHistory].slice(0, 8),
   });
 }
 
@@ -2910,9 +2929,20 @@ export async function completeSubmittedTripRequestForm(
   const finalState = toTripRequestFormState(finalDraft);
   if (finalDraft.status !== "completed") {
     await updateDraft(ctx, finalDraft.id, {
-      collected_fields: mergeCompletionDeliveryMetadata(finalDraft, {
-        generationError: message,
-      }) as unknown as Json,
+      collected_fields: appendTripRequestActionHistory(
+        {
+          ...finalDraft,
+          collectedFields: mergeCompletionDeliveryMetadata(finalDraft, {
+            generationError: message,
+          }),
+        },
+        {
+          action: "retry_request",
+          title: "Completion failed",
+          description: message,
+          tone: "error",
+        },
+      ) as unknown as Json,
     });
     if (claimedRow) {
       await updateDraft(ctx, finalDraft.id, { current_step: null });
@@ -2943,8 +2973,39 @@ export async function completeSubmittedTripRequestForm(
         deliveryConnection.operatorPhone,
       );
       const deliveredAt = new Date().toISOString();
+      const historyEntries: Array<
+        Omit<OperatorTripRequestActionHistoryEntry, "occurredAt"> & { occurredAt?: string }
+      > = [
+        {
+          action: "completion_delivered",
+          title: "Trip package delivered",
+          description: clientDelivery.delivered
+            ? "The itinerary package was shared with the operator and traveller."
+            : "The itinerary package was shared with the operator.",
+          tone: "success",
+          occurredAt: deliveredAt,
+        },
+      ];
+      if (deliveryConnection.error) {
+        historyEntries.push({
+          action: "resend_operator",
+          title: "Operator delivery failed",
+          description: deliveryConnection.error,
+          tone: "error",
+          occurredAt: deliveredAt,
+        });
+      }
+      if (clientDelivery.error && !clientDelivery.skipped) {
+        historyEntries.push({
+          action: "resend_client",
+          title: "Traveller delivery failed",
+          description: clientDelivery.error,
+          tone: "error",
+          occurredAt: deliveredAt,
+        });
+      }
       const updated = await updateDraft(ctx, finalDraft.id, {
-        collected_fields: appendTripRequestActionHistory(
+        collected_fields: appendTripRequestActionHistoryEntries(
           {
             ...finalDraft,
             collectedFields: mergeCompletionDeliveryMetadata(finalDraft, {
@@ -2956,15 +3017,7 @@ export async function completeSubmittedTripRequestForm(
               generationError: null,
             }),
           },
-          {
-            action: "completion_delivered",
-            title: "Trip package delivered",
-            description: clientDelivery.delivered
-              ? "The itinerary package was shared with the operator and traveller."
-              : "The itinerary package was shared with the operator.",
-            tone: "success",
-            occurredAt: deliveredAt,
-          },
+          historyEntries,
         ) as unknown as Json,
       });
       if (updated) {
@@ -3018,9 +3071,20 @@ export async function resendTripRequestCompletionToOperator(args: {
     await admin
       .from("assistant_trip_requests")
       .update({
-        collected_fields: mergeCompletionDeliveryMetadata(draft, {
-          operatorDeliveryError: connection.error ?? "Assistant group delivery failed.",
-        }) as unknown as Json,
+        collected_fields: appendTripRequestActionHistory(
+          {
+            ...draft,
+            collectedFields: mergeCompletionDeliveryMetadata(draft, {
+              operatorDeliveryError: connection.error ?? "Assistant group delivery failed.",
+            }),
+          },
+          {
+            action: "resend_operator",
+            title: "Operator resend failed",
+            description: connection.error ?? "Assistant group delivery failed.",
+            tone: "error",
+          },
+        ) as unknown as Json,
       })
       .eq("id", draft.id)
       .eq("organization_id", args.organizationId);
@@ -3100,9 +3164,20 @@ export async function resendTripRequestCompletionToClient(args: {
     await admin
       .from("assistant_trip_requests")
       .update({
-        collected_fields: mergeCompletionDeliveryMetadata(draft, {
-          clientDeliveryError: delivery.error ?? "Traveller delivery failed.",
-        }) as unknown as Json,
+        collected_fields: appendTripRequestActionHistory(
+          {
+            ...draft,
+            collectedFields: mergeCompletionDeliveryMetadata(draft, {
+              clientDeliveryError: delivery.error ?? "Traveller delivery failed.",
+            }),
+          },
+          {
+            action: "resend_client",
+            title: "Traveller resend failed",
+            description: delivery.error ?? "Traveller delivery failed.",
+            tone: "error",
+          },
+        ) as unknown as Json,
       })
       .eq("id", draft.id)
       .eq("organization_id", args.organizationId);
@@ -3225,9 +3300,20 @@ export async function regenerateTripRequestItinerary(args: {
     await admin
       .from("assistant_trip_requests")
       .update({
-        collected_fields: mergeCompletionDeliveryMetadata(draft, {
-          generationError: updateItineraryError.message,
-        }) as unknown as Json,
+        collected_fields: appendTripRequestActionHistory(
+          {
+            ...draft,
+            collectedFields: mergeCompletionDeliveryMetadata(draft, {
+              generationError: updateItineraryError.message,
+            }),
+          },
+          {
+            action: "regenerate_itinerary",
+            title: "Regeneration failed",
+            description: updateItineraryError.message,
+            tone: "error",
+          },
+        ) as unknown as Json,
       })
       .eq("id", draft.id)
       .eq("organization_id", args.organizationId);
@@ -3249,9 +3335,20 @@ export async function regenerateTripRequestItinerary(args: {
       await admin
         .from("assistant_trip_requests")
         .update({
-          collected_fields: mergeCompletionDeliveryMetadata(draft, {
-            generationError: updateTripError.message,
-          }) as unknown as Json,
+          collected_fields: appendTripRequestActionHistory(
+            {
+              ...draft,
+              collectedFields: mergeCompletionDeliveryMetadata(draft, {
+                generationError: updateTripError.message,
+              }),
+            },
+            {
+              action: "regenerate_itinerary",
+              title: "Trip sync failed",
+              description: updateTripError.message,
+              tone: "error",
+            },
+          ) as unknown as Json,
         })
         .eq("id", draft.id)
         .eq("organization_id", args.organizationId);

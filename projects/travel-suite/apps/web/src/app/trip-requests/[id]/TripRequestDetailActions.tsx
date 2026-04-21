@@ -55,7 +55,7 @@ type StatusChip = {
 type InlineFeedback = {
   title: string;
   description: string;
-  tone: "success" | "info";
+  tone: "success" | "info" | "error";
   action: "saved" | ActionType;
   occurredAt: string;
 };
@@ -527,15 +527,17 @@ export function TripRequestDetailActions({
               <div className="mt-4 overflow-x-auto pb-1">
                 <div className="flex min-w-max gap-3">
                   {actionRail.map((entry) => (
-                    <div
-                      key={`${entry.action}-${entry.occurredAt}`}
-                      className={cn(
-                        "min-w-[220px] rounded-2xl border px-4 py-3",
-                        entry.tone === "success"
-                          ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                          : "border-sky-500/20 bg-sky-500/10 text-sky-700 dark:text-sky-300",
-                      )}
-                    >
+                      <div
+                        key={`${entry.action}-${entry.occurredAt}`}
+                        className={cn(
+                          "min-w-[220px] rounded-2xl border px-4 py-3",
+                          entry.tone === "success"
+                            ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                            : entry.tone === "error"
+                              ? "border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-300"
+                              : "border-sky-500/20 bg-sky-500/10 text-sky-700 dark:text-sky-300",
+                        )}
+                      >
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <div className="text-sm font-bold">{entry.title}</div>
@@ -556,7 +558,9 @@ export function TripRequestDetailActions({
                   "mt-4 rounded-2xl border px-4 py-3",
                   inlineFeedback.tone === "success"
                     ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                    : "border-sky-500/20 bg-sky-500/10 text-sky-700 dark:text-sky-300",
+                    : inlineFeedback.tone === "error"
+                      ? "border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-300"
+                      : "border-sky-500/20 bg-sky-500/10 text-sky-700 dark:text-sky-300",
                 )}
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">

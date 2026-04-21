@@ -295,7 +295,7 @@ function getTimelineEvents(item: OperatorTripRequestListItem): readonly Timeline
     events.push({
       label: entry.title,
       value: entry.occurredAt,
-      tone: entry.tone === "info" ? "bg-sky-500" : "bg-emerald-500",
+      tone: entry.tone === "info" ? "bg-sky-500" : entry.tone === "error" ? "bg-rose-500" : "bg-emerald-500",
     });
   }
 
@@ -907,7 +907,16 @@ export function TripRequestsInbox() {
                             {item.attentionReason || "This request is healthy and ready for normal follow-through."}
                           </div>
                           {item.actionHistory[0] ? (
-                            <div className="mt-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+                            <div
+                              className={cn(
+                                "mt-3 rounded-xl border px-3 py-2 text-sm",
+                                item.actionHistory[0].tone === "error"
+                                  ? "border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-300"
+                                  : item.actionHistory[0].tone === "info"
+                                    ? "border-sky-500/20 bg-sky-500/10 text-sky-700 dark:text-sky-300"
+                                    : "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+                              )}
+                            >
                               Latest action: {item.actionHistory[0].title}
                             </div>
                           ) : null}

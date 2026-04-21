@@ -140,7 +140,7 @@ function getTimelineEvents(item: OperatorTripRequestListItem): Array<{ label: st
     events.push({
       label: entry.title,
       value: entry.occurredAt,
-      tone: entry.tone === "info" ? "bg-sky-500" : "bg-emerald-500",
+      tone: entry.tone === "info" ? "bg-sky-500" : entry.tone === "error" ? "bg-rose-500" : "bg-emerald-500",
     });
   }
 
