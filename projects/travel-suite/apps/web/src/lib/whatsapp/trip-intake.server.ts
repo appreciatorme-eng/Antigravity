@@ -967,6 +967,119 @@ function buildInterestAwareTheme(dayNumber: number, interests: readonly string[]
   return dayNumber === 1 ? "Arrival and local orientation" : "Signature local experiences";
 }
 
+function buildDayDate(startDate: string | null, dayIndex: number): string | undefined {
+  if (!startDate) return undefined;
+  return addUtcDays(startDate, dayIndex);
+}
+
+function buildBudgetPositioning(budget: string | null): string {
+  const lowered = (budget || "").toLowerCase();
+  if (lowered.includes("luxury") || lowered.includes("premium")) {
+    return "prioritize polished experiences, premium logistics, and well-timed downtime";
+  }
+  if (lowered.includes("budget")) {
+    return "keep the plan efficient, practical, and strong on value without feeling rushed";
+  }
+  if (lowered.includes("ultra")) {
+    return "lean into signature stays, high-touch pacing, and elevated local experiences";
+  }
+  return "balance local highlights, comfort, and enough breathing room through the day";
+}
+
+function buildInterestFocus(interests: readonly string[]): string {
+  if (interests.length === 0) return "city highlights, local flavor, and easy-flow exploration";
+  if (interests.length === 1) return interests[0]!;
+  if (interests.length === 2) return `${interests[0]} and ${interests[1]}`;
+  return `${interests.slice(0, -1).join(", ")}, and ${interests[interests.length - 1]}`;
+}
+
+function buildMealSuggestion(budget: string | null): string {
+  const lowered = (budget || "").toLowerCase();
+  if (lowered.includes("luxury") || lowered.includes("ultra")) {
+    return "Reserve dinner at a polished venue with skyline or waterfront views.";
+  }
+  if (lowered.includes("budget")) {
+    return "Keep dinner around reliable local favourites that are easy to reach and good on value.";
+  }
+  return "Leave room for a well-rated local dinner spot that matches the traveler’s pace.";
+}
+
+function buildDailySummary(
+  dayNumber: number,
+  durationDays: number,
+  destination: string,
+  interests: readonly string[],
+  budget: string | null,
+): string {
+  const focus = buildInterestFocus(interests);
+  if (dayNumber === 1) {
+    return `Ease into ${destination} with a light arrival plan, smooth transfers, and enough room to settle before the first local experiences begin.`;
+  }
+  if (dayNumber === durationDays) {
+    return `Wrap up ${destination} with a relaxed final stretch that protects checkout, shopping, and onward travel without making the day feel empty.`;
+  }
+  return `This day is shaped around ${focus} and is paced to ${buildBudgetPositioning(budget)}.`;
+}
+
+function buildStructuredDayActivities(
+  draft: TripRequestDraft,
+  dayIndex: number,
+  durationDays: number,
+  destination: string,
+  interests: readonly string[],
+) {
+  const isArrivalDay = dayIndex === 0;
+  const isDepartureDay = dayIndex === durationDays - 1;
+  const focus = buildInterestFocus(interests);
+  const destinationWithOrigin = draft.originCity
+    ? `from ${draft.originCity} into ${destination}`
+    : `into ${destination}`;
+
+  return [
+    {
+      time: "Morning",
+      title: isArrivalDay ? "Arrival and check-in" : isDepartureDay ? "Easy-paced morning" : `Signature morning in ${destination}`,
+      description: isArrivalDay
+        ? `Land ${destinationWithOrigin}, complete the hotel check-in flow, and keep the first stretch intentionally light so the traveler can refresh before stepping out. Build in buffer time for airport movement, hotel formalities, and a short orientation around the stay area.`
+        : isDepartureDay
+          ? `Use the morning for a relaxed breakfast, last nearby experiences, or a short café stop without overloading the final day. The idea is to keep the pace calm while still giving the traveler a worthwhile final memory of ${destination}.`
+          : `Start the day with one of the strongest-fit experiences in ${destination}, shaped around ${focus}. Keep the first outing close to the core route so the traveler builds momentum without wasting time on long cross-city transfers.`,
+      location: destination,
+      duration: isArrivalDay ? "2-3 hrs" : "3-4 hrs",
+      transport: isArrivalDay ? "Private transfer / hotel car" : "Short drive or metro hop",
+      cost: draft.budget ? `${draft.budget} friendly` : "Flexible spend",
+      type: isArrivalDay ? "transport" : "activity",
+      tags: isArrivalDay ? ["arrival", "check-in"] : ["morning", "highlight"],
+    },
+    {
+      time: "Afternoon",
+      title: isDepartureDay ? "Last curated stop" : "Curated sightseeing",
+      description: isDepartureDay
+        ? `Keep the afternoon focused on one clean, high-confidence experience rather than stacking multiple stops. This gives enough time for last-minute shopping, photos, or a landmark visit while protecting packing and departure logistics.`
+        : `Use the afternoon for a curated block of sightseeing and local discovery tied to ${focus}. Cluster experiences by area, allow for breaks between stops, and prefer neighborhoods that feel active and easy to navigate for a traveler seeing the city for the first time.`,
+      location: destination,
+      duration: "3-4 hrs",
+      transport: "Clustered route with short transfers",
+      cost: draft.budget ? `${draft.budget} activity mix` : "Flexible spend",
+      type: "activity",
+      tags: ["afternoon", "sightseeing", ...(interests.length > 0 ? interests.slice(0, 2) : ["local"])],
+    },
+    {
+      time: "Evening",
+      title: isDepartureDay ? "Departure prep" : "Dinner and downtime",
+      description: isDepartureDay
+        ? `Leave the evening open for packing, checkout readiness, and any final transit coordination. This buffer helps avoid avoidable stress and makes the onward journey feel organized rather than rushed.`
+        : `${buildMealSuggestion(draft.budget)} After dinner, leave the rest of the evening flexible for a walk, an easy cultural stop, or time back at the hotel depending on how energetic the traveler feels.`,
+      location: destination,
+      duration: "2-3 hrs",
+      transport: isDepartureDay ? "Hotel transfer coordination" : "Easy evening commute",
+      cost: isDepartureDay ? "As per transfer plan" : draft.budget ? `${draft.budget} dining` : "Flexible spend",
+      type: isDepartureDay ? "transport" : "meal",
+      tags: isDepartureDay ? ["departure", "buffer"] : ["evening", "meal", "leisure"],
+    },
+  ];
+}
+
 function buildStructuredItinerary(draft: TripRequestDraft) {
   const destination = draft.destination ?? "Destination";
   const durationDays = draft.durationDays ?? 1;
@@ -985,8 +1098,8 @@ function buildStructuredItinerary(draft: TripRequestDraft) {
     destination,
     duration_days: durationDays,
     summary: notes.length > 0
-      ? `Operator-planned trip draft for ${clientName}. ${notes.join(" · ")}`
-      : `Operator-planned ${durationDays}-day trip draft for ${clientName}.`,
+      ? `A ${durationDays}-day trip plan for ${clientName} in ${destination}, shaped around ${buildInterestFocus(interests)} and built to ${buildBudgetPositioning(draft.budget)}. ${notes.join(" · ")}`
+      : `A ${durationDays}-day trip plan for ${clientName} in ${destination}, designed to ${buildBudgetPositioning(draft.budget)}.`,
     budget: draft.budget,
     interests,
     hotel_preference: draft.hotelPreference,
@@ -996,7 +1109,7 @@ function buildStructuredItinerary(draft: TripRequestDraft) {
       trip_title: `${destination} Trip for ${clientName}`,
       destination,
       duration_days: durationDays,
-      summary: `Created from the TripBuilt WhatsApp assistant for ${clientName}.`,
+      summary: `This travel brief was prepared for ${clientName} as a structured first version of the trip. It gives the operator a usable route, better day pacing, and enough detail to review, personalize, and share confidently.`,
       budget: draft.budget,
       interests,
       hotel_preference: draft.hotelPreference,
@@ -1004,35 +1117,17 @@ function buildStructuredItinerary(draft: TripRequestDraft) {
       travel_window: draft.travelWindow,
       travelers: draft.travelerCount,
       created_via: "whatsapp_trip_intake",
+      tips: [
+        draft.originCity ? `Confirm the best arrival routing from ${draft.originCity} before sending this to the traveler.` : null,
+        draft.hotelPreference ? `Keep the stay recommendation aligned with the requested hotel style: ${draft.hotelPreference}.` : null,
+        interests.length > 0 ? `Prioritize these interests during revisions: ${buildInterestFocus(interests)}.` : null,
+      ].filter((value): value is string => Boolean(value)),
       days: Array.from({ length: durationDays }, (_, index) => ({
         day_number: index + 1,
+        date: buildDayDate(draft.startDate, index),
         theme: buildInterestAwareTheme(index + 1, interests),
-        activities: [
-          {
-            time: "Morning",
-            title: index === 0 ? "Arrival and check-in" : `Explore ${destination}`,
-            description: index === 0
-              ? `Arrival, transfer, and settle into the trip base in ${destination}.`
-              : `Start the day with one of the signature experiences in ${destination}.`,
-            location: destination,
-          },
-          {
-            time: "Afternoon",
-            title: "Curated sightseeing",
-            description: interests.length > 0
-              ? `Focus on ${interests.join(", ")} and other strong-fit activities for this trip.`
-              : `Keep the afternoon flexible for the best sightseeing and local experiences.`,
-            location: destination,
-          },
-          {
-            time: "Evening",
-            title: index === durationDays - 1 ? "Departure prep" : "Dinner and downtime",
-            description: index === durationDays - 1
-              ? "Wrap up the trip with buffer time for checkout or onward travel."
-              : "Leave the evening open for dining, leisure, and operator customization.",
-            location: destination,
-          },
-        ],
+        summary: buildDailySummary(index + 1, durationDays, destination, interests, draft.budget),
+        activities: buildStructuredDayActivities(draft, index, durationDays, destination, interests),
       })),
     },
   };
