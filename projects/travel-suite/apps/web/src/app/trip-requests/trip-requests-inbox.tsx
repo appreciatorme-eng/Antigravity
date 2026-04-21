@@ -14,6 +14,7 @@ import {
   FileDown,
   RotateCw,
   Loader2,
+  MoreHorizontal,
   RefreshCcw,
   Search,
   Send,
@@ -26,6 +27,13 @@ import { authedFetch } from "@/lib/api/authed-fetch";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import type { OperatorTripRequestListItem } from "@/lib/whatsapp/trip-intake.server";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -263,6 +271,46 @@ function getActionHistoryRecovery(entry: OperatorTripRequestListItem["actionHist
     return { label: "Resend traveller", action: "resend_client" };
   }
   return null;
+}
+
+function getPrimaryAction(item: OperatorTripRequestListItem): { label: string; action: ActionType; tone: string } | null {
+  if (item.generationError) {
+    return {
+      label: item.stage === "completed" ? "Regenerate itinerary" : "Retry request",
+      action: item.stage === "completed" ? "regenerate_itinerary" : "retry_request",
+      tone: "border-rose-500/20 bg-rose-500/10 text-rose-700 hover:bg-rose-500/15 dark:text-rose-300",
+    };
+  }
+
+  if (item.operatorDeliveryError || (item.stage === "completed" && !item.operatorNotified)) {
+    return {
+      label: "Resend to operator",
+      action: "resend_operator",
+      tone: "border-sky-500/20 bg-sky-500/10 text-sky-700 hover:bg-sky-500/15 dark:text-sky-300",
+    };
+  }
+
+  if (item.clientPhone && (item.clientDeliveryError || (item.stage === "completed" && !item.clientNotified))) {
+    return {
+      label: "Resend to traveller",
+      action: "resend_client",
+      tone: "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-300",
+    };
+  }
+
+  if (item.stage === "completed") {
+    return {
+      label: "Regenerate itinerary",
+      action: "regenerate_itinerary",
+      tone: "border-amber-500/20 bg-amber-500/10 text-amber-700 hover:bg-amber-500/15 dark:text-amber-300",
+    };
+  }
+
+  return {
+    label: "Retry request",
+    action: "retry_request",
+    tone: "border-fuchsia-500/20 bg-fuchsia-500/10 text-fuchsia-700 hover:bg-fuchsia-500/15 dark:text-fuchsia-300",
+  };
 }
 
 function getTimelineEvents(item: OperatorTripRequestListItem): readonly TimelineEvent[] {
@@ -825,6 +873,7 @@ export function TripRequestsInbox() {
                 || Boolean(item.generationError)
                 || Boolean(item.operatorDeliveryError)
                 || Boolean(item.clientDeliveryError);
+              const primaryAction = getPrimaryAction(item);
               return (
                 <article
                   key={item.id}
@@ -1000,14 +1049,6 @@ export function TripRequestsInbox() {
 
                       <div className="flex flex-col gap-3 border-t border-border pt-4 md:flex-row md:items-center md:justify-between">
                         <div className="flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setDetailRequest(item)}
-                            className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
-                          >
-                            <Eye className="h-4 w-4" />
-                            View details
-                          </button>
                           <a
                             href={`/trip-requests/${item.id}`}
                             className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
@@ -1015,116 +1056,117 @@ export function TripRequestsInbox() {
                             <ArrowUpRight className="h-4 w-4" />
                             Open page
                           </a>
-                          <button
-                            type="button"
-                            onClick={() => openEditor(item)}
-                            className="inline-flex items-center gap-2 rounded-2xl border border-fuchsia-500/20 bg-fuchsia-500/10 px-4 py-2 text-sm font-semibold text-fuchsia-700 transition hover:bg-fuchsia-500/15 dark:text-fuchsia-300"
-                          >
-                            <PencilLine className="h-4 w-4" />
-                            Edit brief
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void runAction(item.id, "regenerate_itinerary")}
-                            disabled={Boolean(actionInFlight)}
-                            className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            {actionInFlight === "regenerate_itinerary" ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <RefreshCcw className="h-4 w-4" />
-                            )}
-                            Regenerate itinerary
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void runAction(item.id, "retry_request")}
-                            disabled={Boolean(actionInFlight) || !canRetry}
-                            className="inline-flex items-center gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-50 dark:text-amber-300"
-                          >
-                            {actionInFlight === "retry_request" ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <RotateCw className="h-4 w-4" />
-                            )}
-                            Retry request
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void runAction(item.id, "resend_operator")}
-                            disabled={Boolean(actionInFlight) || !canResend}
-                            className="inline-flex items-center gap-2 rounded-2xl border border-sky-500/20 bg-sky-500/10 px-4 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-500/15 disabled:cursor-not-allowed disabled:opacity-50 dark:text-sky-300"
-                          >
-                            {actionInFlight === "resend_operator" ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Send className="h-4 w-4" />
-                            )}
-                            Resend to operator
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void runAction(item.id, "resend_client")}
-                            disabled={Boolean(actionInFlight) || !canResend || !item.clientPhone}
-                            className="inline-flex items-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-50 dark:text-emerald-300"
-                          >
-                            {actionInFlight === "resend_client" ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <CheckCircle2 className="h-4 w-4" />
-                            )}
-                            Resend to client
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setDeleteTarget(item)}
-                            className="inline-flex items-center gap-2 rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-500/15 dark:text-rose-300"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            Delete request
-                          </button>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => void copyValue(item.formUrl, "Form link")}
-                            className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
-                          >
-                            <Copy className="h-4 w-4" />
-                            Copy form link
-                          </button>
-                          {item.createdTripId ? (
-                            <a
-                              href={`/trips/${item.createdTripId}`}
-                              className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+                          {primaryAction ? (
+                            <button
+                              type="button"
+                              onClick={() => void runAction(item.id, primaryAction.action)}
+                              disabled={
+                                Boolean(actionInFlight)
+                                || (primaryAction.action === "retry_request" && !canRetry)
+                                || (primaryAction.action === "resend_operator" && !canResend)
+                                || (primaryAction.action === "resend_client" && (!canResend || !item.clientPhone))
+                              }
+                              className={cn(
+                                "inline-flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50",
+                                primaryAction.tone,
+                              )}
                             >
-                              <ArrowUpRight className="h-4 w-4" />
-                              Open trip
-                            </a>
+                              {actionInFlight === primaryAction.action ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : primaryAction.action === "regenerate_itinerary" ? (
+                                <RefreshCcw className="h-4 w-4" />
+                              ) : primaryAction.action === "retry_request" ? (
+                                <RotateCw className="h-4 w-4" />
+                              ) : primaryAction.action === "resend_operator" ? (
+                                <Send className="h-4 w-4" />
+                              ) : (
+                                <CheckCircle2 className="h-4 w-4" />
+                              )}
+                              {primaryAction.label}
+                            </button>
                           ) : null}
-                          {item.createdShareUrl ? (
-                            <a
-                              href={item.createdShareUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
-                            >
-                              <ArrowUpRight className="h-4 w-4" />
-                              View itinerary
-                            </a>
-                          ) : null}
-                          {item.pdfUrl ? (
-                            <a
-                              href={item.pdfUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
-                            >
-                              <FileDown className="h-4 w-4" />
-                              Open PDF
-                            </a>
-                          ) : null}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                                More actions
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-64">
+                              <DropdownMenuItem onSelect={() => setDetailRequest(item)}>
+                                <Eye className="h-4 w-4" />
+                                View details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onSelect={() => openEditor(item)}>
+                                <PencilLine className="h-4 w-4" />
+                                Edit brief
+                              </DropdownMenuItem>
+                              {primaryAction?.action !== "regenerate_itinerary" ? (
+                                <DropdownMenuItem onSelect={() => void runAction(item.id, "regenerate_itinerary")} disabled={Boolean(actionInFlight)}>
+                                  <RefreshCcw className="h-4 w-4" />
+                                  Regenerate itinerary
+                                </DropdownMenuItem>
+                              ) : null}
+                              {primaryAction?.action !== "retry_request" ? (
+                                <DropdownMenuItem onSelect={() => void runAction(item.id, "retry_request")} disabled={Boolean(actionInFlight) || !canRetry}>
+                                  <RotateCw className="h-4 w-4" />
+                                  Retry request
+                                </DropdownMenuItem>
+                              ) : null}
+                              {primaryAction?.action !== "resend_operator" ? (
+                                <DropdownMenuItem onSelect={() => void runAction(item.id, "resend_operator")} disabled={Boolean(actionInFlight) || !canResend}>
+                                  <Send className="h-4 w-4" />
+                                  Resend to operator
+                                </DropdownMenuItem>
+                              ) : null}
+                              {primaryAction?.action !== "resend_client" ? (
+                                <DropdownMenuItem
+                                  onSelect={() => void runAction(item.id, "resend_client")}
+                                  disabled={Boolean(actionInFlight) || !canResend || !item.clientPhone}
+                                >
+                                  <CheckCircle2 className="h-4 w-4" />
+                                  Resend to traveller
+                                </DropdownMenuItem>
+                              ) : null}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onSelect={() => void copyValue(item.formUrl, "Form link")}>
+                                <Copy className="h-4 w-4" />
+                                Copy form link
+                              </DropdownMenuItem>
+                              {item.createdTripId ? (
+                                <DropdownMenuItem asChild>
+                                  <a href={`/trips/${item.createdTripId}`}>
+                                    <ArrowUpRight className="h-4 w-4" />
+                                    Open trip
+                                  </a>
+                                </DropdownMenuItem>
+                              ) : null}
+                              {item.createdShareUrl ? (
+                                <DropdownMenuItem asChild>
+                                  <a href={item.createdShareUrl} target="_blank" rel="noreferrer">
+                                    <ArrowUpRight className="h-4 w-4" />
+                                    View itinerary
+                                  </a>
+                                </DropdownMenuItem>
+                              ) : null}
+                              {item.pdfUrl ? (
+                                <DropdownMenuItem asChild>
+                                  <a href={item.pdfUrl} target="_blank" rel="noreferrer">
+                                    <FileDown className="h-4 w-4" />
+                                    Open PDF
+                                  </a>
+                                </DropdownMenuItem>
+                              ) : null}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onSelect={() => setDeleteTarget(item)} variant="destructive">
+                                <Trash2 className="h-4 w-4" />
+                                Delete request
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </div>
                     </div>
