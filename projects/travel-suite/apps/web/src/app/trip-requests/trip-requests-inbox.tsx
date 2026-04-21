@@ -2,8 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  AlertTriangle,
+  ArrowDownUp,
   ArrowUpRight,
   CheckCircle2,
+  Clock3,
   Copy,
   PencilLine,
   FileDown,
@@ -38,6 +41,7 @@ type TripRequestsApiPayload = {
 
 type ActionType = "regenerate_itinerary" | "resend_operator" | "resend_client";
 type FilterKey = "all" | "attention" | "processing" | "completed";
+type SortKey = "needs_attention" | "newest" | "completed_recently" | "traveller_name";
 type EditFormState = {
   destination: string;
   durationDays: string;
@@ -60,6 +64,13 @@ const FILTERS: ReadonlyArray<{ key: FilterKey; label: string }> = [
   { key: "completed", label: "Completed" },
 ];
 
+const SORT_OPTIONS: ReadonlyArray<{ key: SortKey; label: string }> = [
+  { key: "needs_attention", label: "Needs attention first" },
+  { key: "newest", label: "Newest activity" },
+  { key: "completed_recently", label: "Completed recently" },
+  { key: "traveller_name", label: "Traveller A–Z" },
+];
+
 function formatDateTime(value: string | null): string {
   if (!value) return "—";
   const parsed = new Date(value);
@@ -68,6 +79,12 @@ function formatDateTime(value: string | null): string {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(parsed);
+}
+
+function toTimestamp(value: string | null): number {
+  if (!value) return 0;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
 }
 
 function matchesFilter(item: OperatorTripRequestListItem, filter: FilterKey): boolean {
@@ -80,16 +97,158 @@ function matchesFilter(item: OperatorTripRequestListItem, filter: FilterKey): bo
 function stageClasses(stage: OperatorTripRequestListItem["stage"]): string {
   switch (stage) {
     case "completed":
-      return "bg-emerald-500/15 text-emerald-300 border-emerald-400/20";
+      return "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
     case "processing":
-      return "bg-sky-500/15 text-sky-300 border-sky-400/20";
+      return "border-sky-500/20 bg-sky-500/10 text-sky-700 dark:text-sky-300";
     case "submitted":
-      return "bg-amber-500/15 text-amber-300 border-amber-400/20";
+      return "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300";
     case "cancelled":
-      return "bg-slate-500/15 text-slate-300 border-slate-400/20";
+      return "border-slate-500/20 bg-slate-500/10 text-slate-700 dark:text-slate-300";
     default:
-      return "bg-violet-500/15 text-violet-300 border-violet-400/20";
+      return "border-violet-500/20 bg-violet-500/10 text-violet-700 dark:text-violet-300";
   }
+}
+
+function sortRequests(items: readonly OperatorTripRequestListItem[], sortKey: SortKey): OperatorTripRequestListItem[] {
+  const ranked = [...items];
+  ranked.sort((left, right) => {
+    if (sortKey === "traveller_name") {
+      return (left.clientName || "zzz").localeCompare(right.clientName || "zzz", undefined, { sensitivity: "base" });
+    }
+
+    if (sortKey === "completed_recently") {
+      return toTimestamp(right.completionDeliveredAt) - toTimestamp(left.completionDeliveredAt)
+        || toTimestamp(right.updatedAt) - toTimestamp(left.updatedAt);
+    }
+
+    if (sortKey === "newest") {
+      return toTimestamp(right.updatedAt) - toTimestamp(left.updatedAt);
+    }
+
+    const attentionScore = (item: OperatorTripRequestListItem) => {
+      if (item.stage === "draft" || item.stage === "submitted") return 0;
+      if (item.stage === "processing") return 1;
+      if (item.stage === "completed" && item.clientPhone && !item.clientNotified) return 2;
+      if (item.stage === "completed" && !item.operatorNotified) return 3;
+      return 4;
+    };
+
+    return attentionScore(left) - attentionScore(right)
+      || toTimestamp(right.updatedAt) - toTimestamp(left.updatedAt);
+  });
+  return ranked;
+}
+
+type StatusBadge = {
+  label: string;
+  tone: string;
+};
+
+function getDeliveryBadges(item: OperatorTripRequestListItem): readonly StatusBadge[] {
+  const badges: StatusBadge[] = [];
+
+  if (item.stage === "draft" || item.stage === "submitted") {
+    badges.push({
+      label: "Waiting for traveller details",
+      tone: "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+    });
+  }
+
+  if (item.stage === "processing") {
+    badges.push({
+      label: "Generation running",
+      tone: "border-sky-500/20 bg-sky-500/10 text-sky-700 dark:text-sky-300",
+    });
+  }
+
+  if (item.stage === "completed" && !item.pdfUrl) {
+    badges.push({
+      label: "PDF unavailable",
+      tone: "border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-300",
+    });
+  }
+
+  if (item.stage === "completed" && !item.operatorNotified) {
+    badges.push({
+      label: "Operator send pending",
+      tone: "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+    });
+  }
+
+  if (item.stage === "completed" && item.clientPhone && !item.clientNotified) {
+    badges.push({
+      label: "Client send pending",
+      tone: "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+    });
+  }
+
+  if (item.stage === "completed" && !item.clientPhone) {
+    badges.push({
+      label: "No traveller phone",
+      tone: "border-slate-500/20 bg-slate-500/10 text-slate-700 dark:text-slate-300",
+    });
+  }
+
+  if (item.lastItineraryRegeneratedAt) {
+    badges.push({
+      label: "Regenerated",
+      tone: "border-fuchsia-500/20 bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-300",
+    });
+  }
+
+  return badges;
+}
+
+type TimelineEvent = {
+  label: string;
+  value: string;
+  tone: string;
+};
+
+function getTimelineEvents(item: OperatorTripRequestListItem): readonly TimelineEvent[] {
+  const events: TimelineEvent[] = [];
+
+  if (item.submittedAt) {
+    events.push({
+      label: "Submitted",
+      value: item.submittedAt,
+      tone: "bg-slate-500",
+    });
+  }
+
+  if (item.lastItineraryRegeneratedAt) {
+    events.push({
+      label: "Regenerated",
+      value: item.lastItineraryRegeneratedAt,
+      tone: "bg-fuchsia-500",
+    });
+  }
+
+  if (item.completionDeliveredAt) {
+    events.push({
+      label: "Trip ready",
+      value: item.completionDeliveredAt,
+      tone: "bg-emerald-500",
+    });
+  }
+
+  if (item.lastOperatorResentAt) {
+    events.push({
+      label: "Resent to operator",
+      value: item.lastOperatorResentAt,
+      tone: "bg-sky-500",
+    });
+  }
+
+  if (item.lastClientResentAt) {
+    events.push({
+      label: "Resent to traveller",
+      value: item.lastClientResentAt,
+      tone: "bg-amber-500",
+    });
+  }
+
+  return events.sort((left, right) => toTimestamp(left.value) - toTimestamp(right.value));
 }
 
 function buildEditFormState(item: OperatorTripRequestListItem): EditFormState {
@@ -116,6 +275,7 @@ export function TripRequestsInbox() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<FilterKey>("all");
+  const [sortKey, setSortKey] = useState<SortKey>("needs_attention");
   const [searchQuery, setSearchQuery] = useState("");
   const [runningAction, setRunningAction] = useState<Record<string, ActionType | undefined>>({});
   const [editingRequest, setEditingRequest] = useState<OperatorTripRequestListItem | null>(null);
@@ -159,7 +319,8 @@ export function TripRequestsInbox() {
   const filteredRequests = useMemo(
     () => {
       const normalizedQuery = searchQuery.trim().toLowerCase();
-      return requests
+      return sortRequests(
+        requests
         .filter((item) => matchesFilter(item, filter))
         .filter((item) => {
           if (!normalizedQuery) return true;
@@ -172,9 +333,11 @@ export function TripRequestsInbox() {
           ]
             .filter(Boolean)
             .some((value) => value?.toLowerCase().includes(normalizedQuery));
-        });
+        }),
+        sortKey,
+      );
     },
-    [filter, requests, searchQuery],
+    [filter, requests, searchQuery, sortKey],
   );
 
   const summary = useMemo(() => {
@@ -389,6 +552,21 @@ export function TripRequestsInbox() {
               />
             </label>
 
+            <label className="relative min-w-0 sm:min-w-[220px]">
+              <ArrowDownUp className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <select
+                value={sortKey}
+                onChange={(event) => setSortKey(event.target.value as SortKey)}
+                className="w-full appearance-none rounded-2xl border border-border bg-background px-10 py-2.5 text-sm text-foreground outline-none transition focus:border-emerald-500/40"
+              >
+                {SORT_OPTIONS.map((option) => (
+                  <option key={option.key} value={option.key}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
             <button
               type="button"
               onClick={() => void loadRequests(false)}
@@ -445,6 +623,14 @@ export function TripRequestsInbox() {
                                 Client sent
                               </span>
                             ) : null}
+                            {getDeliveryBadges(item).map((badge) => (
+                              <span
+                                key={badge.label}
+                                className={cn("rounded-full border px-3 py-1 text-xs font-semibold", badge.tone)}
+                              >
+                                {badge.label}
+                              </span>
+                            ))}
                           </div>
 
                           <div>
@@ -501,6 +687,36 @@ export function TripRequestsInbox() {
                             {item.attentionReason || "This request is healthy and ready for normal follow-through."}
                           </div>
                         </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-border bg-muted/20 p-4">
+                        <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                          <Clock3 className="h-3.5 w-3.5" />
+                          Activity timeline
+                        </div>
+                        {getTimelineEvents(item).length > 0 ? (
+                          <div className="mt-4 flex flex-wrap gap-3">
+                            {getTimelineEvents(item).map((event) => (
+                              <div
+                                key={`${event.label}-${event.value}`}
+                                className="min-w-[160px] flex-1 rounded-2xl border border-border bg-background px-4 py-3"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span className={cn("h-2.5 w-2.5 rounded-full", event.tone)} />
+                                  <span className="text-sm font-semibold text-foreground">{event.label}</span>
+                                </div>
+                                <div className="mt-2 text-sm text-muted-foreground">
+                                  {formatDateTime(event.value)}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+                            <AlertTriangle className="h-4 w-4" />
+                            No activity history yet beyond the current request stage.
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex flex-col gap-3 border-t border-border pt-4 md:flex-row md:items-center md:justify-between">
