@@ -26,6 +26,22 @@ function takeMax<T>(items: readonly T[], max: number): readonly T[] {
   return items.slice(0, max);
 }
 
+function normalizeAgendaText(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function dedupeAgendaItems(items: readonly string[]): readonly string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const item of items) {
+    const normalized = normalizeAgendaText(item);
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    result.push(item.trim());
+  }
+  return result;
+}
+
 function shouldUseBusinessOsAgenda(ctx: ActionContext): boolean {
   return ctx.channel === "web";
 }
@@ -248,49 +264,58 @@ export function buildOwnerAgendaPromptBlock(agenda: OwnerAgenda): string {
 }
 
 export function formatOwnerAgenda(agenda: OwnerAgenda): string {
-  const lines: string[] = [
-    `🧭 *${agenda.headline}*`,
-    agenda.summary,
-    "",
-    `*Queue focus:* ${agenda.queueFocus}`,
-  ];
+  const topPriorities = dedupeAgendaItems(agenda.topPriorities);
+  const doNow = takeMax(
+    topPriorities.length > 0
+      ? topPriorities
+      : dedupeAgendaItems([
+          ...agenda.handoffItems,
+          ...agenda.collectionsActions,
+          ...agenda.tripRisks,
+          ...agenda.needsResponse,
+        ]),
+    4,
+  );
 
-  if (agenda.topPriorities.length > 0) {
-    lines.push("", "*Top priorities:*");
-    lines.push(...takeMax(agenda.topPriorities, 4).map((item, index) => `${index + 1}. ${item}`));
+  const topPrioritySet = new Set(doNow.map(normalizeAgendaText));
+  const tripRisks = takeMax(
+    dedupeAgendaItems(agenda.tripRisks).filter((item) => !topPrioritySet.has(normalizeAgendaText(item))),
+    2,
+  );
+  const collections = takeMax(
+    dedupeAgendaItems(agenda.collectionsActions).filter((item) => !topPrioritySet.has(normalizeAgendaText(item))),
+    1,
+  );
+  const strongestNextAction = agenda.recommendedNextActions[0] ?? null;
+
+  const lines: string[] = [`🧭 *${agenda.headline}*`];
+
+  if (agenda.summary && agenda.summary !== "No urgent issues detected right now.") {
+    lines.push(agenda.summary);
   }
 
-  if (agenda.gaps.length > 0) {
-    lines.push("", "*Operating gaps:*");
-    lines.push(...takeMax(agenda.gaps, 3).map((item) => `• ${item}`));
+  lines.push("");
+  lines.push(`*Today’s priority:* ${agenda.queueFocus}`);
+
+  if (doNow.length > 0) {
+    lines.push("", "*Do now:*");
+    lines.push(...doNow.map((item, index) => `${index + 1}. ${item}`));
   }
 
-  if (agenda.needsResponse.length > 0) {
-    lines.push("", "*Needs response:*");
-    lines.push(...takeMax(agenda.needsResponse, 3).map((item) => `• ${item}`));
+  if (collections.length > 0) {
+    lines.push("", "*Collections:*");
+    lines.push(...collections.map((item) => `• ${item}`));
   }
 
-  if (agenda.handoffItems.length > 0) {
-    lines.push("", "*Client handoff:*");
-    lines.push(...takeMax(agenda.handoffItems, 3).map((item) => `• ${item}`));
+  if (tripRisks.length > 0) {
+    lines.push("", "*Trip risks:*");
+    lines.push(...tripRisks.map((item) => `• ${item}`));
   }
 
-  if (agenda.collectionsActions.length > 0) {
-    lines.push("", "*Collections to review:*");
-    lines.push(...takeMax(agenda.collectionsActions, 3).map((item) => `• ${item}`));
-  }
-
-  if (agenda.tripRisks.length > 0) {
-    lines.push("", "*Trip risks today:*");
-    lines.push(...takeMax(agenda.tripRisks, 3).map((item) => `• ${item}`));
-  }
-
-  if (agenda.recommendedNextActions.length > 0) {
-    lines.push("", "*Do next:*");
+  if (strongestNextAction) {
     lines.push(
-      ...agenda.recommendedNextActions.map(
-        (action) => `• ${action.label} — reply *${action.prefilledMessage}*`,
-      ),
+      "",
+      `*Do next:* Reply *${strongestNextAction.prefilledMessage}* to ${strongestNextAction.label.toLowerCase()}.`,
     );
   }
 
