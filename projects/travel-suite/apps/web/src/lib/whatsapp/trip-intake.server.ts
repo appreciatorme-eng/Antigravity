@@ -104,7 +104,9 @@ export type TripRequestFormState = {
   readonly organizationPrimaryColor: string | null;
   readonly organizationRegionLine: string | null;
   readonly organizationDescription: string | null;
+  readonly organizationAddress: string | null;
   readonly organizationContactPhone: string | null;
+  readonly organizationContactEmail: string | null;
   readonly organizationOfficeHours: string | null;
   readonly organizationServiceBullets: readonly string[];
   readonly destination: string;
@@ -127,8 +129,11 @@ type TripRequestOrganizationRow = {
   name: string | null;
   logo_url?: string | null;
   primary_color?: string | null;
+  billing_address_line1?: string | null;
+  billing_address_line2?: string | null;
   billing_city?: string | null;
   billing_state?: string | null;
+  billing_pincode?: string | null;
   billing_address?: unknown;
   whatsapp_welcome_config?: unknown;
 };
@@ -384,7 +389,9 @@ function toTripRequestFormState(draft: TripRequestDraft): TripRequestFormState {
     organizationPrimaryColor: null,
     organizationRegionLine: null,
     organizationDescription: null,
+    organizationAddress: null,
     organizationContactPhone: null,
+    organizationContactEmail: null,
     organizationOfficeHours: null,
     organizationServiceBullets: [],
     destination: draft.destination ?? "",
@@ -420,6 +427,14 @@ function normalizeServiceBullets(input: unknown): readonly string[] {
     .slice(0, 6);
 }
 
+function joinAddressParts(parts: Array<string | null | undefined>, maxLength = 240): string | null {
+  const value = parts
+    .map((part) => trimOrNull(part ?? null, 120))
+    .filter((part): part is string => Boolean(part))
+    .join(", ");
+  return trimOrNull(value, maxLength);
+}
+
 function extractOrganizationBranding(row: TripRequestOrganizationRow | null): Pick<
   TripRequestFormState,
   | "organizationName"
@@ -427,7 +442,9 @@ function extractOrganizationBranding(row: TripRequestOrganizationRow | null): Pi
   | "organizationPrimaryColor"
   | "organizationRegionLine"
   | "organizationDescription"
+  | "organizationAddress"
   | "organizationContactPhone"
+  | "organizationContactEmail"
   | "organizationOfficeHours"
   | "organizationServiceBullets"
 > {
@@ -448,6 +465,23 @@ function extractOrganizationBranding(row: TripRequestOrganizationRow | null): Pi
   const contactPhone =
     trimOrNull(typeof config?.contact_phone === "string" ? config.contact_phone : null, 40)
     ?? getBillingAddressValue(row?.billing_address, "phone");
+  const contactEmail =
+    trimOrNull(getBillingAddressValue(row?.billing_address, "email"), 160);
+  const addressLine1 =
+    getBillingAddressValue(row?.billing_address, "line1") ?? trimOrNull(row?.billing_address_line1, 120);
+  const addressLine2 =
+    getBillingAddressValue(row?.billing_address, "line2") ?? trimOrNull(row?.billing_address_line2, 120);
+  const billingCity =
+    getBillingAddressValue(row?.billing_address, "city") ?? trimOrNull(row?.billing_city, 80);
+  const billingState =
+    getBillingAddressValue(row?.billing_address, "state") ?? trimOrNull(row?.billing_state, 80);
+  const billingPostalCode =
+    getBillingAddressValue(row?.billing_address, "postal_code") ?? trimOrNull(row?.billing_pincode, 40);
+  const organizationAddress = joinAddressParts([
+    addressLine1,
+    addressLine2,
+    joinAddressParts([billingCity, billingState, billingPostalCode], 160),
+  ]);
 
   return {
     organizationName,
@@ -459,7 +493,9 @@ function extractOrganizationBranding(row: TripRequestOrganizationRow | null): Pi
         typeof config?.company_description === "string" ? config.company_description : null,
         280,
       ) ?? `Share your travel preferences with ${organizationName} and receive a tailored trip link.`,
+    organizationAddress,
     organizationContactPhone: contactPhone,
+    organizationContactEmail: contactEmail,
     organizationOfficeHours: trimOrNull(
       typeof config?.office_hours === "string" ? config.office_hours : null,
       120,
@@ -476,8 +512,11 @@ async function loadTripRequestOrganizationBranding(
     "name",
     "logo_url",
     "primary_color",
+    "billing_address_line1",
+    "billing_address_line2",
     "billing_city",
     "billing_state",
+    "billing_pincode",
     "billing_address",
     "whatsapp_welcome_config",
   ].join(", ");
@@ -494,7 +533,7 @@ async function loadTripRequestOrganizationBranding(
   ) {
     result = await admin
       .from("organizations")
-      .select("name, logo_url, primary_color, billing_city, billing_state, billing_address")
+      .select("name, logo_url, primary_color, billing_address_line1, billing_address_line2, billing_city, billing_state, billing_pincode, billing_address")
       .eq("id", organizationId)
       .maybeSingle();
   }
