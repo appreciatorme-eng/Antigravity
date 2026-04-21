@@ -9,6 +9,7 @@ import { logError } from "@/lib/observability/logger";
 import type { ActionContext } from "@/lib/assistant/types";
 import { parseLooseDateRange } from "@/lib/whatsapp/proposal-drafts.server";
 import { guardedSendMedia, guardedSendText } from "@/lib/whatsapp-evolution.server";
+import { buildFallbackItinerary, generateItineraryForActor } from "@/lib/itinerary/generate-shared";
 
 type TripRequestStatus = "draft" | "ready_to_create" | "completed" | "cancelled";
 
@@ -1133,6 +1134,24 @@ function buildStructuredItinerary(draft: TripRequestDraft) {
   };
 }
 
+function buildPlannerPromptFromDraft(draft: TripRequestDraft): string {
+  const parts = [
+    `Create a ${draft.durationDays}-day travel itinerary for ${draft.destination}.`,
+    `This trip is for ${draft.clientName}.`,
+    `Traveler count: ${draft.travelerCount}.`,
+    draft.travelWindow ? `Travel window: ${draft.travelWindow}.` : null,
+    draft.budget ? `Budget style: ${draft.budget}.` : null,
+    draft.hotelPreference ? `Hotel preference: ${draft.hotelPreference}.` : null,
+    draft.originCity ? `Origin city or airport: ${draft.originCity}.` : null,
+    draft.interests.length > 0
+      ? `Primary interests: ${draft.interests.join(", ")}.`
+      : "Primary interests: city highlights, local experiences, and well-paced sightseeing.",
+    "Keep the route realistic, geographically efficient, and suitable for a client-ready shared itinerary.",
+  ].filter((value): value is string => Boolean(value));
+
+  return parts.join(" ");
+}
+
 async function listActiveDrafts(ctx: ActionContext): Promise<readonly TripRequestDraft[]> {
   const { data, error } = await ctx.supabase
     .from("assistant_trip_requests")
@@ -1855,19 +1874,51 @@ async function finalizeDraft(
     return "This draft is still missing the destination, duration, or travel window. Reply *resume* and I’ll continue from the missing step.";
   }
 
-  const itinerary = buildStructuredItinerary(draft);
+  const generationPrompt = buildPlannerPromptFromDraft(draft);
+  let itinerary;
+  try {
+    itinerary = await generateItineraryForActor({
+      prompt: generationPrompt,
+      days: draft.durationDays,
+      userId: ctx.userId,
+      organizationId: ctx.organizationId,
+      source: "magic_link_trip_request",
+    });
+  } catch (error) {
+    logError("[trip-intake] planner generation failed, falling back to structured seed", error, {
+      organizationId: ctx.organizationId,
+      userId: ctx.userId,
+      draftId: draft.id,
+    });
+    try {
+      itinerary = await buildFallbackItinerary(generationPrompt, draft.durationDays);
+      itinerary.trip_title = `${draft.destination} Trip for ${draft.clientName}`;
+      itinerary.destination = draft.destination;
+      itinerary.duration_days = draft.durationDays;
+    } catch {
+      itinerary = buildStructuredItinerary(draft);
+    }
+  }
 
   const { data: itineraryRow, error: itineraryError } = await ctx.supabase
     .from("itineraries")
     .insert({
       user_id: clientResolution.clientId,
-      trip_title: itinerary.trip_title,
-      destination: itinerary.destination,
-      summary: itinerary.summary,
-      duration_days: itinerary.duration_days,
+      trip_title: typeof itinerary.trip_title === "string" && itinerary.trip_title.trim().length > 0
+        ? itinerary.trip_title
+        : `${draft.destination} Trip for ${draft.clientName}`,
+      destination: typeof itinerary.destination === "string" && itinerary.destination.trim().length > 0
+        ? itinerary.destination
+        : draft.destination,
+      summary: typeof itinerary.summary === "string" && itinerary.summary.trim().length > 0
+        ? itinerary.summary
+        : `Trip plan for ${draft.clientName} in ${draft.destination}.`,
+      duration_days: typeof itinerary.duration_days === "number" && Number.isFinite(itinerary.duration_days)
+        ? itinerary.duration_days
+        : draft.durationDays,
       budget: draft.budget,
       interests: draft.interests.length > 0 ? [...draft.interests] : null,
-      raw_data: itinerary.raw_data as unknown as Json,
+      raw_data: itinerary as unknown as Json,
     })
     .select("id")
     .single();
