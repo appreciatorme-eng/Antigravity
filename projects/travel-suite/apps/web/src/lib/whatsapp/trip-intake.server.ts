@@ -99,6 +99,14 @@ type TripRequestDraft = {
 export type TripRequestFormState = {
   readonly token: string;
   readonly status: TripRequestStatus;
+  readonly organizationName: string;
+  readonly organizationLogoUrl: string | null;
+  readonly organizationPrimaryColor: string | null;
+  readonly organizationRegionLine: string | null;
+  readonly organizationDescription: string | null;
+  readonly organizationContactPhone: string | null;
+  readonly organizationOfficeHours: string | null;
+  readonly organizationServiceBullets: readonly string[];
   readonly destination: string;
   readonly durationDays: number | null;
   readonly clientName: string;
@@ -113,6 +121,16 @@ export type TripRequestFormState = {
   readonly originCity: string;
   readonly shareUrl: string | null;
   readonly pdfUrl: string | null;
+};
+
+type TripRequestOrganizationRow = {
+  name: string | null;
+  logo_url?: string | null;
+  primary_color?: string | null;
+  billing_city?: string | null;
+  billing_state?: string | null;
+  billing_address?: unknown;
+  whatsapp_welcome_config?: unknown;
 };
 
 export type TripRequestSubmitterRole = "operator" | "client" | "other";
@@ -361,6 +379,14 @@ function toTripRequestFormState(draft: TripRequestDraft): TripRequestFormState {
   return {
     token: draft.formToken,
     status: draft.status,
+    organizationName: "TripBuilt",
+    organizationLogoUrl: null,
+    organizationPrimaryColor: null,
+    organizationRegionLine: null,
+    organizationDescription: null,
+    organizationContactPhone: null,
+    organizationOfficeHours: null,
+    organizationServiceBullets: [],
     destination: draft.destination ?? "",
     durationDays: draft.durationDays,
     clientName: draft.clientName ?? "",
@@ -376,6 +402,108 @@ function toTripRequestFormState(draft: TripRequestDraft): TripRequestFormState {
     shareUrl: draft.createdShareUrl,
     pdfUrl: draft.createdItineraryId ? buildTripRequestPdfUrl(draft.formToken) : null,
   };
+}
+
+function getBillingAddressValue(input: unknown, key: string): string | null {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return null;
+  }
+  const value = (input as Record<string, unknown>)[key];
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function normalizeServiceBullets(input: unknown): readonly string[] {
+  if (!Array.isArray(input)) return [];
+  return input
+    .map((entry) => trimOrNull(typeof entry === "string" ? entry : null, 120))
+    .filter((entry): entry is string => Boolean(entry))
+    .slice(0, 6);
+}
+
+function extractOrganizationBranding(row: TripRequestOrganizationRow | null): Pick<
+  TripRequestFormState,
+  | "organizationName"
+  | "organizationLogoUrl"
+  | "organizationPrimaryColor"
+  | "organizationRegionLine"
+  | "organizationDescription"
+  | "organizationContactPhone"
+  | "organizationOfficeHours"
+  | "organizationServiceBullets"
+> {
+  const config =
+    row?.whatsapp_welcome_config && typeof row.whatsapp_welcome_config === "object"
+      ? (row.whatsapp_welcome_config as Record<string, unknown>)
+      : null;
+
+  const organizationName = trimOrNull(row?.name, 160) ?? "TripBuilt";
+  const regionLine =
+    trimOrNull(typeof config?.region_line === "string" ? config.region_line : null, 160)
+    ?? trimOrNull(
+      [trimOrNull(row?.billing_city, 80), trimOrNull(row?.billing_state, 80)]
+        .filter((value): value is string => Boolean(value))
+        .join(", "),
+      160,
+    );
+  const contactPhone =
+    trimOrNull(typeof config?.contact_phone === "string" ? config.contact_phone : null, 40)
+    ?? getBillingAddressValue(row?.billing_address, "phone");
+
+  return {
+    organizationName,
+    organizationLogoUrl: trimOrNull(row?.logo_url, 2048),
+    organizationPrimaryColor: trimOrNull(row?.primary_color, 40),
+    organizationRegionLine: regionLine,
+    organizationDescription:
+      trimOrNull(
+        typeof config?.company_description === "string" ? config.company_description : null,
+        280,
+      ) ?? `Share your travel preferences with ${organizationName} and receive a tailored trip link.`,
+    organizationContactPhone: contactPhone,
+    organizationOfficeHours: trimOrNull(
+      typeof config?.office_hours === "string" ? config.office_hours : null,
+      120,
+    ),
+    organizationServiceBullets: normalizeServiceBullets(config?.service_bullets),
+  };
+}
+
+async function loadTripRequestOrganizationBranding(
+  organizationId: string,
+): Promise<ReturnType<typeof extractOrganizationBranding>> {
+  const admin = createAdminClient();
+  const select = [
+    "name",
+    "logo_url",
+    "primary_color",
+    "billing_city",
+    "billing_state",
+    "billing_address",
+    "whatsapp_welcome_config",
+  ].join(", ");
+
+  let result = await admin
+    .from("organizations")
+    .select(select)
+    .eq("id", organizationId)
+    .maybeSingle();
+
+  if (
+    result.error &&
+    `${result.error.message ?? ""} ${result.error.details ?? ""}`.toLowerCase().includes("whatsapp_welcome_config")
+  ) {
+    result = await admin
+      .from("organizations")
+      .select("name, logo_url, primary_color, billing_city, billing_state, billing_address")
+      .eq("id", organizationId)
+      .maybeSingle();
+  }
+
+  if (result.error || !result.data) {
+    return extractOrganizationBranding(null);
+  }
+
+  return extractOrganizationBranding(result.data as unknown as TripRequestOrganizationRow);
 }
 
 function normalizeEmail(value: string | null | undefined): string | null {
@@ -1665,7 +1793,11 @@ export async function loadTripRequestFormState(
 ): Promise<TripRequestFormState | null> {
   const row = await getDraftByFormToken(formToken);
   if (!row) return null;
-  return toTripRequestFormState(mapDraft(row));
+  const branding = await loadTripRequestOrganizationBranding(row.organization_id);
+  return {
+    ...toTripRequestFormState(mapDraft(row)),
+    ...branding,
+  };
 }
 
 export async function submitTripRequestForm(
