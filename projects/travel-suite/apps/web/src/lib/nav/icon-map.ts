@@ -32,6 +32,7 @@ import {
   LayoutTemplate,
   BarChart3,
   Puzzle,
+  ClipboardList,
   Shield,
   type LucideIcon,
 } from "lucide-react";
@@ -62,6 +63,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   LayoutTemplate,
   BarChart3,
   Puzzle,
+  ClipboardList,
   Shield,
 };
 

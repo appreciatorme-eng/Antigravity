@@ -127,6 +127,46 @@ export type TripRequestFormState = {
   readonly pdfUrl: string | null;
 };
 
+export type OperatorTripRequestStage =
+  | "draft"
+  | "submitted"
+  | "processing"
+  | "completed"
+  | "cancelled";
+
+export type OperatorTripRequestListItem = {
+  readonly id: string;
+  readonly formToken: string;
+  readonly formUrl: string;
+  readonly requestSummary: string | null;
+  readonly stage: OperatorTripRequestStage;
+  readonly stageLabel: string;
+  readonly attentionReason: string | null;
+  readonly status: TripRequestStatus;
+  readonly currentStep: TripRequestStepId | null;
+  readonly sourceChannel: string;
+  readonly submitterRole: string | null;
+  readonly submittedAt: string | null;
+  readonly updatedAt: string;
+  readonly destination: string | null;
+  readonly durationDays: number | null;
+  readonly clientName: string | null;
+  readonly clientEmail: string | null;
+  readonly clientPhone: string | null;
+  readonly travelerCount: number | null;
+  readonly travelWindow: string | null;
+  readonly createdTripId: string | null;
+  readonly createdItineraryId: string | null;
+  readonly createdShareUrl: string | null;
+  readonly pdfUrl: string | null;
+  readonly operatorNotified: boolean;
+  readonly clientNotified: boolean;
+  readonly completionDeliveredAt: string | null;
+  readonly lastOperatorResentAt: string | null;
+  readonly lastClientResentAt: string | null;
+  readonly lastItineraryRegeneratedAt: string | null;
+};
+
 type TripRequestOrganizationRow = {
   name: string | null;
   logo_url?: string | null;
@@ -363,6 +403,32 @@ function readCollectedFieldRecord(
 function hasCompletionDeliveryMarker(draft: TripRequestDraft): boolean {
   const system = readCollectedFieldRecord(draft.collectedFields.__system);
   return typeof system.completionDeliveredAt === "string" && system.completionDeliveredAt.trim().length > 0;
+}
+
+function getCompletionDeliveryMetadata(
+  draft: TripRequestDraft,
+): {
+  readonly completionDeliveredAt: string | null;
+  readonly completionDeliveredToAssistantGroup: boolean;
+  readonly completionDeliveredToClient: boolean;
+  readonly lastOperatorResentAt: string | null;
+  readonly lastClientResentAt: string | null;
+  readonly lastItineraryRegeneratedAt: string | null;
+} {
+  const system = readCollectedFieldRecord(draft.collectedFields.__system);
+  const readString = (key: string) =>
+    typeof system[key] === "string" && system[key].trim().length > 0
+      ? system[key] as string
+      : null;
+
+  return {
+    completionDeliveredAt: readString("completionDeliveredAt"),
+    completionDeliveredToAssistantGroup: system.completionDeliveredToAssistantGroup === true,
+    completionDeliveredToClient: system.completionDeliveredToClient === true,
+    lastOperatorResentAt: readString("lastOperatorResentAt"),
+    lastClientResentAt: readString("lastClientResentAt"),
+    lastItineraryRegeneratedAt: readString("lastItineraryRegeneratedAt"),
+  };
 }
 
 function mergeCompletionDeliveryMetadata(
@@ -1264,6 +1330,25 @@ async function getDraftByFormToken(
   return fallbackData as TripRequestRow;
 }
 
+async function getDraftRowByOrganization(
+  organizationId: string,
+  draftId: string,
+): Promise<TripRequestRow | null> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("assistant_trip_requests")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("id", draftId)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return data as TripRequestRow;
+}
+
 async function claimDraftFinalization(
   formToken: string,
 ): Promise<TripRequestRow | null> {
@@ -1483,6 +1568,110 @@ export async function createOperatorShareableTripRequestDraft(args: {
       clientName: typeof created.row.client_name === "string" ? created.row.client_name : null,
     },
   };
+}
+
+function getOperatorTripRequestStage(
+  draft: TripRequestDraft,
+  submittedAt: string | null,
+): { stage: OperatorTripRequestStage; label: string; attentionReason: string | null } {
+  if (draft.status === "completed") {
+    return { stage: "completed", label: "Completed", attentionReason: null };
+  }
+
+  if (draft.status === "cancelled") {
+    return { stage: "cancelled", label: "Cancelled", attentionReason: null };
+  }
+
+  if (draft.currentStep === "finalizing") {
+    return { stage: "processing", label: "Generating", attentionReason: null };
+  }
+
+  if (draft.status === "ready_to_create") {
+    return {
+      stage: "submitted",
+      label: "Submitted",
+      attentionReason: submittedAt ? "Trip generation can be retried or resent from here." : null,
+    };
+  }
+
+  if (submittedAt) {
+    return {
+      stage: "submitted",
+      label: "Submitted",
+      attentionReason: "The request was submitted but is still waiting for completion.",
+    };
+  }
+
+  return {
+    stage: "draft",
+    label: "Draft",
+    attentionReason: draft.missingRequiredFields.length > 0
+      ? `Missing: ${draft.missingRequiredFields.join(", ")}`
+      : null,
+  };
+}
+
+function toOperatorTripRequestListItem(row: TripRequestRow): OperatorTripRequestListItem {
+  const draft = mapDraft(row);
+  const metadata = getCompletionDeliveryMetadata(draft);
+  const stage = getOperatorTripRequestStage(draft, row.submitted_at);
+
+  return {
+    id: draft.id,
+    formToken: draft.formToken,
+    formUrl: buildTripRequestFormUrl(draft.formToken),
+    requestSummary: draft.requestSummary,
+    stage: stage.stage,
+    stageLabel: stage.label,
+    attentionReason: stage.attentionReason,
+    status: draft.status,
+    currentStep: draft.currentStep,
+    sourceChannel: row.source_channel,
+    submitterRole: row.submitter_role,
+    submittedAt: row.submitted_at,
+    updatedAt: draft.updatedAt,
+    destination: draft.destination,
+    durationDays: draft.durationDays,
+    clientName: draft.clientName,
+    clientEmail: draft.clientEmail,
+    clientPhone: draft.clientPhone,
+    travelerCount: draft.travelerCount,
+    travelWindow: draft.travelWindow,
+    createdTripId: draft.createdTripId,
+    createdItineraryId: draft.createdItineraryId,
+    createdShareUrl: draft.createdShareUrl,
+    pdfUrl: draft.createdItineraryId ? buildTripRequestPdfUrl(draft.formToken) : null,
+    operatorNotified: metadata.completionDeliveredToAssistantGroup,
+    clientNotified: metadata.completionDeliveredToClient,
+    completionDeliveredAt: metadata.completionDeliveredAt,
+    lastOperatorResentAt: metadata.lastOperatorResentAt,
+    lastClientResentAt: metadata.lastClientResentAt,
+    lastItineraryRegeneratedAt: metadata.lastItineraryRegeneratedAt,
+  };
+}
+
+export async function listOperatorTripRequestsForOrganization(
+  organizationId: string,
+  limit = 50,
+): Promise<readonly OperatorTripRequestListItem[]> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("assistant_trip_requests")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .neq("status", "cancelled")
+    .order("updated_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    logError("[trip-intake] failed to list operator trip requests", error, {
+      organizationId,
+      limit,
+    });
+    return [];
+  }
+
+  return ((data ?? []) as TripRequestRow[]).map(toOperatorTripRequestListItem);
 }
 
 async function createDraft(
@@ -1875,10 +2064,8 @@ async function ensureTripShareUrl(
   return `https://tripbuilt.com/share/${shareCode}`;
 }
 
-async function notifyAssistantGroupAboutCompletedDraft(
+async function getLatestTripRequestDeliveryConnection(
   organizationId: string,
-  formToken: string,
-  message: string,
 ): Promise<{ sessionName: string | null; groupJid: string | null; operatorPhone: string | null }> {
   const admin = createAdminClient();
   const { data: connection } = await admin
@@ -1890,11 +2077,33 @@ async function notifyAssistantGroupAboutCompletedDraft(
     .limit(1)
     .maybeSingle();
 
-  const sessionName = (connection as { session_name?: string | null } | null)?.session_name ?? null;
-  const groupJid = (connection as { assistant_group_jid?: string | null } | null)?.assistant_group_jid ?? null;
-  const operatorPhone = formatPhoneForStorage(
-    (connection as { phone_number?: string | null } | null)?.phone_number ?? "",
-  );
+  return {
+    sessionName: (connection as { session_name?: string | null } | null)?.session_name ?? null,
+    groupJid: (connection as { assistant_group_jid?: string | null } | null)?.assistant_group_jid ?? null,
+    operatorPhone: formatPhoneForStorage(
+      (connection as { phone_number?: string | null } | null)?.phone_number ?? "",
+    ),
+  };
+}
+
+function buildCompletionDeliveryMessage(
+  draft: TripRequestDraft,
+): string {
+  return [
+    `Trip form submitted for *${draft.clientName ?? "the traveller"}*.`,
+    draft.destination ? `Destination: *${draft.destination}*` : null,
+    draft.durationDays ? `Duration: *${draft.durationDays} days*` : null,
+    draft.createdShareUrl ? `Share link: ${draft.createdShareUrl}` : "Share link is not ready yet.",
+    `PDF: ${buildTripRequestPdfUrl(draft.formToken)}`,
+  ].filter((value): value is string => Boolean(value)).join("\n");
+}
+
+async function notifyAssistantGroupAboutCompletedDraft(
+  organizationId: string,
+  formToken: string,
+  message: string,
+): Promise<{ sessionName: string | null; groupJid: string | null; operatorPhone: string | null }> {
+  const { sessionName, groupJid, operatorPhone } = await getLatestTripRequestDeliveryConnection(organizationId);
 
   if (!sessionName || !groupJid) {
     return { sessionName, groupJid, operatorPhone };
@@ -2380,6 +2589,197 @@ export async function completeSubmittedTripRequestForm(
     message,
     state: toTripRequestFormState(finalDraft),
   };
+}
+
+export async function resendTripRequestCompletionToOperator(args: {
+  organizationId: string;
+  draftId: string;
+}): Promise<{ readonly success: boolean; readonly message: string }> {
+  const row = await getDraftRowByOrganization(args.organizationId, args.draftId);
+  if (!row) {
+    return { success: false, message: "Trip request not found." };
+  }
+
+  const draft = mapDraft(row);
+  if (draft.status !== "completed") {
+    return { success: false, message: "This request is not completed yet." };
+  }
+
+  const connection = await notifyAssistantGroupAboutCompletedDraft(
+    args.organizationId,
+    draft.formToken,
+    buildCompletionDeliveryMessage(draft),
+  );
+
+  if (!connection.groupJid) {
+    return { success: false, message: "No connected assistant group found for this organization." };
+  }
+
+  const admin = createAdminClient();
+  const now = new Date().toISOString();
+  await admin
+    .from("assistant_trip_requests")
+    .update({
+      collected_fields: mergeCompletionDeliveryMetadata(draft, {
+        lastOperatorResentAt: now,
+        completionDeliveredToAssistantGroup: true,
+      }) as unknown as Json,
+    })
+    .eq("id", draft.id)
+    .eq("organization_id", args.organizationId);
+
+  return { success: true, message: "Sent the latest trip package to the assistant group." };
+}
+
+export async function resendTripRequestCompletionToClient(args: {
+  organizationId: string;
+  draftId: string;
+}): Promise<{ readonly success: boolean; readonly message: string }> {
+  const row = await getDraftRowByOrganization(args.organizationId, args.draftId);
+  if (!row) {
+    return { success: false, message: "Trip request not found." };
+  }
+
+  const draft = mapDraft(row);
+  if (draft.status !== "completed") {
+    return { success: false, message: "This request is not completed yet." };
+  }
+
+  if (!draft.clientPhone) {
+    return { success: false, message: "The traveller phone number is missing on this request." };
+  }
+
+  const connection = await getLatestTripRequestDeliveryConnection(args.organizationId);
+  await notifyClientAboutCompletedDraft(
+    args.organizationId,
+    connection.sessionName,
+    draft,
+    connection.operatorPhone,
+  );
+
+  if (!connection.sessionName) {
+    return { success: false, message: "No connected WhatsApp session found for this organization." };
+  }
+
+  const phone = formatPhoneForStorage(draft.clientPhone);
+  if (!phone || phone === connection.operatorPhone) {
+    return { success: false, message: "Client resend skipped because the traveller number matches the operator phone." };
+  }
+
+  const admin = createAdminClient();
+  const now = new Date().toISOString();
+  await admin
+    .from("assistant_trip_requests")
+    .update({
+      collected_fields: mergeCompletionDeliveryMetadata(draft, {
+        lastClientResentAt: now,
+        completionDeliveredToClient: true,
+      }) as unknown as Json,
+    })
+    .eq("id", draft.id)
+    .eq("organization_id", args.organizationId);
+
+  return { success: true, message: "Sent the latest trip package to the traveller on WhatsApp." };
+}
+
+export async function regenerateTripRequestItinerary(args: {
+  organizationId: string;
+  draftId: string;
+}): Promise<{ readonly success: boolean; readonly message: string }> {
+  const row = await getDraftRowByOrganization(args.organizationId, args.draftId);
+  if (!row) {
+    return { success: false, message: "Trip request not found." };
+  }
+
+  const draft = mapDraft(row);
+  if (draft.status !== "completed") {
+    const completion = await completeSubmittedTripRequestForm(draft.formToken);
+    return {
+      success: completion.success,
+      message: completion.success
+        ? "This request was completed and is now ready."
+        : completion.message,
+    };
+  }
+
+  if (!draft.createdItineraryId || !draft.destination || !draft.durationDays) {
+    return { success: false, message: "This request does not have a completed itinerary to regenerate yet." };
+  }
+
+  const admin = createAdminClient();
+  const ctx: ActionContext = {
+    organizationId: row.organization_id,
+    userId: row.operator_user_id,
+    channel: "whatsapp_group",
+    supabase: admin,
+  };
+
+  const generationPrompt = buildPlannerPromptFromDraft(draft);
+  let itinerary;
+  try {
+    itinerary = await generateItineraryForActor({
+      prompt: generationPrompt,
+      days: draft.durationDays,
+      userId: row.operator_user_id,
+      organizationId: row.organization_id,
+      source: "magic_link_trip_request",
+    });
+  } catch (error) {
+    logError("[trip-intake] itinerary regeneration failed, falling back", error, {
+      organizationId: row.organization_id,
+      draftId: draft.id,
+      itineraryId: draft.createdItineraryId,
+    });
+    try {
+      itinerary = await buildFallbackItinerary(generationPrompt, draft.durationDays);
+      itinerary.trip_title = `${draft.destination} Trip for ${draft.clientName}`;
+      itinerary.destination = draft.destination;
+      itinerary.duration_days = draft.durationDays;
+    } catch {
+      itinerary = buildStructuredItinerary(draft);
+    }
+  }
+
+  const { error: updateItineraryError } = await admin
+    .from("itineraries")
+    .update({
+      trip_title: typeof itinerary.trip_title === "string" && itinerary.trip_title.trim().length > 0
+        ? itinerary.trip_title
+        : `${draft.destination} Trip for ${draft.clientName}`,
+      destination: typeof itinerary.destination === "string" && itinerary.destination.trim().length > 0
+        ? itinerary.destination
+        : draft.destination,
+      summary: typeof itinerary.summary === "string" && itinerary.summary.trim().length > 0
+        ? itinerary.summary
+        : `Trip plan for ${draft.clientName} in ${draft.destination}.`,
+      duration_days: typeof itinerary.duration_days === "number" && Number.isFinite(itinerary.duration_days)
+        ? itinerary.duration_days
+        : draft.durationDays,
+      budget: draft.budget,
+      interests: draft.interests.length > 0 ? [...draft.interests] : null,
+      raw_data: itinerary as unknown as Json,
+    })
+    .eq("id", draft.createdItineraryId);
+
+  if (updateItineraryError) {
+    return { success: false, message: `Failed to regenerate the itinerary: ${updateItineraryError.message}` };
+  }
+
+  const shareUrl = draft.createdShareUrl ?? await ensureTripShareUrl(ctx, draft.createdItineraryId);
+  const now = new Date().toISOString();
+  await admin
+    .from("assistant_trip_requests")
+    .update({
+      created_share_url: shareUrl,
+      collected_fields: mergeCompletionDeliveryMetadata(draft, {
+        lastItineraryRegeneratedAt: now,
+      }) as unknown as Json,
+      updated_at: now,
+    })
+    .eq("id", draft.id)
+    .eq("organization_id", args.organizationId);
+
+  return { success: true, message: "Regenerated the itinerary with the current trip brief." };
 }
 
 async function resumeReplyForDraft(

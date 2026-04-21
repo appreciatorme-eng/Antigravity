@@ -111,6 +111,12 @@ export const NAV_ITEMS: readonly NavItemConfig[] = [
     section: "operations",
   },
   {
+    icon: "ClipboardList",
+    label: "Trip Requests",
+    href: "/trip-requests",
+    section: "operations",
+  },
+  {
     icon: "Puzzle",
     label: "Add-ons",
     href: "/add-ons",
