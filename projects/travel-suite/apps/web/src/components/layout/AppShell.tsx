@@ -35,9 +35,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     // Avoid double shelling for admin routes because /admin has its own layout shell.
     const isAdminPage = pathname?.startsWith("/admin");
     const isGodPage = pathname?.startsWith("/god");
+    const isPlannerPage = pathname?.startsWith("/planner");
     const isFullBleedPage =
         pathname?.startsWith("/inbox") ||
-        pathname?.startsWith("/planner") ||
         pathname?.startsWith("/calendar");
     // Marketing, auth, and welcome pages bypass the SaaS shell entirely.
     const MARKETING_PATHS = ["/", "/pricing", "/about", "/blog", "/demo", "/solutions", "/bones"];
@@ -77,6 +77,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                             "flex-1 relative z-10",
                             isFullBleedPage
                                 ? "overflow-hidden flex flex-col"
+                                : isPlannerPage
+                                    ? "overflow-y-auto flex min-h-0 flex-col custom-scrollbar pb-24 md:pb-8"
                                 : "overflow-y-auto p-4 md:p-8 custom-scrollbar pb-24 md:pb-8",
                         )}
                     >
@@ -92,10 +94,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                                 }}
                                 className={cn(
                                     "w-full",
-                                    isFullBleedPage ? "flex h-full min-h-0 flex-col overflow-hidden" : !isGodPage && "max-w-7xl mx-auto",
+                                    isFullBleedPage || isPlannerPage
+                                        ? "flex min-h-0 flex-col"
+                                        : !isGodPage && "max-w-7xl mx-auto",
                                 )}
                             >
-                                {!isGodPage && !isFullBleedPage && <Breadcrumbs />}
+                                {!isGodPage && !isFullBleedPage && !isPlannerPage && <Breadcrumbs />}
                                 {children}
                             </motion.div>
                         </AnimatePresence>
