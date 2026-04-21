@@ -7,10 +7,16 @@ import {
   CalendarDays,
   Check,
   CircleCheckBig,
+  Download,
+  ExternalLink,
+  FileCheck2,
+  LoaderCircle,
   Mail,
   MapPin,
+  MessageSquareMore,
   Phone,
   ShieldCheck,
+  Sparkles,
 } from "lucide-react";
 
 import type { TripRequestFormState } from "@/lib/whatsapp/trip-intake.server";
@@ -87,6 +93,29 @@ const PILL_TONES = [
   { bg: "#fef3c7", border: "#fcd34d", text: "#a16207" },
   { bg: "#eef2ff", border: "#a5b4fc", text: "#4338ca" },
   { bg: "#ecfccb", border: "#bef264", text: "#4d7c0f" },
+] as const;
+
+const PROCESSING_STEPS = [
+  {
+    title: "Details received",
+    description: "Your travel brief has safely reached the advisor desk.",
+    icon: CircleCheckBig,
+  },
+  {
+    title: "Building your itinerary",
+    description: "We’re shaping the route, stay style, and day-by-day flow for this trip.",
+    icon: Sparkles,
+  },
+  {
+    title: "Preparing your travel pack",
+    description: "The trip link and polished PDF are being assembled for easy review.",
+    icon: FileCheck2,
+  },
+  {
+    title: "Sharing it back",
+    description: "Your advisor will receive the final trip and follow up with you on WhatsApp.",
+    icon: MessageSquareMore,
+  },
 ] as const;
 
 function hexToRgba(color: string | null | undefined, alpha: number): string {
@@ -490,6 +519,77 @@ function TravelDatesField({
   );
 }
 
+function ProcessingStepCard({
+  step,
+  accentColor,
+  status,
+}: {
+  step: (typeof PROCESSING_STEPS)[number];
+  accentColor: string;
+  status: "complete" | "active" | "upcoming";
+}) {
+  const Icon = step.icon;
+
+  return (
+    <div
+      className={cn(
+        "rounded-[22px] border p-4 transition sm:p-5",
+        status === "active" ? "bg-white shadow-[0_20px_60px_-36px_rgba(28,25,23,0.32)]" : "bg-[#fcfaf7]",
+      )}
+      style={{
+        borderColor:
+          status === "upcoming"
+            ? "rgba(120,113,108,0.14)"
+            : hexToRgba(accentColor, status === "active" ? 0.28 : 0.18),
+      }}
+    >
+      <div className="flex items-start gap-3">
+        <div
+          className={cn(
+            "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border",
+            status === "upcoming" ? "bg-white text-stone-400" : "text-white",
+          )}
+          style={
+            status === "upcoming"
+              ? { borderColor: "rgba(120,113,108,0.14)" }
+              : {
+                  borderColor: "transparent",
+                  background:
+                    status === "complete"
+                      ? `linear-gradient(135deg, ${hexToRgba(accentColor, 0.88)} 0%, ${accentColor} 100%)`
+                      : `linear-gradient(135deg, ${accentColor} 0%, ${hexToRgba(accentColor, 0.74)} 100%)`,
+                  boxShadow:
+                    status === "active"
+                      ? `0 18px 38px -24px ${hexToRgba(accentColor, 0.9)}`
+                      : undefined,
+                }
+          }
+        >
+          <Icon className={cn("h-5 w-5", status === "active" ? "animate-spin [animation-duration:3s]" : "")} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-semibold text-stone-950">{step.title}</p>
+            <span
+              className="rounded-full px-2.5 py-1 text-[11px] font-semibold"
+              style={{
+                backgroundColor:
+                  status === "upcoming"
+                    ? "rgba(231,229,228,0.9)"
+                    : hexToRgba(accentColor, status === "active" ? 0.12 : 0.1),
+                color: status === "upcoming" ? "#78716c" : accentColor,
+              }}
+            >
+              {status === "complete" ? "Done" : status === "active" ? "In progress" : "Queued"}
+            </span>
+          </div>
+          <p className="mt-2 text-sm leading-6 text-stone-600">{step.description}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function TripRequestIntakeForm({
   token,
   state,
@@ -527,6 +627,7 @@ export function TripRequestIntakeForm({
   const [endDate, setEndDate] = useState(cachedDraft?.endDate ?? state.endDate);
   const [submitPending, setSubmitPending] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [processingStepIndex, setProcessingStepIndex] = useState(0);
 
   const durationDays = getDurationDays(startDate, endDate, state.durationDays);
   const normalizedPhone = joinPhoneParts(countryCode, clientPhone);
@@ -554,6 +655,14 @@ export function TripRequestIntakeForm({
       window.location.reload();
     }, 4000);
     return () => window.clearTimeout(timeoutId);
+  }, [isProcessing]);
+
+  useEffect(() => {
+    if (!isProcessing) return;
+    const intervalId = window.setInterval(() => {
+      setProcessingStepIndex((current) => Math.min(current + 1, PROCESSING_STEPS.length - 1));
+    }, 2200);
+    return () => window.clearInterval(intervalId);
   }, [isProcessing]);
 
   useEffect(() => {
@@ -828,66 +937,258 @@ export function TripRequestIntakeForm({
               </div>
             ) : null}
 
-            {submitted || isCompleted ? (
-              <div
-                className="mb-6 rounded-2xl border px-4 py-4 text-sm"
-                style={{ borderColor: accentSoft, backgroundColor: accentSofter }}
-              >
-                <div className="flex items-start gap-3">
-                  <CircleCheckBig className="mt-0.5 h-5 w-5 shrink-0" style={{ color: accentColor }} />
-                  <div>
-                    <p className="font-semibold text-stone-950">
-                      {isCompleted ? "Your trip request is ready" : "Your request is being prepared"}
-                    </p>
-                    <p className="mt-1 text-stone-600">
-                      {isCompleted
-                        ? `Your itinerary from ${state.organizationName} is now available.`
-                        : `${state.organizationName} has received your details and is building your itinerary now. This page will refresh automatically.`}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : null}
-
             {isCompleted ? (
               <section className="space-y-6">
-                <div className="grid gap-4 rounded-[24px] border border-black/5 bg-white p-5 sm:grid-cols-3">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.18em] text-stone-500">Destination</p>
-                    <p className="mt-2 text-base font-semibold text-stone-950">{state.destination || "Planned trip"}</p>
+                <div className="overflow-hidden rounded-[28px] border border-black/5 bg-white">
+                  <div
+                    className="border-b border-black/5 px-5 py-5 sm:px-7 sm:py-6"
+                    style={{ background: `linear-gradient(180deg, ${accentSofter} 0%, rgba(255,255,255,0.96) 100%)` }}
+                  >
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="max-w-2xl">
+                        <div
+                          className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold"
+                          style={{ backgroundColor: accentSoft, color: accentColor }}
+                        >
+                          <CircleCheckBig className="h-4 w-4" />
+                          Trip ready
+                        </div>
+                        <h3 className="mt-4 text-[1.9rem] font-semibold tracking-tight text-stone-950 sm:text-[2.3rem]">
+                          Your travel plan is ready to review
+                        </h3>
+                        <p className="mt-3 max-w-xl text-sm leading-7 text-stone-600 sm:text-[15px]">
+                          {state.organizationName} has prepared your itinerary. Open the trip link for the live version or download the PDF for a polished copy you can keep or share.
+                        </p>
+                      </div>
+                      <div className="rounded-[24px] border border-white/60 bg-white/90 p-4 shadow-[0_24px_60px_-42px_rgba(28,25,23,0.35)] sm:min-w-[260px]">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
+                          Trip snapshot
+                        </p>
+                        <div className="mt-4 grid gap-3">
+                          <div>
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-400">Destination</p>
+                            <p className="mt-1 text-base font-semibold text-stone-950">{state.destination || "Planned trip"}</p>
+                          </div>
+                          <div>
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-400">Travel dates</p>
+                            <p className="mt-1 text-sm font-medium text-stone-900">
+                              {state.startDate && state.endDate
+                                ? `${formatFull(state.startDate)} to ${formatFull(state.endDate)}`
+                                : "Dates confirmed"}
+                            </p>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="rounded-2xl bg-stone-50 p-3">
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-400">Travellers</p>
+                              <p className="mt-1 text-lg font-semibold text-stone-950">{state.travelerCount || 1}</p>
+                            </div>
+                            <div className="rounded-2xl bg-stone-50 p-3">
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-400">Duration</p>
+                              <p className="mt-1 text-lg font-semibold text-stone-950">{state.durationDays || durationDays} days</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.18em] text-stone-500">Travel dates</p>
-                    <p className="mt-2 text-base font-semibold text-stone-950">
-                      {state.startDate && state.endDate
-                        ? `${formatFull(state.startDate)} to ${formatFull(state.endDate)}`
-                        : "Dates confirmed"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.18em] text-stone-500">Travellers</p>
-                    <p className="mt-2 text-base font-semibold text-stone-950">{state.travelerCount || 1}</p>
+
+                  <div className="grid gap-5 px-5 py-5 sm:px-7 sm:py-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">
+                    <div className="space-y-4">
+                      <div className="rounded-[24px] border border-black/5 bg-[#fcfaf7] p-5">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">What happens next</p>
+                        <div className="mt-4 space-y-3">
+                          {[
+                            "Open the live trip link to review the itinerary day by day.",
+                            "Download the PDF if you want an offline or shareable copy.",
+                            `${state.organizationName} can revise the plan if you want any changes.`,
+                          ].map((item) => (
+                            <div key={item} className="flex items-start gap-3">
+                              <div
+                                className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
+                                style={{ backgroundColor: accentSoft, color: accentColor }}
+                              >
+                                <Check className="h-3.5 w-3.5" />
+                              </div>
+                              <p className="text-sm leading-6 text-stone-700">{item}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="rounded-[24px] border border-black/5 bg-white p-5">
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Advisor contact</p>
+                          <div className="mt-4 space-y-3 text-sm text-stone-700">
+                            {state.organizationContactPhone ? (
+                              <div className="flex items-start gap-3">
+                                <Phone className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" />
+                                <span>{state.organizationContactPhone}</span>
+                              </div>
+                            ) : null}
+                            {state.organizationContactEmail ? (
+                              <div className="flex items-start gap-3">
+                                <Mail className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" />
+                                <span className="break-all">{state.organizationContactEmail}</span>
+                              </div>
+                            ) : null}
+                            {state.organizationAddress ? (
+                              <div className="flex items-start gap-3">
+                                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" />
+                                <span>{state.organizationAddress}</span>
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        <div className="rounded-[24px] border border-black/5 bg-[#fcfaf7] p-5">
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Confidence</p>
+                          <div className="mt-4 space-y-3">
+                            {[
+                              "Secure trip brief received",
+                              "Share link prepared",
+                              "PDF generated for easy review",
+                            ].map((item) => (
+                              <div key={item} className="flex items-center gap-3">
+                                <CircleCheckBig className="h-4 w-4 shrink-0" style={{ color: accentColor }} />
+                                <p className="text-sm text-stone-700">{item}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <a
+                        href={state.shareUrl || "#"}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl px-5 text-sm font-semibold text-white"
+                        style={{ backgroundColor: accentColor }}
+                      >
+                        View itinerary
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                      <a
+                        href={state.pdfUrl || "#"}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl border border-stone-200 bg-white px-5 text-sm font-semibold text-stone-900"
+                      >
+                        Download PDF
+                        <Download className="h-4 w-4" />
+                      </a>
+                      <p className="px-1 text-center text-xs leading-6 text-stone-500">
+                        If you want any changes, reply on WhatsApp and {state.organizationName} can revise the trip for you.
+                      </p>
+                    </div>
                   </div>
                 </div>
+              </section>
+            ) : isProcessing ? (
+              <section className="space-y-6">
+                <div className="overflow-hidden rounded-[28px] border border-black/5 bg-white">
+                  <div
+                    className="border-b border-black/5 px-5 py-5 sm:px-7 sm:py-6"
+                    style={{ background: `linear-gradient(180deg, ${accentSofter} 0%, rgba(255,255,255,0.96) 100%)` }}
+                  >
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="max-w-2xl">
+                        <div
+                          className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-semibold"
+                          style={{ backgroundColor: accentSoft, color: accentColor }}
+                        >
+                          <LoaderCircle className="h-4 w-4 animate-spin" />
+                          Trip in progress
+                        </div>
+                        <h3 className="mt-4 text-[1.9rem] font-semibold tracking-tight text-stone-950 sm:text-[2.3rem]">
+                          {state.organizationName} is preparing your trip now
+                        </h3>
+                        <p className="mt-3 max-w-xl text-sm leading-7 text-stone-600 sm:text-[15px]">
+                          Your brief is safely received. We’re creating the itinerary, preparing the travel pack, and will refresh this page automatically when it is ready.
+                        </p>
+                      </div>
+                      <div className="rounded-[24px] border border-white/60 bg-white/90 p-4 shadow-[0_24px_60px_-42px_rgba(28,25,23,0.35)] sm:min-w-[260px]">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Trip brief received</p>
+                        <div className="mt-4 space-y-3 text-sm text-stone-700">
+                          <div className="flex items-start justify-between gap-4">
+                            <span>Destination</span>
+                            <span className="font-semibold text-stone-950">{destination}</span>
+                          </div>
+                          <div className="flex items-start justify-between gap-4">
+                            <span>Dates</span>
+                            <span className="text-right font-semibold text-stone-950">
+                              {formatShort(startDate)} to {formatShort(endDate)}
+                            </span>
+                          </div>
+                          <div className="flex items-start justify-between gap-4">
+                            <span>Travellers</span>
+                            <span className="font-semibold text-stone-950">{travelerCount}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <a
-                    href={state.shareUrl || "#"}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex h-14 items-center justify-center rounded-2xl px-5 text-sm font-semibold text-white"
-                    style={{ backgroundColor: accentColor }}
-                  >
-                    View your itinerary
-                  </a>
-                  <a
-                    href={state.pdfUrl || "#"}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex h-14 items-center justify-center rounded-2xl border border-stone-200 bg-white px-5 text-sm font-semibold text-stone-900"
-                  >
-                    Download PDF
-                  </a>
+                  <div className="grid gap-5 px-5 py-5 sm:px-7 sm:py-6 lg:grid-cols-[minmax(0,1.25fr)_320px]">
+                    <div className="space-y-3">
+                      {PROCESSING_STEPS.map((step, index) => (
+                        <ProcessingStepCard
+                          key={step.title}
+                          step={step}
+                          accentColor={accentColor}
+                          status={
+                            index < processingStepIndex
+                              ? "complete"
+                              : index === processingStepIndex
+                                ? "active"
+                                : "upcoming"
+                          }
+                        />
+                      ))}
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="rounded-[24px] border border-black/5 bg-[#fcfaf7] p-5">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">While you wait</p>
+                        <div className="mt-4 space-y-3 text-sm text-stone-700">
+                          <div className="flex items-start gap-3">
+                            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" style={{ color: accentColor }} />
+                            <p>Your submitted details are safely saved. You can leave this page if needed.</p>
+                          </div>
+                          <div className="flex items-start gap-3">
+                            <MessageSquareMore className="mt-0.5 h-4 w-4 shrink-0" style={{ color: accentColor }} />
+                            <p>{state.organizationName} will also receive the completed trip package on WhatsApp.</p>
+                          </div>
+                          <div className="flex items-start gap-3">
+                            <FileCheck2 className="mt-0.5 h-4 w-4 shrink-0" style={{ color: accentColor }} />
+                            <p>This page will switch automatically to the final trip view as soon as the itinerary is ready.</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div
+                        className="rounded-[24px] border p-5"
+                        style={{ borderColor: accentSoft, backgroundColor: accentSofter }}
+                      >
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Live status</p>
+                        <p className="mt-3 text-lg font-semibold text-stone-950">
+                          Crafting your personalised itinerary
+                        </p>
+                        <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/80">
+                          <div
+                            className="h-full rounded-full transition-all duration-700 ease-out"
+                            style={{
+                              width: `${((processingStepIndex + 1) / PROCESSING_STEPS.length) * 100}%`,
+                              background: `linear-gradient(90deg, ${accentColor} 0%, ${hexToRgba(accentColor, 0.7)} 100%)`,
+                            }}
+                          />
+                        </div>
+                        <p className="mt-3 text-sm text-stone-600">
+                          Usually ready within a few seconds. This page refreshes automatically.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </section>
             ) : (
