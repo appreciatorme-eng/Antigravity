@@ -81,6 +81,23 @@ function toActionRailEntries(entries: readonly OperatorTripRequestActionHistoryE
   }));
 }
 
+function getActionRailRecovery(entry: ActionRailEntry): { label: string; action: ActionType } | null {
+  if (entry.tone !== "error") return null;
+  if (entry.action === "retry_request") {
+    return { label: "Retry now", action: "retry_request" };
+  }
+  if (entry.action === "regenerate_itinerary") {
+    return { label: "Regenerate", action: "regenerate_itinerary" };
+  }
+  if (entry.action === "resend_operator") {
+    return { label: "Resend operator", action: "resend_operator" };
+  }
+  if (entry.action === "resend_client") {
+    return { label: "Resend traveller", action: "resend_client" };
+  }
+  return null;
+}
+
 function buildEditFormState(item: OperatorTripRequestListItem): EditFormState {
   return {
     destination: item.destination ?? "",
@@ -527,21 +544,34 @@ export function TripRequestDetailActions({
               <div className="mt-4 overflow-x-auto pb-1">
                 <div className="flex min-w-max gap-3">
                   {actionRail.map((entry) => (
-                      <div
-                        key={`${entry.action}-${entry.occurredAt}`}
-                        className={cn(
-                          "min-w-[220px] rounded-2xl border px-4 py-3",
-                          entry.tone === "success"
-                            ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                            : entry.tone === "error"
-                              ? "border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-300"
-                              : "border-sky-500/20 bg-sky-500/10 text-sky-700 dark:text-sky-300",
-                        )}
-                      >
+                    <div
+                      key={`${entry.action}-${entry.occurredAt}`}
+                      className={cn(
+                        "min-w-[220px] rounded-2xl border px-4 py-3",
+                        entry.tone === "success"
+                          ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                          : entry.tone === "error"
+                            ? "border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-300"
+                            : "border-sky-500/20 bg-sky-500/10 text-sky-700 dark:text-sky-300",
+                      )}
+                    >
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <div className="text-sm font-bold">{entry.title}</div>
                           <div className="mt-1 text-xs leading-5 opacity-90">{entry.description}</div>
+                          {getActionRailRecovery(entry) ? (
+                            <button
+                              type="button"
+                              onClick={() => void runAction(getActionRailRecovery(entry)!.action)}
+                              disabled={runningAction !== null}
+                              className="mt-3 inline-flex items-center gap-2 rounded-full border border-current/20 bg-background/70 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.14em] transition hover:bg-background disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {runningAction === getActionRailRecovery(entry)!.action ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : null}
+                              {getActionRailRecovery(entry)!.label}
+                            </button>
+                          ) : null}
                         </div>
                         <div className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.16em] opacity-75">
                           {formatActionTimestamp(entry.occurredAt)}

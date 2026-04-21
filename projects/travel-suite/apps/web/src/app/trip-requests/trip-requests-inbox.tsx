@@ -248,6 +248,23 @@ type TimelineEvent = {
   tone: string;
 };
 
+function getActionHistoryRecovery(entry: OperatorTripRequestListItem["actionHistory"][number] | undefined): { label: string; action: ActionType } | null {
+  if (!entry || entry.tone !== "error") return null;
+  if (entry.action === "retry_request") {
+    return { label: "Retry now", action: "retry_request" };
+  }
+  if (entry.action === "regenerate_itinerary") {
+    return { label: "Regenerate", action: "regenerate_itinerary" };
+  }
+  if (entry.action === "resend_operator") {
+    return { label: "Resend operator", action: "resend_operator" };
+  }
+  if (entry.action === "resend_client") {
+    return { label: "Resend traveller", action: "resend_client" };
+  }
+  return null;
+}
+
 function getTimelineEvents(item: OperatorTripRequestListItem): readonly TimelineEvent[] {
   const events: TimelineEvent[] = [];
 
@@ -919,6 +936,19 @@ export function TripRequestsInbox() {
                             >
                               Latest action: {item.actionHistory[0].title}
                             </div>
+                          ) : null}
+                          {getActionHistoryRecovery(item.actionHistory[0]) ? (
+                            <button
+                              type="button"
+                              onClick={() => void runAction(item.id, getActionHistoryRecovery(item.actionHistory[0])!.action)}
+                              disabled={runningAction[item.id] !== undefined}
+                              className="mt-3 inline-flex items-center gap-2 rounded-xl border border-current/20 bg-background px-3 py-2 text-xs font-bold uppercase tracking-[0.14em] text-rose-700 transition hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50 dark:text-rose-300"
+                            >
+                              {runningAction[item.id] === getActionHistoryRecovery(item.actionHistory[0])!.action ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : null}
+                              {getActionHistoryRecovery(item.actionHistory[0])!.label}
+                            </button>
                           ) : null}
                           {item.generationError ? (
                             <div className="mt-3 rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-sm text-rose-700 dark:text-rose-300">
