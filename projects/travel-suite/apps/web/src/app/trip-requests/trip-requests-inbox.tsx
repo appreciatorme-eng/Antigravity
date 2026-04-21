@@ -6,6 +6,7 @@ import {
   ArrowDownUp,
   ArrowUpRight,
   CheckCircle2,
+  CheckSquare,
   Clock3,
   Copy,
   PencilLine,
@@ -16,6 +17,7 @@ import {
   Search,
   Send,
   Sparkles,
+  Square,
   Trash2,
   XCircle,
 } from "lucide-react";
@@ -41,7 +43,8 @@ type TripRequestsApiPayload = {
 };
 
 type ActionType = "regenerate_itinerary" | "resend_operator" | "resend_client" | "retry_request";
-type FilterKey = "all" | "attention" | "processing" | "completed";
+type BulkActionType = "resend_operator" | "resend_client" | "retry_request" | "delete_request";
+type FilterKey = "all" | "attention" | "processing" | "completed" | "failed" | "resend" | "missing_phone";
 type SortKey = "needs_attention" | "newest" | "completed_recently" | "traveller_name";
 type EditFormState = {
   destination: string;
@@ -63,6 +66,9 @@ const FILTERS: ReadonlyArray<{ key: FilterKey; label: string }> = [
   { key: "attention", label: "Needs attention" },
   { key: "processing", label: "Processing" },
   { key: "completed", label: "Completed" },
+  { key: "failed", label: "Failed" },
+  { key: "resend", label: "Resend needed" },
+  { key: "missing_phone", label: "Missing phone" },
 ];
 
 const SORT_OPTIONS: ReadonlyArray<{ key: SortKey; label: string }> = [
@@ -92,6 +98,20 @@ function matchesFilter(item: OperatorTripRequestListItem, filter: FilterKey): bo
   if (filter === "all") return true;
   if (filter === "completed") return item.stage === "completed";
   if (filter === "processing") return item.stage === "processing" || item.stage === "submitted";
+  if (filter === "failed") {
+    return Boolean(item.generationError || item.operatorDeliveryError || item.clientDeliveryError);
+  }
+  if (filter === "resend") {
+    return item.stage === "completed" && (
+      !item.operatorNotified
+      || (Boolean(item.clientPhone) && !item.clientNotified)
+      || Boolean(item.operatorDeliveryError)
+      || Boolean(item.clientDeliveryError)
+    );
+  }
+  if (filter === "missing_phone") {
+    return !item.clientPhone;
+  }
   return item.stage === "draft" || item.stage === "submitted";
 }
 
@@ -305,6 +325,8 @@ export function TripRequestsInbox() {
   const [savingEdit, setSavingEdit] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<OperatorTripRequestListItem | null>(null);
   const [deletingRequestId, setDeletingRequestId] = useState<string | null>(null);
+  const [selectedRequestIds, setSelectedRequestIds] = useState<string[]>([]);
+  const [bulkAction, setBulkAction] = useState<BulkActionType | null>(null);
 
   const loadRequests = useCallback(async (showLoader = false) => {
     if (showLoader) {
@@ -369,6 +391,31 @@ export function TripRequestsInbox() {
     return { completed, processing, attention };
   }, [requests]);
 
+  const selectedVisibleIds = useMemo(
+    () => filteredRequests.map((item) => item.id).filter((id) => selectedRequestIds.includes(id)),
+    [filteredRequests, selectedRequestIds],
+  );
+
+  const allVisibleSelected = filteredRequests.length > 0 && selectedVisibleIds.length === filteredRequests.length;
+
+  function toggleSelection(id: string) {
+    setSelectedRequestIds((current) =>
+      current.includes(id) ? current.filter((entry) => entry !== id) : [...current, id],
+    );
+  }
+
+  function toggleSelectAllVisible() {
+    setSelectedRequestIds((current) => {
+      const visibleSet = new Set(filteredRequests.map((item) => item.id));
+      if (filteredRequests.length > 0 && filteredRequests.every((item) => current.includes(item.id))) {
+        return current.filter((id) => !visibleSet.has(id));
+      }
+      const next = new Set(current);
+      filteredRequests.forEach((item) => next.add(item.id));
+      return [...next];
+    });
+  }
+
   async function runAction(id: string, action: ActionType) {
     setRunningAction((current) => ({ ...current, [id]: action }));
     try {
@@ -398,6 +445,69 @@ export function TripRequestsInbox() {
       });
     } finally {
       setRunningAction((current) => ({ ...current, [id]: undefined }));
+    }
+  }
+
+  async function runBulkAction(action: BulkActionType) {
+    const ids = [...selectedVisibleIds];
+    if (ids.length === 0) {
+      toast({
+        title: "No requests selected",
+        description: "Select one or more trip requests first.",
+        variant: "error",
+      });
+      return;
+    }
+
+    setBulkAction(action);
+    let successCount = 0;
+    let failureCount = 0;
+
+    try {
+      if (action === "delete_request") {
+        for (const id of ids) {
+          try {
+            const response = await authedFetch(`/api/trip-requests/${id}`, { method: "DELETE" });
+            const payload = await response.json() as { error?: string | null };
+            if (!response.ok || payload.error) {
+              throw new Error(payload.error || "Delete failed");
+            }
+            successCount += 1;
+          } catch {
+            failureCount += 1;
+          }
+        }
+      } else {
+        for (const id of ids) {
+          try {
+            const response = await authedFetch(`/api/trip-requests/${id}/actions`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action }),
+            });
+            const payload = await response.json() as { error?: string | null };
+            if (!response.ok || payload.error) {
+              throw new Error(payload.error || "Action failed");
+            }
+            successCount += 1;
+          } catch {
+            failureCount += 1;
+          }
+        }
+      }
+
+      await loadRequests(false);
+      setSelectedRequestIds((current) => current.filter((id) => !ids.includes(id)));
+      toast({
+        title: "Bulk action finished",
+        description:
+          failureCount > 0
+            ? `${successCount} succeeded, ${failureCount} failed.`
+            : `${successCount} request${successCount === 1 ? "" : "s"} updated.`,
+        variant: failureCount > 0 ? "error" : "success",
+      });
+    } finally {
+      setBulkAction(null);
     }
   }
 
@@ -601,6 +711,61 @@ export function TripRequestsInbox() {
           </div>
         </div>
 
+        <div className="flex flex-col gap-3 rounded-2xl border border-border bg-muted/20 p-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <button
+              type="button"
+              onClick={toggleSelectAllVisible}
+              className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 font-semibold text-foreground transition hover:bg-muted"
+            >
+              {allVisibleSelected ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4" />}
+              {allVisibleSelected ? "Clear visible" : "Select visible"}
+            </button>
+            <span>
+              {selectedVisibleIds.length} selected in this view
+            </span>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => void runBulkAction("retry_request")}
+              disabled={Boolean(bulkAction) || selectedVisibleIds.length === 0}
+              className="inline-flex items-center gap-2 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-50 dark:text-amber-300"
+            >
+              {bulkAction === "retry_request" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCw className="h-4 w-4" />}
+              Retry selected
+            </button>
+            <button
+              type="button"
+              onClick={() => void runBulkAction("resend_operator")}
+              disabled={Boolean(bulkAction) || selectedVisibleIds.length === 0}
+              className="inline-flex items-center gap-2 rounded-xl border border-sky-500/20 bg-sky-500/10 px-3 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-500/15 disabled:cursor-not-allowed disabled:opacity-50 dark:text-sky-300"
+            >
+              {bulkAction === "resend_operator" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              Resend to operator
+            </button>
+            <button
+              type="button"
+              onClick={() => void runBulkAction("resend_client")}
+              disabled={Boolean(bulkAction) || selectedVisibleIds.length === 0}
+              className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-50 dark:text-emerald-300"
+            >
+              {bulkAction === "resend_client" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+              Resend to traveller
+            </button>
+            <button
+              type="button"
+              onClick={() => void runBulkAction("delete_request")}
+              disabled={Boolean(bulkAction) || selectedVisibleIds.length === 0}
+              className="inline-flex items-center gap-2 rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-500/15 disabled:cursor-not-allowed disabled:opacity-50 dark:text-rose-300"
+            >
+              {bulkAction === "delete_request" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              Delete selected
+            </button>
+          </div>
+        </div>
+
         {loading ? (
           <div className="flex min-h-[320px] items-center justify-center rounded-[24px] border border-dashed border-border bg-muted/20">
             <div className="inline-flex items-center gap-3 text-muted-foreground">
@@ -632,11 +797,24 @@ export function TripRequestsInbox() {
               return (
                 <article
                   key={item.id}
-                  className="rounded-[26px] border border-border bg-background p-4 shadow-sm transition hover:border-foreground/15 md:p-5"
+                  className={cn(
+                    "rounded-[26px] border bg-background p-4 shadow-sm transition hover:border-foreground/15 md:p-5",
+                    selectedRequestIds.includes(item.id)
+                      ? "border-emerald-500/40 ring-1 ring-emerald-500/20"
+                      : "border-border",
+                  )}
                 >
                     <div className="flex flex-col gap-4">
                       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                         <div className="space-y-3">
+                          <button
+                            type="button"
+                            onClick={() => toggleSelection(item.id)}
+                            className="inline-flex items-center gap-2 rounded-xl border border-border bg-muted/20 px-3 py-1.5 text-sm font-semibold text-foreground transition hover:bg-muted"
+                          >
+                            {selectedRequestIds.includes(item.id) ? <CheckSquare className="h-4 w-4 text-emerald-600" /> : <Square className="h-4 w-4" />}
+                            {selectedRequestIds.includes(item.id) ? "Selected" : "Select"}
+                          </button>
                           <div className="flex flex-wrap items-center gap-2">
                             <span className={cn("rounded-full border px-3 py-1 text-xs font-semibold", stageClasses(item.stage))}>
                               {item.stageLabel}
