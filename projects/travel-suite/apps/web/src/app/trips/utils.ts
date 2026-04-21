@@ -233,8 +233,7 @@ export function commercialStageLabel(stage: TripCommercialStage): string {
 export function deriveCommercialStage(trip: EnrichedTrip): TripCommercialStage {
     if (trip.invoice?.payment_status === "paid") return "fully_paid";
     if (trip.invoice?.payment_status === "partial") return "partially_paid";
-    if (trip.status && trip.status !== "draft") return "approved";
-    if (trip.share_status === "approved") return "approved";
+    if (trip.share_status === "approved" || trip.approved_at) return "approved";
     if (trip.share_status === "viewed" || (trip.viewed_at && trip.share_code)) return "viewed";
     if (trip.share_code) return "shared";
     return "draft";
