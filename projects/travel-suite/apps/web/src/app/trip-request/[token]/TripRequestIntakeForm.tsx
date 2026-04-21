@@ -77,6 +77,8 @@ const INTEREST_OPTIONS = [
 const HOTEL_OPTIONS = ["3 star", "4 star", "5 star", "Boutique", "Villa", "Flexible"] as const;
 const BUDGET_OPTIONS = ["Under 50k", "50k - 1L", "1L - 2L", "2L - 4L", "Luxury"] as const;
 const TRAVELER_OPTIONS = [1, 2, 4, 6] as const;
+const COUNTRY_CODE_OPTIONS = ["+91", "+971", "+65", "+44", "+1", "+61"] as const;
+const DRAFT_CACHE_VERSION = 2 as const;
 
 const PILL_TONES = [
   { bg: "#fdf2f8", border: "#f9a8d4", text: "#9d174d" },
@@ -105,6 +107,80 @@ function splitInterests(value: string): string[] {
     .split(",")
     .map((entry) => entry.trim())
     .filter(Boolean);
+}
+
+function normalizeDigits(value: string): string {
+  return value.replace(/\D/g, "");
+}
+
+function getDraftCacheKey(token: string): string {
+  return `trip-request:draft:${DRAFT_CACHE_VERSION}:${token}`;
+}
+
+function splitPhoneParts(value: string): { countryCode: string; localNumber: string } {
+  const raw = value.trim();
+  if (!raw) {
+    return { countryCode: "+91", localNumber: "" };
+  }
+  const digits = normalizeDigits(raw);
+  if (!digits) {
+    return { countryCode: "+91", localNumber: "" };
+  }
+
+  const matchedCountryCode = COUNTRY_CODE_OPTIONS.find((option) => digits.startsWith(option.slice(1)));
+  if (matchedCountryCode) {
+    return {
+      countryCode: matchedCountryCode,
+      localNumber: digits.slice(matchedCountryCode.length - 1),
+    };
+  }
+
+  if (raw.startsWith("+")) {
+    const guessedCode = `+${digits.slice(0, Math.max(1, digits.length - 10))}`;
+    const guessedLocal = digits.slice(Math.max(1, digits.length - 10));
+    return {
+      countryCode: guessedCode || "+91",
+      localNumber: guessedLocal,
+    };
+  }
+
+  return {
+    countryCode: "+91",
+    localNumber: digits,
+  };
+}
+
+function joinPhoneParts(countryCode: string, localNumber: string): string {
+  const digits = normalizeDigits(localNumber);
+  if (!digits) return "";
+  return `${countryCode}${digits}`;
+}
+
+type CachedTripRequestDraft = Partial<{
+  clientName: string;
+  countryCode: string;
+  clientPhone: string;
+  clientEmail: string;
+  destination: string;
+  originCity: string;
+  travelerCount: number;
+  hotelPreference: string;
+  budget: string;
+  interests: string[];
+  startDate: string;
+  endDate: string;
+}>;
+
+function readCachedTripRequestDraft(token: string): CachedTripRequestDraft | null {
+  if (typeof window === "undefined") return null;
+  const cached = window.localStorage.getItem(getDraftCacheKey(token));
+  if (!cached) return null;
+  try {
+    return JSON.parse(cached) as CachedTripRequestDraft;
+  } catch {
+    window.localStorage.removeItem(getDraftCacheKey(token));
+    return null;
+  }
 }
 
 function parseIsoDate(value: string): Date | undefined {
@@ -429,31 +505,42 @@ export function TripRequestIntakeForm({
   const accentSoft = hexToRgba(accentColor, 0.12);
   const accentSofter = hexToRgba(accentColor, 0.06);
   const brandPanel = `linear-gradient(180deg, ${hexToRgba(accentColor, 0.25)} 0%, rgba(20,17,14,0) 65%)`;
-  const [clientName, setClientName] = useState(state.clientName);
-  const [clientPhone, setClientPhone] = useState(state.clientPhone);
-  const [clientEmail, setClientEmail] = useState(state.clientEmail);
-  const [destination, setDestination] = useState(state.destination);
-  const [originCity, setOriginCity] = useState(state.originCity);
-  const [travelerCount, setTravelerCount] = useState<number>(state.travelerCount ?? 2);
-  const [hotelPreference, setHotelPreference] = useState(state.hotelPreference);
-  const [budget, setBudget] = useState(state.budget);
-  const [interests, setInterests] = useState<string[]>(splitInterests(state.interests));
-  const [startDate, setStartDate] = useState(state.startDate);
-  const [endDate, setEndDate] = useState(state.endDate);
+  const cachedDraft = useMemo(() => readCachedTripRequestDraft(token), [token]);
+  const initialPhoneParts = splitPhoneParts(
+    cachedDraft?.countryCode && cachedDraft?.clientPhone
+      ? joinPhoneParts(cachedDraft.countryCode, cachedDraft.clientPhone)
+      : state.clientPhone,
+  );
+  const [clientName, setClientName] = useState(cachedDraft?.clientName ?? state.clientName);
+  const [countryCode, setCountryCode] = useState(
+    cachedDraft?.countryCode?.trim() ? cachedDraft.countryCode : initialPhoneParts.countryCode,
+  );
+  const [clientPhone, setClientPhone] = useState(cachedDraft?.clientPhone ?? initialPhoneParts.localNumber);
+  const [clientEmail, setClientEmail] = useState(cachedDraft?.clientEmail ?? state.clientEmail);
+  const [destination, setDestination] = useState(cachedDraft?.destination ?? state.destination);
+  const [originCity, setOriginCity] = useState(cachedDraft?.originCity ?? state.originCity);
+  const [travelerCount, setTravelerCount] = useState<number>(cachedDraft?.travelerCount ?? state.travelerCount ?? 2);
+  const [hotelPreference, setHotelPreference] = useState(cachedDraft?.hotelPreference ?? state.hotelPreference);
+  const [budget, setBudget] = useState(cachedDraft?.budget ?? state.budget);
+  const [interests, setInterests] = useState<string[]>(cachedDraft?.interests ?? splitInterests(state.interests));
+  const [startDate, setStartDate] = useState(cachedDraft?.startDate ?? state.startDate);
+  const [endDate, setEndDate] = useState(cachedDraft?.endDate ?? state.endDate);
   const [submitPending, setSubmitPending] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
   const durationDays = getDurationDays(startDate, endDate, state.durationDays);
+  const normalizedPhone = joinPhoneParts(countryCode, clientPhone);
+  const phoneDigits = normalizeDigits(clientPhone);
+  const hasValidDateRange = Boolean(startDate && endDate && endDate >= startDate);
   const isCompleted = state.status === "completed";
   const isProcessing = submitted && !isCompleted;
   const canSubmit =
     !submitPending &&
     !isProcessing &&
     clientName.trim().length > 0 &&
-    clientPhone.trim().length > 0 &&
+    phoneDigits.length >= 8 &&
     destination.trim().length > 0 &&
-    startDate.length > 0 &&
-    endDate.length > 0 &&
+    hasValidDateRange &&
     travelerCount > 0 &&
     durationDays > 0;
   const trustPoints =
@@ -468,6 +555,46 @@ export function TripRequestIntakeForm({
     }, 4000);
     return () => window.clearTimeout(timeoutId);
   }, [isProcessing]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (isCompleted) {
+      window.localStorage.removeItem(getDraftCacheKey(token));
+      return;
+    }
+    window.localStorage.setItem(
+      getDraftCacheKey(token),
+      JSON.stringify({
+        clientName,
+        countryCode,
+        clientPhone,
+        clientEmail,
+        destination,
+        originCity,
+        travelerCount,
+        hotelPreference,
+        budget,
+        interests,
+        startDate,
+        endDate,
+      }),
+    );
+  }, [
+    budget,
+    clientEmail,
+    clientName,
+    clientPhone,
+    countryCode,
+    destination,
+    endDate,
+    hotelPreference,
+    interests,
+    isCompleted,
+    originCity,
+    startDate,
+    token,
+    travelerCount,
+  ]);
 
   const toggleInterest = (value: string) => {
     setInterests((current) =>
@@ -494,7 +621,7 @@ export function TripRequestIntakeForm({
           duration_days: durationDays,
           client_name: clientName,
           client_email: clientEmail || null,
-          client_phone: clientPhone,
+          client_phone: normalizedPhone,
           traveler_count: travelerCount,
           start_date: startDate,
           end_date: endDate,
@@ -514,6 +641,23 @@ export function TripRequestIntakeForm({
       }
       /* eslint-enable no-restricted-syntax */
 
+      window.localStorage.setItem(
+        getDraftCacheKey(token),
+        JSON.stringify({
+          clientName,
+          countryCode,
+          clientPhone,
+          clientEmail,
+          destination,
+          originCity,
+          travelerCount,
+          hotelPreference,
+          budget,
+          interests,
+          startDate,
+          endDate,
+        }),
+      );
       window.location.assign(`/trip-request/${token}?submitted=1`);
     } catch {
       setLocalError("We couldn't submit your request right now. Please check your connection and try again.");
@@ -770,17 +914,37 @@ export function TripRequestIntakeForm({
                     </label>
                     <label className="space-y-2">
                       <FieldLabel label="WhatsApp number" required />
-                      <div className="relative">
-                        <Phone className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
-                        <input
-                          name="client_phone"
-                          value={clientPhone}
-                          onChange={(event) => setClientPhone(event.target.value)}
-                          required
-                          placeholder="+91 98xxxxxx21"
-                          className="h-[58px] w-full rounded-2xl border border-stone-200 bg-white pl-11 pr-4 text-[15px] text-stone-900 outline-none transition focus:border-stone-400 focus:shadow-[0_0_0_4px_rgba(0,0,0,0.04)]"
-                        />
+                      <div className="grid grid-cols-[108px_minmax(0,1fr)] gap-2">
+                        <div className="relative">
+                          <select
+                            value={countryCode}
+                            onChange={(event) => setCountryCode(event.target.value)}
+                            className="h-[58px] w-full appearance-none rounded-2xl border border-stone-200 bg-stone-50 px-4 text-[15px] font-medium text-stone-900 outline-none transition focus:border-stone-400 focus:shadow-[0_0_0_4px_rgba(0,0,0,0.04)]"
+                          >
+                            {COUNTRY_CODE_OPTIONS.map((option) => (
+                              <option key={option} value={option}>
+                                {option}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="relative">
+                          <Phone className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                          <input
+                            name="client_phone"
+                            value={clientPhone}
+                            onChange={(event) => setClientPhone(normalizeDigits(event.target.value).slice(0, 15))}
+                            inputMode="numeric"
+                            autoComplete="tel-national"
+                            required
+                            placeholder="98xxxxxx21"
+                            className="h-[58px] w-full rounded-2xl border border-stone-200 bg-white pl-11 pr-4 text-[15px] text-stone-900 outline-none transition focus:border-stone-400 focus:shadow-[0_0_0_4px_rgba(0,0,0,0.04)]"
+                          />
+                        </div>
                       </div>
+                      <p className="text-xs leading-5 text-stone-500">
+                        We’ll use WhatsApp to share your trip link and updates. Default country code is India.
+                      </p>
                     </label>
                     <label className="space-y-2 sm:col-span-2">
                       <FieldLabel label="Email address" />
@@ -926,7 +1090,7 @@ export function TripRequestIntakeForm({
                       <p className="mt-1 text-sm leading-6 text-stone-500">
                         {canSubmit
                           ? `${state.organizationName} will review your details and share your itinerary.`
-                          : "Fill the required traveller, destination, and date details to continue."}
+                          : "Fill the required traveller, WhatsApp, destination, and date details to continue."}
                       </p>
                     </div>
                     <button
