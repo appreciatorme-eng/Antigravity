@@ -334,6 +334,26 @@ describe("createCatchAllHandlers", () => {
     const body = await res.json();
     expect(body.error).toBe("Invalid JSON in request body");
   });
+
+  it("allows public trip request POST routes without admin csrf headers", async () => {
+    const { POST } = createCatchAllHandlers([
+      ["trip-request/:token", () => Promise.resolve(echoModule(["POST"]))],
+    ]);
+
+    const res = await POST(
+      new NextRequest("http://localhost/api/trip-request/public-token-123", {
+        method: "POST",
+      }),
+      {
+        params: Promise.resolve({ path: ["trip-request", "public-token-123"] }),
+      },
+    );
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.method).toBe("POST");
+    expect(body.params).toEqual({ token: "public-token-123" });
+  });
 });
 
 /* ------------------------------------------------------------------ */

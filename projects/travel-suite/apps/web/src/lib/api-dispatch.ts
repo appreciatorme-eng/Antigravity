@@ -119,6 +119,8 @@ async function dispatch(
       routePath === "auth/signup" ||
       routePath === "onboarding/setup" ||
       routePath.startsWith("share/") ||
+      routePath.startsWith("trip-request/") ||
+      routePath.startsWith("trip-request-form/") ||
       routePath === "payments/verify" ||
       routePath.startsWith("payments/links/") ||
       routePath === "payments/webhook" ||
