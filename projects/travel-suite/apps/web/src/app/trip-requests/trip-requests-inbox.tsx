@@ -10,6 +10,7 @@ import {
   Copy,
   PencilLine,
   FileDown,
+  RotateCw,
   Loader2,
   RefreshCcw,
   Search,
@@ -39,7 +40,7 @@ type TripRequestsApiPayload = {
   error?: string | null;
 };
 
-type ActionType = "regenerate_itinerary" | "resend_operator" | "resend_client";
+type ActionType = "regenerate_itinerary" | "resend_operator" | "resend_client" | "retry_request";
 type FilterKey = "all" | "attention" | "processing" | "completed";
 type SortKey = "needs_attention" | "newest" | "completed_recently" | "traveller_name";
 type EditFormState = {
@@ -164,6 +165,27 @@ function getDeliveryBadges(item: OperatorTripRequestListItem): readonly StatusBa
   if (item.stage === "completed" && !item.pdfUrl) {
     badges.push({
       label: "PDF unavailable",
+      tone: "border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-300",
+    });
+  }
+
+  if (item.generationError) {
+    badges.push({
+      label: "Generation failed",
+      tone: "border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-300",
+    });
+  }
+
+  if (item.operatorDeliveryError) {
+    badges.push({
+      label: "Operator send failed",
+      tone: "border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-300",
+    });
+  }
+
+  if (item.clientDeliveryError) {
+    badges.push({
+      label: "Traveller send failed",
       tone: "border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-300",
     });
   }
@@ -601,6 +623,12 @@ export function TripRequestsInbox() {
             {filteredRequests.map((item) => {
               const actionInFlight = runningAction[item.id];
               const canResend = item.stage === "completed";
+              const canRetry =
+                item.stage === "processing"
+                || item.stage === "submitted"
+                || Boolean(item.generationError)
+                || Boolean(item.operatorDeliveryError)
+                || Boolean(item.clientDeliveryError);
               return (
                 <article
                   key={item.id}
@@ -686,6 +714,21 @@ export function TripRequestsInbox() {
                           <div className="mt-2 text-sm text-foreground">
                             {item.attentionReason || "This request is healthy and ready for normal follow-through."}
                           </div>
+                          {item.generationError ? (
+                            <div className="mt-3 rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-sm text-rose-700 dark:text-rose-300">
+                              Generation: {item.generationError}
+                            </div>
+                          ) : null}
+                          {item.operatorDeliveryError ? (
+                            <div className="mt-3 rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-sm text-rose-700 dark:text-rose-300">
+                              Operator delivery: {item.operatorDeliveryError}
+                            </div>
+                          ) : null}
+                          {item.clientDeliveryError ? (
+                            <div className="mt-3 rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-sm text-rose-700 dark:text-rose-300">
+                              Traveller delivery: {item.clientDeliveryError}
+                            </div>
+                          ) : null}
                         </div>
                       </div>
 
@@ -741,6 +784,19 @@ export function TripRequestsInbox() {
                               <RefreshCcw className="h-4 w-4" />
                             )}
                             Regenerate itinerary
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void runAction(item.id, "retry_request")}
+                            disabled={Boolean(actionInFlight) || !canRetry}
+                            className="inline-flex items-center gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-50 dark:text-amber-300"
+                          >
+                            {actionInFlight === "retry_request" ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <RotateCw className="h-4 w-4" />
+                            )}
+                            Retry request
                           </button>
                           <button
                             type="button"

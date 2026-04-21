@@ -171,6 +171,9 @@ export type OperatorTripRequestListItem = {
   readonly lastOperatorResentAt: string | null;
   readonly lastClientResentAt: string | null;
   readonly lastItineraryRegeneratedAt: string | null;
+  readonly generationError: string | null;
+  readonly operatorDeliveryError: string | null;
+  readonly clientDeliveryError: string | null;
 };
 
 type TripRequestOrganizationRow = {
@@ -420,6 +423,9 @@ function getCompletionDeliveryMetadata(
   readonly lastOperatorResentAt: string | null;
   readonly lastClientResentAt: string | null;
   readonly lastItineraryRegeneratedAt: string | null;
+  readonly generationError: string | null;
+  readonly operatorDeliveryError: string | null;
+  readonly clientDeliveryError: string | null;
 } {
   const system = readCollectedFieldRecord(draft.collectedFields.__system);
   const readString = (key: string) =>
@@ -434,6 +440,9 @@ function getCompletionDeliveryMetadata(
     lastOperatorResentAt: readString("lastOperatorResentAt"),
     lastClientResentAt: readString("lastClientResentAt"),
     lastItineraryRegeneratedAt: readString("lastItineraryRegeneratedAt"),
+    generationError: readString("generationError"),
+    operatorDeliveryError: readString("operatorDeliveryError"),
+    clientDeliveryError: readString("clientDeliveryError"),
   };
 }
 
@@ -1659,6 +1668,9 @@ function toOperatorTripRequestListItem(row: TripRequestRow): OperatorTripRequest
     lastOperatorResentAt: metadata.lastOperatorResentAt,
     lastClientResentAt: metadata.lastClientResentAt,
     lastItineraryRegeneratedAt: metadata.lastItineraryRegeneratedAt,
+    generationError: metadata.generationError,
+    operatorDeliveryError: metadata.operatorDeliveryError,
+    clientDeliveryError: metadata.clientDeliveryError,
   };
 }
 
@@ -2114,14 +2126,35 @@ async function notifyAssistantGroupAboutCompletedDraft(
   organizationId: string,
   formToken: string,
   message: string,
-): Promise<{ sessionName: string | null; groupJid: string | null; operatorPhone: string | null }> {
+): Promise<{
+  sessionName: string | null;
+  groupJid: string | null;
+  operatorPhone: string | null;
+  delivered: boolean;
+  error: string | null;
+}> {
   const { sessionName, groupJid, operatorPhone } = await getLatestTripRequestDeliveryConnection(organizationId);
 
   if (!sessionName || !groupJid) {
-    return { sessionName, groupJid, operatorPhone };
+    return {
+      sessionName,
+      groupJid,
+      operatorPhone,
+      delivered: false,
+      error: "No connected assistant group found.",
+    };
   }
 
-  await guardedSendText(sessionName, groupJid, message).catch((error) => {
+  let operatorError: string | null = null;
+  let textDelivered = false;
+  let pdfDelivered = false;
+
+  await guardedSendText(sessionName, groupJid, message)
+    .then(() => {
+      textDelivered = true;
+    })
+    .catch((error) => {
+      operatorError = error instanceof Error ? error.message : "Failed to send completion text";
     logError("[trip-intake] failed to send trip form completion message", error, {
       organizationId,
       formToken,
@@ -2138,14 +2171,25 @@ async function notifyAssistantGroupAboutCompletedDraft(
       mimetype: "application/pdf",
       caption: "Trip itinerary PDF",
     },
-  ).catch((error) => {
-    logError("[trip-intake] failed to send trip form completion PDF", error, {
-      organizationId,
-      formToken,
+  )
+    .then(() => {
+      pdfDelivered = true;
+    })
+    .catch((error) => {
+      operatorError = operatorError ?? (error instanceof Error ? error.message : "Failed to send completion PDF");
+      logError("[trip-intake] failed to send trip form completion PDF", error, {
+        organizationId,
+        formToken,
+      });
     });
-  });
 
-  return { sessionName, groupJid, operatorPhone };
+  return {
+    sessionName,
+    groupJid,
+    operatorPhone,
+    delivered: textDelivered && pdfDelivered,
+    error: operatorError,
+  };
 }
 
 async function notifyClientAboutCompletedDraft(
@@ -2153,10 +2197,18 @@ async function notifyClientAboutCompletedDraft(
   sessionName: string | null,
   draft: TripRequestDraft,
   operatorPhone: string | null,
-): Promise<void> {
+): Promise<{ delivered: boolean; skipped: boolean; error: string | null }> {
   const phone = formatPhoneForStorage(draft.clientPhone ?? "");
   if (!sessionName || !phone || phone === operatorPhone) {
-    return;
+    return {
+      delivered: false,
+      skipped: true,
+      error: !sessionName
+        ? "No connected WhatsApp session found."
+        : !phone
+          ? "Traveller phone number is missing."
+          : "Traveller number matches the operator phone.",
+    };
   }
 
   const lines = [
@@ -2167,7 +2219,16 @@ async function notifyClientAboutCompletedDraft(
     `PDF: ${buildTripRequestPdfUrl(draft.formToken)}`,
   ].filter((value): value is string => Boolean(value));
 
-  await guardedSendText(sessionName, phone, lines.join("\n")).catch((error) => {
+  let clientError: string | null = null;
+  let textDelivered = false;
+  let pdfDelivered = false;
+
+  await guardedSendText(sessionName, phone, lines.join("\n"))
+    .then(() => {
+      textDelivered = true;
+    })
+    .catch((error) => {
+      clientError = error instanceof Error ? error.message : "Failed to send client completion text";
     logError("[trip-intake] failed to send trip form completion text to client", error, {
       organizationId,
       draftId: draft.id,
@@ -2185,13 +2246,24 @@ async function notifyClientAboutCompletedDraft(
       mimetype: "application/pdf",
       caption: "Your trip itinerary PDF",
     },
-  ).catch((error) => {
-    logError("[trip-intake] failed to send trip form completion PDF to client", error, {
-      organizationId,
-      draftId: draft.id,
-      clientPhone: phone,
+  )
+    .then(() => {
+      pdfDelivered = true;
+    })
+    .catch((error) => {
+      clientError = clientError ?? (error instanceof Error ? error.message : "Failed to send client completion PDF");
+      logError("[trip-intake] failed to send trip form completion PDF to client", error, {
+        organizationId,
+        draftId: draft.id,
+        clientPhone: phone,
+      });
     });
-  });
+
+  return {
+    delivered: textDelivered && pdfDelivered,
+    skipped: false,
+    error: clientError,
+  };
 }
 
 async function markCustomerSessionCompleted(
@@ -2724,6 +2796,11 @@ export async function completeSubmittedTripRequestForm(
 
   const finalState = toTripRequestFormState(finalDraft);
   if (finalDraft.status !== "completed") {
+    await updateDraft(ctx, finalDraft.id, {
+      collected_fields: mergeCompletionDeliveryMetadata(finalDraft, {
+        generationError: message,
+      }) as unknown as Json,
+    });
     if (claimedRow) {
       await updateDraft(ctx, finalDraft.id, { current_step: null });
     }
@@ -2746,7 +2823,7 @@ export async function completeSubmittedTripRequestForm(
         formToken,
         whatsappMessage,
       );
-      await notifyClientAboutCompletedDraft(
+      const clientDelivery = await notifyClientAboutCompletedDraft(
         row.organization_id,
         deliveryConnection.sessionName,
         finalDraft,
@@ -2756,10 +2833,11 @@ export async function completeSubmittedTripRequestForm(
       const updated = await updateDraft(ctx, finalDraft.id, {
         collected_fields: mergeCompletionDeliveryMetadata(finalDraft, {
           completionDeliveredAt: deliveredAt,
-          completionDeliveredToClient:
-            Boolean(finalDraft.clientPhone) &&
-            formatPhoneForStorage(finalDraft.clientPhone ?? "") !== deliveryConnection.operatorPhone,
-          completionDeliveredToAssistantGroup: Boolean(deliveryConnection.groupJid),
+          completionDeliveredToClient: clientDelivery.delivered,
+          completionDeliveredToAssistantGroup: deliveryConnection.delivered,
+          operatorDeliveryError: deliveryConnection.error,
+          clientDeliveryError: clientDelivery.skipped ? null : clientDelivery.error,
+          generationError: null,
         }) as unknown as Json,
       });
       if (updated) {
@@ -2770,10 +2848,8 @@ export async function completeSubmittedTripRequestForm(
         draftId: finalDraft.id,
         tripId: finalDraft.createdTripId,
         itineraryId: finalDraft.createdItineraryId,
-        notifiedAssistantGroup: Boolean(deliveryConnection.groupJid),
-        notifiedClient:
-          Boolean(finalDraft.clientPhone) &&
-        formatPhoneForStorage(finalDraft.clientPhone ?? "") !== deliveryConnection.operatorPhone,
+        notifiedAssistantGroup: deliveryConnection.delivered,
+        notifiedClient: clientDelivery.delivered,
       });
   }
   await markCustomerSessionCompleted(row.organization_id, finalDraft.clientPhone, finalDraft).catch((error) => {
@@ -2810,8 +2886,22 @@ export async function resendTripRequestCompletionToOperator(args: {
     buildCompletionDeliveryMessage(draft),
   );
 
-  if (!connection.groupJid) {
-    return { success: false, message: "No connected assistant group found for this organization." };
+  if (!connection.groupJid || !connection.delivered) {
+    const admin = createAdminClient();
+    await admin
+      .from("assistant_trip_requests")
+      .update({
+        collected_fields: mergeCompletionDeliveryMetadata(draft, {
+          operatorDeliveryError: connection.error ?? "Assistant group delivery failed.",
+        }) as unknown as Json,
+      })
+      .eq("id", draft.id)
+      .eq("organization_id", args.organizationId);
+
+    return {
+      success: false,
+      message: connection.error ?? "No connected assistant group found for this organization.",
+    };
   }
 
   const admin = createAdminClient();
@@ -2822,6 +2912,7 @@ export async function resendTripRequestCompletionToOperator(args: {
       collected_fields: mergeCompletionDeliveryMetadata(draft, {
         lastOperatorResentAt: now,
         completionDeliveredToAssistantGroup: true,
+        operatorDeliveryError: null,
       }) as unknown as Json,
     })
     .eq("id", draft.id)
@@ -2849,7 +2940,7 @@ export async function resendTripRequestCompletionToClient(args: {
   }
 
   const connection = await getLatestTripRequestDeliveryConnection(args.organizationId);
-  await notifyClientAboutCompletedDraft(
+  const delivery = await notifyClientAboutCompletedDraft(
     args.organizationId,
     connection.sessionName,
     draft,
@@ -2865,6 +2956,24 @@ export async function resendTripRequestCompletionToClient(args: {
     return { success: false, message: "Client resend skipped because the traveller number matches the operator phone." };
   }
 
+  if (!delivery.delivered) {
+    const admin = createAdminClient();
+    await admin
+      .from("assistant_trip_requests")
+      .update({
+        collected_fields: mergeCompletionDeliveryMetadata(draft, {
+          clientDeliveryError: delivery.error ?? "Traveller delivery failed.",
+        }) as unknown as Json,
+      })
+      .eq("id", draft.id)
+      .eq("organization_id", args.organizationId);
+
+    return {
+      success: false,
+      message: delivery.error ?? "Failed to send the trip package to the traveller.",
+    };
+  }
+
   const admin = createAdminClient();
   const now = new Date().toISOString();
   await admin
@@ -2873,6 +2982,7 @@ export async function resendTripRequestCompletionToClient(args: {
       collected_fields: mergeCompletionDeliveryMetadata(draft, {
         lastClientResentAt: now,
         completionDeliveredToClient: true,
+        clientDeliveryError: null,
       }) as unknown as Json,
     })
     .eq("id", draft.id)
@@ -2961,6 +3071,15 @@ export async function regenerateTripRequestItinerary(args: {
     .eq("id", draft.createdItineraryId);
 
   if (updateItineraryError) {
+    await admin
+      .from("assistant_trip_requests")
+      .update({
+        collected_fields: mergeCompletionDeliveryMetadata(draft, {
+          generationError: updateItineraryError.message,
+        }) as unknown as Json,
+      })
+      .eq("id", draft.id)
+      .eq("organization_id", args.organizationId);
     return { success: false, message: `Failed to regenerate the itinerary: ${updateItineraryError.message}` };
   }
 
@@ -2976,6 +3095,15 @@ export async function regenerateTripRequestItinerary(args: {
       .eq("organization_id", args.organizationId);
 
     if (updateTripError) {
+      await admin
+        .from("assistant_trip_requests")
+        .update({
+          collected_fields: mergeCompletionDeliveryMetadata(draft, {
+            generationError: updateTripError.message,
+          }) as unknown as Json,
+        })
+        .eq("id", draft.id)
+        .eq("organization_id", args.organizationId);
       return { success: false, message: `Itinerary regenerated, but trip dates could not be synced: ${updateTripError.message}` };
     }
   }
@@ -2988,6 +3116,7 @@ export async function regenerateTripRequestItinerary(args: {
       created_share_url: shareUrl,
       collected_fields: mergeCompletionDeliveryMetadata(draft, {
         lastItineraryRegeneratedAt: now,
+        generationError: null,
       }) as unknown as Json,
       updated_at: now,
     })
@@ -2995,6 +3124,46 @@ export async function regenerateTripRequestItinerary(args: {
     .eq("organization_id", args.organizationId);
 
   return { success: true, message: "Regenerated the itinerary with the current trip brief." };
+}
+
+export async function retryTripRequestFromOperator(args: {
+  organizationId: string;
+  draftId: string;
+}): Promise<{ readonly success: boolean; readonly message: string }> {
+  const row = await getDraftRowByOrganization(args.organizationId, args.draftId);
+  if (!row) {
+    return { success: false, message: "Trip request not found." };
+  }
+
+  const draft = mapDraft(row);
+  const admin = createAdminClient();
+  const metadata = getCompletionDeliveryMetadata(draft);
+
+  if (draft.status === "completed") {
+    if (metadata.operatorDeliveryError) {
+      return resendTripRequestCompletionToOperator(args);
+    }
+    if (metadata.clientDeliveryError) {
+      return resendTripRequestCompletionToClient(args);
+    }
+    return regenerateTripRequestItinerary(args);
+  }
+
+  if (draft.currentStep === "finalizing") {
+    await admin
+      .from("assistant_trip_requests")
+      .update({ current_step: null })
+      .eq("id", draft.id)
+      .eq("organization_id", args.organizationId);
+  }
+
+  const completion = await completeSubmittedTripRequestForm(draft.formToken);
+  return {
+    success: completion.success,
+    message: completion.success
+      ? "Retried the trip request successfully."
+      : completion.message,
+  };
 }
 
 async function resumeReplyForDraft(

@@ -4,16 +4,18 @@ import {
   regenerateTripRequestItinerary,
   resendTripRequestCompletionToClient,
   resendTripRequestCompletionToOperator,
+  retryTripRequestFromOperator,
 } from "@/lib/whatsapp/trip-intake.server";
 import { resolveTripRequestRouteContext } from "../../shared";
 
-type TripRequestAction = "regenerate_itinerary" | "resend_operator" | "resend_client";
+type TripRequestAction = "regenerate_itinerary" | "resend_operator" | "resend_client" | "retry_request";
 
 function isTripRequestAction(value: unknown): value is TripRequestAction {
   return (
     value === "regenerate_itinerary"
     || value === "resend_operator"
     || value === "resend_client"
+    || value === "retry_request"
   );
 }
 
@@ -39,6 +41,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id?: st
     const outcome =
       action === "regenerate_itinerary"
         ? await regenerateTripRequestItinerary({ organizationId, draftId: id })
+        : action === "retry_request"
+          ? await retryTripRequestFromOperator({ organizationId, draftId: id })
         : action === "resend_operator"
           ? await resendTripRequestCompletionToOperator({ organizationId, draftId: id })
           : await resendTripRequestCompletionToClient({ organizationId, draftId: id });
