@@ -20,7 +20,8 @@ type TripRequestStepId =
   | "budget"
   | "hotel_preference"
   | "interests"
-  | "origin_city";
+  | "origin_city"
+  | "finalizing";
 
 type TripRequestRow = {
   id: string;
@@ -212,8 +213,6 @@ const ACTIVE_DRAFT_STATUSES = ["draft", "ready_to_create"] as const;
 const ACTIVE_STATE_KEY_PREFIX = "assistant:trip-intake";
 const ACTIVE_STATE_TTL_SECONDS = 60 * 60 * 24;
 const APP_BASE_URL = (process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://tripbuilt.com").replace(/\/+$/, "");
-const COMPLETION_LOCK_TTL_SECONDS = 60 * 15;
-const COMPLETION_DELIVERED_TTL_SECONDS = 60 * 60 * 24 * 7;
 
 const STEP_DEFINITIONS: readonly StepDefinition[] = [
   {
@@ -302,41 +301,6 @@ function formatPhoneForStorage(value: string): string | null {
   return digits ? `+${digits}` : null;
 }
 
-function buildCompletionLockKey(formToken: string): string {
-  return `trip-request:completion-lock:${formToken}`;
-}
-
-function buildCompletionDeliveredKey(formToken: string): string {
-  return `trip-request:completion-delivered:${formToken}`;
-}
-
-async function tryAcquireCompletionLock(formToken: string): Promise<boolean> {
-  const key = buildCompletionLockKey(formToken);
-  const existing = await getCachedJson<{ startedAt?: string }>(key);
-  if (existing) {
-    return false;
-  }
-  await setCachedJson(key, { startedAt: new Date().toISOString() }, COMPLETION_LOCK_TTL_SECONDS);
-  return true;
-}
-
-async function releaseCompletionLock(formToken: string): Promise<void> {
-  await deleteCachedByPrefix(buildCompletionLockKey(formToken), 1);
-}
-
-async function wasCompletionDelivered(formToken: string): Promise<boolean> {
-  const existing = await getCachedJson<{ deliveredAt?: string }>(buildCompletionDeliveredKey(formToken));
-  return Boolean(existing);
-}
-
-async function markCompletionDelivered(formToken: string): Promise<void> {
-  await setCachedJson(
-    buildCompletionDeliveredKey(formToken),
-    { deliveredAt: new Date().toISOString() },
-    COMPLETION_DELIVERED_TTL_SECONDS,
-  );
-}
-
 function trimOrNull(value: string | null | undefined, maxLength = 160): string | null {
   if (!value) return null;
   const normalized = value.trim().replace(/\s+/g, " ");
@@ -385,6 +349,35 @@ function toCollectedFields(value: Json): Readonly<Record<string, unknown>> {
     return {};
   }
   return value as Record<string, unknown>;
+}
+
+function readCollectedFieldRecord(
+  value: unknown,
+): Readonly<Record<string, unknown>> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+  return value as Record<string, unknown>;
+}
+
+function hasCompletionDeliveryMarker(draft: TripRequestDraft): boolean {
+  const system = readCollectedFieldRecord(draft.collectedFields.__system);
+  return typeof system.completionDeliveredAt === "string" && system.completionDeliveredAt.trim().length > 0;
+}
+
+function mergeCompletionDeliveryMetadata(
+  draft: TripRequestDraft,
+  metadata: Readonly<Record<string, unknown>>,
+): Readonly<Record<string, unknown>> {
+  const current = { ...draft.collectedFields };
+  const system = readCollectedFieldRecord(current.__system);
+  return {
+    ...current,
+    __system: {
+      ...system,
+      ...metadata,
+    },
+  };
 }
 
 function toMissingRequiredFields(value: Json): readonly string[] {
@@ -1269,6 +1262,39 @@ async function getDraftByFormToken(
   }
 
   return fallbackData as TripRequestRow;
+}
+
+async function claimDraftFinalization(
+  formToken: string,
+): Promise<TripRequestRow | null> {
+  const admin = createAdminClient();
+  const tryClaimBy = async (column: "form_token" | "id", value: string) => {
+    const { data, error } = await admin
+      .from("assistant_trip_requests")
+      .update({ current_step: "finalizing" })
+      .eq(column, value)
+      .eq("status", "ready_to_create")
+      .is("current_step", null)
+      .select("*")
+      .maybeSingle();
+
+    if (!error && data) {
+      return data as TripRequestRow;
+    }
+
+    return null;
+  };
+
+  const claimed = await tryClaimBy("form_token", formToken);
+  if (claimed) {
+    return claimed;
+  }
+
+  if (isUuidLike(formToken)) {
+    return tryClaimBy("id", formToken);
+  }
+
+  return null;
 }
 
 export async function findLatestTripRequestForPhone(
@@ -2257,50 +2283,50 @@ export async function submitTripRequestForm(
 export async function completeSubmittedTripRequestForm(
   formToken: string,
 ): Promise<{ readonly success: boolean; readonly message: string; readonly state?: TripRequestFormState }> {
-  const lockAcquired = await tryAcquireCompletionLock(formToken);
-  if (!lockAcquired) {
-    const existing = await loadTripRequestFormState(formToken);
+  const claimedRow = await claimDraftFinalization(formToken);
+  const row = claimedRow ?? (await getDraftByFormToken(formToken));
+  if (!row) {
+    return { success: false, message: "Trip request form not found." };
+  }
+
+  const admin = createAdminClient();
+  const ctx: ActionContext = {
+    organizationId: row.organization_id,
+    userId: row.operator_user_id,
+    channel: "whatsapp_group",
+    supabase: admin,
+  };
+
+  let message = "This trip request has already been completed.";
+  let finalDraft = mapDraft(row);
+
+  if (claimedRow) {
+    message = await finalizeDraft(ctx, finalDraft);
+    const finalRow = await getDraftByFormToken(formToken);
+    finalDraft = finalRow ? mapDraft(finalRow) : finalDraft;
+  } else if (row.status === "completed") {
+    finalDraft = mapDraft(row);
+  } else {
     return {
       success: true,
       message: "This trip request is already being completed.",
-      state: existing ?? undefined,
+      state: toTripRequestFormState(mapDraft(row)),
     };
   }
 
-  try {
-    const row = await getDraftByFormToken(formToken);
-    if (!row) {
-      return { success: false, message: "Trip request form not found." };
+  const finalState = toTripRequestFormState(finalDraft);
+  if (finalDraft.status !== "completed") {
+    if (claimedRow) {
+      await updateDraft(ctx, finalDraft.id, { current_step: null });
     }
-
-    const admin = createAdminClient();
-    const ctx: ActionContext = {
-      organizationId: row.organization_id,
-      userId: row.operator_user_id,
-      channel: "whatsapp_group",
-      supabase: admin,
+    return {
+      success: false,
+      message,
+      state: finalState,
     };
+  }
 
-    let message = "This trip request has already been completed.";
-    let finalDraft = mapDraft(row);
-
-    if (row.status !== "completed") {
-      message = await finalizeDraft(ctx, finalDraft);
-      const finalRow = await getDraftByFormToken(formToken);
-      finalDraft = finalRow ? mapDraft(finalRow) : finalDraft;
-    }
-
-    const finalState = toTripRequestFormState(finalDraft);
-    if (finalDraft.status !== "completed") {
-      return {
-        success: false,
-        message,
-        state: finalState,
-      };
-    }
-
-    const alreadyDelivered = await wasCompletionDelivered(formToken);
-    if (!alreadyDelivered) {
+  if (!hasCompletionDeliveryMarker(finalDraft)) {
       const whatsappMessage = [
         `Trip form submitted for *${finalDraft.clientName ?? "the traveller"}*.`,
         finalDraft.createdShareUrl ? `Share link: ${finalDraft.createdShareUrl}` : "Share link is not ready yet.",
@@ -2318,7 +2344,19 @@ export async function completeSubmittedTripRequestForm(
         finalDraft,
         deliveryConnection.operatorPhone,
       );
-      await markCompletionDelivered(formToken);
+      const deliveredAt = new Date().toISOString();
+      const updated = await updateDraft(ctx, finalDraft.id, {
+        collected_fields: mergeCompletionDeliveryMetadata(finalDraft, {
+          completionDeliveredAt: deliveredAt,
+          completionDeliveredToClient:
+            Boolean(finalDraft.clientPhone) &&
+            formatPhoneForStorage(finalDraft.clientPhone ?? "") !== deliveryConnection.operatorPhone,
+          completionDeliveredToAssistantGroup: Boolean(deliveryConnection.groupJid),
+        }) as unknown as Json,
+      });
+      if (updated) {
+        finalDraft = updated;
+      }
       logEvent("info", "[trip-intake] completion delivered", {
         organizationId: row.organization_id,
         draftId: finalDraft.id,
@@ -2327,24 +2365,21 @@ export async function completeSubmittedTripRequestForm(
         notifiedAssistantGroup: Boolean(deliveryConnection.groupJid),
         notifiedClient:
           Boolean(finalDraft.clientPhone) &&
-          formatPhoneForStorage(finalDraft.clientPhone ?? "") !== deliveryConnection.operatorPhone,
+        formatPhoneForStorage(finalDraft.clientPhone ?? "") !== deliveryConnection.operatorPhone,
       });
-    }
-    await markCustomerSessionCompleted(row.organization_id, finalDraft.clientPhone, finalDraft).catch((error) => {
-      logError("[trip-intake] failed to mark customer flow completed", error, {
-        organizationId: row.organization_id,
-        draftId: finalDraft.id,
-      });
-    });
-
-    return {
-      success: true,
-      message,
-      state: finalState,
-    };
-  } finally {
-    await releaseCompletionLock(formToken);
   }
+  await markCustomerSessionCompleted(row.organization_id, finalDraft.clientPhone, finalDraft).catch((error) => {
+    logError("[trip-intake] failed to mark customer flow completed", error, {
+      organizationId: row.organization_id,
+      draftId: finalDraft.id,
+    });
+  });
+
+  return {
+    success: true,
+    message,
+    state: toTripRequestFormState(finalDraft),
+  };
 }
 
 async function resumeReplyForDraft(
