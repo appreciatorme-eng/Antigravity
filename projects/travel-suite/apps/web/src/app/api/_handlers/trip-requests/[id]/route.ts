@@ -1,6 +1,10 @@
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { logError } from "@/lib/observability/logger";
-import { updateTripRequestDraftForOperator, type OperatorTripRequestUpdateInput } from "@/lib/whatsapp/trip-intake.server";
+import {
+  cancelTripRequestForOperator,
+  updateTripRequestDraftForOperator,
+  type OperatorTripRequestUpdateInput,
+} from "@/lib/whatsapp/trip-intake.server";
 import { resolveTripRequestRouteContext } from "../shared";
 
 type TripRequestPatchBody = Partial<OperatorTripRequestUpdateInput>;
@@ -53,5 +57,37 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id?: s
   } catch (error) {
     logError("[trip-requests] failed to patch request", error);
     return apiError("Failed to update trip request", 500);
+  }
+}
+
+export async function DELETE(_: Request, { params }: { params: Promise<{ id?: string }> }) {
+  try {
+    const result = await resolveTripRequestRouteContext();
+    if (result.response) {
+      return result.response;
+    }
+
+    const { id } = await params;
+    if (!id) {
+      return apiError("Missing trip request id", 400);
+    }
+
+    const outcome = await cancelTripRequestForOperator({
+      organizationId: result.context.organization.id,
+      operatorUserId: result.context.user.id,
+      draftId: id,
+    });
+
+    if (!outcome.success) {
+      return apiError(outcome.message, 400);
+    }
+
+    return apiSuccess({
+      ok: true,
+      message: outcome.message,
+    });
+  } catch (error) {
+    logError("[trip-requests] failed to delete request", error);
+    return apiError("Failed to delete trip request", 500);
   }
 }

@@ -2647,6 +2647,47 @@ export async function updateTripRequestDraftForOperator(args: {
   };
 }
 
+export async function cancelTripRequestForOperator(args: {
+  organizationId: string;
+  draftId: string;
+  operatorUserId?: string | null;
+}): Promise<{ readonly success: boolean; readonly message: string }> {
+  const row = await getDraftRowByOrganization(args.organizationId, args.draftId);
+  if (!row) {
+    return { success: false, message: "Trip request not found." };
+  }
+
+  if (args.operatorUserId && row.operator_user_id !== args.operatorUserId) {
+    return { success: false, message: "You do not have access to delete this trip request." };
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("assistant_trip_requests")
+    .update({
+      status: "cancelled",
+      current_step: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", row.id)
+    .eq("organization_id", args.organizationId);
+
+  if (error) {
+    logError("[trip-intake] failed to cancel trip request from operator inbox", error, {
+      organizationId: args.organizationId,
+      draftId: args.draftId,
+    });
+    return { success: false, message: `Failed to delete trip request: ${error.message}` };
+  }
+
+  return {
+    success: true,
+    message: row.created_trip_id
+      ? "Removed the request from the inbox. The linked trip remains available."
+      : "Removed the request from the inbox.",
+  };
+}
+
 export async function completeSubmittedTripRequestForm(
   formToken: string,
 ): Promise<{ readonly success: boolean; readonly message: string; readonly state?: TripRequestFormState }> {
