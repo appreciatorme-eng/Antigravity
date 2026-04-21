@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { enforcePublicRouteRateLimit } from "@/lib/security/public-rate-limit";
+import { logError } from "@/lib/observability/logger";
+import { scheduleBackgroundTask } from "@/lib/server/background";
 import {
+  completeSubmittedTripRequestForm,
   loadTripRequestFormState,
   submitTripRequestForm,
   type TripRequestSubmitterRole,
@@ -137,11 +140,20 @@ export async function POST(
       submitterRole: parseSubmitterRole(
         typeof body.submitter_role === "string" ? body.submitter_role : null,
       ),
-    });
+    }, { deferFinalization: true });
 
     if (!result.success) {
       return apiError(result.message, 400, result.state ? { state: result.state } : undefined);
     }
+
+    scheduleBackgroundTask(async () => {
+      const completion = await completeSubmittedTripRequestForm(token);
+      if (!completion.success) {
+        logError("[trip-request] background completion failed", new Error(completion.message), {
+          token,
+        });
+      }
+    });
 
     return apiSuccess({
       message: result.message,
@@ -176,12 +188,21 @@ export async function POST(
       originCity: parseOptionalText(formData.get("origin_city")),
       submittedBy: parseOptionalText(formData.get("submitted_by")),
       submitterRole: parseSubmitterRole(parseOptionalText(formData.get("submitter_role"))),
-    });
+    }, { deferFinalization: true });
 
     if (!result.success) {
       redirectUrl.searchParams.set("error", result.message);
       return NextResponse.redirect(redirectUrl, { status: 303 });
     }
+
+    scheduleBackgroundTask(async () => {
+      const completion = await completeSubmittedTripRequestForm(token);
+      if (!completion.success) {
+        logError("[trip-request] background completion failed", new Error(completion.message), {
+          token,
+        });
+      }
+    });
 
     redirectUrl.searchParams.set("submitted", "1");
     return NextResponse.redirect(redirectUrl, { status: 303 });

@@ -2092,6 +2092,10 @@ type TripRequestFormSubmitInput = {
   submitterRole: TripRequestSubmitterRole | null;
 };
 
+type SubmitTripRequestFormOptions = {
+  deferFinalization?: boolean;
+};
+
 export async function loadTripRequestFormState(
   formToken: string,
 ): Promise<TripRequestFormState | null> {
@@ -2107,6 +2111,7 @@ export async function loadTripRequestFormState(
 export async function submitTripRequestForm(
   formToken: string,
   input: TripRequestFormSubmitInput,
+  options: SubmitTripRequestFormOptions = {},
 ): Promise<{ readonly success: boolean; readonly message: string; readonly state?: TripRequestFormState }> {
   const row = await getDraftByFormToken(formToken);
   if (!row) {
@@ -2197,9 +2202,44 @@ export async function submitTripRequestForm(
     return { success: false, message: "I couldn't save that trip request form." };
   }
 
-  const message = await finalizeDraft(ctx, updatedDraft);
+  if (options.deferFinalization) {
+    return {
+      success: true,
+      message: "Thanks — your trip request is in progress. We’re preparing the itinerary now and will share it here shortly.",
+      state: toTripRequestFormState(updatedDraft),
+    };
+  }
+
+  return completeSubmittedTripRequestForm(formToken);
+}
+
+export async function completeSubmittedTripRequestForm(
+  formToken: string,
+): Promise<{ readonly success: boolean; readonly message: string; readonly state?: TripRequestFormState }> {
+  const row = await getDraftByFormToken(formToken);
+  if (!row) {
+    return { success: false, message: "Trip request form not found." };
+  }
+
+  if (row.status === "completed") {
+    return {
+      success: true,
+      message: "This trip request has already been completed.",
+      state: toTripRequestFormState(mapDraft(row)),
+    };
+  }
+
+  const admin = createAdminClient();
+  const ctx: ActionContext = {
+    organizationId: row.organization_id,
+    userId: row.operator_user_id,
+    channel: "whatsapp_group",
+    supabase: admin,
+  };
+
+  const message = await finalizeDraft(ctx, mapDraft(row));
   const finalRow = await getDraftByFormToken(formToken);
-  const finalDraft = finalRow ? mapDraft(finalRow) : updatedDraft;
+  const finalDraft = finalRow ? mapDraft(finalRow) : mapDraft(row);
   const finalState = toTripRequestFormState(finalDraft);
 
   if (finalDraft.status !== "completed") {
@@ -2211,7 +2251,7 @@ export async function submitTripRequestForm(
   }
 
   const whatsappMessage = [
-    `Trip form submitted for *${finalDraft.clientName ?? clientName}*.`,
+    `Trip form submitted for *${finalDraft.clientName ?? "the traveller"}*.`,
     finalDraft.createdShareUrl ? `Share link: ${finalDraft.createdShareUrl}` : "Share link is not ready yet.",
     `PDF: ${buildTripRequestPdfUrl(formToken)}`,
   ].join("\n");
