@@ -1,11 +1,9 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import {
-  AlertTriangle,
   ArrowLeft,
   ArrowUpRight,
   CheckCircle2,
-  Clock3,
   FileDown,
   Send,
 } from "lucide-react";
@@ -17,6 +15,7 @@ import {
 } from "@/lib/whatsapp/trip-intake.server";
 import { cn } from "@/lib/utils";
 import { TripRequestDetailActions } from "./TripRequestDetailActions";
+import { TripRequestDetailTimeline } from "./TripRequestDetailTimeline";
 
 function formatDateTime(value: string | null): string {
   if (!value) return "—";
@@ -26,12 +25,6 @@ function formatDateTime(value: string | null): string {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(parsed);
-}
-
-function toTimestamp(value: string | null): number {
-  if (!value) return 0;
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? 0 : parsed.getTime();
 }
 
 function stageClasses(stage: OperatorTripRequestListItem["stage"]): string {
@@ -116,38 +109,6 @@ function getDeliveryBadges(item: OperatorTripRequestListItem): Array<{ label: st
   }
 
   return badges;
-}
-
-function getTimelineEvents(item: OperatorTripRequestListItem): Array<{ label: string; value: string; tone: string }> {
-  const events: Array<{ label: string; value: string; tone: string }> = [];
-
-  if (item.submittedAt) {
-    events.push({ label: "Submitted", value: item.submittedAt, tone: "bg-slate-500" });
-  }
-  if (item.lastItineraryRegeneratedAt) {
-    events.push({ label: "Regenerated", value: item.lastItineraryRegeneratedAt, tone: "bg-fuchsia-500" });
-  }
-  if (item.completionDeliveredAt) {
-    events.push({ label: "Trip ready", value: item.completionDeliveredAt, tone: "bg-emerald-500" });
-  }
-  if (item.lastOperatorResentAt) {
-    events.push({ label: "Resent to operator", value: item.lastOperatorResentAt, tone: "bg-sky-500" });
-  }
-  if (item.lastClientResentAt) {
-    events.push({ label: "Resent to traveller", value: item.lastClientResentAt, tone: "bg-amber-500" });
-  }
-  for (const entry of item.actionHistory) {
-    events.push({
-      label: entry.title,
-      value: entry.occurredAt,
-      tone: entry.tone === "info" ? "bg-sky-500" : entry.tone === "error" ? "bg-rose-500" : "bg-emerald-500",
-    });
-  }
-
-  return events
-    .sort((left, right) => toTimestamp(left.value) - toTimestamp(right.value))
-    .filter((event, index, array) =>
-      index === array.findIndex((candidate) => candidate.label === event.label && candidate.value === event.value));
 }
 
 export default async function TripRequestDetailPage({
@@ -355,33 +316,7 @@ export default async function TripRequestDetailPage({
             </dl>
           </div>
 
-          <div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
-            <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.18em] text-muted-foreground">
-              <Clock3 className="h-4 w-4" />
-              Activity timeline
-            </div>
-            {getTimelineEvents(request).length > 0 ? (
-              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                {getTimelineEvents(request).map((event) => (
-                  <div
-                    key={`${event.label}-${event.value}`}
-                    className="rounded-2xl border border-border bg-muted/20 px-4 py-3"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className={cn("h-2.5 w-2.5 rounded-full", event.tone)} />
-                      <span className="text-sm font-semibold text-foreground">{event.label}</span>
-                    </div>
-                    <div className="mt-2 text-sm text-muted-foreground">{formatDateTime(event.value)}</div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
-                <AlertTriangle className="h-4 w-4" />
-                No retry or resend history yet for this request.
-              </div>
-            )}
-          </div>
+          <TripRequestDetailTimeline request={request} />
         </div>
 
         <div className="space-y-4">
