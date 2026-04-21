@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   CheckCircle2,
@@ -47,6 +47,14 @@ type StatusChip = {
   tone: string;
   actionLabel?: string;
   action?: ActionType | "edit";
+};
+
+type InlineFeedback = {
+  title: string;
+  description: string;
+  tone: "success" | "info";
+  action: "saved" | ActionType;
+  occurredAt: number;
 };
 
 function buildEditFormState(item: OperatorTripRequestListItem): EditFormState {
@@ -173,12 +181,79 @@ export function TripRequestDetailActions({
   const [editForm, setEditForm] = useState<EditFormState>(() => buildEditFormState(initialRequest));
   const [savingEdit, setSavingEdit] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [inlineFeedback, setInlineFeedback] = useState<InlineFeedback | null>(null);
+
+  useEffect(() => {
+    setRequest(initialRequest);
+    setEditForm(buildEditFormState(initialRequest));
+  }, [initialRequest]);
 
   const canResendClient = useMemo(
     () => Boolean(request.clientPhone || request.clientEmail || request.createdShareUrl || request.pdfUrl),
     [request],
   );
   const statusChips = useMemo(() => getActionableStatusChips(request), [request]);
+
+  function applyOptimisticActionUpdate(action: ActionType) {
+    const now = new Date().toISOString();
+    setRequest((current) => {
+      if (action === "resend_operator") {
+        return {
+          ...current,
+          operatorNotified: true,
+          operatorDeliveryError: null,
+          lastOperatorResentAt: now,
+        };
+      }
+      if (action === "resend_client") {
+        return {
+          ...current,
+          clientNotified: true,
+          clientDeliveryError: null,
+          lastClientResentAt: now,
+        };
+      }
+      if (action === "regenerate_itinerary") {
+        return {
+          ...current,
+          lastItineraryRegeneratedAt: now,
+          generationError: null,
+          stage: current.stage === "completed" ? current.stage : "processing",
+          stageLabel: current.stage === "completed" ? current.stageLabel : "Processing",
+        };
+      }
+      return {
+        ...current,
+        generationError: null,
+        operatorDeliveryError: null,
+        clientDeliveryError: null,
+        stage: current.stage === "draft" || current.stage === "submitted" ? "processing" : current.stage,
+        stageLabel:
+          current.stage === "draft" || current.stage === "submitted"
+            ? "Processing"
+            : current.stageLabel,
+      };
+    });
+  }
+
+  function setInlineActionFeedback(action: ActionType, description: string) {
+    const title =
+      action === "resend_operator"
+        ? "Operator resend started"
+        : action === "resend_client"
+          ? "Traveller resend started"
+          : action === "regenerate_itinerary"
+            ? "Regeneration started"
+            : "Retry started";
+
+    setInlineFeedback({
+      title,
+      description,
+      tone: action === "retry_request" || action === "regenerate_itinerary" ? "info" : "success",
+      action,
+      occurredAt: Date.now(),
+    });
+  }
 
   async function runAction(action: ActionType) {
     setRunningAction(action);
@@ -205,6 +280,8 @@ export function TripRequestDetailActions({
         description: payload.data?.message ?? "Action completed.",
         variant: "success",
       });
+      applyOptimisticActionUpdate(action);
+      setInlineActionFeedback(action, payload.data?.message ?? "Action completed.");
       router.refresh();
     } catch (error) {
       toast({
@@ -277,6 +354,13 @@ export function TripRequestDetailActions({
         title: "Trip request updated",
         description: payload.data?.message ?? "Saved the new trip brief.",
         variant: "success",
+      });
+      setInlineFeedback({
+        title: "Brief saved",
+        description: payload.data?.message ?? "The request details were updated successfully.",
+        tone: "success",
+        action: "saved",
+        occurredAt: Date.now(),
       });
       setEditOpen(false);
       router.refresh();
@@ -409,6 +493,26 @@ export function TripRequestDetailActions({
               Live issue chips show the exact blocker on this request. Use the inline action on each chip for the
               fastest recovery path.
             </p>
+            {inlineFeedback ? (
+              <div
+                className={cn(
+                  "mt-4 rounded-2xl border px-4 py-3",
+                  inlineFeedback.tone === "success"
+                    ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                    : "border-sky-500/20 bg-sky-500/10 text-sky-700 dark:text-sky-300",
+                )}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <div className="text-sm font-bold">{inlineFeedback.title}</div>
+                    <div className="mt-1 text-sm opacity-90">{inlineFeedback.description}</div>
+                  </div>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] opacity-75">
+                    Just now
+                  </div>
+                </div>
+              </div>
+            ) : null}
             <div className="mt-4 flex flex-wrap gap-2">
               {statusChips.map((chip) => {
                 const isRunning = chip.action && chip.action !== "edit" && runningAction === chip.action;
