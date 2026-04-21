@@ -14,7 +14,10 @@ import {
 } from "lucide-react";
 import { authedFetch } from "@/lib/api/authed-fetch";
 import { useToast } from "@/components/ui/toast";
-import type { OperatorTripRequestListItem } from "@/lib/whatsapp/trip-intake.server";
+import type {
+  OperatorTripRequestActionHistoryEntry,
+  OperatorTripRequestListItem,
+} from "@/lib/whatsapp/trip-intake.server";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -54,10 +57,29 @@ type InlineFeedback = {
   description: string;
   tone: "success" | "info";
   action: "saved" | ActionType;
-  occurredAt: number;
+  occurredAt: string;
 };
 
 type ActionRailEntry = InlineFeedback;
+
+function formatActionTimestamp(value: string): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "Recently";
+  return new Intl.DateTimeFormat("en-IN", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(parsed);
+}
+
+function toActionRailEntries(entries: readonly OperatorTripRequestActionHistoryEntry[]): ActionRailEntry[] {
+  return entries.slice(0, 4).map((entry) => ({
+    title: entry.title,
+    description: entry.description,
+    tone: entry.tone,
+    action: entry.action === "completion_delivered" ? "resend_operator" : entry.action,
+    occurredAt: entry.occurredAt,
+  }));
+}
 
 function buildEditFormState(item: OperatorTripRequestListItem): EditFormState {
   return {
@@ -184,11 +206,12 @@ export function TripRequestDetailActions({
   const [savingEdit, setSavingEdit] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [inlineFeedback, setInlineFeedback] = useState<InlineFeedback | null>(null);
-  const [actionRail, setActionRail] = useState<ActionRailEntry[]>([]);
+  const [actionRail, setActionRail] = useState<ActionRailEntry[]>(() => toActionRailEntries(initialRequest.actionHistory));
 
   useEffect(() => {
     setRequest(initialRequest);
     setEditForm(buildEditFormState(initialRequest));
+    setActionRail(toActionRailEntries(initialRequest.actionHistory));
   }, [initialRequest]);
 
   const canResendClient = useMemo(
@@ -254,7 +277,7 @@ export function TripRequestDetailActions({
       description,
       tone: action === "retry_request" || action === "regenerate_itinerary" ? "info" : "success",
       action,
-      occurredAt: Date.now(),
+      occurredAt: new Date().toISOString(),
     };
     setInlineFeedback(feedback);
     setActionRail((current) => [feedback, ...current].slice(0, 4));
@@ -365,7 +388,7 @@ export function TripRequestDetailActions({
         description: payload.data?.message ?? "The request details were updated successfully.",
         tone: "success",
         action: "saved",
-        occurredAt: Date.now(),
+        occurredAt: new Date().toISOString(),
       };
       setInlineFeedback(feedback);
       setActionRail((current) => [feedback, ...current].slice(0, 4));
@@ -519,7 +542,7 @@ export function TripRequestDetailActions({
                           <div className="mt-1 text-xs leading-5 opacity-90">{entry.description}</div>
                         </div>
                         <div className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.16em] opacity-75">
-                          Just now
+                          {formatActionTimestamp(entry.occurredAt)}
                         </div>
                       </div>
                     </div>

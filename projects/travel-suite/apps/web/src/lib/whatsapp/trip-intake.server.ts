@@ -134,6 +134,20 @@ export type OperatorTripRequestStage =
   | "completed"
   | "cancelled";
 
+export type OperatorTripRequestActionHistoryEntry = {
+  readonly action:
+    | "saved"
+    | "retry_request"
+    | "regenerate_itinerary"
+    | "resend_operator"
+    | "resend_client"
+    | "completion_delivered";
+  readonly title: string;
+  readonly description: string;
+  readonly occurredAt: string;
+  readonly tone: "success" | "info";
+};
+
 export type OperatorTripRequestListItem = {
   readonly id: string;
   readonly formToken: string;
@@ -174,6 +188,7 @@ export type OperatorTripRequestListItem = {
   readonly generationError: string | null;
   readonly operatorDeliveryError: string | null;
   readonly clientDeliveryError: string | null;
+  readonly actionHistory: readonly OperatorTripRequestActionHistoryEntry[];
 };
 
 type TripRequestOrganizationRow = {
@@ -426,12 +441,57 @@ function getCompletionDeliveryMetadata(
   readonly generationError: string | null;
   readonly operatorDeliveryError: string | null;
   readonly clientDeliveryError: string | null;
+  readonly actionHistory: readonly OperatorTripRequestActionHistoryEntry[];
 } {
   const system = readCollectedFieldRecord(draft.collectedFields.__system);
   const readString = (key: string) =>
     typeof system[key] === "string" && system[key].trim().length > 0
       ? system[key] as string
       : null;
+  const actionHistory = Array.isArray(system.actionHistory)
+    ? system.actionHistory
+      .map((entry) => {
+        if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+          return null;
+        }
+        const value = entry as Record<string, unknown>;
+        const action =
+          typeof value.action === "string"
+          && [
+            "saved",
+            "retry_request",
+            "regenerate_itinerary",
+            "resend_operator",
+            "resend_client",
+            "completion_delivered",
+          ].includes(value.action)
+            ? value.action as OperatorTripRequestActionHistoryEntry["action"]
+            : null;
+        const title = typeof value.title === "string" && value.title.trim() ? value.title.trim() : null;
+        const description = typeof value.description === "string" && value.description.trim()
+          ? value.description.trim()
+          : null;
+        const occurredAt = typeof value.occurredAt === "string" && value.occurredAt.trim()
+          ? value.occurredAt.trim()
+          : null;
+        const tone = value.tone === "info" ? "info" : "success";
+
+        if (!action || !title || !description || !occurredAt) {
+          return null;
+        }
+
+        return {
+          action,
+          title,
+          description,
+          occurredAt,
+          tone,
+        } satisfies OperatorTripRequestActionHistoryEntry;
+      })
+      .filter((entry): entry is OperatorTripRequestActionHistoryEntry => Boolean(entry))
+      .sort((left, right) => new Date(right.occurredAt).getTime() - new Date(left.occurredAt).getTime())
+      .slice(0, 8)
+    : [];
 
   return {
     completionDeliveredAt: readString("completionDeliveredAt"),
@@ -443,7 +503,23 @@ function getCompletionDeliveryMetadata(
     generationError: readString("generationError"),
     operatorDeliveryError: readString("operatorDeliveryError"),
     clientDeliveryError: readString("clientDeliveryError"),
+    actionHistory,
   };
+}
+
+function appendTripRequestActionHistory(
+  draft: TripRequestDraft,
+  entry: Omit<OperatorTripRequestActionHistoryEntry, "occurredAt"> & { occurredAt?: string },
+): Readonly<Record<string, unknown>> {
+  const metadata = getCompletionDeliveryMetadata(draft);
+  const nextEntry: OperatorTripRequestActionHistoryEntry = {
+    ...entry,
+    occurredAt: entry.occurredAt ?? new Date().toISOString(),
+  };
+
+  return mergeCompletionDeliveryMetadata(draft, {
+    actionHistory: [nextEntry, ...metadata.actionHistory].slice(0, 8),
+  });
 }
 
 function mergeCompletionDeliveryMetadata(
@@ -1671,6 +1747,7 @@ function toOperatorTripRequestListItem(row: TripRequestRow): OperatorTripRequest
     generationError: metadata.generationError,
     operatorDeliveryError: metadata.operatorDeliveryError,
     clientDeliveryError: metadata.clientDeliveryError,
+    actionHistory: metadata.actionHistory,
   };
 }
 
@@ -2676,13 +2753,33 @@ export async function updateTripRequestDraftForOperator(args: {
     interests,
     origin_city: originCity ?? "",
   };
-
   const nextStatus: TripRequestStatus =
     row.status === "completed"
       ? "completed"
       : missingRequiredFields.length === 0
         ? "ready_to_create"
         : "draft";
+  const draftForHistory = mapDraft({
+    ...row,
+    destination,
+    duration_days: args.input.durationDays,
+    client_name: clientName,
+    client_email: clientEmail,
+    client_phone: clientPhone,
+    traveler_count: args.input.travelerCount,
+    travel_window: travelWindow,
+    start_date: startDate,
+    end_date: endDate,
+    budget,
+    hotel_preference: hotelPreference,
+    interests,
+    origin_city: originCity,
+    request_summary: requestSummary,
+    status: nextStatus,
+    current_step: nextStatus === "draft" ? row.current_step : null,
+    missing_required_fields: missingRequiredFields as unknown as Json,
+    collected_fields: updatedCollectedFields as unknown as Json,
+  } as TripRequestRow);
 
   const admin = createAdminClient();
   const { data, error } = await admin
@@ -2705,7 +2802,15 @@ export async function updateTripRequestDraftForOperator(args: {
       status: nextStatus,
       current_step: nextStatus === "draft" ? row.current_step : null,
       missing_required_fields: missingRequiredFields as unknown as Json,
-      collected_fields: updatedCollectedFields as unknown as Json,
+      collected_fields: appendTripRequestActionHistory(
+        draftForHistory,
+        {
+          action: "saved",
+          title: "Brief saved",
+          description: "Updated the traveller brief from the operator workspace.",
+          tone: "success",
+        },
+      ) as unknown as Json,
     })
     .eq("id", row.id)
     .eq("organization_id", args.organizationId)
@@ -2839,14 +2944,28 @@ export async function completeSubmittedTripRequestForm(
       );
       const deliveredAt = new Date().toISOString();
       const updated = await updateDraft(ctx, finalDraft.id, {
-        collected_fields: mergeCompletionDeliveryMetadata(finalDraft, {
-          completionDeliveredAt: deliveredAt,
-          completionDeliveredToClient: clientDelivery.delivered,
-          completionDeliveredToAssistantGroup: deliveryConnection.delivered,
-          operatorDeliveryError: deliveryConnection.error,
-          clientDeliveryError: clientDelivery.skipped ? null : clientDelivery.error,
-          generationError: null,
-        }) as unknown as Json,
+        collected_fields: appendTripRequestActionHistory(
+          {
+            ...finalDraft,
+            collectedFields: mergeCompletionDeliveryMetadata(finalDraft, {
+              completionDeliveredAt: deliveredAt,
+              completionDeliveredToClient: clientDelivery.delivered,
+              completionDeliveredToAssistantGroup: deliveryConnection.delivered,
+              operatorDeliveryError: deliveryConnection.error,
+              clientDeliveryError: clientDelivery.skipped ? null : clientDelivery.error,
+              generationError: null,
+            }),
+          },
+          {
+            action: "completion_delivered",
+            title: "Trip package delivered",
+            description: clientDelivery.delivered
+              ? "The itinerary package was shared with the operator and traveller."
+              : "The itinerary package was shared with the operator.",
+            tone: "success",
+            occurredAt: deliveredAt,
+          },
+        ) as unknown as Json,
       });
       if (updated) {
         finalDraft = updated;
@@ -2917,11 +3036,23 @@ export async function resendTripRequestCompletionToOperator(args: {
   await admin
     .from("assistant_trip_requests")
     .update({
-      collected_fields: mergeCompletionDeliveryMetadata(draft, {
-        lastOperatorResentAt: now,
-        completionDeliveredToAssistantGroup: true,
-        operatorDeliveryError: null,
-      }) as unknown as Json,
+      collected_fields: appendTripRequestActionHistory(
+        {
+          ...draft,
+          collectedFields: mergeCompletionDeliveryMetadata(draft, {
+            lastOperatorResentAt: now,
+            completionDeliveredToAssistantGroup: true,
+            operatorDeliveryError: null,
+          }),
+        },
+        {
+          action: "resend_operator",
+          title: "Resent to operator",
+          description: "Sent the latest trip package to the assistant group.",
+          tone: "success",
+          occurredAt: now,
+        },
+      ) as unknown as Json,
     })
     .eq("id", draft.id)
     .eq("organization_id", args.organizationId);
@@ -2987,11 +3118,23 @@ export async function resendTripRequestCompletionToClient(args: {
   await admin
     .from("assistant_trip_requests")
     .update({
-      collected_fields: mergeCompletionDeliveryMetadata(draft, {
-        lastClientResentAt: now,
-        completionDeliveredToClient: true,
-        clientDeliveryError: null,
-      }) as unknown as Json,
+      collected_fields: appendTripRequestActionHistory(
+        {
+          ...draft,
+          collectedFields: mergeCompletionDeliveryMetadata(draft, {
+            lastClientResentAt: now,
+            completionDeliveredToClient: true,
+            clientDeliveryError: null,
+          }),
+        },
+        {
+          action: "resend_client",
+          title: "Resent to traveller",
+          description: "Sent the latest trip package to the traveller on WhatsApp.",
+          tone: "success",
+          occurredAt: now,
+        },
+      ) as unknown as Json,
     })
     .eq("id", draft.id)
     .eq("organization_id", args.organizationId);
@@ -3122,10 +3265,22 @@ export async function regenerateTripRequestItinerary(args: {
     .from("assistant_trip_requests")
     .update({
       created_share_url: shareUrl,
-      collected_fields: mergeCompletionDeliveryMetadata(draft, {
-        lastItineraryRegeneratedAt: now,
-        generationError: null,
-      }) as unknown as Json,
+      collected_fields: appendTripRequestActionHistory(
+        {
+          ...draft,
+          collectedFields: mergeCompletionDeliveryMetadata(draft, {
+            lastItineraryRegeneratedAt: now,
+            generationError: null,
+          }),
+        },
+        {
+          action: "regenerate_itinerary",
+          title: "Itinerary regenerated",
+          description: "Regenerated the itinerary with the current trip brief.",
+          tone: "info",
+          occurredAt: now,
+        },
+      ) as unknown as Json,
       updated_at: now,
     })
     .eq("id", draft.id)

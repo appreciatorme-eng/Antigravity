@@ -136,8 +136,18 @@ function getTimelineEvents(item: OperatorTripRequestListItem): Array<{ label: st
   if (item.lastClientResentAt) {
     events.push({ label: "Resent to traveller", value: item.lastClientResentAt, tone: "bg-amber-500" });
   }
+  for (const entry of item.actionHistory) {
+    events.push({
+      label: entry.title,
+      value: entry.occurredAt,
+      tone: entry.tone === "info" ? "bg-sky-500" : "bg-emerald-500",
+    });
+  }
 
-  return events.sort((left, right) => toTimestamp(left.value) - toTimestamp(right.value));
+  return events
+    .sort((left, right) => toTimestamp(left.value) - toTimestamp(right.value))
+    .filter((event, index, array) =>
+      index === array.findIndex((candidate) => candidate.label === event.label && candidate.value === event.value));
 }
 
 export default async function TripRequestDetailPage({

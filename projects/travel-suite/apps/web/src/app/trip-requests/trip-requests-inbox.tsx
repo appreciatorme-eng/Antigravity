@@ -291,7 +291,18 @@ function getTimelineEvents(item: OperatorTripRequestListItem): readonly Timeline
     });
   }
 
-  return events.sort((left, right) => toTimestamp(left.value) - toTimestamp(right.value));
+  for (const entry of item.actionHistory) {
+    events.push({
+      label: entry.title,
+      value: entry.occurredAt,
+      tone: entry.tone === "info" ? "bg-sky-500" : "bg-emerald-500",
+    });
+  }
+
+  return events
+    .sort((left, right) => toTimestamp(left.value) - toTimestamp(right.value))
+    .filter((event, index, array) =>
+      index === array.findIndex((candidate) => candidate.label === event.label && candidate.value === event.value));
 }
 
 function buildEditFormState(item: OperatorTripRequestListItem): EditFormState {
@@ -895,6 +906,11 @@ export function TripRequestsInbox() {
                           <div className="mt-2 text-sm text-foreground">
                             {item.attentionReason || "This request is healthy and ready for normal follow-through."}
                           </div>
+                          {item.actionHistory[0] ? (
+                            <div className="mt-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+                              Latest action: {item.actionHistory[0].title}
+                            </div>
+                          ) : null}
                           {item.generationError ? (
                             <div className="mt-3 rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-sm text-rose-700 dark:text-rose-300">
                               Generation: {item.generationError}
