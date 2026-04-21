@@ -511,7 +511,7 @@ export function TripRequestsInbox() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 md:px-6 md:py-8">
+    <div className="flex w-full flex-col gap-6">
       <section className="overflow-hidden rounded-[28px] border border-border bg-card shadow-sm">
         <div className="flex flex-col gap-6 p-5 md:flex-row md:items-end md:justify-between md:p-8">
             <div className="max-w-3xl">
