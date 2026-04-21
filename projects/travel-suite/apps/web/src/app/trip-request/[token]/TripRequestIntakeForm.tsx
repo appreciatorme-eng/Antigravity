@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   BadgeCheck,
@@ -11,7 +11,10 @@ import {
   MapPin,
   Phone,
   ShieldCheck,
+  X,
 } from "lucide-react";
+import { DayPicker, type DateRange } from "react-day-picker";
+import "react-day-picker/style.css";
 
 import type { TripRequestFormState } from "@/lib/whatsapp/trip-intake.server";
 import { cn } from "@/lib/utils";
@@ -98,10 +101,32 @@ function splitInterests(value: string): string[] {
     .filter(Boolean);
 }
 
-function formatDateLabel(value: string): string {
-  if (!value) return "Select date";
+function parseIsoDate(value: string): Date | undefined {
+  if (!value) return undefined;
   const date = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return value;
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
+function toIsoDate(date: Date | undefined): string {
+  if (!date) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatShort(value: string): string {
+  const date = parseIsoDate(value);
+  if (!date) return "";
+  return new Intl.DateTimeFormat("en", {
+    day: "numeric",
+    month: "short",
+  }).format(date);
+}
+
+function formatFull(value: string): string {
+  const date = parseIsoDate(value);
+  if (!date) return "";
   return new Intl.DateTimeFormat("en", {
     day: "numeric",
     month: "short",
@@ -109,17 +134,19 @@ function formatDateLabel(value: string): string {
   }).format(date);
 }
 
-function getDurationDays(startDate: string, endDate: string, fallback: number | null): number {
-  if (!startDate || !endDate) {
-    return fallback ?? 1;
-  }
-  const start = new Date(`${startDate}T00:00:00`);
-  const end = new Date(`${endDate}T00:00:00`);
+function getNights(startDate: string, endDate: string): number {
+  const start = parseIsoDate(startDate);
+  const end = parseIsoDate(endDate);
+  if (!start || !end) return 0;
   const diffMs = end.getTime() - start.getTime();
-  if (!Number.isFinite(diffMs) || diffMs < 0) {
-    return fallback ?? 1;
-  }
-  return Math.max(1, Math.round(diffMs / 86_400_000) + 1);
+  if (!Number.isFinite(diffMs) || diffMs < 0) return 0;
+  return Math.max(0, Math.round(diffMs / 86_400_000));
+}
+
+function getDurationDays(startDate: string, endDate: string, fallback: number | null): number {
+  const nights = getNights(startDate, endDate);
+  if (nights <= 0) return fallback ?? 1;
+  return nights + 1;
 }
 
 function SearchableLocationField({
@@ -167,7 +194,7 @@ function SearchableLocationField({
           onBlur={() => {
             window.setTimeout(() => setOpen(false), 120);
           }}
-          className="h-14 w-full rounded-2xl border border-stone-200 bg-white pl-11 pr-4 text-[15px] text-stone-900 outline-none transition focus:border-stone-400"
+          className="h-[58px] w-full rounded-2xl border border-stone-200 bg-white pl-11 pr-4 text-[15px] text-stone-900 outline-none transition focus:border-stone-400 focus:shadow-[0_0_0_4px_rgba(0,0,0,0.04)]"
         />
         {open && matches.length > 0 ? (
           <div className="absolute z-20 mt-2 w-full overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-[0_24px_60px_-32px_rgba(28,25,23,0.25)]">
@@ -224,7 +251,7 @@ function ChoicePill({
       type="button"
       onClick={onClick}
       className={cn(
-        "rounded-full border px-4 py-2 text-sm transition",
+        "min-h-[44px] rounded-full border px-4 py-2 text-sm transition",
         active
           ? "border-transparent text-white shadow-sm"
           : "border-stone-200 bg-white text-stone-700 hover:border-stone-300",
@@ -236,43 +263,279 @@ function ChoicePill({
   );
 }
 
-function DateCard({
-  label,
-  value,
+function RangeDateField({
+  startDate,
+  endDate,
   onChange,
-  required = false,
+  accentColor,
 }: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  required?: boolean;
+  startDate: string;
+  endDate: string;
+  onChange: (next: { startDate: string; endDate: string }) => void;
+  accentColor: string;
 }) {
+  const [open, setOpen] = useState(false);
+  const popoverRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLDivElement | null>(null);
+  const nights = getNights(startDate, endDate);
+
+  // Close desktop popover on outside click.
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(event: MouseEvent) {
+      const target = event.target as Node;
+      if (
+        popoverRef.current && !popoverRef.current.contains(target) &&
+        triggerRef.current && !triggerRef.current.contains(target)
+      ) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  // Lock body scroll when the mobile sheet is open.
+  useEffect(() => {
+    if (!open) return;
+    if (typeof window === "undefined") return;
+    if (window.innerWidth >= 768) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
+
+  const range: DateRange | undefined = useMemo(() => {
+    const from = parseIsoDate(startDate);
+    const to = parseIsoDate(endDate);
+    if (!from && !to) return undefined;
+    return { from, to };
+  }, [startDate, endDate]);
+
+  const handleRange = (next: DateRange | undefined) => {
+    onChange({
+      startDate: toIsoDate(next?.from),
+      endDate: toIsoDate(next?.to),
+    });
+  };
+
+  const confirmDisabled = !range?.from || !range?.to;
+  const headerColor = accentColor;
+
   return (
-    <label className="block">
-      <div className="relative rounded-[22px] border border-stone-200 bg-white p-4 transition focus-within:border-stone-400">
-        <input
-          type="date"
-          value={value}
-          required={required}
-          onChange={(event) => onChange(event.target.value)}
-          className="absolute inset-0 z-10 cursor-pointer opacity-0"
-        />
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <FieldLabel label={label} required={required} />
-            <p className="mt-3 text-lg font-semibold tracking-tight text-stone-950">
-              {formatDateLabel(value)}
-            </p>
-            <p className="mt-1 text-sm text-stone-500">
-              Tap to choose from your calendar
-            </p>
-          </div>
-          <div className="rounded-full border border-stone-200 bg-stone-50 p-3 text-stone-500">
+    <div className="relative">
+      <div
+        ref={triggerRef}
+        role="button"
+        tabIndex={0}
+        onClick={() => setOpen(true)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            setOpen(true);
+          }
+        }}
+        className="group cursor-pointer rounded-[22px] border border-stone-200 bg-white p-4 transition hover:border-stone-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-300 sm:p-5"
+      >
+        <div className="flex items-center gap-3">
+          <div
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white"
+            style={{ backgroundColor: headerColor }}
+          >
             <CalendarDays className="h-5 w-5" />
           </div>
+          <div className="min-w-0 flex-1">
+            <FieldLabel label="Travel dates" required />
+            <p className="mt-1 text-xs text-stone-500">
+              Tap to choose your departure &amp; return
+            </p>
+          </div>
+          {nights > 0 ? (
+            <div
+              className="hidden shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold sm:inline-flex"
+              style={{ backgroundColor: hexToRgba(accentColor, 0.1), color: accentColor }}
+            >
+              {nights} night{nights === 1 ? "" : "s"}
+            </div>
+          ) : null}
         </div>
+
+        <div className="mt-4 grid grid-cols-[1fr_auto_1fr] items-stretch gap-2">
+          <div className="rounded-2xl border border-stone-200 bg-stone-50/60 p-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-500">
+              Departure
+            </p>
+            <p className="mt-1 text-[17px] font-semibold tracking-tight text-stone-950 sm:text-lg">
+              {startDate ? formatShort(startDate) : "Select"}
+            </p>
+            <p className="mt-0.5 text-[11px] text-stone-500">
+              {startDate ? formatFull(startDate).split(" ").slice(-1)[0] : "Start of trip"}
+            </p>
+          </div>
+          <div className="flex items-center justify-center text-stone-300">
+            <ArrowRight className="h-4 w-4" />
+          </div>
+          <div className="rounded-2xl border border-stone-200 bg-stone-50/60 p-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-500">
+              Return
+            </p>
+            <p className="mt-1 text-[17px] font-semibold tracking-tight text-stone-950 sm:text-lg">
+              {endDate ? formatShort(endDate) : "Select"}
+            </p>
+            <p className="mt-0.5 text-[11px] text-stone-500">
+              {endDate ? formatFull(endDate).split(" ").slice(-1)[0] : "End of trip"}
+            </p>
+          </div>
+        </div>
+        {nights > 0 ? (
+          <div
+            className="mt-3 inline-flex rounded-full px-3 py-1 text-[11px] font-semibold sm:hidden"
+            style={{ backgroundColor: hexToRgba(accentColor, 0.1), color: accentColor }}
+          >
+            {nights} night{nights === 1 ? "" : "s"} · {nights + 1} days
+          </div>
+        ) : null}
       </div>
-    </label>
+
+      {/* Desktop popover */}
+      {open ? (
+        <div
+          ref={popoverRef}
+          className="absolute left-0 right-0 z-30 mt-2 hidden overflow-hidden rounded-[22px] border border-stone-200 bg-white p-4 shadow-[0_30px_80px_-40px_rgba(28,25,23,0.35)] md:block"
+          style={{ ["--rdp-accent-color" as string]: accentColor }}
+        >
+          <RangeCalendar
+            range={range}
+            onChange={handleRange}
+            accentColor={accentColor}
+            numberOfMonths={2}
+          />
+          <div className="mt-3 flex items-center justify-between border-t border-stone-100 pt-3">
+            <button
+              type="button"
+              onClick={() => handleRange(undefined)}
+              className="text-sm font-medium text-stone-500 hover:text-stone-700"
+            >
+              Clear
+            </button>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              disabled={confirmDisabled}
+              className="rounded-full px-5 py-2 text-sm font-semibold text-white transition disabled:opacity-50"
+              style={{ backgroundColor: accentColor }}
+            >
+              Confirm
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Mobile bottom sheet */}
+      {open ? (
+        <div className="fixed inset-0 z-40 flex items-end md:hidden">
+          <button
+            type="button"
+            aria-label="Close calendar"
+            onClick={() => setOpen(false)}
+            className="absolute inset-0 bg-stone-950/40 backdrop-blur-sm"
+          />
+          <div
+            className="relative z-10 w-full max-h-[92dvh] overflow-y-auto rounded-t-[28px] bg-white p-5 pb-[calc(env(safe-area-inset-bottom)+1rem)] shadow-[0_-24px_60px_-16px_rgba(28,25,23,0.35)]"
+            style={{ ["--rdp-accent-color" as string]: accentColor }}
+          >
+            <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-stone-200" />
+            <div className="mb-2 flex items-center justify-between">
+              <div>
+                <p className="text-base font-semibold tracking-tight text-stone-950">
+                  Choose travel dates
+                </p>
+                <p className="mt-0.5 text-xs text-stone-500">
+                  Pick your departure, then return day
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="Close"
+                onClick={() => setOpen(false)}
+                className="rounded-full p-2 text-stone-500 hover:bg-stone-100"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <RangeCalendar
+              range={range}
+              onChange={handleRange}
+              accentColor={accentColor}
+              numberOfMonths={1}
+            />
+            <div className="mt-4 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => handleRange(undefined)}
+                className="h-12 rounded-2xl px-4 text-sm font-medium text-stone-600 hover:bg-stone-100"
+              >
+                Clear
+              </button>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                disabled={confirmDisabled}
+                className="h-12 flex-1 rounded-2xl px-4 text-sm font-semibold text-white transition disabled:opacity-50"
+                style={{ backgroundColor: accentColor }}
+              >
+                {confirmDisabled
+                  ? "Select dates"
+                  : `Confirm · ${nights} night${nights === 1 ? "" : "s"}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function RangeCalendar({
+  range,
+  onChange,
+  accentColor,
+  numberOfMonths,
+}: {
+  range: DateRange | undefined;
+  onChange: (next: DateRange | undefined) => void;
+  accentColor: string;
+  numberOfMonths: number;
+}) {
+  const today = useMemo(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    return now;
+  }, []);
+
+  return (
+    <DayPicker
+      mode="range"
+      selected={range}
+      onSelect={onChange}
+      numberOfMonths={numberOfMonths}
+      disabled={{ before: today }}
+      defaultMonth={range?.from ?? today}
+      showOutsideDays={false}
+      styles={{
+        root: {
+          ["--rdp-accent-color" as string]: accentColor,
+          ["--rdp-accent-background-color" as string]: hexToRgba(accentColor, 0.14),
+          ["--rdp-day-height" as string]: "42px",
+          ["--rdp-day-width" as string]: "42px",
+          ["--rdp-day_button-height" as string]: "40px",
+          ["--rdp-day_button-width" as string]: "40px",
+          ["--rdp-day_button-border-radius" as string]: "9999px",
+        } as React.CSSProperties,
+      }}
+    />
   );
 }
 
@@ -290,7 +553,7 @@ export function TripRequestIntakeForm({
   const accentColor = state.organizationPrimaryColor || "#8b5e3c";
   const accentSoft = hexToRgba(accentColor, 0.12);
   const accentSofter = hexToRgba(accentColor, 0.06);
-  const brandPanel = `linear-gradient(180deg, ${hexToRgba(accentColor, 0.2)} 0%, rgba(20,17,14,0) 65%)`;
+  const brandPanel = `linear-gradient(180deg, ${hexToRgba(accentColor, 0.25)} 0%, rgba(20,17,14,0) 65%)`;
   const [destination, setDestination] = useState(state.destination);
   const [originCity, setOriginCity] = useState(state.originCity);
   const [travelerCount, setTravelerCount] = useState<number>(state.travelerCount ?? 2);
@@ -305,7 +568,7 @@ export function TripRequestIntakeForm({
   const trustPoints =
     state.organizationServiceBullets.length > 0
       ? state.organizationServiceBullets
-      : ["Tailored itineraries", "Trusted travel coordination", "Responsive updates on WhatsApp"];
+      : ["Personal trip concierge", "Hand-picked stays", "24×7 on your journey"];
 
   const toggleInterest = (value: string) => {
     setInterests((current) =>
@@ -314,33 +577,36 @@ export function TripRequestIntakeForm({
   };
 
   return (
-    <main className="min-h-[100dvh] bg-[#ede7df] px-3 py-3 text-stone-950 sm:px-5 sm:py-5">
+    <main className="min-h-[100dvh] bg-[#ede7df] px-3 pb-28 pt-3 text-stone-950 sm:px-5 sm:pb-8 sm:pt-5">
       <div className="mx-auto max-w-[1200px] overflow-hidden rounded-[28px] border border-black/5 bg-[#f7f2ea] shadow-[0_40px_100px_-48px_rgba(28,25,23,0.38)]">
-        <section className="relative overflow-hidden border-b border-black/5 bg-[#171310] px-5 py-6 text-stone-100 sm:px-8 sm:py-8">
+        <section className="relative overflow-hidden border-b border-black/5 bg-[#171310] px-5 py-7 text-stone-100 sm:px-8 sm:py-9">
           <div
-            className="pointer-events-none absolute inset-x-0 top-0 h-40"
+            className="pointer-events-none absolute inset-x-0 top-0 h-48"
             style={{ background: brandPanel }}
           />
-          <div className="relative mx-auto flex max-w-6xl flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="relative mx-auto flex max-w-6xl flex-col gap-7 md:flex-row md:items-end md:justify-between">
             <div className="max-w-3xl">
-              <div className="flex items-center gap-4">
+              <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
                 {state.organizationLogoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={state.organizationLogoUrl}
                     alt={state.organizationName}
-                    className="h-16 w-16 rounded-2xl border border-white/10 bg-white object-cover p-2"
+                    className="h-[72px] w-[72px] rounded-2xl border border-white/15 bg-white object-cover p-2 shadow-[0_12px_36px_-18px_rgba(0,0,0,0.6)]"
+                    style={{ boxShadow: `0 0 0 1px ${hexToRgba(accentColor, 0.35)}, 0 18px 40px -20px rgba(0,0,0,0.7)` }}
                   />
                 ) : (
                   <div
-                    className="flex h-16 w-16 items-center justify-center rounded-2xl text-xl font-semibold text-white"
-                    style={{ backgroundColor: accentColor }}
+                    className="flex h-[72px] w-[72px] items-center justify-center rounded-2xl text-2xl font-semibold text-white shadow-[0_12px_36px_-18px_rgba(0,0,0,0.6)]"
+                    style={{
+                      background: `linear-gradient(135deg, ${accentColor} 0%, ${hexToRgba(accentColor, 0.7)} 100%)`,
+                    }}
                   >
                     {state.organizationName.slice(0, 1).toUpperCase()}
                   </div>
                 )}
                 <div>
-                  <h1 className="font-[family:var(--font-cormorant)] text-[2.5rem] leading-none tracking-tight text-white sm:text-[3.6rem]">
+                  <h1 className="font-[family:var(--font-cormorant)] text-[2.2rem] leading-[1.02] tracking-tight text-white sm:text-[3rem] lg:text-[3.6rem]">
                     {state.organizationName}
                   </h1>
                   {state.organizationRegionLine ? (
@@ -350,9 +616,9 @@ export function TripRequestIntakeForm({
               </div>
 
               <div className="mt-6 space-y-4">
-                <p className="max-w-2xl text-[15px] leading-7 text-stone-300 sm:text-base">
+                <p className="text-[15px] leading-7 text-stone-300 sm:max-w-2xl sm:text-base">
                   {state.organizationDescription ||
-                    `Share your travel plans with ${state.organizationName} and receive a personalised itinerary prepared for your journey.`}
+                    `Share your travel plans with ${state.organizationName} and receive a personalised itinerary crafted just for you.`}
                 </p>
                 <div className="flex flex-wrap gap-2 text-sm text-stone-200">
                   {trustPoints.map((point) => (
@@ -367,41 +633,82 @@ export function TripRequestIntakeForm({
               </div>
             </div>
 
-            <div className="grid gap-3 text-sm text-stone-300 sm:grid-cols-2 lg:min-w-[360px]">
+            {/* Mobile contact chips row */}
+            <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 text-xs text-stone-200 md:hidden">
               {state.organizationAddress ? (
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <div className="mb-2 flex items-center gap-2 text-stone-400">
-                    <MapPin className="h-4 w-4" />
-                    <span>Office address</span>
-                  </div>
-                  <p className="leading-6 text-stone-100">{state.organizationAddress}</p>
+                <div className="flex min-w-[220px] shrink-0 items-start gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5">
+                  <MapPin className="mt-0.5 h-3.5 w-3.5 text-stone-400" />
+                  <p className="leading-5 text-stone-100">{state.organizationAddress}</p>
                 </div>
               ) : null}
-              <div className="grid gap-3">
+              {state.organizationContactPhone ? (
+                <div className="flex shrink-0 items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5">
+                  <Phone className="h-3.5 w-3.5 text-stone-400" />
+                  <p className="whitespace-nowrap text-stone-100">{state.organizationContactPhone}</p>
+                </div>
+              ) : null}
+              {state.organizationContactEmail ? (
+                <div className="flex shrink-0 items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5">
+                  <Mail className="h-3.5 w-3.5 text-stone-400" />
+                  <p className="whitespace-nowrap text-stone-100">{state.organizationContactEmail}</p>
+                </div>
+              ) : null}
+              {state.organizationOfficeHours && !state.organizationContactEmail ? (
+                <div className="flex shrink-0 items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2.5">
+                  <BadgeCheck className="h-3.5 w-3.5 text-stone-400" />
+                  <p className="whitespace-nowrap text-stone-100">{state.organizationOfficeHours}</p>
+                </div>
+              ) : null}
+            </div>
+
+            {/* Desktop consolidated contact card */}
+            <div className="hidden min-w-[320px] max-w-[380px] rounded-2xl border border-white/10 bg-white/5 p-5 text-sm text-stone-200 md:block">
+              {state.organizationAddress ? (
+                <div className="flex items-start gap-3">
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" />
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-400">
+                      Visit us
+                    </p>
+                    <p className="mt-1 leading-6 text-stone-100">{state.organizationAddress}</p>
+                  </div>
+                </div>
+              ) : null}
+              {(state.organizationContactPhone || state.organizationContactEmail) && state.organizationAddress ? (
+                <div className="my-4 h-px bg-white/10" />
+              ) : null}
+              <div className="space-y-3">
                 {state.organizationContactPhone ? (
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <div className="mb-2 flex items-center gap-2 text-stone-400">
-                      <Phone className="h-4 w-4" />
-                      <span>Call or WhatsApp</span>
+                  <div className="flex items-start gap-3">
+                    <Phone className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" />
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-400">
+                        Call or WhatsApp
+                      </p>
+                      <p className="mt-1 text-stone-100">{state.organizationContactPhone}</p>
                     </div>
-                    <p className="text-stone-100">{state.organizationContactPhone}</p>
                   </div>
                 ) : null}
                 {state.organizationContactEmail ? (
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <div className="mb-2 flex items-center gap-2 text-stone-400">
-                      <Mail className="h-4 w-4" />
-                      <span>Email</span>
+                  <div className="flex items-start gap-3">
+                    <Mail className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" />
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-400">
+                        Email
+                      </p>
+                      <p className="mt-1 break-all text-stone-100">{state.organizationContactEmail}</p>
                     </div>
-                    <p className="break-all text-stone-100">{state.organizationContactEmail}</p>
                   </div>
-                ) : state.organizationOfficeHours ? (
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <div className="mb-2 flex items-center gap-2 text-stone-400">
-                      <BadgeCheck className="h-4 w-4" />
-                      <span>Availability</span>
+                ) : null}
+                {state.organizationOfficeHours && !state.organizationContactEmail ? (
+                  <div className="flex items-start gap-3">
+                    <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-stone-400" />
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-400">
+                        Availability
+                      </p>
+                      <p className="mt-1 text-stone-100">{state.organizationOfficeHours}</p>
                     </div>
-                    <p className="text-stone-100">{state.organizationOfficeHours}</p>
                   </div>
                 ) : null}
               </div>
@@ -409,20 +716,20 @@ export function TripRequestIntakeForm({
           </div>
         </section>
 
-        <section className="px-4 py-5 sm:px-7 sm:py-7 lg:px-8 lg:py-8">
+        <section className="px-4 py-6 sm:px-7 sm:py-8 lg:px-8 lg:py-9">
           <div className="mx-auto max-w-6xl">
-            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div className="mb-6 flex flex-col gap-3 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <h2 className="text-[2rem] font-semibold tracking-tight text-stone-950 sm:text-[2.4rem]">
-                  Tell us about your trip
+                <h2 className="text-[1.9rem] font-semibold tracking-tight text-stone-950 sm:text-[2.4rem]">
+                  Plan your journey
                 </h2>
                 <p className="mt-2 max-w-3xl text-[15px] leading-7 text-stone-600">
-                  Fill in the details below and {state.organizationName} will review your request and share a tailored itinerary with you.
+                  Share a few details and {state.organizationName} will craft a tailored itinerary for your trip.
                 </p>
               </div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white px-4 py-2 text-xs font-medium text-stone-500">
+              <div className="inline-flex items-center gap-2 self-start rounded-full border border-stone-200 bg-white px-4 py-2 text-xs font-medium text-stone-500">
                 <ShieldCheck className="h-4 w-4" style={{ color: accentColor }} />
-                Secure request form
+                Secure &amp; private
               </div>
             </div>
 
@@ -464,7 +771,7 @@ export function TripRequestIntakeForm({
                     <p className="text-xs uppercase tracking-[0.18em] text-stone-500">Travel dates</p>
                     <p className="mt-2 text-base font-semibold text-stone-950">
                       {state.startDate && state.endDate
-                        ? `${formatDateLabel(state.startDate)} to ${formatDateLabel(state.endDate)}`
+                        ? `${formatFull(state.startDate)} to ${formatFull(state.endDate)}`
                         : "Dates confirmed"}
                     </p>
                   </div>
@@ -495,7 +802,7 @@ export function TripRequestIntakeForm({
                 </div>
               </section>
             ) : (
-              <form action={`/api/trip-request/${token}`} method="post" className="space-y-5">
+              <form action={`/api/trip-request/${token}`} method="post" className="space-y-5 sm:space-y-6">
                 <input type="hidden" name="submitter_role" value="client" />
                 <input type="hidden" name="destination" value={destination} />
                 <input type="hidden" name="duration_days" value={durationDays} />
@@ -509,20 +816,20 @@ export function TripRequestIntakeForm({
 
                 <section className="rounded-[24px] border border-black/5 bg-white p-4 sm:p-6">
                   <div className="mb-5">
-                    <h3 className="text-xl font-semibold tracking-tight text-stone-950">Traveller details</h3>
+                    <h3 className="text-lg font-semibold tracking-tight text-stone-950 sm:text-xl">Who is travelling?</h3>
                     <p className="mt-1 text-sm leading-6 text-stone-500">
-                      We use these details to prepare your trip and send updates.
+                      We use your details to send updates about your trip.
                     </p>
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <label className="space-y-2">
-                      <FieldLabel label="Traveller name" required />
+                      <FieldLabel label="Your name" required />
                       <input
                         name="client_name"
                         defaultValue={state.clientName}
                         required
                         placeholder="Full name"
-                        className="h-14 w-full rounded-2xl border border-stone-200 bg-white px-4 text-[15px] text-stone-900 outline-none transition focus:border-stone-400"
+                        className="h-[58px] w-full rounded-2xl border border-stone-200 bg-white px-4 text-[15px] text-stone-900 outline-none transition focus:border-stone-400 focus:shadow-[0_0_0_4px_rgba(0,0,0,0.04)]"
                       />
                     </label>
                     <label className="space-y-2">
@@ -534,7 +841,7 @@ export function TripRequestIntakeForm({
                           defaultValue={state.clientPhone}
                           required
                           placeholder="+91 98xxxxxx21"
-                          className="h-14 w-full rounded-2xl border border-stone-200 bg-white pl-11 pr-4 text-[15px] text-stone-900 outline-none transition focus:border-stone-400"
+                          className="h-[58px] w-full rounded-2xl border border-stone-200 bg-white pl-11 pr-4 text-[15px] text-stone-900 outline-none transition focus:border-stone-400 focus:shadow-[0_0_0_4px_rgba(0,0,0,0.04)]"
                         />
                       </div>
                     </label>
@@ -547,7 +854,7 @@ export function TripRequestIntakeForm({
                           type="email"
                           defaultValue={state.clientEmail}
                           placeholder="name@example.com"
-                          className="h-14 w-full rounded-2xl border border-stone-200 bg-white pl-11 pr-4 text-[15px] text-stone-900 outline-none transition focus:border-stone-400"
+                          className="h-[58px] w-full rounded-2xl border border-stone-200 bg-white pl-11 pr-4 text-[15px] text-stone-900 outline-none transition focus:border-stone-400 focus:shadow-[0_0_0_4px_rgba(0,0,0,0.04)]"
                         />
                       </div>
                     </label>
@@ -556,9 +863,9 @@ export function TripRequestIntakeForm({
 
                 <section className="rounded-[24px] border border-black/5 bg-white p-4 sm:p-6">
                   <div className="mb-5">
-                    <h3 className="text-xl font-semibold tracking-tight text-stone-950">Trip details</h3>
+                    <h3 className="text-lg font-semibold tracking-tight text-stone-950 sm:text-xl">Where and when</h3>
                     <p className="mt-1 text-sm leading-6 text-stone-500">
-                      Tell us where you want to go, when you want to travel, and how many people are joining.
+                      Tell us where you want to go and when you want to travel.
                     </p>
                   </div>
 
@@ -584,41 +891,16 @@ export function TripRequestIntakeForm({
                     />
                   </div>
 
-                  <div className="mt-5 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <DateCard
-                        label="Departure date"
-                        value={startDate}
-                        onChange={setStartDate}
-                        required
-                      />
-                      <DateCard
-                        label="Return date"
-                        value={endDate}
-                        onChange={setEndDate}
-                        required
-                      />
-                    </div>
-
-                    <div
-                      className="rounded-[24px] border px-4 py-5"
-                      style={{ borderColor: accentSoft, backgroundColor: accentSofter }}
-                    >
-                      <p className="text-sm font-medium text-stone-700">Selected travel window</p>
-                      <p className="mt-3 text-[1.65rem] font-semibold tracking-tight text-stone-950">
-                        {startDate && endDate
-                          ? `${formatDateLabel(startDate)} to ${formatDateLabel(endDate)}`
-                          : "Choose your dates"}
-                      </p>
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        <div className="rounded-full border border-white/70 bg-white/70 px-3 py-2 text-sm text-stone-700">
-                          {durationDays} day{durationDays > 1 ? "s" : ""}
-                        </div>
-                        <div className="rounded-full border border-white/70 bg-white/70 px-3 py-2 text-sm text-stone-700">
-                          {travelerCount} traveller{travelerCount > 1 ? "s" : ""}
-                        </div>
-                      </div>
-                    </div>
+                  <div className="mt-5">
+                    <RangeDateField
+                      startDate={startDate}
+                      endDate={endDate}
+                      onChange={({ startDate: nextStart, endDate: nextEnd }) => {
+                        setStartDate(nextStart);
+                        setEndDate(nextEnd);
+                      }}
+                      accentColor={accentColor}
+                    />
                   </div>
 
                   <div className="mt-5">
@@ -639,9 +921,9 @@ export function TripRequestIntakeForm({
 
                 <section className="rounded-[24px] border border-black/5 bg-white p-4 sm:p-6">
                   <div className="mb-5">
-                    <h3 className="text-xl font-semibold tracking-tight text-stone-950">Stay and preferences</h3>
+                    <h3 className="text-lg font-semibold tracking-tight text-stone-950 sm:text-xl">Your style of travel</h3>
                     <p className="mt-1 text-sm leading-6 text-stone-500">
-                      These details help shape the style and comfort level of your itinerary.
+                      Help us shape the comfort, pace and feel of your trip.
                     </p>
                   </div>
 
@@ -693,31 +975,47 @@ export function TripRequestIntakeForm({
                   </div>
                 </section>
 
-                <div className="sticky bottom-3 z-10 rounded-[24px] border border-black/5 bg-[rgba(255,251,245,0.92)] p-4 shadow-[0_20px_50px_-32px_rgba(28,25,23,0.28)] backdrop-blur sm:static sm:bg-transparent sm:p-0 sm:shadow-none sm:backdrop-blur-none">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:rounded-[24px] sm:border sm:border-black/5 sm:bg-white sm:p-5">
-                    <div className="min-w-0">
+                <div className="fixed inset-x-0 bottom-0 z-20 border-t border-black/5 bg-[rgba(247,242,234,0.96)] px-4 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pt-3 backdrop-blur sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
+                  <div className="mx-auto flex max-w-6xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:rounded-[24px] sm:border sm:border-black/5 sm:bg-white sm:p-5">
+                    <div className="hidden min-w-0 sm:block">
                       <p className="text-sm font-medium text-stone-950">
                         Ready to send your request
                       </p>
                       <p className="mt-1 text-sm leading-6 text-stone-500">
-                        {state.organizationName} will review your travel details and share your itinerary back with you.
+                        {state.organizationName} will review your details and share your itinerary.
                       </p>
                     </div>
                     <button
                       type="submit"
-                      className="inline-flex h-14 shrink-0 items-center justify-center gap-2 rounded-2xl px-6 text-sm font-semibold text-white transition hover:opacity-95"
+                      className="inline-flex h-14 w-full shrink-0 items-center justify-center gap-2 rounded-2xl px-6 text-sm font-semibold text-white transition hover:opacity-95 sm:w-auto"
                       style={{ backgroundColor: accentColor }}
                     >
-                      Submit travel request
+                      Send to {state.organizationName}
                       <ArrowRight className="h-4 w-4" />
                     </button>
+                    <p className="text-center text-[11px] text-stone-500 sm:hidden">
+                      Your details are sent only to {state.organizationName}
+                    </p>
                   </div>
                 </div>
               </form>
             )}
 
-            <div className="mt-6 text-center text-xs text-stone-400">
-              Powered by TripBuilt
+            <div className="mt-8 flex flex-col items-center gap-1 text-center">
+              <p className="text-xs text-stone-500">
+                © {state.organizationName} — your travel partner
+              </p>
+              <p className="text-[11px] text-stone-400">
+                Powered by{" "}
+                <a
+                  href="https://tripbuilt.com"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline-offset-2 hover:underline"
+                >
+                  TripBuilt
+                </a>
+              </p>
             </div>
           </div>
         </section>
