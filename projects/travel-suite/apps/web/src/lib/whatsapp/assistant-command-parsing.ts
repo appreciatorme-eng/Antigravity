@@ -110,6 +110,8 @@ export function parseTripFormLinkCommand(
 ): { readonly query: string | null } | null {
   const trimmed = input.trim();
   const exactCommands = new Set([
+    "link",
+    "form link",
     "trip form link",
     "trip request link",
     "intake link",
@@ -121,7 +123,7 @@ export function parseTripFormLinkCommand(
     return { query: null };
   }
 
-  const match = /^(?:trip form link|trip request link|intake link)(?:\s+for\s+(.+))$/i.exec(trimmed);
+  const match = /^(?:link|form link|trip form link|trip request link|intake link)(?:\s+for\s+(.+))$/i.exec(trimmed);
   if (!match) return null;
   return { query: match[1]?.trim() || null };
 }

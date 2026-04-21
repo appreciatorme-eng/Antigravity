@@ -57,6 +57,8 @@ const EXACT_COMMANDS = new Set([
   "approval",
   "trip check",
   "trip check today",
+  "link",
+  "form link",
   "resume",
 ]);
 
@@ -73,6 +75,8 @@ const COMMAND_PATTERNS: readonly RegExp[] = [
   /^not interested(?:\s+\d+)?$/i,
   /^create task\s+.+$/i,
   /^share link(?:\s+for)?\s+.+$/i,
+  /^link(?:\s+for\s+.+)?$/i,
+  /^form link(?:\s+for\s+.+)?$/i,
   /^trip form(?:\s+link)?(?:\s+for\s+.+)?$/i,
   /^intake link(?:\s+for\s+.+)?$/i,
   /^trip request link(?:\s+for\s+.+)?$/i,
