@@ -1,21 +1,22 @@
-import React from "react";
 import { NextRequest, NextResponse } from "next/server";
-import { renderToStream, type DocumentProps } from "@react-pdf/renderer";
-
-import ItineraryDocument from "@/components/pdf/ItineraryDocument";
 import {
   DEFAULT_ITINERARY_BRANDING,
-  DEFAULT_ITINERARY_TEMPLATE,
+  normalizeItineraryTemplateId,
 } from "@/components/pdf/itinerary-types";
-import { stripRepeatedPdfImages } from "@/components/pdf/templates/sections/shared";
 import { apiError } from "@/lib/api/response";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logError } from "@/lib/observability/logger";
+import {
+  normalizeServerPdfItinerary,
+  renderItineraryPdfBuffer,
+  sanitizeItineraryPdfFileName,
+} from "@/lib/pdf/itinerary-pdf-server";
 import { enforcePublicRouteRateLimit } from "@/lib/security/public-rate-limit";
 import type { ItineraryResult } from "@/types/itinerary";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 const TRIP_REQUEST_TOKEN_REGEX = /^[A-Za-z0-9_-]{16,200}$/;
 const TRIP_REQUEST_PDF_RATE_LIMIT_MAX = Number(
@@ -24,10 +25,6 @@ const TRIP_REQUEST_PDF_RATE_LIMIT_MAX = Number(
 const TRIP_REQUEST_PDF_RATE_LIMIT_WINDOW_MS = Number(
   process.env.PUBLIC_TRIP_REQUEST_PDF_RATE_LIMIT_WINDOW_MS || 60_000,
 );
-
-function sanitizeFileName(value: string): string {
-  return value.replace(/[^a-zA-Z0-9-_]+/g, "_");
-}
 
 function readErrorText(error: unknown): string {
   if (!error || typeof error !== "object") return "";
@@ -126,8 +123,14 @@ export async function GET(
     .eq("id", resolvedDraft.organization_id)
     .maybeSingle();
 
+  const { data: shared } = await admin
+    .from("shared_itineraries")
+    .select("template_id")
+    .eq("itinerary_id", resolvedDraft.created_itinerary_id)
+    .maybeSingle();
+
   try {
-    const normalizedItinerary = stripRepeatedPdfImages(
+    const normalizedItinerary = normalizeServerPdfItinerary(
       normalizeItinerary(itinerary as {
         raw_data: unknown;
         trip_title: string | null;
@@ -136,10 +139,16 @@ export async function GET(
         summary: string | null;
       }),
     );
-
-    const document = React.createElement(ItineraryDocument, {
-      data: normalizedItinerary,
-      template: DEFAULT_ITINERARY_TEMPLATE,
+    const fileName = `${sanitizeItineraryPdfFileName(
+      normalizedItinerary.trip_title || "trip-itinerary",
+    )}.pdf`;
+    const pdf = await renderItineraryPdfBuffer({
+      itinerary: normalizedItinerary,
+      requestUrl: request.url,
+      template: normalizeItineraryTemplateId(
+        (shared as { template_id?: string | null } | null)?.template_id
+          ?? null,
+      ),
       branding: {
         ...DEFAULT_ITINERARY_BRANDING,
         companyName: organization?.name || DEFAULT_ITINERARY_BRANDING.companyName,
@@ -147,19 +156,17 @@ export async function GET(
         primaryColor: organization?.primary_color || DEFAULT_ITINERARY_BRANDING.primaryColor,
         clientName: resolvedDraft.client_name || null,
       },
-    }) as React.ReactElement<DocumentProps>;
+      fileName,
+    });
 
-    const stream = await renderToStream(document);
-    const chunks: Buffer[] = [];
-    for await (const chunk of stream) {
-      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-    }
-
-    const fileName = `${sanitizeFileName(normalizedItinerary.trip_title || "trip-itinerary")}.pdf`;
-    return new NextResponse(new Uint8Array(Buffer.concat(chunks)), {
+    return new NextResponse(new Uint8Array(pdf.buffer), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${fileName}"`,
+        "Content-Disposition": `attachment; filename="${pdf.fileName}"`,
+        "X-Itinerary-PDF-Renderer": pdf.renderer,
+        ...(pdf.printErrorMessage
+          ? { "X-Itinerary-PDF-Error": encodeURIComponent(pdf.printErrorMessage).slice(0, 240) }
+          : {}),
       },
     });
   } catch (error) {

@@ -1,8 +1,5 @@
-import React from 'react';
 import { NextResponse } from 'next/server';
-import { renderToStream, type DocumentProps } from '@react-pdf/renderer';
 import { z } from 'zod';
-import ItineraryDocument from '@/components/pdf/ItineraryDocument';
 import {
   DEFAULT_ITINERARY_BRANDING,
   DEFAULT_ITINERARY_TEMPLATE,
@@ -10,14 +7,14 @@ import {
   type ItineraryBranding,
   type ItineraryPrintExtras,
 } from '@/components/pdf/itinerary-types';
-import { stripRepeatedPdfImages } from '@/components/pdf/templates/sections/shared';
 import { apiError } from '@/lib/api/response';
 import { requireAdmin } from '@/lib/auth/admin';
-import { populateItineraryImages } from '@/lib/image-search';
 import { logError } from '@/lib/observability/logger';
-import { prepareItineraryPrintPayload } from '@/lib/pdf/itinerary-print/assets';
-import { launchItineraryPdfBrowser } from '@/lib/pdf/itinerary-print/browser';
-import { renderItineraryPrintHtml } from '@/lib/pdf/itinerary-print/document';
+import {
+  normalizeServerPdfBranding,
+  normalizeServerPdfItinerary,
+  renderItineraryPdfBuffer,
+} from '@/lib/pdf/itinerary-pdf-server';
 import type { ItineraryResult } from '@/types/itinerary';
 
 export const runtime = 'nodejs';
@@ -96,21 +93,6 @@ const resolveCompanyName = (
   return 'Your Journey Curator';
 };
 
-const normalizePdfBranding = (branding: ItineraryBranding, fallback: ItineraryBranding): ItineraryBranding => {
-  const name = branding.companyName?.trim();
-  if (name && name.toLowerCase() !== 'tripbuilt') {
-    return { ...branding, companyName: name };
-  }
-  const fallbackName = fallback.companyName?.trim();
-  return {
-    ...branding,
-    companyName:
-      fallbackName && fallbackName.toLowerCase() !== 'tripbuilt'
-        ? fallbackName
-        : DEFAULT_ITINERARY_BRANDING.companyName,
-  };
-};
-
 const normalizeRelation = <T,>(value: T | T[] | null | undefined): T | null => {
   if (!value) return null;
   return Array.isArray(value) ? value[0] || null : value;
@@ -141,41 +123,6 @@ const isMissingColumnError = (error: unknown, column: string): boolean => {
     (blob.includes(normalizedColumn) && blob.includes('schema cache'))
   );
 };
-
-const normalizeItinerary = (input: ItineraryResult): ItineraryResult => {
-  const duration = input.duration_days || input.days?.length || 1;
-  return {
-    ...input,
-    duration_days: duration,
-    trip_title: input.trip_title || input.title || 'My Itinerary',
-    destination: input.destination || 'Destination',
-    summary: input.summary || input.description || 'Detailed itinerary enclosed.',
-    days: input.days || [],
-  };
-};
-
-const stripActivityImages = (itinerary: ItineraryResult): ItineraryResult => ({
-  ...itinerary,
-  days: itinerary.days.map((day) => ({
-    ...day,
-    activities: (day.activities || []).map((activity) => ({
-      ...activity,
-      image: undefined,
-      imageUrl: undefined,
-    })),
-  })),
-});
-
-const stripAllPdfImages = (
-  itinerary: ItineraryResult,
-  branding: ItineraryBranding,
-): { itinerary: ItineraryResult; branding: ItineraryBranding } => ({
-  itinerary: stripActivityImages(itinerary),
-  branding: {
-    ...branding,
-    logoUrl: null,
-  },
-});
 
 async function fetchServerPdfPreferences(userId: string, adminClient: unknown) {
   try {
@@ -233,51 +180,6 @@ async function fetchServerPdfPreferences(userId: string, adminClient: unknown) {
   }
 }
 
-const renderLegacyPdfBuffer = async (
-  itinerary: ItineraryResult,
-  template: ReturnType<typeof normalizeItineraryTemplateId>,
-  branding: ItineraryBranding,
-) => {
-  const enrichedItinerary = stripRepeatedPdfImages(itinerary);
-
-  const document = React.createElement(ItineraryDocument, {
-    data: enrichedItinerary,
-    template,
-    branding,
-  }) as unknown as React.ReactElement<DocumentProps>;
-
-  let stream;
-  try {
-    stream = await renderToStream(document);
-  } catch (error) {
-    logError('Primary legacy itinerary PDF render failed, retrying without activity images', error);
-    try {
-      const fallbackDocument = React.createElement(ItineraryDocument, {
-        data: stripActivityImages(itinerary),
-        template,
-        branding,
-      }) as unknown as React.ReactElement<DocumentProps>;
-      stream = await renderToStream(fallbackDocument);
-    } catch (secondaryError) {
-      logError('Secondary legacy itinerary PDF render failed, retrying without remote images', secondaryError);
-      const stripped = stripAllPdfImages(itinerary, branding);
-      const finalDocument = React.createElement(ItineraryDocument, {
-        data: stripped.itinerary,
-        template,
-        branding: stripped.branding,
-      }) as unknown as React.ReactElement<DocumentProps>;
-      stream = await renderToStream(finalDocument);
-    }
-  }
-
-  const chunks: Buffer[] = [];
-  for await (const chunk of stream) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-  }
-
-  return Buffer.concat(chunks);
-};
-
 export async function POST(request: Request) {
   try {
     const parsed = bodySchema.safeParse(await request.json());
@@ -294,71 +196,33 @@ export async function POST(request: Request) {
     const preferences = await fetchServerPdfPreferences(admin.userId, admin.adminClient);
 
     const template = normalizeItineraryTemplateId(parsed.data.template ?? preferences.defaultTemplate);
-    const branding = normalizePdfBranding({
+    const branding = normalizeServerPdfBranding({
       ...preferences.branding,
       ...(parsed.data.branding || {}),
     }, preferences.branding);
     const printExtras = parsed.data.printExtras as ItineraryPrintExtras | undefined;
-    const normalizedItinerary = normalizeItinerary(parsed.data.itinerary);
-    const imageReadyItinerary = await populateItineraryImages(
-      normalizedItinerary as unknown as Parameters<typeof populateItineraryImages>[0],
-      {
-        refreshAutoGenerated: true,
-      },
-    ) as unknown as ItineraryResult;
+    const normalizedItinerary = normalizeServerPdfItinerary(parsed.data.itinerary);
 
     const fileName =
       parsed.data.fileName ||
       `${sanitizeFileName(normalizedItinerary.trip_title || 'itinerary')}_${template}.pdf`;
+    const pdf = await renderItineraryPdfBuffer({
+      itinerary: normalizedItinerary,
+      requestUrl: request.url,
+      branding,
+      template,
+      printExtras,
+      fileName,
+    });
 
-    let printErrorMessage: string | null = null;
-
-    try {
-      const origin = new URL(request.url).origin;
-      const prepared = await prepareItineraryPrintPayload(imageReadyItinerary, branding, template, origin, printExtras);
-      const html = await renderItineraryPrintHtml(prepared);
-      const browser = await launchItineraryPdfBrowser();
-
-      try {
-        const page = await browser.newPage({
-          deviceScaleFactor: 1,
-          colorScheme: template === 'luxury_resort' ? 'dark' : 'light',
-        });
-        await page.emulateMedia({ media: 'print' });
-        await page.setContent(html, { waitUntil: 'networkidle' });
-
-        const pdf = await page.pdf({
-          format: 'A4',
-          printBackground: true,
-          preferCSSPageSize: true,
-          margin: { top: '0', right: '0', bottom: '0', left: '0' },
-        });
-
-        await page.close();
-
-        return new NextResponse(new Uint8Array(pdf), {
-          headers: {
-            'Content-Type': 'application/pdf',
-            'Content-Disposition': `attachment; filename="${fileName}"`,
-            'X-Itinerary-PDF-Renderer': 'print-html',
-          },
-        });
-      } finally {
-        await browser.close();
-      }
-    } catch (printError) {
-      logError('HTML itinerary PDF render failed, falling back to legacy renderer', printError);
-      printErrorMessage = printError instanceof Error ? printError.message : 'Unknown print renderer error';
-    }
-
-    const legacyPdf = await renderLegacyPdfBuffer(imageReadyItinerary, template, branding);
-
-    return new NextResponse(new Uint8Array(legacyPdf), {
+    return new NextResponse(new Uint8Array(pdf.buffer), {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${fileName}"`,
-        'X-Itinerary-PDF-Renderer': 'legacy-react-pdf',
-        ...(printErrorMessage ? { 'X-Itinerary-PDF-Error': encodeURIComponent(printErrorMessage).slice(0, 240) } : {}),
+        'Content-Disposition': `attachment; filename="${pdf.fileName}"`,
+        'X-Itinerary-PDF-Renderer': pdf.renderer,
+        ...(pdf.printErrorMessage
+          ? { 'X-Itinerary-PDF-Error': encodeURIComponent(pdf.printErrorMessage).slice(0, 240) }
+          : {}),
       },
     });
   } catch (error) {

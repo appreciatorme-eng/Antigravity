@@ -212,6 +212,8 @@ const ACTIVE_DRAFT_STATUSES = ["draft", "ready_to_create"] as const;
 const ACTIVE_STATE_KEY_PREFIX = "assistant:trip-intake";
 const ACTIVE_STATE_TTL_SECONDS = 60 * 60 * 24;
 const APP_BASE_URL = (process.env.NEXT_PUBLIC_APP_URL?.trim() || "https://tripbuilt.com").replace(/\/+$/, "");
+const COMPLETION_LOCK_TTL_SECONDS = 60 * 15;
+const COMPLETION_DELIVERED_TTL_SECONDS = 60 * 60 * 24 * 7;
 
 const STEP_DEFINITIONS: readonly StepDefinition[] = [
   {
@@ -298,6 +300,41 @@ function normalizePhoneDigits(value: string | null | undefined): string | null {
 function formatPhoneForStorage(value: string): string | null {
   const digits = normalizePhoneDigits(value);
   return digits ? `+${digits}` : null;
+}
+
+function buildCompletionLockKey(formToken: string): string {
+  return `trip-request:completion-lock:${formToken}`;
+}
+
+function buildCompletionDeliveredKey(formToken: string): string {
+  return `trip-request:completion-delivered:${formToken}`;
+}
+
+async function tryAcquireCompletionLock(formToken: string): Promise<boolean> {
+  const key = buildCompletionLockKey(formToken);
+  const existing = await getCachedJson<{ startedAt?: string }>(key);
+  if (existing) {
+    return false;
+  }
+  await setCachedJson(key, { startedAt: new Date().toISOString() }, COMPLETION_LOCK_TTL_SECONDS);
+  return true;
+}
+
+async function releaseCompletionLock(formToken: string): Promise<void> {
+  await deleteCachedByPrefix(buildCompletionLockKey(formToken), 1);
+}
+
+async function wasCompletionDelivered(formToken: string): Promise<boolean> {
+  const existing = await getCachedJson<{ deliveredAt?: string }>(buildCompletionDeliveredKey(formToken));
+  return Boolean(existing);
+}
+
+async function markCompletionDelivered(formToken: string): Promise<void> {
+  await setCachedJson(
+    buildCompletionDeliveredKey(formToken),
+    { deliveredAt: new Date().toISOString() },
+    COMPLETION_DELIVERED_TTL_SECONDS,
+  );
 }
 
 function trimOrNull(value: string | null | undefined, maxLength = 160): string | null {
@@ -1816,11 +1853,11 @@ async function notifyAssistantGroupAboutCompletedDraft(
   organizationId: string,
   formToken: string,
   message: string,
-): Promise<{ sessionName: string | null; groupJid: string | null }> {
+): Promise<{ sessionName: string | null; groupJid: string | null; operatorPhone: string | null }> {
   const admin = createAdminClient();
   const { data: connection } = await admin
     .from("whatsapp_connections")
-    .select("session_name, assistant_group_jid, status")
+    .select("session_name, assistant_group_jid, phone_number, status")
     .eq("organization_id", organizationId)
     .eq("status", "connected")
     .order("connected_at", { ascending: false })
@@ -1829,9 +1866,12 @@ async function notifyAssistantGroupAboutCompletedDraft(
 
   const sessionName = (connection as { session_name?: string | null } | null)?.session_name ?? null;
   const groupJid = (connection as { assistant_group_jid?: string | null } | null)?.assistant_group_jid ?? null;
+  const operatorPhone = formatPhoneForStorage(
+    (connection as { phone_number?: string | null } | null)?.phone_number ?? "",
+  );
 
   if (!sessionName || !groupJid) {
-    return { sessionName, groupJid };
+    return { sessionName, groupJid, operatorPhone };
   }
 
   await guardedSendText(sessionName, groupJid, message).catch((error) => {
@@ -1858,16 +1898,17 @@ async function notifyAssistantGroupAboutCompletedDraft(
     });
   });
 
-  return { sessionName, groupJid };
+  return { sessionName, groupJid, operatorPhone };
 }
 
 async function notifyClientAboutCompletedDraft(
   organizationId: string,
   sessionName: string | null,
   draft: TripRequestDraft,
+  operatorPhone: string | null,
 ): Promise<void> {
   const phone = formatPhoneForStorage(draft.clientPhone ?? "");
-  if (!sessionName || !phone) {
+  if (!sessionName || !phone || phone === operatorPhone) {
     return;
   }
 
@@ -2216,72 +2257,94 @@ export async function submitTripRequestForm(
 export async function completeSubmittedTripRequestForm(
   formToken: string,
 ): Promise<{ readonly success: boolean; readonly message: string; readonly state?: TripRequestFormState }> {
-  const row = await getDraftByFormToken(formToken);
-  if (!row) {
-    return { success: false, message: "Trip request form not found." };
-  }
-
-  if (row.status === "completed") {
+  const lockAcquired = await tryAcquireCompletionLock(formToken);
+  if (!lockAcquired) {
+    const existing = await loadTripRequestFormState(formToken);
     return {
       success: true,
-      message: "This trip request has already been completed.",
-      state: toTripRequestFormState(mapDraft(row)),
+      message: "This trip request is already being completed.",
+      state: existing ?? undefined,
     };
   }
 
-  const admin = createAdminClient();
-  const ctx: ActionContext = {
-    organizationId: row.organization_id,
-    userId: row.operator_user_id,
-    channel: "whatsapp_group",
-    supabase: admin,
-  };
+  try {
+    const row = await getDraftByFormToken(formToken);
+    if (!row) {
+      return { success: false, message: "Trip request form not found." };
+    }
 
-  const message = await finalizeDraft(ctx, mapDraft(row));
-  const finalRow = await getDraftByFormToken(formToken);
-  const finalDraft = finalRow ? mapDraft(finalRow) : mapDraft(row);
-  const finalState = toTripRequestFormState(finalDraft);
+    const admin = createAdminClient();
+    const ctx: ActionContext = {
+      organizationId: row.organization_id,
+      userId: row.operator_user_id,
+      channel: "whatsapp_group",
+      supabase: admin,
+    };
 
-  if (finalDraft.status !== "completed") {
+    let message = "This trip request has already been completed.";
+    let finalDraft = mapDraft(row);
+
+    if (row.status !== "completed") {
+      message = await finalizeDraft(ctx, finalDraft);
+      const finalRow = await getDraftByFormToken(formToken);
+      finalDraft = finalRow ? mapDraft(finalRow) : finalDraft;
+    }
+
+    const finalState = toTripRequestFormState(finalDraft);
+    if (finalDraft.status !== "completed") {
+      return {
+        success: false,
+        message,
+        state: finalState,
+      };
+    }
+
+    const alreadyDelivered = await wasCompletionDelivered(formToken);
+    if (!alreadyDelivered) {
+      const whatsappMessage = [
+        `Trip form submitted for *${finalDraft.clientName ?? "the traveller"}*.`,
+        finalDraft.createdShareUrl ? `Share link: ${finalDraft.createdShareUrl}` : "Share link is not ready yet.",
+        `PDF: ${buildTripRequestPdfUrl(formToken)}`,
+      ].join("\n");
+
+      const deliveryConnection = await notifyAssistantGroupAboutCompletedDraft(
+        row.organization_id,
+        formToken,
+        whatsappMessage,
+      );
+      await notifyClientAboutCompletedDraft(
+        row.organization_id,
+        deliveryConnection.sessionName,
+        finalDraft,
+        deliveryConnection.operatorPhone,
+      );
+      await markCompletionDelivered(formToken);
+      logEvent("info", "[trip-intake] completion delivered", {
+        organizationId: row.organization_id,
+        draftId: finalDraft.id,
+        tripId: finalDraft.createdTripId,
+        itineraryId: finalDraft.createdItineraryId,
+        notifiedAssistantGroup: Boolean(deliveryConnection.groupJid),
+        notifiedClient:
+          Boolean(finalDraft.clientPhone) &&
+          formatPhoneForStorage(finalDraft.clientPhone ?? "") !== deliveryConnection.operatorPhone,
+      });
+    }
+    await markCustomerSessionCompleted(row.organization_id, finalDraft.clientPhone, finalDraft).catch((error) => {
+      logError("[trip-intake] failed to mark customer flow completed", error, {
+        organizationId: row.organization_id,
+        draftId: finalDraft.id,
+      });
+    });
+
     return {
-      success: false,
+      success: true,
       message,
       state: finalState,
     };
+  } finally {
+    await releaseCompletionLock(formToken);
   }
-
-  const whatsappMessage = [
-    `Trip form submitted for *${finalDraft.clientName ?? "the traveller"}*.`,
-    finalDraft.createdShareUrl ? `Share link: ${finalDraft.createdShareUrl}` : "Share link is not ready yet.",
-    `PDF: ${buildTripRequestPdfUrl(formToken)}`,
-  ].join("\n");
-
-  const deliveryConnection = await notifyAssistantGroupAboutCompletedDraft(
-    row.organization_id,
-    formToken,
-    whatsappMessage,
-  );
-  await notifyClientAboutCompletedDraft(row.organization_id, deliveryConnection.sessionName, finalDraft);
-  logEvent("info", "[trip-intake] completion delivered", {
-    organizationId: row.organization_id,
-    draftId: finalDraft.id,
-    tripId: finalDraft.createdTripId,
-    itineraryId: finalDraft.createdItineraryId,
-    notifiedAssistantGroup: Boolean(deliveryConnection.groupJid),
-    notifiedClient: Boolean(finalDraft.clientPhone),
-  });
-  await markCustomerSessionCompleted(row.organization_id, finalDraft.clientPhone, finalDraft).catch((error) => {
-    logError("[trip-intake] failed to mark customer flow completed", error, {
-      organizationId: row.organization_id,
-      draftId: finalDraft.id,
-    });
-  });
-
-  return {
-    success: true,
-    message,
-    state: finalState,
-  };
 }
 
 async function resumeReplyForDraft(
