@@ -1698,6 +1698,14 @@ export async function listOperatorTripRequestsForOrganization(
   return ((data ?? []) as TripRequestRow[]).map(toOperatorTripRequestListItem);
 }
 
+export async function getOperatorTripRequestForOrganization(
+  organizationId: string,
+  draftId: string,
+): Promise<OperatorTripRequestListItem | null> {
+  const row = await getDraftRowByOrganization(organizationId, draftId);
+  return row ? toOperatorTripRequestListItem(row) : null;
+}
+
 async function createDraft(
   ctx: ActionContext,
   seed: TripSeed,

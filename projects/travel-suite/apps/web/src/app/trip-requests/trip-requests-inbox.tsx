@@ -953,6 +953,13 @@ export function TripRequestsInbox() {
                             <Eye className="h-4 w-4" />
                             View details
                           </button>
+                          <a
+                            href={`/trip-requests/${item.id}`}
+                            className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+                          >
+                            <ArrowUpRight className="h-4 w-4" />
+                            Open page
+                          </a>
                           <button
                             type="button"
                             onClick={() => openEditor(item)}
@@ -1459,6 +1466,13 @@ export function TripRequestsInbox() {
             </div>
 
             <DialogFooter>
+              <a
+                href={`/trip-requests/${detailRequest.id}`}
+                className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+              >
+                <ArrowUpRight className="h-4 w-4" />
+                Open full page
+              </a>
               <button
                 type="button"
                 onClick={() => setDetailRequest(null)}
