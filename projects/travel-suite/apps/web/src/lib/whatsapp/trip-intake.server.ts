@@ -150,11 +150,17 @@ export type OperatorTripRequestListItem = {
   readonly updatedAt: string;
   readonly destination: string | null;
   readonly durationDays: number | null;
+  readonly startDate: string | null;
+  readonly endDate: string | null;
   readonly clientName: string | null;
   readonly clientEmail: string | null;
   readonly clientPhone: string | null;
   readonly travelerCount: number | null;
   readonly travelWindow: string | null;
+  readonly budget: string | null;
+  readonly hotelPreference: string | null;
+  readonly interests: readonly string[];
+  readonly originCity: string | null;
   readonly createdTripId: string | null;
   readonly createdItineraryId: string | null;
   readonly createdShareUrl: string | null;
@@ -1632,11 +1638,17 @@ function toOperatorTripRequestListItem(row: TripRequestRow): OperatorTripRequest
     updatedAt: draft.updatedAt,
     destination: draft.destination,
     durationDays: draft.durationDays,
+    startDate: draft.startDate,
+    endDate: draft.endDate,
     clientName: draft.clientName,
     clientEmail: draft.clientEmail,
     clientPhone: draft.clientPhone,
     travelerCount: draft.travelerCount,
     travelWindow: draft.travelWindow,
+    budget: draft.budget,
+    hotelPreference: draft.hotelPreference,
+    interests: draft.interests,
+    originCity: draft.originCity,
     createdTripId: draft.createdTripId,
     createdItineraryId: draft.createdItineraryId,
     createdShareUrl: draft.createdShareUrl,
@@ -2368,6 +2380,21 @@ type TripRequestFormSubmitInput = {
   submitterRole: TripRequestSubmitterRole | null;
 };
 
+export type OperatorTripRequestUpdateInput = {
+  destination: string;
+  durationDays: number;
+  clientName: string;
+  clientEmail: string | null;
+  clientPhone: string | null;
+  travelerCount: number;
+  startDate: string;
+  endDate: string;
+  budget: string | null;
+  hotelPreference: string | null;
+  interests: readonly string[];
+  originCity: string | null;
+};
+
 type SubmitTripRequestFormOptions = {
   deferFinalization?: boolean;
 };
@@ -2487,6 +2514,137 @@ export async function submitTripRequestForm(
   }
 
   return completeSubmittedTripRequestForm(formToken);
+}
+
+export async function updateTripRequestDraftForOperator(args: {
+  organizationId: string;
+  draftId: string;
+  operatorUserId?: string | null;
+  input: OperatorTripRequestUpdateInput;
+}): Promise<{ readonly success: boolean; readonly message: string; readonly request?: OperatorTripRequestListItem }> {
+  const row = await getDraftRowByOrganization(args.organizationId, args.draftId);
+  if (!row) {
+    return { success: false, message: "Trip request not found." };
+  }
+
+  if (args.operatorUserId && row.operator_user_id !== args.operatorUserId) {
+    return { success: false, message: "You do not have access to update this trip request." };
+  }
+
+  const destination = trimOrNull(args.input.destination, 160);
+  const clientName = trimOrNull(args.input.clientName, 160);
+  const startDate = trimOrNull(args.input.startDate, 20);
+  const endDate = trimOrNull(args.input.endDate, 20);
+  const clientEmail = normalizeEmail(args.input.clientEmail);
+  const clientPhone = formatPhoneForStorage(args.input.clientPhone ?? "");
+  const budget = trimOrNull(args.input.budget, 120);
+  const hotelPreference = trimOrNull(args.input.hotelPreference, 120);
+  const originCity = trimOrNull(args.input.originCity, 120);
+  const interests = args.input.interests
+    .map((entry) => trimOrNull(entry, 60))
+    .filter((entry): entry is string => Boolean(entry))
+    .slice(0, 10);
+
+  if (
+    !destination
+    || !clientName
+    || !startDate
+    || !endDate
+    || !Number.isFinite(args.input.durationDays)
+    || args.input.durationDays < 1
+    || !Number.isFinite(args.input.travelerCount)
+    || args.input.travelerCount < 1
+  ) {
+    return {
+      success: false,
+      message: "Destination, duration, traveller name, travel dates, and traveller count are required.",
+    };
+  }
+
+  if (startDate > endDate) {
+    return { success: false, message: "Return date must be on or after the departure date." };
+  }
+
+  const travelWindow = `${startDate} to ${endDate}`;
+  const requestSummary = summarizeDraft({
+    destination,
+    durationDays: args.input.durationDays,
+    clientName,
+  });
+
+  const missingRequiredFields = computeMissingRequiredFields({
+    destination,
+    durationDays: args.input.durationDays,
+    clientName,
+    travelerCount: args.input.travelerCount,
+    travelWindow,
+  });
+
+  const updatedCollectedFields = {
+    ...toCollectedFields(row.collected_fields),
+    destination,
+    duration_days: args.input.durationDays,
+    client_name: clientName,
+    client_email: clientEmail ?? "",
+    client_phone: clientPhone ?? "",
+    traveler_count: args.input.travelerCount,
+    travel_window: travelWindow,
+    start_date: startDate,
+    end_date: endDate,
+    budget: budget ?? "",
+    hotel_preference: hotelPreference ?? "",
+    interests,
+    origin_city: originCity ?? "",
+  };
+
+  const nextStatus: TripRequestStatus =
+    row.status === "completed"
+      ? "completed"
+      : missingRequiredFields.length === 0
+        ? "ready_to_create"
+        : "draft";
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("assistant_trip_requests")
+    .update({
+      destination,
+      duration_days: args.input.durationDays,
+      client_name: clientName,
+      client_email: clientEmail,
+      client_phone: clientPhone,
+      traveler_count: args.input.travelerCount,
+      travel_window: travelWindow,
+      start_date: startDate,
+      end_date: endDate,
+      budget,
+      hotel_preference: hotelPreference,
+      interests,
+      origin_city: originCity,
+      request_summary: requestSummary,
+      status: nextStatus,
+      current_step: nextStatus === "draft" ? row.current_step : null,
+      missing_required_fields: missingRequiredFields as unknown as Json,
+      collected_fields: updatedCollectedFields as unknown as Json,
+    })
+    .eq("id", row.id)
+    .eq("organization_id", args.organizationId)
+    .select("*")
+    .single();
+
+  if (error || !data) {
+    logError("[trip-intake] failed to update trip request draft from operator inbox", error, {
+      organizationId: args.organizationId,
+      draftId: args.draftId,
+    });
+    return { success: false, message: `Failed to update trip request: ${error?.message ?? "unknown error"}` };
+  }
+
+  return {
+    success: true,
+    message: "Trip request updated. Regenerate the itinerary to apply these changes to the final trip.",
+    request: toOperatorTripRequestListItem(data as TripRequestRow),
+  };
 }
 
 export async function completeSubmittedTripRequestForm(
@@ -2763,6 +2921,22 @@ export async function regenerateTripRequestItinerary(args: {
 
   if (updateItineraryError) {
     return { success: false, message: `Failed to regenerate the itinerary: ${updateItineraryError.message}` };
+  }
+
+  if (draft.createdTripId) {
+    const { error: updateTripError } = await admin
+      .from("trips")
+      .update({
+        start_date: draft.startDate,
+        end_date: draft.endDate,
+        pax_count: draft.travelerCount,
+      })
+      .eq("id", draft.createdTripId)
+      .eq("organization_id", args.organizationId);
+
+    if (updateTripError) {
+      return { success: false, message: `Itinerary regenerated, but trip dates could not be synced: ${updateTripError.message}` };
+    }
   }
 
   const shareUrl = draft.createdShareUrl ?? await ensureTripShareUrl(ctx, draft.createdItineraryId);

@@ -117,6 +117,7 @@ const routes = createCatchAllHandlers([
   ["subscriptions", () => import("@/app/api/_handlers/subscriptions/route")],
   ["support", () => import("@/app/api/_handlers/support/route")],
   ["trip-requests/:id/actions", () => import("@/app/api/_handlers/trip-requests/[id]/actions/route")],
+  ["trip-requests/:id", () => import("@/app/api/_handlers/trip-requests/[id]/route")],
   ["trip-requests", () => import("@/app/api/_handlers/trip-requests/route")],
   ["trip-request/:token/pdf", () => import("@/app/api/_handlers/trip-request/[token]/pdf/route")],
   ["trip-request/:token", () => import("@/app/api/_handlers/trip-request/[token]/route")],
