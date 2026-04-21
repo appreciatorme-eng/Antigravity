@@ -57,6 +57,8 @@ type InlineFeedback = {
   occurredAt: number;
 };
 
+type ActionRailEntry = InlineFeedback;
+
 function buildEditFormState(item: OperatorTripRequestListItem): EditFormState {
   return {
     destination: item.destination ?? "",
@@ -182,6 +184,7 @@ export function TripRequestDetailActions({
   const [savingEdit, setSavingEdit] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [inlineFeedback, setInlineFeedback] = useState<InlineFeedback | null>(null);
+  const [actionRail, setActionRail] = useState<ActionRailEntry[]>([]);
 
   useEffect(() => {
     setRequest(initialRequest);
@@ -246,13 +249,15 @@ export function TripRequestDetailActions({
             ? "Regeneration started"
             : "Retry started";
 
-    setInlineFeedback({
+    const feedback: InlineFeedback = {
       title,
       description,
       tone: action === "retry_request" || action === "regenerate_itinerary" ? "info" : "success",
       action,
       occurredAt: Date.now(),
-    });
+    };
+    setInlineFeedback(feedback);
+    setActionRail((current) => [feedback, ...current].slice(0, 4));
   }
 
   async function runAction(action: ActionType) {
@@ -355,13 +360,15 @@ export function TripRequestDetailActions({
         description: payload.data?.message ?? "Saved the new trip brief.",
         variant: "success",
       });
-      setInlineFeedback({
+      const feedback: InlineFeedback = {
         title: "Brief saved",
         description: payload.data?.message ?? "The request details were updated successfully.",
         tone: "success",
         action: "saved",
         occurredAt: Date.now(),
-      });
+      };
+      setInlineFeedback(feedback);
+      setActionRail((current) => [feedback, ...current].slice(0, 4));
       setEditOpen(false);
       router.refresh();
     } catch (error) {
@@ -493,6 +500,33 @@ export function TripRequestDetailActions({
               Live issue chips show the exact blocker on this request. Use the inline action on each chip for the
               fastest recovery path.
             </p>
+            {actionRail.length > 0 ? (
+              <div className="mt-4 overflow-x-auto pb-1">
+                <div className="flex min-w-max gap-3">
+                  {actionRail.map((entry) => (
+                    <div
+                      key={`${entry.action}-${entry.occurredAt}`}
+                      className={cn(
+                        "min-w-[220px] rounded-2xl border px-4 py-3",
+                        entry.tone === "success"
+                          ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                          : "border-sky-500/20 bg-sky-500/10 text-sky-700 dark:text-sky-300",
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="text-sm font-bold">{entry.title}</div>
+                          <div className="mt-1 text-xs leading-5 opacity-90">{entry.description}</div>
+                        </div>
+                        <div className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.16em] opacity-75">
+                          Just now
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             {inlineFeedback ? (
               <div
                 className={cn(
