@@ -2017,9 +2017,13 @@ async function updateDraft(
   draftId: string,
   patch: Record<string, unknown>,
 ): Promise<TripRequestDraft | null> {
+  const nextPatch = {
+    ...patch,
+    updated_at: typeof patch.updated_at === "string" ? patch.updated_at : new Date().toISOString(),
+  };
   const { data, error } = await ctx.supabase
     .from("assistant_trip_requests")
-    .update(patch)
+    .update(nextPatch)
     .eq("id", draftId)
     .eq("organization_id", ctx.organizationId)
     .eq("operator_user_id", ctx.userId)
@@ -2044,9 +2048,13 @@ async function updateDraftByVersion(
   expectedUpdatedAt: string,
   patch: Record<string, unknown>,
 ): Promise<TripRequestDraft | null> {
+  const nextPatch = {
+    ...patch,
+    updated_at: typeof patch.updated_at === "string" ? patch.updated_at : new Date().toISOString(),
+  };
   const { data, error } = await ctx.supabase
     .from("assistant_trip_requests")
-    .update(patch)
+    .update(nextPatch)
     .eq("id", draftId)
     .eq("organization_id", ctx.organizationId)
     .eq("operator_user_id", ctx.userId)

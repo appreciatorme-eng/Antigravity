@@ -79,9 +79,16 @@ export function uniqueSessionName(orgId: string): string {
 // Internal fetch helper -- attaches apikey header
 // ---------------------------------------------------------------------------
 
+type EvolutionFetchRetryOptions = {
+    retries?: number;
+    timeoutMs?: number;
+    baseDelayMs?: number;
+};
+
 async function evolutionFetch(
     path: string,
     options?: RequestInit,
+    retryOptions?: EvolutionFetchRetryOptions,
 ): Promise<Response> {
     const baseUrl = env.evolution?.baseUrl;
     const apiKey = env.evolution?.apiKey;
@@ -105,9 +112,9 @@ async function evolutionFetch(
         },
         cache: "no-store",
     }, {
-        retries: 2,
-        timeoutMs: 9000,
-        baseDelayMs: 300,
+        retries: retryOptions?.retries ?? 2,
+        timeoutMs: retryOptions?.timeoutMs ?? 9000,
+        baseDelayMs: retryOptions?.baseDelayMs ?? 300,
     });
 
     return res;
@@ -362,17 +369,27 @@ export async function sendEvolutionMedia(
 ): Promise<void> {
     const target = normalizeEvolutionTarget(phoneDigits);
 
-    const res = await evolutionFetch(`/message/sendMedia/${instanceName}`, {
-        method: "POST",
-        body: JSON.stringify({
-            number: target,
-            mediatype: mediaType === "image" ? "image" : mediaType === "video" ? "video" : "document",
-            media,
-            caption: options?.caption ?? "",
-            fileName: options?.fileName ?? `file.${mediaType === "image" ? "jpg" : "pdf"}`,
-            mimetype: options?.mimetype ?? (mediaType === "document" ? "application/pdf" : `${mediaType}/jpeg`),
-        }),
-    });
+    // Media sends are not idempotent on the provider side. If Evolution accepts
+    // the upload but the HTTP response times out, a retry can produce duplicate
+    // documents in WhatsApp. Use a single attempt with a longer timeout instead.
+    const res = await evolutionFetch(
+        `/message/sendMedia/${instanceName}`,
+        {
+            method: "POST",
+            body: JSON.stringify({
+                number: target,
+                mediatype: mediaType === "image" ? "image" : mediaType === "video" ? "video" : "document",
+                media,
+                caption: options?.caption ?? "",
+                fileName: options?.fileName ?? `file.${mediaType === "image" ? "jpg" : "pdf"}`,
+                mimetype: options?.mimetype ?? (mediaType === "document" ? "application/pdf" : `${mediaType}/jpeg`),
+            }),
+        },
+        {
+            retries: 0,
+            timeoutMs: 30_000,
+        },
+    );
 
     if (!res.ok) {
         const body = await res.text().catch(() => "(no body)");
