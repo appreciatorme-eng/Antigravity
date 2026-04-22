@@ -155,10 +155,15 @@ export function IntegrationsTab({
             <MessagingSection
                 isWhatsAppConnected={isWhatsAppConnected}
                 whatsAppProfile={whatsAppProfile}
+                isMorningBriefingEnabled={false}
+                isMorningBriefingReady={isWhatsAppConnected}
+                lastMorningBriefingAt={null}
+                morningBriefingBusy={false}
                 isGmailConnected={isGmailConnected}
                 gmailEmail={gmailEmail}
                 onOpenWhatsAppConnect={onOpenWhatsAppConnect}
                 onDisconnectWhatsApp={onDisconnectWhatsApp}
+                onToggleMorningBriefing={() => {}}
                 onDisconnectGmail={async () => {
                     const res = await authedFetch('/api/admin/email/disconnect', { method: 'POST' });
                     if (res.ok) {

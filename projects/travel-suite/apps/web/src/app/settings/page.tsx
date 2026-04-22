@@ -142,6 +142,10 @@ export default function SettingsPage() {
         number: string;
         name: string;
     } | null>(null);
+    const [isMorningBriefingEnabled, setIsMorningBriefingEnabled] = useState(false);
+    const [isMorningBriefingReady, setIsMorningBriefingReady] = useState(false);
+    const [lastMorningBriefingAt, setLastMorningBriefingAt] = useState<string | null>(null);
+    const [morningBriefingBusy, setMorningBriefingBusy] = useState(false);
 
     // Email state
     const [isGmailConnected, setIsGmailConnected] = useState(false);
@@ -309,6 +313,20 @@ export default function SettingsPage() {
             const rulesResponse = await authedFetch('/api/admin/workflow/rules');
             const rulesPayload = await rulesResponse.json();
             if (rulesResponse.ok) setWorkflowRules(rulesPayload.rules || []);
+
+            const morningBriefingResponse = await authedFetch('/api/admin/assistant/briefing', { cache: 'no-store' });
+            const morningBriefingPayload = await morningBriefingResponse.json() as {
+                data?: {
+                    enabled?: boolean;
+                    assistantGroupReady?: boolean;
+                    lastBriefingAt?: string | null;
+                } | null;
+            };
+            if (morningBriefingResponse.ok) {
+                setIsMorningBriefingEnabled(Boolean(morningBriefingPayload.data?.enabled));
+                setIsMorningBriefingReady(Boolean(morningBriefingPayload.data?.assistantGroupReady));
+                setLastMorningBriefingAt(morningBriefingPayload.data?.lastBriefingAt ?? null);
+            }
         } catch (error) {
             logError('Error fetching settings', error);
         } finally {
@@ -555,7 +573,49 @@ export default function SettingsPage() {
 
     const handleWhatsAppConnected = useCallback(() => {
         setIsWhatsAppConnected(true);
+        setIsMorningBriefingReady(true);
     }, []);
+
+    const handleToggleMorningBriefing = useCallback(async () => {
+        setMorningBriefingBusy(true);
+        try {
+            const nextEnabled = !isMorningBriefingEnabled;
+            const response = await authedFetch('/api/admin/assistant/briefing', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: nextEnabled }),
+            });
+            const payload = await response.json() as {
+                data?: {
+                    enabled?: boolean;
+                    assistantGroupReady?: boolean;
+                } | null;
+                error?: string | null;
+            };
+
+            if (!response.ok) {
+                throw new Error(payload.error || 'Failed to update morning briefing');
+            }
+
+            setIsMorningBriefingEnabled(Boolean(payload.data?.enabled));
+            setIsMorningBriefingReady(Boolean(payload.data?.assistantGroupReady));
+            toast({
+                title: nextEnabled ? 'Morning briefing enabled' : 'Morning briefing turned off',
+                description: nextEnabled
+                    ? 'Your TripBuilt Assistant agenda will be sent automatically each morning.'
+                    : 'Automatic morning briefings are now turned off.',
+                variant: 'success',
+            });
+        } catch (error) {
+            toast({
+                title: 'Failed to update morning briefing',
+                description: error instanceof Error ? error.message : 'Please try again.',
+                variant: 'error',
+            });
+        } finally {
+            setMorningBriefingBusy(false);
+        }
+    }, [isMorningBriefingEnabled, toast]);
 
     // --- Loading state ---
 
@@ -702,10 +762,15 @@ export default function SettingsPage() {
                                 <MessagingSection
                                     isWhatsAppConnected={isWhatsAppConnected}
                                     whatsAppProfile={whatsAppProfile}
+                                    isMorningBriefingEnabled={isMorningBriefingEnabled}
+                                    isMorningBriefingReady={isMorningBriefingReady}
+                                    lastMorningBriefingAt={lastMorningBriefingAt}
+                                    morningBriefingBusy={morningBriefingBusy}
                                     isGmailConnected={isGmailConnected}
                                     gmailEmail={gmailEmail}
                                     onOpenWhatsAppConnect={handleOpenWhatsAppConnect}
                                     onDisconnectWhatsApp={() => { void handleDisconnectWhatsApp(); }}
+                                    onToggleMorningBriefing={() => { void handleToggleMorningBriefing(); }}
                                     onDisconnectGmail={async () => {
                                         const res = await authedFetch('/api/admin/email/disconnect', { method: 'POST' });
                                         if (res.ok) {

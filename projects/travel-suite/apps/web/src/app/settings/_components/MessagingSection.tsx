@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { MessageCircle, Mail } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { BellRing, Clock3, MessageCircle, Mail } from 'lucide-react';
 import { GlassButton } from '@/components/glass/GlassButton';
 import { cn } from '@/lib/utils';
 import { EmailConnectWizard } from '@/components/settings/EmailConnectWizard';
@@ -14,10 +14,15 @@ export interface WhatsAppProfile {
 export interface MessagingSectionProps {
     readonly isWhatsAppConnected: boolean;
     readonly whatsAppProfile: WhatsAppProfile | null;
+    readonly isMorningBriefingEnabled: boolean;
+    readonly isMorningBriefingReady: boolean;
+    readonly lastMorningBriefingAt: string | null;
+    readonly morningBriefingBusy?: boolean;
     readonly isGmailConnected: boolean;
     readonly gmailEmail?: string;
     readonly onOpenWhatsAppConnect: () => void;
     readonly onDisconnectWhatsApp: () => void;
+    readonly onToggleMorningBriefing: () => void;
     readonly onDisconnectGmail?: () => void;
     readonly onEmailConnected?: (email: string) => void;
 }
@@ -25,14 +30,25 @@ export interface MessagingSectionProps {
 export function MessagingSection({
     isWhatsAppConnected,
     whatsAppProfile,
+    isMorningBriefingEnabled,
+    isMorningBriefingReady,
+    lastMorningBriefingAt,
+    morningBriefingBusy,
     isGmailConnected,
     gmailEmail,
     onOpenWhatsAppConnect,
     onDisconnectWhatsApp,
+    onToggleMorningBriefing,
     onDisconnectGmail,
     onEmailConnected,
 }: MessagingSectionProps) {
     const [showWizard, setShowWizard] = useState(false);
+    const lastBriefingLabel = useMemo(() => {
+        if (!lastMorningBriefingAt) return 'No morning brief sent yet';
+        const date = new Date(lastMorningBriefingAt);
+        if (Number.isNaN(date.getTime())) return 'No morning brief sent yet';
+        return `Last scheduled ${date.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}`;
+    }, [lastMorningBriefingAt]);
 
     return (
         <div>
@@ -81,6 +97,54 @@ export function MessagingSection({
                                 Disconnect
                             </button>
                         )}
+                    </div>
+                </div>
+
+                <div className="p-5 border border-amber-200/70 rounded-2xl bg-gradient-to-br from-amber-50 to-white">
+                    <div className="flex items-start gap-4">
+                        <div className="w-11 h-11 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                            <BellRing className="w-5 h-5 text-amber-700" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                                <h4 className="font-bold text-secondary">Morning briefing</h4>
+                                {isMorningBriefingEnabled ? (
+                                    <span className="text-[11px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">&#x25CF; Enabled</span>
+                                ) : (
+                                    <span className="text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-bold">Off</span>
+                                )}
+                            </div>
+                            <p className="text-xs text-text-muted leading-relaxed">
+                                Send your daily TripBuilt Assistant agenda automatically each morning.
+                            </p>
+                            <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px]">
+                                <span className={cn(
+                                    'inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-semibold',
+                                    isMorningBriefingReady
+                                        ? 'bg-emerald-100 text-emerald-700'
+                                        : 'bg-amber-100 text-amber-800'
+                                )}>
+                                    <Clock3 className="w-3.5 h-3.5" />
+                                    {isMorningBriefingReady ? 'Assistant group ready' : 'Connect assistant group first'}
+                                </span>
+                                <span className="text-text-secondary">{lastBriefingLabel}</span>
+                            </div>
+                            <p className="mt-2 text-[11px] text-text-muted">
+                                You can still send one manually any time from WhatsApp with <span className="font-semibold text-secondary">brief now</span>.
+                            </p>
+                        </div>
+                        <div className="flex flex-col gap-2 shrink-0">
+                            <GlassButton
+                                variant={isMorningBriefingEnabled ? 'secondary' : 'primary'}
+                                size="sm"
+                                loading={morningBriefingBusy}
+                                disabled={!isMorningBriefingReady && !isMorningBriefingEnabled}
+                                onClick={onToggleMorningBriefing}
+                                className="text-xs font-bold"
+                            >
+                                {isMorningBriefingEnabled ? 'Turn off' : 'Turn on'}
+                            </GlassButton>
+                        </div>
                     </div>
                 </div>
 
