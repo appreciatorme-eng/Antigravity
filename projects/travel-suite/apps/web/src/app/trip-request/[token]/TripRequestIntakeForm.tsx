@@ -260,6 +260,93 @@ function getDurationDays(startDate: string, endDate: string, fallback: number | 
   return nights + 1;
 }
 
+function getSubmitReadiness(args: {
+  clientName: string;
+  phoneDigits: string;
+  destination: string;
+  startDate: string;
+  endDate: string;
+  travelerCount: number;
+  durationDays: number;
+  submitPending: boolean;
+  isProcessing: boolean;
+}): { canSubmit: boolean; message: string } {
+  if (args.submitPending) {
+    return {
+      canSubmit: false,
+      message: "Sending your request now.",
+    };
+  }
+
+  if (args.isProcessing) {
+    return {
+      canSubmit: false,
+      message: "Your trip request is already being prepared.",
+    };
+  }
+
+  if (!args.clientName.trim()) {
+    return {
+      canSubmit: false,
+      message: "Enter your name to continue.",
+    };
+  }
+
+  if (args.phoneDigits.length < 8) {
+    return {
+      canSubmit: false,
+      message: "Enter a valid WhatsApp number to continue.",
+    };
+  }
+
+  if (!args.destination.trim()) {
+    return {
+      canSubmit: false,
+      message: "Choose a destination to continue.",
+    };
+  }
+
+  if (!args.startDate) {
+    return {
+      canSubmit: false,
+      message: "Choose a departure date to continue.",
+    };
+  }
+
+  if (!args.endDate) {
+    return {
+      canSubmit: false,
+      message: "Choose a return date to continue.",
+    };
+  }
+
+  if (args.endDate < args.startDate) {
+    return {
+      canSubmit: false,
+      message: "Return date must be after the departure date.",
+    };
+  }
+
+  if (args.travelerCount < 1) {
+    return {
+      canSubmit: false,
+      message: "Choose how many travellers are going.",
+    };
+  }
+
+  if (args.durationDays < 1) {
+    return {
+      canSubmit: false,
+      message: "Select valid travel dates to continue.",
+    };
+  }
+
+  return {
+    canSubmit: true,
+    message: "Your trip brief is ready to send.",
+  };
+}
+
 function SearchableLocationField({
   label,
   name,
@@ -632,18 +719,20 @@ export function TripRequestIntakeForm({
   const durationDays = getDurationDays(startDate, endDate, state.durationDays);
   const normalizedPhone = joinPhoneParts(countryCode, clientPhone);
   const phoneDigits = normalizeDigits(clientPhone);
-  const hasValidDateRange = Boolean(startDate && endDate && endDate >= startDate);
   const isCompleted = state.status === "completed";
-  const isProcessing = submitted && !isCompleted;
-  const canSubmit =
-    !submitPending &&
-    !isProcessing &&
-    clientName.trim().length > 0 &&
-    phoneDigits.length >= 8 &&
-    destination.trim().length > 0 &&
-    hasValidDateRange &&
-    travelerCount > 0 &&
-    durationDays > 0;
+  const isProcessing = state.status === "ready_to_create" || (submitted && state.status !== "draft" && !isCompleted);
+  const submitReadiness = getSubmitReadiness({
+    clientName,
+    phoneDigits,
+    destination,
+    startDate,
+    endDate,
+    travelerCount,
+    durationDays,
+    submitPending,
+    isProcessing,
+  });
+  const canSubmit = submitReadiness.canSubmit;
   const trustPoints =
     state.organizationServiceBullets.length > 0
       ? state.organizationServiceBullets
@@ -1391,7 +1480,7 @@ export function TripRequestIntakeForm({
                       <p className="mt-1 text-sm leading-6 text-stone-500">
                         {canSubmit
                           ? `${state.organizationName} will review your details and share your itinerary.`
-                          : "Fill the required traveller, WhatsApp, destination, and date details to continue."}
+                          : submitReadiness.message}
                       </p>
                     </div>
                     <button
@@ -1409,7 +1498,7 @@ export function TripRequestIntakeForm({
                     <p className="text-center text-[11px] text-stone-500 sm:hidden">
                       {canSubmit
                         ? `Your details are sent only to ${state.organizationName}`
-                        : "Required: name, WhatsApp number, destination, travel dates, and travellers"}
+                        : submitReadiness.message}
                     </p>
                   </div>
                 </div>
