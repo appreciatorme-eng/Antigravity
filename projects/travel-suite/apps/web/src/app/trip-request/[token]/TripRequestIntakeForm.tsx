@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   ArrowRight,
   BadgeCheck,
@@ -116,6 +116,13 @@ const PROCESSING_STEPS = [
     description: "Your advisor will receive the final trip and follow up with you on WhatsApp.",
     icon: MessageSquareMore,
   },
+] as const;
+
+const PROCESSING_STAGE_COLORS = [
+  { from: "#14b8a6", to: "#0f766e", bg: "#ecfeff", border: "#67e8f9", text: "#115e59" },
+  { from: "#2563eb", to: "#1d4ed8", bg: "#eff6ff", border: "#93c5fd", text: "#1d4ed8" },
+  { from: "#7c3aed", to: "#6d28d9", bg: "#f5f3ff", border: "#c4b5fd", text: "#6d28d9" },
+  { from: "#ea580c", to: "#c2410c", bg: "#fff7ed", border: "#fdba74", text: "#c2410c" },
 ] as const;
 
 function hexToRgba(color: string | null | undefined, alpha: number): string {
@@ -682,14 +689,15 @@ function TravelDatesField({
 
 function ProcessingStepCard({
   step,
-  accentColor,
   status,
+  toneIndex = 0,
 }: {
   step: (typeof PROCESSING_STEPS)[number];
-  accentColor: string;
   status: "complete" | "active" | "upcoming";
+  toneIndex?: number;
 }) {
   const Icon = step.icon;
+  const tone = PROCESSING_STAGE_COLORS[toneIndex % PROCESSING_STAGE_COLORS.length] ?? PROCESSING_STAGE_COLORS[0];
 
   return (
     <div
@@ -701,7 +709,13 @@ function ProcessingStepCard({
         borderColor:
           status === "upcoming"
             ? "rgba(120,113,108,0.14)"
-            : hexToRgba(accentColor, status === "active" ? 0.28 : 0.18),
+            : status === "active"
+              ? tone.border
+              : hexToRgba(tone.text, 0.18),
+        background:
+          status === "active"
+            ? `linear-gradient(180deg, ${tone.bg} 0%, #ffffff 100%)`
+            : undefined,
       }}
     >
       <div className="flex items-start gap-3">
@@ -717,11 +731,11 @@ function ProcessingStepCard({
                   borderColor: "transparent",
                   background:
                     status === "complete"
-                      ? `linear-gradient(135deg, ${hexToRgba(accentColor, 0.88)} 0%, ${accentColor} 100%)`
-                      : `linear-gradient(135deg, ${accentColor} 0%, ${hexToRgba(accentColor, 0.74)} 100%)`,
+                      ? `linear-gradient(135deg, ${tone.from} 0%, ${tone.to} 100%)`
+                      : `linear-gradient(135deg, ${tone.from} 0%, ${tone.to} 100%)`,
                   boxShadow:
                     status === "active"
-                      ? `0 18px 38px -24px ${hexToRgba(accentColor, 0.9)}`
+                      ? `0 18px 38px -24px ${hexToRgba(tone.to, 0.9)}`
                       : undefined,
                 }
           }
@@ -737,8 +751,8 @@ function ProcessingStepCard({
                 backgroundColor:
                   status === "upcoming"
                     ? "rgba(231,229,228,0.9)"
-                    : hexToRgba(accentColor, status === "active" ? 0.12 : 0.1),
-                color: status === "upcoming" ? "#78716c" : accentColor,
+                    : tone.bg,
+                color: status === "upcoming" ? "#78716c" : tone.text,
               }}
             >
               {status === "complete" ? "Done" : status === "active" ? "In progress" : "Queued"}
@@ -762,7 +776,11 @@ export function TripRequestIntakeForm({
   submitted: boolean;
   errorMessage: string | null;
 }) {
-  const accentColor = state.organizationPrimaryColor || "#8b5e3c";
+  const [viewState, setViewState] = useState(state);
+  const [submittedState, setSubmittedState] = useState(submitted);
+  const [isPolling, setIsPolling] = useState(false);
+  const pollingAbortRef = useRef<AbortController | null>(null);
+  const accentColor = viewState.organizationPrimaryColor || "#8b5e3c";
   const accentSoft = hexToRgba(accentColor, 0.12);
   const accentSofter = hexToRgba(accentColor, 0.06);
   const actionPalette = getActionButtonPalette(accentColor);
@@ -771,31 +789,31 @@ export function TripRequestIntakeForm({
   const initialPhoneParts = splitPhoneParts(
     cachedDraft?.countryCode && cachedDraft?.clientPhone
       ? joinPhoneParts(cachedDraft.countryCode, cachedDraft.clientPhone)
-      : state.clientPhone,
+      : viewState.clientPhone,
   );
-  const [clientName, setClientName] = useState(cachedDraft?.clientName ?? state.clientName);
+  const [clientName, setClientName] = useState(cachedDraft?.clientName ?? viewState.clientName);
   const [countryCode, setCountryCode] = useState(
     cachedDraft?.countryCode?.trim() ? cachedDraft.countryCode : initialPhoneParts.countryCode,
   );
   const [clientPhone, setClientPhone] = useState(cachedDraft?.clientPhone ?? initialPhoneParts.localNumber);
-  const [clientEmail, setClientEmail] = useState(cachedDraft?.clientEmail ?? state.clientEmail);
-  const [destination, setDestination] = useState(cachedDraft?.destination ?? state.destination);
-  const [originCity, setOriginCity] = useState(cachedDraft?.originCity ?? state.originCity);
-  const [travelerCount, setTravelerCount] = useState<number>(cachedDraft?.travelerCount ?? state.travelerCount ?? 2);
-  const [hotelPreference, setHotelPreference] = useState(cachedDraft?.hotelPreference ?? state.hotelPreference);
-  const [budget, setBudget] = useState(cachedDraft?.budget ?? state.budget);
-  const [interests, setInterests] = useState<string[]>(cachedDraft?.interests ?? splitInterests(state.interests));
-  const [startDate, setStartDate] = useState(cachedDraft?.startDate ?? state.startDate);
-  const [endDate, setEndDate] = useState(cachedDraft?.endDate ?? state.endDate);
+  const [clientEmail, setClientEmail] = useState(cachedDraft?.clientEmail ?? viewState.clientEmail);
+  const [destination, setDestination] = useState(cachedDraft?.destination ?? viewState.destination);
+  const [originCity, setOriginCity] = useState(cachedDraft?.originCity ?? viewState.originCity);
+  const [travelerCount, setTravelerCount] = useState<number>(cachedDraft?.travelerCount ?? viewState.travelerCount ?? 2);
+  const [hotelPreference, setHotelPreference] = useState(cachedDraft?.hotelPreference ?? viewState.hotelPreference);
+  const [budget, setBudget] = useState(cachedDraft?.budget ?? viewState.budget);
+  const [interests, setInterests] = useState<string[]>(cachedDraft?.interests ?? splitInterests(viewState.interests));
+  const [startDate, setStartDate] = useState(cachedDraft?.startDate ?? viewState.startDate);
+  const [endDate, setEndDate] = useState(cachedDraft?.endDate ?? viewState.endDate);
   const [submitPending, setSubmitPending] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const [processingStepIndex, setProcessingStepIndex] = useState(0);
 
-  const durationDays = getDurationDays(startDate, endDate, state.durationDays);
+  const durationDays = getDurationDays(startDate, endDate, viewState.durationDays);
   const normalizedPhone = joinPhoneParts(countryCode, clientPhone);
   const phoneDigits = normalizeDigits(clientPhone);
-  const isCompleted = state.status === "completed";
-  const isProcessing = state.status === "ready_to_create" || (submitted && state.status !== "draft" && !isCompleted);
+  const isCompleted = viewState.status === "completed";
+  const isProcessing = viewState.status === "ready_to_create" || (submittedState && viewState.status !== "draft" && !isCompleted);
   const submitReadiness = getSubmitReadiness({
     clientName,
     phoneDigits,
@@ -809,17 +827,17 @@ export function TripRequestIntakeForm({
   });
   const canSubmit = submitReadiness.canSubmit;
   const trustPoints =
-    state.organizationServiceBullets.length > 0
-      ? state.organizationServiceBullets
+    viewState.organizationServiceBullets.length > 0
+      ? viewState.organizationServiceBullets
       : ["Personal trip concierge", "Hand-picked stays", "24×7 on your journey"];
 
   useEffect(() => {
-    if (!isProcessing) return;
-    const timeoutId = window.setTimeout(() => {
-      window.location.reload();
-    }, 4000);
-    return () => window.clearTimeout(timeoutId);
-  }, [isProcessing]);
+    setViewState(state);
+  }, [state]);
+
+  useEffect(() => {
+    setSubmittedState(submitted);
+  }, [submitted]);
 
   useEffect(() => {
     if (!isProcessing) return;
@@ -828,6 +846,61 @@ export function TripRequestIntakeForm({
     }, 2200);
     return () => window.clearInterval(intervalId);
   }, [isProcessing]);
+
+  useEffect(() => {
+    if (!isProcessing || isCompleted) {
+      setIsPolling(false);
+      pollingAbortRef.current?.abort();
+      pollingAbortRef.current = null;
+      return;
+    }
+
+    let active = true;
+    let currentController: AbortController | null = null;
+    const poll = async () => {
+      pollingAbortRef.current?.abort();
+      const controller = new AbortController();
+      currentController = controller;
+      pollingAbortRef.current = controller;
+      setIsPolling(true);
+
+      try {
+        const response = await fetch(`/api/trip-request/${token}`, {
+          method: "GET",
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const payload = (await response.json().catch(() => null)) as { data?: TripRequestFormState } | null;
+        if (!active || !response.ok || !payload?.data) {
+          return;
+        }
+
+        setViewState(payload.data);
+        if (payload.data.status !== "draft") {
+          setSubmittedState(true);
+        }
+        if (payload.data.status === "completed") {
+          setProcessingStepIndex(PROCESSING_STEPS.length - 1);
+          setIsPolling(false);
+        }
+      } catch (error) {
+        if ((error as Error)?.name !== "AbortError") {
+          setIsPolling(false);
+        }
+      }
+    };
+
+    void poll();
+    const intervalId = window.setInterval(() => {
+      void poll();
+    }, 2200);
+
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+      currentController?.abort();
+    };
+  }, [isCompleted, isProcessing, token]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -906,7 +979,12 @@ export function TripRequestIntakeForm({
         }),
       });
 
-      const payload = (await response.json().catch(() => null)) as { error?: string; message?: string; statusUrl?: string } | null;
+      const payload = (await response.json().catch(() => null)) as {
+        error?: string;
+        message?: string;
+        statusUrl?: string;
+        state?: TripRequestFormState | null;
+      } | null;
       if (!response.ok) {
         setLocalError(payload?.error ?? "We couldn't submit your request right now. Please try again.");
         setSubmitPending(false);
@@ -931,7 +1009,19 @@ export function TripRequestIntakeForm({
           endDate,
         }),
       );
-      window.location.assign(payload?.statusUrl || `/trip-request/status/${token}`);
+      if (payload?.statusUrl) {
+        window.history.replaceState({}, "", payload.statusUrl);
+      } else {
+        window.history.replaceState({}, "", `/trip-request/status/${token}`);
+      }
+      if (payload?.state) {
+        setViewState(payload.state);
+      } else {
+        setViewState((current) => ({ ...current, status: "ready_to_create" }));
+      }
+      setSubmittedState(true);
+      setSubmitPending(false);
+      setProcessingStepIndex(0);
     } catch {
       setLocalError("We couldn't submit your request right now. Please check your connection and try again.");
       setSubmitPending(false);
@@ -1300,7 +1390,7 @@ export function TripRequestIntakeForm({
                         <ProcessingStepCard
                           key={step.title}
                           step={step}
-                          accentColor={accentColor}
+                          toneIndex={index}
                           status={
                             index < processingStepIndex
                               ? "complete"
@@ -1338,17 +1428,45 @@ export function TripRequestIntakeForm({
                         <p className="mt-3 text-lg font-semibold text-stone-950">
                           Crafting your personalised itinerary
                         </p>
-                        <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/80">
-                          <div
-                            className="h-full rounded-full transition-all duration-700 ease-out"
-                            style={{
-                              width: `${((processingStepIndex + 1) / PROCESSING_STEPS.length) * 100}%`,
-                              background: `linear-gradient(90deg, ${accentColor} 0%, ${hexToRgba(accentColor, 0.7)} 100%)`,
-                            }}
-                          />
+                        <div className="mt-4 space-y-3">
+                          <div className="grid grid-cols-4 gap-2">
+                            {PROCESSING_STEPS.map((step, index) => {
+                              const tone = PROCESSING_STAGE_COLORS[index % PROCESSING_STAGE_COLORS.length] ?? PROCESSING_STAGE_COLORS[0];
+                              const isReached = index <= processingStepIndex;
+                              return (
+                                <div
+                                  key={step.title}
+                                  className="h-2 overflow-hidden rounded-full border transition-all duration-500"
+                                  style={{
+                                    borderColor: isReached ? tone.border : "rgba(231,229,228,0.9)",
+                                    backgroundColor: isReached ? tone.bg : "rgba(255,255,255,0.9)",
+                                  }}
+                                >
+                                  <div
+                                    className="h-full rounded-full transition-all duration-700 ease-out"
+                                    style={{
+                                      width: isReached ? "100%" : "0%",
+                                      background: `linear-gradient(90deg, ${tone.from} 0%, ${tone.to} 100%)`,
+                                    }}
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <div className="h-2 overflow-hidden rounded-full bg-white/80">
+                            <div
+                              className="h-full rounded-full transition-all duration-700 ease-out"
+                              style={{
+                                width: `${((processingStepIndex + 1) / PROCESSING_STEPS.length) * 100}%`,
+                                background: `linear-gradient(90deg, ${PROCESSING_STAGE_COLORS[0]?.from} 0%, ${PROCESSING_STAGE_COLORS[1]?.from} 35%, ${PROCESSING_STAGE_COLORS[2]?.from} 68%, ${PROCESSING_STAGE_COLORS[3]?.from} 100%)`,
+                              }}
+                            />
+                          </div>
                         </div>
                         <p className="mt-3 text-sm text-stone-600">
-                          Usually ready within a few seconds. This page refreshes automatically.
+                          {isPolling
+                            ? "Updating live without reloading this page."
+                            : "Checking for updates in the background."}
                         </p>
                       </div>
                     </div>
