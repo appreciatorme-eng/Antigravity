@@ -84,6 +84,45 @@ type UpgradePrompt = {
   priority: number;
 };
 
+type QueryResponse<Row> = {
+  data: Row[] | null;
+  error: PostgrestError | null;
+};
+
+type TripRow = {
+  id: string;
+  itinerary_id: string | null;
+  client_id: string | null;
+  status: string | null;
+  start_date: string | null;
+  end_date: string | null;
+};
+
+type InvoiceRow = {
+  id: string;
+  invoice_number: string;
+  status: string | null;
+  due_date: string | null;
+  balance_amount: number | null;
+  total_amount: number | null;
+  client_id: string | null;
+};
+
+type ProposalRow = {
+  id: string;
+  title: string | null;
+  status: string | null;
+  expires_at: string | null;
+  total_price: number | null;
+  client_id: string | null;
+};
+
+type PaidInvoiceRow = {
+  id: string;
+  total_amount: number | null;
+  created_at: string | null;
+};
+
 function startOfUtcDay(date = new Date()): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 }
@@ -116,6 +155,31 @@ function normalizeFollowUpRows(rows: FollowUpRow[]): FollowUpRow[] {
   return [...rows]
     .sort((left, right) => new Date(left.scheduled_for).getTime() - new Date(right.scheduled_for).getTime())
     .slice(0, 150);
+}
+
+function isMissingSoftDeleteColumnError(error: PostgrestError | null): boolean {
+  if (!error) return false;
+  const combined = `${error.message} ${error.details || ""} ${error.hint || ""}`.toLowerCase();
+  return combined.includes("deleted_at") && (
+    combined.includes("could not find the column")
+      || combined.includes("does not exist")
+      || combined.includes("schema cache")
+  );
+}
+
+async function withOptionalSoftDelete<Row>(
+  label: string,
+  queryWithSoftDelete: () => Promise<QueryResponse<Row>>,
+  queryWithoutSoftDelete: () => Promise<QueryResponse<Row>>,
+): Promise<QueryResponse<Row>> {
+  const initial = await queryWithSoftDelete();
+
+  if (!isMissingSoftDeleteColumnError(initial.error)) {
+    return initial;
+  }
+
+  logError(`[operations-command-center] ${label} missing deleted_at compatibility fallback`, initial.error);
+  return queryWithoutSoftDelete();
 }
 
 async function queryFollowUpsByColumn(params: {
@@ -231,42 +295,94 @@ export async function GET(request: NextRequest) {
     const paidInvoiceWindowStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
     const [tripsResult, invoicesResult, proposalsResult, paidInvoicesResult] = await Promise.all([
-      admin.adminClient
-        .from("trips")
-        .select("id,itinerary_id,client_id,status,start_date,end_date")
-        .eq("organization_id", organizationId)
-        .is("deleted_at", null)
-        .not("start_date", "is", null)
-        .gte("start_date", dayStart.toISOString())
-        .lte("start_date", departuresEnd.toISOString())
-        .order("start_date", { ascending: true })
-        .limit(100),
-      admin.adminClient
-        .from("invoices")
-        .select("id,invoice_number,status,due_date,balance_amount,total_amount,client_id")
-        .eq("organization_id", organizationId)
-        .is("deleted_at", null)
-        .gt("balance_amount", 0)
-        .order("due_date", { ascending: true })
-        .limit(150),
-      admin.adminClient
-        .from("proposals")
-        .select("id,title,status,expires_at,total_price,client_id")
-        .eq("organization_id", organizationId)
-        .is("deleted_at", null)
-        .not("expires_at", "is", null)
-        .lte("expires_at", quoteExpiryEnd.toISOString())
-        .order("expires_at", { ascending: true })
-        .limit(150),
-      admin.adminClient
-        .from("invoices")
-        .select("id,total_amount,created_at")
-        .eq("organization_id", organizationId)
-        .is("deleted_at", null)
-        .eq("status", "paid")
-        .gte("created_at", paidInvoiceWindowStart.toISOString())
-        .order("created_at", { ascending: false })
-        .limit(500),
+      withOptionalSoftDelete<TripRow>(
+        "trips",
+        async () =>
+          await admin.adminClient
+            .from("trips")
+            .select("id,itinerary_id,client_id,status,start_date,end_date")
+            .eq("organization_id", organizationId)
+            .is("deleted_at", null)
+            .not("start_date", "is", null)
+            .gte("start_date", dayStart.toISOString())
+            .lte("start_date", departuresEnd.toISOString())
+            .order("start_date", { ascending: true })
+            .limit(100),
+        async () =>
+          await admin.adminClient
+            .from("trips")
+            .select("id,itinerary_id,client_id,status,start_date,end_date")
+            .eq("organization_id", organizationId)
+            .not("start_date", "is", null)
+            .gte("start_date", dayStart.toISOString())
+            .lte("start_date", departuresEnd.toISOString())
+            .order("start_date", { ascending: true })
+            .limit(100),
+      ),
+      withOptionalSoftDelete<InvoiceRow>(
+        "invoices",
+        async () =>
+          await admin.adminClient
+            .from("invoices")
+            .select("id,invoice_number,status,due_date,balance_amount,total_amount,client_id")
+            .eq("organization_id", organizationId)
+            .is("deleted_at", null)
+            .gt("balance_amount", 0)
+            .order("due_date", { ascending: true })
+            .limit(150),
+        async () =>
+          await admin.adminClient
+            .from("invoices")
+            .select("id,invoice_number,status,due_date,balance_amount,total_amount,client_id")
+            .eq("organization_id", organizationId)
+            .gt("balance_amount", 0)
+            .order("due_date", { ascending: true })
+            .limit(150),
+      ),
+      withOptionalSoftDelete<ProposalRow>(
+        "proposals",
+        async () =>
+          await admin.adminClient
+            .from("proposals")
+            .select("id,title,status,expires_at,total_price,client_id")
+            .eq("organization_id", organizationId)
+            .is("deleted_at", null)
+            .not("expires_at", "is", null)
+            .lte("expires_at", quoteExpiryEnd.toISOString())
+            .order("expires_at", { ascending: true })
+            .limit(150),
+        async () =>
+          await admin.adminClient
+            .from("proposals")
+            .select("id,title,status,expires_at,total_price,client_id")
+            .eq("organization_id", organizationId)
+            .not("expires_at", "is", null)
+            .lte("expires_at", quoteExpiryEnd.toISOString())
+            .order("expires_at", { ascending: true })
+            .limit(150),
+      ),
+      withOptionalSoftDelete<PaidInvoiceRow>(
+        "paid-invoices",
+        async () =>
+          await admin.adminClient
+            .from("invoices")
+            .select("id,total_amount,created_at")
+            .eq("organization_id", organizationId)
+            .is("deleted_at", null)
+            .eq("status", "paid")
+            .gte("created_at", paidInvoiceWindowStart.toISOString())
+            .order("created_at", { ascending: false })
+            .limit(500),
+        async () =>
+          await admin.adminClient
+            .from("invoices")
+            .select("id,total_amount,created_at")
+            .eq("organization_id", organizationId)
+            .eq("status", "paid")
+            .gte("created_at", paidInvoiceWindowStart.toISOString())
+            .order("created_at", { ascending: false })
+            .limit(500),
+      ),
     ]);
 
     if (tripsResult.error) {
