@@ -10,6 +10,7 @@ import type { ActionContext } from "@/lib/assistant/types";
 import { parseLooseDateRange } from "@/lib/whatsapp/proposal-drafts.server";
 import { guardedSendMedia, guardedSendText } from "@/lib/whatsapp-evolution.server";
 import { buildFallbackItinerary, generateItineraryForActor } from "@/lib/itinerary/generate-shared";
+import type { ItineraryResult } from "@/types/itinerary";
 
 type TripRequestStatus = "draft" | "ready_to_create" | "completed" | "cancelled";
 
@@ -100,6 +101,7 @@ type TripRequestDraft = {
 
 export type TripRequestFormState = {
   readonly token: string;
+  readonly statusUrl: string;
   readonly status: TripRequestStatus;
   readonly organizationName: string;
   readonly organizationLogoUrl: string | null;
@@ -268,6 +270,18 @@ type TravelWindowResolution = {
   displayValue: string;
 };
 
+type TripRequestDeliveryArtifactId =
+  | "assistant_text"
+  | "assistant_pdf"
+  | "client_text"
+  | "client_pdf";
+
+type TripRequestDeliveryArtifactState = {
+  readonly claimedAt?: string;
+  readonly deliveredAt?: string;
+  readonly error?: string | null;
+};
+
 type ParsedClientIdentity = {
   clientName: string;
   clientPhone: string | null;
@@ -424,9 +438,26 @@ function readCollectedFieldRecord(
   return value as Record<string, unknown>;
 }
 
-function hasCompletionDeliveryMarker(draft: TripRequestDraft): boolean {
+function readTripRequestDeliveryArtifacts(
+  draft: TripRequestDraft,
+): Readonly<Record<TripRequestDeliveryArtifactId, TripRequestDeliveryArtifactState>> {
   const system = readCollectedFieldRecord(draft.collectedFields.__system);
-  return typeof system.completionDeliveredAt === "string" && system.completionDeliveredAt.trim().length > 0;
+  const rawArtifacts = readCollectedFieldRecord(system.deliveryArtifacts);
+  const readArtifact = (id: TripRequestDeliveryArtifactId): TripRequestDeliveryArtifactState => {
+    const raw = readCollectedFieldRecord(rawArtifacts[id]);
+    return {
+      claimedAt: typeof raw.claimedAt === "string" && raw.claimedAt.trim() ? raw.claimedAt : undefined,
+      deliveredAt: typeof raw.deliveredAt === "string" && raw.deliveredAt.trim() ? raw.deliveredAt : undefined,
+      error: typeof raw.error === "string" && raw.error.trim() ? raw.error : null,
+    };
+  };
+
+  return {
+    assistant_text: readArtifact("assistant_text"),
+    assistant_pdf: readArtifact("assistant_pdf"),
+    client_text: readArtifact("client_text"),
+    client_pdf: readArtifact("client_pdf"),
+  };
 }
 
 function getCompletionDeliveryMetadata(
@@ -441,9 +472,11 @@ function getCompletionDeliveryMetadata(
   readonly generationError: string | null;
   readonly operatorDeliveryError: string | null;
   readonly clientDeliveryError: string | null;
+  readonly deliveryArtifacts: Readonly<Record<TripRequestDeliveryArtifactId, TripRequestDeliveryArtifactState>>;
   readonly actionHistory: readonly OperatorTripRequestActionHistoryEntry[];
 } {
   const system = readCollectedFieldRecord(draft.collectedFields.__system);
+  const deliveryArtifacts = readTripRequestDeliveryArtifacts(draft);
   const readString = (key: string) =>
     typeof system[key] === "string" && system[key].trim().length > 0
       ? system[key] as string
@@ -499,14 +532,19 @@ function getCompletionDeliveryMetadata(
 
   return {
     completionDeliveredAt: readString("completionDeliveredAt"),
-    completionDeliveredToAssistantGroup: system.completionDeliveredToAssistantGroup === true,
-    completionDeliveredToClient: system.completionDeliveredToClient === true,
+    completionDeliveredToAssistantGroup:
+      system.completionDeliveredToAssistantGroup === true
+      || Boolean(deliveryArtifacts.assistant_text.deliveredAt && deliveryArtifacts.assistant_pdf.deliveredAt),
+    completionDeliveredToClient:
+      system.completionDeliveredToClient === true
+      || Boolean(deliveryArtifacts.client_text.deliveredAt && deliveryArtifacts.client_pdf.deliveredAt),
     lastOperatorResentAt: readString("lastOperatorResentAt"),
     lastClientResentAt: readString("lastClientResentAt"),
     lastItineraryRegeneratedAt: readString("lastItineraryRegeneratedAt"),
     generationError: readString("generationError"),
     operatorDeliveryError: readString("operatorDeliveryError"),
     clientDeliveryError: readString("clientDeliveryError"),
+    deliveryArtifacts,
     actionHistory,
   };
 }
@@ -556,6 +594,31 @@ function mergeCompletionDeliveryMetadata(
   };
 }
 
+function mergeDeliveryArtifactState(
+  draft: TripRequestDraft,
+  artifactId: TripRequestDeliveryArtifactId,
+  patch: TripRequestDeliveryArtifactState,
+): Readonly<Record<string, unknown>> {
+  const current = { ...draft.collectedFields };
+  const system = readCollectedFieldRecord(current.__system);
+  const deliveryArtifacts = readCollectedFieldRecord(system.deliveryArtifacts);
+  const currentArtifact = readCollectedFieldRecord(deliveryArtifacts[artifactId]);
+
+  return {
+    ...current,
+    __system: {
+      ...system,
+      deliveryArtifacts: {
+        ...deliveryArtifacts,
+        [artifactId]: {
+          ...currentArtifact,
+          ...patch,
+        },
+      },
+    },
+  };
+}
+
 function toMissingRequiredFields(value: Json): readonly string[] {
   if (!Array.isArray(value)) return [];
   return value.filter((entry): entry is string => typeof entry === "string");
@@ -594,6 +657,10 @@ export function buildTripRequestFormUrl(formToken: string): string {
   return `${APP_BASE_URL}/trip-request/${formToken}`;
 }
 
+export function buildTripRequestStatusUrl(formToken: string): string {
+  return `${APP_BASE_URL}/trip-request/status/${formToken}`;
+}
+
 export function buildTripRequestPdfUrl(formToken: string): string {
   return `${APP_BASE_URL}/api/trip-request/${formToken}/pdf`;
 }
@@ -601,6 +668,7 @@ export function buildTripRequestPdfUrl(formToken: string): string {
 function toTripRequestFormState(draft: TripRequestDraft): TripRequestFormState {
   return {
     token: draft.formToken,
+    statusUrl: buildTripRequestStatusUrl(draft.formToken),
     status: draft.status,
     organizationName: "TripBuilt",
     organizationLogoUrl: null,
@@ -722,7 +790,7 @@ function extractOrganizationBranding(row: TripRequestOrganizationRow | null): Pi
   };
 }
 
-async function loadTripRequestOrganizationBranding(
+export async function loadTripRequestOrganizationBranding(
   organizationId: string,
 ): Promise<ReturnType<typeof extractOrganizationBranding>> {
   const admin = createAdminClient();
@@ -761,6 +829,29 @@ async function loadTripRequestOrganizationBranding(
   }
 
   return extractOrganizationBranding(result.data as unknown as TripRequestOrganizationRow);
+}
+
+export async function loadTripRequestBusinessBranding(args: {
+  organizationId: string;
+  operatorUserId?: string | null;
+}): Promise<ReturnType<typeof extractOrganizationBranding>> {
+  const branding = await loadTripRequestOrganizationBranding(args.organizationId);
+  if (branding.organizationContactPhone || branding.organizationContactEmail || !args.operatorUserId) {
+    return branding;
+  }
+
+  const admin = createAdminClient();
+  const { data: operatorProfile } = await admin
+    .from("profiles")
+    .select("email, phone")
+    .eq("id", args.operatorUserId)
+    .maybeSingle();
+
+  return {
+    ...branding,
+    organizationContactPhone: branding.organizationContactPhone ?? trimOrNull(operatorProfile?.phone ?? null, 40),
+    organizationContactEmail: branding.organizationContactEmail ?? trimOrNull(operatorProfile?.email ?? null, 160),
+  };
 }
 
 function normalizeEmail(value: string | null | undefined): string | null {
@@ -1315,6 +1406,8 @@ function buildStructuredItinerary(draft: TripRequestDraft) {
     trip_title: `${destination} Trip for ${clientName}`,
     destination,
     duration_days: durationDays,
+    start_date: draft.startDate,
+    end_date: draft.endDate,
     summary: notes.length > 0
       ? `A ${durationDays}-day trip plan for ${clientName} in ${destination}, shaped around ${buildInterestFocus(interests)} and built to ${buildBudgetPositioning(draft.budget)}. ${notes.join(" · ")}`
       : `A ${durationDays}-day trip plan for ${clientName} in ${destination}, designed to ${buildBudgetPositioning(draft.budget)}.`,
@@ -1327,6 +1420,8 @@ function buildStructuredItinerary(draft: TripRequestDraft) {
       trip_title: `${destination} Trip for ${clientName}`,
       destination,
       duration_days: durationDays,
+      start_date: draft.startDate,
+      end_date: draft.endDate,
       summary: `This travel brief was prepared for ${clientName} as a structured first version of the trip. It gives the operator a usable route, better day pacing, and enough detail to review, personalize, and share confidently.`,
       budget: draft.budget,
       interests,
@@ -1348,6 +1443,73 @@ function buildStructuredItinerary(draft: TripRequestDraft) {
         activities: buildStructuredDayActivities(draft, index, durationDays, destination, interests),
       })),
     },
+  };
+}
+
+function normalizeGeneratedItineraryForDraft(
+  draft: TripRequestDraft,
+  generated: unknown,
+): ItineraryResult {
+  const fallback = buildStructuredItinerary(draft);
+  const raw = (generated && typeof generated === "object" ? generated : {}) as Partial<ItineraryResult>;
+  const durationDays =
+    (typeof raw.duration_days === "number" && Number.isFinite(raw.duration_days) ? raw.duration_days : null)
+    ?? draft.durationDays
+    ?? raw.days?.length
+    ?? fallback.duration_days
+    ?? 1;
+
+  const daysSource = Array.isArray(raw.days) && raw.days.length > 0 ? raw.days : fallback.raw_data.days;
+  const days = daysSource.map((day, index) => {
+    const fallbackDay = fallback.raw_data.days[index] ?? fallback.raw_data.days[fallback.raw_data.days.length - 1];
+    const value = (day && typeof day === "object" ? day : {}) as Record<string, unknown>;
+    const activities = Array.isArray(value.activities) && value.activities.length > 0
+      ? value.activities
+      : fallbackDay.activities;
+
+    return {
+      ...fallbackDay,
+      ...value,
+      day_number:
+        typeof value.day_number === "number" && Number.isFinite(value.day_number)
+          ? value.day_number
+          : index + 1,
+      date: buildDayDate(draft.startDate, index) ?? fallbackDay.date,
+      summary:
+        typeof value.summary === "string" && value.summary.trim().length > 0
+          ? value.summary
+          : fallbackDay.summary,
+      theme:
+        typeof value.theme === "string" && value.theme.trim().length > 0
+          ? value.theme
+          : fallbackDay.theme,
+      activities,
+    };
+  });
+
+  return {
+    ...fallback,
+    ...(raw as ItineraryResult),
+    trip_title:
+      typeof raw.trip_title === "string" && raw.trip_title.trim().length > 0
+        ? raw.trip_title
+        : fallback.trip_title,
+    destination:
+      typeof raw.destination === "string" && raw.destination.trim().length > 0
+        ? raw.destination
+        : fallback.destination,
+    duration_days: durationDays,
+    start_date: draft.startDate ?? raw.start_date ?? fallback.start_date ?? undefined,
+    end_date: draft.endDate ?? raw.end_date ?? fallback.end_date ?? undefined,
+    summary:
+      typeof raw.summary === "string" && raw.summary.trim().length > 0
+        ? raw.summary
+        : fallback.summary,
+    budget: draft.budget ?? raw.budget ?? fallback.budget ?? undefined,
+    interests: draft.interests.length > 0
+      ? [...draft.interests]
+      : [...(raw.interests ?? fallback.interests ?? [])],
+    days,
   };
 }
 
@@ -1876,6 +2038,88 @@ async function updateDraft(
   return mapDraft(data as TripRequestRow);
 }
 
+async function updateDraftByVersion(
+  ctx: ActionContext,
+  draftId: string,
+  expectedUpdatedAt: string,
+  patch: Record<string, unknown>,
+): Promise<TripRequestDraft | null> {
+  const { data, error } = await ctx.supabase
+    .from("assistant_trip_requests")
+    .update(patch)
+    .eq("id", draftId)
+    .eq("organization_id", ctx.organizationId)
+    .eq("operator_user_id", ctx.userId)
+    .eq("updated_at", expectedUpdatedAt)
+    .select("*")
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return mapDraft(data as TripRequestRow);
+}
+
+const DELIVERY_CLAIM_STALE_MS = 5 * 60 * 1000;
+
+function isArtifactClaimStale(claimedAt?: string): boolean {
+  if (!claimedAt) return false;
+  const claimedTime = new Date(claimedAt).getTime();
+  return Number.isFinite(claimedTime) && Date.now() - claimedTime > DELIVERY_CLAIM_STALE_MS;
+}
+
+async function claimTripRequestDeliveryArtifact(
+  ctx: ActionContext,
+  draft: TripRequestDraft,
+  artifactId: TripRequestDeliveryArtifactId,
+): Promise<TripRequestDraft | null> {
+  const artifact = getCompletionDeliveryMetadata(draft).deliveryArtifacts[artifactId];
+  if (artifact?.deliveredAt) {
+    return draft;
+  }
+  if (artifact?.claimedAt && !isArtifactClaimStale(artifact.claimedAt)) {
+    return null;
+  }
+
+  return updateDraftByVersion(ctx, draft.id, draft.updatedAt, {
+    collected_fields: mergeDeliveryArtifactState(draft, artifactId, {
+      claimedAt: new Date().toISOString(),
+      deliveredAt: artifact?.deliveredAt,
+      error: null,
+    }) as unknown as Json,
+  });
+}
+
+async function markTripRequestDeliveryArtifactDelivered(
+  ctx: ActionContext,
+  draft: TripRequestDraft,
+  artifactId: TripRequestDeliveryArtifactId,
+): Promise<TripRequestDraft | null> {
+  return updateDraftByVersion(ctx, draft.id, draft.updatedAt, {
+    collected_fields: mergeDeliveryArtifactState(draft, artifactId, {
+      claimedAt: undefined,
+      deliveredAt: new Date().toISOString(),
+      error: null,
+    }) as unknown as Json,
+  });
+}
+
+async function markTripRequestDeliveryArtifactFailed(
+  ctx: ActionContext,
+  draft: TripRequestDraft,
+  artifactId: TripRequestDeliveryArtifactId,
+  errorMessage: string,
+): Promise<TripRequestDraft | null> {
+  return updateDraftByVersion(ctx, draft.id, draft.updatedAt, {
+    collected_fields: mergeDeliveryArtifactState(draft, artifactId, {
+      claimedAt: undefined,
+      deliveredAt: undefined,
+      error: trimOrNull(errorMessage, 500),
+    }) as unknown as Json,
+  });
+}
+
 async function pickActiveDraft(
   ctx: ActionContext,
   message: string,
@@ -2226,6 +2470,33 @@ function buildCompletionDeliveryMessage(
   ].filter((value): value is string => Boolean(value)).join("\n");
 }
 
+async function sendTripRequestCompletionText(
+  sessionName: string,
+  jid: string,
+  message: string,
+): Promise<void> {
+  await guardedSendText(sessionName, jid, message);
+}
+
+async function sendTripRequestCompletionPdf(
+  sessionName: string,
+  jid: string,
+  formToken: string,
+  caption: string,
+): Promise<void> {
+  await guardedSendMedia(
+    sessionName,
+    jid,
+    buildTripRequestPdfUrl(formToken),
+    "document",
+    {
+      fileName: `trip-itinerary-${formToken.slice(0, 8)}.pdf`,
+      mimetype: "application/pdf",
+      caption,
+    },
+  );
+}
+
 async function notifyAssistantGroupAboutCompletedDraft(
   organizationId: string,
   formToken: string,
@@ -2253,7 +2524,7 @@ async function notifyAssistantGroupAboutCompletedDraft(
   let textDelivered = false;
   let pdfDelivered = false;
 
-  await guardedSendText(sessionName, groupJid, message)
+  await sendTripRequestCompletionText(sessionName, groupJid, message)
     .then(() => {
       textDelivered = true;
     })
@@ -2265,17 +2536,7 @@ async function notifyAssistantGroupAboutCompletedDraft(
     });
   });
 
-  await guardedSendMedia(
-    sessionName,
-    groupJid,
-    buildTripRequestPdfUrl(formToken),
-    "document",
-    {
-      fileName: `trip-itinerary-${formToken.slice(0, 8)}.pdf`,
-      mimetype: "application/pdf",
-      caption: "Trip itinerary PDF",
-    },
-  )
+  await sendTripRequestCompletionPdf(sessionName, groupJid, formToken, "Trip itinerary PDF")
     .then(() => {
       pdfDelivered = true;
     })
@@ -2327,7 +2588,7 @@ async function notifyClientAboutCompletedDraft(
   let textDelivered = false;
   let pdfDelivered = false;
 
-  await guardedSendText(sessionName, phone, lines.join("\n"))
+  await sendTripRequestCompletionText(sessionName, phone, lines.join("\n"))
     .then(() => {
       textDelivered = true;
     })
@@ -2340,17 +2601,7 @@ async function notifyClientAboutCompletedDraft(
     });
   });
 
-  await guardedSendMedia(
-    sessionName,
-    phone,
-    buildTripRequestPdfUrl(draft.formToken),
-    "document",
-    {
-      fileName: `trip-itinerary-${draft.formToken.slice(0, 8)}.pdf`,
-      mimetype: "application/pdf",
-      caption: "Your trip itinerary PDF",
-    },
-  )
+  await sendTripRequestCompletionPdf(sessionName, phone, draft.formToken, "Your trip itinerary PDF")
     .then(() => {
       pdfDelivered = true;
     })
@@ -2368,6 +2619,58 @@ async function notifyClientAboutCompletedDraft(
     skipped: false,
     error: clientError,
   };
+}
+
+async function deliverTripRequestArtifact(args: {
+  ctx: ActionContext;
+  draft: TripRequestDraft;
+  artifactId: TripRequestDeliveryArtifactId;
+  send: () => Promise<void>;
+}): Promise<{
+  draft: TripRequestDraft;
+  delivered: boolean;
+  attempted: boolean;
+  error: string | null;
+}> {
+  const existing = getCompletionDeliveryMetadata(args.draft).deliveryArtifacts[args.artifactId];
+  if (existing.deliveredAt) {
+    return {
+      draft: args.draft,
+      delivered: true,
+      attempted: false,
+      error: null,
+    };
+  }
+
+  const claimed = await claimTripRequestDeliveryArtifact(args.ctx, args.draft, args.artifactId);
+  if (!claimed) {
+    return {
+      draft: args.draft,
+      delivered: false,
+      attempted: false,
+      error: null,
+    };
+  }
+
+  try {
+    await args.send();
+    const deliveredDraft = await markTripRequestDeliveryArtifactDelivered(args.ctx, claimed, args.artifactId);
+    return {
+      draft: deliveredDraft ?? claimed,
+      delivered: true,
+      attempted: true,
+      error: null,
+    };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Delivery failed";
+    const failedDraft = await markTripRequestDeliveryArtifactFailed(args.ctx, claimed, args.artifactId, errorMessage);
+    return {
+      draft: failedDraft ?? claimed,
+      delivered: false,
+      attempted: true,
+      error: errorMessage,
+    };
+  }
 }
 
 async function markCustomerSessionCompleted(
@@ -2452,25 +2755,28 @@ async function finalizeDraft(
     }
   }
 
+  const normalizedItinerary = normalizeGeneratedItineraryForDraft(draft, itinerary);
+
   const { data: itineraryRow, error: itineraryError } = await ctx.supabase
     .from("itineraries")
     .insert({
-      user_id: clientResolution.clientId,
-      trip_title: typeof itinerary.trip_title === "string" && itinerary.trip_title.trim().length > 0
-        ? itinerary.trip_title
+      user_id: ctx.userId,
+      client_id: clientResolution.clientId,
+      trip_title: typeof normalizedItinerary.trip_title === "string" && normalizedItinerary.trip_title.trim().length > 0
+        ? normalizedItinerary.trip_title
         : `${draft.destination} Trip for ${draft.clientName}`,
-      destination: typeof itinerary.destination === "string" && itinerary.destination.trim().length > 0
-        ? itinerary.destination
+      destination: typeof normalizedItinerary.destination === "string" && normalizedItinerary.destination.trim().length > 0
+        ? normalizedItinerary.destination
         : draft.destination,
-      summary: typeof itinerary.summary === "string" && itinerary.summary.trim().length > 0
-        ? itinerary.summary
+      summary: typeof normalizedItinerary.summary === "string" && normalizedItinerary.summary.trim().length > 0
+        ? normalizedItinerary.summary
         : `Trip plan for ${draft.clientName} in ${draft.destination}.`,
-      duration_days: typeof itinerary.duration_days === "number" && Number.isFinite(itinerary.duration_days)
-        ? itinerary.duration_days
+      duration_days: typeof normalizedItinerary.duration_days === "number" && Number.isFinite(normalizedItinerary.duration_days)
+        ? normalizedItinerary.duration_days
         : draft.durationDays,
       budget: draft.budget,
       interests: draft.interests.length > 0 ? [...draft.interests] : null,
-      raw_data: itinerary as unknown as Json,
+      raw_data: normalizedItinerary as unknown as Json,
     })
     .select("id")
     .single();
@@ -2601,6 +2907,14 @@ export async function submitTripRequestForm(
     return {
       success: true,
       message: "This trip request has already been completed.",
+      state: toTripRequestFormState(mapDraft(row)),
+    };
+  }
+
+  if (row.status === "ready_to_create" || row.current_step === "finalizing") {
+    return {
+      success: true,
+      message: "This trip request has already been received and is being prepared now.",
       state: toTripRequestFormState(mapDraft(row)),
     };
   }
@@ -2954,83 +3268,146 @@ export async function completeSubmittedTripRequestForm(
     };
   }
 
-  if (!hasCompletionDeliveryMarker(finalDraft)) {
-      const whatsappMessage = [
-        `Trip form submitted for *${finalDraft.clientName ?? "the traveller"}*.`,
-        finalDraft.createdShareUrl ? `Share link: ${finalDraft.createdShareUrl}` : "Share link is not ready yet.",
-        `PDF: ${buildTripRequestPdfUrl(formToken)}`,
-      ].join("\n");
+  const whatsappMessage = buildCompletionDeliveryMessage(finalDraft);
+  const deliveryConnection = await getLatestTripRequestDeliveryConnection(row.organization_id);
 
-      const deliveryConnection = await notifyAssistantGroupAboutCompletedDraft(
-        row.organization_id,
-        formToken,
-        whatsappMessage,
-      );
-      const clientDelivery = await notifyClientAboutCompletedDraft(
-        row.organization_id,
-        deliveryConnection.sessionName,
-        finalDraft,
-        deliveryConnection.operatorPhone,
-      );
-      const deliveredAt = new Date().toISOString();
-      const historyEntries: Array<
-        Omit<OperatorTripRequestActionHistoryEntry, "occurredAt"> & { occurredAt?: string }
-      > = [
-        {
-          action: "completion_delivered",
-          title: "Trip package delivered",
-          description: clientDelivery.delivered
-            ? "The itinerary package was shared with the operator and traveller."
-            : "The itinerary package was shared with the operator.",
-          tone: "success",
-          occurredAt: deliveredAt,
-        },
-      ];
-      if (deliveryConnection.error) {
-        historyEntries.push({
-          action: "resend_operator",
-          title: "Operator delivery failed",
-          description: deliveryConnection.error,
-          tone: "error",
-          occurredAt: deliveredAt,
-        });
-      }
-      if (clientDelivery.error && !clientDelivery.skipped) {
-        historyEntries.push({
-          action: "resend_client",
-          title: "Traveller delivery failed",
-          description: clientDelivery.error,
-          tone: "error",
-          occurredAt: deliveredAt,
-        });
-      }
-      const updated = await updateDraft(ctx, finalDraft.id, {
-        collected_fields: appendTripRequestActionHistoryEntries(
-          {
-            ...finalDraft,
-            collectedFields: mergeCompletionDeliveryMetadata(finalDraft, {
-              completionDeliveredAt: deliveredAt,
-              completionDeliveredToClient: clientDelivery.delivered,
-              completionDeliveredToAssistantGroup: deliveryConnection.delivered,
-              operatorDeliveryError: deliveryConnection.error,
-              clientDeliveryError: clientDelivery.skipped ? null : clientDelivery.error,
-              generationError: null,
-            }),
-          },
-          historyEntries,
-        ) as unknown as Json,
-      });
-      if (updated) {
-        finalDraft = updated;
-      }
-      logEvent("info", "[trip-intake] completion delivered", {
-        organizationId: row.organization_id,
-        draftId: finalDraft.id,
-        tripId: finalDraft.createdTripId,
-        itineraryId: finalDraft.createdItineraryId,
-        notifiedAssistantGroup: deliveryConnection.delivered,
-        notifiedClient: clientDelivery.delivered,
-      });
+  let latestDraft = finalDraft;
+  let operatorError: string | null = null;
+  let clientError: string | null = null;
+
+  if (deliveryConnection.sessionName && deliveryConnection.groupJid) {
+    const assistantText = await deliverTripRequestArtifact({
+      ctx,
+      draft: latestDraft,
+      artifactId: "assistant_text",
+      send: () => sendTripRequestCompletionText(deliveryConnection.sessionName!, deliveryConnection.groupJid!, whatsappMessage),
+    });
+    latestDraft = assistantText.draft;
+    operatorError = assistantText.error;
+
+    const assistantPdf = await deliverTripRequestArtifact({
+      ctx,
+      draft: latestDraft,
+      artifactId: "assistant_pdf",
+      send: () => sendTripRequestCompletionPdf(deliveryConnection.sessionName!, deliveryConnection.groupJid!, formToken, "Trip itinerary PDF"),
+    });
+    latestDraft = assistantPdf.draft;
+    operatorError = operatorError ?? assistantPdf.error;
+  } else {
+    operatorError = "No connected assistant group found.";
+  }
+
+  const normalizedClientPhone = formatPhoneForStorage(latestDraft.clientPhone ?? "");
+  const canDeliverToClient = Boolean(
+    deliveryConnection.sessionName
+    && normalizedClientPhone
+    && normalizedClientPhone !== deliveryConnection.operatorPhone,
+  );
+
+  if (canDeliverToClient) {
+    const clientText = await deliverTripRequestArtifact({
+      ctx,
+      draft: latestDraft,
+      artifactId: "client_text",
+      send: () => sendTripRequestCompletionText(deliveryConnection.sessionName!, normalizedClientPhone!, [
+        `Your TripBuilt trip for *${latestDraft.destination ?? "your destination"}* is ready.`,
+        latestDraft.durationDays ? `Duration: *${latestDraft.durationDays} days*` : null,
+        latestDraft.travelWindow ? `Travel window: *${latestDraft.travelWindow}*` : null,
+        latestDraft.createdShareUrl ? `Trip link: ${latestDraft.createdShareUrl}` : "Trip link is being prepared.",
+        `PDF: ${buildTripRequestPdfUrl(latestDraft.formToken)}`,
+      ].filter((value): value is string => Boolean(value)).join("\n")),
+    });
+    latestDraft = clientText.draft;
+    clientError = clientText.error;
+
+    const clientPdf = await deliverTripRequestArtifact({
+      ctx,
+      draft: latestDraft,
+      artifactId: "client_pdf",
+      send: () => sendTripRequestCompletionPdf(
+        deliveryConnection.sessionName!,
+        normalizedClientPhone!,
+        latestDraft.formToken,
+        "Your trip itinerary PDF",
+      ),
+    });
+    latestDraft = clientPdf.draft;
+    clientError = clientError ?? clientPdf.error;
+  }
+
+  const latestMetadata = getCompletionDeliveryMetadata(latestDraft);
+  const assistantDelivered =
+    Boolean(latestMetadata.deliveryArtifacts.assistant_text.deliveredAt)
+    && Boolean(latestMetadata.deliveryArtifacts.assistant_pdf.deliveredAt);
+  const clientDelivered =
+    Boolean(latestMetadata.deliveryArtifacts.client_text.deliveredAt)
+    && Boolean(latestMetadata.deliveryArtifacts.client_pdf.deliveredAt);
+  const deliveredAt =
+    latestMetadata.completionDeliveredAt
+    ?? (assistantDelivered || clientDelivered ? new Date().toISOString() : null);
+
+  const historyEntries: Array<
+    Omit<OperatorTripRequestActionHistoryEntry, "occurredAt"> & { occurredAt?: string }
+  > = [];
+  if (!latestMetadata.completionDeliveredAt && deliveredAt) {
+    historyEntries.push({
+      action: "completion_delivered",
+      title: "Trip package delivered",
+      description: clientDelivered
+        ? "The itinerary package was shared with the operator and traveller."
+        : "The itinerary package was shared with the operator.",
+      tone: "success",
+      occurredAt: deliveredAt,
+    });
+  }
+  if (operatorError) {
+    historyEntries.push({
+      action: "resend_operator",
+      title: "Operator delivery failed",
+      description: operatorError,
+      tone: "error",
+    });
+  }
+  if (clientError) {
+    historyEntries.push({
+      action: "resend_client",
+      title: "Traveller delivery failed",
+      description: clientError,
+      tone: "error",
+    });
+  }
+
+  const updated = await updateDraft(ctx, latestDraft.id, {
+    collected_fields: appendTripRequestActionHistoryEntries(
+      {
+        ...latestDraft,
+        collectedFields: mergeCompletionDeliveryMetadata(latestDraft, {
+          completionDeliveredAt: deliveredAt,
+          completionDeliveredToClient: clientDelivered,
+          completionDeliveredToAssistantGroup: assistantDelivered,
+          operatorDeliveryError: operatorError,
+          clientDeliveryError: clientError,
+          generationError: null,
+        }),
+      },
+      historyEntries,
+    ) as unknown as Json,
+  });
+  if (updated) {
+    finalDraft = updated;
+  } else {
+    finalDraft = latestDraft;
+  }
+
+  if (assistantDelivered || clientDelivered) {
+    logEvent("info", "[trip-intake] completion delivered", {
+      organizationId: row.organization_id,
+      draftId: finalDraft.id,
+      tripId: finalDraft.createdTripId,
+      itineraryId: finalDraft.createdItineraryId,
+      notifiedAssistantGroup: assistantDelivered,
+      notifiedClient: clientDelivered,
+    });
   }
   await markCustomerSessionCompleted(row.organization_id, finalDraft.clientPhone, finalDraft).catch((error) => {
     logError("[trip-intake] failed to mark customer flow completed", error, {
@@ -3275,24 +3652,28 @@ export async function regenerateTripRequestItinerary(args: {
     }
   }
 
+  const normalizedItinerary = normalizeGeneratedItineraryForDraft(draft, itinerary);
+
   const { error: updateItineraryError } = await admin
     .from("itineraries")
     .update({
-      trip_title: typeof itinerary.trip_title === "string" && itinerary.trip_title.trim().length > 0
-        ? itinerary.trip_title
+      user_id: row.operator_user_id,
+      client_id: row.client_id,
+      trip_title: typeof normalizedItinerary.trip_title === "string" && normalizedItinerary.trip_title.trim().length > 0
+        ? normalizedItinerary.trip_title
         : `${draft.destination} Trip for ${draft.clientName}`,
-      destination: typeof itinerary.destination === "string" && itinerary.destination.trim().length > 0
-        ? itinerary.destination
+      destination: typeof normalizedItinerary.destination === "string" && normalizedItinerary.destination.trim().length > 0
+        ? normalizedItinerary.destination
         : draft.destination,
-      summary: typeof itinerary.summary === "string" && itinerary.summary.trim().length > 0
-        ? itinerary.summary
+      summary: typeof normalizedItinerary.summary === "string" && normalizedItinerary.summary.trim().length > 0
+        ? normalizedItinerary.summary
         : `Trip plan for ${draft.clientName} in ${draft.destination}.`,
-      duration_days: typeof itinerary.duration_days === "number" && Number.isFinite(itinerary.duration_days)
-        ? itinerary.duration_days
+      duration_days: typeof normalizedItinerary.duration_days === "number" && Number.isFinite(normalizedItinerary.duration_days)
+        ? normalizedItinerary.duration_days
         : draft.durationDays,
       budget: draft.budget,
       interests: draft.interests.length > 0 ? [...draft.interests] : null,
-      raw_data: itinerary as unknown as Json,
+      raw_data: normalizedItinerary as unknown as Json,
     })
     .eq("id", draft.createdItineraryId);
 

@@ -252,8 +252,9 @@ export const SafariStoryView: React.FC<ItineraryTemplateProps> = ({ itinerary, o
 
                       <div>
                         <div className="text-xs uppercase tracking-[0.2em] font-semibold text-stone-500 mb-1">
-                          Day {dayIndex + 1}
-                          {day.date && ` • ${new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
+                          {day.date
+                            ? `${new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} • Day ${dayIndex + 1}`
+                            : `Day ${dayIndex + 1}`}
                         </div>
                         <h3 className="text-2xl md:text-3xl font-serif text-stone-900 group-hover:text-amber-900 transition-colors">
                           {day.theme || `Exploring ${itinerary.destination}`}

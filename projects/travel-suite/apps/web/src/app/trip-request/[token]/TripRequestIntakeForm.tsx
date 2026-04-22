@@ -906,7 +906,7 @@ export function TripRequestIntakeForm({
         }),
       });
 
-      const payload = (await response.json().catch(() => null)) as { error?: string; message?: string } | null;
+      const payload = (await response.json().catch(() => null)) as { error?: string; message?: string; statusUrl?: string } | null;
       if (!response.ok) {
         setLocalError(payload?.error ?? "We couldn't submit your request right now. Please try again.");
         setSubmitPending(false);
@@ -931,7 +931,7 @@ export function TripRequestIntakeForm({
           endDate,
         }),
       );
-      window.location.assign(`/trip-request/${token}?submitted=1`);
+      window.location.assign(payload?.statusUrl || `/trip-request/status/${token}`);
     } catch {
       setLocalError("We couldn't submit your request right now. Please check your connection and try again.");
       setSubmitPending(false);

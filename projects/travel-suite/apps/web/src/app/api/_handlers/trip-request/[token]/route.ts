@@ -158,6 +158,7 @@ export async function POST(
     return apiSuccess({
       message: result.message,
       state: result.state ?? null,
+      statusUrl: result.state?.statusUrl ?? `/trip-request/status/${token}`,
     });
   }
 
@@ -204,8 +205,10 @@ export async function POST(
       }
     });
 
-    redirectUrl.searchParams.set("submitted", "1");
-    return NextResponse.redirect(redirectUrl, { status: 303 });
+    return NextResponse.redirect(
+      new URL(result.state?.statusUrl ?? `/trip-request/status/${token}`, request.url),
+      { status: 303 },
+    );
   } catch (error) {
     redirectUrl.searchParams.set(
       "error",

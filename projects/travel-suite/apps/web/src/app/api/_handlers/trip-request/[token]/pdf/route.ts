@@ -12,6 +12,7 @@ import {
   sanitizeItineraryPdfFileName,
 } from "@/lib/pdf/itinerary-pdf-server";
 import { enforcePublicRouteRateLimit } from "@/lib/security/public-rate-limit";
+import { loadTripRequestBusinessBranding } from "@/lib/whatsapp/trip-intake.server";
 import type { ItineraryResult } from "@/types/itinerary";
 
 export const runtime = "nodejs";
@@ -109,7 +110,7 @@ export async function GET(
 
   const { data: itinerary, error: itineraryError } = await admin
     .from("itineraries")
-    .select("raw_data, trip_title, destination, duration_days, summary")
+    .select("user_id, raw_data, trip_title, destination, duration_days, summary")
     .eq("id", resolvedDraft.created_itinerary_id)
     .maybeSingle();
 
@@ -117,11 +118,10 @@ export async function GET(
     return apiError("Itinerary not found", 404);
   }
 
-  const { data: organization } = await admin
-    .from("organizations")
-    .select("name, logo_url, primary_color")
-    .eq("id", resolvedDraft.organization_id)
-    .maybeSingle();
+  const businessBranding = await loadTripRequestBusinessBranding({
+    organizationId: resolvedDraft.organization_id,
+    operatorUserId: (itinerary as { user_id?: string | null }).user_id ?? null,
+  });
 
   const { data: shared } = await admin
     .from("shared_itineraries")
@@ -151,12 +151,15 @@ export async function GET(
       ),
       branding: {
         ...DEFAULT_ITINERARY_BRANDING,
-        companyName: organization?.name || DEFAULT_ITINERARY_BRANDING.companyName,
-        logoUrl: organization?.logo_url || null,
-        primaryColor: organization?.primary_color || DEFAULT_ITINERARY_BRANDING.primaryColor,
+        companyName: businessBranding.organizationName || DEFAULT_ITINERARY_BRANDING.companyName,
+        logoUrl: businessBranding.organizationLogoUrl || null,
+        primaryColor: businessBranding.organizationPrimaryColor || DEFAULT_ITINERARY_BRANDING.primaryColor,
+        contactPhone: businessBranding.organizationContactPhone || null,
+        contactEmail: businessBranding.organizationContactEmail || null,
         clientName: resolvedDraft.client_name || null,
       },
       fileName,
+      skipImageEnrichment: true,
     });
 
     return new NextResponse(new Uint8Array(pdf.buffer), {
