@@ -131,6 +131,80 @@ function hexToRgba(color: string | null | undefined, alpha: number): string {
   return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
 }
 
+function normalizeHex(color: string | null | undefined): string | null {
+  if (!color) return null;
+  const normalized = color.trim().replace("#", "");
+  if (!/^[0-9a-f]{6}$/i.test(normalized)) return null;
+  return `#${normalized.toLowerCase()}`;
+}
+
+function hexToRgb(color: string | null | undefined): { red: number; green: number; blue: number } | null {
+  const normalized = normalizeHex(color);
+  if (!normalized) return null;
+  const value = Number.parseInt(normalized.slice(1), 16);
+  return {
+    red: (value >> 16) & 255,
+    green: (value >> 8) & 255,
+    blue: value & 255,
+  };
+}
+
+function rgbToHex(red: number, green: number, blue: number): string {
+  return `#${[red, green, blue]
+    .map((channel) => Math.max(0, Math.min(255, Math.round(channel))).toString(16).padStart(2, "0"))
+    .join("")}`;
+}
+
+function mixHexColors(base: string | null | undefined, mixWith: string, weight: number): string {
+  const baseRgb = hexToRgb(base);
+  const mixRgb = hexToRgb(mixWith);
+  if (!baseRgb || !mixRgb) return normalizeHex(base) ?? mixWith;
+  const clampedWeight = Math.max(0, Math.min(1, weight));
+  return rgbToHex(
+    baseRgb.red * (1 - clampedWeight) + mixRgb.red * clampedWeight,
+    baseRgb.green * (1 - clampedWeight) + mixRgb.green * clampedWeight,
+    baseRgb.blue * (1 - clampedWeight) + mixRgb.blue * clampedWeight,
+  );
+}
+
+function getRelativeLuminance(color: string | null | undefined): number {
+  const rgb = hexToRgb(color);
+  if (!rgb) return 0;
+  const channels = [rgb.red, rgb.green, rgb.blue].map((value) => {
+    const channel = value / 255;
+    return channel <= 0.03928 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+}
+
+function getActionButtonPalette(accentColor: string): {
+  backgroundFrom: string;
+  backgroundTo: string;
+  textColor: string;
+  shadowColor: string;
+} {
+  const normalizedAccent = normalizeHex(accentColor) ?? "#8b5e3c";
+  const luminance = getRelativeLuminance(normalizedAccent);
+  const darkAnchor = "#1c1917";
+
+  if (luminance > 0.42) {
+    const darkerBrand = mixHexColors(normalizedAccent, darkAnchor, 0.48);
+    return {
+      backgroundFrom: darkerBrand,
+      backgroundTo: mixHexColors(darkerBrand, darkAnchor, 0.18),
+      textColor: "#ffffff",
+      shadowColor: hexToRgba(darkerBrand, 0.82),
+    };
+  }
+
+  return {
+    backgroundFrom: normalizedAccent,
+    backgroundTo: mixHexColors(normalizedAccent, darkAnchor, 0.16),
+    textColor: "#ffffff",
+    shadowColor: hexToRgba(normalizedAccent, 0.78),
+  };
+}
+
 function splitInterests(value: string): string[] {
   return value
     .split(",")
@@ -691,6 +765,7 @@ export function TripRequestIntakeForm({
   const accentColor = state.organizationPrimaryColor || "#8b5e3c";
   const accentSoft = hexToRgba(accentColor, 0.12);
   const accentSofter = hexToRgba(accentColor, 0.06);
+  const actionPalette = getActionButtonPalette(accentColor);
   const brandPanel = `linear-gradient(180deg, ${hexToRgba(accentColor, 0.25)} 0%, rgba(20,17,14,0) 65%)`;
   const cachedDraft = useMemo(() => readCachedTripRequestDraft(token), [token]);
   const initialPhoneParts = splitPhoneParts(
@@ -1475,21 +1550,27 @@ export function TripRequestIntakeForm({
                   <div className="mx-auto flex max-w-6xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:rounded-[24px] sm:border sm:border-black/5 sm:bg-white sm:p-5">
                     <div className="hidden min-w-0 sm:block">
                       <p className="text-sm font-medium text-stone-950">
-                        {submitPending ? "Sending your request" : "Ready to send your request"}
+                        {submitPending ? "Sending your request" : canSubmit ? "Ready to send your request" : "Complete the last required detail"}
                       </p>
                       <p className="mt-1 text-sm leading-6 text-stone-500">
                         {canSubmit
-                          ? `${state.organizationName} will review your details and share your itinerary.`
+                          ? `Tap send and ${state.organizationName} will start preparing your itinerary.`
                           : submitReadiness.message}
                       </p>
                     </div>
                     <button
                       type="submit"
                       disabled={!canSubmit}
-                      className="inline-flex h-14 w-full shrink-0 items-center justify-center gap-2 rounded-2xl px-6 text-sm font-semibold text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-45 sm:w-auto"
+                      aria-label={canSubmit ? `Send your trip brief to ${state.organizationName}` : submitReadiness.message}
+                      className="inline-flex h-14 w-full shrink-0 items-center justify-center gap-2 rounded-2xl border px-6 text-sm font-semibold transition duration-200 ease-out active:scale-[0.985] sm:w-auto"
                       style={{
-                        background: `linear-gradient(135deg, ${accentColor} 0%, ${hexToRgba(accentColor, 0.82)} 100%)`,
-                        boxShadow: canSubmit ? `0 18px 40px -24px ${hexToRgba(accentColor, 0.8)}` : undefined,
+                        color: canSubmit ? actionPalette.textColor : "#a8a29e",
+                        borderColor: canSubmit ? hexToRgba(actionPalette.backgroundFrom, 0.2) : "rgba(231,229,228,0.9)",
+                        background: canSubmit
+                          ? `linear-gradient(135deg, ${actionPalette.backgroundFrom} 0%, ${actionPalette.backgroundTo} 100%)`
+                          : "linear-gradient(135deg, #e7e5e4 0%, #d6d3d1 100%)",
+                        boxShadow: canSubmit ? `0 22px 48px -26px ${actionPalette.shadowColor}` : "inset 0 1px 0 rgba(255,255,255,0.45)",
+                        transform: canSubmit ? "translateY(0)" : undefined,
                       }}
                     >
                       {submitPending ? "Sending..." : `Send to ${state.organizationName}`}
@@ -1497,7 +1578,7 @@ export function TripRequestIntakeForm({
                     </button>
                     <p className="text-center text-[11px] text-stone-500 sm:hidden">
                       {canSubmit
-                        ? `Your details are sent only to ${state.organizationName}`
+                        ? `Ready to send. Tap the button to share this brief with ${state.organizationName}.`
                         : submitReadiness.message}
                     </p>
                   </div>
