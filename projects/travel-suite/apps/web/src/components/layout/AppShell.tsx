@@ -44,12 +44,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     const isMarketingPage = MARKETING_PATHS.some(
         (p) => pathname === p || pathname?.startsWith(p + "/")
     );
+    const isTripRequestPublicPage =
+        pathname === "/trip-request" ||
+        pathname?.startsWith("/trip-request/");
     const isPublicPage =
         pathname === "/welcome" ||
         pathname === "/auth" ||
         pathname === "/offline" ||
         pathname?.startsWith("/onboarding") ||
-        pathname?.startsWith("/trip-request") ||
+        isTripRequestPublicPage ||
         pathname?.startsWith("/share") ||
         pathname?.startsWith("/portal") ||
         pathname?.startsWith("/pay") ||
