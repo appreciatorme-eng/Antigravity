@@ -75,10 +75,10 @@ export async function GET(request: NextRequest) {
         // Step 2: fetch org details for the returned profiles
         const orgIds = [...new Set(profiles.map((p: { organization_id: string | null }) => p.organization_id).filter(Boolean))] as string[];
 
-        let orgMap: Record<string, { name: string; slug: string; subscription_tier: string | null }> = {};
+        const orgMap: Record<string, { name: string; slug: string; subscription_tier: string | null }> = {};
 
         if (orgIds.length > 0) {
-            let orgQuery = db
+            const orgQuery = db
                 .from("organizations")
                 .select("id, name, slug, subscription_tier")
                 .in("id", orgIds);

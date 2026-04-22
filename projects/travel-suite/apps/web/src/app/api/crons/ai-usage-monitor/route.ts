@@ -5,6 +5,11 @@ import { sendHitlProposal } from "@/lib/god-slack";
 export const maxDuration = 60; // Allow 60s for cron
 const FREE_TIER_LIMIT = 1000; // Assuming free tier gets 1000 AI requests
 
+type UsageRow = {
+    organization_id: string;
+    ai_requests: number | null;
+};
+
 function monthStartISO(): string {
     const now = new Date();
     return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().slice(0, 10);
@@ -40,7 +45,10 @@ export async function GET(req: NextRequest) {
     }
 
     // Map usage
-    const usageMap = new Map(usageData.map((row: any) => [row.organization_id, row.ai_requests ?? 0]));
+    const usageRows = usageData as UsageRow[];
+    const usageMap = new Map(
+        usageRows.map((row) => [row.organization_id, row.ai_requests ?? 0]),
+    );
 
     let hitlProposalsSent = 0;
 

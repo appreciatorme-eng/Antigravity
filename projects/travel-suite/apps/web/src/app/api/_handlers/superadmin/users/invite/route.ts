@@ -1,7 +1,7 @@
 // POST /api/superadmin/users/invite — superadmin endpoint to invite users.
 
 import { z } from "zod";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { logError } from "@/lib/observability/logger";
