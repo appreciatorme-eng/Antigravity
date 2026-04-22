@@ -87,6 +87,12 @@ export const NAV_ITEMS: readonly NavItemConfig[] = [
 
   // ── OPERATIONS ──────────────────────────────────────────────────────
   {
+    icon: "ClipboardList",
+    label: "Trip Requests",
+    href: "/trip-requests",
+    section: "operations",
+  },
+  {
     icon: "Receipt",
     label: "Invoices",
     href: "/admin/invoices",
@@ -108,12 +114,6 @@ export const NAV_ITEMS: readonly NavItemConfig[] = [
     icon: "Compass",
     label: "Operations",
     href: "/admin/operations",
-    section: "operations",
-  },
-  {
-    icon: "ClipboardList",
-    label: "Trip Requests",
-    href: "/trip-requests",
     section: "operations",
   },
   {
