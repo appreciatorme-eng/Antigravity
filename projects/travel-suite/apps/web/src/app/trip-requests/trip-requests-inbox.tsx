@@ -1101,7 +1101,10 @@ export function TripRequestsInbox() {
                                 More actions
                               </button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" className="w-64">
+                            <DropdownMenuContent
+                              align="start"
+                              className="w-64 border-slate-200 bg-white/98 shadow-2xl shadow-slate-200/70 backdrop-blur-none dark:border-slate-800 dark:bg-slate-950/98 dark:shadow-black/40"
+                            >
                               <DropdownMenuItem onSelect={() => setDetailRequest(item)}>
                                 <Eye className="h-4 w-4" />
                                 View details

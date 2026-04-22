@@ -551,7 +551,10 @@ export function TripRequestDetailActions({
                     More actions
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuContent
+                  align="end"
+                  className="w-64 border-slate-200 bg-white/98 shadow-2xl shadow-slate-200/70 backdrop-blur-none dark:border-slate-800 dark:bg-slate-950/98 dark:shadow-black/40"
+                >
                   <DropdownMenuItem onSelect={() => setEditOpen(true)}>
                     <PencilLine className="h-4 w-4" />
                     Edit brief
