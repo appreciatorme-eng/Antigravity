@@ -11,7 +11,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { guardedSendText } from "@/lib/whatsapp-evolution.server";
 import { logError } from "@/lib/observability/logger";
-import { sendPoll, LEAD_NOTIFICATION_POLL, PAYMENT_NOTIFICATION_POLL } from "./assistant-polls";
+import { sendPoll, PAYMENT_NOTIFICATION_POLL } from "./assistant-polls";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -77,25 +77,12 @@ export async function notifyOperator(
 // ---------------------------------------------------------------------------
 
 export async function notifyNewLead(
-    orgId: string,
-    phone: string,
-    preview: string,
+    _orgId: string,
+    _phone: string,
+    _preview: string,
 ): Promise<void> {
-    const masked = phone.length > 6
-        ? phone.slice(0, -4).replace(/\d/g, "•") + phone.slice(-4)
-        : phone;
-    const target = await notifyOperator(orgId, [
-        `🆕 *New Lead*`,
-        `📱 ${masked}`,
-        `💬 "${preview.slice(0, 100)}"`,
-    ].join("\n"));
-
-    // Follow-up poll so operator can act without typing
-    if (target) {
-        void sendPoll(target.instanceName, target.groupJid, LEAD_NOTIFICATION_POLL).catch((err) => {
-            logError("[assistant-notifications] Failed to send lead poll", err);
-        });
-    }
+    void [_orgId, _phone, _preview];
+    return;
 }
 
 export async function notifyPaymentReceived(
@@ -134,21 +121,11 @@ export async function notifyAutomationSent(
 }
 
 export async function notifyCustomerAssistantHandoff(
-    orgId: string,
-    phone: string,
-    preview: string,
-    intakeUrl: string | null,
+    _orgId: string,
+    _phone: string,
+    _preview: string,
+    _intakeUrl: string | null,
 ): Promise<void> {
-    const masked = phone.length > 6
-        ? phone.slice(0, -4).replace(/\d/g, "•") + phone.slice(-4)
-        : phone;
-
-    await notifyOperator(orgId, [
-        `⚠️ *Customer Needs Human Follow-up*`,
-        `📱 ${masked}`,
-        `💬 "${preview.slice(0, 140)}"`,
-        intakeUrl ? `🔗 Intake link: ${intakeUrl}` : null,
-        "",
-        "The customer message was outside the guarded auto-reply flow, so TripBuilt stopped replying automatically.",
-    ].filter((value): value is string => Boolean(value)).join("\n"));
+    void [_orgId, _phone, _preview, _intakeUrl];
+    return;
 }

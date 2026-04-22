@@ -8,7 +8,7 @@ import "server-only";
  *
  * Eligible operators are those who have:
  *   1. `morning_briefing_enabled` preference set to true
- *   2. A normalised WhatsApp phone number on their profile
+ *   2. A connected TripBuilt Assistant WhatsApp group
  *
  * All functions are pure or use explicit admin Supabase calls.
  * Errors are caught at every boundary and never thrown to callers.
@@ -27,7 +27,7 @@ import { notifyOperator } from "@/lib/whatsapp/assistant-notifications";
 interface EligibleOrg {
   readonly organizationId: string;
   readonly userId: string;
-  readonly phone: string;
+  readonly phone: string | null;
   readonly orgName: string;
 }
 
@@ -118,7 +118,7 @@ export function formatBriefingMessage(
 /**
  * Find organisations whose operators have:
  *   - `morning_briefing_enabled` preference set to `true`
- *   - A normalised WhatsApp phone on their profile
+ *   - A connected assistant WhatsApp group
  *
  * Uses the admin client to bypass RLS.
  */
@@ -139,26 +139,20 @@ export async function getEligibleOrgsForBriefing(): Promise<
     }
 
     const userIds = prefRows.map((r) => r.user_id);
+    const orgIds = [...new Set(prefRows.map((r) => r.organization_id))];
 
-    // Fetch profiles with a WhatsApp-capable phone number.
     const { data: profileRows, error: profileError } = await supabase
       .from("profiles")
-      .select("id, phone_normalized, organization_id")
-      .in("id", userIds)
-      .not("phone_normalized", "is", null);
+      .select("id, phone_normalized")
+      .in("id", userIds);
 
-    if (profileError || !profileRows) {
+    if (profileError) {
       return [];
     }
 
     const phoneByUserId = new Map(
-      profileRows.map((p) => [p.id, p.phone_normalized ?? ""]),
+      (profileRows ?? []).map((p) => [p.id, p.phone_normalized ?? null]),
     );
-
-    // Collect unique org IDs for name lookup.
-    const orgIds = [
-      ...new Set(prefRows.map((r) => r.organization_id)),
-    ];
 
     const { data: orgRows, error: orgError } = await supabase
       .from("organizations")
@@ -170,13 +164,28 @@ export async function getEligibleOrgsForBriefing(): Promise<
     }
 
     const orgNameById = new Map(orgRows.map((o) => [o.id, o.name]));
+    const { data: connectionRows, error: connectionError } = await supabase
+      .from("whatsapp_connections")
+      .select("organization_id, phone_number, assistant_group_jid")
+      .in("organization_id", orgIds)
+      .eq("status", "connected")
+      .not("assistant_group_jid", "is", null);
+
+    if (connectionError || !connectionRows || connectionRows.length === 0) {
+      return [];
+    }
+
+    const enabledOrgIds = new Set(connectionRows.map((row) => row.organization_id));
+    const connectedPhoneByOrgId = new Map(
+      connectionRows.map((row) => [row.organization_id, row.phone_number ?? null]),
+    );
 
     // Join preferences + profiles + org names.
     const results: EligibleOrg[] = [];
 
     for (const pref of prefRows) {
-      const phone = phoneByUserId.get(pref.user_id);
-      if (!phone) continue;
+      if (!enabledOrgIds.has(pref.organization_id)) continue;
+      const phone = phoneByUserId.get(pref.user_id) ?? connectedPhoneByOrgId.get(pref.organization_id) ?? null;
 
       const orgName = orgNameById.get(pref.organization_id) ?? "Your Organisation";
 

@@ -180,7 +180,7 @@ export async function ensureAssistantGroup(
   await updateEvolutionGroupDescription(
     sessionName,
     groupJid,
-    "Your private TripBuilt notification channel. Daily briefings, new leads, payments, and driver updates — all here.",
+    "Your private TripBuilt notification channel. Daily briefings, payments, trip updates, and operator actions — all here.",
   );
 
   await guardedSendText(sessionName, groupJid, [
@@ -188,9 +188,8 @@ export async function ensureAssistantGroup(
     "",
     "I'll send you:",
     "\u{1F4CB} Daily briefings at 6:30 AM",
-    "\u{1F514} New lead alerts",
     "\u{1F4B0} Payment notifications",
-    "\u{1F697} Driver updates",
+    "\u{1F4CB} Trip and operations updates",
     "",
     "*Quick commands you can type:*",
     "  \u{1F4CA} *stats* — Dashboard overview",
