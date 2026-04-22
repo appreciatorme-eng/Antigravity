@@ -16,6 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import { TripRequestDetailActions } from "./TripRequestDetailActions";
 import { TripRequestDetailTimeline } from "./TripRequestDetailTimeline";
+import { buildOperatorRequestSummary } from "../request-summary";
 
 function formatDateTime(value: string | null): string {
   if (!value) return "—";
@@ -158,6 +159,8 @@ export default async function TripRequestDetailPage({
     notFound();
   }
 
+  const summary = buildOperatorRequestSummary(request);
+
   return (
     <div className="flex w-full flex-col gap-6">
       <section className="rounded-[28px] border border-border bg-card shadow-sm">
@@ -247,12 +250,12 @@ export default async function TripRequestDetailPage({
           <div className="mt-2 text-sm font-semibold text-foreground">{formatDateTime(request.updatedAt)}</div>
         </div>
         <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-          <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Source</div>
-          <div className="mt-2 text-sm font-semibold text-foreground">{request.sourceChannel}</div>
+          <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Traveller progress</div>
+          <div className="mt-2 text-sm font-semibold text-foreground">{summary.travellerProgress}</div>
         </div>
         <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-          <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Submitter role</div>
-          <div className="mt-2 text-sm font-semibold capitalize text-foreground">{request.submitterRole || "—"}</div>
+          <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Next step</div>
+          <div className="mt-2 text-sm font-semibold text-foreground">{summary.nextStep}</div>
         </div>
       </section>
 
@@ -321,25 +324,24 @@ export default async function TripRequestDetailPage({
 
         <div className="space-y-4">
           <div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
-            <h2 className="text-sm font-black uppercase tracking-[0.18em] text-muted-foreground">Linked records</h2>
+            <h2 className="text-sm font-black uppercase tracking-[0.18em] text-muted-foreground">Operator summary</h2>
             <dl className="mt-4 grid gap-4">
               <div>
-                <dt className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Trip id</dt>
-                <dd className="mt-1 text-sm font-medium text-foreground">{request.createdTripId || "—"}</dd>
+                <dt className="text-xs uppercase tracking-[0.16em] text-muted-foreground">How this started</dt>
+                <dd className="mt-1 text-sm font-medium text-foreground">{summary.intakeSource}</dd>
               </div>
               <div>
-                <dt className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Itinerary id</dt>
-                <dd className="mt-1 text-sm font-medium text-foreground">{request.createdItineraryId || "—"}</dd>
+                <dt className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Traveller progress</dt>
+                <dd className="mt-1 text-sm font-medium text-foreground">{summary.travellerProgress}</dd>
               </div>
               <div>
-                <dt className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Form token</dt>
-                <dd className="mt-1 break-all text-sm font-medium text-foreground">{request.formToken}</dd>
-              </div>
-              <div>
-                <dt className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Form link</dt>
-                <dd className="mt-1 break-all text-sm font-medium text-foreground">{request.formUrl}</dd>
+                <dt className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Recommended next step</dt>
+                <dd className="mt-1 text-sm font-medium text-foreground">{summary.nextStep}</dd>
               </div>
             </dl>
+            <div className="mt-4 rounded-2xl border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+              Keep the actions below for follow-through. Internal record ids are hidden here to keep the page readable for operators.
+            </div>
           </div>
 
           <div className="rounded-3xl border border-border bg-card p-5 shadow-sm">

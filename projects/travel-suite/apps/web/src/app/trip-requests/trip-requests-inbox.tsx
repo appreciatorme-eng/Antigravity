@@ -27,6 +27,7 @@ import { authedFetch } from "@/lib/api/authed-fetch";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import type { OperatorTripRequestListItem } from "@/lib/whatsapp/trip-intake.server";
+import { buildOperatorRequestSummary } from "./request-summary";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -468,6 +469,11 @@ export function TripRequestsInbox() {
     const attention = requests.filter((item) => item.stage === "draft" || item.stage === "submitted").length;
     return { completed, processing, attention };
   }, [requests]);
+
+  const detailSummary = useMemo(
+    () => (detailRequest ? buildOperatorRequestSummary(detailRequest) : null),
+    [detailRequest],
+  );
 
   const selectedVisibleIds = useMemo(
     () => filteredRequests.map((item) => item.id).filter((id) => selectedRequestIds.includes(id)),
@@ -1351,7 +1357,7 @@ export function TripRequestsInbox() {
                 {detailRequest.destination ? ` • ${detailRequest.destination}` : ""}
               </DialogTitle>
               <DialogDescription className="text-sm leading-6 text-muted-foreground">
-                Full intake brief, linked records, delivery history, and retry context for this request.
+                Traveller brief, operator summary, delivery history, and retry context for this request.
               </DialogDescription>
             </DialogHeader>
 
@@ -1380,12 +1386,12 @@ export function TripRequestsInbox() {
                   <div className="mt-2 text-sm font-semibold text-foreground">{formatDateTime(detailRequest.updatedAt)}</div>
                 </div>
                 <div className="rounded-2xl border border-border bg-muted/20 p-4">
-                  <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Source</div>
-                  <div className="mt-2 text-sm font-semibold text-foreground">{detailRequest.sourceChannel}</div>
+                  <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Traveller progress</div>
+                  <div className="mt-2 text-sm font-semibold text-foreground">{detailSummary?.travellerProgress || "—"}</div>
                 </div>
                 <div className="rounded-2xl border border-border bg-muted/20 p-4">
-                  <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Submitter role</div>
-                  <div className="mt-2 text-sm font-semibold capitalize text-foreground">{detailRequest.submitterRole || "—"}</div>
+                  <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Next step</div>
+                  <div className="mt-2 text-sm font-semibold text-foreground">{detailSummary?.nextStep || "—"}</div>
                 </div>
               </div>
 
@@ -1448,19 +1454,19 @@ export function TripRequestsInbox() {
 
                 <div className="space-y-4">
                   <div className="rounded-3xl border border-border bg-muted/20 p-5">
-                    <h3 className="text-sm font-black uppercase tracking-[0.18em] text-muted-foreground">Linked records</h3>
+                    <h3 className="text-sm font-black uppercase tracking-[0.18em] text-muted-foreground">Operator summary</h3>
                     <dl className="mt-4 grid gap-4">
                       <div>
-                        <dt className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Trip id</dt>
-                        <dd className="mt-1 text-sm font-medium text-foreground">{detailRequest.createdTripId || "—"}</dd>
+                        <dt className="text-xs uppercase tracking-[0.16em] text-muted-foreground">How this started</dt>
+                        <dd className="mt-1 text-sm font-medium text-foreground">{detailSummary?.intakeSource || "—"}</dd>
                       </div>
                       <div>
-                        <dt className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Itinerary id</dt>
-                        <dd className="mt-1 text-sm font-medium text-foreground">{detailRequest.createdItineraryId || "—"}</dd>
+                        <dt className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Traveller progress</dt>
+                        <dd className="mt-1 text-sm font-medium text-foreground">{detailSummary?.travellerProgress || "—"}</dd>
                       </div>
                       <div>
-                        <dt className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Form token</dt>
-                        <dd className="mt-1 break-all text-sm font-medium text-foreground">{detailRequest.formToken}</dd>
+                        <dt className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Recommended next step</dt>
+                        <dd className="mt-1 text-sm font-medium text-foreground">{detailSummary?.nextStep || "—"}</dd>
                       </div>
                       <div className="flex flex-wrap gap-2 pt-2">
                         <button
@@ -1504,6 +1510,9 @@ export function TripRequestsInbox() {
                         ) : null}
                       </div>
                     </dl>
+                    <div className="mt-4 rounded-2xl border border-border bg-background/70 px-4 py-3 text-sm text-muted-foreground">
+                      Internal record ids are hidden here so the request stays readable for tour operators.
+                    </div>
                   </div>
 
                   <div className="rounded-3xl border border-border bg-muted/20 p-5">
