@@ -9,7 +9,6 @@ import {
   CheckSquare,
   Clock3,
   Copy,
-  Eye,
   PencilLine,
   FileDown,
   RotateCw,
@@ -27,7 +26,6 @@ import { authedFetch } from "@/lib/api/authed-fetch";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import type { OperatorTripRequestListItem } from "@/lib/whatsapp/trip-intake.server";
-import { buildOperatorRequestSummary } from "./request-summary";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -399,7 +397,6 @@ export function TripRequestsInbox() {
   const [searchQuery, setSearchQuery] = useState("");
   const [runningAction, setRunningAction] = useState<Record<string, ActionType | undefined>>({});
   const [editingRequest, setEditingRequest] = useState<OperatorTripRequestListItem | null>(null);
-  const [detailRequest, setDetailRequest] = useState<OperatorTripRequestListItem | null>(null);
   const [editForm, setEditForm] = useState<EditFormState | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<OperatorTripRequestListItem | null>(null);
@@ -469,11 +466,6 @@ export function TripRequestsInbox() {
     const attention = requests.filter((item) => item.stage === "draft" || item.stage === "submitted").length;
     return { completed, processing, attention };
   }, [requests]);
-
-  const detailSummary = useMemo(
-    () => (detailRequest ? buildOperatorRequestSummary(detailRequest) : null),
-    [detailRequest],
-  );
 
   const selectedVisibleIds = useMemo(
     () => filteredRequests.map((item) => item.id).filter((id) => selectedRequestIds.includes(id)),
@@ -611,7 +603,6 @@ export function TripRequestsInbox() {
 
   function updateLocalRequest(next: OperatorTripRequestListItem) {
     setRequests((current) => current.map((item) => (item.id === next.id ? next : item)));
-    setDetailRequest((current) => (current?.id === next.id ? next : current));
   }
 
   async function deleteRequest() {
@@ -712,12 +703,12 @@ export function TripRequestsInbox() {
             <div className="max-w-3xl">
               <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
                 <Sparkles className="h-3.5 w-3.5" />
-                Intake operations
+                Trip request queue
               </div>
-              <h1 className="text-3xl font-black tracking-tight text-foreground md:text-4xl">Trip request control room</h1>
+              <h1 className="text-3xl font-black tracking-tight text-foreground md:text-4xl">Trip requests</h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
-                Review every magic-link submission for {organizationName}, retry generation when needed, and resend the
-                final itinerary package without jumping back into WhatsApp.
+                Review magic-link submissions for {organizationName}, fix anything that needs attention, and resend the
+                final itinerary package when needed.
               </p>
             </div>
 
@@ -1105,10 +1096,6 @@ export function TripRequestsInbox() {
                               align="start"
                               className="w-64 border-slate-200 bg-white/98 shadow-2xl shadow-slate-200/70 backdrop-blur-none dark:border-slate-800 dark:bg-slate-950/98 dark:shadow-black/40"
                             >
-                              <DropdownMenuItem onSelect={() => setDetailRequest(item)}>
-                                <Eye className="h-4 w-4" />
-                                View details
-                              </DropdownMenuItem>
                               <DropdownMenuItem onSelect={() => openEditor(item)}>
                                 <PencilLine className="h-4 w-4" />
                                 Edit brief
@@ -1341,253 +1328,6 @@ export function TripRequestsInbox() {
               >
                 {savingEdit ? <Loader2 className="h-4 w-4 animate-spin" /> : <PencilLine className="h-4 w-4" />}
                 Save changes
-              </button>
-            </DialogFooter>
-          </DialogContent>
-        ) : null}
-      </Dialog>
-
-      <Dialog open={Boolean(detailRequest)} onOpenChange={(open) => {
-        if (!open) {
-          setDetailRequest(null);
-        }
-      }}>
-        {detailRequest ? (
-          <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto border border-border bg-background text-foreground shadow-2xl sm:max-w-4xl">
-            <DialogHeader className="text-left">
-              <DialogTitle className="text-2xl font-black tracking-tight">
-                {detailRequest.clientName || "Unnamed traveller"}
-                {detailRequest.destination ? ` • ${detailRequest.destination}` : ""}
-              </DialogTitle>
-              <DialogDescription className="text-sm leading-6 text-muted-foreground">
-                Traveller brief, operator summary, delivery history, and retry context for this request.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="grid gap-6">
-              <div className="flex flex-wrap gap-2">
-                <span className={cn("rounded-full border px-3 py-1 text-xs font-semibold", stageClasses(detailRequest.stage))}>
-                  {detailRequest.stageLabel}
-                </span>
-                {getDeliveryBadges(detailRequest).map((badge) => (
-                  <span
-                    key={badge.label}
-                    className={cn("rounded-full border px-3 py-1 text-xs font-semibold", badge.tone)}
-                  >
-                    {badge.label}
-                  </span>
-                ))}
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <div className="rounded-2xl border border-border bg-muted/20 p-4">
-                  <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Submitted</div>
-                  <div className="mt-2 text-sm font-semibold text-foreground">{formatDateTime(detailRequest.submittedAt)}</div>
-                </div>
-                <div className="rounded-2xl border border-border bg-muted/20 p-4">
-                  <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Updated</div>
-                  <div className="mt-2 text-sm font-semibold text-foreground">{formatDateTime(detailRequest.updatedAt)}</div>
-                </div>
-                <div className="rounded-2xl border border-border bg-muted/20 p-4">
-                  <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Traveller progress</div>
-                  <div className="mt-2 text-sm font-semibold text-foreground">{detailSummary?.travellerProgress || "—"}</div>
-                </div>
-                <div className="rounded-2xl border border-border bg-muted/20 p-4">
-                  <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Next step</div>
-                  <div className="mt-2 text-sm font-semibold text-foreground">{detailSummary?.nextStep || "—"}</div>
-                </div>
-              </div>
-
-              <div className="grid gap-4 lg:grid-cols-2">
-                <div className="rounded-3xl border border-border bg-muted/20 p-5">
-                  <h3 className="text-sm font-black uppercase tracking-[0.18em] text-muted-foreground">Traveller brief</h3>
-                  <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <dt className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Traveller name</dt>
-                      <dd className="mt-1 text-sm font-medium text-foreground">{detailRequest.clientName || "—"}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs uppercase tracking-[0.16em] text-muted-foreground">WhatsApp</dt>
-                      <dd className="mt-1 text-sm font-medium text-foreground">{detailRequest.clientPhone || "—"}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Email</dt>
-                      <dd className="mt-1 text-sm font-medium text-foreground">{detailRequest.clientEmail || "—"}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Travellers</dt>
-                      <dd className="mt-1 text-sm font-medium text-foreground">{detailRequest.travelerCount ?? "—"}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Destination</dt>
-                      <dd className="mt-1 text-sm font-medium text-foreground">{detailRequest.destination || "—"}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Duration</dt>
-                      <dd className="mt-1 text-sm font-medium text-foreground">{detailRequest.durationDays ? `${detailRequest.durationDays} days` : "—"}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Dates</dt>
-                      <dd className="mt-1 text-sm font-medium text-foreground">
-                        {detailRequest.startDate && detailRequest.endDate
-                          ? `${detailRequest.startDate} to ${detailRequest.endDate}`
-                          : detailRequest.travelWindow || "—"}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Origin</dt>
-                      <dd className="mt-1 text-sm font-medium text-foreground">{detailRequest.originCity || "—"}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Budget</dt>
-                      <dd className="mt-1 text-sm font-medium text-foreground">{detailRequest.budget || "—"}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Hotel preference</dt>
-                      <dd className="mt-1 text-sm font-medium text-foreground">{detailRequest.hotelPreference || "—"}</dd>
-                    </div>
-                    <div className="sm:col-span-2">
-                      <dt className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Interests</dt>
-                      <dd className="mt-1 text-sm font-medium text-foreground">
-                        {detailRequest.interests.length > 0 ? detailRequest.interests.join(", ") : "—"}
-                      </dd>
-                    </div>
-                  </dl>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="rounded-3xl border border-border bg-muted/20 p-5">
-                    <h3 className="text-sm font-black uppercase tracking-[0.18em] text-muted-foreground">Operator summary</h3>
-                    <dl className="mt-4 grid gap-4">
-                      <div>
-                        <dt className="text-xs uppercase tracking-[0.16em] text-muted-foreground">How this started</dt>
-                        <dd className="mt-1 text-sm font-medium text-foreground">{detailSummary?.intakeSource || "—"}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Traveller progress</dt>
-                        <dd className="mt-1 text-sm font-medium text-foreground">{detailSummary?.travellerProgress || "—"}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Recommended next step</dt>
-                        <dd className="mt-1 text-sm font-medium text-foreground">{detailSummary?.nextStep || "—"}</dd>
-                      </div>
-                      <div className="flex flex-wrap gap-2 pt-2">
-                        <button
-                          type="button"
-                          onClick={() => void copyValue(detailRequest.formUrl, "Form link")}
-                          className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
-                        >
-                          <Copy className="h-4 w-4" />
-                          Copy form link
-                        </button>
-                        {detailRequest.createdTripId ? (
-                          <a
-                            href={`/trips/${detailRequest.createdTripId}`}
-                            className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
-                          >
-                            <ArrowUpRight className="h-4 w-4" />
-                            Open trip
-                          </a>
-                        ) : null}
-                        {detailRequest.createdShareUrl ? (
-                          <a
-                            href={detailRequest.createdShareUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
-                          >
-                            <ArrowUpRight className="h-4 w-4" />
-                            View itinerary
-                          </a>
-                        ) : null}
-                        {detailRequest.pdfUrl ? (
-                          <a
-                            href={detailRequest.pdfUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
-                          >
-                            <FileDown className="h-4 w-4" />
-                            Open PDF
-                          </a>
-                        ) : null}
-                      </div>
-                    </dl>
-                    <div className="mt-4 rounded-2xl border border-border bg-background/70 px-4 py-3 text-sm text-muted-foreground">
-                      Internal record ids are hidden here so the request stays readable for tour operators.
-                    </div>
-                  </div>
-
-                  <div className="rounded-3xl border border-border bg-muted/20 p-5">
-                    <h3 className="text-sm font-black uppercase tracking-[0.18em] text-muted-foreground">Delivery log</h3>
-                    <div className="mt-4 space-y-3 text-sm text-foreground">
-                      <div>Completed package: {formatDateTime(detailRequest.completionDeliveredAt)}</div>
-                      <div>Operator resend: {formatDateTime(detailRequest.lastOperatorResentAt)}</div>
-                      <div>Traveller resend: {formatDateTime(detailRequest.lastClientResentAt)}</div>
-                      <div>Last regenerated: {formatDateTime(detailRequest.lastItineraryRegeneratedAt)}</div>
-                      {detailRequest.generationError ? (
-                        <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-rose-700 dark:text-rose-300">
-                          Generation error: {detailRequest.generationError}
-                        </div>
-                      ) : null}
-                      {detailRequest.operatorDeliveryError ? (
-                        <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-rose-700 dark:text-rose-300">
-                          Operator delivery error: {detailRequest.operatorDeliveryError}
-                        </div>
-                      ) : null}
-                      {detailRequest.clientDeliveryError ? (
-                        <div className="rounded-xl border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-rose-700 dark:text-rose-300">
-                          Traveller delivery error: {detailRequest.clientDeliveryError}
-                        </div>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-3xl border border-border bg-muted/20 p-5">
-                <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.18em] text-muted-foreground">
-                  <Clock3 className="h-4 w-4" />
-                  Activity timeline
-                </div>
-                {getTimelineEvents(detailRequest).length > 0 ? (
-                  <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                    {getTimelineEvents(detailRequest).map((event) => (
-                      <div
-                        key={`${event.label}-${event.value}`}
-                        className="rounded-2xl border border-border bg-background px-4 py-3"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className={cn("h-2.5 w-2.5 rounded-full", event.tone)} />
-                          <span className="text-sm font-semibold text-foreground">{event.label}</span>
-                        </div>
-                        <div className="mt-2 text-sm text-muted-foreground">{formatDateTime(event.value)}</div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
-                    <AlertTriangle className="h-4 w-4" />
-                    No retry or resend history yet for this request.
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <DialogFooter>
-              <a
-                href={`/trip-requests/${detailRequest.id}`}
-                className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
-              >
-                <ArrowUpRight className="h-4 w-4" />
-                Open full page
-              </a>
-              <button
-                type="button"
-                onClick={() => setDetailRequest(null)}
-                className="rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
-              >
-                Close
               </button>
             </DialogFooter>
           </DialogContent>
