@@ -2894,7 +2894,10 @@ export async function loadTripRequestFormState(
 ): Promise<TripRequestFormState | null> {
   const row = await getDraftByFormToken(formToken);
   if (!row) return null;
-  const branding = await loadTripRequestOrganizationBranding(row.organization_id);
+  const branding = await loadTripRequestBusinessBranding({
+    organizationId: row.organization_id,
+    operatorUserId: row.operator_user_id,
+  });
   return {
     ...toTripRequestFormState(mapDraft(row)),
     ...branding,

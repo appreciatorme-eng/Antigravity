@@ -98,22 +98,22 @@ const PILL_TONES = [
 const PROCESSING_STEPS = [
   {
     title: "Details received",
-    description: "Your travel brief has safely reached the advisor desk.",
+    description: "Your travel details are safely with the travel team.",
     icon: CircleCheckBig,
   },
   {
-    title: "Building your itinerary",
-    description: "We’re shaping the route, stay style, and day-by-day flow for this trip.",
+    title: "Designing your plan",
+    description: "Your itinerary is being shaped around the dates, destination, and style you selected.",
     icon: Sparkles,
   },
   {
-    title: "Preparing your travel pack",
-    description: "The trip link and polished PDF are being assembled for easy review.",
+    title: "Preparing your review pack",
+    description: "Your live trip link and beautifully formatted PDF are being readied for you.",
     icon: FileCheck2,
   },
   {
-    title: "Sharing it back",
-    description: "Your advisor will receive the final trip and follow up with you on WhatsApp.",
+    title: "Almost ready",
+    description: "You’ll be able to open your trip here in just a moment.",
     icon: MessageSquareMore,
   },
 ] as const;
@@ -426,6 +426,13 @@ function getSubmitReadiness(args: {
     canSubmit: true,
     message: "Your trip brief is ready to send.",
   };
+}
+
+function getAdvisorFallbackMessage(state: TripRequestFormState): string {
+  if (state.organizationOfficeHours) {
+    return `${state.organizationName} will follow up during ${state.organizationOfficeHours}.`;
+  }
+  return `${state.organizationName} will follow up with you on WhatsApp shortly.`;
 }
 
 function SearchableLocationField({
@@ -1249,12 +1256,12 @@ export function TripRequestIntakeForm({
                   <div className="grid gap-5 px-5 py-5 sm:px-7 sm:py-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]">
                     <div className="space-y-4">
                       <div className="rounded-[24px] border border-black/5 bg-[#fcfaf7] p-5">
-                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">What happens next</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">What to expect</p>
                         <div className="mt-4 space-y-3">
                           {[
-                            "Open the live trip link to review the itinerary day by day.",
-                            "Download the PDF if you want an offline or shareable copy.",
-                            `${state.organizationName} can revise the plan if you want any changes.`,
+                            "Open your live trip link to explore the itinerary day by day.",
+                            "Download the PDF if you want an elegant copy to keep, share, or review offline.",
+                            `If you would like any changes, ${state.organizationName} can refine the plan for you.`,
                           ].map((item) => (
                             <div key={item} className="flex items-start gap-3">
                               <div
@@ -1291,16 +1298,21 @@ export function TripRequestIntakeForm({
                                 <span>{state.organizationAddress}</span>
                               </div>
                             ) : null}
+                            {!state.organizationContactPhone && !state.organizationContactEmail && !state.organizationAddress ? (
+                              <div className="rounded-2xl bg-stone-50 px-4 py-3 text-sm leading-6 text-stone-600">
+                                {getAdvisorFallbackMessage(state)}
+                              </div>
+                            ) : null}
                           </div>
                         </div>
 
                         <div className="rounded-[24px] border border-black/5 bg-[#fcfaf7] p-5">
-                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Confidence</p>
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">Included for you</p>
                           <div className="mt-4 space-y-3">
                             {[
-                              "Secure trip brief received",
-                              "Share link prepared",
-                              "PDF generated for easy review",
+                              "Your selected dates and traveller details are saved",
+                              "A live itinerary link is ready to explore",
+                              "A polished PDF is ready for easy sharing",
                             ].map((item) => (
                               <div key={item} className="flex items-center gap-3">
                                 <CircleCheckBig className="h-4 w-4 shrink-0" style={{ color: accentColor }} />
@@ -1317,20 +1329,40 @@ export function TripRequestIntakeForm({
                         href={state.shareUrl || "#"}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl px-5 text-sm font-semibold text-white"
-                        style={{ backgroundColor: accentColor }}
+                        className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl px-5 text-sm font-semibold text-white transition hover:-translate-y-[1px] active:scale-[0.985]"
+                        style={{
+                          background: `linear-gradient(135deg, ${actionPalette.backgroundFrom} 0%, ${actionPalette.backgroundTo} 100%)`,
+                          boxShadow: `0 22px 44px -24px ${actionPalette.shadowColor}`,
+                          color: actionPalette.textColor,
+                        }}
                       >
+                        <span
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-white/10"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </span>
                         View itinerary
-                        <ExternalLink className="h-4 w-4" />
+                        <ArrowRight className="h-4 w-4" />
                       </a>
                       <a
                         href={state.pdfUrl || "#"}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl border border-stone-200 bg-white px-5 text-sm font-semibold text-stone-900"
+                        className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl border px-5 text-sm font-semibold text-stone-900 transition hover:-translate-y-[1px] active:scale-[0.985]"
+                        style={{
+                          borderColor: hexToRgba(accentColor, 0.18),
+                          background: `linear-gradient(180deg, #ffffff 0%, ${accentSofter} 100%)`,
+                          boxShadow: `0 18px 40px -32px ${hexToRgba(accentColor, 0.45)}`,
+                        }}
                       >
+                        <span
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-full"
+                          style={{ backgroundColor: accentSoft, color: accentColor }}
+                        >
+                          <Download className="h-4 w-4" />
+                        </span>
                         Download PDF
-                        <Download className="h-4 w-4" />
+                        <ArrowRight className="h-4 w-4" />
                       </a>
                       <p className="px-1 text-center text-xs leading-6 text-stone-500">
                         If you want any changes, reply on WhatsApp and {state.organizationName} can revise the trip for you.
@@ -1356,10 +1388,10 @@ export function TripRequestIntakeForm({
                           Trip in progress
                         </div>
                         <h3 className="mt-4 text-[1.9rem] font-semibold tracking-tight text-stone-950 sm:text-[2.3rem]">
-                          {state.organizationName} is preparing your trip now
+                          Your trip is being prepared for review
                         </h3>
                         <p className="mt-3 max-w-xl text-sm leading-7 text-stone-600 sm:text-[15px]">
-                          Your brief is safely received. We’re creating the itinerary, preparing the travel pack, and will refresh this page automatically when it is ready.
+                          Your brief is safely received. This page updates quietly in place as your itinerary, trip link, and PDF are prepared for you.
                         </p>
                       </div>
                       <div className="rounded-[24px] border border-white/60 bg-white/90 p-4 shadow-[0_24px_60px_-42px_rgba(28,25,23,0.35)] sm:min-w-[260px]">
