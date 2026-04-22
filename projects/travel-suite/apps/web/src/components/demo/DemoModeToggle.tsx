@@ -18,7 +18,6 @@ export default function DemoModeToggle({ className }: { className?: string }) {
 
   useEffect(() => {
     // SSR-safe hydration guard — must detect mount via effect
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLocalMounted(true);
   }, []);
 

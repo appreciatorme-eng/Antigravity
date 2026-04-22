@@ -24,7 +24,6 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "build:vercel": "next build --webpack",
     "bones:build": "boneyard-js build",
     "start": "next start",
     "lint": "eslint --max-warnings=0",
@@ -98,7 +97,7 @@
     "mailparser": "^3.9.8",
     "maplibre-gl": "^5.21.1",
     "motion": "^12.38.0",
-    "next": "^16.2.4",
+    "next": "^15.5.15",
     "next-intl": "^4.9.1",
     "next-mdx-remote": "^6.0.0",
     "nodemailer": "^8.0.5",
@@ -134,7 +133,7 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
-    "@next/bundle-analyzer": "^16.2.4",
+    "@next/bundle-analyzer": "^15.5.15",
     "@playwright/test": "^1.42.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
@@ -152,7 +151,7 @@
     "@types/react-dom": "^19",
     "@vitest/coverage-v8": "^4.1.2",
     "eslint": "^9",
-    "eslint-config-next": "^16.2.4",
+    "eslint-config-next": "^15.5.15",
     "jsdom": "^28.1.0",
     "shadcn": "^3.8.4",
     "tailwindcss": "^4",

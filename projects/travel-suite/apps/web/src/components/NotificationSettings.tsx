@@ -31,7 +31,6 @@ export default function NotificationSettings() {
 
   useEffect(() => {
     if (isNotificationSupported()) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPermission(getNotificationPermission());
        
       setPreferences(getNotificationPreferences());

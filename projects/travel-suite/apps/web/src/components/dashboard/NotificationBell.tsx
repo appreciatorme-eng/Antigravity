@@ -52,7 +52,6 @@ export function NotificationBell({ className }: NotificationBellProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing with external isDemoMode context change
     setNotifications(isDemoMode ? (DEMO_NOTIFICATIONS as Notification[]) : []);
   }, [isDemoMode]);
 

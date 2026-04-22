@@ -1,10 +1,13 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { FlatCompat } from "@eslint/eslintrc";
 import { defineConfig, globalIgnores } from "eslint/config";
-import nextVitals from "eslint-config-next/core-web-vitals";
-import nextTs from "eslint-config-next/typescript";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const compat = new FlatCompat({ baseDirectory: __dirname });
 
 const eslintConfig = defineConfig([
-  ...nextVitals,
-  ...nextTs,
+  ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
     files: ["src/**/*.{ts,tsx}", "e2e/**/*.{ts,tsx}", "tailwind.config.ts"],
     rules: {
@@ -13,11 +16,6 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/no-require-imports": "warn",
       "react/no-unescaped-entities": "warn",
-      "react-hooks/set-state-in-effect": "warn",
-      "react-hooks/refs": "warn",
-      "react-hooks/purity": "warn",
-      "react-hooks/immutability": "warn",
-      "react-hooks/preserve-manual-memoization": "warn",
       "react-hooks/rules-of-hooks": "warn",
       "prefer-const": "error",
       // Prevent bare fetch() for mutations — must use authedFetch() to avoid CSRF errors.

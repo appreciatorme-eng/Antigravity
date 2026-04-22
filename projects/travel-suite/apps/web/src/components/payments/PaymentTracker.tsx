@@ -92,7 +92,6 @@ export default function PaymentTracker({
 
   useEffect(() => {
     const controller = new AbortController()
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadLink()
     const interval = setInterval(() => {
       if (!controller.signal.aborted) {

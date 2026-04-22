@@ -20,7 +20,6 @@ export default function DemoModeBanner() {
     try {
       if (sessionStorage.getItem(DISMISS_KEY) === "true") {
         // SSR-safe: sessionStorage only available after mount
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setDismissed(true);
       }
     } catch {

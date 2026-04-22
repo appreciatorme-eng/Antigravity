@@ -588,7 +588,6 @@ function AgentNotes({ conversationKey }: { conversationKey: string }) {
   useEffect(() => {
     if (!conversationKey) return;
     keyRef.current = conversationKey;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional: reset load state when conversation changes
     setLoaded(false);
 
     (async () => {

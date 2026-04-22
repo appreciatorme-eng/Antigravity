@@ -125,7 +125,7 @@ export async function PATCH(
       return apiError("Review not found", 404);
     }
 
-    revalidateTag("reputation", "max");
+    revalidateTag("reputation");
     return NextResponse.json({ review });
   } catch (error: unknown) {
     const message = safeErrorMessage(error, "Request failed");

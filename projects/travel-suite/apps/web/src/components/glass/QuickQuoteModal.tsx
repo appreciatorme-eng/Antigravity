@@ -250,7 +250,6 @@ export function QuickQuoteModal({ isOpen, onClose }: QuickQuoteModalProps) {
   // Keep end date >= start date
   useEffect(() => {
     if (new Date(endDate) <= new Date(startDate)) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEndDate(addDays(startDate, 7))
     }
   }, [startDate, endDate])

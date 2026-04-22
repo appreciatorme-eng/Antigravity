@@ -329,7 +329,7 @@ export async function POST(request: Request) {
       }
     }
 
-    revalidateTag("reputation", "max");
+    revalidateTag("reputation");
 
     return NextResponse.json({
       synced: inserted + updated,

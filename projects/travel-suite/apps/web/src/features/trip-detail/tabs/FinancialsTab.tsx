@@ -1063,7 +1063,6 @@ function InvoiceEditorModal({
   const [sacCode, setSacCode] = useState("998314");
   const [currency, setCurrency] = useState("INR");
 
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!isOpen) {
       wasOpenRef.current = false;
@@ -1096,8 +1095,6 @@ function InvoiceEditorModal({
       wasOpenRef.current = true;
     }
   }, [existingInvoice, initialLines, initialNotes, isOpen, mode]);
-  /* eslint-enable react-hooks/set-state-in-effect */
-
   const invoiceTotals = useMemo(
     () => calculateInvoiceDraftTotals(lines, gstEnabled),
     [gstEnabled, lines],

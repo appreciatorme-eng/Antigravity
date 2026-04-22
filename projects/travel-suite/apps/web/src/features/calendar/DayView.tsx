@@ -56,7 +56,6 @@ export function DayView({
   // Partition into all-day vs timed events
   const { allDay, timed } = useMemo(
     () => partitionDayEvents(events, year, month, day),
-    // eslint-disable-next-line react-hooks/preserve-manual-memoization
     [events, year, month, day],
   );
 

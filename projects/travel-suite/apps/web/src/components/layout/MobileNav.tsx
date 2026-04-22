@@ -119,10 +119,8 @@ export default function MobileNav() {
 
     // Close drawers on route change
     useEffect(() => {
-        /* eslint-disable react-hooks/set-state-in-effect -- intentional: close drawers on route change */
         setIsDrawerOpen(false);
         setIsFabOpen(false);
-        /* eslint-enable react-hooks/set-state-in-effect */
     }, [pathname]);
 
     // Close on ESC

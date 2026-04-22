@@ -1,6 +1,6 @@
 {
   "framework": "nextjs",
-  "buildCommand": "npm run build:vercel",
+  "buildCommand": "npm run build",
   "installCommand": "npm ci --legacy-peer-deps",
   "devCommand": "npm run dev",
   "crons": [

@@ -130,7 +130,6 @@ export function SetupChecklist() {
     try {
       const wasDismissed = localStorage.getItem(LS_KEY) === 'true';
       if (wasDismissed) return;
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- SSR-safe: must read localStorage after mount
       setDismissed(false);
 
       // Restore previous completed items for change detection

@@ -22,7 +22,6 @@ export function LanguageSwitcher({ className }: { className?: string }) {
 
   // Prevent hydration mismatch
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 
@@ -110,7 +109,6 @@ export function LanguageSwitcherButton({ className }: { className?: string }) {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 
