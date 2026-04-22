@@ -14,6 +14,7 @@
     "follow-redirects": "^1.15.12",
     "protocol-buffers-schema": "^3.6.1",
     "yaml": "^2.8.3",
+    "brace-expansion": "^1.1.13",
     "router": {
       "path-to-regexp": "^8.4.0"
     },
