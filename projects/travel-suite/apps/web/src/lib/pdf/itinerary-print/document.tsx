@@ -46,13 +46,13 @@ const PRINT_CSS = `
   .page--light { background: #f8f6f1; color: #171717; }
   .page--white { background: #ffffff; color: #111827; }
   .page--dark { background: #09090b; color: #f8fafc; }
-  .page__inner { padding: 14mm 16mm 14mm; position: relative; height: 297mm; min-height: 297mm; }
+  .page__inner { padding: 14mm 16mm 26mm; position: relative; height: 297mm; min-height: 297mm; }
   .page__inner--wide { padding: 0; height: 297mm; min-height: 297mm; }
   .page__footer {
     position: absolute;
     left: 16mm;
     right: 16mm;
-    bottom: 10mm;
+    bottom: 8mm;
     display: flex;
     justify-content: space-between;
     font-size: 10px;
@@ -138,7 +138,7 @@ const PRINT_CSS = `
     z-index: 1;
     height: 297mm;
     min-height: 297mm;
-    padding: 14mm 16mm 14mm;
+    padding: 14mm 16mm 26mm;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -362,6 +362,8 @@ const PRINT_CSS = `
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
   .day-dossier__card {
     border: 1px solid rgba(17,24,39,0.08);
@@ -393,14 +395,20 @@ const PRINT_CSS = `
     grid-template-columns: 1.08fr 0.92fr;
     gap: 10mm;
     align-items: start;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
   .continuation-main {
     display: grid;
     gap: 8px;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
   .continuation-sidebar {
     display: grid;
     gap: 8px;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
   .sidebar-panel {
     border: 1px solid rgba(17,24,39,0.08);
@@ -529,6 +537,8 @@ const PRINT_CSS = `
     grid-template-columns: 1.08fr 0.92fr;
     gap: 10mm;
     align-items: start;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
   .operator-signoff__lead {
     display: grid;
@@ -800,12 +810,16 @@ const PRINT_CSS = `
   .safari-day {
     display: grid;
     gap: 9mm;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
   .safari-day__head {
     display: grid;
     grid-template-columns: 1.02fr 0.98fr;
     gap: 10mm;
     align-items: end;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
   .safari-day__hero {
     width: 100%;
@@ -843,6 +857,8 @@ const PRINT_CSS = `
     border-radius: 18px;
     overflow: hidden;
     background: rgba(255,255,255,0.98);
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
   .safari-feature__image {
     width: 100%;
@@ -870,6 +886,8 @@ const PRINT_CSS = `
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 9px;
     align-items: start;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
   .safari-note {
     display: grid;
@@ -906,6 +924,8 @@ const PRINT_CSS = `
   .safari-continuation {
     display: grid;
     gap: 8mm;
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   .mosaic {
