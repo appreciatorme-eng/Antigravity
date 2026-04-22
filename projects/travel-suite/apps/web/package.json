@@ -24,6 +24,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:vercel": "next build --webpack",
     "bones:build": "boneyard-js build",
     "start": "next start",
     "lint": "eslint --max-warnings=0",
