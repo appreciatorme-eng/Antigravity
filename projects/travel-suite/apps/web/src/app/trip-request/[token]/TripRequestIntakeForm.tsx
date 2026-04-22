@@ -1325,15 +1325,29 @@ export function TripRequestIntakeForm({
                     </div>
 
                     <div className="space-y-3">
+                      <div className="rounded-[24px] border border-black/5 bg-[#fcfaf7] p-4 shadow-[0_18px_40px_-34px_rgba(28,25,23,0.28)]">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">
+                            <span className="relative flex h-2.5 w-2.5">
+                              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                            </span>
+                            Ready now
+                          </div>
+                          <p className="text-sm font-medium text-stone-700">
+                            Your itinerary and PDF are prepared and ready to open.
+                          </p>
+                        </div>
+                      </div>
                       <a
                         href={state.shareUrl || "#"}
                         target="_blank"
                         rel="noreferrer"
                         className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl px-5 text-sm font-semibold text-white transition hover:-translate-y-[1px] active:scale-[0.985]"
                         style={{
-                          background: `linear-gradient(135deg, ${actionPalette.backgroundFrom} 0%, ${actionPalette.backgroundTo} 100%)`,
-                          boxShadow: `0 22px 44px -24px ${actionPalette.shadowColor}`,
-                          color: actionPalette.textColor,
+                          background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 48%, #1e40af 100%)",
+                          boxShadow: "0 24px 44px -24px rgba(37,99,235,0.72)",
+                          color: "#ffffff",
                         }}
                       >
                         <span
@@ -1348,16 +1362,16 @@ export function TripRequestIntakeForm({
                         href={state.pdfUrl || "#"}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl border px-5 text-sm font-semibold text-stone-900 transition hover:-translate-y-[1px] active:scale-[0.985]"
+                        className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl border px-5 text-sm font-semibold text-white transition hover:-translate-y-[1px] active:scale-[0.985]"
                         style={{
-                          borderColor: hexToRgba(accentColor, 0.18),
-                          background: `linear-gradient(180deg, #ffffff 0%, ${accentSofter} 100%)`,
-                          boxShadow: `0 18px 40px -32px ${hexToRgba(accentColor, 0.45)}`,
+                          borderColor: "rgba(5, 150, 105, 0.14)",
+                          background: "linear-gradient(135deg, #10b981 0%, #059669 52%, #047857 100%)",
+                          boxShadow: "0 24px 44px -24px rgba(5,150,105,0.7)",
                         }}
                       >
                         <span
                           className="inline-flex h-8 w-8 items-center justify-center rounded-full"
-                          style={{ backgroundColor: accentSoft, color: accentColor }}
+                          style={{ backgroundColor: "rgba(255,255,255,0.16)", color: "#ffffff" }}
                         >
                           <Download className="h-4 w-4" />
                         </span>
