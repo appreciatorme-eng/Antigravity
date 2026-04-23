@@ -3687,11 +3687,6 @@ const LuxuryOverviewPage = ({ payload }: { payload: PreparedPrintPayload }) => {
   const topLocations = getTopLocations(payload, 5);
   const featuredActivities = getFeaturedActivities(payload, 3);
   const selectedAddOns = getSelectedAddOns(payload, 3);
-  const contextItems = (
-    selectedAddOns.length
-      ? selectedAddOns.map((addOn) => [addOn.name, addOn.category].filter(Boolean).join(' • '))
-      : [...(payload.itinerary.interests || []), ...(payload.itinerary.tips || []), ...topLocations]
-  ).slice(0, 3);
 
   return (
     <section className="page page--dark luxury-sheet">
@@ -3736,7 +3731,13 @@ const LuxuryOverviewPage = ({ payload }: { payload: PreparedPrintPayload }) => {
             </div>
             <LuxuryMiniListPanel title="Hotel details" items={getStayDetailItems(payload, 4)} maxItems={4} />
             <LuxuryMiniListPanel title="Flight details" items={getFlightDetailItems(payload, 3)} maxItems={3} />
-            <LuxuryMiniListPanel title={selectedAddOns.length ? 'Private upgrades' : 'Client context'} items={contextItems} maxItems={3} />
+            {selectedAddOns.length ? (
+              <LuxuryMiniListPanel
+                title="Private upgrades"
+                items={selectedAddOns.map((addOn) => [addOn.name, addOn.category].filter(Boolean).join(' • '))}
+                maxItems={3}
+              />
+            ) : null}
           </div>
         </div>
         <PageFooter branding={payload.branding} />
@@ -4454,7 +4455,6 @@ const LuxuryTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                       ))}
                     </div>
                   ) : null}
-                  <LuxuryDossierCards payload={payload} day={day} />
                 </div>
                 <div className="luxury-sidebar">
                   <LuxuryStaySnapshot payload={payload} dayNumber={day.day_number} dayIndex={dayIndex} />
