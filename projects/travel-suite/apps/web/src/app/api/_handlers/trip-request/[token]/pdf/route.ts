@@ -160,6 +160,7 @@ export async function GET(
       },
       fileName,
       skipImageEnrichment: true,
+      allowLegacyFallback: false,
     });
 
     return new NextResponse(new Uint8Array(pdf.buffer), {

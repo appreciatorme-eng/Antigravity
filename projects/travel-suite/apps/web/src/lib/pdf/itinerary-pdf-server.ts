@@ -133,6 +133,7 @@ type RenderItineraryPdfArgs = {
   readonly printExtras?: ItineraryPrintExtras;
   readonly fileName?: string | null;
   readonly skipImageEnrichment?: boolean;
+  readonly allowLegacyFallback?: boolean;
 };
 
 export async function renderItineraryPdfBuffer({
@@ -143,6 +144,7 @@ export async function renderItineraryPdfBuffer({
   printExtras,
   fileName,
   skipImageEnrichment = false,
+  allowLegacyFallback = true,
 }: RenderItineraryPdfArgs): Promise<ItineraryPdfRenderResult> {
   const resolvedTemplate = normalizeItineraryTemplateId(template ?? DEFAULT_ITINERARY_TEMPLATE);
   const normalizedItinerary = normalizeServerPdfItinerary(itinerary);
@@ -203,6 +205,9 @@ export async function renderItineraryPdfBuffer({
     logError("HTML itinerary PDF render failed, falling back to legacy renderer", printError);
     printErrorMessage =
       printError instanceof Error ? printError.message : "Unknown print renderer error";
+    if (!allowLegacyFallback) {
+      throw new Error(printErrorMessage);
+    }
   }
 
   const legacyPdf = await renderLegacyItineraryPdfBuffer(
