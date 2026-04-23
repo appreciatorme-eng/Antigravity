@@ -15,9 +15,10 @@ export interface OrganizationBranding {
 
 interface ItineraryBrandedFooterProps {
     branding: OrganizationBranding;
+    referenceNumber?: string;
 }
 
-export function ItineraryBrandedFooter({ branding }: ItineraryBrandedFooterProps) {
+export function ItineraryBrandedFooter({ branding, referenceNumber }: ItineraryBrandedFooterProps) {
     const brandColor = branding.primaryColor || "#0f766e";
     const hasContact = branding.email || branding.phone;
 
@@ -69,6 +70,11 @@ export function ItineraryBrandedFooter({ branding }: ItineraryBrandedFooterProps
                             )}
                         </div>
                     )}
+                    {referenceNumber ? (
+                        <div className="rounded-full border border-gray-200 bg-gray-50 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-500 dark:border-white/10 dark:bg-white/5 dark:text-gray-400">
+                            Reference {referenceNumber}
+                        </div>
+                    ) : null}
                 </div>
             </div>
 

@@ -16,6 +16,7 @@ import { CheckCircle2, DownloadCloud, ShieldAlert } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { ItineraryBrandedFooter, type OrganizationBranding } from "@/components/itinerary-templates/ItineraryBrandedFooter";
 import { RouteSummary } from "@/components/itinerary-templates/RouteSummary";
+import { buildItineraryReferenceNumber } from "@/lib/itinerary/tracking";
 import type { SharePaymentConfig } from "@/lib/share/payment-config";
 import { authedFetch } from "@/lib/api/authed-fetch";
 import { SharePaymentSection } from "./SharePaymentSection";
@@ -99,6 +100,8 @@ export default function ShareTemplateRenderer({
 
     const commonProps = { itinerary: brandedItinerary, organizationName, organizationBranding, client };
     const legacyProps = { itineraryData: brandedItinerary, organizationName, client };
+    const referenceNumber = buildItineraryReferenceNumber(brandedItinerary);
+    const commonTemplateProps = { ...commonProps, referenceNumber };
     const hasPackageScope =
         (Array.isArray(brandedItinerary.inclusions) && brandedItinerary.inclusions.length > 0) ||
         (Array.isArray(brandedItinerary.exclusions) && brandedItinerary.exclusions.length > 0);
@@ -106,17 +109,17 @@ export default function ShareTemplateRenderer({
     const renderTemplate = () => {
         switch (templateId) {
             case "safari_story":
-                return <SafariStoryView {...commonProps} />;
+                return <SafariStoryView {...commonTemplateProps} />;
             case "urban_brief":
-                return <UrbanBriefView {...commonProps} />;
+                return <UrbanBriefView {...commonTemplateProps} />;
             case "professional":
-                return <ProfessionalView {...commonProps} />;
+                return <ProfessionalView {...commonTemplateProps} />;
             case "luxury_resort":
-                return <LuxuryResortView {...commonProps} />;
+                return <LuxuryResortView {...commonTemplateProps} />;
             case "visual_journey":
-                return <VisualJourneyView {...commonProps} />;
+                return <VisualJourneyView {...commonTemplateProps} />;
             case "bento_journey":
-                return <BentoJourneyView {...commonProps} />;
+                return <BentoJourneyView {...commonTemplateProps} />;
             case "modern":
                 return <ItineraryTemplateModern {...legacyProps} />;
             case "classic":
@@ -264,8 +267,15 @@ export default function ShareTemplateRenderer({
             </div>
 
             {/* Organization Branding Footer & Disclaimer */}
-            {organizationBranding && (
-                <ItineraryBrandedFooter branding={organizationBranding} />
+            {(organizationBranding || organizationName || brandedItinerary.branding?.organizationName) && (
+                <ItineraryBrandedFooter
+                    branding={organizationBranding || {
+                        name: brandedItinerary.branding?.organizationName || organizationName || "TripBuilt",
+                        logoUrl: brandedItinerary.branding?.logoUrl || null,
+                        primaryColor: brandedItinerary.branding?.primaryColor || null,
+                    }}
+                    referenceNumber={referenceNumber}
+                />
             )}
         </div>
     );

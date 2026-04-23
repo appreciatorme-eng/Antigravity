@@ -3,7 +3,7 @@ import React, { useRef } from 'react';
 import Image from 'next/image';
 import { Activity, Day } from '@/types/itinerary';
 import { ItineraryTemplateProps } from './types';
-import { MapPin, Clock, Navigation, CheckCircle2, ChevronDown, Plane } from 'lucide-react';
+import { MapPin, Clock, Navigation, ChevronDown, Plane } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 export const VisualJourneyView: React.FC<ItineraryTemplateProps> = ({ itinerary, organizationBranding, client }) => {
@@ -295,28 +295,6 @@ export const VisualJourneyView: React.FC<ItineraryTemplateProps> = ({ itinerary,
                 })}
             </div>
 
-            {/* Preparation Details */}
-            {itinerary.tips && itinerary.tips.length > 0 && (
-                <div className="bg-white py-32 px-6 border-t border-slate-200">
-                    <div className="max-w-4xl mx-auto">
-                        <div className="text-center mb-16">
-                            <h2 className="text-5xl font-bold text-slate-900 mb-6">Before You Go</h2>
-                            <div className="w-24 h-1 mx-auto rounded" style={{ backgroundColor: brandColor }} />
-                        </div>
-
-                        <div className="grid md:grid-cols-2 gap-8">
-                            {itinerary.tips.map((tip: string, index: number) => (
-                                <div key={index} className="bg-slate-50 p-8 rounded-3xl flex gap-6 items-start hover:shadow-xl transition-shadow duration-300">
-                                    <div className="bg-white p-3 rounded-2xl shadow-sm text-slate-900" style={{ color: brandColor }}>
-                                        <CheckCircle2 className="w-6 h-6" />
-                                    </div>
-                                    <p className="text-lg text-slate-600 font-medium leading-relaxed">{tip}</p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };

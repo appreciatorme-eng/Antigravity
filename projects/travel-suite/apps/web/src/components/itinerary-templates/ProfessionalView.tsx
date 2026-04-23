@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { ItineraryTemplateProps } from './types';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Clock, DollarSign, Navigation, ChevronDown, ChevronUp, Info, Plane, Mail, Phone } from 'lucide-react';
+import { resolveHotelForDay } from '@/lib/itinerary/tracking';
 
 const ProfessionalView: React.FC<ItineraryTemplateProps> = ({
     itinerary,
@@ -245,6 +246,28 @@ const ProfessionalView: React.FC<ItineraryTemplateProps> = ({
 
                                     {/* Day Activities */}
                                     <div className={`px-8 pb-6 space-y-4 ${isExpanded ? 'block' : 'hidden [.pdf-exporting_&]:block'}`}>
+                                        {(() => {
+                                            const hotel = resolveHotelForDay(itinerary, day, dayIndex);
+                                            if (!hotel) return null;
+
+                                            return (
+                                                <div className="rounded-lg border border-gray-200 bg-gray-50 px-5 py-4">
+                                                    <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.18em]" style={{ color: brandColor }}>
+                                                        Stay tonight
+                                                    </div>
+                                                    <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
+                                                        <div>
+                                                            <div className="text-base font-bold text-gray-900">{hotel.name}</div>
+                                                            <div className="mt-1 text-sm leading-6 text-gray-600">{hotel.address}</div>
+                                                        </div>
+                                                        <div className="text-right text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">
+                                                            <div>Check in {hotel.check_in}</div>
+                                                            <div className="mt-1">Check out {hotel.check_out}</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
                                         {day.activities.map((activity, activityIndex) => (
                                             <div
                                                 key={activityIndex}

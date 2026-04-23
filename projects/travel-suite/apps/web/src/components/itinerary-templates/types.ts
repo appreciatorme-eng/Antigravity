@@ -7,6 +7,7 @@ import type { OrganizationBranding } from './ItineraryBrandedFooter';
 
 export interface ItineraryTemplateProps {
     itinerary: ItineraryResult;
+    referenceNumber?: string;
     brandColor?: string;
     logoUrl?: string;
     organizationName?: string;

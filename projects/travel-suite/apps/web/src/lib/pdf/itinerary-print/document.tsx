@@ -2,6 +2,7 @@
 import React from 'react';
 import { prerender } from 'react-dom/static';
 import type { ItineraryTemplateId } from '@/components/pdf/itinerary-types';
+import { resolveHotelForDay } from '@/lib/itinerary/tracking';
 import type {
   PreparedPrintAccommodation,
   PreparedPrintActivity,
@@ -2665,16 +2666,34 @@ const getDayTravelSummaryItems = (day: PreparedPrintPayload['itinerary']['days']
   return [summary.label, summary.copy];
 };
 
-const getDayAccommodation = (payload: PreparedPrintPayload, dayNumber: number) =>
-  payload.printExtras.dayAccommodations.find((accommodation) => accommodation.dayNumber === dayNumber) || null;
+const getDayAccommodation = (payload: PreparedPrintPayload, dayNumber: number) => {
+  const directAccommodation =
+    payload.printExtras.dayAccommodations.find((accommodation) => accommodation.dayNumber === dayNumber) || null;
+  if (directAccommodation) return directAccommodation;
+
+  const dayIndex = payload.itinerary.days.findIndex((day) => day.day_number === dayNumber);
+  const day = dayIndex >= 0 ? payload.itinerary.days[dayIndex] : null;
+  if (!day) return null;
+
+  const fallbackHotel = resolveHotelForDay(payload.itinerary, day, dayIndex);
+  if (!fallbackHotel) return null;
+
+  return {
+    dayNumber,
+    hotelName: fallbackHotel.name,
+    roomType: fallbackHotel.address || null,
+    amenities: [fallbackHotel.check_in, fallbackHotel.check_out].filter(Boolean),
+    printImage: null,
+  } satisfies PreparedPrintAccommodation;
+};
 
 const getFallbackHotelForDay = (
   payload: PreparedPrintPayload,
   dayIndex: number,
 ) => {
-  const hotels = payload.itinerary.logistics?.hotels || [];
-  if (!hotels.length) return null;
-  return hotels[Math.min(dayIndex, hotels.length - 1)] || hotels[0];
+  const day = payload.itinerary.days[dayIndex];
+  if (!day) return null;
+  return resolveHotelForDay(payload.itinerary, day, dayIndex);
 };
 
 const getStayDetailsForDay = (
@@ -3129,7 +3148,7 @@ const PageFooter = ({ branding }: { branding: PreparedPrintPayload['branding'] }
   return (
     <div className="page__footer">
       <span>{contactBits.join('  •  ')}</span>
-      <span>Powered by TripBuilt • <span className="page__number" /></span>
+      <span>{branding.referenceNumber ? `${branding.referenceNumber} • ` : ''}Powered by TripBuilt • <span className="page__number" /></span>
     </div>
   );
 };
@@ -3684,7 +3703,6 @@ const LuxuryDossierCards = ({
 
 const LuxuryOverviewPage = ({ payload }: { payload: PreparedPrintPayload }) => {
   const accent = payload.branding.primaryColor || '#ccb27a';
-  const topLocations = getTopLocations(payload, 5);
   const featuredActivities = getFeaturedActivities(payload, 3);
   const selectedAddOns = getSelectedAddOns(payload, 3);
 
@@ -4121,16 +4139,6 @@ const BentoLogisticsPanel = ({ payload }: { payload: PreparedPrintPayload }) => 
   return <BentoMiniListPanel title="Flights and hotels" items={items} maxItems={5} />;
 };
 
-const BentoPackageSnapshot = ({ payload }: { payload: PreparedPrintPayload }) => {
-  const items = [
-    ...(payload.itinerary.inclusions || []).slice(0, 3).map((item) => `Included: ${item}`),
-    ...(payload.itinerary.exclusions || []).slice(0, 2).map((item) => `Arrange separately: ${item}`),
-    ...(payload.itinerary.tips || []).slice(0, 2).map((item) => `Note: ${item}`),
-  ];
-
-  return <BentoMiniListPanel title="Package snapshot" items={items} maxItems={6} />;
-};
-
 const BentoOverviewPage = ({ payload }: { payload: PreparedPrintPayload }) => {
   const accent = payload.branding.primaryColor || '#6366f1';
   const mosaicActivities = payload.itinerary.days.flatMap((day) => day.activities).slice(0, 4);
@@ -4162,7 +4170,6 @@ const BentoOverviewPage = ({ payload }: { payload: PreparedPrintPayload }) => {
         </div>
         <div className="bento-overview-grid" style={{ marginTop: '7mm' }}>
           <BentoLogisticsPanel payload={payload} />
-          <BentoPackageSnapshot payload={payload} />
         </div>
         <PageFooter branding={payload.branding} />
       </div>
@@ -4602,11 +4609,6 @@ const VisualTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                   <VisualMiniPanel title="Day route" items={getDayLocations(day, 4)} maxItems={4} />
                   <VisualTravelDistancePanel day={day} />
                   <VisualStayPanel payload={payload} dayNumber={day.day_number} dayIndex={dayIndex} />
-                  <VisualMiniPanel
-                    title="Travel notes"
-                    items={[...(payload.itinerary.tips || []), ...(payload.itinerary.inclusions || [])].slice(chunkIndex * 3, chunkIndex * 3 + 3)}
-                    maxItems={3}
-                  />
                 </div>
               </div>
               <PageFooter branding={payload.branding} />
@@ -4690,11 +4692,6 @@ const BentoTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                   <BentoMiniListPanel title="Day route" items={getDayLocations(day, 4)} maxItems={4} />
                   <BentoTravelDistancePanel day={day} />
                   <BentoStayPanel payload={payload} dayNumber={day.day_number} dayIndex={dayIndex} />
-                  <BentoMiniListPanel
-                    title="Travel notes"
-                    items={[...(payload.itinerary.tips || []), ...(payload.itinerary.inclusions || [])].slice(chunkIndex * 3, chunkIndex * 3 + 3)}
-                    maxItems={3}
-                  />
                 </div>
               </div>
               <PageFooter branding={payload.branding} />
@@ -4779,24 +4776,36 @@ const UrbanTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
           <section key={`urban-day-${dayIndex}-${chunkIndex}`} className="page page--white">
             <div className="page__inner" style={{ ['--accent' as string]: accent }}>
               <BrandRow branding={payload.branding} />
-              <div className="urban-day-card">
-                <div className="urban-day-card__head">
-                  <div className="urban-day-card__number">{day.day_number}</div>
-                  <div>
-                    <p className="section-kicker" style={{ color: accent, margin: 0 }}>{chunkIndex > 0 ? 'Day continuation' : `Day ${day.day_number}`}</p>
-                    <div style={{ fontSize: 18, lineHeight: 1.1, fontWeight: 900, letterSpacing: '-0.03em', marginTop: 4 }}>{day.theme}</div>
-                    <div className="day-hero__date">{chunkIndex > 0 ? 'Continuation' : formatDateLabel(day.date) || payload.itinerary.destination}</div>
+              {(() => {
+                const stayDetails = getStayDetailsForDay(payload, day.day_number, dayIndex);
+                return (
+                  <div className="urban-day-card">
+                    <div className="urban-day-card__head">
+                      <div className="urban-day-card__number">{day.day_number}</div>
+                      <div>
+                        <p className="section-kicker" style={{ color: accent, margin: 0 }}>{chunkIndex > 0 ? 'Day continuation' : `Day ${day.day_number}`}</p>
+                        <div style={{ fontSize: 18, lineHeight: 1.1, fontWeight: 900, letterSpacing: '-0.03em', marginTop: 4 }}>{day.theme}</div>
+                        <div className="day-hero__date">{chunkIndex > 0 ? 'Continuation' : formatDateLabel(day.date) || payload.itinerary.destination}</div>
+                      </div>
+                      <div style={{ fontSize: 11, lineHeight: 1.45, color: 'rgba(17,24,39,0.62)', textAlign: 'right' }}>
+                        {day.activities.length} stops<br />
+                        <span style={{ color: accent, fontWeight: 800 }}>{getDayTravelSummary(day).label}</span>
+                      </div>
+                    </div>
+                    {chunkIndex === 0 && day.summary ? <div className="body-copy print-copy-clamp" style={{ padding: '10px 12px', borderTop: '1px solid rgba(17,24,39,0.10)' }}>{day.summary}</div> : null}
+                    {chunkIndex === 0 && stayDetails ? (
+                      <div className="body-copy" style={{ padding: '10px 12px', borderTop: '1px solid rgba(17,24,39,0.10)', background: 'rgba(18,78,162,0.04)' }}>
+                        <strong style={{ color: accent, display: 'block', marginBottom: 4 }}>Stay tonight</strong>
+                        <span style={{ color: '#111827', fontWeight: 700 }}>{stayDetails.title}</span>
+                        {stayDetails.copy ? <span style={{ color: 'rgba(17,24,39,0.72)' }}> • {stayDetails.copy}</span> : null}
+                      </div>
+                    ) : null}
+                    {chunk.map((activity, activityIndex) => (
+                      <UrbanActivityRow key={`urban-activity-${activityIndex}`} activity={activity} fallbackLocation={payload.itinerary.destination} />
+                    ))}
                   </div>
-                  <div style={{ fontSize: 11, lineHeight: 1.45, color: 'rgba(17,24,39,0.62)', textAlign: 'right' }}>
-                    {day.activities.length} stops<br />
-                    <span style={{ color: accent, fontWeight: 800 }}>{getDayTravelSummary(day).label}</span>
-                  </div>
-                </div>
-                {chunkIndex === 0 && day.summary ? <div className="body-copy print-copy-clamp" style={{ padding: '10px 12px', borderTop: '1px solid rgba(17,24,39,0.10)' }}>{day.summary}</div> : null}
-                {chunk.map((activity, activityIndex) => (
-                  <UrbanActivityRow key={`urban-activity-${activityIndex}`} activity={activity} fallbackLocation={payload.itinerary.destination} />
-                ))}
-              </div>
+                );
+              })()}
               <PageFooter branding={payload.branding} />
             </div>
           </section>
@@ -5035,6 +5044,9 @@ const ProfessionalTemplate = ({ payload }: { payload: PreparedPrintPayload }) =>
                 <div className="professional-day-body">
                   <div className="professional-activity-list">
                     {chunk[0] ? <ProfessionalFeatureCard activity={chunk[0]} fallbackLocation={payload.itinerary.destination} /> : null}
+                    {chunkIndex === 0 ? (
+                      <StayPanel accommodation={getDayAccommodation(payload, day.day_number)} />
+                    ) : null}
                     {chunk.slice(1).length ? (
                       <div className="professional-support-grid">
                         {chunk.slice(1).map((activity, activityIndex) => (

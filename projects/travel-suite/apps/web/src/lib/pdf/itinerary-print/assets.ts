@@ -27,6 +27,7 @@ export interface PreparedPrintItinerary extends Omit<ItineraryResult, 'days'> {
 
 export interface PreparedPrintBranding extends ItineraryBranding {
   logoDataUrl?: string | null;
+  referenceNumber?: string | null;
 }
 
 export interface PreparedPrintAccommodation extends ItineraryPrintAccommodation {
@@ -45,6 +46,7 @@ export interface PreparedPrintExtras {
 export interface PreparedPrintPayload {
   itinerary: PreparedPrintItinerary;
   branding: PreparedPrintBranding;
+  referenceNumber: string;
   template: ItineraryTemplateId;
   density: ItineraryPrintDensity;
   printExtras: PreparedPrintExtras;
@@ -174,6 +176,7 @@ const featureSlotsPerDay = (density: ItineraryPrintDensity) => {
 export const prepareItineraryPrintPayload = async (
   itinerary: ItineraryResult,
   branding: ItineraryBranding,
+  referenceNumber: string,
   template: ItineraryTemplateId,
   baseUrl: string,
   printExtras?: ItineraryPrintExtras,
@@ -302,7 +305,9 @@ export const prepareItineraryPrintPayload = async (
     branding: {
       ...branding,
       logoDataUrl,
+      referenceNumber,
     },
+    referenceNumber,
     template,
     density,
     printExtras: preparedPrintExtras,

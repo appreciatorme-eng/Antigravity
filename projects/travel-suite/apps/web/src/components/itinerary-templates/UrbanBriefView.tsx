@@ -1,6 +1,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { Clock, DollarSign, Mail, MapPin, Phone, Plane } from 'lucide-react';
+import { resolveHotelForDay } from '@/lib/itinerary/tracking';
 import type { Activity, Day } from '@/types/itinerary';
 import type { ItineraryTemplateProps } from './types';
 
@@ -212,7 +213,7 @@ export const UrbanBriefView: React.FC<ItineraryTemplateProps> = ({
         </div>
 
         <div className="grid gap-5">
-          {itinerary.days?.map((day) => (
+          {itinerary.days?.map((day, dayIndex) => (
             <section key={day.day_number} className="overflow-hidden border border-slate-200 bg-white">
               <div className="grid gap-4 border-b border-slate-200 bg-slate-50 px-4 py-4 md:grid-cols-[auto_1fr_auto] md:items-center md:px-5">
                 <div className="flex h-12 w-12 items-center justify-center text-lg font-black text-white" style={{ backgroundColor: brandColor }}>
@@ -229,6 +230,28 @@ export const UrbanBriefView: React.FC<ItineraryTemplateProps> = ({
                 </div>
                 <div className="text-sm font-semibold text-slate-500">{day.activities?.length || 0} stops</div>
               </div>
+
+              {(() => {
+                const hotel = resolveHotelForDay(itinerary, day, dayIndex);
+                if (!hotel) return null;
+
+                return (
+                  <div className="border-b border-slate-100 bg-slate-50/60 px-4 py-4 md:px-5">
+                    <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: brandColor }}>
+                      Stay tonight
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
+                      <div>
+                        <div className="text-base font-bold text-slate-950">{hotel.name}</div>
+                        <div className="mt-1 text-sm leading-6 text-slate-600">{hotel.address}</div>
+                      </div>
+                      <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                        {hotel.check_in} - {hotel.check_out}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="divide-y divide-slate-100">
                 {day.activities?.map((activity, activityIndex) => {
