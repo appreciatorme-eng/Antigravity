@@ -48,9 +48,9 @@ export function TemplatesListView({ onUseTemplate }: TemplatesListViewProps) {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+    <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6">
       {/* Header row */}
-      <div className="flex items-center justify-between mb-5">
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-lg font-bold text-white">Message Templates</h2>
           <p className="text-sm text-slate-400 mt-0.5">
@@ -59,7 +59,7 @@ export function TemplatesListView({ onUseTemplate }: TemplatesListViewProps) {
         </div>
         <button
           onClick={() => setShowCanned(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#25D366]/15 border border-[#25D366]/30 text-[#25D366] text-sm font-semibold hover:bg-[#25D366]/25 transition-colors"
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#25D366]/30 bg-[#25D366]/15 px-4 py-3 text-sm font-semibold text-[#25D366] transition-colors hover:bg-[#25D366]/25 sm:w-auto"
         >
           <Zap className="w-4 h-4" />
           Quick Replies
@@ -101,7 +101,7 @@ export function TemplatesListView({ onUseTemplate }: TemplatesListViewProps) {
       </div>
 
       {/* Template grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {filtered.map((template) => (
           <div
             key={template.id}

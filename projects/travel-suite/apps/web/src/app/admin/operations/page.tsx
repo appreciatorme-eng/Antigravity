@@ -240,22 +240,22 @@ export default function AdminOperationsPage() {
   }
 
   return (
-    <div className="space-y-6 pb-20">
+    <div className="space-y-5 pb-24 md:space-y-6 md:pb-20">
       <GuidedTour />
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-        <div>
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div className="max-w-3xl">
           <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-[10px] uppercase tracking-[0.16em] font-black text-primary">
             <Route className="w-3.5 h-3.5" />
             Operator daily command center
           </span>
-          <h1 className="text-4xl font-serif text-secondary dark:text-white mt-2">Operations in Three Screens</h1>
-          <p className="text-sm text-text-muted mt-1">
+          <h1 className="mt-2 text-3xl font-serif text-secondary dark:text-white md:text-4xl">Operations in Three Screens</h1>
+          <p className="mt-1 text-sm leading-6 text-text-muted">
             Departures, pending payments, expiring quotes, and follow-ups in one mobile-first control flow.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <GlassButton variant="outline" className="h-9 rounded-lg" onClick={() => void loadData(true)} disabled={refreshing}>
+        <div className="flex w-full items-center gap-2 md:w-auto">
+          <GlassButton variant="outline" className="h-11 w-full rounded-xl md:h-9 md:w-auto md:rounded-lg" onClick={() => void loadData(true)} disabled={refreshing}>
             {refreshing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
             Refresh
           </GlassButton>
@@ -269,22 +269,22 @@ export default function AdminOperationsPage() {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-2 md:gap-4 xl:grid-cols-4">
         <GlassCard padding="md" className="border-primary/20">
           <p className="text-[10px] uppercase tracking-[0.14em] font-black text-text-muted">Departures (48h)</p>
-          <p className="text-3xl font-black text-secondary mt-2">{data.summary.departures_window}</p>
+          <p className="mt-2 text-2xl font-black text-secondary md:text-3xl">{data.summary.departures_window}</p>
         </GlassCard>
         <GlassCard padding="md">
           <p className="text-[10px] uppercase tracking-[0.14em] font-black text-text-muted">Pending payments</p>
-          <p className="text-3xl font-black text-secondary mt-2">{data.summary.pending_payments}</p>
+          <p className="mt-2 text-2xl font-black text-secondary md:text-3xl">{data.summary.pending_payments}</p>
         </GlassCard>
         <GlassCard padding="md">
           <p className="text-[10px] uppercase tracking-[0.14em] font-black text-text-muted">Expiring quotes</p>
-          <p className="text-3xl font-black text-secondary mt-2">{data.summary.expiring_quotes}</p>
+          <p className="mt-2 text-2xl font-black text-secondary md:text-3xl">{data.summary.expiring_quotes}</p>
         </GlassCard>
         <GlassCard padding="md">
           <p className="text-[10px] uppercase tracking-[0.14em] font-black text-text-muted">Follow-ups due</p>
-          <p className="text-3xl font-black text-secondary mt-2">{data.summary.follow_ups_due}</p>
+          <p className="mt-2 text-2xl font-black text-secondary md:text-3xl">{data.summary.follow_ups_due}</p>
         </GlassCard>
       </div>
 
@@ -293,7 +293,7 @@ export default function AdminOperationsPage() {
           <Route className="w-4 h-4 text-primary" />
           <h2 className="text-lg font-serif text-secondary dark:text-white">Daily Ops Board</h2>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-xl border border-gray-200 bg-white p-3">
             <p className="text-[10px] uppercase tracking-[0.14em] font-black text-text-muted">At-risk departures</p>
             <p className="text-2xl font-black text-secondary mt-1">{data.daily_ops_board.at_risk_departures}</p>
@@ -313,13 +313,13 @@ export default function AdminOperationsPage() {
         </div>
       </GlassCard>
 
-      <div className="rounded-2xl border border-gray-200 bg-white p-2 grid grid-cols-1 md:grid-cols-3 gap-2" data-tour="ops-tabs">
+      <div className="grid grid-cols-1 gap-2 rounded-2xl border border-gray-200 bg-white p-2 sm:grid-cols-3" data-tour="ops-tabs">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             type="button"
             onClick={() => setActiveTab(tab.id)}
-            className={`h-10 rounded-xl text-sm font-semibold transition-colors ${
+            className={`h-11 rounded-xl text-sm font-semibold transition-colors ${
               activeTab === tab.id
                 ? "bg-primary text-white"
                 : "text-text-muted hover:text-primary hover:bg-primary/5"
@@ -337,7 +337,7 @@ export default function AdminOperationsPage() {
               <Wallet className="w-4 h-4 text-primary" />
               <h2 className="text-lg font-serif text-secondary dark:text-white">Outcome Events</h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
               {data.outcome_events.map((event) => (
                 <div key={event.key} className="rounded-xl border border-gray-200 bg-gray-50 p-3">
                   <p className="text-[10px] uppercase tracking-[0.14em] text-text-muted font-black">{event.label}</p>
@@ -399,7 +399,7 @@ export default function AdminOperationsPage() {
             ) : (
               <div className="space-y-2">
                 {data.follow_ups.slice(0, 12).map((item) => (
-                  <div key={item.queue_id} className="rounded-xl border border-gray-200 bg-white p-3 flex items-start justify-between gap-3">
+                  <div key={item.queue_id} className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <p className="text-sm font-semibold text-secondary">{item.notification_type}</p>
                       <p className="text-xs text-text-muted mt-1">
@@ -437,8 +437,8 @@ export default function AdminOperationsPage() {
           ) : (
             <div className="space-y-3">
               {data.departures.map((departure) => (
-                <div key={departure.trip_id} className="rounded-xl border border-gray-200 bg-white p-4">
-                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2">
+                  <div key={departure.trip_id} className="rounded-xl border border-gray-200 bg-white p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <p className="text-sm font-semibold text-secondary">{departure.title}</p>
                       <p className="text-xs text-text-muted mt-1">
@@ -449,7 +449,7 @@ export default function AdminOperationsPage() {
                         {departure.end_date ? ` · Ends: ${formatDate(departure.end_date)}` : ""}
                       </p>
                     </div>
-                    <div className="text-right">
+                    <div className="sm:text-right">
                       <span className="inline-flex px-2 py-1 rounded-lg border border-gray-200 bg-gray-50 text-[11px] font-semibold text-text-muted">
                         {departure.days_until_departure === null
                           ? "Date pending"
@@ -488,7 +488,7 @@ export default function AdminOperationsPage() {
             ) : (
               <div className="space-y-2">
                 {data.pending_payments.slice(0, 12).map((payment) => (
-                  <div key={payment.invoice_id} className="rounded-xl border border-gray-200 bg-white p-3 flex items-start justify-between gap-3">
+                  <div key={payment.invoice_id} className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <p className="text-sm font-semibold text-secondary">{payment.invoice_number}</p>
                       <p className="text-xs text-text-muted mt-1">

@@ -286,7 +286,7 @@ export function BroadcastTab() {
 
   return (
     <div className="flex-1 overflow-y-auto custom-scrollbar">
-      <div className="max-w-3xl mx-auto p-6 space-y-6">
+      <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6">
         {/* Header */}
         <div>
           <h2 className="text-lg font-bold text-white">Broadcast Message</h2>
@@ -306,7 +306,7 @@ export function BroadcastTab() {
           <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
             1. Choose Recipients
           </p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {TARGET_OPTIONS.map((opt) => (
               <button
                 key={opt.key}
@@ -461,7 +461,7 @@ export function BroadcastTab() {
             3. When to Send
           </p>
 
-          <div className="grid grid-cols-2 gap-3 mb-3">
+        <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className="text-xs text-slate-500 block mb-1.5">Date</label>
               <input
@@ -504,7 +504,7 @@ export function BroadcastTab() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row">
           <button
             onClick={handleSendNow}
             disabled={!canSendNow || sending}

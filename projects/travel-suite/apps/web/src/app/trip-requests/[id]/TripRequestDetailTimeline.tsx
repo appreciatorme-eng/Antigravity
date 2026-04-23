@@ -141,7 +141,7 @@ export function TripRequestDetailTimeline({
         Activity timeline
       </div>
       {events.length > 0 ? (
-        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {events.map((event) => (
             <div
               key={`${event.label}-${event.value}`}

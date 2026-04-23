@@ -698,22 +698,22 @@ export function TripRequestsInbox() {
   }
 
   return (
-    <div className="flex w-full flex-col gap-6">
+    <div className="flex w-full flex-col gap-5 md:gap-6">
       <section className="overflow-hidden rounded-[28px] border border-border bg-card shadow-sm">
-        <div className="flex flex-col gap-6 p-5 md:flex-row md:items-end md:justify-between md:p-8">
+        <div className="flex flex-col gap-5 p-4 md:flex-row md:items-end md:justify-between md:p-8">
             <div className="max-w-3xl">
               <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
                 <Sparkles className="h-3.5 w-3.5" />
                 Trip request queue
               </div>
-              <h1 className="text-3xl font-black tracking-tight text-foreground md:text-4xl">Trip requests</h1>
+              <h1 className="text-2xl font-black tracking-tight text-foreground sm:text-3xl md:text-4xl">Trip requests</h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
                 Review magic-link submissions for {organizationName}, fix anything that needs attention, and resend the
                 final itinerary package when needed.
               </p>
             </div>
 
-            <div className="grid grid-cols-3 gap-3 rounded-3xl border border-border bg-muted/40 p-3 text-center">
+            <div className="grid grid-cols-1 gap-3 rounded-3xl border border-border bg-muted/40 p-3 text-center sm:grid-cols-3">
               <div className="rounded-2xl bg-background px-4 py-3">
                 <div className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground">Need action</div>
                 <div className="mt-2 text-2xl font-black text-foreground">{summary.attention}</div>
@@ -730,7 +730,7 @@ export function TripRequestsInbox() {
           </div>
       </section>
 
-      <section className="flex flex-col gap-4 rounded-[28px] border border-border bg-card p-4 shadow-sm md:p-5">
+      <section className="flex flex-col gap-4 rounded-[28px] border border-border bg-card p-3 shadow-sm md:p-5">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex flex-wrap gap-2">
               {FILTERS.map((item) => (
@@ -751,7 +751,7 @@ export function TripRequestsInbox() {
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <label className="relative min-w-0 flex-1 sm:min-w-[280px]">
+            <label className="relative min-w-0 flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 value={searchQuery}
@@ -923,7 +923,7 @@ export function TripRequestsInbox() {
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3 rounded-3xl border border-border bg-muted/30 p-3 text-sm text-muted-foreground md:min-w-[320px]">
+                        <div className="grid grid-cols-1 gap-3 rounded-3xl border border-border bg-muted/30 p-3 text-sm text-muted-foreground sm:grid-cols-2 md:min-w-[320px]">
                           <div>
                             <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Submitted</div>
                             <div className="mt-1 font-medium text-foreground">{formatDateTime(item.submittedAt)}</div>
@@ -943,7 +943,7 @@ export function TripRequestsInbox() {
                         </div>
                       </div>
 
-                      <div className="grid gap-3 md:grid-cols-3">
+                      <div className="grid gap-3 lg:grid-cols-3">
                         <div className="rounded-2xl border border-border bg-muted/20 p-4">
                           <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Traveller details</div>
                           <div className="mt-2 space-y-1 text-sm text-foreground">
@@ -1016,11 +1016,11 @@ export function TripRequestsInbox() {
                           Activity timeline
                         </div>
                         {getTimelineEvents(item).length > 0 ? (
-                          <div className="mt-4 flex flex-wrap gap-3">
+                          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                             {getTimelineEvents(item).map((event) => (
                               <div
                                 key={`${event.label}-${event.value}`}
-                                className="min-w-[160px] flex-1 rounded-2xl border border-border bg-background px-4 py-3"
+                                className="rounded-2xl border border-border bg-background px-4 py-3"
                               >
                                 <div className="flex items-center gap-2">
                                   <span className={cn("h-2.5 w-2.5 rounded-full", event.tone)} />
@@ -1040,11 +1040,11 @@ export function TripRequestsInbox() {
                         )}
                       </div>
 
-                      <div className="flex flex-col gap-3 border-t border-border pt-4 md:flex-row md:items-center md:justify-between">
-                        <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-col gap-3 border-t border-border pt-4">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                           <a
                             href={`/trip-requests/${item.id}`}
-                            className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+                            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-background px-4 py-2.5 text-sm font-semibold text-foreground transition hover:bg-muted sm:w-auto"
                           >
                             <ArrowUpRight className="h-4 w-4" />
                             Open page
@@ -1060,7 +1060,7 @@ export function TripRequestsInbox() {
                                 || (primaryAction.action === "resend_client" && (!canResend || !item.clientPhone))
                               }
                               className={cn(
-                                "inline-flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50",
+                                "inline-flex w-full items-center justify-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto",
                                 primaryAction.tone,
                               )}
                             >
@@ -1082,7 +1082,7 @@ export function TripRequestsInbox() {
                             <DropdownMenuTrigger asChild>
                               <button
                                 type="button"
-                                className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+                                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-background px-4 py-2.5 text-sm font-semibold text-foreground transition hover:bg-muted sm:w-auto"
                               >
                                 <MoreHorizontal className="h-4 w-4" />
                                 More actions
@@ -1090,6 +1090,7 @@ export function TripRequestsInbox() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent
                               align="start"
+                              sideOffset={8}
                               className="w-64 border-slate-200 bg-white/98 shadow-2xl shadow-slate-200/70 backdrop-blur-none dark:border-slate-800 dark:bg-slate-950/98 dark:shadow-black/40"
                             >
                               <DropdownMenuItem onSelect={() => openEditor(item)}>
@@ -1176,8 +1177,8 @@ export function TripRequestsInbox() {
         }
       }}>
         {editingRequest && editForm ? (
-          <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto border border-border bg-background p-0 text-foreground shadow-2xl sm:max-w-3xl">
-            <div className="border-b border-border bg-muted/30 p-6">
+          <DialogContent className="max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] overflow-y-auto rounded-[28px] border border-border bg-background p-0 text-foreground shadow-2xl sm:max-h-[calc(100vh-2rem)] sm:max-w-3xl">
+            <div className="border-b border-border bg-muted/30 p-4 sm:p-6">
               <DialogHeader className="text-left">
                 <DialogTitle className="text-2xl font-black tracking-tight text-foreground">Edit trip request brief</DialogTitle>
                 <DialogDescription className="text-sm leading-6 text-muted-foreground">
@@ -1187,7 +1188,7 @@ export function TripRequestsInbox() {
               </DialogHeader>
             </div>
 
-            <div className="grid gap-5 p-6">
+            <div className="grid gap-5 p-4 sm:p-6">
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="space-y-2">
                   <span className="text-sm font-semibold text-foreground">Traveller name *</span>
@@ -1302,7 +1303,7 @@ export function TripRequestsInbox() {
               </div>
             </div>
 
-            <DialogFooter className="border-t border-border px-6 py-4">
+            <DialogFooter className="flex-col-reverse gap-2 border-t border-border px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
               <button
                 type="button"
                 onClick={() => {
@@ -1336,7 +1337,7 @@ export function TripRequestsInbox() {
         }
       }}>
         {deleteTarget ? (
-          <DialogContent className="border border-border bg-background text-foreground sm:max-w-lg">
+          <DialogContent className="w-[calc(100vw-1rem)] rounded-[28px] border border-border bg-background text-foreground sm:max-w-lg">
             <DialogHeader className="text-left">
               <DialogTitle className="flex items-center gap-2 text-xl font-black tracking-tight">
                 <XCircle className="h-5 w-5 text-rose-500" />

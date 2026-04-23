@@ -53,9 +53,10 @@ export default function InboxPage() {
       <GuidedTour />
       {/* ── Page Header ──────────────────────────────────────────────────── */}
       <div
-        className="shrink-0 px-3 md:px-6 py-2.5 md:py-4 flex items-center justify-between border-b border-white/10"
+        className="shrink-0 border-b border-white/10 px-3 py-2.5 md:px-6 md:py-4"
         style={{ background: 'rgba(10,22,40,0.8)', backdropFilter: 'blur(12px)' }}
       >
+        <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 md:gap-3">
           {/* Omnichannel Logo */}
           <div
@@ -91,11 +92,12 @@ export default function InboxPage() {
             <span className="text-[10px] md:text-xs font-semibold text-blue-400 hidden sm:inline">Email</span>
           </div>
         </div>
+        </div>
       </div>
 
       {/* ── Tab Bar ──────────────────────────────────────────────────────── */}
       <div
-        className="shrink-0 flex gap-0.5 md:gap-1 px-3 md:px-6 py-1.5 md:py-2 border-b border-white/10 overflow-x-auto"
+        className="shrink-0 flex gap-1 px-3 py-2 md:gap-1 md:px-6 md:py-2 border-b border-white/10 overflow-x-auto"
         style={{ background: 'rgba(10,22,40,0.6)' }}
         data-tour="inbox-tabs"
       >
@@ -103,7 +105,7 @@ export default function InboxPage() {
           <button
             key={key}
             onClick={() => setActiveTab(key)}
-            className={`relative flex items-center gap-1 md:gap-1.5 px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-semibold transition-all shrink-0 ${
+            className={`relative flex min-h-[42px] items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all shrink-0 md:gap-1.5 md:px-4 md:py-2 md:text-sm ${
               activeTab === key
                 ? 'text-white'
                 : 'text-slate-400 hover:text-slate-300 hover:bg-white/5'

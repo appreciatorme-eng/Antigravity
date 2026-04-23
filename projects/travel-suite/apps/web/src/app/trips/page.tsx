@@ -156,31 +156,31 @@ export default function TripsPage() {
     }, [deletingTripId, fetchTrips, toast, tripPendingDelete]);
 
     return (
-        <div className="space-y-8 pb-20">
+        <div className="space-y-6 pb-24 md:space-y-8 md:pb-20">
             <GuidedTour />
             <SetupGuide />
 
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
                 <div className="space-y-2">
                     <div className="flex items-center gap-2">
                         <div className="px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-black uppercase tracking-[0.2em] text-primary">
                             Trip Manager
                         </div>
                     </div>
-                    <h1 className="text-3xl md:text-5xl font-serif text-secondary dark:text-white tracking-tight leading-none">
+                    <h1 className="text-3xl font-serif tracking-tight leading-none text-secondary dark:text-white md:text-5xl">
                         Trips
                     </h1>
-                    <p className="text-text-muted text-sm md:text-lg font-medium max-w-2xl">
+                    <p className="max-w-2xl text-sm font-medium text-text-muted md:text-lg">
                         Comprehensive monitoring of client journeys and travel bookings.
                     </p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex w-full flex-wrap items-center gap-3 md:w-auto">
                     <GlassButton
                         variant="primary"
                         onClick={() => setIsCreateModalOpen(true)}
-                        className="h-11 md:h-14 px-5 md:px-8 rounded-xl md:rounded-2xl shadow-xl shadow-primary/20 group"
+                        className="group h-11 w-full rounded-xl px-5 shadow-xl shadow-primary/20 md:h-14 md:w-auto md:rounded-2xl md:px-8"
                         data-tour="create-trip-btn"
                     >
                         <Plus className="w-4 h-4 md:w-5 md:h-5 mr-2 md:mr-3 transition-transform group-hover:rotate-90" />
@@ -269,8 +269,8 @@ export default function TripsPage() {
                             />
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-3">
-                            <div className="flex min-w-[200px] items-center gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:flex xl:flex-wrap xl:items-center">
+                            <div className="flex w-full items-center gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 xl:min-w-[200px]">
                                 <Filter className="h-4 w-4 shrink-0 text-primary" />
                                 <select
                                     value={statusFilter}
@@ -283,7 +283,7 @@ export default function TripsPage() {
                                 </select>
                             </div>
 
-                            <div className="flex min-w-[200px] items-center gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                            <div className="flex w-full items-center gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900 xl:min-w-[200px]">
                                 <ArrowDownUp className="h-4 w-4 shrink-0 text-primary" />
                                 <select
                                     value={sortKey}
@@ -306,7 +306,7 @@ export default function TripsPage() {
                                     key={opt.value}
                                     onClick={() => { toggleQuickFilter(opt.value); setActiveDrill(null); }}
                                     className={cn(
-                                        "rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all",
+                                        "rounded-full border px-4 py-2.5 text-[10px] font-black uppercase tracking-widest transition-all",
                                         isActive
                                             ? "border-primary bg-primary text-white shadow-md shadow-primary/20"
                                             : "border-gray-200 bg-white text-text-muted hover:border-primary/40 hover:text-primary dark:border-slate-700 dark:bg-slate-900"
@@ -340,7 +340,7 @@ export default function TripsPage() {
                         <GlassListSkeleton items={6} />
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 2xl:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-3">
                         {Array.from({ length: 6 }).map((_, index) => (
                             <TripTileBone key={index} />
                         ))}
@@ -380,7 +380,7 @@ export default function TripsPage() {
                     </div>
                 </GlassCard>
             ) : viewMode === "list" ? (
-                <GlassCard padding="none" className="overflow-hidden border-gray-100 dark:border-slate-800 shadow-sm" data-tour="trip-list">
+                <GlassCard padding="none" className="overflow-hidden border-gray-100 shadow-sm dark:border-slate-800" data-tour="trip-list">
                     <div className="grid grid-cols-1">
                         {processedTrips.map((trip, idx) => (
                             <div key={trip.id} {...(idx === 0 ? { 'data-tour': 'trip-row-first' } : {})}>
@@ -394,7 +394,7 @@ export default function TripsPage() {
                     </div>
                 </GlassCard>
             ) : (
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 2xl:grid-cols-3">
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-3">
                     {processedTrips.map((trip) => (
                         <TripGridCard
                             key={trip.id}
@@ -415,7 +415,7 @@ export default function TripsPage() {
             />
 
             <Dialog open={Boolean(tripPendingDelete)} onOpenChange={(open) => { if (!open && !deletingTripId) setTripPendingDelete(null); }}>
-                <DialogContent className="max-w-md overflow-hidden border border-rose-200/60 bg-white/95 p-0 shadow-[0_30px_80px_-40px_rgba(244,63,94,0.45)] backdrop-blur-xl dark:border-rose-900/40 dark:bg-slate-950/95">
+                <DialogContent className="w-[calc(100vw-1rem)] max-w-md overflow-hidden rounded-[28px] border border-rose-200/60 bg-white/95 p-0 shadow-[0_30px_80px_-40px_rgba(244,63,94,0.45)] backdrop-blur-xl dark:border-rose-900/40 dark:bg-slate-950/95">
                     <div className="bg-gradient-to-br from-rose-500/10 via-white to-orange-500/10 px-6 py-6 dark:from-rose-500/15 dark:via-slate-950 dark:to-orange-500/10">
                         <DialogHeader className="space-y-3 text-left">
                             <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 text-rose-500 dark:border-rose-900/40 dark:bg-rose-950/40 dark:text-rose-300">
@@ -447,7 +447,7 @@ export default function TripsPage() {
                         </p>
                     </div>
 
-                    <DialogFooter className="border-t border-slate-200/70 px-6 py-4 dark:border-slate-800">
+                    <DialogFooter className="flex-col-reverse gap-2 border-t border-slate-200/70 px-6 py-4 dark:border-slate-800 sm:flex-row sm:justify-end">
                         <button
                             type="button"
                             onClick={() => setTripPendingDelete(null)}

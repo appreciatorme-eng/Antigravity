@@ -162,7 +162,7 @@ export default async function TripRequestDetailPage({
   const summary = buildOperatorRequestSummary(request);
 
   return (
-    <div className="flex w-full flex-col gap-6">
+    <div className="flex w-full flex-col gap-5 pb-24 md:gap-6 md:pb-10">
       <section className="rounded-[28px] border border-border bg-card shadow-sm">
         <div className="flex flex-col gap-5 p-5 md:flex-row md:items-start md:justify-between md:p-8">
           <div className="max-w-3xl space-y-3">
@@ -187,7 +187,7 @@ export default async function TripRequestDetailPage({
               ))}
             </div>
             <div>
-              <h1 className="text-3xl font-black tracking-tight text-foreground md:text-4xl">
+              <h1 className="text-2xl font-black tracking-tight text-foreground sm:text-3xl md:text-4xl">
                 {request.clientName || "Unnamed traveller"}
                 {request.destination ? ` • ${request.destination}` : ""}
               </h1>
@@ -197,10 +197,10 @@ export default async function TripRequestDetailPage({
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:flex-wrap">
             <Link
               href="/trip-requests"
-              className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
             >
               <Send className="h-4 w-4" />
               Back to actions
@@ -208,7 +208,7 @@ export default async function TripRequestDetailPage({
             {request.createdTripId ? (
               <Link
                 href={`/trips/${request.createdTripId}`}
-                className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
               >
                 <ArrowUpRight className="h-4 w-4" />
                 Open trip
@@ -219,7 +219,7 @@ export default async function TripRequestDetailPage({
                 href={request.createdShareUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
               >
                 <ArrowUpRight className="h-4 w-4" />
                 View itinerary
@@ -230,7 +230,7 @@ export default async function TripRequestDetailPage({
                 href={request.pdfUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
               >
                 <FileDown className="h-4 w-4" />
                 Open PDF
@@ -240,7 +240,7 @@ export default async function TripRequestDetailPage({
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
           <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Submitted</div>
           <div className="mt-2 text-sm font-semibold text-foreground">{formatDateTime(request.submittedAt)}</div>

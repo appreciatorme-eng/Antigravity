@@ -160,7 +160,7 @@ export default function MobileNav() {
                             animate={{ y: 0 }}
                             exit={{ y: "100%" }}
                             transition={{ type: "spring", stiffness: 380, damping: 40 }}
-                            className="md:hidden fixed bottom-[72px] left-0 right-0 z-[49] bg-white/95 dark:bg-slate-900/98 backdrop-blur-xl border-t border-slate-200/50 dark:border-slate-700/60 rounded-t-3xl shadow-2xl px-5 pt-5 pb-6"
+                            className="md:hidden fixed bottom-[calc(76px+env(safe-area-inset-bottom))] left-3 right-3 z-[49] rounded-[28px] border border-slate-200/60 bg-white/95 px-5 pb-6 pt-5 shadow-2xl backdrop-blur-xl dark:border-slate-700/60 dark:bg-slate-900/98"
                         >
                             <div className="w-10 h-1 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto mb-4" />
                             <div className="flex items-center justify-between mb-4">
@@ -169,7 +169,7 @@ export default function MobileNav() {
                                 </span>
                                 <button
                                     onClick={() => setIsFabOpen(false)}
-                                    className="p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"
+                                    className="rounded-xl p-3.5 text-slate-500 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
                                     aria-label="Close quick actions"
                                 >
                                     <X className="w-4 h-4" />
@@ -290,7 +290,7 @@ export default function MobileNav() {
                                         <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 px-1">
                                             {group.label}
                                         </p>
-                                        <div className="grid grid-cols-4 gap-2">
+                                        <div className="grid grid-cols-3 gap-2">
                                             {group.items.map((item) => {
                                                 const isActive = isActivePath(item.href);
                                                 const Icon = item.icon;
@@ -299,7 +299,7 @@ export default function MobileNav() {
                                                         key={item.href}
                                                         href={item.href}
                                                         className={cn(
-                                                            "flex flex-col items-center gap-1.5 p-2.5 rounded-2xl transition-all active:scale-95",
+                                                            "flex min-h-[88px] flex-col items-center justify-center gap-2 rounded-2xl p-3 transition-all active:scale-95",
                                                             isActive
                                                                 ? "bg-primary/10 dark:bg-primary/15 ring-1 ring-primary/30 dark:ring-primary/40"
                                                                 : "hover:bg-slate-100 dark:hover:bg-slate-800/70"
@@ -313,7 +313,7 @@ export default function MobileNav() {
                                                         />
                                                         <span
                                                             className={cn(
-                                                                "text-[10px] text-center leading-tight",
+                                                                "text-[11px] text-center leading-tight",
                                                                 isActive ? "text-primary font-bold" : "text-slate-600 dark:text-slate-400 font-semibold"
                                                             )}
                                                         >
@@ -332,7 +332,7 @@ export default function MobileNav() {
             </AnimatePresence>
 
             {/* ── Bottom Navigation Bar ─────────────────────────────────── */}
-            <nav aria-label="Bottom navigation" className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200/50 dark:border-slate-800/50 px-2 pt-2 pb-safe z-50 shadow-[0_-8px_30px_-10px_rgba(0,0,0,0.15)] transition-colors duration-300">
+            <nav aria-label="Bottom navigation" className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200/50 bg-white/90 px-2 pt-2 pb-safe shadow-[0_-8px_30px_-10px_rgba(0,0,0,0.15)] backdrop-blur-xl transition-colors duration-300 dark:border-slate-800/50 dark:bg-slate-900/95">
                 <div className="flex items-stretch justify-around gap-0.5 max-w-lg mx-auto">
                     {/* Left tabs: Home, Inbox */}
                     {TAB_ITEMS.slice(0, 2).map((item) => (
@@ -418,7 +418,7 @@ function TabButton({
                 }
             }}
             className={cn(
-                "flex flex-col items-center justify-center gap-0.5 flex-1 py-2 px-1 rounded-xl transition-all active:scale-95",
+                "flex flex-col items-center justify-center gap-1 flex-1 rounded-xl px-1 py-2.5 transition-all active:scale-95",
                 isActive
                     ? item.href === "/inbox"
                         ? "text-[#25D366]"
@@ -443,7 +443,7 @@ function TabButton({
             </div>
             <span
                 className={cn(
-                    "text-[10px] font-semibold transition-all",
+                "text-[11px] font-semibold transition-all",
                     isActive ? "opacity-100" : "opacity-70"
                 )}
             >

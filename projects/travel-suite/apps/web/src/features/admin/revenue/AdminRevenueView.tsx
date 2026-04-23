@@ -162,7 +162,7 @@ export function AdminRevenueView() {
 
   if (loading) {
     return (
-      <div className="space-y-8">
+      <div className="space-y-6">
         <GlassSkeleton className="h-20 w-full" />
         <GlassSkeleton className="h-28 w-full" />
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -178,7 +178,7 @@ export function AdminRevenueView() {
 
   return (
     <motion.div
-      className="space-y-8 pb-12"
+      className="space-y-6 pb-24 md:space-y-8 md:pb-12"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
@@ -186,7 +186,7 @@ export function AdminRevenueView() {
       <GuidedTour />
       {/* Header */}
       <motion.div
-        className="flex flex-wrap items-end justify-between gap-4"
+        className="flex flex-col gap-4 md:flex-row md:flex-wrap md:items-end md:justify-between"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.28, delay: 0.04 }}
@@ -196,7 +196,7 @@ export function AdminRevenueView() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/20">
               <IndianRupee className="h-5 w-5 text-white" />
             </div>
-            <h1 className="text-3xl md:text-4xl font-serif text-secondary tracking-tight">
+            <h1 className="text-3xl font-serif tracking-tight text-secondary md:text-4xl">
               Revenue
             </h1>
           </div>
@@ -205,10 +205,10 @@ export function AdminRevenueView() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:flex md:items-center">
           <Link href={`/analytics/drill-through?${drillBaseParams.toString()}&type=${chartMetric}`}>
             <GlassButton variant="outline" className="rounded-2xl shadow-sm hover:shadow-md transition-all active:scale-95">
-              <BarChart3 className="h-4 w-4 mr-2" />
+              <BarChart3 className="mr-2 h-4 w-4" />
               Drill Through
             </GlassButton>
           </Link>
@@ -226,12 +226,12 @@ export function AdminRevenueView() {
 
       {/* Filters */}
       <GlassCard padding="lg" className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.2em] text-primary">Filters</p>
             <p className="text-xs text-text-muted mt-1">Destination, sales owner, and source channel update all widgets below.</p>
           </div>
-          <div className="flex items-center gap-1 rounded-xl border border-gray-200 bg-white px-1 py-1">
+          <div className="grid grid-cols-4 rounded-xl border border-gray-200 bg-white p-1 sm:inline-flex sm:items-center sm:gap-1">
             {RANGE_OPTIONS.map((option) => (
               <button
                 key={option.value}
@@ -300,7 +300,7 @@ export function AdminRevenueView() {
 
       {/* KPI Cards */}
       <motion.div
-        className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4"
+        className="grid grid-cols-2 gap-4 md:grid-cols-2 lg:grid-cols-4"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.28, delay: 0.08 }}
@@ -337,7 +337,7 @@ export function AdminRevenueView() {
 
       {/* Tour Operator Metrics */}
       <motion.div
-        className="grid grid-cols-2 gap-4 lg:grid-cols-4"
+        className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.28, delay: 0.1 }}
@@ -391,12 +391,12 @@ export function AdminRevenueView() {
         data-tour="revenue-chart"
       >
         <GlassCard padding="lg">
-          <div className="mb-5 flex items-center justify-between gap-3 flex-wrap">
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <div>
               <h2 className="text-xl font-serif text-secondary">Revenue & Bookings Trajectory</h2>
               <p className="text-xs text-text-muted mt-1">Click points for monthly drill-through records</p>
             </div>
-            <div className="flex bg-slate-100 p-1 rounded-xl">
+            <div className="grid grid-cols-2 rounded-xl bg-slate-100 p-1">
               {METRIC_OPTIONS.map((option) => (
                 <button
                   key={option.value}
@@ -426,7 +426,7 @@ export function AdminRevenueView() {
             }}
           />
 
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
             {snapshot.drivers.map((driver) => (
               <div key={driver.title} className="p-3 rounded-xl border border-gray-100 bg-white/70">
                 <p className="text-xs font-black text-secondary uppercase tracking-[0.12em]">{driver.title}</p>
@@ -444,7 +444,7 @@ export function AdminRevenueView() {
         transition={{ duration: 0.28, delay: 0.16 }}
       >
         <GlassCard padding="lg">
-          <div className="mb-6 flex items-center justify-between">
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-xl font-serif text-secondary">Destination Performance</h2>
               <p className="text-xs text-text-muted mt-1">Live paid invoice revenue by destination, with trip volume as fallback</p>
@@ -504,7 +504,7 @@ export function AdminRevenueView() {
 
       {/* Peak vs Off-Season — Light Mode Friendly */}
       <motion.div
-        className="grid grid-cols-1 gap-6 md:grid-cols-2"
+        className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.28, delay: 0.2 }}
@@ -530,7 +530,7 @@ export function AdminRevenueView() {
                 <ChevronRight className="h-4 w-4 text-amber-400 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className={cn("rounded-xl p-3", SEASON_THEME.peak.statBg)}>
                 <p className={cn("text-[10px] font-black uppercase tracking-widest", SEASON_THEME.peak.statLabel)}>Revenue</p>
                 <p className={cn("mt-1 text-lg font-extrabold", SEASON_THEME.peak.textColor)}>{formatINRShort(snapshot.seasonalBreakdown.peak.revenue)}</p>
@@ -569,7 +569,7 @@ export function AdminRevenueView() {
                 <ChevronRight className="h-4 w-4 text-sky-400 opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className={cn("rounded-xl p-3", SEASON_THEME.offSeason.statBg)}>
                 <p className={cn("text-[10px] font-black uppercase tracking-widest", SEASON_THEME.offSeason.statLabel)}>Revenue</p>
                 <p className={cn("mt-1 text-lg font-extrabold", SEASON_THEME.offSeason.textColor)}>{formatINRShort(snapshot.seasonalBreakdown.offSeason.revenue)}</p>

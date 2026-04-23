@@ -98,7 +98,7 @@ export function KPICard({
       onClick={onClick}
     >
       <div className="relative z-10">
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4 flex items-start justify-between gap-3">
           <div
             className={cn(
               "p-3 rounded-2xl transition-transform group-hover:scale-110 duration-500",
@@ -110,7 +110,7 @@ export function KPICard({
           {trend && (
             <div
               className={cn(
-                "flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full",
+                "flex max-w-[48%] items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold",
                 trendUp
                   ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                   : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
@@ -131,7 +131,7 @@ export function KPICard({
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter"
+            className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white sm:text-3xl"
             aria-label={label}
           >
             {loading ? (
@@ -140,7 +140,7 @@ export function KPICard({
               displayValue
             )}
           </motion.div>
-          <p className="text-xs font-bold uppercase tracking-widest text-slate-400">{label}</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-slate-400">{label}</p>
         </div>
       </div>
 

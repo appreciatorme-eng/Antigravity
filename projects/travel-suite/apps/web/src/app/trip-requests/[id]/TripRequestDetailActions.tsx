@@ -515,11 +515,11 @@ export function TripRequestDetailActions({
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:flex-wrap">
               <button
                 type="button"
                 onClick={() => setEditOpen(true)}
-                className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
               >
                 <PencilLine className="h-4 w-4" />
                 Edit brief
@@ -533,7 +533,7 @@ export function TripRequestDetailActions({
                     || (primaryAction.action === "resend_client" && !canResendClient)
                   }
                   className={cn(
-                    "inline-flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60",
+                    "inline-flex h-11 items-center justify-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60",
                     primaryAction.tone,
                   )}
                 >
@@ -545,7 +545,7 @@ export function TripRequestDetailActions({
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className="inline-flex items-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
                   >
                     <MoreHorizontal className="h-4 w-4" />
                     More actions
@@ -608,12 +608,12 @@ export function TripRequestDetailActions({
             </p>
             {actionRail.length > 0 ? (
               <div className="mt-4 overflow-x-auto pb-1">
-                <div className="flex min-w-max gap-3">
+                <div className="grid gap-3 sm:flex sm:min-w-max">
                   {actionRail.map((entry) => (
                     <div
                       key={`${entry.action}-${entry.occurredAt}`}
                       className={cn(
-                        "min-w-[220px] rounded-2xl border px-4 py-3",
+                        "rounded-2xl border px-4 py-3 sm:min-w-[220px]",
                         entry.tone === "success"
                           ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
                           : entry.tone === "error"
@@ -670,13 +670,13 @@ export function TripRequestDetailActions({
                 </div>
               </div>
             ) : null}
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               {statusChips.map((chip) => {
                 const isRunning = chip.action && chip.action !== "edit" && runningAction === chip.action;
                 return (
                   <div
                     key={`${chip.label}-${chip.actionLabel ?? "status"}`}
-                    className={cn("inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold", chip.tone)}
+                    className={cn("inline-flex flex-wrap items-center gap-2 rounded-2xl border px-3 py-2 text-xs font-semibold sm:rounded-full", chip.tone)}
                   >
                     <span>{chip.label}</span>
                     {chip.actionLabel ? (
@@ -722,7 +722,7 @@ export function TripRequestDetailActions({
           setEditOpen(open);
         }
       }}>
-        <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto border border-border bg-background p-0 text-foreground shadow-2xl sm:max-w-3xl">
+        <DialogContent className="max-h-[calc(100vh-1rem)] w-[calc(100vw-1rem)] overflow-y-auto border border-border bg-background p-0 text-foreground shadow-2xl sm:max-h-[calc(100vh-2rem)] sm:max-w-3xl">
           <div className="border-b border-border bg-muted/30 p-6">
             <DialogHeader className="text-left">
               <DialogTitle className="text-2xl font-black tracking-tight text-foreground">Edit trip request brief</DialogTitle>
@@ -733,7 +733,7 @@ export function TripRequestDetailActions({
             </DialogHeader>
           </div>
 
-          <div className="grid gap-5 p-6">
+          <div className="grid gap-5 p-4 sm:p-6">
             <div className="grid gap-4 md:grid-cols-2">
               <label className="space-y-2">
                 <span className="text-sm font-semibold text-foreground">Traveller name *</span>
@@ -848,11 +848,11 @@ export function TripRequestDetailActions({
             </div>
           </div>
 
-          <DialogFooter className="border-t border-border px-6 py-4">
+          <DialogFooter className="flex-col-reverse gap-2 border-t border-border px-4 py-4 sm:flex-row sm:justify-end sm:px-6">
             <button
               type="button"
               onClick={() => !savingEdit && setEditOpen(false)}
-              className="rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+              className="h-11 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
               disabled={savingEdit}
             >
               Cancel
@@ -860,7 +860,7 @@ export function TripRequestDetailActions({
             <button
               type="button"
               onClick={() => void saveEdit()}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={savingEdit}
             >
               {savingEdit ? <Loader2 className="h-4 w-4 animate-spin" /> : <PencilLine className="h-4 w-4" />}
@@ -871,7 +871,7 @@ export function TripRequestDetailActions({
       </Dialog>
 
       <Dialog open={deleteOpen} onOpenChange={(open) => !deleting && setDeleteOpen(open)}>
-        <DialogContent className="border border-border bg-background text-foreground sm:max-w-lg">
+        <DialogContent className="w-[calc(100vw-1rem)] border border-border bg-background text-foreground sm:max-w-lg">
           <DialogHeader className="text-left">
             <DialogTitle className="flex items-center gap-2 text-xl font-black tracking-tight">
               <XCircle className="h-5 w-5 text-rose-500" />
@@ -885,11 +885,11 @@ export function TripRequestDetailActions({
             </DialogDescription>
           </DialogHeader>
 
-          <DialogFooter>
+          <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <button
               type="button"
               onClick={() => setDeleteOpen(false)}
-              className="rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+              className="h-11 rounded-2xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted"
               disabled={deleting}
             >
               Keep request
@@ -897,7 +897,7 @@ export function TripRequestDetailActions({
             <button
               type="button"
               onClick={() => void deleteRequest()}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
               disabled={deleting}
             >
               {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}

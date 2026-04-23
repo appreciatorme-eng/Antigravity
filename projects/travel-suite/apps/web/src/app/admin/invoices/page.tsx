@@ -587,7 +587,7 @@ export default function AdminInvoicesPage() {
   }, [invoiceTotalCount, invoices.length]);
 
   return (
-    <div className="mx-auto max-w-[1600px] space-y-6 pb-10">
+    <div className="mx-auto max-w-[1600px] space-y-6 pb-24 md:pb-12">
       <GuidedTour />
       <section className="rounded-2xl md:rounded-3xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-white p-4 md:p-6 shadow-[0_14px_45px_-24px_rgba(15,23,42,0.35)]">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -595,7 +595,7 @@ export default function AdminInvoicesPage() {
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">
               Finance Workspace
             </p>
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl">
               Invoice Studio
             </h1>
             <p className="max-w-xl text-sm text-slate-600">
@@ -608,14 +608,14 @@ export default function AdminInvoicesPage() {
             size="sm"
             loading={refreshing}
             onClick={() => void refreshAll()}
-            className="border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+            className="h-11 w-full border-slate-300 bg-white text-slate-700 hover:bg-slate-50 lg:h-9 lg:w-auto"
           >
             <RefreshCw className="h-4 w-4" />
             Refresh
           </GlassButton>
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-2xl border border-slate-200 bg-white p-3.5">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
               Loaded Invoice Total

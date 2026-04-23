@@ -69,7 +69,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <TourToggleProvider>
             <div className="flex min-h-screen bg-slate-50 dark:bg-[#0a1628] bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-[#0a1628] dark:via-[#0c1b30] dark:to-[#0f2440] transition-colors duration-500">
                 <Sidebar className="hidden md:flex shrink-0" />
-                <div className="flex-1 flex flex-col min-w-0 h-[100dvh] overflow-hidden relative">
+                <div className="relative flex min-w-0 flex-1 flex-col overflow-hidden min-h-[100dvh] md:h-[100dvh]">
                     {/* Subtle background decorative bloom */}
                     <div className="pointer-events-none absolute -top-40 -right-40 w-96 h-96 bg-primary/5 dark:bg-primary/10 rounded-full blur-[100px]" />
                     <TopBar />
@@ -80,8 +80,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                             isFullBleedPage
                                 ? "overflow-hidden flex flex-col"
                                 : isPlannerPage
-                                    ? "overflow-y-auto flex min-h-0 flex-col custom-scrollbar pb-24 md:pb-8"
-                                : "overflow-y-auto p-4 md:p-8 custom-scrollbar pb-24 md:pb-8",
+                                    ? "overflow-y-auto flex min-h-0 flex-col custom-scrollbar pb-32 md:pb-8"
+                                : "overflow-y-auto p-3 sm:p-4 md:p-8 custom-scrollbar pb-32 md:pb-8",
                         )}
                     >
                         <AnimatePresence mode="wait">
