@@ -1354,7 +1354,7 @@ export function TripRequestIntakeForm({
                         </div>
                       </div>
                       <a
-                        href={state.shareUrl || "#"}
+                        href={viewState.shareUrl || "#"}
                         target="_blank"
                         rel="noreferrer"
                         className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl px-5 text-sm font-semibold text-white transition hover:-translate-y-[1px] active:scale-[0.985]"
@@ -1373,7 +1373,7 @@ export function TripRequestIntakeForm({
                         <ArrowRight className="h-4 w-4" />
                       </a>
                       <a
-                        href={state.pdfUrl || "#"}
+                        href={viewState.pdfUrl || "#"}
                         target="_blank"
                         rel="noreferrer"
                         className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl border px-5 text-sm font-semibold text-white transition hover:-translate-y-[1px] active:scale-[0.985]"
