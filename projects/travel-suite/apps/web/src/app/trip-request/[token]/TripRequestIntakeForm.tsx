@@ -840,6 +840,8 @@ export function TripRequestIntakeForm({
     isProcessing,
   });
   const canSubmit = submitReadiness.canSubmit;
+  const readyShareUrl = viewState.shareUrl || "";
+  const readyPdfUrl = viewState.pdfUrl || "";
   const trustPoints =
     viewState.organizationServiceBullets.length > 0
       ? viewState.organizationServiceBullets
@@ -1354,10 +1356,18 @@ export function TripRequestIntakeForm({
                         </div>
                       </div>
                       <a
-                        href={viewState.shareUrl || "#"}
+                        href={readyShareUrl || undefined}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl px-5 text-sm font-semibold text-white transition hover:-translate-y-[1px] active:scale-[0.985]"
+                        onClick={(event) => {
+                          if (!readyShareUrl) {
+                            event.preventDefault();
+                          }
+                        }}
+                        className={cn(
+                          "inline-flex h-14 w-full touch-manipulation items-center justify-center gap-2 rounded-2xl px-5 text-sm font-semibold text-white transition active:scale-[0.985] md:hover:-translate-y-[1px]",
+                          !readyShareUrl ? "pointer-events-none opacity-70" : "",
+                        )}
                         style={{
                           background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 48%, #1e40af 100%)",
                           boxShadow: "0 24px 44px -24px rgba(37,99,235,0.72)",
@@ -1373,10 +1383,18 @@ export function TripRequestIntakeForm({
                         <ArrowRight className="h-4 w-4" />
                       </a>
                       <a
-                        href={viewState.pdfUrl || "#"}
+                        href={readyPdfUrl || undefined}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex h-14 w-full items-center justify-center gap-2 rounded-2xl border px-5 text-sm font-semibold text-white transition hover:-translate-y-[1px] active:scale-[0.985]"
+                        onClick={(event) => {
+                          if (!readyPdfUrl) {
+                            event.preventDefault();
+                          }
+                        }}
+                        className={cn(
+                          "inline-flex h-14 w-full touch-manipulation items-center justify-center gap-2 rounded-2xl border px-5 text-sm font-semibold text-white transition active:scale-[0.985] md:hover:-translate-y-[1px]",
+                          !readyPdfUrl ? "pointer-events-none opacity-70" : "",
+                        )}
                         style={{
                           borderColor: "rgba(5, 150, 105, 0.14)",
                           background: "linear-gradient(135deg, #10b981 0%, #059669 52%, #047857 100%)",

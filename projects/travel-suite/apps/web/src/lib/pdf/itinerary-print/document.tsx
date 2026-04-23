@@ -46,13 +46,13 @@ const PRINT_CSS = `
   .page--light { background: #f8f6f1; color: #171717; }
   .page--white { background: #ffffff; color: #111827; }
   .page--dark { background: #09090b; color: #f8fafc; }
-  .page__inner { padding: 14mm 16mm 34mm; position: relative; height: 297mm; min-height: 297mm; }
+  .page__inner { padding: 14mm 16mm 40mm; position: relative; height: 297mm; min-height: 297mm; }
   .page__inner--wide { padding: 0; height: 297mm; min-height: 297mm; }
   .page__footer {
     position: absolute;
     left: 16mm;
     right: 16mm;
-    bottom: 9mm;
+    bottom: 8mm;
     display: flex;
     justify-content: space-between;
     font-size: 10px;
@@ -138,7 +138,7 @@ const PRINT_CSS = `
     z-index: 1;
     height: 297mm;
     min-height: 297mm;
-    padding: 14mm 16mm 34mm;
+    padding: 14mm 16mm 40mm;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
