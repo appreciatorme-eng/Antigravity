@@ -178,6 +178,7 @@ export function formatHelpMenu(): string {
         "",
         "*Quick Commands:*",
         "  📋 *today* — Today's trips",
+        "  🔗 *link* — Share intake form",
         "  🆕 *leads* — Recent leads",
         "  💰 *payments* — Pending payments",
         "  💵 *revenue* — Revenue summary",

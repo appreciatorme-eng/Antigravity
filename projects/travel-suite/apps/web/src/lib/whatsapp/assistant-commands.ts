@@ -494,7 +494,7 @@ async function getMonthlyRevenue(
 
 async function handleAgendaCommand(ctx: CommandContext): Promise<string> {
   const agenda = await buildOwnerAgenda(ctx.actionCtx);
-  return `${formatOwnerAgenda(agenda)}\n\nReply *handoff*, *followups*, *collections*, *work*, *promises*, *approvals*, *trip check today*, *today*, *payments*, *leads*, or tell me what you want to change.`;
+  return `${formatOwnerAgenda(agenda)}\n\nReply *handoff*, *followups*, *collections*, *work*, *promises*, *approvals*, *trip check today*, *today*, *payments*, *leads*, *link*, or tell me what you want to change.`;
 }
 
 async function handleTodayCommand(ctx: CommandContext): Promise<string> {
