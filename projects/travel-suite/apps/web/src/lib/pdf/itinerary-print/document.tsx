@@ -801,6 +801,13 @@ const PRINT_CSS = `
     font-weight: 700;
     letter-spacing: -0.02em;
   }
+  .safari-overview__line {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.55;
+    color: rgba(17, 24, 39, 0.82);
+    font-weight: 600;
+  }
   .safari-overview__copy {
     margin: 0;
     font-size: 11px;
@@ -3168,9 +3175,9 @@ const SafariHighlightsPage = ({
                 <div key={`safari-brief-extra-${pageIndex}-${index}`} className="summary-highlight">
                   <div className="summary-highlight__index">{activity.dayNumber}</div>
                   <div>
-                    <div className="summary-highlight__meta">Day {activity.dayNumber} • {activity.location || activity.dayTheme}</div>
-                    <h3 className="summary-highlight__title">{activity.title}</h3>
-                    <p className="summary-highlight__desc">{activity.description}</p>
+                    <h3 className="summary-highlight__title" style={{ marginBottom: 0 }}>
+                      Day {activity.dayNumber} — {activity.title}
+                    </h3>
                   </div>
                 </div>
               ))}
@@ -3206,59 +3213,6 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
 
   return (
     <>
-        <section className="page page--light immersive">
-          <div className="cover">
-            {payload.coverImage ? <img className="cover__image" src={payload.coverImage} alt={payload.itinerary.trip_title} /> : null}
-            <div className="cover__overlay" style={{ background: 'linear-gradient(180deg, rgba(47,33,10,0.08), rgba(44,32,18,0.82))' }} />
-            <div className="cover__content">
-              <BrandRow branding={payload.branding} dark showContact />
-              <div>
-                <p className="cover__kicker" style={{ color: 'rgba(255,247,237,0.78)' }}>{payload.itinerary.destination}</p>
-                <h1 className="cover__title" style={{ color: '#fff7ed', fontFamily: '"Noto Serif", Georgia, Times New Roman, serif' }}>{payload.itinerary.trip_title}</h1>
-                <p className="cover__subtitle" style={{ color: 'rgba(255,247,237,0.88)' }}>{payload.itinerary.summary}</p>
-                {payload.branding.clientName ? (
-                  <p
-                    className="cover__prepared-for"
-                    style={{
-                      color: 'rgba(255,247,237,0.92)',
-                      fontSize: 13,
-                      letterSpacing: '0.18em',
-                      textTransform: 'uppercase',
-                      margin: '18px 0 0',
-                      fontFamily: '"Noto Serif", Georgia, Times New Roman, serif',
-                    }}
-                  >
-                    Prepared for <span style={{ fontWeight: 700 }}>{payload.branding.clientName}</span>
-                  </p>
-                ) : null}
-                <div className="cover__meta">
-                  <span className="meta-pill">{payload.itinerary.duration_days} Days</span>
-                  <span className="meta-pill">{getTravelWindowLabel(payload)}</span>
-                  {price ? <span className="meta-pill">{price}</span> : null}
-                </div>
-                <div className="cover-dossier">
-                  <div className="cover-dossier__card">
-                    <div className="cover-dossier__label">Destination</div>
-                    <div className="cover-dossier__value">{payload.itinerary.destination}</div>
-                  </div>
-                  <div className="cover-dossier__card">
-                    <div className="cover-dossier__label">Prepared by</div>
-                    <div className="cover-dossier__value">{payload.branding.companyName}</div>
-                  </div>
-                  <div className="cover-dossier__card">
-                    <div className="cover-dossier__label">Travel window</div>
-                    <div className="cover-dossier__value cover-dossier__value--small">{getTravelWindowLabel(payload)}</div>
-                  </div>
-                  <div className="cover-dossier__card">
-                    <div className="cover-dossier__label">Trip posture</div>
-                    <div className="cover-dossier__value">{price || `${totalActivities} planned moments`}</div>
-                  </div>
-                </div>
-              </div>
-              <PageFooter branding={payload.branding} />
-            </div>
-          </div>
-        </section>
         <section className="page page--light">
           <div className="page__inner">
             <BrandRow branding={payload.branding} />
@@ -3267,15 +3221,14 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                 <div className="trip-brief__headline">
                   <div>
                     <div className="accent-line" style={{ background: accent }} />
-                    <p className="section-kicker">Trip Brief</p>
+                    <p className="section-kicker">{payload.itinerary.destination}</p>
                     <h2 style={{ fontSize: 29, lineHeight: 1.04, letterSpacing: '-0.045em', margin: '8px 0 10px', fontFamily: '"Noto Serif", Georgia, Times New Roman, serif' }}>
-                      Designed for a client-ready handoff
+                      {payload.itinerary.trip_title}
                     </h2>
                     <p className="lede-serif" style={{ margin: 0 }}>{payload.itinerary.summary}</p>
                   </div>
                   <LocationRibbon locations={topLocations} accent={accent} />
                 </div>
-                {payload.coverImage ? <img className="safari-overview__hero" src={payload.coverImage} alt={payload.itinerary.trip_title} /> : null}
                 <div className="trip-brief__cards">
                   <div className="trip-brief__card">
                     <div className="trip-brief__label">Duration</div>
@@ -3319,9 +3272,7 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                   <p className="panel__title">Standout moments</p>
                   {briefHighlights.map((activity, index) => (
                     <div key={`safari-featured-${index}`} className="safari-overview__panel">
-                      <div className="safari-overview__meta">Day {activity.dayNumber} • {activity.location || activity.dayTheme}</div>
-                      <h3 className="safari-overview__title">{activity.title}</h3>
-                      <p className="safari-overview__copy">{activity.description}</p>
+                      <p className="safari-overview__line">Day {activity.dayNumber} — {activity.title}</p>
                     </div>
                   ))}
                 </div>
@@ -3363,7 +3314,6 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
           const continuationChunks = chunkItems(remaining.slice(2), 2);
           const dayLocations = getDayLocations(day, 4);
           const accommodation = getDayAccommodation(payload, day.day_number);
-          const tripNotes = (payload.itinerary.tips || payload.itinerary.inclusions || []).slice(0, 3);
 
           const pages: React.ReactElement[] = [
             <section key={`safari-day-${index}`} className={`page page--light ${payload.density}`}>
@@ -3416,7 +3366,6 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                     <div className="continuation-sidebar">
                       <StayPanel accommodation={accommodation} compact />
                       <MiniListPanel title={"Today's route"} items={dayLocations} compact maxItems={3} />
-                      {!accommodation && tripNotes.length ? <MiniListPanel title="Travel notes" items={tripNotes} compact maxItems={3} /> : null}
                     </div>
                   </div>
                 </div>
@@ -3427,9 +3376,6 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
 
           continuationChunks.forEach((chunk, chunkIndex) => {
             const [continuedFeatured, ...continuedSupport] = chunk;
-            const continuationNotes =
-              (payload.itinerary.tips || payload.itinerary.inclusions || [])
-                .slice(chunkIndex * 3, chunkIndex * 3 + 3);
 
             pages.push(
               <section key={`safari-day-${index}-cont-${chunkIndex}`} className={`page page--light ${payload.density}`}>
@@ -3489,14 +3435,7 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                             compact
                             maxItems={2}
                           />
-                        ) : (
-                          <MiniListPanel
-                            title="Travel notes"
-                            items={continuationNotes.length ? continuationNotes : (payload.itinerary.exclusions || []).slice(0, 3)}
-                            compact
-                            maxItems={2}
-                          />
-                        )}
+                        ) : null}
                       </div>
                     </div>
                   </div>
