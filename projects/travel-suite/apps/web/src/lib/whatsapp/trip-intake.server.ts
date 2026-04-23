@@ -665,6 +665,41 @@ export function buildTripRequestPdfUrl(formToken: string): string {
   return `${APP_BASE_URL}/api/trip-request/${formToken}/pdf`;
 }
 
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function verifyTripRequestPdfUrl(formToken: string): Promise<void> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 45_000);
+
+  try {
+    const response = await fetch(buildTripRequestPdfUrl(formToken), {
+      method: "GET",
+      cache: "no-store",
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      throw new Error(
+        `Trip request PDF preflight failed -> ${response.status}: ${body.slice(0, 240) || "(no body)"}`,
+      );
+    }
+
+    const contentType = response.headers.get("content-type") || "";
+    const renderer = response.headers.get("x-itinerary-pdf-renderer") || "";
+    if (!contentType.toLowerCase().includes("application/pdf")) {
+      throw new Error(`Trip request PDF preflight returned unexpected content type: ${contentType || "unknown"}`);
+    }
+    if (renderer && renderer !== "print-html") {
+      throw new Error(`Trip request PDF preflight returned unexpected renderer: ${renderer}`);
+    }
+
+    await response.arrayBuffer();
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 function toTripRequestFormState(draft: TripRequestDraft): TripRequestFormState {
   return {
     token: draft.formToken,
@@ -2492,17 +2527,42 @@ async function sendTripRequestCompletionPdf(
   formToken: string,
   caption: string,
 ): Promise<void> {
-  await guardedSendMedia(
-    sessionName,
-    jid,
-    buildTripRequestPdfUrl(formToken),
-    "document",
-    {
-      fileName: `trip-itinerary-${formToken.slice(0, 8)}.pdf`,
-      mimetype: "application/pdf",
-      caption,
-    },
-  );
+  const pdfUrl = buildTripRequestPdfUrl(formToken);
+
+  await verifyTripRequestPdfUrl(formToken);
+
+  try {
+    await guardedSendMedia(
+      sessionName,
+      jid,
+      pdfUrl,
+      "document",
+      {
+        fileName: `trip-itinerary-${formToken.slice(0, 8)}.pdf`,
+        mimetype: "application/pdf",
+        caption,
+      },
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!message.includes("Failed to fetch stream")) {
+      throw error;
+    }
+
+    await delay(1500);
+    await verifyTripRequestPdfUrl(formToken);
+    await guardedSendMedia(
+      sessionName,
+      jid,
+      pdfUrl,
+      "document",
+      {
+        fileName: `trip-itinerary-${formToken.slice(0, 8)}.pdf`,
+        mimetype: "application/pdf",
+        caption,
+      },
+    );
+  }
 }
 
 async function notifyAssistantGroupAboutCompletedDraft(
