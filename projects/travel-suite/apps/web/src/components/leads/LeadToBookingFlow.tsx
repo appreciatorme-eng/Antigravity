@@ -619,7 +619,6 @@ export default function LeadToBookingFlow({
   // Re-sync when intent or initial values change (e.g. modal re-opened with new lead)
   useEffect(() => {
     if (!isOpen) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setStep(1);
      
     setDirection(1);

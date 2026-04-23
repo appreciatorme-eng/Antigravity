@@ -39,7 +39,6 @@ export default function TemplateAnalyticsComponent({
   }, [templateId, organizationId]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadAnalytics();
   }, [loadAnalytics]);
 

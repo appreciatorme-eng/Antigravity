@@ -1,6 +1,6 @@
 // POST /api/superadmin/users/:id/impersonate — generates a magic link to temporarily login as the target user.
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { logError } from "@/lib/observability/logger";

@@ -26,7 +26,6 @@ export function ThemeToggle({ className }: { className?: string }) {
 
   // Load theme from localStorage on mount
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
     const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
     const initialTheme = savedTheme || 'light';
@@ -101,7 +100,6 @@ export function ThemeToggleButton({ className }: { className?: string }) {
   };
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
     const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
     const initialTheme = savedTheme || 'light';

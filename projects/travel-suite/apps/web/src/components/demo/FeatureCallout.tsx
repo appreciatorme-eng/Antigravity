@@ -60,7 +60,6 @@ export default function FeatureCallout({ page, className }: FeatureCalloutProps)
     try {
       const wasDismissed = localStorage.getItem(LS_PREFIX + page) === "true";
       // SSR-safe: localStorage only available after mount
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDismissed(wasDismissed);
     } catch {
       setDismissed(false);

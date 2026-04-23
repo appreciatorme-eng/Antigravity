@@ -4,7 +4,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { RefreshCw, UserPlus, ArrowRight } from "lucide-react";
+import { RefreshCw, UserPlus } from "lucide-react";
 import TrendChart from "@/components/god-mode/TrendChart";
 import StatCard from "@/components/god-mode/StatCard";
 import TimeRangePicker from "@/components/god-mode/TimeRangePicker";

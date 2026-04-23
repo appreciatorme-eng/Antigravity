@@ -487,8 +487,8 @@ async function handlePaymentCaptured(
     },
   });
 
-  revalidateTag('revenue', 'max');
-  revalidateTag('nav-counts', 'max');
+  revalidateTag('revenue');
+  revalidateTag('nav-counts');
 }
 
 async function handlePaymentFailed(payload: RazorpayWebhookPayload, requestContext: WebhookLogContext) {
@@ -537,7 +537,7 @@ async function handlePaymentFailed(payload: RazorpayWebhookPayload, requestConte
   // Immediately trigger collections loop — don't wait for the daily cron
   triggerEventAutopilot(organizationId, 'payment_failed');
 
-  revalidateTag('nav-counts', 'max');
+  revalidateTag('nav-counts');
 }
 
 async function handleSubscriptionCharged(payload: RazorpayWebhookPayload, requestContext: WebhookLogContext) {

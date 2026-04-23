@@ -23,6 +23,16 @@ type PostBody = {
     metadata?: Record<string, unknown> | null;
 };
 
+type WorkItemReader = {
+    from: (table: "god_work_items") => {
+        select: (columns: string) => {
+            eq: (column: "id", value: string) => {
+                maybeSingle: () => Promise<{ data: WorkItemRow | null }>;
+            };
+        };
+    };
+};
+
 const ALLOWED_OUTCOMES = new Set<WorkItemOutcomeType>([
     "recovered",
     "no_change",
@@ -40,14 +50,17 @@ function cleanText(value: unknown): string | null {
     return trimmed ? trimmed : null;
 }
 
-async function loadWorkItemRow(adminClient: { from: (table: string) => any }, id: string): Promise<WorkItemRow | null> {
+async function loadWorkItemRow(
+    adminClient: WorkItemReader,
+    id: string,
+): Promise<WorkItemRow | null> {
     const result = await adminClient
         .from("god_work_items")
         .select("id, org_id, kind, status, title")
         .eq("id", id)
         .maybeSingle();
     if (!result.data) return null;
-    return result.data as WorkItemRow;
+    return result.data;
 }
 
 export async function GET(

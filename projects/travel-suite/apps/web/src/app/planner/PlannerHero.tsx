@@ -62,7 +62,6 @@ export function PlannerHero({
     const [animatingPlaceholder, setAnimatingPlaceholder] = useState(true);
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         if (prompt) { setAnimatingPlaceholder(false); return; }
          
         setAnimatingPlaceholder(true);

@@ -8,8 +8,12 @@ import { logError } from "@/lib/observability/logger";
 import { saveWorkItemMeta } from "@/lib/platform/god-mode";
 import { recordOrgActivityEvent } from "@/lib/platform/org-memory";
 import { runBusinessOsEventAutomation } from "@/lib/platform/business-os";
+import { createAdminClient } from "@/lib/supabase/admin";
 
-async function lookupTicketOrgId(adminClient: { from: (table: string) => any }, ticketId: string): Promise<string | null> {
+async function lookupTicketOrgId(
+    adminClient: ReturnType<typeof createAdminClient>,
+    ticketId: string,
+): Promise<string | null> {
     const result = await adminClient
         .from("support_tickets")
         .select("profiles!support_tickets_user_id_fkey(organization_id, organizations(id))")

@@ -6,7 +6,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Search, RefreshCw, UserPlus, Building2, Shield, Ban, Trash2, ArrowRightLeft, Loader2, LogIn, ChevronRight, Globe, Users, MapPin, FileText, Receipt, BrainCircuit, Clock, Activity, ExternalLink, Sparkles } from "lucide-react";
+import { Search, RefreshCw, Building2, Shield, Trash2, ArrowRightLeft, Loader2, LogIn, ChevronRight, Users, MapPin, FileText, Receipt, BrainCircuit, Clock, Activity, ExternalLink, Sparkles } from "lucide-react";
 import DrillDownTable from "@/components/god-mode/DrillDownTable";
 import SlideOutPanel from "@/components/god-mode/SlideOutPanel";
 import InlineEditField from "@/components/god-mode/InlineEditField";

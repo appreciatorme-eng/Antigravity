@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Checkbox } from "@/components/ui/checkbox";
 import { authedFetch } from "@/lib/api/authed-fetch";
 import { createClient } from "@/lib/supabase/client";
+import { sanitizeInternalNext } from "@/lib/routing/safe-next";
 
 /**
  * First-login interstitial for OAuth users AND re-acceptance modal for
@@ -24,10 +25,7 @@ export default function AcceptTermsContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const nextParam = searchParams.get("next");
-    const next =
-        nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//")
-            ? nextParam
-            : "/admin";
+    const next = sanitizeInternalNext(nextParam, "/admin");
 
     const [accepted, setAccepted] = useState(false);
     const [submitting, setSubmitting] = useState(false);
@@ -49,9 +47,7 @@ export default function AcceptTermsContent() {
             if (cancelled) return;
 
             if (!user) {
-                router.replace(
-                    `/auth?next=${encodeURIComponent(`/auth/accept-terms${nextParam ? `?next=${encodeURIComponent(nextParam)}` : ""}`)}`,
-                );
+                router.replace(`/auth?next=${encodeURIComponent(next)}`);
                 return;
             }
 
@@ -78,7 +74,7 @@ export default function AcceptTermsContent() {
         return () => {
             cancelled = true;
         };
-    }, [router, nextParam]);
+    }, [router, next]);
 
     async function handleAccept() {
         if (!accepted || submitting) return;

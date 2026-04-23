@@ -10,6 +10,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { LEGAL_VERSIONS } from "@/lib/legal/versions";
 
 const updateSessionMock = vi.fn();
 
@@ -35,6 +36,8 @@ function buildProfileChain(profile: {
     organization_id: string | null;
     role: string | null;
     onboarding_step: number | null;
+    terms_version_accepted?: string | null;
+    privacy_version_accepted?: string | null;
 } | null) {
     return {
         select: vi.fn().mockReturnValue({
@@ -51,6 +54,8 @@ function mockUpdateSession(
         organization_id: string | null;
         role: string | null;
         onboarding_step: number | null;
+        terms_version_accepted?: string | null;
+        privacy_version_accepted?: string | null;
     } | null = null
 ) {
     updateSessionMock.mockImplementation(async (req: NextRequest) => ({
@@ -60,6 +65,22 @@ function mockUpdateSession(
             from: vi.fn().mockReturnValue(buildProfileChain(profile)),
         },
     }));
+}
+
+function acceptedAdminProfile(overrides: Partial<{
+    organization_id: string | null;
+    onboarding_step: number | null;
+    terms_version_accepted: string | null;
+    privacy_version_accepted: string | null;
+}> = {}) {
+    return {
+        organization_id: "org-1",
+        role: "admin",
+        onboarding_step: 2,
+        terms_version_accepted: LEGAL_VERSIONS.terms,
+        privacy_version_accepted: LEGAL_VERSIONS.privacy,
+        ...overrides,
+    };
 }
 
 async function loadMiddleware() {
@@ -114,7 +135,7 @@ it("redirects unauthenticated request to /onboarding to /auth", async () => {
 it("redirects incomplete-onboarding user from /admin to /onboarding", async () => {
     mockUpdateSession(
         { id: "user-1" },
-        { organization_id: null, role: "admin", onboarding_step: 0 }
+        acceptedAdminProfile({ organization_id: null, onboarding_step: 0 })
     );
     const { middleware } = await loadMiddleware();
     const response = await middleware(makeRequest("/en/admin/trips"));
@@ -127,7 +148,7 @@ it("redirects incomplete-onboarding user from /admin to /onboarding", async () =
 it("redirects user with no organization from /planner to /onboarding", async () => {
     mockUpdateSession(
         { id: "user-1" },
-        { organization_id: null, role: "admin", onboarding_step: 1 }
+        acceptedAdminProfile({ organization_id: null, onboarding_step: 1 })
     );
     const { middleware } = await loadMiddleware();
     const response = await middleware(makeRequest("/en/planner"));
@@ -136,20 +157,14 @@ it("redirects user with no organization from /planner to /onboarding", async () 
 });
 
 it("allows onboarding-complete admin user through to /admin", async () => {
-    mockUpdateSession(
-        { id: "user-1" },
-        { organization_id: "org-1", role: "admin", onboarding_step: 2 }
-    );
+    mockUpdateSession({ id: "user-1" }, acceptedAdminProfile());
     const { middleware } = await loadMiddleware();
     const response = await middleware(makeRequest("/en/admin/trips"));
     expect(response.status).toBe(200);
 });
 
 it("redirects onboarding-complete user away from /onboarding to /admin", async () => {
-    mockUpdateSession(
-        { id: "user-1" },
-        { organization_id: "org-1", role: "admin", onboarding_step: 2 }
-    );
+    mockUpdateSession({ id: "user-1" }, acceptedAdminProfile());
     const { middleware } = await loadMiddleware();
     const response = await middleware(makeRequest("/en/onboarding"));
     expect(response.status).toBe(307);
@@ -157,10 +172,7 @@ it("redirects onboarding-complete user away from /onboarding to /admin", async (
 });
 
 it("redirects onboarding-complete user to safe next param from /onboarding", async () => {
-    mockUpdateSession(
-        { id: "user-1" },
-        { organization_id: "org-1", role: "admin", onboarding_step: 2 }
-    );
+    mockUpdateSession({ id: "user-1" }, acceptedAdminProfile());
     const { middleware } = await loadMiddleware();
     const response = await middleware(makeRequest("/en/onboarding", "?next=%2Fen%2Ftrips"));
     expect(response.status).toBe(307);
@@ -168,10 +180,7 @@ it("redirects onboarding-complete user to safe next param from /onboarding", asy
 });
 
 it("blocks open-redirect: //evil.com next param falls back to /admin", async () => {
-    mockUpdateSession(
-        { id: "user-1" },
-        { organization_id: "org-1", role: "admin", onboarding_step: 2 }
-    );
+    mockUpdateSession({ id: "user-1" }, acceptedAdminProfile());
     const { middleware } = await loadMiddleware();
     const response = await middleware(makeRequest("/en/onboarding", "?next=%2F%2Fevil.com"));
     const location = response.headers.get("location") ?? "";
@@ -182,9 +191,44 @@ it("blocks open-redirect: //evil.com next param falls back to /admin", async () 
 it("super_admin bypasses onboarding check for /god routes", async () => {
     mockUpdateSession(
         { id: "super-1" },
-        { organization_id: null, role: "super_admin", onboarding_step: null }
+        {
+            organization_id: null,
+            role: "super_admin",
+            onboarding_step: null,
+            terms_version_accepted: null,
+            privacy_version_accepted: null,
+        }
     );
     const { middleware } = await loadMiddleware();
     const response = await middleware(makeRequest("/en/god/panel"));
+    expect(response.status).toBe(200);
+});
+
+it("redirects stale-legal admin user to /auth/accept-terms with safe next", async () => {
+    mockUpdateSession(
+        { id: "user-1" },
+        acceptedAdminProfile({
+            terms_version_accepted: "0.9.0",
+            privacy_version_accepted: "0.9.0",
+        }),
+    );
+    const { middleware } = await loadMiddleware();
+    const response = await middleware(makeRequest("/en/admin/trips", "?tab=active"));
+    expect(response.status).toBe(307);
+    const location = response.headers.get("location") ?? "";
+    expect(location).toContain("/en/auth/accept-terms");
+    expect(location).toContain("next=%2Fen%2Fadmin%2Ftrips%3Ftab%3Dactive");
+});
+
+it("does not gate allowlisted legal route for stale-legal admin user", async () => {
+    mockUpdateSession(
+        { id: "user-1" },
+        acceptedAdminProfile({
+            terms_version_accepted: "0.9.0",
+            privacy_version_accepted: "0.9.0",
+        }),
+    );
+    const { middleware } = await loadMiddleware();
+    const response = await middleware(makeRequest("/en/auth/accept-terms", "?next=%2Fen%2Fadmin"));
     expect(response.status).toBe(200);
 });

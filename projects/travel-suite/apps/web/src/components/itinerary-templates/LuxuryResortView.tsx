@@ -15,7 +15,6 @@ export const LuxuryResortView: React.FC<ItineraryTemplateProps> = ({ itinerary, 
 
     useEffect(() => {
         if (!currentBg && heroImage) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
             setCurrentBg(heroImage);
         }
     }, [heroImage, currentBg]);

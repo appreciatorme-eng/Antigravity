@@ -70,11 +70,17 @@ const mockMessages = {
 
 describe("ProfileTab", () => {
   const defaultProps = {
+    fullName: "Avi Travels",
+    email: "avi@example.com",
+    avatarUrl: null,
     draftTimezone: "Asia/Kolkata",
     timezone: "Asia/Kolkata",
     timezoneOptions: ["Asia/Kolkata", "America/New_York", "Europe/London"],
     savingTimezone: false,
     loading: false,
+    showSuccess: false,
+    onFullNameChange: vi.fn(),
+    onEmailChange: vi.fn(),
     onDraftTimezoneChange: vi.fn(),
     onSaveTimezone: vi.fn(),
     onSave: vi.fn(),

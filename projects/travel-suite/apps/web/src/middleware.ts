@@ -23,6 +23,7 @@ import createMiddleware from "next-intl/middleware";
 import { updateSession } from "@/lib/supabase/middleware";
 import { locales, defaultLocale } from "@/i18n";
 import { LEGAL_VERSIONS } from "@/lib/legal/versions";
+import { sanitizeInternalNext } from "@/lib/routing/safe-next";
 
 const PROTECTED_PREFIXES = [
     "/admin",
@@ -149,7 +150,7 @@ function isMarketingPath(pathname: string): boolean {
 function buildAuthRedirect(request: NextRequest, nextPath: string): URL {
     const locale = getLocaleFromPathname(request.nextUrl.pathname);
     const destination = new URL(`/${locale}/auth`, request.url);
-    destination.searchParams.set("next", nextPath);
+    destination.searchParams.set("next", sanitizeInternalNext(nextPath, `/${locale}/admin`));
     return destination;
 }
 
@@ -236,7 +237,10 @@ export async function middleware(request: NextRequest) {
         !isTermsGateAllowlisted(pathname)
     ) {
         const destination = new URL(`/${locale}/auth/accept-terms`, request.url);
-        destination.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
+        destination.searchParams.set(
+            "next",
+            sanitizeInternalNext(`${pathname}${request.nextUrl.search}`, `/${locale}/admin`),
+        );
         return NextResponse.redirect(destination);
     }
 
@@ -244,18 +248,18 @@ export async function middleware(request: NextRequest) {
 
     if (!onboardingComplete && protectedPath) {
         const destination = new URL(`/${locale}/onboarding`, request.url);
-        destination.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
+        destination.searchParams.set(
+            "next",
+            sanitizeInternalNext(`${pathname}${request.nextUrl.search}`, `/${locale}/admin`),
+        );
         return NextResponse.redirect(destination);
     }
 
     if (onboardingComplete && onboardingPath) {
-        const requestedNext = request.nextUrl.searchParams.get("next");
-        const safeNext =
-            requestedNext &&
-            requestedNext.startsWith("/") &&
-            !requestedNext.startsWith("//")
-                ? requestedNext
-                : `/${locale}/admin`;
+        const safeNext = sanitizeInternalNext(
+            request.nextUrl.searchParams.get("next"),
+            `/${locale}/admin`,
+        );
         return NextResponse.redirect(new URL(safeNext, request.url));
     }
 

@@ -53,7 +53,6 @@ export default function PaymentLinkButton({
   const [showTracker, setShowTracker] = useState(false)
   const [shareError, setShareError] = useState<string | null>(null)
 
-  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const refreshLink = useCallback(async () => {
     if (!link?.token) return
     const fresh = await getPaymentLink(link.token)
