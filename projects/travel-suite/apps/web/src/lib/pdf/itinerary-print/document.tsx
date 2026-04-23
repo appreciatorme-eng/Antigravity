@@ -415,6 +415,8 @@ const PRINT_CSS = `
     border-radius: 18px;
     padding: 14px;
     background: rgba(255,255,255,0.96);
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
   .sidebar-panel--compact {
     border-radius: 15px;
@@ -670,6 +672,8 @@ const PRINT_CSS = `
     border-radius: 16px;
     overflow: hidden;
     background: rgba(255,255,255,0.98);
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
   .activity-card--text {
     grid-template-columns: 1fr;
@@ -883,7 +887,7 @@ const PRINT_CSS = `
   }
   .safari-support-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
     gap: 9px;
     align-items: start;
     break-inside: avoid;
