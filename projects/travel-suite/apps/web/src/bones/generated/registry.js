@@ -14,6 +14,8 @@ import _admin_customer_pulse from './admin-customer-pulse.bones.json'
 import _admin_pipeline_funnel from './admin-pipeline-funnel.bones.json'
 import _admin_ai_insights from './admin-ai-insights.bones.json'
 import _admin_performance_scorecard from './admin-performance-scorecard.bones.json'
+import _trip_requests_shell from './trip-requests-shell.bones.json'
+import _admin_operations_shell from './admin-operations-shell.bones.json'
 
 registerBones({
   "unified-inbox-shell": _unified_inbox_shell,
@@ -28,4 +30,6 @@ registerBones({
   "admin-pipeline-funnel": _admin_pipeline_funnel,
   "admin-ai-insights": _admin_ai_insights,
   "admin-performance-scorecard": _admin_performance_scorecard,
+  "trip-requests-shell": _trip_requests_shell,
+  "admin-operations-shell": _admin_operations_shell,
 })

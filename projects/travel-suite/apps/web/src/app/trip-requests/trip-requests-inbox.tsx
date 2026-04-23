@@ -41,6 +41,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { TripRequestsShellBone } from "@/components/ui/skeletons/TripRequestsShellBone";
 
 type TripRequestsApiPayload = {
   data?: {
@@ -843,12 +844,7 @@ export function TripRequestsInbox() {
         </div>
 
         {loading ? (
-          <div className="flex min-h-[320px] items-center justify-center rounded-[24px] border border-dashed border-border bg-muted/20">
-            <div className="inline-flex items-center gap-3 text-muted-foreground">
-                <Loader2 className="h-5 w-5 animate-spin" />
-                Loading trip requests…
-            </div>
-          </div>
+          <TripRequestsShellBone />
         ) : filteredRequests.length === 0 ? (
           <div className="rounded-[24px] border border-dashed border-border bg-muted/20 px-6 py-14 text-center text-muted-foreground">
             <div className="mx-auto max-w-xl">

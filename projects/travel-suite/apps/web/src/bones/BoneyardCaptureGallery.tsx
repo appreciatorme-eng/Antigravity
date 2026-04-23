@@ -3,6 +3,8 @@
 import { PlannerItineraryCardBone } from "@/components/ui/skeletons/PlannerItineraryCardBone";
 import { TripTileBone } from "@/components/ui/skeletons/TripTileBone";
 import { InboxShellBone } from "@/components/ui/skeletons/InboxShellBone";
+import { TripRequestsShellBone } from "@/components/ui/skeletons/TripRequestsShellBone";
+import { OperationsShellBone } from "@/components/ui/skeletons/OperationsShellBone";
 import {
   AdminAiInsightsBone,
   AdminCalendarPreviewBone,
@@ -50,6 +52,26 @@ export function BoneyardCaptureGallery() {
           </div>
           <div className="min-h-[680px] overflow-hidden rounded-3xl border border-slate-200">
             <InboxShellBone />
+          </div>
+        </section>
+
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">Trip Requests Skeleton Capture</h2>
+            <p className="text-sm text-slate-500">Only the queue-level loading shell is captured for the intake requests workspace.</p>
+          </div>
+          <div className="rounded-3xl border border-slate-200 bg-[#f8fafc] p-6">
+            <TripRequestsShellBone />
+          </div>
+        </section>
+
+        <section className="space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">Operations Skeleton Capture</h2>
+            <p className="text-sm text-slate-500">Capture the command-center shell only, without drilling into table-style internals.</p>
+          </div>
+          <div className="rounded-3xl border border-slate-200 bg-[#f8fafc] p-6">
+            <OperationsShellBone />
           </div>
         </section>
 

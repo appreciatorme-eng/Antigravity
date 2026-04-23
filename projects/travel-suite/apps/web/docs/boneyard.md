@@ -5,6 +5,8 @@ TripBuilt uses `boneyard-js` only for a few stable, high-traffic loading surface
 - Planner itinerary cards
 - Trips grid tiles
 - Inbox shell
+- Trip requests queue shell
+- Operations command-center shell
 
 Everything else keeps the existing route-level and manual skeletons.
 
@@ -32,6 +34,8 @@ Rerun the generator after visual changes to:
 - [`PastItineraryCard.tsx`](/Users/justforfun/Documents/New%20project/Antigravity/projects/travel-suite/apps/web/src/app/planner/PastItineraryCard.tsx)
 - [`TripGridCard.tsx`](/Users/justforfun/Documents/New%20project/Antigravity/projects/travel-suite/apps/web/src/app/trips/TripGridCard.tsx)
 - [`UnifiedInbox.tsx`](/Users/justforfun/Documents/New%20project/Antigravity/projects/travel-suite/apps/web/src/components/whatsapp/UnifiedInbox.tsx) when the outer 3-column shell changes materially
+- [`trip-requests-inbox.tsx`](/Users/justforfun/Documents/New%20project/Antigravity/projects/travel-suite/apps/web/src/app/trip-requests/trip-requests-inbox.tsx) when the queue shell changes materially
+- [`admin/operations/page.tsx`](/Users/justforfun/Documents/New%20project/Antigravity/projects/travel-suite/apps/web/src/app/admin/operations/page.tsx) when the command-center shell changes materially
 
 ## Guardrails
 

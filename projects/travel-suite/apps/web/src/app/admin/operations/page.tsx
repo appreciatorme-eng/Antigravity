@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useDemoFetch } from "@/lib/demo/use-demo-fetch";
 import { GuidedTour } from '@/components/tour/GuidedTour';
+import { OperationsShellBone } from "@/components/ui/skeletons/OperationsShellBone";
 
 type CommandTab = "command" | "departures" | "revenue";
 
@@ -218,14 +219,7 @@ export default function AdminOperationsPage() {
   }, [data]);
 
   if (loading) {
-    return (
-      <div className="min-h-[45vh] flex items-center justify-center">
-        <div className="flex items-center gap-3 rounded-2xl border border-primary/20 bg-white px-6 py-4 shadow-sm">
-          <Loader2 className="w-5 h-5 animate-spin text-primary" />
-          <span className="text-sm text-text-muted">Loading operator command center...</span>
-        </div>
-      </div>
-    );
+    return <OperationsShellBone />;
   }
 
   if (!data) {
