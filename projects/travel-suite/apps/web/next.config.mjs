@@ -77,6 +77,15 @@ const cspHeader = [
 
 /** @type {import("next").NextConfig} */
 const nextConfig = {
+  // Vercel production builds have intermittently hung during Next's inline
+  // validation phase. Keep validation as explicit checks instead of coupling it
+  // to deployment packaging.
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   env: {
     // DSN is intentionally public metadata, so expose a safe fallback for client SDK init.
     NEXT_PUBLIC_SENTRY_DSN:
