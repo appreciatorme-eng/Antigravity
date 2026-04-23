@@ -326,6 +326,13 @@ function formatFull(value: string): string {
   }).format(date);
 }
 
+function scrollPageToTop(behavior: ScrollBehavior = "smooth"): void {
+  if (typeof window === "undefined") return;
+  window.requestAnimationFrame(() => {
+    window.scrollTo({ top: 0, left: 0, behavior });
+  });
+}
+
 function getNights(startDate: string, endDate: string): number {
   const start = parseIsoDate(startDate);
   const end = parseIsoDate(endDate);
@@ -847,6 +854,12 @@ export function TripRequestIntakeForm({
   }, [submitted]);
 
   useEffect(() => {
+    if (submittedState && viewState.status !== "draft") {
+      scrollPageToTop("smooth");
+    }
+  }, [submittedState, viewState.status]);
+
+  useEffect(() => {
     if (!isProcessing) return;
     const intervalId = window.setInterval(() => {
       setProcessingStepIndex((current) => Math.min(current + 1, PROCESSING_STEPS.length - 1));
@@ -1021,6 +1034,7 @@ export function TripRequestIntakeForm({
       } else {
         window.history.replaceState({}, "", `/trip-request/status/${token}`);
       }
+      scrollPageToTop("smooth");
       if (payload?.state) {
         setViewState(payload.state);
       } else {
