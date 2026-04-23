@@ -18,7 +18,7 @@ import type { ContextSnapshot, ActionContext } from "./types";
 import { formatCurrency } from "./prompts/system";
 import { buildOwnerAgenda, formatOwnerAgenda } from "./owner-agenda";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { notifyOperator } from "@/lib/whatsapp/assistant-notifications";
+import { guardedSendText } from "@/lib/whatsapp-evolution.server";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -27,7 +27,8 @@ import { notifyOperator } from "@/lib/whatsapp/assistant-notifications";
 interface EligibleOrg {
   readonly organizationId: string;
   readonly userId: string;
-  readonly phone: string | null;
+  readonly sessionName: string;
+  readonly assistantGroupJid: string;
   readonly orgName: string;
 }
 
@@ -47,6 +48,38 @@ const todayDateKey = (): string => new Date().toISOString().slice(0, 10);
 /** Cap a list at `max` items for message brevity. */
 function takeMax<T>(items: readonly T[], max: number): readonly T[] {
   return items.slice(0, max);
+}
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  return "Unknown error";
+}
+
+export interface LatestBriefingDelivery {
+  readonly at: string | null;
+  readonly status: string | null;
+}
+
+export async function getLatestBriefingDelivery(
+  organizationId: string,
+  userId: string,
+): Promise<LatestBriefingDelivery> {
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("notification_logs")
+    .select("created_at, sent_at, status")
+    .eq("organization_id", organizationId)
+    .eq("recipient_id", userId)
+    .eq("notification_type", "morning_briefing")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return {
+    at: data?.sent_at ?? data?.created_at ?? null,
+    status: data?.status ?? null,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -138,21 +171,7 @@ export async function getEligibleOrgsForBriefing(): Promise<
       return [];
     }
 
-    const userIds = prefRows.map((r) => r.user_id);
     const orgIds = [...new Set(prefRows.map((r) => r.organization_id))];
-
-    const { data: profileRows, error: profileError } = await supabase
-      .from("profiles")
-      .select("id, phone_normalized")
-      .in("id", userIds);
-
-    if (profileError) {
-      return [];
-    }
-
-    const phoneByUserId = new Map(
-      (profileRows ?? []).map((p) => [p.id, p.phone_normalized ?? null]),
-    );
 
     const { data: orgRows, error: orgError } = await supabase
       .from("organizations")
@@ -166,33 +185,51 @@ export async function getEligibleOrgsForBriefing(): Promise<
     const orgNameById = new Map(orgRows.map((o) => [o.id, o.name]));
     const { data: connectionRows, error: connectionError } = await supabase
       .from("whatsapp_connections")
-      .select("organization_id, phone_number, assistant_group_jid")
+      .select("organization_id, session_name, assistant_group_jid, updated_at")
       .in("organization_id", orgIds)
       .eq("status", "connected")
-      .not("assistant_group_jid", "is", null);
+      .not("assistant_group_jid", "is", null)
+      .order("updated_at", { ascending: false });
 
     if (connectionError || !connectionRows || connectionRows.length === 0) {
       return [];
     }
 
-    const enabledOrgIds = new Set(connectionRows.map((row) => row.organization_id));
-    const connectedPhoneByOrgId = new Map(
-      connectionRows.map((row) => [row.organization_id, row.phone_number ?? null]),
-    );
+    const connectionByOrgId = new Map<
+      string,
+      {
+        readonly sessionName: string;
+        readonly assistantGroupJid: string;
+      }
+    >();
+
+    for (const row of connectionRows) {
+      if (!row.organization_id || !row.session_name || !row.assistant_group_jid) {
+        continue;
+      }
+
+      if (!connectionByOrgId.has(row.organization_id)) {
+        connectionByOrgId.set(row.organization_id, {
+          sessionName: row.session_name,
+          assistantGroupJid: row.assistant_group_jid,
+        });
+      }
+    }
 
     // Join preferences + profiles + org names.
     const results: EligibleOrg[] = [];
 
     for (const pref of prefRows) {
-      if (!enabledOrgIds.has(pref.organization_id)) continue;
-      const phone = phoneByUserId.get(pref.user_id) ?? connectedPhoneByOrgId.get(pref.organization_id) ?? null;
+      const connection = connectionByOrgId.get(pref.organization_id);
+      if (!connection) continue;
 
       const orgName = orgNameById.get(pref.organization_id) ?? "Your Organisation";
 
       results.push({
         organizationId: pref.organization_id,
         userId: pref.user_id,
-        phone,
+        sessionName: connection.sessionName,
+        assistantGroupJid: connection.assistantGroupJid,
         orgName,
       });
     }
@@ -208,13 +245,13 @@ export async function getEligibleOrgsForBriefing(): Promise<
 // ---------------------------------------------------------------------------
 
 /**
- * Generate and queue morning briefings for all eligible operators.
+ * Generate and send morning briefings for all eligible operators.
  *
  * For each eligible org/user pair:
  *   1. Build a context snapshot (cached per org).
  *   2. Format the briefing message (pure, zero-cost).
- *   3. Insert into `notification_queue` with an idempotency key
- *      to prevent duplicate sends on the same calendar day.
+ *   3. Send directly to the assistant group with a per-day
+ *      delivery guard and durable delivery logs.
  */
 export async function generateAndQueueBriefings(): Promise<BriefingResult> {
   const eligible = await getEligibleOrgsForBriefing();
@@ -231,7 +268,29 @@ export async function generateAndQueueBriefings(): Promise<BriefingResult> {
   let errors = 0;
 
   for (const entry of eligible) {
+    const idempotencyKey = `${entry.organizationId}:${entry.userId}:briefing:${dateKey}`;
+
     try {
+      const { data: existingLog, error: existingLogError } = await supabase
+        .from("notification_logs")
+        .select("id")
+        .eq("organization_id", entry.organizationId)
+        .eq("recipient_id", entry.userId)
+        .eq("notification_type", "morning_briefing")
+        .eq("status", "sent")
+        .eq("external_id", idempotencyKey)
+        .maybeSingle();
+
+      if (existingLogError) {
+        errors += 1;
+        continue;
+      }
+
+      if (existingLog?.id) {
+        skipped += 1;
+        continue;
+      }
+
       const agendaContext: ActionContext = {
         organizationId: entry.organizationId,
         userId: entry.userId,
@@ -240,39 +299,82 @@ export async function generateAndQueueBriefings(): Promise<BriefingResult> {
       };
       const agenda = await buildOwnerAgenda(agendaContext);
       const message = formatOwnerAgenda(agenda);
-      const idempotencyKey = `${entry.organizationId}:${entry.userId}:briefing:${dateKey}`;
+      const attemptedAt = new Date().toISOString();
 
-      const { error: insertError } = await supabase
-        .from("notification_queue")
-        .insert({
+      await guardedSendText(entry.sessionName, entry.assistantGroupJid, message);
+
+      await Promise.all([
+        supabase.from("notification_logs").insert({
+          organization_id: entry.organizationId,
+          recipient_id: entry.userId,
+          recipient_phone: entry.assistantGroupJid,
+          recipient_type: "admin",
           notification_type: "morning_briefing",
-          channel_preference: "whatsapp",
+          title: "Morning briefing",
+          body: message,
+          status: "sent",
+          external_id: idempotencyKey,
+          sent_at: attemptedAt,
+        }),
+        supabase.from("notification_delivery_status").insert({
+          organization_id: entry.organizationId,
           user_id: entry.userId,
-          recipient_phone: entry.phone,
-          scheduled_for: new Date().toISOString(),
-          idempotency_key: idempotencyKey,
-          status: "pending",
-          attempts: 0,
-          payload: {
-            message,
+          recipient_phone: entry.assistantGroupJid,
+          recipient_type: "admin",
+          channel: "whatsapp",
+          provider: "evolution_assistant_group",
+          notification_type: "morning_briefing",
+          status: "sent",
+          attempt_number: 1,
+          provider_message_id: idempotencyKey,
+          sent_at: attemptedAt,
+          metadata: {
+            assistant_group_jid: entry.assistantGroupJid,
+            session_name: entry.sessionName,
             org_name: entry.orgName,
           },
-        });
+        }),
+      ]);
 
-      if (insertError) {
-        // Idempotency key violation means already queued today -- skip.
-        if (insertError.code === "23505") {
-          skipped += 1;
-        } else {
-          errors += 1;
-        }
-      } else {
-        queued += 1;
+      queued += 1;
+    } catch (error) {
+      const attemptedAt = new Date().toISOString();
+      const errorMessage = getErrorMessage(error);
 
-        // Also send to WhatsApp Assistant group (best-effort)
-        void notifyOperator(entry.organizationId, message);
-      }
-    } catch {
+      await Promise.all([
+        supabase.from("notification_logs").insert({
+          organization_id: entry.organizationId,
+          recipient_id: entry.userId,
+          recipient_phone: entry.assistantGroupJid,
+          recipient_type: "admin",
+          notification_type: "morning_briefing",
+          title: "Morning briefing",
+          body: null,
+          status: "failed",
+          external_id: idempotencyKey,
+          error_message: errorMessage,
+        }),
+        supabase.from("notification_delivery_status").insert({
+          organization_id: entry.organizationId,
+          user_id: entry.userId,
+          recipient_phone: entry.assistantGroupJid,
+          recipient_type: "admin",
+          channel: "whatsapp",
+          provider: "evolution_assistant_group",
+          notification_type: "morning_briefing",
+          status: "failed",
+          attempt_number: 1,
+          provider_message_id: idempotencyKey,
+          failed_at: attemptedAt,
+          error_message: errorMessage,
+          metadata: {
+            assistant_group_jid: entry.assistantGroupJid,
+            session_name: entry.sessionName,
+            org_name: entry.orgName,
+          },
+        }),
+      ]);
+
       errors += 1;
     }
   }

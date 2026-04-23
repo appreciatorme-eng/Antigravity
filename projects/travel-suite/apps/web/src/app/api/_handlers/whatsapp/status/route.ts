@@ -7,7 +7,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/admin";
 import { getEvolutionStatus } from "@/lib/whatsapp-evolution.server";
-import { ensureAssistantGroup } from "@/lib/whatsapp/ensure-assistant-group";
 import { logError } from "@/lib/observability/logger";
 
 export async function GET(request: NextRequest) {
@@ -67,13 +66,6 @@ export async function GET(request: NextRequest) {
                         .eq("session_name", sessionName);
 
                 }
-
-                // Always retry assistant group creation on a healthy connected poll.
-                // This closes the gap where the first background attempt failed,
-                // or the old group was deleted after an earlier connection.
-                void ensureAssistantGroup(sessionName).catch((err) =>
-                    logError("[whatsapp/status] assistant group creation failed", err),
-                );
 
                 return NextResponse.json({
                     status: "connected",

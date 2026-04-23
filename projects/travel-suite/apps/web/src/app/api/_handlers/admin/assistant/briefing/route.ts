@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { requireAdmin } from "@/lib/auth/admin";
+import { getLatestBriefingDelivery } from "@/lib/assistant/briefing";
 import { logError } from "@/lib/observability/logger";
 
 const UpdateBriefingSchema = z.object({
@@ -17,7 +18,7 @@ export async function GET(request: Request): Promise<Response> {
 
     const organizationId = auth.organizationId;
 
-    const [{ data: preferenceRow, error: preferenceError }, { data: connectionRow, error: connectionError }, { data: queueRow, error: queueError }] =
+    const [{ data: preferenceRow, error: preferenceError }, { data: connectionRow, error: connectionError }, lastBriefing] =
       await Promise.all([
         auth.adminClient
           .from("assistant_preferences")
@@ -32,14 +33,7 @@ export async function GET(request: Request): Promise<Response> {
           .eq("organization_id", organizationId)
           .eq("status", "connected")
           .maybeSingle(),
-        auth.adminClient
-          .from("notification_queue")
-          .select("scheduled_for, status")
-          .eq("user_id", auth.userId)
-          .eq("notification_type", "morning_briefing")
-          .order("scheduled_for", { ascending: false })
-          .limit(1)
-          .maybeSingle(),
+        getLatestBriefingDelivery(organizationId, auth.userId),
       ]);
 
     if (preferenceError) {
@@ -50,16 +44,11 @@ export async function GET(request: Request): Promise<Response> {
       logError("[admin/assistant/briefing:GET] Failed to load WhatsApp connection", connectionError);
       return apiError("Failed to load morning briefing settings", 500);
     }
-    if (queueError) {
-      logError("[admin/assistant/briefing:GET] Failed to load last briefing", queueError);
-      return apiError("Failed to load morning briefing settings", 500);
-    }
-
     return apiSuccess({
       enabled: preferenceRow?.preference_value === true,
       assistantGroupReady: Boolean(connectionRow?.assistant_group_jid),
-      lastBriefingAt: queueRow?.scheduled_for ?? null,
-      lastBriefingStatus: queueRow?.status ?? null,
+      lastBriefingAt: lastBriefing.at,
+      lastBriefingStatus: lastBriefing.status,
     });
   } catch (error) {
     logError("[admin/assistant/briefing:GET] Unhandled error", error);

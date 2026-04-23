@@ -3,7 +3,6 @@ import {
   createEvolutionGroup,
   guardedSendText,
   updateEvolutionGroupDescription,
-  verifyEvolutionGroupAccess,
 } from "@/lib/whatsapp-evolution.server";
 import { logError, logEvent } from "@/lib/observability/logger";
 import { sendPoll, WELCOME_POLL } from "./assistant-polls";
@@ -99,40 +98,21 @@ export async function ensureAssistantGroup(
 
   const orgId = conn?.organization_id ?? null;
 
-  const clearStaleAssistantGroup = async (groupJid: string): Promise<void> => {
-    if (!orgId) return;
+  if (orgId && conn?.phone_number) {
+    const ownerUserId = await resolveOwnerUserIdForOrg(orgId, conn.phone_number).catch(() => null);
+    await enableMorningBriefingByDefault(orgId, ownerUserId).catch((err) => {
+      logError("[ensure-assistant-group] Failed to enable morning briefing preference", err);
+    });
+  }
 
-    await admin
-      .from("whatsapp_connections")
-      .update({ assistant_group_jid: null } as Record<string, unknown>)
-      .eq("organization_id", orgId)
-      .eq("assistant_group_jid", groupJid);
-
-    logEvent("info", `[ensure-assistant-group] Cleared stale group ${groupJid} for org ${orgId}`);
-  };
-
-  // Already has a group on this session
+  // Keep the currently stored group authoritative for this session.
   if (conn?.assistant_group_jid) {
-    const isAccessible = await verifyEvolutionGroupAccess(
-      sessionName,
-      conn.assistant_group_jid,
-    );
-
-    if (isAccessible) {
-      return conn.assistant_group_jid;
-    }
-
-    await clearStaleAssistantGroup(conn.assistant_group_jid);
+    return conn.assistant_group_jid;
   }
 
   // No phone number — can't create group
   if (!conn?.phone_number) return null;
   if (!orgId) return null;
-
-  const ownerUserId = await resolveOwnerUserIdForOrg(orgId, conn.phone_number ?? null).catch(() => null);
-  await enableMorningBriefingByDefault(orgId, ownerUserId).catch((err) => {
-    logError("[ensure-assistant-group] Failed to enable morning briefing preference", err);
-  });
 
   // 2. Check if any row for this org has an existing group JID
   //    (from a previous session before disconnect/reconnect)
@@ -148,10 +128,6 @@ export async function ensureAssistantGroup(
     ?.assistant_group_jid;
 
   if (existingJid) {
-    const isAccessible = await verifyEvolutionGroupAccess(sessionName, existingJid);
-    if (!isAccessible) {
-      await clearStaleAssistantGroup(existingJid);
-    } else {
     // Carry the existing group JID forward to the new session row
     await admin
       .from("whatsapp_connections")
@@ -160,7 +136,6 @@ export async function ensureAssistantGroup(
 
     logEvent("info", `[ensure-assistant-group] Reused existing group ${existingJid} for ${sessionName}`);
     return existingJid;
-    }
   }
 
   // 3. No existing group anywhere — create a new one
@@ -194,9 +169,9 @@ export async function ensureAssistantGroup(
     "*Quick commands you can type:*",
     "  \u{1F4CA} *stats* — Dashboard overview",
     "  \u{1F4CB} *today* — Today's trips",
-    "  \u{1F195} *leads* — Recent leads",
     "  \u{1F4B0} *payments* — Pending payments",
-    "  \u{1F4B5} *revenue* — Revenue summary",
+    "  \u{1F4CA} *brief* — Today's agenda",
+    "  \u{1F4B5} *work* — Priority queue",
     "",
     "Or just ask me anything in plain English!",
   ].join("\n"));

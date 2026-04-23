@@ -26,15 +26,14 @@ export const POLL_OPTION_TO_COMMAND: Readonly<Record<string, string>> = {
     "📊 Dashboard overview": "stats",
     "📋 Today's trips": "today",
     "💰 Pending payments": "payments",
-    "🆕 Recent leads": "leads",
 
     // Follow-up poll options
     "💵 Revenue details": "revenue",
     "📊 Daily briefing": "brief",
     "📋 View trips": "today",
     "💰 View payments": "payments",
-    "🆕 View leads": "leads",
     "📊 View dashboard": "stats",
+    "🗂️ Priority work": "work",
 };
 
 // ---------------------------------------------------------------------------
@@ -50,19 +49,19 @@ interface PollDefinition {
 const FOLLOW_UP_POLLS: Readonly<Record<string, PollDefinition>> = {
     stats: {
         question: "📋 Dive deeper into:",
-        options: ["📋 Today's trips", "💰 Pending payments", "💵 Revenue details", "🆕 Recent leads"],
+        options: ["📋 Today's trips", "💰 Pending payments", "💵 Revenue details", "📊 Daily briefing"],
     },
     today: {
         question: "📋 What next?",
-        options: ["💰 Pending payments", "🆕 Recent leads", "📊 Dashboard overview"],
+        options: ["💰 Pending payments", "📊 Daily briefing", "📊 Dashboard overview"],
     },
     payments: {
         question: "📋 What next?",
-        options: ["📋 Today's trips", "💵 Revenue details", "📊 Dashboard overview"],
+        options: ["📋 Today's trips", "🗂️ Priority work", "📊 Dashboard overview"],
     },
     revenue: {
         question: "📋 What next?",
-        options: ["💰 Pending payments", "📋 Today's trips", "📊 Dashboard overview"],
+        options: ["💰 Pending payments", "📋 Today's trips", "🗂️ Priority work"],
     },
     leads: {
         question: "📋 What next?",
@@ -70,20 +69,18 @@ const FOLLOW_UP_POLLS: Readonly<Record<string, PollDefinition>> = {
     },
     brief: {
         question: "📋 What next?",
-        options: ["📊 Dashboard overview", "📋 Today's trips", "💰 Pending payments", "🆕 Recent leads"],
+        options: ["📊 Dashboard overview", "📋 Today's trips", "💰 Pending payments", "🗂️ Priority work"],
+    },
+    work: {
+        question: "📋 What next?",
+        options: ["📋 Today's trips", "💰 Pending payments", "📊 Dashboard overview"],
     },
 };
 
 /** The welcome menu sent when assistant group is first created. */
 export const WELCOME_POLL: PollDefinition = {
     question: "📋 Try it now — pick one:",
-    options: ["📊 Dashboard overview", "📋 Today's trips", "💰 Pending payments", "🆕 Recent leads"],
-};
-
-/** Poll sent after a new lead notification. */
-export const LEAD_NOTIFICATION_POLL: PollDefinition = {
-    question: "📋 What do you want to do?",
-    options: ["🆕 View leads", "📊 View dashboard"],
+    options: ["📊 Dashboard overview", "📋 Today's trips", "💰 Pending payments", "📊 Daily briefing"],
 };
 
 /** Poll sent after a payment notification. */
