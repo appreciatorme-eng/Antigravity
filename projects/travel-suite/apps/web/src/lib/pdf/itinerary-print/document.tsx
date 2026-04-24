@@ -810,6 +810,12 @@ const PRINT_CSS = `
     color: rgba(17, 24, 39, 0.82);
     font-weight: 600;
   }
+  .standout-line {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
   .safari-overview__copy {
     margin: 0;
     font-size: 11px;
@@ -2544,6 +2550,19 @@ const getFeaturedActivities = (payload: PreparedPrintPayload, limit = 4) =>
     })
     .filter((activity): activity is NonNullable<typeof activity> => activity !== null && Boolean(activity.title));
 
+const getDayStandoutLines = (payload: PreparedPrintPayload) =>
+  payload.itinerary.days
+    .map((day) => {
+      const firstActivity = day.activities[0];
+      const title = firstActivity?.title || day.theme || `Day ${day.day_number}`;
+      const location = firstActivity?.location || getDayLocations(day, 1)[0];
+      return {
+        dayNumber: day.day_number,
+        text: [`Day ${day.day_number} — ${title}`, location].filter(Boolean).join(' • '),
+      };
+    })
+    .filter((item) => item.text.trim().length > 0);
+
 const getTopLocations = (payload: PreparedPrintPayload, limit = 3) => {
   const values = payload.itinerary.days
     .flatMap((day) => day.activities.map((activity) => activity.location).filter(Boolean) as string[])
@@ -3704,7 +3723,7 @@ const LuxuryDossierCards = ({
 
 const LuxuryOverviewPage = ({ payload }: { payload: PreparedPrintPayload }) => {
   const accent = payload.branding.primaryColor || '#ccb27a';
-  const featuredActivities = getFeaturedActivities(payload, 3);
+  const standoutLines = getDayStandoutLines(payload);
   const selectedAddOns = getSelectedAddOns(payload, 3);
 
   return (
@@ -3735,15 +3754,12 @@ const LuxuryOverviewPage = ({ payload }: { payload: PreparedPrintPayload }) => {
               </p>
             </div>
             <div className="luxury-panel">
-              <p className="luxury-panel__label">Signature moments</p>
+              <p className="luxury-panel__label">Standout stops</p>
               <div className="luxury-mini-list">
-                {featuredActivities.map((activity, index) => (
+                {standoutLines.map((item, index) => (
                   <div key={`luxury-featured-${index}`} className="luxury-mini-list__item">
-                    <div className="luxury-mini-list__index">{activity.dayNumber}</div>
-                    <div>
-                      <p className="luxury-mini-list__text" style={{ color: '#fffaf0', fontWeight: 700 }}>{activity.title}</p>
-                      <p className="luxury-mini-list__text">{activity.description}</p>
-                    </div>
+                    <div className="luxury-mini-list__index">{item.dayNumber}</div>
+                    <p className="luxury-mini-list__text standout-line" style={{ color: '#fffaf0', fontWeight: 700 }}>{item.text}</p>
                   </div>
                 ))}
               </div>
@@ -4864,7 +4880,7 @@ const ProfessionalLogisticsSnapshot = ({ payload }: { payload: PreparedPrintPayl
 const ProfessionalBriefPage = ({ payload }: { payload: PreparedPrintPayload }) => {
   const accent = payload.branding.primaryColor || '#124ea2';
   const topLocations = getTopLocations(payload, 5);
-  const featuredActivities = getFeaturedActivities(payload, 3);
+  const standoutLines = getDayStandoutLines(payload);
   const selectedAddOns = getSelectedAddOns(payload, 3);
   const contextItems = (
     payload.itinerary.interests?.length
@@ -4915,15 +4931,10 @@ const ProfessionalBriefPage = ({ payload }: { payload: PreparedPrintPayload }) =
             </div>
             <div className="panel">
               <p className="panel__title">Standout stops</p>
-              <div className="summary-highlights">
-                {featuredActivities.map((activity, index) => (
-                  <div key={`professional-featured-${index}`} className="summary-highlight">
-                    <div className="summary-highlight__index">{activity.dayNumber}</div>
-                    <div>
-                      <div className="summary-highlight__meta">Day {activity.dayNumber} • {activity.location || activity.dayTheme}</div>
-                      <h3 className="summary-highlight__title">{activity.title}</h3>
-                      <p className="summary-highlight__desc">{activity.description}</p>
-                    </div>
+              <div className="safari-overview__list">
+                {standoutLines.map((item, index) => (
+                  <div key={`professional-featured-${index}`} className="safari-overview__panel">
+                    <p className="safari-overview__line standout-line">{item.text}</p>
                   </div>
                 ))}
               </div>
