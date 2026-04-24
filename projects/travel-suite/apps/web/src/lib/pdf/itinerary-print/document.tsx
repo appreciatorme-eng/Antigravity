@@ -363,6 +363,7 @@ const PRINT_CSS = `
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
+    margin-top: 2mm;
     break-inside: avoid;
     page-break-inside: avoid;
   }
@@ -384,10 +385,10 @@ const PRINT_CSS = `
     overflow: hidden;
   }
   .day-dossier .trip-brief__copy {
-    font-size: 10px;
-    line-height: 1.35;
+    font-size: 9px;
+    line-height: 1.2;
     display: -webkit-box;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 1;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
@@ -3329,8 +3330,8 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
         ))}
         {payload.itinerary.days.flatMap((day, index) => {
           const [featured, ...remaining] = day.activities;
-          const supportActivities = remaining.slice(0, 2);
-          const continuationChunks = chunkItems(remaining.slice(2), 2);
+          const supportActivities = remaining.slice(0, 1);
+          const continuationChunks = chunkItems(remaining.slice(1), 2);
           const dayLocations = getDayLocations(day, 4);
           const accommodation = getDayAccommodation(payload, day.day_number);
 
@@ -4428,7 +4429,7 @@ const LuxuryTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
       </section>
       <LuxuryOverviewPage payload={payload} />
       {payload.itinerary.days.flatMap((day, dayIndex) =>
-        chunkItems(day.activities, 3).map((chunk, chunkIndex) => (
+        chunkItems(day.activities, 2).map((chunk, chunkIndex) => (
           <section key={`luxury-day-${dayIndex}-${chunkIndex}`} className="page page--dark luxury-sheet">
             <div className="page__inner" style={{ ['--accent' as string]: accent }}>
               <BrandRow branding={payload.branding} dark />
@@ -4573,7 +4574,7 @@ const VisualTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
       </section>
       <VisualOverviewPage payload={payload} />
       {payload.itinerary.days.flatMap((day, dayIndex) =>
-        chunkItems(day.activities, 3).map((chunk, chunkIndex) => (
+        chunkItems(day.activities, 2).map((chunk, chunkIndex) => (
           <section key={`visual-day-${dayIndex}-${chunkIndex}`} className="page page--white">
             <div className="page__inner" style={{ ['--accent' as string]: accent }}>
               <BrandRow branding={payload.branding} />
@@ -4659,7 +4660,7 @@ const BentoTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
       </section>
       <BentoOverviewPage payload={payload} />
       {payload.itinerary.days.flatMap((day, dayIndex) =>
-        chunkItems(day.activities, 4).map((chunk, chunkIndex) => (
+        chunkItems(day.activities, 3).map((chunk, chunkIndex) => (
           <section key={`bento-day-${dayIndex}-${chunkIndex}`} className="page page--white bento-print-cover">
             <div className="page__inner" style={{ ['--accent' as string]: accent }}>
               <BrandRow branding={payload.branding} />
@@ -4772,7 +4773,7 @@ const UrbanTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
       </section>
       <UrbanOverviewPage payload={payload} />
       {payload.itinerary.days.flatMap((day, dayIndex) =>
-        chunkItems(day.activities, 5).map((chunk, chunkIndex) => (
+        chunkItems(day.activities, 4).map((chunk, chunkIndex) => (
           <section key={`urban-day-${dayIndex}-${chunkIndex}`} className="page page--white">
             <div className="page__inner" style={{ ['--accent' as string]: accent }}>
               <BrandRow branding={payload.branding} />
@@ -5007,7 +5008,7 @@ const ProfessionalTemplate = ({ payload }: { payload: PreparedPrintPayload }) =>
       </section>
       <ProfessionalBriefPage payload={payload} />
       {payload.itinerary.days.flatMap((day, dayIndex) =>
-        chunkItems(day.activities, 3).map((chunk, chunkIndex) => (
+        chunkItems(day.activities, 2).map((chunk, chunkIndex) => (
           <section key={`pro-day-${dayIndex}-${chunkIndex}`} className="page page--white">
             <div className="page__inner" style={{ ['--accent' as string]: accent }}>
               <BrandRow branding={payload.branding} />
