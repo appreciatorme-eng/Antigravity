@@ -31,6 +31,7 @@ interface ShareTemplateRendererProps {
     organizationBranding?: OrganizationBranding;
     client: { name: string; email?: string } | null;
     paymentConfig: SharePaymentConfig | null;
+    referenceIssuedAt?: string | null;
 }
 
 export default function ShareTemplateRenderer({
@@ -41,6 +42,7 @@ export default function ShareTemplateRenderer({
     organizationBranding,
     client,
     paymentConfig,
+    referenceIssuedAt,
 }: ShareTemplateRendererProps) {
     const { toast } = useToast();
     const [caching, setCaching] = useState(false);
@@ -100,7 +102,11 @@ export default function ShareTemplateRenderer({
 
     const commonProps = { itinerary: brandedItinerary, organizationName, organizationBranding, client };
     const legacyProps = { itineraryData: brandedItinerary, organizationName, client };
-    const referenceNumber = buildItineraryReferenceNumber(brandedItinerary);
+    const referenceNumber = buildItineraryReferenceNumber(brandedItinerary, {
+        organizationName: organizationBranding?.name || organizationName,
+        issuedAt: referenceIssuedAt,
+        sequenceSource: token,
+    });
     const commonTemplateProps = { ...commonProps, referenceNumber };
     const hasPackageScope =
         (Array.isArray(brandedItinerary.inclusions) && brandedItinerary.inclusions.length > 0) ||

@@ -48,11 +48,71 @@ const createStableHash = (value: string) => {
   return (hash >>> 0).toString(16).toUpperCase().padStart(8, '0');
 };
 
+const ORG_CODE_STOP_WORDS = new Set([
+  'AND',
+  'COMPANY',
+  'HOLIDAY',
+  'HOLIDAYS',
+  'LLP',
+  'LTD',
+  'PRIVATE',
+  'PVT',
+  'THE',
+  'TOUR',
+  'TOURS',
+  'TRAVEL',
+  'TRAVELS',
+]);
+
+const buildOrganizationCode = (value?: string | null) => {
+  const words = (value || '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
+  const meaningfulWords = words.filter((word) => !ORG_CODE_STOP_WORDS.has(word));
+  const selectedWords = meaningfulWords.length ? meaningfulWords : words;
+
+  if (!selectedWords.length) return 'ORG';
+  if (selectedWords.length === 1) {
+    return selectedWords[0].slice(0, 4).padEnd(3, 'X');
+  }
+
+  const initials = selectedWords.map((word) => word[0]).join('');
+  if (initials.length >= 3) return initials.slice(0, 4);
+  return `${initials}${selectedWords[0].slice(1)}`.slice(0, 3).padEnd(3, 'X');
+};
+
+const buildShortDateCode = (value?: string | null) => {
+  const normalized = normalizeDateValue(value);
+  if (!normalized) return '000000';
+  const [year, month, day] = normalized.split('-');
+  return `${year.slice(2)}${month}${day}`;
+};
+
+export type ItineraryReferenceContext = {
+  organizationName?: string | null;
+  issuedAt?: string | null;
+  sequenceSource?: string | null;
+};
+
 export const buildItineraryReferenceNumber = (itinerary: Pick<
   ItineraryResult,
-  'trip_title' | 'destination' | 'start_date' | 'end_date' | 'duration_days' | 'days'
->) => {
+  'trip_title' | 'destination' | 'start_date' | 'end_date' | 'duration_days' | 'days' | 'branding'
+>, context: ItineraryReferenceContext = {}) => {
+  const issuedDate =
+    context.issuedAt ||
+    normalizeDateValue(itinerary.start_date) ||
+    normalizeDateValue(itinerary.days?.[0]?.date) ||
+    normalizeDateValue(itinerary.end_date);
+  const orgCode = buildOrganizationCode(
+    context.organizationName || itinerary.branding?.organizationName,
+  );
+  const dateCode = buildShortDateCode(issuedDate);
   const seed = [
+    dateCode,
+    orgCode,
+    context.sequenceSource || '',
     itinerary.trip_title || '',
     itinerary.destination || '',
     normalizeDateValue(itinerary.start_date) || '',
@@ -60,6 +120,7 @@ export const buildItineraryReferenceNumber = (itinerary: Pick<
     String(itinerary.duration_days || itinerary.days?.length || 0),
     String(itinerary.days?.length || 0),
   ].join('|');
+  const dailySequence = (Number.parseInt(createStableHash(seed).slice(0, 8), 16) % 99) + 1;
 
-  return `TB-${createStableHash(seed).slice(0, 8)}`;
+  return `TB-${orgCode}-${dateCode}-${String(dailySequence).padStart(2, '0')}`;
 };

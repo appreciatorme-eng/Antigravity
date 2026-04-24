@@ -97,12 +97,14 @@ export default async function SharedTripPage({
                     .from("shared_itineraries")
                     .select(`
                         id,
+                        created_at,
                         expires_at,
                         template_id,
                         status,
                         viewed_at,
                         itineraries (
                           id,
+                          created_at,
                           raw_data,
                           trip_title,
                           destination,
@@ -123,6 +125,7 @@ export default async function SharedTripPage({
 
     const shareRow = share as {
         id: string;
+        created_at?: string | null;
         expires_at?: string | null;
         viewed_at?: string | null;
         status?: string | null;
@@ -173,6 +176,7 @@ export default async function SharedTripPage({
     const shareRecord = share as unknown as {
         itineraries: {
             id?: string;
+            created_at?: string | null;
             raw_data: unknown;
             trip_title?: string;
             destination?: string;
@@ -269,6 +273,7 @@ export default async function SharedTripPage({
             organizationBranding={organizationBranding}
             client={clientName ? { name: clientName } : null}
             paymentConfig={paymentConfig}
+            referenceIssuedAt={shareRow.created_at ?? itinerary.created_at ?? null}
         />
     );
 }

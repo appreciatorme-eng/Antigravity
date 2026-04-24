@@ -11,7 +11,10 @@ import {
 } from "@/components/pdf/itinerary-types";
 import { stripRepeatedPdfImages } from "@/components/pdf/templates/sections/shared";
 import { populateItineraryImages } from "@/lib/image-search";
-import { buildItineraryReferenceNumber } from "@/lib/itinerary/tracking";
+import {
+  buildItineraryReferenceNumber,
+  type ItineraryReferenceContext,
+} from "@/lib/itinerary/tracking";
 import { logError } from "@/lib/observability/logger";
 import { prepareItineraryPrintPayload } from "@/lib/pdf/itinerary-print/assets";
 import { launchItineraryPdfBrowser } from "@/lib/pdf/itinerary-print/browser";
@@ -136,6 +139,7 @@ type RenderItineraryPdfArgs = {
   readonly skipImageEnrichment?: boolean;
   readonly allowLegacyFallback?: boolean;
   readonly referenceNumber?: string | null;
+  readonly referenceContext?: ItineraryReferenceContext;
 };
 
 export async function renderItineraryPdfBuffer({
@@ -148,6 +152,7 @@ export async function renderItineraryPdfBuffer({
   skipImageEnrichment = false,
   allowLegacyFallback = true,
   referenceNumber,
+  referenceContext,
 }: RenderItineraryPdfArgs): Promise<ItineraryPdfRenderResult> {
   const resolvedTemplate = normalizeItineraryTemplateId(template ?? DEFAULT_ITINERARY_TEMPLATE);
   const normalizedItinerary = normalizeServerPdfItinerary(itinerary);
@@ -164,7 +169,10 @@ export async function renderItineraryPdfBuffer({
     fileName ||
     `${sanitizeItineraryPdfFileName(normalizedItinerary.trip_title || "itinerary")}_${resolvedTemplate}.pdf`;
   const resolvedReferenceNumber =
-    referenceNumber?.trim() || buildItineraryReferenceNumber(normalizedItinerary);
+    referenceNumber?.trim() || buildItineraryReferenceNumber(normalizedItinerary, {
+      organizationName: resolvedBranding.companyName,
+      ...referenceContext,
+    });
 
   let printErrorMessage: string | null = null;
 

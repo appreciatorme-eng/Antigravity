@@ -1,5 +1,6 @@
 export const SHARED_ITINERARY_PUBLIC_SELECT = `
   id,
+  created_at,
   expires_at,
   payment_config,
   template_id,
@@ -7,6 +8,7 @@ export const SHARED_ITINERARY_PUBLIC_SELECT = `
   viewed_at,
   itineraries (
     id,
+    created_at,
     raw_data,
     trip_title,
     destination,

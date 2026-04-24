@@ -87,7 +87,7 @@ export async function GET(
 
   const { data: draft, error: draftError } = await admin
     .from("assistant_trip_requests")
-    .select("organization_id, client_name, created_itinerary_id, status")
+    .select("id, organization_id, client_name, created_itinerary_id, status, submitted_at, created_at")
     .eq("form_token", token)
     .maybeSingle();
 
@@ -95,7 +95,7 @@ export async function GET(
   if ((!resolvedDraft || draftError) && (isMissingFormTokenColumnError(draftError) || isUuidLike(token))) {
     const { data: fallbackDraft, error: fallbackError } = await admin
       .from("assistant_trip_requests")
-      .select("organization_id, client_name, created_itinerary_id, status")
+      .select("id, organization_id, client_name, created_itinerary_id, status, submitted_at, created_at")
       .eq("id", token)
       .maybeSingle();
 
@@ -161,6 +161,10 @@ export async function GET(
       fileName,
       skipImageEnrichment: true,
       allowLegacyFallback: false,
+      referenceContext: {
+        issuedAt: resolvedDraft.submitted_at ?? resolvedDraft.created_at ?? null,
+        sequenceSource: resolvedDraft.created_itinerary_id || resolvedDraft.id || token,
+      },
     });
 
     return new NextResponse(new Uint8Array(pdf.buffer), {
