@@ -81,4 +81,17 @@ describe("deriveCommercialStage", () => {
 
     expect(deriveCommercialStage(trip)).toBe("approved");
   });
+
+  it("treats stale approved share status without approval details as viewed", () => {
+    const trip = makeTrip({
+      status: "confirmed",
+      share_code: "share_123",
+      share_status: "approved",
+      viewed_at: "2026-04-21T00:30:00.000Z",
+      approved_at: null,
+      approved_by: null,
+    });
+
+    expect(deriveCommercialStage(trip)).toBe("viewed");
+  });
 });
