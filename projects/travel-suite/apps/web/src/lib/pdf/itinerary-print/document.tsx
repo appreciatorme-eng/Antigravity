@@ -2536,20 +2536,6 @@ const formatCurrency = (itinerary: PreparedPrintPayload['itinerary']) => {
   }).format(total);
 };
 
-const getFeaturedActivities = (payload: PreparedPrintPayload, limit = 4) =>
-  payload.itinerary.days
-    .slice(0, limit)
-    .map((day) => {
-      const first = day.activities[0];
-      if (!first) return null;
-      return {
-        ...first,
-        dayNumber: day.day_number,
-        dayTheme: day.theme,
-      };
-    })
-    .filter((activity): activity is NonNullable<typeof activity> => activity !== null && Boolean(activity.title));
-
 const getDayStandoutLines = (payload: PreparedPrintPayload) =>
   payload.itinerary.days
     .map((day) => {
@@ -3175,7 +3161,7 @@ const PageFooter = ({ branding }: { branding: PreparedPrintPayload['branding'] }
 
 const SafariHighlightsPage = ({
   payload,
-  activities,
+  standoutLines,
   pageIndex,
   totalPages,
   accent,
@@ -3183,7 +3169,7 @@ const SafariHighlightsPage = ({
   selectedAddOns,
 }: {
   payload: PreparedPrintPayload;
-  activities: ReturnType<typeof getFeaturedActivities>;
+  standoutLines: ReturnType<typeof getDayStandoutLines>;
   pageIndex: number;
   totalPages: number;
   accent: string;
@@ -3210,12 +3196,12 @@ const SafariHighlightsPage = ({
               Additional highlights for the client handoff
             </h2>
             <div className="summary-highlights summary-highlights--paged">
-              {activities.map((activity, index) => (
+              {standoutLines.map((item, index) => (
                 <div key={`safari-brief-extra-${pageIndex}-${index}`} className="summary-highlight">
-                  <div className="summary-highlight__index">{activity.dayNumber}</div>
+                  <div className="summary-highlight__index">{item.dayNumber}</div>
                   <div>
                     <h3 className="summary-highlight__title" style={{ marginBottom: 0 }}>
-                      Day {activity.dayNumber} — {activity.title}
+                      {item.text}
                     </h3>
                   </div>
                 </div>
@@ -3239,7 +3225,7 @@ const SafariHighlightsPage = ({
 };
 
 const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
-  const featuredActivities = getFeaturedActivities(payload, Math.min(payload.itinerary.days.length, 8));
+  const standoutLines = getDayStandoutLines(payload);
   const accent = resolveAccentColor(payload);
   const price = formatCurrency(payload.itinerary);
   const topLocations = getTopLocations(payload, 5);
@@ -3247,8 +3233,8 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
   const totalActivities = payload.itinerary.days.reduce((sum, day) => sum + day.activities.length, 0);
   const flightsCount = payload.itinerary.logistics?.flights?.length || 0;
   const staysCount = payload.itinerary.logistics?.hotels?.length || payload.printExtras.dayAccommodations.length || 0;
-  const briefHighlights = featuredActivities.slice(0, 2);
-  const extraHighlightPages = chunkItems(featuredActivities.slice(2), 4);
+  const briefHighlights = standoutLines.slice(0, 2);
+  const extraHighlightPages = chunkItems(standoutLines.slice(2), 4);
 
   return (
     <>
@@ -3308,10 +3294,10 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                   ) : null}
                 </div>
                 <div className="panel panel--muted">
-                  <p className="panel__title">Standout moments</p>
-                  {briefHighlights.map((activity, index) => (
+                  <p className="panel__title">Standout stops</p>
+                  {briefHighlights.map((item, index) => (
                     <div key={`safari-featured-${index}`} className="safari-overview__panel">
-                      <p className="safari-overview__line">Day {activity.dayNumber} — {activity.title}</p>
+                      <p className="safari-overview__line standout-line">{item.text}</p>
                     </div>
                   ))}
                 </div>
@@ -3339,7 +3325,7 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
           <SafariHighlightsPage
             key={`safari-brief-extra-${index}`}
             payload={payload}
-            activities={activities}
+            standoutLines={activities}
             pageIndex={index}
             totalPages={extraHighlightPages.length}
             accent={accent}
@@ -3934,7 +3920,7 @@ const VisualTravelDistancePanel = ({
 const VisualOverviewPage = ({ payload }: { payload: PreparedPrintPayload }) => {
   const accent = payload.branding.primaryColor || '#e11d48';
   const topLocations = getTopLocations(payload, 5);
-  const featuredActivities = getFeaturedActivities(payload, 3);
+  const standoutLines = getDayStandoutLines(payload);
   const contextItems = [
     ...(payload.itinerary.interests || []),
     ...(payload.itinerary.tips || []),
@@ -3967,16 +3953,11 @@ const VisualOverviewPage = ({ payload }: { payload: PreparedPrintPayload }) => {
               </p>
             </div>
             <div className="visual-panel">
-              <p className="visual-panel__label">Standout frames</p>
-              <div className="summary-highlights">
-                {featuredActivities.slice(0, 2).map((activity, index) => (
-                  <div key={`visual-highlight-${index}`} className="summary-highlight">
-                    <div className="summary-highlight__index">{activity.dayNumber}</div>
-                    <div>
-                      <div className="summary-highlight__meta">Day {activity.dayNumber} • {activity.location || activity.dayTheme}</div>
-                      <h3 className="summary-highlight__title">{activity.title}</h3>
-                      <p className="summary-highlight__desc">{activity.description}</p>
-                    </div>
+              <p className="visual-panel__label">Standout stops</p>
+              <div className="safari-overview__list">
+                {standoutLines.map((item, index) => (
+                  <div key={`visual-highlight-${index}`} className="safari-overview__panel">
+                    <p className="safari-overview__line standout-line">{item.text}</p>
                   </div>
                 ))}
               </div>
@@ -4158,7 +4139,7 @@ const BentoLogisticsPanel = ({ payload }: { payload: PreparedPrintPayload }) => 
 
 const BentoOverviewPage = ({ payload }: { payload: PreparedPrintPayload }) => {
   const accent = payload.branding.primaryColor || '#6366f1';
-  const mosaicActivities = payload.itinerary.days.flatMap((day) => day.activities).slice(0, 4);
+  const standoutLines = getDayStandoutLines(payload);
 
   return (
     <section className="page page--white bento-print-cover">
@@ -4174,16 +4155,7 @@ const BentoOverviewPage = ({ payload }: { payload: PreparedPrintPayload }) => {
               <BentoDossierGrid payload={payload} />
             </div>
           </div>
-          <div className="bento-mosaic-compact">
-            {mosaicActivities.map((activity, index) => (
-              <BentoPrintCard
-                key={`bento-overview-${index}`}
-                activity={activity}
-                fallbackLocation={payload.itinerary.destination}
-                wide={index === 0}
-              />
-            ))}
-          </div>
+          <BentoMiniListPanel title="Standout stops" items={standoutLines.map((item) => item.text)} maxItems={payload.itinerary.days.length} />
         </div>
         <div className="bento-overview-grid" style={{ marginTop: '7mm' }}>
           <BentoLogisticsPanel payload={payload} />
