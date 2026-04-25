@@ -432,8 +432,9 @@ export default function DirectoryPage() {
             });
             if (res.ok) {
                 const data = await res.json();
-                if (data.magic_link) {
-                    setImpersonationLink(data.magic_link);
+                const magicLink = data.data?.magic_link ?? data.magic_link;
+                if (typeof magicLink === "string" && magicLink.length > 0) {
+                    setImpersonationLink(magicLink);
                 } else {
                     showError("Invalid impersonation response");
                     setShowImpersonateConfirm(false);
