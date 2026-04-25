@@ -189,6 +189,13 @@ Return JSON in this exact structure:
       "date": "2026-04-28",
       "title": "Arrival in Phuket",
       "description": "Day summary",
+      "accommodation": {
+        "hotel_name": "Hotel name if stated",
+        "star_rating": 4,
+        "room_type": "Deluxe Room",
+        "price_per_night": 6500,
+        "amenities": ["Breakfast"]
+      },
       "activities": [
         {
           "time": "09:00 AM",
@@ -209,6 +216,8 @@ Rules:
 - Return JSON only, no markdown.
 - Use YYYY-MM-DD for start_date, end_date, and any explicit day dates.
 - Extract pricing, inclusions, exclusions, tips, and interests whenever present.
+- If the text mentions hotels, stays, camps, resorts, room types, or accommodation nights, extract them into the relevant day's "accommodation" object.
+- If hotel details are only mentioned in inclusions or package notes, still capture them under the best matching day instead of dropping them.
 - Use numeric prices only, no currency symbols.
 - If exact coordinates are unknown, omit coordinates instead of guessing 0,0.
 - Do not invent days or activities not supported by the text.

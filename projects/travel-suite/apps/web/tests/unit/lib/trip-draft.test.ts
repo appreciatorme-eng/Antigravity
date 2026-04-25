@@ -82,6 +82,11 @@ describe("trip draft normalization", () => {
         {
           day_number: 1,
           theme: "Arrival",
+          accommodation: {
+            hotel_name: "The Grand Dragon",
+            room_type: "Deluxe Room",
+            amenities: ["Breakfast"],
+          },
           activities: [{ time: "TBD", title: "Check in", description: "", location: "Leh" }],
         },
       ],
@@ -94,6 +99,20 @@ describe("trip draft normalization", () => {
       inclusions: ["Hotel"],
       exclusions: ["Flights"],
       pricing: { total_cost: 100000, currency: "INR" },
+      accommodations: [
+        expect.objectContaining({
+          day_number: 1,
+          hotel_name: "The Grand Dragon",
+          room_type: "Deluxe Room",
+        }),
+      ],
+      logistics: {
+        hotels: [
+          expect.objectContaining({
+            name: "The Grand Dragon",
+          }),
+        ],
+      },
     });
   });
 
@@ -139,5 +158,73 @@ describe("trip draft normalization", () => {
 
     expect(draft.start_date).toBe("2026-05-10");
     expect(draft.end_date).toBe("2026-05-13");
+  });
+
+  it("fills a fallback accommodation when import text does not include hotel details", () => {
+    const draft = normalizeImportedItineraryDraft({
+      trip_title: "Kashmir Escape",
+      destination: "Srinagar",
+      duration_days: 2,
+      days: [
+        {
+          day_number: 1,
+          title: "Arrival",
+          activities: [{ time: "TBD", title: "Airport transfer", description: "", location: "Srinagar" }],
+        },
+        {
+          day_number: 2,
+          title: "Sightseeing",
+          activities: [{ time: "TBD", title: "Dal Lake", description: "", location: "Srinagar" }],
+        },
+      ],
+    });
+
+    expect(draft.accommodations).toEqual([
+      expect.objectContaining({
+        day_number: 1,
+        hotel_name: "Hotel details will be shared by the tour operator.",
+        is_fallback: true,
+      }),
+      expect.objectContaining({
+        day_number: 2,
+        hotel_name: "Hotel details will be shared by the tour operator.",
+        is_fallback: true,
+      }),
+    ]);
+    expect(draft.warnings).toContain(
+      "Hotel details were not found in the import. They can be confirmed by the tour operator later.",
+    );
+  });
+
+  it("preserves extracted day accommodation details", () => {
+    const draft = normalizeImportedItineraryDraft({
+      trip_title: "Pilgrimage",
+      destination: "Kashmir",
+      duration_days: 1,
+      days: [
+        {
+          day_number: 1,
+          title: "Arrival",
+          accommodation: {
+            hotel_name: "Hotel Pine Retreat",
+            room_type: "Family Suite",
+            star_rating: 4,
+            amenities: ["Breakfast", "Wifi"],
+          },
+          activities: [{ time: "TBD", title: "Check in", description: "", location: "Srinagar" }],
+        },
+      ],
+    });
+
+    expect(draft.accommodations).toEqual([
+      expect.objectContaining({
+        day_number: 1,
+        hotel_name: "Hotel Pine Retreat",
+        room_type: "Family Suite",
+        star_rating: 4,
+        amenities: ["Breakfast", "Wifi"],
+        is_fallback: false,
+      }),
+    ]);
   });
 });

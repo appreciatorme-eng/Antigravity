@@ -23,6 +23,20 @@ type RawDay = {
   summary?: string;
   description?: string;
   activities?: RawActivity[];
+  accommodation?: RawAccommodation;
+};
+
+type RawAccommodation = {
+  day_number?: number;
+  hotel_name?: string;
+  address?: string;
+  check_in_time?: string;
+  contact_phone?: string;
+  room_type?: string;
+  star_rating?: number;
+  price_per_night?: number;
+  amenities?: string[];
+  is_fallback?: boolean;
 };
 
 type TripRawData = {
@@ -31,6 +45,14 @@ type TripRawData = {
   duration_days?: number;
   summary?: string;
   days?: RawDay[];
+  accommodations?: RawAccommodation[];
+  logistics?: {
+    hotels?: Array<RawAccommodation & {
+      day_number?: number;
+      name?: string;
+      check_in?: string;
+    }>;
+  };
   pricing?: {
     total_cost?: number;
   };
@@ -52,6 +74,63 @@ function parseCostToNumber(cost: string | undefined): number {
   return Number.isNaN(num) ? 0 : num;
 }
 
+function normalizeAccommodation(raw: RawAccommodation | null | undefined, fallbackDayNumber: number): RawAccommodation | null {
+  if (!raw || typeof raw !== "object") return null;
+
+  const hotelName = String(raw.hotel_name || "").trim();
+  if (!hotelName) return null;
+
+  return {
+    day_number: Number(raw.day_number || fallbackDayNumber),
+    hotel_name: hotelName,
+    address: typeof raw.address === "string" ? raw.address.trim() : "",
+    check_in_time: typeof raw.check_in_time === "string" ? raw.check_in_time.trim() : "",
+    contact_phone: typeof raw.contact_phone === "string" ? raw.contact_phone.trim() : "",
+    room_type: typeof raw.room_type === "string" ? raw.room_type.trim() : "",
+    star_rating: typeof raw.star_rating === "number" ? raw.star_rating : undefined,
+    price_per_night: typeof raw.price_per_night === "number" ? raw.price_per_night : undefined,
+    amenities: Array.isArray(raw.amenities)
+      ? raw.amenities.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+      : [],
+    is_fallback: raw.is_fallback === true,
+  };
+}
+
+function buildAccommodationMap(record: TripRawData) {
+  const byDay = new Map<number, RawAccommodation>();
+
+  const topLevel = Array.isArray(record.accommodations) ? record.accommodations : [];
+  for (const accommodation of topLevel) {
+    const normalized = normalizeAccommodation(accommodation, Number(accommodation?.day_number || 1));
+    if (!normalized?.day_number) continue;
+    byDay.set(normalized.day_number, normalized);
+  }
+
+  const days = Array.isArray(record.days) ? record.days : [];
+  days.forEach((day, index) => {
+    const fallbackDayNumber = Number(day.day_number || day.day || index + 1);
+    const normalized = normalizeAccommodation(day.accommodation, fallbackDayNumber);
+    if (!normalized?.day_number) return;
+    byDay.set(normalized.day_number, normalized);
+  });
+
+  const hotels = Array.isArray(record.logistics?.hotels) ? record.logistics?.hotels : [];
+  hotels.forEach((hotel, index) => {
+    const normalized = normalizeAccommodation(
+      {
+        ...hotel,
+        hotel_name: hotel.hotel_name || hotel.name,
+        check_in_time: hotel.check_in_time || hotel.check_in,
+      },
+      Number(hotel.day_number || index + 1),
+    );
+    if (!normalized?.day_number || byDay.has(normalized.day_number)) return;
+    byDay.set(normalized.day_number, normalized);
+  });
+
+  return byDay;
+}
+
 function normalizeRawData(rawData: unknown, fallbackTitle?: string, fallbackDestination?: string, fallbackDuration?: number) {
   const record = (rawData && typeof rawData === "object" ? rawData : {}) as TripRawData;
   const days = Array.isArray(record.days) ? record.days : [];
@@ -61,6 +140,7 @@ function normalizeRawData(rawData: unknown, fallbackTitle?: string, fallbackDest
     duration_days: record.duration_days || fallbackDuration || Math.max(1, days.length || 1),
     summary: record.summary || "",
     days,
+    accommodationsByDay: buildAccommodationMap(record),
     pricing: record.pricing,
   };
 }
@@ -199,6 +279,19 @@ export async function createLinkedProposalFromItinerary(params: {
       .single();
 
     if (dayError || !templateDay) continue;
+
+    const accommodation = normalized.accommodationsByDay.get(index + 1);
+    if (accommodation?.hotel_name) {
+      await adminClient.from("template_accommodations").insert({
+        template_day_id: templateDay.id,
+        hotel_name: accommodation.hotel_name,
+        star_rating: accommodation.star_rating ?? null,
+        room_type: accommodation.room_type || accommodation.address || null,
+        price_per_night: Number(accommodation.price_per_night || 0),
+        amenities: accommodation.amenities || [],
+        image_url: null,
+      });
+    }
 
     const activities = Array.isArray(day.activities) ? day.activities : [];
     if (activities.length === 0) continue;

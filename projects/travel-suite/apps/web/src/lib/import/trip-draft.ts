@@ -3,6 +3,7 @@ import type {
   Activity,
   Day,
   ExtractedPricing,
+  HotelDetails,
   ItineraryResult,
 } from "@/types/itinerary";
 
@@ -11,6 +12,19 @@ export interface ImportedItineraryDraftSourceMeta {
   url?: string;
   extraction_confidence?: number;
   source?: string;
+}
+
+export interface ImportedAccommodationDraft {
+  day_number: number;
+  hotel_name: string;
+  address?: string;
+  check_in_time?: string;
+  contact_phone?: string;
+  room_type?: string;
+  star_rating?: number;
+  price_per_night?: number;
+  amenities?: string[];
+  is_fallback?: boolean;
 }
 
 export interface ImportedItineraryDraft {
@@ -27,12 +41,14 @@ export interface ImportedItineraryDraft {
   tips?: string[];
   inclusions?: string[];
   exclusions?: string[];
+  accommodations?: ImportedAccommodationDraft[];
   warnings: string[];
   missing_sections: string[];
   source_meta?: ImportedItineraryDraftSourceMeta;
 }
 
 type RecordLike = Record<string, unknown>;
+const ACCOMMODATION_FALLBACK = "Hotel details will be shared by the tour operator.";
 
 function asRecord(value: unknown): RecordLike | null {
   return value && typeof value === "object" ? (value as RecordLike) : null;
@@ -105,6 +121,83 @@ function normalizeCoordinates(value: unknown): { lat: number; lng: number } | un
   if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return undefined;
   if (lat === 0 && lng === 0) return undefined;
   return { lat, lng };
+}
+
+function normalizeAccommodation(raw: unknown, fallbackDayNumber: number): ImportedAccommodationDraft | null {
+  const record = asRecord(raw);
+  if (!record) return null;
+
+  const hotelName =
+    toTrimmedString(record.hotel_name) ??
+    toTrimmedString(record.name) ??
+    toTrimmedString(record.hotel) ??
+    toTrimmedString(record.stay);
+
+  if (!hotelName) return null;
+
+  const dayNumber = Math.max(
+    1,
+    Math.round(
+      toFiniteNumber(record.day_number) ??
+        toFiniteNumber(record.day) ??
+        fallbackDayNumber,
+    ),
+  );
+
+  return {
+    day_number: dayNumber,
+    hotel_name: hotelName,
+    address: toTrimmedString(record.address) ?? toTrimmedString(record.location),
+    check_in_time:
+      toTrimmedString(record.check_in_time) ??
+      toTrimmedString(record.check_in) ??
+      toTrimmedString(record.checkIn),
+    contact_phone:
+      toTrimmedString(record.contact_phone) ??
+      toTrimmedString(record.phone) ??
+      toTrimmedString(record.contact),
+    room_type: toTrimmedString(record.room_type) ?? toTrimmedString(record.room),
+    star_rating: toFiniteNumber(record.star_rating),
+    price_per_night: toFiniteNumber(record.price_per_night),
+    amenities: normalizeStringList(record.amenities),
+    is_fallback: false,
+  };
+}
+
+function dedupeAccommodationsByDay(accommodations: ImportedAccommodationDraft[]): ImportedAccommodationDraft[] {
+  const byDay = new Map<number, ImportedAccommodationDraft>();
+
+  for (const accommodation of accommodations) {
+    const existing = byDay.get(accommodation.day_number);
+    if (!existing || existing.is_fallback) {
+      byDay.set(accommodation.day_number, accommodation);
+    }
+  }
+
+  return Array.from(byDay.values()).sort((a, b) => a.day_number - b.day_number);
+}
+
+function buildAccommodationFallback(dayNumber: number): ImportedAccommodationDraft {
+  return {
+    day_number: dayNumber,
+    hotel_name: ACCOMMODATION_FALLBACK,
+    check_in_time: "To be confirmed",
+    is_fallback: true,
+  };
+}
+
+function buildLogisticsHotels(accommodations?: ImportedAccommodationDraft[]): HotelDetails[] | undefined {
+  const realAccommodations = (accommodations ?? []).filter((accommodation) => !accommodation.is_fallback);
+  if (realAccommodations.length === 0) return undefined;
+
+  return realAccommodations.map((accommodation) => ({
+    id: `imported-hotel-${accommodation.day_number}`,
+    name: accommodation.hotel_name,
+    address: accommodation.address ?? accommodation.room_type ?? "Hotel details shared in final confirmation",
+    check_in: accommodation.check_in_time ?? "Check-in details to be confirmed",
+    check_out: "Check-out details to be confirmed",
+    source: "manual",
+  }));
 }
 
 function formatCost(price: number, currency?: string): string {
@@ -206,6 +299,9 @@ function buildMissingSections(draft: Omit<ImportedItineraryDraft, "warnings" | "
   if (!draft.tips || draft.tips.length === 0) missing.push("tips");
   if (!draft.inclusions || draft.inclusions.length === 0) missing.push("inclusions");
   if (!draft.exclusions || draft.exclusions.length === 0) missing.push("exclusions");
+  if (!draft.accommodations || draft.accommodations.every((accommodation) => accommodation.is_fallback)) {
+    missing.push("accommodations");
+  }
   if (draft.days.length === 0) missing.push("days");
 
   return missing;
@@ -225,6 +321,11 @@ function buildWarnings(
   }
   if (!draft.exclusions || draft.exclusions.length === 0) {
     warnings.push("Exclusions are missing from the extraction.");
+  }
+  if (!draft.accommodations || draft.accommodations.every((accommodation) => accommodation.is_fallback)) {
+    warnings.push("Hotel details were not found in the import. They can be confirmed by the tour operator later.");
+  } else if (draft.accommodations.some((accommodation) => accommodation.is_fallback)) {
+    warnings.push("One or more days are missing hotel details and should be confirmed by the tour operator.");
   }
   if (draft.days.length === 0) {
     warnings.push("No valid itinerary days were extracted from this brochure.");
@@ -255,6 +356,8 @@ export function getImportedItineraryDraftErrors(draft: ImportedItineraryDraft): 
 }
 
 export function buildItineraryRawDataFromDraft(draft: ImportedItineraryDraft) {
+  const logisticsHotels = buildLogisticsHotels(draft.accommodations);
+
   return {
     trip_title: draft.trip_title,
     destination: draft.destination,
@@ -268,11 +371,15 @@ export function buildItineraryRawDataFromDraft(draft: ImportedItineraryDraft) {
     inclusions: draft.inclusions,
     exclusions: draft.exclusions,
     pricing: draft.pricing,
+    accommodations: draft.accommodations,
+    logistics: logisticsHotels ? { hotels: logisticsHotels } : undefined,
     days: draft.days,
   };
 }
 
 export function importedDraftToItineraryResult(draft: ImportedItineraryDraft): ItineraryResult {
+  const logisticsHotels = buildLogisticsHotels(draft.accommodations);
+
   return {
     trip_title: draft.trip_title,
     destination: draft.destination,
@@ -287,6 +394,7 @@ export function importedDraftToItineraryResult(draft: ImportedItineraryDraft): I
     inclusions: draft.inclusions,
     exclusions: draft.exclusions,
     extracted_pricing: draft.pricing,
+    logistics: logisticsHotels ? { hotels: logisticsHotels } : undefined,
   };
 }
 
@@ -311,6 +419,32 @@ export function normalizeImportedItineraryDraft(
         .filter((day): day is Day => Boolean(day))
         .sort((a, b) => a.day_number - b.day_number)
     : [];
+  const extractedAccommodations = dedupeAccommodationsByDay([
+    ...(Array.isArray(merged.accommodations)
+      ? merged.accommodations
+          .map((accommodation, index) => normalizeAccommodation(accommodation, index + 1))
+          .filter((accommodation): accommodation is ImportedAccommodationDraft => Boolean(accommodation))
+      : []),
+    ...(Array.isArray(merged.days)
+      ? merged.days
+          .map((day, index) => {
+            const dayRecord = asRecord(day);
+            if (!dayRecord) return null;
+            return normalizeAccommodation(
+              dayRecord.accommodation ?? dayRecord.hotel ?? dayRecord.stay,
+              toFiniteNumber(dayRecord.day_number) ?? toFiniteNumber(dayRecord.day) ?? index + 1,
+            );
+          })
+          .filter((accommodation): accommodation is ImportedAccommodationDraft => Boolean(accommodation))
+      : []),
+  ]);
+  const accommodations =
+    days.length > 0
+      ? days.map((day) => {
+          const match = extractedAccommodations.find((accommodation) => accommodation.day_number === day.day_number);
+          return match ?? buildAccommodationFallback(day.day_number);
+        })
+      : extractedAccommodations;
   const datedDays = days
     .map((day) => day.date)
     .filter((value): value is string => Boolean(value))
@@ -353,6 +487,7 @@ export function normalizeImportedItineraryDraft(
     tips: normalizeStringList(merged.tips),
     inclusions: normalizeStringList(merged.inclusions),
     exclusions: normalizeStringList(merged.exclusions),
+    accommodations,
     source_meta: {
       filename:
         sourceMeta?.filename ??

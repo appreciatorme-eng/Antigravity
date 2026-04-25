@@ -76,6 +76,47 @@ function featureLimitExceededResponse(limitStatus: Awaited<ReturnType<typeof get
 type AdminContext = Extract<Awaited<ReturnType<typeof requireAdmin>>, { ok: true }>;
 type ItineraryRow = Database["public"]["Tables"]["itineraries"]["Row"];
 type TripRow = Database["public"]["Tables"]["trips"]["Row"];
+type ImportedAccommodationRow = {
+    day_number?: number | null;
+    hotel_name?: string | null;
+    address?: string | null;
+    check_in_time?: string | null;
+    contact_phone?: string | null;
+};
+
+function buildTripAccommodationRows(
+    tripId: string,
+    rawData: unknown
+): Database["public"]["Tables"]["trip_accommodations"]["Insert"][] {
+    const record = rawData && typeof rawData === "object"
+        ? (rawData as { accommodations?: ImportedAccommodationRow[] | null })
+        : null;
+    const accommodations = Array.isArray(record?.accommodations) ? record.accommodations : [];
+    const rows: Database["public"]["Tables"]["trip_accommodations"]["Insert"][] = [];
+
+    accommodations.forEach((accommodation, index) => {
+        const dayNumber = Number(accommodation?.day_number ?? index + 1);
+        const hotelName = String(accommodation?.hotel_name || "").trim();
+        const address = String(accommodation?.address || "").trim();
+        const checkInTime = String(accommodation?.check_in_time || "").trim();
+        const contactPhone = String(accommodation?.contact_phone || "").trim();
+
+        if (!Number.isFinite(dayNumber) || dayNumber <= 0 || !hotelName) {
+            return;
+        }
+
+        rows.push({
+            trip_id: tripId,
+            day_number: dayNumber,
+            hotel_name: hotelName,
+            address: address || null,
+            check_in_time: checkInTime || null,
+            contact_phone: contactPhone || null,
+        });
+    });
+
+    return rows;
+}
 
 function attachRateLimitHeaders(
     response: NextResponse,
@@ -344,6 +385,17 @@ export async function POST(req: NextRequest) {
 
         if (tripError || !tripRow) {
             return NextResponse.json({ error: "Failed to create trip" }, { status: 400 });
+        }
+
+        const tripAccommodationRows = buildTripAccommodationRows(tripRow.id, itineraryPayload.raw_data);
+        if (tripAccommodationRows.length > 0) {
+            const { error: tripAccommodationError } = await admin.adminClient
+                .from("trip_accommodations")
+                .insert(tripAccommodationRows);
+
+            if (tripAccommodationError) {
+                return NextResponse.json({ error: "Failed to save imported accommodations" }, { status: 400 });
+            }
         }
 
         let proposalId: string | null = null;
