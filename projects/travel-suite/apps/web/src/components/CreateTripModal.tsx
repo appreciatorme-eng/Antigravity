@@ -327,8 +327,8 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
   }, []);
 
   const handleCreateClient = async () => {
-    if (!newClientName.trim() || !newClientEmail.trim()) {
-      toast({ title: "Name and email required", variant: "warning" });
+    if (!newClientName.trim()) {
+      toast({ title: "Name required", variant: "warning" });
       return;
     }
 
@@ -341,7 +341,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
         },
         body: JSON.stringify({
           full_name: newClientName.trim(),
-          email: newClientEmail.trim(),
+          email: newClientEmail.trim() || undefined,
           phone: newClientPhone.trim() || undefined,
         }),
       });
@@ -877,7 +877,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
                       className="h-9 bg-white text-sm dark:bg-slate-900"
                     />
                     <Input
-                      placeholder="Email *"
+                      placeholder="Email (optional)"
                       type="email"
                       value={newClientEmail}
                       onChange={(e) => setNewClientEmail(e.target.value)}
@@ -898,7 +898,7 @@ export default function CreateTripModal({ open, onOpenChange, onSuccess }: Creat
                     <Button
                       type="button"
                       size="sm"
-                      disabled={creatingClient || !newClientName.trim() || !newClientEmail.trim()}
+                      disabled={creatingClient || !newClientName.trim()}
                       onClick={handleCreateClient}
                       className="bg-emerald-600 text-white hover:bg-emerald-700"
                     >

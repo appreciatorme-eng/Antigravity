@@ -35,6 +35,17 @@ const lifecycleTemplateByStage: Record<string, string> = {
     past: "lifecycle_past",
 };
 
+function buildFallbackClientEmail(organizationId: string, fullName: string, phone: string): string {
+    const orgFragment =
+        organizationId.replace(/[^a-z0-9]/gi, "").toLowerCase().slice(0, 8) || "org";
+    const nameFragment =
+        fullName.replace(/[^a-z0-9]/gi, "").toLowerCase().slice(0, 12) || "traveler";
+    const phoneFragment = phone.replace(/\D/g, "").slice(-10) || "guest";
+    const nonce = crypto.randomUUID().replace(/-/g, "").slice(0, 6);
+
+    return `client-${orgFragment}-${nameFragment}-${phoneFragment}-${nonce}@tripbuilt.local`;
+}
+
 function featureLimitExceededResponse(limitStatus: Awaited<ReturnType<typeof getFeatureLimitStatus>>) {
     return NextResponse.json(
         {
@@ -193,12 +204,12 @@ export async function POST(req: Request) {
                 .map((item: string) => item.trim())
                 .filter(Boolean);
 
-        if (!email || !fullName) {
-            return NextResponse.json({ error: "Name and email are required" }, { status: 400 });
+        if (!fullName) {
+            return NextResponse.json({ error: "Name is required" }, { status: 400 });
         }
 
         const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!EMAIL_REGEX.test(email)) {
+        if (email && !EMAIL_REGEX.test(email)) {
             return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
         }
 
@@ -232,7 +243,7 @@ export async function POST(req: Request) {
         }
 
         const updates = {
-            email,
+            email: email || null,
             full_name: fullName,
             phone: phone || null,
             phone_normalized: normalizedPhone || null,
@@ -283,7 +294,10 @@ export async function POST(req: Request) {
             }
 
             // Safe to update: strip fields that must never change for an existing user.
-            const { role: _r, organization_id: _o, email: _e, ...safeUpdates } = updates;
+            const safeUpdates: Partial<typeof updates> = { ...updates };
+            delete safeUpdates.role;
+            delete safeUpdates.organization_id;
+            delete safeUpdates.email;
 
             const { error: profileError } = await supabaseAdmin
                 .from("profiles")
@@ -321,8 +335,10 @@ export async function POST(req: Request) {
             });
         }
 
+        const authEmail = email || buildFallbackClientEmail(scopedOrg.organizationId, fullName, phone);
+
         const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-            email,
+            email: authEmail,
             email_confirm: true,
             user_metadata: {
                 full_name: fullName,

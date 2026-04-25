@@ -69,8 +69,12 @@ export default function ClientEditButton({ client }: ClientEditButtonProps) {
     });
 
     const handleSave = async () => {
-        if (!formData.full_name.trim() || !formData.email.trim()) {
-            setError("Name and email are required.");
+        if (!formData.full_name.trim()) {
+            setError("Name is required.");
+            return;
+        }
+        if (formData.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+            setError("Please enter a valid email address.");
             return;
         }
         setSaving(true);
@@ -120,7 +124,7 @@ export default function ClientEditButton({ client }: ClientEditButtonProps) {
                     {/* Basic Info */}
                     <div className="grid gap-4">
                         <GlassInput label="Full Name *" value={formData.full_name} onChange={e => setFormData(p => ({ ...p, full_name: e.target.value }))} placeholder="Rahul Sharma" />
-                        <GlassInput label="Email *" type="email" value={formData.email} onChange={e => setFormData(p => ({ ...p, email: e.target.value }))} placeholder="rahul@example.com" />
+                        <GlassInput label="Email" type="email" value={formData.email} onChange={e => setFormData(p => ({ ...p, email: e.target.value }))} placeholder="rahul@example.com" />
                         <GlassInput label="Phone / WhatsApp" value={formData.phone} onChange={e => setFormData(p => ({ ...p, phone: e.target.value }))} placeholder="+91 98765 43210" />
                     </div>
 
