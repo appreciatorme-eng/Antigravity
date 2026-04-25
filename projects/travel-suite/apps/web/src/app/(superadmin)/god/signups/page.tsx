@@ -51,7 +51,7 @@ const tierColors: Record<string, string> = {
 const roleColors: Record<string, string> = {
     super_admin: "text-red-400",
     admin: "text-emerald-400",
-    client: "text-blue-400",
+    team_member: "text-cyan-400",
     driver: "text-purple-400",
 };
 
@@ -108,7 +108,7 @@ export default function SignupsPage() {
     const [showInvite, setShowInvite] = useState(false);
     const [inviteEmail, setInviteEmail] = useState("");
     const [inviteName, setInviteName] = useState("");
-    const [inviteRole, setInviteRole] = useState("client");
+    const [inviteRole, setInviteRole] = useState("admin");
     const [inviteOrgId, setInviteOrgId] = useState("");
     const [inviting, setInviting] = useState(false);
     const [orgList, setOrgList] = useState<{ id: string; name: string; tier: string }[]>([]);
@@ -144,7 +144,7 @@ export default function SignupsPage() {
                 setShowInvite(false);
                 setInviteEmail("");
                 setInviteName("");
-                setInviteRole("client");
+                setInviteRole("admin");
                 setInviteOrgId("");
                 await fetchData();
             } else {
@@ -194,8 +194,10 @@ export default function SignupsPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-white">User Signups</h1>
-                    <p className="text-sm text-gray-400 mt-0.5">Registration trends and recent signups</p>
+                    <h1 className="text-2xl font-bold text-white">Account Signups</h1>
+                    <p className="text-sm text-gray-400 mt-0.5">
+                        Operator and team account registrations. Customer profiles are excluded.
+                    </p>
                 </div>
                 <div className="flex items-center gap-3">
                     <ExportButton
@@ -216,7 +218,7 @@ export default function SignupsPage() {
                                    text-sm text-gray-300 transition-colors hover:border-gray-600 hover:text-white"
                     >
                         <UserPlus className="h-4 w-4" />
-                        Invite User
+                        Invite Account
                     </button>
                     <TimeRangePicker value={range} onChange={(v) => { setRange(v as "7d" | "30d" | "90d"); setPage(0); }} />
                     <button
@@ -235,7 +237,7 @@ export default function SignupsPage() {
                 <div className="bg-gray-900 border border-amber-500/30 rounded-xl p-5 space-y-4">
                     <h2 className="text-sm font-semibold text-amber-400 uppercase tracking-wider flex items-center gap-2">
                         <UserPlus className="w-4 h-4" />
-                        Invite User
+                        Invite Account
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <input
@@ -259,7 +261,6 @@ export default function SignupsPage() {
                             className="w-full px-3 py-2 rounded-lg bg-gray-800 border border-gray-700
                                        text-sm text-gray-300 focus:outline-none focus:border-amber-500/50"
                         >
-                            <option value="client">Client</option>
                             <option value="admin">Admin</option>
                             <option value="team_member">Team Member</option>
                             <option value="driver">Driver</option>
@@ -298,8 +299,8 @@ export default function SignupsPage() {
 
             {/* Stat cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard label="Total Users" value={loading ? "…" : (totals?.total_users ?? "—")} accent="blue" />
-                <StatCard label={`New Users (${range})`} value={loading ? "…" : (totals?.users_in_range ?? "—")} accent="amber" />
+                <StatCard label="Total Accounts" value={loading ? "…" : (totals?.total_users ?? "—")} accent="blue" />
+                <StatCard label={`New Accounts (${range})`} value={loading ? "…" : (totals?.users_in_range ?? "—")} accent="amber" />
                 <StatCard label={`Orgs Created (${range})`} value={loading ? "…" : (totals?.orgs_in_range ?? "—")} accent="emerald" />
                 <StatCard label="Avg Daily Signups" value={loading ? "…" : (totals?.avg_daily_signups ?? "—")} subtitle={`Over ${range}`} accent="purple" />
             </div>
@@ -348,7 +349,7 @@ export default function SignupsPage() {
             {/* Recent signups table */}
             <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
                 <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">
-                    Recent Signups
+                    Recent Account Signups
                 </h2>
                 <DrillDownTable<SignupRow>
                     columns={COLUMNS}

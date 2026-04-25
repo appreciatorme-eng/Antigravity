@@ -8,6 +8,23 @@ import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { logError } from "@/lib/observability/logger";
 import { logPlatformActionWithTarget, getClientIpFromRequest } from "@/lib/platform/audit";
 
+const PROFILE_SELECT =
+    "id, full_name, email, phone, role, avatar_url, organization_id, created_at, is_suspended";
+const PROFILE_SELECT_FALLBACK =
+    "id, full_name, email, phone, role, avatar_url, organization_id, created_at";
+const PROFILE_PATCH_SELECT = "id, full_name, email, role, organization_id, is_suspended";
+const PROFILE_PATCH_SELECT_FALLBACK = "id, full_name, email, role, organization_id";
+
+function isMissingColumnError(error: unknown, column: string): boolean {
+    if (!error || typeof error !== "object") return false;
+    const candidate = error as { message?: unknown; details?: unknown; hint?: unknown };
+    const text = [candidate.message, candidate.details, candidate.hint]
+        .filter((value): value is string => typeof value === "string")
+        .join(" ")
+        .toLowerCase();
+    return text.includes(column.toLowerCase()) && (text.includes("column") || text.includes("schema cache"));
+}
+
 // ---------------------------------------------------------------------------
 // GET /api/superadmin/users/:id
 // ---------------------------------------------------------------------------
@@ -25,11 +42,19 @@ export async function GET(
 
     try {
         // Step 1: fetch profile on its own (no join that could silently fail)
-        const profileResult = await db
+        let profileResult = await db
             .from("profiles")
-            .select("id, full_name, email, phone, role, avatar_url, organization_id, created_at, is_suspended")
+            .select(PROFILE_SELECT)
             .eq("id", id)
             .single();
+
+        if (profileResult.error && isMissingColumnError(profileResult.error, "is_suspended")) {
+            profileResult = await db
+                .from("profiles")
+                .select(PROFILE_SELECT_FALLBACK)
+                .eq("id", id)
+                .single();
+        }
 
         if (profileResult.error) {
             logError("[superadmin/users/:id GET] profile query error", profileResult.error);
@@ -126,17 +151,17 @@ export async function PATCH(
         return apiError("Invalid JSON", 400);
     }
 
-        const update: Record<string, unknown> = {};
+    const update: Record<string, unknown> = {};
 
-        if (body.role !== undefined) {
-            if (!VALID_ROLES.includes(body.role)) {
-                return apiError(`Invalid role. Must be one of: ${VALID_ROLES.join(", ")}`, 400);
-            }
-            update.role = body.role;
+    if (body.role !== undefined) {
+        if (!VALID_ROLES.includes(body.role)) {
+            return apiError(`Invalid role. Must be one of: ${VALID_ROLES.join(", ")}`, 400);
         }
-        if (body.suspended !== undefined) {
-            update.is_suspended = body.suspended;
-        }
+        update.role = body.role;
+    }
+    if (body.suspended !== undefined) {
+        update.is_suspended = body.suspended;
+    }
 
     if (body.organization_id !== undefined) {
         update.organization_id = body.organization_id;
@@ -152,20 +177,44 @@ export async function PATCH(
 
     try {
         // Get current profile for audit log context
-        const { data: current } = await db
+        let currentResult = await db
             .from("profiles")
             .select("full_name, email, role, organization_id, is_suspended")
             .eq("id", id)
             .single();
 
+        if (currentResult.error && isMissingColumnError(currentResult.error, "is_suspended")) {
+            if (body.suspended !== undefined) {
+                return apiError("Suspension state is not available in this environment", 400);
+            }
+            currentResult = await db
+                .from("profiles")
+                .select("full_name, email, role, organization_id")
+                .eq("id", id)
+                .single();
+        }
+
+        const current = currentResult.data;
+
         if (!current) return apiError("User not found", 404);
 
-        const { data, error } = await db
+        let updateResult = await db
             .from("profiles")
             .update(update)
             .eq("id", id)
-            .select("id, full_name, email, role, organization_id, is_suspended")
+            .select(PROFILE_PATCH_SELECT)
             .single();
+
+        if (updateResult.error && isMissingColumnError(updateResult.error, "is_suspended")) {
+            updateResult = await db
+                .from("profiles")
+                .update(update)
+                .eq("id", id)
+                .select(PROFILE_PATCH_SELECT_FALLBACK)
+                .single();
+        }
+
+        const { data, error } = updateResult;
 
         if (error) {
             logError("[superadmin/users/:id PATCH]", error);

@@ -18,6 +18,8 @@ function rangeStart(range: string): string | null {
     return new Date(Date.now() - days * 86_400_000).toISOString();
 }
 
+const ACCOUNT_SIGNUP_ROLES = ["super_admin", "admin", "team_member", "driver"];
+
 export async function GET(request: NextRequest) {
     const auth = await requireSuperAdmin(request);
     if (!auth.ok) return auth.response;
@@ -52,6 +54,7 @@ export async function GET(request: NextRequest) {
         let profilesQuery = adminClient
             .from("profiles")
             .select("id, full_name, email, phone, role, avatar_url, organization_id, created_at", { count: "exact" })
+            .in("role", ACCOUNT_SIGNUP_ROLES)
             .order("created_at", { ascending: false })
             .range(page * limit, (page + 1) * limit - 1);
 
@@ -60,8 +63,8 @@ export async function GET(request: NextRequest) {
 
         const [profilesResult, totalResult, monthResult, orgResult] = await Promise.all([
             profilesQuery,
-            adminClient.from("profiles").select("id", { count: "exact", head: true }),
-            adminClient.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", monthStart()),
+            adminClient.from("profiles").select("id", { count: "exact", head: true }).in("role", ACCOUNT_SIGNUP_ROLES),
+            adminClient.from("profiles").select("id", { count: "exact", head: true }).in("role", ACCOUNT_SIGNUP_ROLES).gte("created_at", monthStart()),
             since
                 ? adminClient.from("organizations").select("id", { count: "exact", head: true }).gte("created_at", since)
                 : adminClient.from("organizations").select("id", { count: "exact", head: true }),
@@ -102,7 +105,8 @@ export async function GET(request: NextRequest) {
 
         const trendQuery = adminClient
             .from("profiles")
-            .select("created_at");
+            .select("created_at")
+            .in("role", ACCOUNT_SIGNUP_ROLES);
         const trendResult = since
             ? await trendQuery.gte("created_at", since)
             : await trendQuery;

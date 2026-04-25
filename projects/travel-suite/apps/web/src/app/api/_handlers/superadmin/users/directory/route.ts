@@ -6,6 +6,21 @@ import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
 import { logError, logEvent } from "@/lib/observability/logger";
 import { buildGodDataQuality } from "@/lib/platform/god-kpi";
 
+const PROFILE_SELECT =
+    "id, full_name, email, phone, role, avatar_url, organization_id, created_at, is_suspended";
+const PROFILE_SELECT_FALLBACK =
+    "id, full_name, email, phone, role, avatar_url, organization_id, created_at";
+
+function isMissingColumnError(error: unknown, column: string): boolean {
+    if (!error || typeof error !== "object") return false;
+    const candidate = error as { message?: unknown; details?: unknown; hint?: unknown };
+    const text = [candidate.message, candidate.details, candidate.hint]
+        .filter((value): value is string => typeof value === "string")
+        .join(" ")
+        .toLowerCase();
+    return text.includes(column.toLowerCase()) && (text.includes("column") || text.includes("schema cache"));
+}
+
 export async function GET(request: NextRequest) {
     const auth = await requireSuperAdmin(request);
     if (!auth.ok) return auth.response;
@@ -48,21 +63,28 @@ export async function GET(request: NextRequest) {
         }
 
         // Step 1: query profiles with all filters applied before pagination
-        let profileQuery = db
-            .from("profiles")
-            .select("id, full_name, email, phone, role, avatar_url, organization_id, created_at, is_suspended", { count: "exact" })
-            .order("created_at", { ascending: false })
-            .range(page * limit, (page + 1) * limit - 1);
+        const buildProfileQuery = (select: string) => {
+            let profileQuery = db
+                .from("profiles")
+                .select(select, { count: "exact" })
+                .order("created_at", { ascending: false })
+                .range(page * limit, (page + 1) * limit - 1);
 
-        if (search) {
-            profileQuery = profileQuery.or(
-                `full_name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`
-            );
+            if (search) {
+                profileQuery = profileQuery.or(
+                    `full_name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%`
+                );
+            }
+            if (role !== "all") profileQuery = profileQuery.eq("role", role);
+            if (allowedOrgIds) profileQuery = profileQuery.in("organization_id", allowedOrgIds);
+            return profileQuery;
+        };
+
+        let profileResult = await buildProfileQuery(PROFILE_SELECT);
+        if (profileResult.error && isMissingColumnError(profileResult.error, "is_suspended")) {
+            logEvent("warn", "[superadmin/users/directory] profiles.is_suspended unavailable; loading directory without suspension state");
+            profileResult = await buildProfileQuery(PROFILE_SELECT_FALLBACK);
         }
-        if (role !== "all") profileQuery = profileQuery.eq("role", role);
-        if (allowedOrgIds) profileQuery = profileQuery.in("organization_id", allowedOrgIds);
-
-        const profileResult = await profileQuery;
 
         if (profileResult.error) {
             logError("[superadmin/users/directory] profiles query failed", profileResult.error);

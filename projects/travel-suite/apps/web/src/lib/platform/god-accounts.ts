@@ -3,6 +3,16 @@ import { fetchAllPages } from "@/lib/supabase/fetch-all-pages";
 
 type AdminClient = SupabaseClient;
 
+function isMissingColumnError(error: unknown, column: string): boolean {
+    if (!error || typeof error !== "object") return false;
+    const candidate = error as { message?: unknown; details?: unknown; hint?: unknown };
+    const text = [candidate.message, candidate.details, candidate.hint]
+        .filter((value): value is string => typeof value === "string")
+        .join(" ")
+        .toLowerCase();
+    return text.includes(column.toLowerCase()) && (text.includes("column") || text.includes("schema cache"));
+}
+
 export type AccountLifecycleStage = "new" | "onboarding" | "active" | "watch" | "at_risk" | "churned";
 export type AccountHealthBand = "healthy" | "watch" | "at_risk";
 export type AccountActivationStage =
@@ -174,6 +184,11 @@ type ProfileRow = {
     created_at?: string | null;
     updated_at?: string | null;
     is_suspended?: boolean | null;
+};
+
+type AccountMemberResult = {
+    data: ProfileRow[] | null;
+    error: unknown;
 };
 
 type OrganizationMetricRow = {
@@ -950,15 +965,26 @@ export async function listAccounts(
 }
 
 export async function getAccountDetail(db: AdminClient, orgId: string): Promise<AccountDetail | null> {
-    const [orgResult, statesMap, metricsMap, membersResult, workItems, invoicesResult, proposalsResult] = await Promise.all([
+    const [orgResult, statesMap, metricsMap, workItems, invoicesResult, proposalsResult] = await Promise.all([
         db.from("organizations").select("id, name, slug, subscription_tier, created_at, updated_at").eq("id", orgId).maybeSingle(),
         loadGodAccountStateMap(db, [orgId]),
         buildAccountMetricsMap(db, [orgId]),
-        db.from("profiles").select("id, full_name, email, role, created_at, is_suspended").eq("organization_id", orgId).order("created_at", { ascending: true }),
         loadGodWorkItems(db, { orgIds: [orgId], status: "active", limit: 25 }),
         db.from("invoices").select("id, invoice_number, due_date, balance_amount, total_amount, status").eq("organization_id", orgId).order("due_date", { ascending: true }).limit(8),
         db.from("proposals").select("id, title, expires_at, total_price, client_selected_price, status").eq("organization_id", orgId).not("expires_at", "is", null).order("expires_at", { ascending: true }).limit(8),
     ]);
+    let membersResult = await db
+        .from("profiles")
+        .select("id, full_name, email, role, created_at, is_suspended")
+        .eq("organization_id", orgId)
+        .order("created_at", { ascending: true }) as AccountMemberResult;
+    if (membersResult.error && isMissingColumnError(membersResult.error, "is_suspended")) {
+        membersResult = await db
+            .from("profiles")
+            .select("id, full_name, email, role, created_at")
+            .eq("organization_id", orgId)
+            .order("created_at", { ascending: true }) as AccountMemberResult;
+    }
 
     const org = orgResult.data as OrganizationRow | null;
     if (!org) return null;
