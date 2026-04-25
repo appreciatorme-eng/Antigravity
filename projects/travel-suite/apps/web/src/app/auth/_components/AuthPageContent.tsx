@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -32,7 +32,7 @@ const FEATURES = [
 function AuthPageInner() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const supabase = createClient();
+    const [supabase] = useState(() => createClient());
     const requestedNext = searchParams.get("next");
     const nextPath =
         requestedNext &&
@@ -51,6 +51,63 @@ function AuthPageInner() {
     const [showPassword, setShowPassword] = useState(false);
     const [termsAccepted, setTermsAccepted] = useState(false);
     const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string; terms?: string }>({});
+    const magicLinkHandledRef = useRef(false);
+
+    useEffect(() => {
+        if (magicLinkHandledRef.current || typeof window === "undefined") return;
+
+        const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+        const accessToken = hash.get("access_token");
+        const refreshToken = hash.get("refresh_token");
+        const hashError = hash.get("error_description") ?? hash.get("error");
+
+        if (hashError) {
+            magicLinkHandledRef.current = true;
+            setError(decodeURIComponent(hashError));
+            return;
+        }
+
+        if (!accessToken || !refreshToken) return;
+
+        magicLinkHandledRef.current = true;
+        setLoading(true);
+        setError("");
+        setMessage("");
+
+        void (async () => {
+            const { error: sessionError } = await supabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken,
+            });
+
+            if (sessionError) {
+                setError(sessionError.message || "Could not complete sign-in from the magic link.");
+                setLoading(false);
+                return;
+            }
+
+            if (!requestedNext) {
+                const {
+                    data: { user: loggedInUser },
+                } = await supabase.auth.getUser();
+                if (loggedInUser) {
+                    const { data: profile } = await supabase
+                        .from("profiles")
+                        .select("role")
+                        .eq("id", loggedInUser.id)
+                        .single();
+                    if (profile?.role === "super_admin") {
+                        router.replace("/god");
+                        router.refresh();
+                        return;
+                    }
+                }
+            }
+
+            router.replace(nextPath);
+            router.refresh();
+        })();
+    }, [nextPath, requestedNext, router, supabase]);
 
     const validateEmail = (value: string): string | undefined => {
         if (!value) return "Please enter a valid email";
