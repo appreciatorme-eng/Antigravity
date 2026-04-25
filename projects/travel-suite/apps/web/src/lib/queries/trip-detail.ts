@@ -7,6 +7,7 @@ import type {
   TripAddOn,
   AvailableAddOn,
   TripItineraryRawData,
+  Accommodation,
 } from "@/features/trip-detail/types";
 import type { Json } from "@/lib/database.types";
 
@@ -250,6 +251,7 @@ interface SaveItineraryInput {
   itineraryId: string;
   days: unknown[];
   rawData?: TripItineraryRawData | null;
+  accommodations?: Record<number, Accommodation>;
 }
 
 export function useSaveTripItinerary() {
@@ -263,6 +265,7 @@ export function useSaveTripItinerary() {
         body: JSON.stringify({
           itineraryId: input.itineraryId,
           days: input.days,
+          accommodations: input.accommodations,
           rawData: {
             ...(input.rawData || {}),
             days: input.days,

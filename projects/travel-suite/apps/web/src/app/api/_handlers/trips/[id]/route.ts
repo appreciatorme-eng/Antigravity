@@ -30,6 +30,14 @@ interface AccommodationRow {
     contact_phone: string | null;
 }
 
+interface AccommodationPatch {
+    day_number?: number;
+    hotel_name?: string | null;
+    address?: string | null;
+    check_in_time?: string | null;
+    contact_phone?: string | null;
+}
+
 interface ReminderQueueRow {
     status: "pending" | "processing" | "sent" | "failed" | string;
     scheduled_for: string | null;
@@ -489,6 +497,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id?: s
         const itineraryId = typeof body.itineraryId === "string" ? body.itineraryId : "";
         const rawData = body.rawData;
         const days = Array.isArray(body.days) ? body.days : undefined;
+        const accommodations =
+            body.accommodations && typeof body.accommodations === "object"
+                ? (body.accommodations as Record<string, AccommodationPatch>)
+                : undefined;
 
         if (!itineraryId || !rawData || typeof rawData !== "object") {
             return apiError("Invalid itinerary payload", 400);
@@ -540,6 +552,52 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id?: s
 
         if (itineraryError) {
             return apiError("Failed to save itinerary", 400);
+        }
+
+        if (accommodations) {
+            const sanitizedAccommodations = Object.entries(accommodations)
+                .map(([dayKey, value]) => {
+                    const dayNumber = Number(value?.day_number ?? dayKey);
+                    if (!Number.isFinite(dayNumber) || dayNumber <= 0) return null;
+
+                    const hotelName = typeof value?.hotel_name === "string" ? value.hotel_name.trim() : "";
+                    const address = typeof value?.address === "string" ? value.address.trim() : "";
+                    const checkInTime = typeof value?.check_in_time === "string" ? value.check_in_time.trim() : "";
+                    const contactPhone = typeof value?.contact_phone === "string" ? value.contact_phone.trim() : "";
+
+                    if (!hotelName && !address && !checkInTime && !contactPhone) {
+                        return null;
+                    }
+
+                    return {
+                        trip_id: tripId,
+                        day_number: dayNumber,
+                        hotel_name: hotelName || "Accommodation pending",
+                        address: address || null,
+                        check_in_time: checkInTime || null,
+                        contact_phone: contactPhone || null,
+                    };
+                })
+                .filter((item): item is NonNullable<typeof item> => item !== null);
+
+            const { error: deleteAccommodationError } = await supabaseAdmin
+                .from("trip_accommodations")
+                .delete()
+                .eq("trip_id", tripId);
+
+            if (deleteAccommodationError) {
+                return apiError("Failed to save accommodations", 400);
+            }
+
+            if (sanitizedAccommodations.length > 0) {
+                const { error: insertAccommodationError } = await supabaseAdmin
+                    .from("trip_accommodations")
+                    .insert(sanitizedAccommodations);
+
+                if (insertAccommodationError) {
+                    return apiError("Failed to save accommodations", 400);
+                }
+            }
         }
 
         const financialSummary =

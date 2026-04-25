@@ -3487,7 +3487,7 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                     Confirm inclusions, exclusions, travel notes, and booking references here before departure.
                   </p>
                 </div>
-                <PackagePanels payload={payload} showInclusions={false} showExclusions={false} />
+                <PackagePanels payload={payload} />
                 <LogisticsPanel payload={payload} />
               </div>
               <div className="trip-brief__sidebar">
@@ -3520,7 +3520,6 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                 ) : null}
               </div>
             </div>
-            <PackageBottomStrip payload={payload} />
             <PageFooter branding={payload.branding} />
           </div>
         </section>

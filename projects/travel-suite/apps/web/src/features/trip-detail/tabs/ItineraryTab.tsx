@@ -28,6 +28,7 @@ interface ItineraryTabProps {
   trip: Trip;
   itineraryDays: readonly Day[];
   onItineraryDaysChange: (days: Day[]) => void;
+  onAccommodationChange: (dayNumber: number, field: keyof Accommodation, value: string) => void;
   activeDay: number;
   onActiveDayChange: (day: number) => void;
   startDate?: string;
@@ -122,7 +123,6 @@ function DaySelector({
 // ---------------------------------------------------------------------------
 
 const handleAssignmentChange = () => {};
-const handleAccommodationChange = () => {};
 
 // ---------------------------------------------------------------------------
 // Component
@@ -132,6 +132,7 @@ export function ItineraryTab({
   trip,
   itineraryDays,
   onItineraryDaysChange,
+  onAccommodationChange,
   activeDay,
   onActiveDayChange,
   startDate,
@@ -159,6 +160,13 @@ export function ItineraryTab({
   const currentAssignment = assignments[activeDay];
   const currentAccommodation = accommodations[activeDay];
   const currentBusyDriverIds = busyDriversByDay[activeDay] ?? [];
+
+  const handleAccommodationFieldChange = useCallback(
+    (field: keyof Accommodation, value: string) => {
+      onAccommodationChange(activeDay, field, value);
+    },
+    [activeDay, onAccommodationChange],
+  );
 
   const handleUpdateActivity = useCallback(
     (activityIndex: number, nextActivity: Activity) => {
@@ -239,7 +247,7 @@ export function ItineraryTab({
           />
           <TripAccommodationCard
             accommodation={currentAccommodation}
-            onAccommodationChange={handleAccommodationChange}
+            onAccommodationChange={handleAccommodationFieldChange}
           />
         </div>
 

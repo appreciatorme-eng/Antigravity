@@ -18,6 +18,7 @@ import type {
   TripItineraryRawData,
   TripPricing,
   TripFinancialPaymentStatus,
+  Accommodation,
 } from "@/features/trip-detail/types";
 
 import { useTripDetail, useSaveTripItinerary } from "@/lib/queries/trip-detail";
@@ -61,6 +62,7 @@ export default function TripDetailPage() {
   const [deletingTrip, setDeletingTrip] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [editableRawData, setEditableRawData] = useState<TripItineraryRawData | null>(null);
+  const [editableAccommodations, setEditableAccommodations] = useState<Record<number, Accommodation>>({});
   const [creatingProposal, setCreatingProposal] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
 
@@ -91,6 +93,12 @@ export default function TripDetailPage() {
       JSON.parse(JSON.stringify(trip.itineraries.raw_data)) as TripItineraryRawData,
     );
   }, [trip?.id, trip?.itineraries?.id, trip?.itineraries?.raw_data]);
+
+  useEffect(() => {
+    setEditableAccommodations(
+      JSON.parse(JSON.stringify(data?.accommodations ?? {})) as Record<number, Accommodation>,
+    );
+  }, [data?.trip?.id, data?.accommodations]);
 
   const tripWithDraft = useMemo(() => {
     if (!trip) return null;
@@ -147,6 +155,7 @@ export default function TripDetailPage() {
         tripId,
         itineraryId: trip.itineraries.id,
         days: [...itineraryDays],
+        accommodations: editableAccommodations,
         rawData: {
           ...editableRawData,
           days: [...itineraryDays],
@@ -159,6 +168,30 @@ export default function TripDetailPage() {
           toast({ title: "Sync error", description: "Failed to save trip changes.", variant: "error" }),
       },
     );
+  };
+
+  const handleAccommodationChange = (
+    dayNumber: number,
+    field: keyof Accommodation,
+    value: string,
+  ) => {
+    setEditableAccommodations((current) => {
+      const existing = current[dayNumber] ?? {
+        day_number: dayNumber,
+        hotel_name: "",
+        address: "",
+        check_in_time: "15:00",
+        contact_phone: "",
+      };
+
+      return {
+        ...current,
+        [dayNumber]: {
+          ...existing,
+          [field]: value,
+        },
+      };
+    });
   };
 
   const handleDuplicate = () => {
@@ -190,6 +223,7 @@ export default function TripDetailPage() {
         tripPayload: {
           ...data,
           trip: tripWithDraft ?? data.trip,
+          accommodations: editableAccommodations,
         },
       });
       toast({
@@ -452,12 +486,13 @@ export default function TripDetailPage() {
                 current ? { ...current, days } : current,
               )
             }
+            onAccommodationChange={handleAccommodationChange}
             activeDay={activeDay}
             onActiveDayChange={setActiveDay}
             startDate={trip.start_date ?? undefined}
             drivers={data?.drivers ?? []}
             assignments={data?.assignments ?? {}}
-            accommodations={data?.accommodations ?? {}}
+            accommodations={editableAccommodations}
             reminderStatusByDay={data?.reminderStatusByDay ?? {}}
             latestDriverLocation={data?.latestDriverLocation ?? null}
             busyDriversByDay={data?.busyDriversByDay ?? {}}
