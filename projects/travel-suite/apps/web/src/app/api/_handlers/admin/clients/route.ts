@@ -256,9 +256,14 @@ export async function POST(req: Request) {
         };
 
         if (existingProfile?.id) {
+            // Guard: never let an admin add themselves as a client.
+            if (existingProfile.id === admin.userId) {
+                return NextResponse.json({ error: "Cannot add yourself as a client" }, { status: 400 });
+            }
+
             const { data: existingOrgProfile } = await supabaseAdmin
                 .from("profiles")
-                .select("organization_id")
+                .select("organization_id, role")
                 .eq("id", existingProfile.id)
                 .maybeSingle();
             if (
@@ -268,9 +273,21 @@ export async function POST(req: Request) {
                 return NextResponse.json({ error: "User belongs to a different organization" }, { status: 403 });
             }
 
+            // Guard: never downgrade or overwrite an admin/super_admin profile.
+            const matchedRole = existingOrgProfile?.role;
+            if (matchedRole && matchedRole !== "client") {
+                return NextResponse.json(
+                    { error: `A user with that email or phone already exists as ${matchedRole} — cannot overwrite` },
+                    { status: 409 }
+                );
+            }
+
+            // Safe to update: strip fields that must never change for an existing user.
+            const { role: _r, organization_id: _o, email: _e, ...safeUpdates } = updates;
+
             const { error: profileError } = await supabaseAdmin
                 .from("profiles")
-                .update(updates)
+                .update(safeUpdates)
                 .eq("id", existingProfile.id);
 
             if (profileError) {
