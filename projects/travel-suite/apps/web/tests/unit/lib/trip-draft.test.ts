@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildItineraryRawDataFromDraft,
   getImportedItineraryDraftErrors,
+  mergeImportedAccommodationHints,
   normalizeImportedItineraryDraft,
 } from "../../../src/lib/import/trip-draft";
 
@@ -225,6 +226,83 @@ describe("trip draft normalization", () => {
         amenities: ["Breakfast", "Wifi"],
         is_fallback: false,
       }),
+    ]);
+  });
+
+  it("recovers accommodation details from day-based copied text", () => {
+    const sourceText = `
+      Day 1 - Arrival in Srinagar
+      Accommodation: Hotel Pine Retreat Srinagar
+      Day 2 - Gulmarg Excursion
+      Stay at Hotel Snow View Gulmarg
+    `;
+
+    const hydrated = mergeImportedAccommodationHints(
+      {
+        trip_title: "Kashmir Escape",
+        destination: "Srinagar",
+        duration_days: 2,
+        days: [
+          {
+            day_number: 1,
+            title: "Arrival",
+            activities: [{ time: "TBD", title: "Airport transfer", description: "", location: "Srinagar" }],
+          },
+          {
+            day_number: 2,
+            title: "Gulmarg",
+            activities: [{ time: "TBD", title: "Excursion", description: "", location: "Gulmarg" }],
+          },
+        ],
+      },
+      sourceText,
+    );
+
+    const draft = normalizeImportedItineraryDraft(hydrated);
+    expect(draft.accommodations).toEqual([
+      expect.objectContaining({ day_number: 1, hotel_name: "Hotel Pine Retreat Srinagar", is_fallback: false }),
+      expect.objectContaining({ day_number: 2, hotel_name: "Hotel Snow View Gulmarg", is_fallback: false }),
+    ]);
+  });
+
+  it("recovers sequential hotel stays from package inclusion notes", () => {
+    const sourceText = `
+      Inclusions
+      2 night stay at Hotel Pine Retreat Srinagar
+      1 night stay at Hotel Green Heights Pahalgam
+    `;
+
+    const hydrated = mergeImportedAccommodationHints(
+      {
+        trip_title: "Kashmir Escape",
+        destination: "Srinagar",
+        duration_days: 3,
+        days: [
+          {
+            day_number: 1,
+            title: "Arrival",
+            activities: [{ time: "TBD", title: "Airport transfer", description: "", location: "Srinagar" }],
+          },
+          {
+            day_number: 2,
+            title: "Srinagar",
+            activities: [{ time: "TBD", title: "Local sightseeing", description: "", location: "Srinagar" }],
+          },
+          {
+            day_number: 3,
+            title: "Pahalgam",
+            activities: [{ time: "TBD", title: "Valley tour", description: "", location: "Pahalgam" }],
+          },
+        ],
+      },
+      sourceText,
+    );
+
+    const draft = normalizeImportedItineraryDraft(hydrated);
+    expect(draft.accommodations).toEqual([
+      expect.objectContaining({ day_number: 1, hotel_name: "Hotel Pine Retreat Srinagar", is_fallback: false }),
+      expect.objectContaining({ day_number: 2, hotel_name: "Hotel Pine Retreat Srinagar", is_fallback: false }),
+      expect.objectContaining({ day_number: 3, hotel_name: "Hotel Green Heights Pahalgam", is_fallback: false }),
     ]);
   });
 });

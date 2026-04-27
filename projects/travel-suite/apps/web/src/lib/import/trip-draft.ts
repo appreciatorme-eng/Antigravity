@@ -49,6 +49,13 @@ export interface ImportedItineraryDraft {
 
 type RecordLike = Record<string, unknown>;
 const ACCOMMODATION_FALLBACK = "Hotel details will be shared by the tour operator.";
+const DAY_HEADER_RE = /\bday\s*0?(\d{1,2})\b/i;
+const ACCOMMODATION_LINE_RE =
+  /\b(hotel|resort|houseboat|camp|lodge|villa|inn|retreat|homestay|palace)\b/i;
+const ACCOMMODATION_PREFIX_RE =
+  /^(?:accommodation|hotel(?:\s+name)?|stay(?:\s+at)?|overnight stay(?:\s+at)?|check[- ]?in(?:\s+at)?)\s*[:\-]?\s*(.+)$/i;
+const NIGHT_STAY_RE =
+  /^(?:(\d+)\s*night(?:s)?\s+)?(?:stay\s+)?(?:at|in)\s+(.+)$/i;
 
 function asRecord(value: unknown): RecordLike | null {
   return value && typeof value === "object" ? (value as RecordLike) : null;
@@ -161,6 +168,196 @@ function normalizeAccommodation(raw: unknown, fallbackDayNumber: number): Import
     price_per_night: toFiniteNumber(record.price_per_night),
     amenities: normalizeStringList(record.amenities),
     is_fallback: false,
+  };
+}
+
+function normalizeSourceLines(sourceText: string): string[] {
+  return sourceText
+    .split(/\r?\n/)
+    .map((line) =>
+      line
+        .replace(/^[\s•▪●○◆◇■□✓✔✦✧★☆→\-–—]+/, "")
+        .replace(/^\d{1,2}[.)]\s+/, "")
+        .replace(/\s+/g, " ")
+        .trim(),
+    )
+    .filter((line) => line.length >= 4);
+}
+
+function cleanAccommodationLabel(value: string): string {
+  return value
+    .replace(/\s*(?:check[- ]?in|check[- ]?out|contact|phone)\s*[:\-].*$/i, "")
+    .replace(/^[,:;\-–—]+/, "")
+    .replace(/[,:;\-–—]+$/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function looksLikeAccommodationLabel(value: string): boolean {
+  if (value.length < 4) return false;
+  if (/^(airport|station|pickup|drop|breakfast|lunch|dinner|sightseeing|transfer)\b/i.test(value)) {
+    return false;
+  }
+  return true;
+}
+
+function extractAccommodationNameFromLine(line: string): string | null {
+  const prefixed = line.match(ACCOMMODATION_PREFIX_RE);
+  if (prefixed?.[1]) {
+    const cleaned = cleanAccommodationLabel(prefixed[1]);
+    return looksLikeAccommodationLabel(cleaned) ? cleaned : null;
+  }
+
+  const explicitStay = line.match(NIGHT_STAY_RE);
+  if (explicitStay?.[2] && /(?:hotel|resort|houseboat|camp|lodge|villa|inn|retreat|homestay|palace)\b/i.test(explicitStay[2])) {
+    const cleaned = cleanAccommodationLabel(explicitStay[2]);
+    return looksLikeAccommodationLabel(cleaned) ? cleaned : null;
+  }
+
+  if (!ACCOMMODATION_LINE_RE.test(line)) return null;
+
+  const cleaned = cleanAccommodationLabel(line);
+  return looksLikeAccommodationLabel(cleaned) ? cleaned : null;
+}
+
+function extractNightAllocationFromLine(line: string): { nights: number; hotel_name: string } | null {
+  const match = line.match(
+    /^(?:(\d+)\s*night(?:s)?\s+)?(?:stay\s+)?(?:at|in)\s+(.+)$/i,
+  );
+  if (!match?.[2]) return null;
+
+  const hotelName = cleanAccommodationLabel(match[2]);
+  if (!ACCOMMODATION_LINE_RE.test(hotelName) || !looksLikeAccommodationLabel(hotelName)) {
+    return null;
+  }
+
+  return {
+    nights: Math.max(1, Number(match[1] || 1)),
+    hotel_name: hotelName,
+  };
+}
+
+function recoverAccommodationHintsFromText(
+  sourceText: string,
+  totalDays: number,
+): ImportedAccommodationDraft[] {
+  const lines = normalizeSourceLines(sourceText);
+  if (lines.length === 0 || totalDays <= 0) return [];
+
+  const byDay = new Map<number, ImportedAccommodationDraft>();
+  let currentDay: number | null = null;
+
+  lines.forEach((line, index) => {
+    const dayMatch = line.match(DAY_HEADER_RE);
+    if (dayMatch) {
+      currentDay = Math.max(1, Number(dayMatch[1]));
+    }
+
+    const accommodationName = extractAccommodationNameFromLine(line);
+    if (accommodationName && currentDay && !byDay.has(currentDay)) {
+      byDay.set(currentDay, {
+        day_number: currentDay,
+        hotel_name: accommodationName,
+        is_fallback: false,
+      });
+      return;
+    }
+
+    if (/^(?:accommodation|hotel(?:\s+details|\s+name)?|stay)$/i.test(line) && currentDay && !byDay.has(currentDay)) {
+      const nextLine = lines[index + 1];
+      const nextName = nextLine ? extractAccommodationNameFromLine(nextLine) : null;
+      if (nextName) {
+        byDay.set(currentDay, {
+          day_number: currentDay,
+          hotel_name: nextName,
+          is_fallback: false,
+        });
+      }
+    }
+  });
+
+  const nightAllocations = lines
+    .map((line) => extractNightAllocationFromLine(line))
+    .filter((allocation): allocation is { nights: number; hotel_name: string } => Boolean(allocation));
+
+  let dayCursor = 1;
+  for (const allocation of nightAllocations) {
+    while (dayCursor <= totalDays && byDay.has(dayCursor)) {
+      dayCursor += 1;
+    }
+
+    for (let offset = 0; offset < allocation.nights; offset += 1) {
+      const dayNumber = dayCursor + offset;
+      if (dayNumber > totalDays || byDay.has(dayNumber)) continue;
+      byDay.set(dayNumber, {
+        day_number: dayNumber,
+        hotel_name: allocation.hotel_name,
+        is_fallback: false,
+      });
+    }
+
+    dayCursor += allocation.nights;
+  }
+
+  return Array.from(byDay.values()).sort((a, b) => a.day_number - b.day_number);
+}
+
+export function mergeImportedAccommodationHints(input: unknown, sourceText: string): unknown {
+  const record = asRecord(input);
+  if (!record || !sourceText.trim()) return input;
+
+  const durationDays = Math.max(
+    1,
+    Math.round(
+      toFiniteNumber(record.duration_days) ??
+        (Array.isArray(record.days) ? record.days.length : 0) ??
+        1,
+    ),
+  );
+
+  const recovered = recoverAccommodationHintsFromText(sourceText, durationDays);
+  if (recovered.length === 0) return input;
+
+  const existingDays = new Set<number>();
+  const topLevelAccommodations = Array.isArray(record.accommodations)
+    ? [...record.accommodations]
+    : [];
+
+  topLevelAccommodations.forEach((accommodation, index) => {
+    const normalized = normalizeAccommodation(accommodation, index + 1);
+    if (normalized) existingDays.add(normalized.day_number);
+  });
+
+  const days = Array.isArray(record.days) ? [...record.days] : [];
+  days.forEach((day, index) => {
+    const dayRecord = asRecord(day);
+    if (!dayRecord) return;
+
+    const normalized = normalizeAccommodation(
+      dayRecord.accommodation ?? dayRecord.hotel ?? dayRecord.stay,
+      toFiniteNumber(dayRecord.day_number) ?? toFiniteNumber(dayRecord.day) ?? index + 1,
+    );
+    if (normalized) existingDays.add(normalized.day_number);
+  });
+
+  for (const accommodation of recovered) {
+    if (existingDays.has(accommodation.day_number)) continue;
+
+    topLevelAccommodations.push(accommodation);
+    const dayIndex = accommodation.day_number - 1;
+    const dayRecord = asRecord(days[dayIndex]);
+    if (dayRecord && !dayRecord.accommodation && !dayRecord.hotel && !dayRecord.stay) {
+      days[dayIndex] = {
+        ...dayRecord,
+        accommodation,
+      };
+    }
+  }
+
+  return {
+    ...record,
+    accommodations: topLevelAccommodations,
+    days,
   };
 }
 

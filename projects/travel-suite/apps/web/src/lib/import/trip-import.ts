@@ -9,6 +9,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { logError } from "@/lib/observability/logger";
 import { extractTourFromPDF } from "@/lib/import/pdf-extractor";
 import {
+  mergeImportedAccommodationHints,
   normalizeImportedItineraryDraft,
   type ImportedItineraryDraft,
   type ImportedItineraryDraftSourceMeta,
@@ -271,7 +272,8 @@ export async function importTripDraftFromText(
 
   try {
     const extracted = await extractStructuredTourFromText(normalizedText);
-    const draft = normalizeImportedItineraryDraft(extracted, sourceMeta);
+    const hydrated = mergeImportedAccommodationHints(extracted, normalizedText);
+    const draft = normalizeImportedItineraryDraft(hydrated, sourceMeta);
     return { success: true, draft };
   } catch (error) {
     logError("Text import extraction error", error);
