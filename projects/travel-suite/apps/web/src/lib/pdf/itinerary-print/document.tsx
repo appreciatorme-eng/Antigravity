@@ -2667,11 +2667,6 @@ const getDayTravelSummary = (day: PreparedPrintPayload['itinerary']['days'][numb
   };
 };
 
-const getDayTravelSummaryItems = (day: PreparedPrintPayload['itinerary']['days'][number]) => {
-  const summary = getDayTravelSummary(day);
-  return [summary.label, summary.copy];
-};
-
 const getDayAccommodation = (payload: PreparedPrintPayload, dayNumber: number) => {
   const directAccommodation =
     payload.printExtras.dayAccommodations.find((accommodation) => accommodation.dayNumber === dayNumber) || null;
@@ -3159,71 +3154,6 @@ const PageFooter = ({ branding }: { branding: PreparedPrintPayload['branding'] }
   );
 };
 
-const SafariHighlightsPage = ({
-  payload,
-  standoutLines,
-  pageIndex,
-  totalPages,
-  accent,
-  topLocations,
-  selectedAddOns,
-}: {
-  payload: PreparedPrintPayload;
-  standoutLines: ReturnType<typeof getDayStandoutLines>;
-  pageIndex: number;
-  totalPages: number;
-  accent: string;
-  topLocations: string[];
-  selectedAddOns: PreparedPrintAddOn[];
-}) => {
-  const notes = (payload.itinerary.tips || payload.itinerary.inclusions || payload.itinerary.exclusions || [])
-    .slice(pageIndex * 3, pageIndex * 3 + 3);
-  const upgradeItems = selectedAddOns
-    .map((addOn) => [addOn.name, addOn.category, addOn.unitPrice ? formatStandaloneCurrency(addOn.unitPrice, getItineraryCurrency(payload)) : null].filter(Boolean).join(' • '))
-    .slice(0, 3);
-
-  return (
-    <section className="page page--light">
-      <div className="page__inner">
-        <BrandRow branding={payload.branding} />
-        <div className="summary-grid">
-          <div>
-            <div className="accent-line" style={{ background: accent }} />
-            <p className="section-kicker">
-              Trip Brief {totalPages > 1 ? `Continuation ${pageIndex + 1}` : 'Continuation'}
-            </p>
-            <h2 style={{ fontSize: 30, lineHeight: 1.06, letterSpacing: '-0.04em', margin: '8px 0 0', fontFamily: '"Noto Serif", Georgia, Times New Roman, serif' }}>
-              Additional highlights for the client handoff
-            </h2>
-            <div className="summary-highlights summary-highlights--paged">
-              {standoutLines.map((item, index) => (
-                <div key={`safari-brief-extra-${pageIndex}-${index}`} className="summary-highlight">
-                  <div className="summary-highlight__index">{item.dayNumber}</div>
-                  <div>
-                    <h3 className="summary-highlight__title" style={{ marginBottom: 0 }}>
-                      {item.text}
-                    </h3>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="summary-sidebar">
-            <MiniListPanel title="Route Sequence" items={topLocations} compact maxItems={5} />
-            {upgradeItems.length ? (
-              <MiniListPanel title="Available Upgrades" items={upgradeItems} compact maxItems={3} />
-            ) : (
-              <MiniListPanel title="What Shapes The Trip" items={(payload.itinerary.interests || topLocations).slice(0, 4)} compact maxItems={4} />
-            )}
-            <MiniListPanel title="Client Handoff Notes" items={notes.length ? notes : topLocations} compact maxItems={3} />
-          </div>
-        </div>
-        <PageFooter branding={payload.branding} />
-      </div>
-    </section>
-  );
-};
-
 const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
   const standoutLines = getDayStandoutLines(payload);
   const accent = resolveAccentColor(payload);
@@ -3233,8 +3163,7 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
   const totalActivities = payload.itinerary.days.reduce((sum, day) => sum + day.activities.length, 0);
   const flightsCount = payload.itinerary.logistics?.flights?.length || 0;
   const staysCount = payload.itinerary.logistics?.hotels?.length || payload.printExtras.dayAccommodations.length || 0;
-  const briefHighlights = standoutLines.slice(0, 2);
-  const extraHighlightPages = chunkItems(standoutLines.slice(2), 4);
+  const briefHighlights = standoutLines;
 
   return (
     <>
@@ -3282,11 +3211,6 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
               <div className="trip-brief__sidebar">
                 <div className="operator-card">
                   <div className="operator-card__name">{payload.branding.companyName}</div>
-                  <p className="operator-card__copy">
-                    {payload.branding.clientName
-                      ? `Prepared for ${payload.branding.clientName}. This version is structured for direct client delivery with branding, logistics, and key experiences all in one print sequence.`
-                      : 'Built as a ready-to-send client-facing itinerary, with operator branding leading every page.'}
-                  </p>
                   {(payload.branding.contactEmail || payload.branding.contactPhone) ? (
                     <div className="body-copy" style={{ marginTop: 10 }}>
                       {[payload.branding.contactEmail, payload.branding.contactPhone].filter(Boolean).join('  •  ')}
@@ -3301,38 +3225,11 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                     </div>
                   ))}
                 </div>
-                {selectedAddOns.length ? (
-                  <MiniListPanel
-                    title="Available upgrades"
-                    items={selectedAddOns.map((addOn) => [addOn.name, addOn.category].filter(Boolean).join(' • '))}
-                    compact
-                    maxItems={3}
-                  />
-                ) : (
-                  <MiniListPanel
-                    title="What shapes the trip"
-                    items={(payload.itinerary.interests?.slice(0, 4) || payload.itinerary.tips?.slice(0, 4) || topLocations.slice(0, 4))}
-                    compact
-                    maxItems={4}
-                  />
-                )}
               </div>
             </div>
             <PageFooter branding={payload.branding} />
           </div>
         </section>
-        {extraHighlightPages.map((activities, index) => (
-          <SafariHighlightsPage
-            key={`safari-brief-extra-${index}`}
-            payload={payload}
-            standoutLines={activities}
-            pageIndex={index}
-            totalPages={extraHighlightPages.length}
-            accent={accent}
-            topLocations={topLocations}
-            selectedAddOns={selectedAddOns}
-          />
-        ))}
         {payload.itinerary.days.flatMap((day, index) => {
           const [featured, ...remaining] = day.activities;
           const supportActivities = remaining.slice(0, 1);
@@ -3389,8 +3286,7 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                       <DayDossier payload={payload} day={day} />
                     </div>
                     <div className="continuation-sidebar">
-                      <StayPanel accommodation={accommodation} compact />
-                      <MiniListPanel title={"Today's route"} items={dayLocations} compact maxItems={3} />
+                      {accommodation ? <StayPanel accommodation={accommodation} compact /> : <MiniListPanel title="Today's route" items={dayLocations} compact maxItems={3} />}
                     </div>
                   </div>
                 </div>
@@ -3435,32 +3331,10 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                               <ActivityCard key={`safari-cont-support-${activityIndex}`} activity={activity} compact />
                             ))}
                           </div>
-                        ) : (
-                          <div className="panel panel--muted">
-                            <p className="panel__title">Continuation note</p>
-                            <p className="body-copy" style={{ margin: 0 }}>
-                              The rest of this day is intentionally summarized here so the page keeps its editorial rhythm instead of falling back to a plain list.
-                            </p>
-                          </div>
-                        )}
+                        ) : null}
                       </div>
                       <div className="continuation-sidebar">
-                        <StayPanel accommodation={accommodation} compact />
-                        <MiniListPanel
-                          title="Continue with"
-                          items={continuedSupport.length ? continuedSupport.map((activity) => activity.title).slice(0, 3) : dayLocations}
-                          compact
-                          maxItems={2}
-                        />
-                        <MiniListPanel title="Daily travel" items={getDayTravelSummaryItems(day)} compact maxItems={2} />
-                        {chunkIndex === 0 && selectedAddOns.length ? (
-                          <MiniListPanel
-                            title="Available upgrades"
-                            items={selectedAddOns.map((addOn) => [addOn.name, addOn.category].filter(Boolean).join(' • '))}
-                            compact
-                            maxItems={2}
-                          />
-                        ) : null}
+                        {accommodation ? <StayPanel accommodation={accommodation} compact /> : <MiniListPanel title="Today's route" items={dayLocations} compact maxItems={3} />}
                       </div>
                     </div>
                   </div>
@@ -3484,7 +3358,7 @@ const SafariTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                     Final trip details
                   </h2>
                   <p className="body-copy" style={{ margin: 0 }}>
-                    Confirm inclusions, exclusions, travel notes, and booking references here before departure.
+                    Complete inclusions and exclusions for the final client handoff.
                   </p>
                 </div>
                 <PackagePanels payload={payload} />
