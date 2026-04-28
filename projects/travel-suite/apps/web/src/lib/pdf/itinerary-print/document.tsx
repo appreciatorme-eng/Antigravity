@@ -1495,22 +1495,36 @@ const PRINT_CSS = `
   }
   .professional-support-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
     gap: 8px;
   }
   .professional-support-grid .activity-card {
     border-radius: 0;
   }
+  .professional-support-grid .activity-card--compact:not(.activity-card--text) {
+    grid-template-columns: 34mm minmax(0, 1fr);
+  }
   .professional-support-grid .activity-card--compact .activity-card__media {
-    height: 24mm;
-    min-height: 24mm;
+    height: 100%;
+    min-height: 30mm;
   }
   .professional-support-grid .activity-card--compact .activity-card__desc {
-    -webkit-line-clamp: 3;
+    -webkit-line-clamp: 4;
+  }
+  .professional-support-grid .activity-card--compact .activity-card__title {
+    font-size: 15px;
+    line-height: 1.2;
   }
   .professional-sidebar {
     display: grid;
     gap: 8px;
+  }
+  .professional-sidebar .day-dossier {
+    grid-template-columns: minmax(0, 1fr);
+    margin-top: 0;
+  }
+  .professional-sidebar .day-dossier__value {
+    -webkit-line-clamp: 2;
   }
   .professional-sidebar--brief {
     gap: 6px;
@@ -1552,7 +1566,7 @@ const PRINT_CSS = `
   }
   .professional-closing {
     display: grid;
-    grid-template-columns: 1.06fr 0.94fr;
+    grid-template-columns: 1.18fr 0.82fr;
     gap: 9mm;
     align-items: start;
   }
@@ -3071,12 +3085,14 @@ const PackagePanels = ({
 const PackageBottomStrip = ({
   payload,
   dark = false,
+  limit = 4,
 }: {
   payload: PreparedPrintPayload;
   dark?: boolean;
+  limit?: number;
 }) => {
-  const inclusions = (payload.itinerary.inclusions || []).slice(0, 4);
-  const exclusions = (payload.itinerary.exclusions || []).slice(0, 4);
+  const inclusions = (payload.itinerary.inclusions || []).slice(0, limit);
+  const exclusions = (payload.itinerary.exclusions || []).slice(0, limit);
   if (!inclusions.length && !exclusions.length) return null;
   const single = !inclusions.length || !exclusions.length;
 
@@ -3095,6 +3111,33 @@ const PackageBottomStrip = ({
           <p className="panel__title">Exclusions</p>
           <ul className="list-clean">
             {exclusions.map((item, index) => <li key={`bottom-exc-${index}`}>{item}</li>)}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
+const ProfessionalPackagePanels = ({ payload }: { payload: PreparedPrintPayload }) => {
+  const inclusions = payload.itinerary.inclusions || [];
+  const exclusions = payload.itinerary.exclusions || [];
+  if (!inclusions.length && !exclusions.length) return null;
+
+  return (
+    <div className="closing-grid" style={{ marginTop: 0 }}>
+      {inclusions.length ? (
+        <div className="panel">
+          <p className="panel__title">Inclusions</p>
+          <ul className="list-clean">
+            {inclusions.slice(0, 8).map((item, index) => <li key={`pro-inc-${index}`}>{item}</li>)}
+          </ul>
+        </div>
+      ) : null}
+      {exclusions.length ? (
+        <div className="panel">
+          <p className="panel__title">Exclusions</p>
+          <ul className="list-clean">
+            {exclusions.slice(0, 8).map((item, index) => <li key={`pro-exc-${index}`}>{item}</li>)}
           </ul>
         </div>
       ) : null}
@@ -4911,17 +4954,10 @@ const ProfessionalTemplate = ({ payload }: { payload: PreparedPrintPayload }) =>
                         ))}
                       </div>
                     ) : null}
-                    <DayDossier payload={payload} day={day} />
                   </div>
                   <div className="professional-sidebar">
-                    <StayPanel accommodation={getDayAccommodation(payload, day.day_number)} compact />
                     <MiniListPanel title="Day route" items={getDayLocations(day, 4)} compact maxItems={4} />
-                    <MiniListPanel
-                      title="Client notes"
-                      items={[...(payload.itinerary.tips || []), ...(payload.itinerary.inclusions || [])].slice(chunkIndex * 3, chunkIndex * 3 + 3)}
-                      compact
-                      maxItems={3}
-                    />
+                    <DayDossier payload={payload} day={day} />
                   </div>
                 </div>
               </div>
@@ -4940,10 +4976,10 @@ const ProfessionalTemplate = ({ payload }: { payload: PreparedPrintPayload }) =>
                 <p className="section-kicker">Final review</p>
                 <h2 className="print-title">Package notes and operator contact</h2>
                 <p className="body-copy print-copy-clamp" style={{ margin: 0 }}>
-                  Use this page as the clean handoff area for inclusions, exclusions, travel notes, upgrades, and final operator details before sending the itinerary to the client.
+                  Review the package inclusions and exclusions before sending the itinerary to the client.
                 </p>
               </div>
-              <PackagePanels payload={payload} showInclusions={false} showExclusions={false} />
+              <ProfessionalPackagePanels payload={payload} />
             </div>
             <div className="professional-sidebar">
               <div className="operator-card">
@@ -4964,7 +5000,6 @@ const ProfessionalTemplate = ({ payload }: { payload: PreparedPrintPayload }) =>
               <MiniListPanel title="Route sequence" items={topLocations} compact maxItems={4} />
             </div>
           </div>
-          <PackageBottomStrip payload={payload} />
           <PageFooter branding={payload.branding} />
         </div>
       </section>
