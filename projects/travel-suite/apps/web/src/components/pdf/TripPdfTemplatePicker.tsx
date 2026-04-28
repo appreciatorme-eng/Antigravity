@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, Download, Eye, FileText, Loader2, Save } from "lucide-react";
 
 import { GlassButton } from "@/components/glass/GlassButton";
@@ -38,17 +38,48 @@ export function TripPdfTemplatePicker({
   const [isSaving, setIsSaving] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const previewRequestRef = useRef(0);
 
   const selectedMeta = useMemo(
     () => ITINERARY_PRINT_TEMPLATE_META[draftTemplateId],
     [draftTemplateId],
   );
 
+  const generatePreview = useCallback(async (templateId: ItineraryTemplateId) => {
+    const requestId = previewRequestRef.current + 1;
+    previewRequestRef.current = requestId;
+    setIsPreviewing(true);
+    setError(null);
+    setPreviewUrl(null);
+    setPreviewFileName(null);
+    try {
+      const result = await generateTripItineraryPdfBlob({
+        tripId,
+        tripPayload,
+        templateId,
+      });
+      if (requestId !== previewRequestRef.current) return;
+      setPreviewUrl(URL.createObjectURL(result.blob));
+      setPreviewFileName(result.fileName);
+    } catch (previewError) {
+      if (requestId !== previewRequestRef.current) return;
+      setError(
+        previewError instanceof Error
+          ? previewError.message
+          : "Could not generate this PDF preview.",
+      );
+    } finally {
+      if (requestId === previewRequestRef.current) {
+        setIsPreviewing(false);
+      }
+    }
+  }, [tripId, tripPayload]);
+
   useEffect(() => {
     if (!isOpen) return;
     setDraftTemplateId(selectedTemplateId);
-    setError(null);
-  }, [isOpen, selectedTemplateId]);
+    void generatePreview(selectedTemplateId);
+  }, [generatePreview, isOpen, selectedTemplateId]);
 
   useEffect(() => {
     return () => {
@@ -63,37 +94,9 @@ export function TripPdfTemplatePicker({
     setPreviewFileName(null);
   }, [isOpen, previewUrl]);
 
-  const generatePreview = async (templateId = draftTemplateId) => {
-    setIsPreviewing(true);
-    setError(null);
-    try {
-      const result = await generateTripItineraryPdfBlob({
-        tripId,
-        tripPayload,
-        templateId,
-      });
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(URL.createObjectURL(result.blob));
-      setPreviewFileName(result.fileName);
-    } catch (previewError) {
-      setError(
-        previewError instanceof Error
-          ? previewError.message
-          : "Could not generate this PDF preview.",
-      );
-    } finally {
-      setIsPreviewing(false);
-    }
-  };
-
   const handleSelectTemplate = (templateId: ItineraryTemplateId) => {
     setDraftTemplateId(templateId);
-    setError(null);
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-      setPreviewUrl(null);
-      setPreviewFileName(null);
-    }
+    void generatePreview(templateId);
   };
 
   const handleSave = async () => {
@@ -205,11 +208,11 @@ export function TripPdfTemplatePicker({
             <GlassButton
               variant="outline"
               className="h-11 rounded-2xl border-emerald-500/70 px-4 text-emerald-700"
-              onClick={() => generatePreview()}
+              onClick={() => generatePreview(draftTemplateId)}
               loading={isPreviewing}
             >
               <Eye className="h-4 w-4" />
-              Preview
+              Refresh Preview
             </GlassButton>
           </div>
 
@@ -233,10 +236,10 @@ export function TripPdfTemplatePicker({
                 </div>
                 <div>
                   <p className="text-base font-black text-slate-950 dark:text-white">
-                    Preview before downloading
+                    Preview builds automatically
                   </p>
                   <p className="mt-2 max-w-md text-sm leading-6 text-slate-600 dark:text-slate-400">
-                    Choose a template, then preview. This uses the same rich renderer as the final PDF.
+                    Select any template on the left. The PDF preview refreshes with the same renderer used for download.
                   </p>
                 </div>
               </div>
