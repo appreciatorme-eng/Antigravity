@@ -601,6 +601,7 @@ const PRINT_CSS = `
   .panel--dark {
     border-color: rgba(255,255,255,0.12);
     background: rgba(255,255,255,0.05);
+    color: rgba(255, 250, 240, 0.90);
   }
   .panel__title {
     margin: 0 0 8px;
@@ -2458,42 +2459,24 @@ const PRINT_CSS = `
     gap: 10px;
     margin-top: 10mm;
   }
-  .package-bottom-strip {
-    position: absolute;
-    left: 16mm;
-    right: 16mm;
-    bottom: 22mm;
+  .package-summary-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    gap: 10px;
+    margin-top: 8mm;
   }
-  .package-bottom-strip--single {
+  .package-summary-grid--single {
     grid-template-columns: 1fr;
   }
-  .package-bottom-card {
-    border: 1px solid rgba(17,24,39,0.10);
-    background: rgba(255,255,255,0.92);
-    border-radius: 14px;
-    padding: 9px 11px;
+  .package-summary-grid .list-clean {
+    font-size: 10.5px;
+    line-height: 1.45;
   }
-  .package-bottom-card--dark {
-    border-color: rgba(255,250,240,0.14);
-    background: rgba(255,250,240,0.06);
+  .package-summary-grid .list-clean li {
+    break-inside: avoid;
   }
-  .package-bottom-card .panel__title {
-    margin-bottom: 6px;
-  }
-  .package-bottom-card .list-clean {
-    font-size: 10px;
-    line-height: 1.35;
-    display: grid;
-    gap: 3px;
-  }
-  .package-bottom-card .list-clean li {
-    display: -webkit-box;
-    -webkit-line-clamp: 1;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+  .package-summary-grid .panel--dark .list-clean {
+    color: rgba(255, 250, 240, 0.84);
   }
   .list-clean {
     margin: 0;
@@ -3082,62 +3065,35 @@ const PackagePanels = ({
   );
 };
 
-const PackageBottomStrip = ({
+const PackageSummaryPanels = ({
   payload,
   dark = false,
-  limit = 4,
+  limit = 8,
 }: {
   payload: PreparedPrintPayload;
   dark?: boolean;
   limit?: number;
 }) => {
-  const inclusions = (payload.itinerary.inclusions || []).slice(0, limit);
-  const exclusions = (payload.itinerary.exclusions || []).slice(0, limit);
+  const inclusions = payload.itinerary.inclusions || [];
+  const exclusions = payload.itinerary.exclusions || [];
   if (!inclusions.length && !exclusions.length) return null;
   const single = !inclusions.length || !exclusions.length;
 
   return (
-    <div className={`package-bottom-strip ${single ? 'package-bottom-strip--single' : ''}`}>
+    <div className={`package-summary-grid ${single ? 'package-summary-grid--single' : ''}`}>
       {inclusions.length ? (
-        <div className={`package-bottom-card ${dark ? 'package-bottom-card--dark panel--dark' : ''}`}>
+        <div className={`panel ${dark ? 'panel--dark' : ''}`}>
           <p className="panel__title">Inclusions</p>
           <ul className="list-clean">
-            {inclusions.map((item, index) => <li key={`bottom-inc-${index}`}>{item}</li>)}
+            {inclusions.slice(0, limit).map((item, index) => <li key={`package-inc-${index}`}>{item}</li>)}
           </ul>
         </div>
       ) : null}
       {exclusions.length ? (
-        <div className={`package-bottom-card ${dark ? 'package-bottom-card--dark panel--dark' : ''}`}>
+        <div className={`panel ${dark ? 'panel--dark' : ''}`}>
           <p className="panel__title">Exclusions</p>
           <ul className="list-clean">
-            {exclusions.map((item, index) => <li key={`bottom-exc-${index}`}>{item}</li>)}
-          </ul>
-        </div>
-      ) : null}
-    </div>
-  );
-};
-
-const ProfessionalPackagePanels = ({ payload }: { payload: PreparedPrintPayload }) => {
-  const inclusions = payload.itinerary.inclusions || [];
-  const exclusions = payload.itinerary.exclusions || [];
-  if (!inclusions.length && !exclusions.length) return null;
-
-  return (
-    <div className="closing-grid" style={{ marginTop: 0 }}>
-      {inclusions.length ? (
-        <div className="panel">
-          <p className="panel__title">Inclusions</p>
-          <ul className="list-clean">
-            {inclusions.slice(0, 8).map((item, index) => <li key={`pro-inc-${index}`}>{item}</li>)}
-          </ul>
-        </div>
-      ) : null}
-      {exclusions.length ? (
-        <div className="panel">
-          <p className="panel__title">Exclusions</p>
-          <ul className="list-clean">
-            {exclusions.slice(0, 8).map((item, index) => <li key={`pro-exc-${index}`}>{item}</li>)}
+            {exclusions.slice(0, limit).map((item, index) => <li key={`package-exc-${index}`}>{item}</li>)}
           </ul>
         </div>
       ) : null}
@@ -3522,7 +3478,12 @@ const LuxuryStaySnapshot = ({
           };
         }
         const hotel = payload.itinerary.logistics?.hotels?.[0];
-        if (!hotel) return null;
+        if (!hotel) {
+          return {
+            title: 'To be confirmed',
+            copy: 'Hotel details will be shared by the tour operator.',
+          };
+        }
         return {
           title: hotel.name,
           copy: [
@@ -3532,13 +3493,16 @@ const LuxuryStaySnapshot = ({
         };
       })();
 
-  if (!stay) return null;
+  const resolvedStay = stay || {
+    title: 'To be confirmed',
+    copy: 'Hotel details will be shared by the tour operator.',
+  };
 
   return (
     <div className="luxury-panel luxury-panel--tight">
       <p className="luxury-panel__label">Hotel details</p>
-      <p className="luxury-panel__value">{stay.title}</p>
-      {stay.copy ? <p className="luxury-panel__copy">{stay.copy}</p> : null}
+      <p className="luxury-panel__value">{resolvedStay.title}</p>
+      {resolvedStay.copy ? <p className="luxury-panel__copy">{resolvedStay.copy}</p> : null}
     </div>
   );
 };
@@ -3666,7 +3630,7 @@ const LuxuryOverviewPage = ({ payload }: { payload: PreparedPrintPayload }) => {
                 ))}
               </div>
             </div>
-            <LuxuryMiniListPanel title="Hotel details" items={getStayDetailItems(payload, 4)} maxItems={4} />
+            <LuxuryMiniListPanel title="Hotel details" items={getStayDetailItems(payload, 4, true)} maxItems={4} />
             <LuxuryMiniListPanel title="Flight details" items={getFlightDetailItems(payload, 3)} maxItems={3} />
             {selectedAddOns.length ? (
               <LuxuryMiniListPanel
@@ -3891,10 +3855,7 @@ const VisualOverviewPage = ({ payload }: { payload: PreparedPrintPayload }) => {
 
 const VisualClosingPage = ({ payload }: { payload: PreparedPrintPayload }) => {
   const accent = payload.branding.primaryColor || '#e11d48';
-  const notes = [
-    ...(payload.itinerary.tips || []),
-    ...(payload.itinerary.inclusions || []),
-  ].slice(0, 6);
+  const notes = (payload.itinerary.tips || []).slice(0, 4);
 
   const hasPackage = Boolean(payload.itinerary.inclusions?.length || payload.itinerary.exclusions?.length);
 
@@ -3914,14 +3875,17 @@ const VisualClosingPage = ({ payload }: { payload: PreparedPrintPayload }) => {
                 Final notes, inclusions, and optional add-ons are grouped here so the photo journey closes with practical next steps.
               </p>
             </div>
-            <div className="visual-dossier-grid">
-              {notes.slice(0, 4).map((item, index) => (
-                <div key={`visual-closing-note-${index}`} className="visual-panel visual-panel--muted">
-                  <p className="visual-panel__label">{String(index + 1).padStart(2, '0')}</p>
-                  <p className="visual-panel__copy" style={{ WebkitLineClamp: 4 }}>{item}</p>
-                </div>
-              ))}
-            </div>
+            <PackageSummaryPanels payload={payload} />
+            {notes.length ? (
+              <div className="visual-dossier-grid">
+                {notes.slice(0, 2).map((item, index) => (
+                  <div key={`visual-closing-note-${index}`} className="visual-panel visual-panel--muted">
+                    <p className="visual-panel__label">{String(index + 1).padStart(2, '0')}</p>
+                    <p className="visual-panel__copy" style={{ WebkitLineClamp: 3 }}>{item}</p>
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </div>
           <div className="visual-sidebar">
             <div className="visual-panel">
@@ -3941,7 +3905,6 @@ const VisualClosingPage = ({ payload }: { payload: PreparedPrintPayload }) => {
             <VisualMiniPanel title="Route sequence" items={getTopLocations(payload, 5)} maxItems={5} />
           </div>
         </div>
-        <PackageBottomStrip payload={payload} />
         <PageFooter branding={payload.branding} />
       </div>
     </section>
@@ -4017,7 +3980,15 @@ const BentoStayPanel = ({
   dayIndex: number;
 }) => {
   const stay = getStayDetailsForDay(payload, dayNumber, dayIndex);
-  if (!stay) return null;
+  if (!stay) {
+    return (
+      <BentoPanelPrint
+        label="Hotel details"
+        value="To be confirmed"
+        copy="Hotel details will be shared by the tour operator."
+      />
+    );
+  }
 
   return (
     <BentoPanelPrint
@@ -4047,7 +4018,7 @@ const BentoTravelDistancePanel = ({
 const BentoLogisticsPanel = ({ payload }: { payload: PreparedPrintPayload }) => {
   const items = [
     ...getFlightDetailItems(payload, 2),
-    ...getStayDetailItems(payload, 3),
+    ...getStayDetailItems(payload, 3, true),
   ];
 
   return <BentoMiniListPanel title="Flights and hotels" items={items} maxItems={5} />;
@@ -4084,10 +4055,7 @@ const BentoOverviewPage = ({ payload }: { payload: PreparedPrintPayload }) => {
 
 const BentoClosingPage = ({ payload }: { payload: PreparedPrintPayload }) => {
   const accent = payload.branding.primaryColor || '#6366f1';
-  const notes = [
-    ...(payload.itinerary.tips || []),
-    ...(payload.itinerary.inclusions || []),
-  ].slice(0, 6);
+  const notes = (payload.itinerary.tips || []).slice(0, 4);
   const hasLogistics = Boolean(payload.itinerary.logistics?.flights?.length || payload.itinerary.logistics?.hotels?.length);
   const hasPackage = Boolean(payload.itinerary.inclusions?.length || payload.itinerary.exclusions?.length || payload.itinerary.tips?.length);
 
@@ -4102,11 +4070,14 @@ const BentoClosingPage = ({ payload }: { payload: PreparedPrintPayload }) => {
             <div className="accent-line" style={{ background: accent }} />
             <p className="section-kicker">Traveler insights</p>
             <h2 className="print-title" style={{ marginBottom: 8 }}>Final handoff grid</h2>
-            <div className="bento-micro-grid">
-              {notes.slice(0, 4).map((note, index) => (
-                <BentoPanelPrint key={`bento-note-${index}`} label={String(index + 1).padStart(2, '0')} value="Traveler note" copy={note} />
-              ))}
-            </div>
+            <PackageSummaryPanels payload={payload} limit={8} />
+            {notes.length ? (
+              <div className="bento-micro-grid" style={{ marginTop: '6mm' }}>
+                {notes.slice(0, 2).map((note, index) => (
+                  <BentoPanelPrint key={`bento-note-${index}`} label={String(index + 1).padStart(2, '0')} value="Traveler note" copy={note} />
+                ))}
+              </div>
+            ) : null}
           </div>
           <div className="bento-sidebar">
             <BentoPanelPrint label="Operator" value={payload.branding.companyName} copy={[payload.branding.contactEmail, payload.branding.contactPhone].filter(Boolean).join('  •  ')} ink />
@@ -4119,7 +4090,6 @@ const BentoClosingPage = ({ payload }: { payload: PreparedPrintPayload }) => {
             <BentoMiniListPanel title="Route sequence" items={getTopLocations(payload, 5)} maxItems={4} />
           </div>
         </div>
-        <PackageBottomStrip payload={payload} />
         <PageFooter branding={payload.branding} />
       </div>
     </section>
@@ -4272,7 +4242,7 @@ const UrbanKeyInfoPage = ({
             </div>
           ))}
         </div>
-        <PackageBottomStrip payload={payload} />
+        <PackageSummaryPanels payload={payload} limit={8} />
         <PageFooter branding={payload.branding} />
       </div>
     </section>
@@ -4284,11 +4254,7 @@ const LuxuryTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
   const price = formatCurrency(payload.itinerary);
   const topLocations = getTopLocations(payload, 4);
   const totalActivities = payload.itinerary.days.reduce((sum, day) => sum + day.activities.length, 0);
-  const closingNotes = [
-    ...(payload.itinerary.tips || []),
-    ...(payload.itinerary.inclusions || []),
-    ...(payload.itinerary.exclusions || []),
-  ].slice(0, 5);
+  const closingNotes = (payload.itinerary.tips || []).slice(0, 3);
 
   return (
     <>
@@ -4412,10 +4378,12 @@ const LuxuryTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
                   <p className="luxury-panel__copy">{topLocations.slice(1).join(' • ') || getTravelWindowLabel(payload)}</p>
                 </div>
               </div>
-              <LuxuryMiniListPanel title="Concierge notes" items={closingNotes} maxItems={5} />
+              <PackageSummaryPanels payload={payload} dark limit={8} />
+              <LuxuryMiniListPanel title="Concierge notes" items={closingNotes} maxItems={3} />
             </div>
             <div className="luxury-sidebar">
               <LuxuryStaySnapshot payload={payload} />
+              <LuxuryMiniListPanel title="Hotel details" items={getStayDetailItems(payload, 4, true)} maxItems={4} />
               <LuxuryMiniListPanel title="Flight details" items={getFlightDetailItems(payload, 3)} maxItems={3} />
               <LuxuryMiniListPanel
                 title="Private upgrades"
@@ -4425,7 +4393,6 @@ const LuxuryTemplate = ({ payload }: { payload: PreparedPrintPayload }) => {
               <LuxuryMiniListPanel title="Tailored around" items={payload.itinerary.interests || []} maxItems={4} />
             </div>
           </div>
-          <PackageBottomStrip payload={payload} dark />
           <PageFooter branding={payload.branding} />
         </div>
       </section>
@@ -4979,7 +4946,7 @@ const ProfessionalTemplate = ({ payload }: { payload: PreparedPrintPayload }) =>
                   Review the package inclusions and exclusions before sending the itinerary to the client.
                 </p>
               </div>
-              <ProfessionalPackagePanels payload={payload} />
+              <PackageSummaryPanels payload={payload} limit={8} />
             </div>
             <div className="professional-sidebar">
               <div className="operator-card">
