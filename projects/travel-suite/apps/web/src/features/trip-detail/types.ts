@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import type { ItineraryTemplateId } from "@/components/pdf/itinerary-types";
 
 // ---------------------------------------------------------------------------
 // Trip detail data model — extracted from /trips/[id]/page.tsx and extended
@@ -84,6 +85,7 @@ export interface TripItineraryRawData {
   trip_title?: string;
   destination?: string;
   duration_days?: number;
+  pdf_template_id?: ItineraryTemplateId;
   summary?: string;
   days: Day[];
   flights?: FlightDetails[];

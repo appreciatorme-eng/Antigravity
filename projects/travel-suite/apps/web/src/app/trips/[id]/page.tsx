@@ -32,7 +32,12 @@ import { GlassModal } from "@/components/glass/GlassModal";
 import { useToast } from "@/components/ui/toast";
 import { GuidedTour } from "@/components/tour/GuidedTour";
 import ShareTripModal from "@/components/ShareTripModal";
-import { downloadTripItineraryPdf } from "@/components/pdf/trip-itinerary-pdf";
+import { TripPdfTemplatePicker } from "@/components/pdf/TripPdfTemplatePicker";
+import {
+  DEFAULT_ITINERARY_TEMPLATE,
+  normalizeItineraryTemplateId,
+  type ItineraryTemplateId,
+} from "@/components/pdf/itinerary-types";
 
 // ---------------------------------------------------------------------------
 // Trip Detail Page (thin shell)
@@ -64,7 +69,8 @@ export default function TripDetailPage() {
   const [editableRawData, setEditableRawData] = useState<TripItineraryRawData | null>(null);
   const [editableAccommodations, setEditableAccommodations] = useState<Record<number, Accommodation>>({});
   const [creatingProposal, setCreatingProposal] = useState(false);
-  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [isPdfTemplateOpen, setIsPdfTemplateOpen] = useState(false);
+  const [pdfTemplateId, setPdfTemplateId] = useState<ItineraryTemplateId>(DEFAULT_ITINERARY_TEMPLATE);
 
   // --- Derived data ---
   const trip = data?.trip ?? null;
@@ -92,7 +98,12 @@ export default function TripDetailPage() {
     setEditableRawData(
       JSON.parse(JSON.stringify(trip.itineraries.raw_data)) as TripItineraryRawData,
     );
-  }, [trip?.id, trip?.itineraries?.id, trip?.itineraries?.raw_data]);
+    setPdfTemplateId(
+      normalizeItineraryTemplateId(
+        trip.itineraries.raw_data.pdf_template_id || trip.itineraries.template_id,
+      ),
+    );
+  }, [trip?.id, trip?.itineraries?.id, trip?.itineraries?.raw_data, trip?.itineraries?.template_id]);
 
   useEffect(() => {
     setEditableAccommodations(
@@ -107,10 +118,11 @@ export default function TripDetailPage() {
       ...trip,
       itineraries: {
         ...trip.itineraries,
+        template_id: pdfTemplateId,
         raw_data: editableRawData,
       },
     };
-  }, [editableRawData, trip]);
+  }, [editableRawData, pdfTemplateId, trip]);
 
   const itineraryDays: readonly Day[] = useMemo(
     () =>
@@ -213,32 +225,47 @@ export default function TripDetailPage() {
   const handleNotify = () => setNotificationOpen(true);
   const handleShare = () => setIsShareOpen(true);
 
-  const handleDownloadPdf = async () => {
-    if (downloadingPdf || !data?.trip) return;
+  const handleOpenPdfTemplatePicker = () => setIsPdfTemplateOpen(true);
 
-    setDownloadingPdf(true);
+  const handleSavePdfTemplate = async (templateId: ItineraryTemplateId) => {
+    if (!trip?.itineraries || !editableRawData) {
+      throw new Error("This trip does not have a saved itinerary yet.");
+    }
+
+    const nextRawData: TripItineraryRawData = {
+      ...editableRawData,
+      pdf_template_id: templateId,
+    };
+    const nextDays = (nextRawData.days ?? []).map(buildDaySchedule);
+
+    setPdfTemplateId(templateId);
+    setEditableRawData(nextRawData);
     try {
-      await downloadTripItineraryPdf({
+      await saveMutation.mutateAsync({
         tripId,
-        tripPayload: {
-          ...data,
-          trip: tripWithDraft ?? data.trip,
-          accommodations: editableAccommodations,
+        itineraryId: trip.itineraries.id,
+        days: nextDays,
+        accommodations: editableAccommodations,
+        rawData: {
+          ...nextRawData,
+          days: nextDays,
         },
+        templateId,
       });
       toast({
-        title: "PDF download started",
-        description: "The export uses the same itinerary PDF renderer as the planner.",
+        title: "PDF template saved",
+        description: "Future downloads for this trip will use the selected template.",
         variant: "success",
       });
     } catch (error) {
+      setPdfTemplateId(normalizeItineraryTemplateId(trip.itineraries.template_id));
+      setEditableRawData(editableRawData);
       toast({
-        title: "PDF generation failed",
-        description: error instanceof Error ? error.message : "Unable to generate the PDF right now.",
+        title: "Could not save template",
+        description: error instanceof Error ? error.message : "Please try again.",
         variant: "error",
       });
-    } finally {
-      setDownloadingPdf(false);
+      throw error;
     }
   };
 
@@ -547,8 +574,8 @@ export default function TripDetailPage() {
         duplicating={cloneMutation.isPending}
         onNotify={handleNotify}
         onShare={handleShare}
-        onDownloadPdf={handleDownloadPdf}
-        downloadingPdf={downloadingPdf}
+        onDownloadPdf={handleOpenPdfTemplatePicker}
+        downloadingPdf={false}
         onOptimizeRoute={handleOptimizeRoute}
         onQuickFinancialStatusChange={handleQuickFinancialStatusChange}
         currentFinancialStatus={quickFinancialStatus}
@@ -599,7 +626,23 @@ export default function TripDetailPage() {
         tripId={tripId}
         tripTitle={trip.itineraries?.trip_title || trip.destination || "Trip"}
         itineraryId={trip.itineraries?.id}
+        initialTemplateId={pdfTemplateId}
       />
+
+      {data?.trip ? (
+        <TripPdfTemplatePicker
+          isOpen={isPdfTemplateOpen}
+          onClose={() => setIsPdfTemplateOpen(false)}
+          tripId={tripId}
+          tripPayload={{
+            ...data,
+            trip: tripWithDraft ?? data.trip,
+            accommodations: editableAccommodations,
+          }}
+          selectedTemplateId={pdfTemplateId}
+          onSaveTemplate={handleSavePdfTemplate}
+        />
+      ) : null}
     </div>
   );
 }

@@ -9,6 +9,7 @@ import type {
   TripItineraryRawData,
   Accommodation,
 } from "@/features/trip-detail/types";
+import type { ItineraryTemplateId } from "@/components/pdf/itinerary-types";
 import type { Json } from "@/lib/database.types";
 
 // ---------------------------------------------------------------------------
@@ -252,6 +253,7 @@ interface SaveItineraryInput {
   days: unknown[];
   rawData?: TripItineraryRawData | null;
   accommodations?: Record<number, Accommodation>;
+  templateId?: ItineraryTemplateId;
 }
 
 export function useSaveTripItinerary() {
@@ -264,6 +266,7 @@ export function useSaveTripItinerary() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           itineraryId: input.itineraryId,
+          templateId: input.templateId,
           days: input.days,
           accommodations: input.accommodations,
           rawData: {

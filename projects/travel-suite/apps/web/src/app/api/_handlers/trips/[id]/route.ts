@@ -9,6 +9,7 @@ import { softDeleteCommercialRowsForDeletedTripContext } from "@/lib/admin/propo
 import { syncWonCommercialState } from "@/lib/admin/commercial-state-sync";
 import { syncTripFinancialSummaryCommercialPayment } from "@/lib/payments/commercial-payments";
 import { syncTripToLinkedProposal } from "@/lib/proposals/trip-linking";
+import { normalizeItineraryTemplateId } from "@/components/pdf/itinerary-types";
 
 const supabaseAdmin = createAdminClient();
 
@@ -216,6 +217,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id?: str
                         trip_title: itinerary.raw_data?.trip_title || itinerary.trip_title,
                         destination: itinerary.raw_data?.destination || itinerary.destination || "TBD",
                         duration_days: itinerary.raw_data?.duration_days || itinerary.duration_days || 1,
+                        pdf_template_id: itinerary.raw_data?.pdf_template_id || itinerary.template_id || null,
                         summary: itinerary.raw_data?.summary || "",
                         days: itinerary.raw_data?.days || [],
                         flights: itinerary.raw_data?.flights || [],
@@ -495,6 +497,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id?: s
         }
 
         const itineraryId = typeof body.itineraryId === "string" ? body.itineraryId : "";
+        const templateId =
+            typeof body.templateId === "string"
+                ? normalizeItineraryTemplateId(body.templateId)
+                : null;
         const rawData = body.rawData;
         const days = Array.isArray(body.days) ? body.days : undefined;
         const accommodations =
@@ -525,6 +531,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id?: s
 
         const nextRawData = {
             ...rawData,
+            ...(templateId ? { pdf_template_id: templateId } : {}),
             ...(days ? { days } : {}),
         };
 
@@ -543,6 +550,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id?: s
         }
         if (typeof nextRawData.duration_days === "number" && Number.isFinite(nextRawData.duration_days)) {
             updatePayload.duration_days = nextRawData.duration_days;
+        }
+        if (templateId) {
+            updatePayload.template_id = templateId;
         }
 
         const { error: itineraryError } = await supabaseAdmin

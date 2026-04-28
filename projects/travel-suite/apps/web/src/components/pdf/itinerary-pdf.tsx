@@ -18,6 +18,12 @@ interface DownloadItineraryPdfParams {
   printExtras?: ItineraryPrintExtras;
 }
 
+export interface GeneratedItineraryPdf {
+  blob: Blob;
+  fileName: string;
+  renderer: string | null;
+}
+
 export interface ItineraryPdfPreferences {
   branding: ItineraryBranding;
   defaultTemplate: ItineraryTemplateId;
@@ -206,6 +212,31 @@ export const downloadItineraryPdf = async ({
   branding,
   printExtras,
 }: DownloadItineraryPdfParams): Promise<void> => {
+  const { blob, fileName: finalFileName } = await generateItineraryPdfBlob({
+    itinerary,
+    template,
+    fileName,
+    branding,
+    printExtras,
+  });
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = finalFileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
+export const generateItineraryPdfBlob = async ({
+  itinerary,
+  template,
+  fileName,
+  branding,
+  printExtras,
+}: DownloadItineraryPdfParams): Promise<GeneratedItineraryPdf> => {
   const preferences = await fetchItineraryPdfPreferences();
   const resolvedTemplate = template || preferences.defaultTemplate;
   const normalizedItinerary = normalizeItinerary(itinerary);
@@ -248,12 +279,9 @@ export const downloadItineraryPdf = async ({
   const responseFileName = getFileNameFromDisposition(response.headers.get('content-disposition'));
   const finalFileName = responseFileName || computedFileName;
 
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = finalFileName;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  return {
+    blob,
+    fileName: finalFileName,
+    renderer,
+  };
 };

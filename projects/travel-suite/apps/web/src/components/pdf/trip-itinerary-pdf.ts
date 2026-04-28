@@ -3,9 +3,9 @@
 import { authedFetch } from "@/lib/api/authed-fetch";
 import type { ItineraryResult } from "@/types/itinerary";
 import type { TripDetailPayload, TripItineraryRawData } from "@/features/trip-detail/types";
-import { downloadItineraryPdf } from "./itinerary-pdf";
+import { generateItineraryPdfBlob, type GeneratedItineraryPdf } from "./itinerary-pdf";
 import { normalizeItineraryTemplateId } from "./itinerary-types";
-import type { ItineraryPrintAddOn, ItineraryPrintExtras } from "./itinerary-types";
+import type { ItineraryPrintAddOn, ItineraryPrintExtras, ItineraryTemplateId } from "./itinerary-types";
 
 interface TripAddOnResponse {
   addOns?: Array<ItineraryPrintAddOn & {
@@ -19,6 +19,7 @@ interface TripAddOnResponse {
 interface DownloadTripItineraryPdfParams {
   tripId: string;
   tripPayload?: TripDetailPayload | null;
+  templateId?: ItineraryTemplateId;
 }
 
 const sanitizePdfFileName = (value: string) =>
@@ -139,7 +140,32 @@ const fetchTripAddOns = async (tripId: string) =>
 export const downloadTripItineraryPdf = async ({
   tripId,
   tripPayload,
+  templateId,
 }: DownloadTripItineraryPdfParams): Promise<{ fileName: string }> => {
+  const response = await generateTripItineraryPdfBlob({
+    tripId,
+    tripPayload,
+    templateId,
+  });
+
+  const url = URL.createObjectURL(response.blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = response.fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+
+  return { fileName: response.fileName };
+};
+
+export const generateTripItineraryPdfBlob = async ({
+  tripId,
+  tripPayload,
+  templateId,
+  fileName: requestedFileName,
+}: DownloadTripItineraryPdfParams & { fileName?: string }): Promise<GeneratedItineraryPdf> => {
   const [resolvedPayload, addOnsResult] = await Promise.all([
     tripPayload ? Promise.resolve(tripPayload) : fetchTripPayload(tripId),
     fetchTripAddOns(tripId),
@@ -152,15 +178,13 @@ export const downloadTripItineraryPdf = async ({
 
   const fileName = `${sanitizePdfFileName(itinerary.trip_title)}_Itinerary.pdf`;
 
-  await downloadItineraryPdf({
+  return generateItineraryPdfBlob({
     itinerary,
-    template: normalizeItineraryTemplateId(resolvedPayload.trip.itineraries?.template_id),
+    template: templateId ?? normalizeItineraryTemplateId(resolvedPayload.trip.itineraries?.template_id),
     branding: resolvedPayload.trip.profiles?.full_name
       ? { clientName: resolvedPayload.trip.profiles.full_name }
       : undefined,
     printExtras: buildPrintExtras(resolvedPayload, addOnsResult.addOns),
-    fileName,
+    fileName: requestedFileName || fileName,
   });
-
-  return { fileName };
 };

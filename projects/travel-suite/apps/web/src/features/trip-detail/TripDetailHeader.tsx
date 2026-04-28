@@ -296,7 +296,7 @@ export function TripDetailHeader({
             loading={downloadingPdf}
           >
             <Download className="w-4 h-4" />
-            <span className="hidden md:inline">Download PDF</span>
+            <span className="hidden md:inline">Preview PDF</span>
           </GlassButton>
         ) : null}
 
