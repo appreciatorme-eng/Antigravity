@@ -67,7 +67,15 @@ function cleanFallbackLine(line: string): string {
 
 function getFallbackLines(text: string): string[] {
   return text
-    .replace(DAY_MARKER_RE, (match, offset) => (offset > 0 ? `\n${match}` : match))
+    .replace(DAY_MARKER_RE, (match, offset, source) => {
+      if (offset === 0) return match;
+
+      const before = source.slice(Math.max(0, offset - 8), offset);
+      const previousNonSpace = before.trimEnd().slice(-1);
+      if (previousNonSpace === "(" || /\bor\s*$/i.test(before)) return match;
+
+      return `\n${match}`;
+    })
     .split(/\r?\n/)
     .map(cleanFallbackLine)
     .filter((line) => line.length > 0);
@@ -110,13 +118,15 @@ function extractFallbackPackageSection(
 }
 
 function extractFallbackDurationDays(text: string, dayCount: number): number {
-  const nightsDaysMatch = text.match(/(\d{1,2})\s*(?:nights?|n)\s*[\/+&-]\s*(\d{1,2})\s*(?:days?|d)\b/i);
+  const nightsDaysMatch = text.match(/(\d{1,2})[ \t]*(?:nights?|n)[ \t]*[\/+&-][ \t]*(\d{1,2})[ \t]*(?:days?|d)\b/i);
   if (nightsDaysMatch?.[2]) return Number(nightsDaysMatch[2]);
 
-  const daysMatch = text.match(/\b(\d{1,2})\s*(?:days?|d)\b/i);
+  if (dayCount >= 2) return dayCount;
+
+  const daysMatch = text.match(/\b(\d{1,2})[ \t]*(?:days?|d)\b/i);
   if (daysMatch?.[1]) return Number(daysMatch[1]);
 
-  const nightsMatch = text.match(/\b(\d{1,2})\s*(?:nights?|n)\b/i);
+  const nightsMatch = text.match(/\b(\d{1,2})[ \t]*(?:nights?|n)\b/i);
   if (nightsMatch?.[1]) return Number(nightsMatch[1]) + 1;
 
   return Math.max(1, dayCount);
@@ -197,16 +207,21 @@ function inferMilestoneTitle(line: string): string | null {
 }
 
 function extractFallbackDays(lines: string[]) {
-  const sections: Array<{ dayNumber: number; title: string; lines: string[] }> = [];
-  let current: { dayNumber: number; title: string; lines: string[] } | null = null;
+  const sections: Array<{ dayNumber: number; title: string; lines: string[]; inferred?: boolean }> = [];
+  let current: { dayNumber: number; title: string; lines: string[]; inferred?: boolean } | null = null;
   let inferredDayNumber = 1;
   let inPackageSection = false;
 
   for (const line of lines) {
     const section = fallbackSectionForLine(line);
     if (section) {
+      if (current || sections.length > 0) {
+        if (current) sections.push(current);
+        current = null;
+        break;
+      }
+
       inPackageSection = true;
-      if (current) current.lines.push(line);
       continue;
     }
 
@@ -214,26 +229,28 @@ function extractFallbackDays(lines: string[]) {
       inPackageSection = false;
     }
 
+    if (inPackageSection) continue;
+
     const header = detectFallbackDayHeader(line);
     if (header) {
       if (current) sections.push(current);
-      current = { ...header, lines: [] };
+      current = { ...header, lines: [], inferred: false };
       inferredDayNumber = Math.max(inferredDayNumber, header.dayNumber + 1);
       continue;
     }
 
     const routeTitle = !inPackageSection ? inferRouteTitle(line) : null;
-    if (routeTitle && (!current || current.lines.length > 0)) {
+    if (routeTitle && (!current || (current.inferred && current.lines.length > 0))) {
       if (current) sections.push(current);
-      current = { dayNumber: inferredDayNumber, title: routeTitle, lines: [line] };
+      current = { dayNumber: inferredDayNumber, title: routeTitle, lines: [line], inferred: true };
       inferredDayNumber += 1;
       continue;
     }
 
     const milestoneTitle = !inPackageSection ? inferMilestoneTitle(line) : null;
-    if (!routeTitle && milestoneTitle && (!current || current.lines.length > 0)) {
+    if (!routeTitle && milestoneTitle && (!current || (current.inferred && current.lines.length > 0))) {
       if (current) sections.push(current);
-      current = { dayNumber: inferredDayNumber, title: milestoneTitle, lines: [line] };
+      current = { dayNumber: inferredDayNumber, title: milestoneTitle, lines: [line], inferred: true };
       inferredDayNumber += 1;
       continue;
     }

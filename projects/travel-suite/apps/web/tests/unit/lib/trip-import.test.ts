@@ -195,4 +195,97 @@ describe("trip import helpers", () => {
     ]);
     expect(draft.exclusions).toEqual(["1. Airfare", "2. Personal expenses"]);
   });
+
+  it("keeps a seven day emoji itinerary from turning package day references into extra days", () => {
+    const text = `
+      🟢 Day 1 – Tuesday, May 5
+      Arrival in Srinagar
+
+      3:00 PM – Pickup from Srinagar Airport
+      Transfer to hotel or houseboat in Srinagar
+      Evening: Relax or enjoy a Shikara ride on Dal Lake
+      🛌 Overnight: Srinagar
+
+      🟢 Day 2 – Wednesday, May 6
+      Day trip to Sonamarg
+      Breakfast at Srinagar hotel
+      Drive to Sonamarg (~80 km / 2.5–3 hrs)
+      Visit Thajiwas Glacier (pony ride available)
+      Afternoon drive back to Srinagar
+      🛌 Overnight: Srinagar
+
+      🟢 Day 3 – Thursday, May 7
+      Day trip to Gulmarg (return to Srinagar)
+      Breakfast → drive to Gulmarg (~55 km / 1.5–2 hrs)
+      Gondola cable car (book online in advance)
+      Explore meadow, snow activities
+      Late afternoon drive back to Srinagar
+      🛌 Overnight: Srinagar ✅ (as requested)
+
+      🟢 Day 4 – Friday, May 8
+      Srinagar to Pahalgam
+      Breakfast → drive to Pahalgam (~100 km / 2.5–3 hrs)
+      Check into hotel
+      Visit Betaab Valley, Lidder River walk
+      🛌 Overnight: Pahalgam
+
+      🟢 Day 5 – Saturday, May 9
+      Pahalgam to Katra (Vaishno Devi base)
+      Early breakfast → drive to Katra (~250 km / 7–8 hrs)
+      Evening arrival in Katra
+      Register for Vaishno Devi Yatra (online or at counter)
+      🛌 Overnight: Katra (to start trek early next day)
+
+      🟢 Day 6 – Sunday, May 10
+      Vaishno Devi trek & drive to Jammu
+      Early morning start trek (~12–14 km one way)
+      Darshan at Vaishno Devi Temple
+      Descend to Katra (by foot / pony / helicopter)
+      Afternoon drive to Jammu (~50 km / 1.5 hrs)
+      🛌 Overnight: Jammu ✅ (as requested)
+
+      🟢 Day 7 – Monday, May 11
+      Departure from Jammu Airport
+      Breakfast in Jammu
+      Drive to Jammu Airport
+      ✅ Reach by 3:00 PM for your flight
+
+      ✅ Inclusions
+      3 Night stay at Hotel in Srinagar (Days 1, 2, 3)
+      1 Night stay at Hotel in Pahalgam (Day 4)
+      1 Night stay at Hotel in Katra (Day 5)
+      1 Night stay at Hotel in Jammu (Day 6)
+      Transportation - Entire round trip journey by Private Vehicle (Srinagar Airport → Sonamarg → Gulmarg → Pahalgam → Katra → Vaishno Devi → Jammu → Jammu Airport)
+      Shikara Ride for 60 Minutes in Dal Lake (Day 1 or Day 3 evening)
+
+      ❌ Exclusions
+      Airfare / Train fare to and from Srinagar & Jammu
+      Helicopter ticket for Vaishno Devi
+      Anything not mentioned in the "Inclusions" section
+    `;
+
+    const fallback = buildFallbackTourDraftFromText(text);
+    const hydrated = mergeImportedAccommodationHints(fallback, text);
+    const draft = normalizeImportedItineraryDraft(hydrated);
+
+    expect(draft.duration_days).toBe(7);
+    expect(draft.days).toHaveLength(7);
+    expect(draft.days.map((day) => day.day_number)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(draft.days.at(-1)?.title).toContain("Monday, May 11");
+    expect(draft.inclusions).toContain("Shikara Ride for 60 Minutes in Dal Lake (Day 1 or Day 3 evening)");
+    expect(draft.exclusions).toContain("Anything not mentioned in the \"Inclusions\" section");
+    expect(draft.accommodations).toEqual([
+      expect.objectContaining({ day_number: 1, hotel_name: "Hotel in Srinagar", is_fallback: false }),
+      expect.objectContaining({ day_number: 2, hotel_name: "Hotel in Srinagar", is_fallback: false }),
+      expect.objectContaining({ day_number: 3, hotel_name: "Hotel in Srinagar", is_fallback: false }),
+      expect.objectContaining({ day_number: 4, hotel_name: "Hotel in Pahalgam", is_fallback: false }),
+      expect.objectContaining({ day_number: 5, hotel_name: "Hotel in Katra", is_fallback: false }),
+      expect.objectContaining({ day_number: 6, hotel_name: "Hotel in Jammu", is_fallback: false }),
+      expect.objectContaining({
+        day_number: 7,
+        hotel_name: "Hotel details will be shared by the tour operator.",
+        is_fallback: true,
+      }),
+    ]);
+  });
 });

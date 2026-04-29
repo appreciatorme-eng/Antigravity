@@ -56,6 +56,8 @@ const ACCOMMODATION_PREFIX_RE =
   /^(?:accommodation|hotel(?:\s+name)?|stay(?:\s+at)?|overnight stay(?:\s+at)?|check[- ]?in(?:\s+at)?)\s*[:\-]?\s*(.+)$/i;
 const NIGHT_STAY_RE =
   /^(?:(\d+)\s*night(?:s)?\s+)?(?:stay\s+)?(?:at|in)\s+(.+)$/i;
+const PACKAGE_SECTION_RE =
+  /^(?:[✅✓✔❌✕xX+\-\s]*)?(?:package\s+)?(?:inclusions?|includes?|exclusions?|excludes?|tour\s+cost\s+(?:includes?|excludes?)|cost\s+(?:includes?|excludes?)|included|not\s+included)\b/i;
 
 function asRecord(value: unknown): RecordLike | null {
   return value && typeof value === "object" ? (value as RecordLike) : null;
@@ -187,6 +189,7 @@ function normalizeSourceLines(sourceText: string): string[] {
 function cleanAccommodationLabel(value: string): string {
   return value
     .replace(/\s*(?:check[- ]?in|check[- ]?out|contact|phone)\s*[:\-].*$/i, "")
+    .replace(/\s*\((?:days?|nights?)\s+\d{1,2}(?:\s*(?:,|or|and|&|-)\s*\d{1,2})*[^)]*\)\s*$/i, "")
     .replace(/^[,:;\-–—]+/, "")
     .replace(/[,:;\-–—]+$/, "")
     .replace(/\s+/g, " ")
@@ -195,7 +198,8 @@ function cleanAccommodationLabel(value: string): string {
 
 function looksLikeAccommodationLabel(value: string): boolean {
   if (value.length < 4) return false;
-  if (/^(airport|station|pickup|drop|breakfast|lunch|dinner|sightseeing|transfer)\b/i.test(value)) {
+  if (/^to hotel$/i.test(value)) return false;
+  if (/^(airport|station|pickup|drop|breakfast|lunch|dinner|sightseeing|transfer|check)\b/i.test(value)) {
     return false;
   }
   return true;
@@ -246,8 +250,17 @@ function recoverAccommodationHintsFromText(
 
   const byDay = new Map<number, ImportedAccommodationDraft>();
   let currentDay: number | null = null;
+  let inPackageSection = false;
 
   lines.forEach((line, index) => {
+    if (PACKAGE_SECTION_RE.test(line)) {
+      currentDay = null;
+      inPackageSection = true;
+      return;
+    }
+
+    if (inPackageSection) return;
+
     const dayMatch = line.match(DAY_HEADER_RE);
     if (dayMatch) {
       currentDay = Math.max(1, Number(dayMatch[1]));
