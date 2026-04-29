@@ -24,6 +24,9 @@ const FALLBACK_SECTION_HEADERS = {
 };
 const FALLBACK_STOP_SECTION_RE =
   /^(?:day\s*\d+|itinerary|terms?|payment|notes?|important|booking|cancellation|pricing|price\s+summary|cost\s+summary)\b/i;
+const DAY_MARKER_RE =
+  /\b(?:day\s*[-:]?\s*0?\d{1,2}|d\s*[-:]?\s*0?\d{1,2}|0?\d{1,2}(?:st|nd|rd|th)\s+day)\b/gi;
+const ROUTE_ARROW_RE = /\s*(?:→|->|=>|-->|–|—| to )\s*/i;
 
 export interface TripImportDraftResult {
   success: boolean;
@@ -64,6 +67,7 @@ function cleanFallbackLine(line: string): string {
 
 function getFallbackLines(text: string): string[] {
   return text
+    .replace(DAY_MARKER_RE, (match, offset) => (offset > 0 ? `\n${match}` : match))
     .split(/\r?\n/)
     .map(cleanFallbackLine)
     .filter((line) => line.length > 0);
@@ -142,18 +146,95 @@ function extractFallbackDestination(title: string, lines: string[]): string {
   return title;
 }
 
+function detectFallbackDayHeader(line: string): { dayNumber: number; title: string } | null {
+  const explicit =
+    line.match(/^(?:day|d)\s*[-:]?\s*0?(\d{1,2})(?:\s*[:\-–—]\s*|\s+)?(.*)$/i) ??
+    line.match(/^0?(\d{1,2})(?:st|nd|rd|th)\s+day(?:\s*[:\-–—]\s*|\s+)?(.*)$/i) ??
+    line.match(/^day\s*0?(\d{1,2})\s*\/\s*(.*)$/i) ??
+    line.match(/^0?(\d{1,2})[\).]\s+(.+)$/i);
+
+  if (explicit?.[1]) {
+    const title = cleanFallbackLine(explicit[2] || `Day ${Number(explicit[1])}`);
+    if (/^\d/.test(line) && !looksLikeItineraryLine(title)) return null;
+
+    return {
+      dayNumber: Number(explicit[1]),
+      title: title || `Day ${Number(explicit[1])}`,
+    };
+  }
+
+  return null;
+}
+
+function looksLikeItineraryLine(line: string): boolean {
+  if (line.length < 4 || line.length > 140) return false;
+  if (/^(?:inclusions?|exclusions?|price|cost|payment|terms?|notes?|contact|phone|email)\b/i.test(line)) return false;
+  return (
+    ROUTE_ARROW_RE.test(line) ||
+    /\b(?:arrival|arrive|departure|depart|airport|station|transfer|drive|visit|sightseeing|excursion|darshan|trek|check[- ]?in|local|tour|temple|lake|valley|garden|hotel|stay)\b/i.test(line)
+  );
+}
+
+function inferRouteTitle(line: string): string | null {
+  if (line.length > 110) return null;
+  if (!ROUTE_ARROW_RE.test(line)) return null;
+  if (/^(?:transport(?:ation)?|airfare|train|pony|horse|entry|personal|camera|travel insurance)\b/i.test(line)) return null;
+
+  const parts = line
+    .split(ROUTE_ARROW_RE)
+    .map(cleanFallbackLine)
+    .filter(Boolean);
+  if (parts.length < 2 || parts.length > 5) return null;
+  if (parts.some((part) => part.length < 3 || part.length > 45)) return null;
+
+  return parts.join(" to ");
+}
+
+function inferMilestoneTitle(line: string): string | null {
+  if (!looksLikeItineraryLine(line)) return null;
+  if (/^(?:transport(?:ation)?|airfare|train|pony|horse|entry|personal|camera|travel insurance)\b/i.test(line)) return null;
+  return line.length > 90 ? `${line.slice(0, 87)}...` : line;
+}
+
 function extractFallbackDays(lines: string[]) {
-  const dayHeaderRe = /^day\s*0?(\d{1,2})(?:\s*[:\-–—]\s*|\s+)?(.*)$/i;
   const sections: Array<{ dayNumber: number; title: string; lines: string[] }> = [];
   let current: { dayNumber: number; title: string; lines: string[] } | null = null;
+  let inferredDayNumber = 1;
+  let inPackageSection = false;
 
   for (const line of lines) {
-    const header = line.match(dayHeaderRe);
+    const section = fallbackSectionForLine(line);
+    if (section) {
+      inPackageSection = true;
+      if (current) current.lines.push(line);
+      continue;
+    }
+
+    if (inPackageSection && isFallbackSectionBoundary(line)) {
+      inPackageSection = false;
+    }
+
+    const header = detectFallbackDayHeader(line);
     if (header) {
       if (current) sections.push(current);
-      const dayNumber = Number(header[1]);
-      const title = cleanFallbackLine(header[2] || `Day ${dayNumber}`);
-      current = { dayNumber, title: title || `Day ${dayNumber}`, lines: [] };
+      current = { ...header, lines: [] };
+      inferredDayNumber = Math.max(inferredDayNumber, header.dayNumber + 1);
+      continue;
+    }
+
+    const routeTitle = !inPackageSection ? inferRouteTitle(line) : null;
+    if (routeTitle && (!current || current.lines.length > 0)) {
+      if (current) sections.push(current);
+      current = { dayNumber: inferredDayNumber, title: routeTitle, lines: [line] };
+      inferredDayNumber += 1;
+      continue;
+    }
+
+    const milestoneTitle = !inPackageSection ? inferMilestoneTitle(line) : null;
+    if (!routeTitle && milestoneTitle && (!current || current.lines.length > 0)) {
+      if (current) sections.push(current);
+      current = { dayNumber: inferredDayNumber, title: milestoneTitle, lines: [line] };
+      inferredDayNumber += 1;
       continue;
     }
 
@@ -162,6 +243,46 @@ function extractFallbackDays(lines: string[]) {
 
   if (current) sections.push(current);
   return sections;
+}
+
+function countValidDays(value: unknown): number {
+  if (!value || typeof value !== "object") return 0;
+  const days = (value as { days?: unknown }).days;
+  return Array.isArray(days) ? days.length : 0;
+}
+
+function shouldPreferFallbackDays(extracted: unknown, fallback: unknown): boolean {
+  const extractedDays = countValidDays(extracted);
+  const fallbackDays = countValidDays(fallback);
+  if (fallbackDays <= 1) return false;
+  if (extractedDays <= 1 && fallbackDays > extractedDays) return true;
+  return fallbackDays >= extractedDays + 2;
+}
+
+function mergeFallbackStructureIntoExtracted(extracted: unknown, fallback: unknown): unknown {
+  if (!shouldPreferFallbackDays(extracted, fallback)) return extracted;
+  if (!extracted || typeof extracted !== "object" || !fallback || typeof fallback !== "object") return fallback;
+
+  const extractedRecord = extracted as Record<string, unknown>;
+  const fallbackRecord = fallback as Record<string, unknown>;
+
+  return {
+    ...extractedRecord,
+    duration_days: fallbackRecord.duration_days ?? extractedRecord.duration_days,
+    days: fallbackRecord.days,
+    inclusions:
+      Array.isArray(extractedRecord.inclusions) && extractedRecord.inclusions.length > 0
+        ? extractedRecord.inclusions
+        : fallbackRecord.inclusions,
+    exclusions:
+      Array.isArray(extractedRecord.exclusions) && extractedRecord.exclusions.length > 0
+        ? extractedRecord.exclusions
+        : fallbackRecord.exclusions,
+    warnings: [
+      ...((Array.isArray(extractedRecord.warnings) ? extractedRecord.warnings : []) as unknown[]),
+      "TripBuilt repaired the imported day structure from the pasted text because AI extraction missed itinerary days.",
+    ],
+  };
 }
 
 function lineLooksLikeFallbackActivity(line: string): boolean {
@@ -469,7 +590,9 @@ export async function importTripDraftFromText(
 
   try {
     const extracted = await extractStructuredTourFromText(normalizedText);
-    const hydrated = mergeImportedAccommodationHints(extracted, normalizedText);
+    const fallback = buildFallbackTourDraftFromText(normalizedText);
+    const repaired = mergeFallbackStructureIntoExtracted(extracted, fallback);
+    const hydrated = mergeImportedAccommodationHints(repaired, normalizedText);
     const draft = normalizeImportedItineraryDraft(hydrated, sourceMeta);
     return { success: true, draft };
   } catch (error) {
