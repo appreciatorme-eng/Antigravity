@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildFallbackTourDraftFromText,
   extractImportTextFromHtml,
   looksLikePdfUrl,
 } from "../../../src/lib/import/trip-import";
+import { mergeImportedAccommodationHints, normalizeImportedItineraryDraft } from "../../../src/lib/import/trip-draft";
 
 describe("trip import helpers", () => {
   it("extracts readable brochure text from html while stripping chrome noise", () => {
@@ -37,5 +39,73 @@ describe("trip import helpers", () => {
     expect(looksLikePdfUrl("https://example.com/brochures/thailand.pdf")).toBe(true);
     expect(looksLikePdfUrl("https://example.com/download?id=123")).toBe(false);
     expect(looksLikePdfUrl("https://example.com/tour.pdf?version=2")).toBe(true);
+  });
+
+  it("builds a usable fallback draft from pasted operator text when AI import is unavailable", () => {
+    const text = `
+      Kashmir and Vaishno Devi Pilgrimage
+      6 Nights / 7 Days
+
+      Day 1 - Arrival in Srinagar
+      Pickup from Srinagar Airport and transfer to hotel or houseboat.
+
+      Day 2 - Drive to Sonamarg
+      Local sightseeing and return to Srinagar.
+
+      Inclusions
+      3 Night stay at Hotel in Srinagar
+      1 Night stay at Hotel in Pahalgam
+      Daily Breakfast and Dinner included
+      Transportation by Private Vehicle
+
+      Exclusions
+      Airfare / Train fare to and from Srinagar & Jammu
+      Personal expenses
+    `;
+
+    const fallback = buildFallbackTourDraftFromText(text);
+    const hydrated = mergeImportedAccommodationHints(fallback, text);
+    const draft = normalizeImportedItineraryDraft(hydrated, {
+      source: "text",
+      extraction_confidence: 0.45,
+    });
+
+    expect(draft.trip_title).toBe("Kashmir and Vaishno Devi Pilgrimage");
+    expect(draft.duration_days).toBe(7);
+    expect(draft.days).toHaveLength(7);
+    expect(draft.inclusions).toEqual([
+      "3 Night stay at Hotel in Srinagar",
+      "1 Night stay at Hotel in Pahalgam",
+      "Daily Breakfast and Dinner included",
+      "Transportation by Private Vehicle",
+    ]);
+    expect(draft.exclusions).toEqual([
+      "Airfare / Train fare to and from Srinagar & Jammu",
+      "Personal expenses",
+    ]);
+    expect(draft.accommodations).toEqual([
+      expect.objectContaining({ day_number: 1, hotel_name: "Hotel in Srinagar", is_fallback: false }),
+      expect.objectContaining({ day_number: 2, hotel_name: "Hotel in Srinagar", is_fallback: false }),
+      expect.objectContaining({ day_number: 3, hotel_name: "Hotel in Srinagar", is_fallback: false }),
+      expect.objectContaining({ day_number: 4, hotel_name: "Hotel in Pahalgam", is_fallback: false }),
+      expect.objectContaining({
+        day_number: 5,
+        hotel_name: "Hotel details will be shared by the tour operator.",
+        is_fallback: true,
+      }),
+      expect.objectContaining({
+        day_number: 6,
+        hotel_name: "Hotel details will be shared by the tour operator.",
+        is_fallback: true,
+      }),
+      expect.objectContaining({
+        day_number: 7,
+        hotel_name: "Hotel details will be shared by the tour operator.",
+        is_fallback: true,
+      }),
+    ]);
+    expect(draft.warnings).toContain(
+      "AI extraction was unavailable, so TripBuilt created a fallback draft from the pasted text. Review before creating the trip.",
+    );
   });
 });

@@ -18,6 +18,12 @@ import {
 const IMPORT_TEXT_MIN_LENGTH = 50;
 const IMPORT_TEXT_MAX_LENGTH = 30000;
 const HTML_IMPORT_MAX_LENGTH = 30000;
+const FALLBACK_SECTION_HEADERS = {
+  inclusions: /^(?:[✅✓✔+\-\s]*)?(?:package\s+)?(?:inclusions?|includes?|tour\s+cost\s+includes?|cost\s+includes?|included)\b/i,
+  exclusions: /^(?:[❌✕xX\-\s]*)?(?:package\s+)?(?:exclusions?|excludes?|tour\s+cost\s+excludes?|cost\s+excludes?|not\s+included)\b/i,
+};
+const FALLBACK_STOP_SECTION_RE =
+  /^(?:day\s*\d+|itinerary|terms?|payment|notes?|important|booking|cancellation|pricing|price\s+summary|cost\s+summary)\b/i;
 
 export interface TripImportDraftResult {
   success: boolean;
@@ -47,6 +53,197 @@ function cleanJsonResponse(text: string): string {
 
 function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
+}
+
+function cleanFallbackLine(line: string): string {
+  return line
+    .replace(/^[\s•\-*–—✅✓✔❌✕xX]+\s*/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getFallbackLines(text: string): string[] {
+  return text
+    .split(/\r?\n/)
+    .map(cleanFallbackLine)
+    .filter((line) => line.length > 0);
+}
+
+function fallbackSectionForLine(line: string): "inclusions" | "exclusions" | null {
+  if (FALLBACK_SECTION_HEADERS.inclusions.test(line)) return "inclusions";
+  if (FALLBACK_SECTION_HEADERS.exclusions.test(line)) return "exclusions";
+  return null;
+}
+
+function isFallbackSectionBoundary(line: string): boolean {
+  return Boolean(fallbackSectionForLine(line)) || FALLBACK_STOP_SECTION_RE.test(line);
+}
+
+function extractFallbackPackageSection(
+  lines: string[],
+  section: "inclusions" | "exclusions",
+): string[] {
+  const items: string[] = [];
+  let collecting = false;
+
+  for (const line of lines) {
+    const currentSection = fallbackSectionForLine(line);
+    if (currentSection) {
+      collecting = currentSection === section;
+      continue;
+    }
+
+    if (!collecting) continue;
+    if (isFallbackSectionBoundary(line)) break;
+
+    const cleaned = cleanFallbackLine(line);
+    if (cleaned.length > 2) {
+      items.push(cleaned);
+    }
+  }
+
+  return Array.from(new Set(items));
+}
+
+function extractFallbackDurationDays(text: string, dayCount: number): number {
+  const nightsDaysMatch = text.match(/(\d{1,2})\s*(?:nights?|n)\s*[\/+&-]\s*(\d{1,2})\s*(?:days?|d)\b/i);
+  if (nightsDaysMatch?.[2]) return Number(nightsDaysMatch[2]);
+
+  const daysMatch = text.match(/\b(\d{1,2})\s*(?:days?|d)\b/i);
+  if (daysMatch?.[1]) return Number(daysMatch[1]);
+
+  const nightsMatch = text.match(/\b(\d{1,2})\s*(?:nights?|n)\b/i);
+  if (nightsMatch?.[1]) return Number(nightsMatch[1]) + 1;
+
+  return Math.max(1, dayCount);
+}
+
+function extractFallbackTitle(lines: string[]): string {
+  const title = lines.find((line) => {
+    if (fallbackSectionForLine(line)) return false;
+    if (FALLBACK_STOP_SECTION_RE.test(line)) return false;
+    if (/^(?:date|duration|price|cost|pax|contact|phone|email)\b/i.test(line)) return false;
+    return line.length >= 6 && line.length <= 120;
+  });
+
+  return title ?? "Imported itinerary";
+}
+
+function extractFallbackDestination(title: string, lines: string[]): string {
+  const destinationLine =
+    lines.find((line) => /\b(?:destination|location|route)\b\s*[:\-]/i.test(line)) ??
+    lines.find((line) => /\b(?:india|thailand|singapore|dubai|bali|kashmir|srinagar|pahalgam|gulmarg|jammu|sonamarg)\b/i.test(line));
+
+  if (destinationLine) {
+    const [, value] = destinationLine.split(/[:\-]/, 2);
+    return cleanFallbackLine(value ?? destinationLine).slice(0, 90);
+  }
+
+  return title;
+}
+
+function extractFallbackDays(lines: string[]) {
+  const dayHeaderRe = /^day\s*0?(\d{1,2})(?:\s*[:\-–—]\s*|\s+)?(.*)$/i;
+  const sections: Array<{ dayNumber: number; title: string; lines: string[] }> = [];
+  let current: { dayNumber: number; title: string; lines: string[] } | null = null;
+
+  for (const line of lines) {
+    const header = line.match(dayHeaderRe);
+    if (header) {
+      if (current) sections.push(current);
+      const dayNumber = Number(header[1]);
+      const title = cleanFallbackLine(header[2] || `Day ${dayNumber}`);
+      current = { dayNumber, title: title || `Day ${dayNumber}`, lines: [] };
+      continue;
+    }
+
+    if (current) current.lines.push(line);
+  }
+
+  if (current) sections.push(current);
+  return sections;
+}
+
+function lineLooksLikeFallbackActivity(line: string): boolean {
+  if (fallbackSectionForLine(line) || FALLBACK_STOP_SECTION_RE.test(line)) return false;
+  if (/^(?:accommodation|hotel|stay|lodging|inclusion|exclusion|price|cost|meal|transportation?)\b/i.test(line)) return false;
+  return line.length >= 4;
+}
+
+export function buildFallbackTourDraftFromText(text: string): unknown {
+  const lines = getFallbackLines(text);
+  const title = extractFallbackTitle(lines);
+  const daySections = extractFallbackDays(lines);
+  const destination = extractFallbackDestination(title, lines);
+  const durationDays = extractFallbackDurationDays(text, daySections.length);
+  const inclusions = extractFallbackPackageSection(lines, "inclusions");
+  const exclusions = extractFallbackPackageSection(lines, "exclusions");
+  const summaryLine = lines.find((line) => line !== title && line.length > 20 && !isFallbackSectionBoundary(line));
+  const expandedDaySections =
+    daySections.length > 0
+      ? Array.from({ length: Math.max(durationDays, Math.max(...daySections.map((day) => day.dayNumber))) }, (_, index) => {
+          const dayNumber = index + 1;
+          return (
+            daySections.find((day) => day.dayNumber === dayNumber) ?? {
+              dayNumber,
+              title: `Day ${dayNumber}`,
+              lines: [],
+            }
+          );
+        })
+      : [];
+  const daySource =
+    expandedDaySections.length > 0
+      ? expandedDaySections
+      : [
+          {
+            dayNumber: 1,
+            title: "Trip overview",
+            lines: lines.filter(lineLooksLikeFallbackActivity).slice(0, 4),
+          },
+        ];
+
+  return {
+    trip_title: title,
+    destination,
+    duration_days: Math.max(1, durationDays),
+    summary:
+      summaryLine ??
+      "Imported from pasted itinerary text. Review the generated structure before creating the trip.",
+    inclusions,
+    exclusions,
+    days: daySource.map((day) => {
+      const activityLines = day.lines.filter(lineLooksLikeFallbackActivity);
+      const activityTitle = activityLines[0] ?? day.title;
+
+      return {
+        day_number: day.dayNumber,
+        title: day.title,
+        description: activityLines[0] ?? "",
+        activities: activityLines.slice(0, 5).map((line, index) => ({
+          time: index === 0 ? "TBD" : "Flexible",
+          title: line.length > 90 ? `${line.slice(0, 87)}...` : line,
+          description: line,
+          location: destination,
+        })),
+        ...(activityLines.length === 0
+          ? {
+              activities: [
+                {
+                  time: "TBD",
+                  title: activityTitle,
+                  description: "Review imported itinerary details with the tour operator.",
+                  location: destination,
+                },
+              ],
+            }
+          : {}),
+      };
+    }),
+    warnings: [
+      "AI extraction was unavailable, so TripBuilt created a fallback draft from the pasted text. Review before creating the trip.",
+    ],
+  };
 }
 
 function isPrivateIp(address: string): boolean {
@@ -277,10 +474,13 @@ export async function importTripDraftFromText(
     return { success: true, draft };
   } catch (error) {
     logError("Text import extraction error", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Failed to extract itinerary from text",
-    };
+    const fallback = buildFallbackTourDraftFromText(normalizedText);
+    const hydrated = mergeImportedAccommodationHints(fallback, normalizedText);
+    const draft = normalizeImportedItineraryDraft(hydrated, {
+      ...sourceMeta,
+      extraction_confidence: Math.min(sourceMeta?.extraction_confidence ?? 0.45, 0.45),
+    });
+    return { success: true, draft };
   }
 }
 
