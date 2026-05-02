@@ -107,6 +107,7 @@ export function TripStatusSidebar({
         <div className="relative h-[400px]">
           <ItineraryMap
             days={itineraryDays}
+            accommodations={trip.itineraries?.raw_data?.accommodations ?? []}
             activeDay={activeDay}
             destination={trip.destination}
             driverLocation={latestDriverLocation ?? undefined}

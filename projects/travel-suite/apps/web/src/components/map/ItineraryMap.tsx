@@ -58,9 +58,20 @@ interface Day {
     activities: Activity[];
 }
 
+interface Accommodation {
+    day_number: number;
+    hotel_name: string;
+    address?: string;
+    check_in_time?: string;
+    room_type?: string;
+    is_fallback?: boolean;
+    coordinates?: Coordinate;
+}
+
 interface ItineraryMapProps {
     activities?: Activity[];
     days?: Day[];
+    accommodations?: Accommodation[];
     activeDay?: number;
     destination?: string;
     driverLocation?: DriverLocationSnapshot | null;
@@ -73,6 +84,16 @@ type ResolvedStop = {
     title: string;
     start_time?: string;
     resolvedCoordinates?: Coordinate;
+};
+
+type ResolvedHotel = {
+    key: string;
+    day_number: number;
+    hotel_name: string;
+    address?: string;
+    check_in_time?: string;
+    room_type?: string;
+    resolvedCoordinates: Coordinate;
 };
 
 // ── Haversine distance ───────────────────────────────────────────────────────
@@ -133,6 +154,31 @@ function makeNumberedIcon(n: number) {
                 box-shadow:0 6px 16px rgba(0,0,0,0.3);
                 font-family:inherit;
             ">${n}</div>`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+        popupAnchor: [0, -16],
+    });
+}
+
+function makeHotelIcon() {
+    return L.divIcon({
+        className: "",
+        html: `
+            <div style="
+                width:32px; height:32px; border-radius:50%;
+                background:#7c3aed; border:2px solid #ffffff;
+                display:flex; align-items:center; justify-content:center;
+                color:#ffffff;
+                box-shadow:0 6px 16px rgba(124,58,237,0.45);
+            ">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M2 20v-9a2 2 0 0 1 2-2h6"/>
+                    <path d="M22 20V8a2 2 0 0 0-2-2h-8a2 2 0 0 0-2 2v12"/>
+                    <path d="M2 20h20"/>
+                    <path d="M14 12h4"/>
+                    <path d="M14 16h4"/>
+                </svg>
+            </div>`,
         iconSize: [32, 32],
         iconAnchor: [16, 16],
         popupAnchor: [0, -16],
@@ -367,6 +413,7 @@ function ensureLeafletCSS() {
 export default function ItineraryMap({
     activities = [],
     days = [],
+    accommodations = [],
     activeDay = 1,
     destination,
     driverLocation,
@@ -380,6 +427,13 @@ export default function ItineraryMap({
         }
         return activities;
     }, [activities, days, activeDay]);
+
+    const activeAccommodations = useMemo<Accommodation[]>(() => {
+        if (!accommodations || accommodations.length === 0) return [];
+        const filtered = accommodations.filter((acc) => !acc.is_fallback && acc.hotel_name);
+        const forActiveDay = filtered.filter((acc) => acc.day_number === activeDay);
+        return forActiveDay.length > 0 ? forActiveDay : filtered;
+    }, [accommodations, activeDay]);
 
     const [resolvedCoordinates, setResolvedCoordinates] = useState<Record<string, Coordinate>>({});
 
@@ -467,6 +521,64 @@ export default function ItineraryMap({
         [resolvedStops]
     );
 
+    const [resolvedHotelCoords, setResolvedHotelCoords] = useState<Record<string, Coordinate>>({});
+
+    useEffect(() => {
+        let cancelled = false;
+
+        const unresolved = activeAccommodations.flatMap((acc) => {
+            if (hasValidCoordinates(acc.coordinates)) return [];
+            const query = acc.address?.trim()
+                ? `${acc.hotel_name}, ${acc.address}`
+                : destination
+                    ? `${acc.hotel_name}, ${destination}`
+                    : acc.hotel_name;
+            return [{ key: `hotel:${acc.day_number}:${acc.hotel_name}`, query }];
+        });
+
+        if (unresolved.length === 0) return;
+
+        void (async () => {
+            const entries = await Promise.all(
+                unresolved.map(async ({ key, query }) => {
+                    const resolved = await geocodeActivityLocation(query, destination);
+                    return resolved ? ([key, resolved] as const) : null;
+                }),
+            );
+            if (cancelled) return;
+            setResolvedHotelCoords((prev) => {
+                const merged = { ...prev };
+                for (const entry of entries) if (entry) merged[entry[0]] = entry[1];
+                return merged;
+            });
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [activeAccommodations, destination]);
+
+    const resolvedHotels = useMemo<ResolvedHotel[]>(() => {
+        const hotels: ResolvedHotel[] = [];
+        for (const acc of activeAccommodations) {
+            const key = `hotel:${acc.day_number}:${acc.hotel_name}`;
+            const coords = hasValidCoordinates(acc.coordinates)
+                ? acc.coordinates
+                : resolvedHotelCoords[key];
+            if (!coords) continue;
+            hotels.push({
+                key,
+                day_number: acc.day_number,
+                hotel_name: acc.hotel_name,
+                address: acc.address,
+                check_in_time: acc.check_in_time,
+                room_type: acc.room_type,
+                resolvedCoordinates: coords,
+            });
+        }
+        return hotels;
+    }, [activeAccommodations, resolvedHotelCoords]);
+
     const positions = useMemo<[number, number][]>(
         () => valid.map((a) => [a.resolvedCoordinates!.lat, a.resolvedCoordinates!.lng]),
         [valid]
@@ -476,12 +588,22 @@ export default function ItineraryMap({
 
     const totalKm = useMemo(() => totalDistanceKm(orderedLine), [orderedLine]);
 
+    const hotelPositions = useMemo<[number, number][]>(
+        () => resolvedHotels.map((h) => [h.resolvedCoordinates.lat, h.resolvedCoordinates.lng]),
+        [resolvedHotels]
+    );
+
+    const allBoundsPositions = useMemo<[number, number][]>(
+        () => [...positions, ...hotelPositions],
+        [positions, hotelPositions]
+    );
+
     const driverPos = useMemo<[number, number] | null>(() => {
         if (!driverLocation) return null;
         return [driverLocation.latitude, driverLocation.longitude];
     }, [driverLocation]);
 
-    if (valid.length === 0 && !driverPos) {
+    if (valid.length === 0 && resolvedHotels.length === 0 && !driverPos) {
         const cityCenter = getCityCoords(destination);
         if (cityCenter) {
             return (
@@ -510,7 +632,7 @@ export default function ItineraryMap({
         );
     }
 
-    const center = driverPos ?? positions[0] ?? getCityCoords(destination) ?? [20, 0];
+    const center = driverPos ?? positions[0] ?? hotelPositions[0] ?? getCityCoords(destination) ?? [20, 0];
 
     return (
         <div className={className} style={{ position: "relative", width: "100%", height: "100%" }}>
@@ -552,7 +674,7 @@ export default function ItineraryMap({
                     maxZoom={19}
                 />
 
-                <FitBounds positions={positions} driverLocation={driverPos || undefined} />
+                <FitBounds positions={allBoundsPositions} driverLocation={driverPos || undefined} />
 
                 {orderedLine.length > 1 && (
                     <>
@@ -578,6 +700,24 @@ export default function ItineraryMap({
                                 <h4 className="font-bold text-sm text-slate-900">{act.title}</h4>
                                 <p className="text-xs text-slate-500 mt-1">📍 {act.label}</p>
                                 {act.start_time && <p className="text-xs font-mono text-emerald-600 mt-1">{act.start_time}</p>}
+                            </div>
+                        </Popup>
+                    </Marker>
+                ))}
+
+                {resolvedHotels.map((hotel) => (
+                    <Marker
+                        key={hotel.key}
+                        position={[hotel.resolvedCoordinates.lat, hotel.resolvedCoordinates.lng]}
+                        icon={makeHotelIcon()}
+                    >
+                        <Popup>
+                            <div className="p-1">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-violet-600">Day {hotel.day_number} · Hotel</p>
+                                <h4 className="font-bold text-sm text-slate-900 mt-0.5">{hotel.hotel_name}</h4>
+                                {hotel.address && <p className="text-xs text-slate-500 mt-1">📍 {hotel.address}</p>}
+                                {hotel.room_type && <p className="text-xs text-slate-500 mt-0.5">🛏 {hotel.room_type}</p>}
+                                {hotel.check_in_time && <p className="text-xs font-mono text-emerald-600 mt-1">Check-in: {hotel.check_in_time}</p>}
                             </div>
                         </Popup>
                     </Marker>

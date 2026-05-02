@@ -81,6 +81,20 @@ export interface TripFinancialSummaryConfig {
   notes?: string;
 }
 
+export interface TripAccommodationEntry {
+  day_number: number;
+  hotel_name: string;
+  address?: string;
+  check_in_time?: string;
+  contact_phone?: string;
+  room_type?: string;
+  star_rating?: number;
+  price_per_night?: number;
+  amenities?: string[];
+  is_fallback?: boolean;
+  coordinates?: { lat: number; lng: number };
+}
+
 export interface TripItineraryRawData {
   trip_title?: string;
   destination?: string;
@@ -97,6 +111,7 @@ export interface TripItineraryRawData {
   pricing?: TripPricing;
   financial_summary?: TripFinancialSummaryConfig;
   image_search_version?: number;
+  accommodations?: TripAccommodationEntry[];
 }
 
 export interface TripProfile {

@@ -705,6 +705,9 @@ out center tags 80;
                 <div className="hidden xl:block h-[calc(100vh-100px)] sticky top-6">
                     <ItineraryMap
                         activities={activeDayData?.activities || []}
+                        accommodations={Object.values(accommodations)}
+                        activeDay={activeDay}
+                        destination={trip?.destination}
                     />
                 </div>
             </div>

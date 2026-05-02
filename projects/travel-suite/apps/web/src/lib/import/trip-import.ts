@@ -4,7 +4,7 @@ import dns from "node:dns/promises";
 import net from "node:net";
 
 import * as cheerio from "cheerio";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI, SchemaType, type ResponseSchema } from "@google/generative-ai";
 
 import { logError } from "@/lib/observability/logger";
 import { extractTourFromPDF } from "@/lib/import/pdf-extractor";
@@ -14,6 +14,7 @@ import {
   type ImportedItineraryDraft,
   type ImportedItineraryDraftSourceMeta,
 } from "@/lib/import/trip-draft";
+import { geocodeItineraryDraft } from "@/lib/import/geocode-itinerary";
 
 const IMPORT_TEXT_MIN_LENGTH = 50;
 const IMPORT_TEXT_MAX_LENGTH = 30000;
@@ -484,6 +485,138 @@ export function extractImportTextFromHtml(html: string): string {
   return normalizeWhitespace([title, metaDescription, mainText].filter(Boolean).join(" "));
 }
 
+const TOUR_RESPONSE_SCHEMA: ResponseSchema = {
+  type: SchemaType.OBJECT,
+  properties: {
+    name: { type: SchemaType.STRING },
+    destination: { type: SchemaType.STRING },
+    duration_days: { type: SchemaType.INTEGER },
+    start_date: { type: SchemaType.STRING },
+    end_date: { type: SchemaType.STRING },
+    description: { type: SchemaType.STRING },
+    base_price: { type: SchemaType.NUMBER },
+    budget: { type: SchemaType.STRING },
+    interests: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+    tips: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+    inclusions: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+    exclusions: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+    pricing: {
+      type: SchemaType.OBJECT,
+      properties: {
+        per_person_cost: { type: SchemaType.NUMBER },
+        total_cost: { type: SchemaType.NUMBER },
+        currency: { type: SchemaType.STRING },
+        pax_count: { type: SchemaType.INTEGER },
+        notes: { type: SchemaType.STRING },
+      },
+    },
+    days: {
+      type: SchemaType.ARRAY,
+      items: {
+        type: SchemaType.OBJECT,
+        properties: {
+          day_number: { type: SchemaType.INTEGER },
+          date: { type: SchemaType.STRING },
+          title: { type: SchemaType.STRING },
+          description: { type: SchemaType.STRING },
+          accommodation: {
+            type: SchemaType.OBJECT,
+            properties: {
+              hotel_name: { type: SchemaType.STRING },
+              star_rating: { type: SchemaType.INTEGER },
+              room_type: { type: SchemaType.STRING },
+              price_per_night: { type: SchemaType.NUMBER },
+              amenities: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+            },
+            required: ["hotel_name"],
+          },
+          activities: {
+            type: SchemaType.ARRAY,
+            items: {
+              type: SchemaType.OBJECT,
+              properties: {
+                time: { type: SchemaType.STRING },
+                title: { type: SchemaType.STRING },
+                description: { type: SchemaType.STRING },
+                location: { type: SchemaType.STRING },
+                price: { type: SchemaType.NUMBER },
+                is_optional: { type: SchemaType.BOOLEAN },
+                is_premium: { type: SchemaType.BOOLEAN },
+              },
+              required: ["title"],
+            },
+          },
+        },
+        required: ["day_number", "title", "activities"],
+      },
+    },
+  },
+  required: ["name", "destination", "duration_days", "days"],
+};
+
+const HOTEL_FALLBACK_PHRASE = "To be decided by travel operator";
+
+const EXTRACTION_PROMPT_HEADER = `You are a tour itinerary extraction expert for a premium B2B travel operations product used by Indian tour operators (Kashmir, Goa, Kerala, Rajasthan, Himachal patterns dominate).
+
+Your goal: parse brochure / pasted itinerary / website text into a clean structured tour object that an operator can save with zero manual fixups.
+
+CRITICAL RULES (in priority order):
+
+1. HOTEL vs LOCATION DISAMBIGUATION
+   - A HOTEL NAME is a proper noun like "Hotel Heevan", "The Lalit Grand", "Vivanta by Taj", "WelcomHotel Pine N Peak", "Khyber Resort & Spa", "Houseboat New Bombay Palace".
+   - A LOCATION is a city / region / place like "Pahalgam", "Srinagar", "Gulmarg", "Goa", "Munnar".
+   - NEVER put a city / location name into accommodation.hotel_name. "Overnight at Pahalgam" means the city, not a hotel.
+   - If a line says "overnight at Hotel X in Pahalgam", the hotel_name is "Hotel X" (drop the city).
+
+2. MULTI-SOURCE HOTEL EXTRACTION
+   - Hotels can be mentioned in: day titles, day descriptions, inclusions, package notes, a separate "Hotels" section, or "Accommodation" tables.
+   - Search ALL of these. Match each hotel to the day(s) it applies to.
+   - If a hotels table lists "Day 1-3: Hotel Heevan, Day 4-5: Hotel Hilltop", assign Hotel Heevan to days 1, 2, 3 and Hotel Hilltop to days 4 and 5.
+
+3. MULTI-NIGHT ALLOCATION
+   - "3 nights at Hotel X" → set hotel_name="Hotel X" on 3 consecutive days starting at the right day.
+   - "2N Srinagar / 2N Pahalgam / 1N Gulmarg" with hotels per city → map each city's hotel to its night-block days.
+
+4. EXPLICIT FALLBACK FOR MISSING HOTELS
+   - If after exhaustive search NO hotel is identifiable for a day, set accommodation.hotel_name="${HOTEL_FALLBACK_PHRASE}".
+   - DO NOT leave the accommodation field empty for any day. Every day MUST have an accommodation object.
+   - The last day (departure / checkout) may also use this fallback if no hotel is mentioned.
+
+5. ACTIVITY LOCATIONS
+   - For every activity, set location to the most specific geocodable place name (e.g., "Dal Lake, Srinagar" not "lake").
+   - If unclear, use the city the day takes place in.
+
+6. NEVER INVENT
+   - Only return days, activities, hotels, and prices that are supported by the source text.
+   - Use numeric prices only (no currency symbols inside numbers — use the pricing.currency field).
+   - Use YYYY-MM-DD for any explicit dates.
+
+FEW-SHOT EXAMPLE
+
+Source:
+"""
+Kashmir Paradise 5N/6D
+Day 1: Arrival Srinagar - Transfer to hotel - Shikara ride on Dal Lake. Overnight at Hotel Heevan.
+Day 2: Srinagar to Pahalgam (90 km) - Sightseeing - Stay at WelcomHotel Pine N Peak.
+Day 3: Pahalgam local - Aru valley, Betaab valley. Same hotel as previous day.
+Day 4: Pahalgam to Gulmarg - Gondola ride. Overnight at Khyber Himalayan Resort.
+Day 5: Gulmarg to Sonmarg day trip back to Srinagar. Houseboat New Bombay Palace.
+Day 6: Departure.
+Inclusions: 5 nights accommodation, daily breakfast, sedan transfers.
+Per person ₹35,000 (twin sharing, 2 pax).
+"""
+
+Expected days[*].accommodation.hotel_name:
+- Day 1: "Hotel Heevan"
+- Day 2: "WelcomHotel Pine N Peak"
+- Day 3: "WelcomHotel Pine N Peak"   (same hotel as previous day)
+- Day 4: "Khyber Himalayan Resort"
+- Day 5: "Houseboat New Bombay Palace"
+- Day 6: "${HOTEL_FALLBACK_PHRASE}"   (departure day, no overnight)
+
+Notice "Pahalgam" and "Srinagar" never appear as hotel_name — they are locations.
+`;
+
 async function extractStructuredTourFromText(text: string, apiKey?: string): Promise<unknown> {
   const key = getGeminiKey(apiKey);
   if (!key) {
@@ -491,79 +624,21 @@ async function extractStructuredTourFromText(text: string, apiKey?: string): Pro
   }
 
   const genAI = new GoogleGenerativeAI(key);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const model = genAI.getGenerativeModel({
+    model: "gemini-2.0-flash",
+    generationConfig: {
+      responseMimeType: "application/json",
+      responseSchema: TOUR_RESPONSE_SCHEMA,
+      temperature: 0.1,
+    },
+  });
 
-  const prompt = `
-You are a tour itinerary extraction expert for a premium B2B travel operations product.
-I will give you brochure text, copied itinerary text, or website text.
-Extract all usable trip information and return ONLY valid raw JSON.
+  const prompt = `${EXTRACTION_PROMPT_HEADER}
 
-Return JSON in this exact structure:
-{
-  "name": "Tour name",
-  "destination": "City, Country",
-  "duration_days": 5,
-  "start_date": "2026-04-28",
-  "end_date": "2026-05-03",
-  "description": "Overall tour summary",
-  "base_price": 2500,
-  "budget": "Budget | Moderate | Luxury",
-  "interests": ["beach", "family"],
-  "tips": ["Carry sunscreen"],
-  "inclusions": ["Airport transfers", "Breakfast"],
-  "exclusions": ["Flights", "Personal expenses"],
-  "pricing": {
-    "per_person_cost": 1250,
-    "total_cost": 2500,
-    "currency": "INR",
-    "pax_count": 2,
-    "notes": "Rate valid for twin sharing"
-  },
-  "days": [
-    {
-      "day_number": 1,
-      "date": "2026-04-28",
-      "title": "Arrival in Phuket",
-      "description": "Day summary",
-      "accommodation": {
-        "hotel_name": "Hotel name if stated",
-        "star_rating": 4,
-        "room_type": "Deluxe Room",
-        "price_per_night": 6500,
-        "amenities": ["Breakfast"]
-      },
-      "activities": [
-        {
-          "time": "09:00 AM",
-          "title": "Phuket Airport pickup",
-          "description": "Activity description",
-          "location": "Phuket Airport",
-          "coordinates": { "lat": 7.8804, "lng": 98.3923 },
-          "price": 0,
-          "is_optional": false,
-          "is_premium": false
-        }
-      ]
-    }
-  ]
-}
-
-Rules:
-- Return JSON only, no markdown.
-- Use YYYY-MM-DD for start_date, end_date, and any explicit day dates.
-- Extract pricing, inclusions, exclusions, tips, and interests whenever present.
-- If the text mentions hotels, stays, camps, resorts, room types, or accommodation nights, extract them into the relevant day's "accommodation" object.
-- If hotel details are only mentioned in inclusions or package notes, still capture them under the best matching day instead of dropping them.
-- Use numeric prices only, no currency symbols.
-- If exact coordinates are unknown, omit coordinates instead of guessing 0,0.
-- Do not invent days or activities not supported by the text.
-- Keep day numbers sequential.
-- If pricing is missing, omit that field instead of guessing.
-- Prefer searchable titles and real place names.
-
-Source text:
+Now extract from this source text:
+"""
 ${text}
-`;
+"""`;
 
   const result = await model.generateContent(prompt);
   return JSON.parse(cleanJsonResponse(result.response.text()));
@@ -582,7 +657,8 @@ export async function importTripDraftFromPdf(
   }
 
   const draft = normalizeImportedItineraryDraft(extraction.data, sourceMeta);
-  return { success: true, draft };
+  const geocoded = await geocodeItineraryDraft(draft);
+  return { success: true, draft: geocoded };
 }
 
 export async function importTripDraftFromText(
@@ -611,7 +687,8 @@ export async function importTripDraftFromText(
     const repaired = mergeFallbackStructureIntoExtracted(extracted, fallback);
     const hydrated = mergeImportedAccommodationHints(repaired, normalizedText);
     const draft = normalizeImportedItineraryDraft(hydrated, sourceMeta);
-    return { success: true, draft };
+    const geocoded = await geocodeItineraryDraft(draft);
+    return { success: true, draft: geocoded };
   } catch (error) {
     logError("Text import extraction error", error);
     const fallback = buildFallbackTourDraftFromText(normalizedText);
@@ -620,7 +697,8 @@ export async function importTripDraftFromText(
       ...sourceMeta,
       extraction_confidence: Math.min(sourceMeta?.extraction_confidence ?? 0.45, 0.45),
     });
-    return { success: true, draft };
+    const geocoded = await geocodeItineraryDraft(draft);
+    return { success: true, draft: geocoded };
   }
 }
 

@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef } from "react";
-import { Hotel, Phone } from "lucide-react";
+import { Hotel, Phone, AlertTriangle } from "lucide-react";
+import { ACCOMMODATION_FALLBACK } from "@/lib/import/trip-draft";
 import type { Accommodation, HotelSuggestion } from "./types";
 
 interface AccommodationCardProps {
@@ -25,12 +26,26 @@ export function AccommodationCard({
 }: AccommodationCardProps) {
     const hotelSearchDebounceRef = useRef<number | null>(null);
 
+    const rawHotelName = accommodation?.hotel_name?.trim() ?? "";
+    const isFallback = rawHotelName === ACCOMMODATION_FALLBACK;
+    const inputValue = isFallback ? "" : (accommodation?.hotel_name ?? "");
+
     return (
         <div className="bg-white rounded-xl border border-gray-100 p-6">
             <div className="flex items-center gap-2 mb-4">
                 <Hotel className="h-5 w-5 text-secondary" />
                 <h2 className="text-lg font-semibold">Accommodation</h2>
             </div>
+
+            {isFallback && (
+                <div className="mb-4 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900">
+                    <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                    <div className="text-xs">
+                        <p className="font-semibold">Operator action needed</p>
+                        <p className="opacity-80">No hotel was extracted for Day {activeDay}. Add the hotel name below or pick a nearby option.</p>
+                    </div>
+                </div>
+            )}
 
             <div className="space-y-4">
                 <div>
@@ -39,7 +54,7 @@ export function AccommodationCard({
                     </label>
                     <input
                         type="text"
-                        value={accommodation?.hotel_name || ""}
+                        value={inputValue}
                         onChange={(e) => {
                             const value = e.target.value;
                             onUpdateAccommodation(activeDay, "hotel_name", value);
@@ -59,8 +74,8 @@ export function AccommodationCard({
                                 onFetchNearbyHotels(activeDay);
                             }
                         }}
-                        placeholder="Enter hotel name"
-                        className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        placeholder={isFallback ? ACCOMMODATION_FALLBACK : "Enter hotel name"}
+                        className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary ${isFallback ? "border-amber-300 placeholder:text-amber-700/70" : "border-gray-200"}`}
                     />
                     <div className="mt-2 flex items-center justify-between gap-2">
                         <button

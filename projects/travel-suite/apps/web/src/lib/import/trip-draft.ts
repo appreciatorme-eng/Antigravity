@@ -6,6 +6,15 @@ import type {
   HotelDetails,
   ItineraryResult,
 } from "@/types/itinerary";
+import {
+  ACCOMMODATION_LINE_RE as HOTEL_KEYWORD_RE,
+  ACCOMMODATION_PREFIX_RE,
+  isLikelyLocationOnly,
+  looksLikeHotelName,
+  NIGHT_STAY_RE,
+  PACKAGE_SECTION_RE,
+  stripTrailingLocation,
+} from "@/lib/import/hotel-patterns";
 
 export interface ImportedItineraryDraftSourceMeta {
   filename?: string;
@@ -25,6 +34,7 @@ export interface ImportedAccommodationDraft {
   price_per_night?: number;
   amenities?: string[];
   is_fallback?: boolean;
+  coordinates?: { lat: number; lng: number };
 }
 
 export interface ImportedItineraryDraft {
@@ -48,16 +58,9 @@ export interface ImportedItineraryDraft {
 }
 
 type RecordLike = Record<string, unknown>;
-const ACCOMMODATION_FALLBACK = "Hotel details will be shared by the tour operator.";
+export const ACCOMMODATION_FALLBACK = "To be decided by travel operator";
 const DAY_HEADER_RE = /\bday\s*0?(\d{1,2})\b/i;
-const ACCOMMODATION_LINE_RE =
-  /\b(hotel|resort|houseboat|camp|lodge|villa|inn|retreat|homestay|palace)\b/i;
-const ACCOMMODATION_PREFIX_RE =
-  /^(?:accommodation|hotel(?:\s+name)?|stay(?:\s+at)?|overnight stay(?:\s+at)?|check[- ]?in(?:\s+at)?)\s*[:\-]?\s*(.+)$/i;
-const NIGHT_STAY_RE =
-  /^(?:(\d+)\s*night(?:s)?\s+)?(?:stay\s+)?(?:at|in)\s+(.+)$/i;
-const PACKAGE_SECTION_RE =
-  /^(?:[✅✓✔❌✕xX+\-\s]*)?(?:package\s+)?(?:inclusions?|includes?|exclusions?|excludes?|tour\s+cost\s+(?:includes?|excludes?)|cost\s+(?:includes?|excludes?)|included|not\s+included)\b/i;
+const ACCOMMODATION_LINE_RE = HOTEL_KEYWORD_RE;
 
 function asRecord(value: unknown): RecordLike | null {
   return value && typeof value === "object" ? (value as RecordLike) : null;
@@ -169,6 +172,7 @@ function normalizeAccommodation(raw: unknown, fallbackDayNumber: number): Import
     star_rating: toFiniteNumber(record.star_rating),
     price_per_night: toFiniteNumber(record.price_per_night),
     amenities: normalizeStringList(record.amenities),
+    coordinates: normalizeCoordinates(record.coordinates),
     is_fallback: false,
   };
 }
@@ -186,52 +190,56 @@ function normalizeSourceLines(sourceText: string): string[] {
     .filter((line) => line.length >= 4);
 }
 
-function cleanAccommodationLabel(value: string): string {
-  return value
+function cleanAccommodationLabel(value: string, cities: ReadonlyArray<string> = []): string {
+  const stripped = value
     .replace(/\s*(?:check[- ]?in|check[- ]?out|contact|phone)\s*[:\-].*$/i, "")
     .replace(/\s*\((?:days?|nights?)\s+\d{1,2}(?:\s*(?:,|or|and|&|-)\s*\d{1,2})*[^)]*\)\s*$/i, "")
     .replace(/^[,:;\-–—]+/, "")
     .replace(/[,:;\-–—]+$/, "")
     .replace(/\s+/g, " ")
     .trim();
+  return stripTrailingLocation(stripped, cities);
 }
 
-function looksLikeAccommodationLabel(value: string): boolean {
+function isAcceptableHotelLabel(value: string, cities: ReadonlyArray<string> = []): boolean {
   if (value.length < 4) return false;
   if (/^to hotel$/i.test(value)) return false;
   if (/^(airport|station|pickup|drop|breakfast|lunch|dinner|sightseeing|transfer|check)\b/i.test(value)) {
     return false;
   }
-  return true;
+  return looksLikeHotelName(value, cities);
 }
 
-function extractAccommodationNameFromLine(line: string): string | null {
+function extractAccommodationNameFromLine(line: string, cities: ReadonlyArray<string> = []): string | null {
   const prefixed = line.match(ACCOMMODATION_PREFIX_RE);
   if (prefixed?.[1]) {
-    const cleaned = cleanAccommodationLabel(prefixed[1]);
-    return looksLikeAccommodationLabel(cleaned) ? cleaned : null;
+    const cleaned = cleanAccommodationLabel(prefixed[1], cities);
+    return isAcceptableHotelLabel(cleaned, cities) ? cleaned : null;
   }
 
   const explicitStay = line.match(NIGHT_STAY_RE);
-  if (explicitStay?.[2] && /(?:hotel|resort|houseboat|camp|lodge|villa|inn|retreat|homestay|palace)\b/i.test(explicitStay[2])) {
-    const cleaned = cleanAccommodationLabel(explicitStay[2]);
-    return looksLikeAccommodationLabel(cleaned) ? cleaned : null;
+  if (explicitStay?.[2] && HOTEL_KEYWORD_RE.test(explicitStay[2])) {
+    const cleaned = cleanAccommodationLabel(explicitStay[2], cities);
+    return isAcceptableHotelLabel(cleaned, cities) ? cleaned : null;
   }
 
-  if (!ACCOMMODATION_LINE_RE.test(line)) return null;
+  if (!HOTEL_KEYWORD_RE.test(line)) return null;
 
-  const cleaned = cleanAccommodationLabel(line);
-  return looksLikeAccommodationLabel(cleaned) ? cleaned : null;
+  const cleaned = cleanAccommodationLabel(line, cities);
+  return isAcceptableHotelLabel(cleaned, cities) ? cleaned : null;
 }
 
-function extractNightAllocationFromLine(line: string): { nights: number; hotel_name: string } | null {
+function extractNightAllocationFromLine(
+  line: string,
+  cities: ReadonlyArray<string> = [],
+): { nights: number; hotel_name: string } | null {
   const match = line.match(
     /^(?:(\d+)\s*night(?:s)?\s+)?(?:stay\s+)?(?:at|in)\s+(.+)$/i,
   );
   if (!match?.[2]) return null;
 
-  const hotelName = cleanAccommodationLabel(match[2]);
-  if (!ACCOMMODATION_LINE_RE.test(hotelName) || !looksLikeAccommodationLabel(hotelName)) {
+  const hotelName = cleanAccommodationLabel(match[2], cities);
+  if (!isAcceptableHotelLabel(hotelName, cities)) {
     return null;
   }
 
@@ -244,6 +252,7 @@ function extractNightAllocationFromLine(line: string): { nights: number; hotel_n
 function recoverAccommodationHintsFromText(
   sourceText: string,
   totalDays: number,
+  cities: ReadonlyArray<string> = [],
 ): ImportedAccommodationDraft[] {
   const lines = normalizeSourceLines(sourceText);
   if (lines.length === 0 || totalDays <= 0) return [];
@@ -266,7 +275,7 @@ function recoverAccommodationHintsFromText(
       currentDay = Math.max(1, Number(dayMatch[1]));
     }
 
-    const accommodationName = extractAccommodationNameFromLine(line);
+    const accommodationName = extractAccommodationNameFromLine(line, cities);
     if (accommodationName && currentDay && !byDay.has(currentDay)) {
       byDay.set(currentDay, {
         day_number: currentDay,
@@ -278,7 +287,7 @@ function recoverAccommodationHintsFromText(
 
     if (/^(?:accommodation|hotel(?:\s+details|\s+name)?|stay)$/i.test(line) && currentDay && !byDay.has(currentDay)) {
       const nextLine = lines[index + 1];
-      const nextName = nextLine ? extractAccommodationNameFromLine(nextLine) : null;
+      const nextName = nextLine ? extractAccommodationNameFromLine(nextLine, cities) : null;
       if (nextName) {
         byDay.set(currentDay, {
           day_number: currentDay,
@@ -290,7 +299,7 @@ function recoverAccommodationHintsFromText(
   });
 
   const nightAllocations = lines
-    .map((line) => extractNightAllocationFromLine(line))
+    .map((line) => extractNightAllocationFromLine(line, cities))
     .filter((allocation): allocation is { nights: number; hotel_name: string } => Boolean(allocation));
 
   let dayCursor = 1;
@@ -315,9 +324,63 @@ function recoverAccommodationHintsFromText(
   return Array.from(byDay.values()).sort((a, b) => a.day_number - b.day_number);
 }
 
+function collectKnownCitiesFromInput(input: unknown): string[] {
+  const record = asRecord(input);
+  if (!record) return [];
+
+  const cities = new Set<string>();
+  const destination = toTrimmedString(record.destination);
+  if (destination) {
+    destination.split(/[,/]/).forEach((part) => {
+      const trimmed = part.trim();
+      if (trimmed) cities.add(trimmed);
+    });
+  }
+
+  if (Array.isArray(record.days)) {
+    record.days.forEach((day) => {
+      const dayRecord = asRecord(day);
+      if (!dayRecord) return;
+      const dayLocation =
+        toTrimmedString(dayRecord.location) ??
+        toTrimmedString(dayRecord.title) ??
+        toTrimmedString(dayRecord.theme);
+      if (dayLocation) cities.add(dayLocation);
+      if (Array.isArray(dayRecord.activities)) {
+        dayRecord.activities.forEach((activity) => {
+          const activityLocation = toTrimmedString(asRecord(activity)?.location);
+          if (activityLocation) cities.add(activityLocation);
+        });
+      }
+    });
+  }
+
+  return Array.from(cities);
+}
+
+function downgradeCityOnlyHotels(
+  accommodations: ImportedAccommodationDraft[],
+  cities: ReadonlyArray<string>,
+): ImportedAccommodationDraft[] {
+  return accommodations.map((accommodation) => {
+    const trimmed = accommodation.hotel_name.trim();
+    if (!trimmed || trimmed === ACCOMMODATION_FALLBACK) return accommodation;
+    if (isLikelyLocationOnly(trimmed, cities)) {
+      return {
+        ...accommodation,
+        hotel_name: ACCOMMODATION_FALLBACK,
+        is_fallback: true,
+      };
+    }
+    return accommodation;
+  });
+}
+
 export function mergeImportedAccommodationHints(input: unknown, sourceText: string): unknown {
   const record = asRecord(input);
-  if (!record || !sourceText.trim()) return input;
+  if (!record) return input;
+
+  const cities = collectKnownCitiesFromInput(input);
 
   const durationDays = Math.max(
     1,
@@ -328,35 +391,67 @@ export function mergeImportedAccommodationHints(input: unknown, sourceText: stri
     ),
   );
 
-  const recovered = recoverAccommodationHintsFromText(sourceText, durationDays);
-  if (recovered.length === 0) return input;
-
-  const existingDays = new Set<number>();
-  const topLevelAccommodations = Array.isArray(record.accommodations)
+  const topLevelAccommodations: unknown[] = Array.isArray(record.accommodations)
     ? [...record.accommodations]
     : [];
 
-  topLevelAccommodations.forEach((accommodation, index) => {
-    const normalized = normalizeAccommodation(accommodation, index + 1);
-    if (normalized) existingDays.add(normalized.day_number);
-  });
+  // Downgrade any city-only hotel names already extracted by the AI.
+  const downgradedTopLevel = downgradeCityOnlyHotels(
+    topLevelAccommodations
+      .map((acc, index) => normalizeAccommodation(acc, index + 1))
+      .filter((acc): acc is ImportedAccommodationDraft => Boolean(acc)),
+    cities,
+  );
+
+  const downgradedTopLevelByDay = new Map<number, ImportedAccommodationDraft>();
+  for (const acc of downgradedTopLevel) {
+    downgradedTopLevelByDay.set(acc.day_number, acc);
+  }
 
   const days = Array.isArray(record.days) ? [...record.days] : [];
+  const existingDays = new Set<number>();
+
+  // Validate per-day accommodations and downgrade city-only hotel names.
   days.forEach((day, index) => {
     const dayRecord = asRecord(day);
     if (!dayRecord) return;
 
+    const dayNumber =
+      toFiniteNumber(dayRecord.day_number) ?? toFiniteNumber(dayRecord.day) ?? index + 1;
     const normalized = normalizeAccommodation(
       dayRecord.accommodation ?? dayRecord.hotel ?? dayRecord.stay,
-      toFiniteNumber(dayRecord.day_number) ?? toFiniteNumber(dayRecord.day) ?? index + 1,
+      dayNumber,
     );
-    if (normalized) existingDays.add(normalized.day_number);
+
+    if (normalized && !isLikelyLocationOnly(normalized.hotel_name, cities)) {
+      existingDays.add(normalized.day_number);
+    } else if (normalized) {
+      // City-only — strip from the day so the recovery / fallback can re-fill it.
+      const { accommodation: _accommodation, hotel: _hotel, stay: _stay, ...rest } = dayRecord;
+      void _accommodation;
+      void _hotel;
+      void _stay;
+      days[index] = rest;
+    }
   });
+
+  // Carry forward AI-extracted hotels that survived validation.
+  const goodTopLevel: ImportedAccommodationDraft[] = [];
+  for (const acc of downgradedTopLevel) {
+    goodTopLevel.push(acc);
+    if (!acc.is_fallback) existingDays.add(acc.day_number);
+  }
+
+  // Run regex recovery from the source text only when it's available.
+  const recovered = sourceText.trim()
+    ? recoverAccommodationHintsFromText(sourceText, durationDays, cities)
+    : [];
 
   for (const accommodation of recovered) {
     if (existingDays.has(accommodation.day_number)) continue;
+    goodTopLevel.push(accommodation);
+    existingDays.add(accommodation.day_number);
 
-    topLevelAccommodations.push(accommodation);
     const dayIndex = accommodation.day_number - 1;
     const dayRecord = asRecord(days[dayIndex]);
     if (dayRecord && !dayRecord.accommodation && !dayRecord.hotel && !dayRecord.stay) {
@@ -369,7 +464,7 @@ export function mergeImportedAccommodationHints(input: unknown, sourceText: stri
 
   return {
     ...record,
-    accommodations: topLevelAccommodations,
+    accommodations: goodTopLevel,
     days,
   };
 }
@@ -648,13 +743,18 @@ export function normalizeImportedItineraryDraft(
           .filter((accommodation): accommodation is ImportedAccommodationDraft => Boolean(accommodation))
       : []),
   ]);
+  const knownCities = collectKnownCitiesFromInput(merged);
+  const safeExtracted = downgradeCityOnlyHotels(extractedAccommodations, knownCities);
   const accommodations =
     days.length > 0
       ? days.map((day) => {
-          const match = extractedAccommodations.find((accommodation) => accommodation.day_number === day.day_number);
-          return match ?? buildAccommodationFallback(day.day_number);
+          const match = safeExtracted.find(
+            (accommodation) => accommodation.day_number === day.day_number,
+          );
+          if (!match || match.is_fallback) return buildAccommodationFallback(day.day_number);
+          return match;
         })
-      : extractedAccommodations;
+      : safeExtracted;
   const datedDays = days
     .map((day) => day.date)
     .filter((value): value is string => Boolean(value))

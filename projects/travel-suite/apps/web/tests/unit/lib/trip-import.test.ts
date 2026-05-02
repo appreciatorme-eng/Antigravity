@@ -90,17 +90,17 @@ describe("trip import helpers", () => {
       expect.objectContaining({ day_number: 4, hotel_name: "Hotel in Pahalgam", is_fallback: false }),
       expect.objectContaining({
         day_number: 5,
-        hotel_name: "Hotel details will be shared by the tour operator.",
+        hotel_name: "To be decided by travel operator",
         is_fallback: true,
       }),
       expect.objectContaining({
         day_number: 6,
-        hotel_name: "Hotel details will be shared by the tour operator.",
+        hotel_name: "To be decided by travel operator",
         is_fallback: true,
       }),
       expect.objectContaining({
         day_number: 7,
-        hotel_name: "Hotel details will be shared by the tour operator.",
+        hotel_name: "To be decided by travel operator",
         is_fallback: true,
       }),
     ]);
@@ -157,7 +157,7 @@ describe("trip import helpers", () => {
       expect.objectContaining({ day_number: 6, hotel_name: "Hotel in Katra", is_fallback: false }),
       expect.objectContaining({
         day_number: 7,
-        hotel_name: "Hotel details will be shared by the tour operator.",
+        hotel_name: "To be decided by travel operator",
         is_fallback: true,
       }),
     ]);
@@ -283,9 +283,105 @@ describe("trip import helpers", () => {
       expect.objectContaining({ day_number: 6, hotel_name: "Hotel in Jammu", is_fallback: false }),
       expect.objectContaining({
         day_number: 7,
-        hotel_name: "Hotel details will be shared by the tour operator.",
+        hotel_name: "To be decided by travel operator",
         is_fallback: true,
       }),
     ]);
+  });
+
+  it("does not treat 'overnight at Pahalgam' as a hotel name", () => {
+    const text = `
+      Kashmir 5N/6D
+
+      Day 1 - Arrival in Srinagar
+      Pickup from Srinagar Airport.
+      Overnight at Srinagar.
+
+      Day 2 - Pahalgam
+      Drive to Pahalgam.
+      Overnight at Pahalgam.
+
+      Day 3 - Pahalgam local sightseeing
+      Aru and Betaab Valley.
+      Overnight at Pahalgam.
+
+      Day 4 - Drive to Gulmarg
+      Gondola ride.
+      Overnight at Gulmarg.
+
+      Day 5 - Return to Srinagar
+      Stay at Houseboat New Bombay Palace.
+      Overnight at Srinagar.
+
+      Day 6 - Departure
+      Transfer to airport.
+    `;
+
+    const fallback = buildFallbackTourDraftFromText(text);
+    const hydrated = mergeImportedAccommodationHints(fallback, text);
+    const draft = normalizeImportedItineraryDraft(hydrated);
+
+    const hotelNames = (draft.accommodations ?? []).map((a) => a.hotel_name);
+    expect(hotelNames).not.toContain("Pahalgam");
+    expect(hotelNames).not.toContain("Srinagar");
+    expect(hotelNames).not.toContain("Gulmarg");
+
+    const day5 = draft.accommodations?.find((a) => a.day_number === 5);
+    expect(day5?.hotel_name.toLowerCase()).toContain("houseboat");
+
+    const day2 = draft.accommodations?.find((a) => a.day_number === 2);
+    expect(day2?.is_fallback).toBe(true);
+    expect(day2?.hotel_name).toBe("To be decided by travel operator");
+  });
+
+  it("strips trailing city qualifiers from hotel names", () => {
+    const text = `
+      Kashmir Holiday
+
+      Day 1 - Srinagar
+      Stay at Hotel Heevan, Srinagar.
+
+      Day 2 - Pahalgam
+      Stay at Hotel Hilltop, Pahalgam.
+    `;
+
+    const fallback = buildFallbackTourDraftFromText(text);
+    const hydrated = mergeImportedAccommodationHints(fallback, text);
+    const draft = normalizeImportedItineraryDraft(hydrated);
+
+    const day1 = draft.accommodations?.find((a) => a.day_number === 1);
+    expect(day1?.hotel_name).toBe("Hotel Heevan");
+
+    const day2 = draft.accommodations?.find((a) => a.day_number === 2);
+    expect(day2?.hotel_name).toBe("Hotel Hilltop");
+  });
+
+  it("downgrades AI-suggested city-only hotel names to the fallback", () => {
+    const aiOutput = {
+      name: "Kashmir 5N/6D",
+      destination: "Srinagar, India",
+      duration_days: 2,
+      days: [
+        {
+          day_number: 1,
+          title: "Arrival",
+          activities: [{ title: "Pickup", location: "Srinagar" }],
+          accommodation: { hotel_name: "Hotel Heevan" },
+        },
+        {
+          day_number: 2,
+          title: "Pahalgam",
+          activities: [{ title: "Drive to Pahalgam", location: "Pahalgam" }],
+          accommodation: { hotel_name: "Pahalgam" },
+        },
+      ],
+      accommodations: [{ day_number: 2, hotel_name: "Pahalgam" }],
+    };
+
+    const draft = normalizeImportedItineraryDraft(aiOutput);
+    const day2 = draft.accommodations?.find((a) => a.day_number === 2);
+
+    expect(day2?.hotel_name).toBe("To be decided by travel operator");
+    expect(day2?.is_fallback).toBe(true);
   });
 });

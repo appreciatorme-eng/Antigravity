@@ -3481,7 +3481,7 @@ const LuxuryStaySnapshot = ({
         if (!hotel) {
           return {
             title: 'To be confirmed',
-            copy: 'Hotel details will be shared by the tour operator.',
+            copy: 'To be decided by travel operator',
           };
         }
         return {
@@ -3495,7 +3495,7 @@ const LuxuryStaySnapshot = ({
 
   const resolvedStay = stay || {
     title: 'To be confirmed',
-    copy: 'Hotel details will be shared by the tour operator.',
+    copy: 'To be decided by travel operator',
   };
 
   return (
@@ -3985,7 +3985,7 @@ const BentoStayPanel = ({
       <BentoPanelPrint
         label="Hotel details"
         value="To be confirmed"
-        copy="Hotel details will be shared by the tour operator."
+        copy="To be decided by travel operator"
       />
     );
   }

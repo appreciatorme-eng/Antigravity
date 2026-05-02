@@ -183,12 +183,12 @@ describe("trip draft normalization", () => {
     expect(draft.accommodations).toEqual([
       expect.objectContaining({
         day_number: 1,
-        hotel_name: "Hotel details will be shared by the tour operator.",
+        hotel_name: "To be decided by travel operator",
         is_fallback: true,
       }),
       expect.objectContaining({
         day_number: 2,
-        hotel_name: "Hotel details will be shared by the tour operator.",
+        hotel_name: "To be decided by travel operator",
         is_fallback: true,
       }),
     ]);
